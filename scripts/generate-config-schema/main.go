@@ -182,6 +182,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		config.Description = config.Then.AllOf[0].Description
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		requireOneBackend(mapping)
 		return mapping
 	case reflect.TypeFor[actionlint.RuffToolConfig]():
 		type plain actionlint.RuffToolConfig
@@ -204,6 +205,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			property.Items = &jsonschema.Schema{Type: "string", Examples: []any{"F", "F821"}}
 			property.Not = &jsonschema.Schema{Type: "array", Contains: &jsonschema.Schema{Not: &jsonschema.Schema{Ref: ruffconfig.SelectorSchemaPath}}}
 		}
+		requireOneBackend(mapping)
 		for name, description := range map[string]string{
 			"backend":        "Select the execution backend. Process settings apply only to the native adapter.",
 			"enabled":        "Enable Ruff analysis with the selected backend.",
@@ -301,6 +303,11 @@ func documentFields(s *jsonschema.Schema) {
 	documentFields(s.Then)
 	documentFields(s.Items)
 	documentFields(s.AdditionalProperties)
+}
+
+func requireOneBackend(mapping *jsonschema.Schema) {
+	backend, _ := mapping.Properties.Get("backend")
+	backend.OneOf = []*jsonschema.Schema{{Required: []string{"process"}}, {Required: []string{"wasm"}}}
 }
 
 func documentedReflector() (*jsonschema.Reflector, error) {

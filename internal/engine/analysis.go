@@ -56,6 +56,9 @@ type AnalysisRequest struct {
 	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
 	ShellcheckRunner func([]string, string) ([]byte, error)
+	// LoadScriptEngine loads the core WebAssembly engine a configuration selects
+	// through tools.<name>.backend.wasm. Nil rejects such configurations.
+	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.

@@ -20,6 +20,8 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/internal/ruffconfig",
 		"actionlint.kjanat.dev/internal/render",
 		"actionlint.kjanat.dev/internal/component",
+		"actionlint.kjanat.dev/internal/corewasm",
+		"actionlint.kjanat.dev/plugin",
 		"actionlint.kjanat.dev/internal/expression",
 		"actionlint.kjanat.dev/internal/workflow",
 		"actionlint.kjanat.dev/internal/workflowcontext",

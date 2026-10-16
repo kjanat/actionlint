@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/component"
+	"actionlint.kjanat.dev/internal/corewasm"
 )
 
 type loadedPlugins struct {
@@ -50,4 +52,34 @@ func (l *loadedPlugins) close(ctx context.Context) {
 		_ = plugin.Close(ctx)
 	}
 	l.plugins = nil
+}
+
+func scriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {
+	return func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
+		options := corewasm.Options{CacheDir: engineCacheDir()}
+		if debug && options.CacheDir == "" {
+			_, _ = fmt.Fprintln(log, "[Linter] No user cache directory; compiling WebAssembly engines without a cache")
+		}
+		engine, err := corewasm.Load(ctx, path, options)
+		if err != nil {
+			return nil, err
+		}
+		if debug {
+			metadata := engine.Metadata()
+			_, _ = fmt.Fprintf(log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, path, engine.Limits())
+		}
+		return engine, nil
+	}
+}
+
+func engineCacheDir() string {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		return ""
+	}
+	dir := filepath.Join(base, "actionlint", "wazero")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ""
+	}
+	return dir
 }

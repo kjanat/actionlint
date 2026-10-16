@@ -92,6 +92,28 @@ does this for both examples, including a composite action call. The Rust crate u
 `internal/component/testdata/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
 file access are reported.
 
+## Script engines
+
+Python and shell snippets go through a second contract, `analyzer.ScriptBackend`: actionlint selects the snippet,
+masks workflow expressions and maps positions back, and the engine checks one sanitized snippet at a time.
+[actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) implements it as a core WebAssembly module
+with a JSON ABI: `check`, `validate_config` and `metadata` exports, no imports, requests and responses as UTF-8 JSON in
+linear memory. Select such a module in the configuration:
+
+```yaml
+tools:
+  ruff:
+    backend:
+      wasm:
+        path: ./tools/actionlint-plugin-ruff.wasm.gz
+```
+
+The host checks the ABI version, the export signatures and the advertised operation versions when it loads the module,
+refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
+limit. A trap or an exceeded limit discards that instance and fails the document's analysis. From Go, call
+`plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the
+repository configuration.
+
 ## Contribute a rule
 
 Plugins live in their own repositories and ship a component. Open an issue in this repository to list a plugin in the

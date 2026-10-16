@@ -10,12 +10,13 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// Backend selects one transport. Process is the currently available configured
-// transport. Future core-WASM and component adapters have their own settings;
-// executable names and argv are never the general backend contract.
+// Backend selects one transport: a native process or a core WebAssembly engine.
+// Executable names and argv are never the general backend contract.
 type Backend struct {
 	// Process configures native executable invocation.
-	Process *Command `yaml:"process" jsonschema:"required"`
+	Process *Command `yaml:"process,omitempty"`
+	// Wasm selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.
+	Wasm *Module `yaml:"wasm,omitempty"`
 }
 
 func (b *Backend) UnmarshalYAML(n *yaml.Node) error {
@@ -24,10 +25,30 @@ func (b *Backend) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
 	}
-	if next.Process == nil {
-		return errors.New("backend requires a process mapping")
+	if (next.Process == nil) == (next.Wasm == nil) {
+		return errors.New("backend requires exactly one of a process mapping or a wasm mapping")
 	}
 	*b = Backend(next)
+	return nil
+}
+
+// Module locates a core WebAssembly engine.
+type Module struct {
+	// Path is the raw or gzip-compressed module file. Relative paths resolve
+	// from the declaring config file; inline configs use the analysis directory.
+	Path string `yaml:"path" jsonschema:"required"`
+}
+
+func (m *Module) UnmarshalYAML(n *yaml.Node) error {
+	type plain Module
+	var next plain
+	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
+		return err
+	}
+	if next.Path == "" || strings.ContainsRune(next.Path, 0) {
+		return errors.New("wasm backend requires a module path")
+	}
+	*m = Module(next)
 	return nil
 }
 
@@ -86,9 +107,14 @@ func NormalizePaths(node *yaml.Node, directory string) {
 		return nil
 	}
 	for _, name := range []string{"ruff", "shellcheck"} {
-		executable := field(field(field(field(field(node, "tools"), name), "backend"), "process"), "executable")
+		backend := field(field(field(node, "tools"), name), "backend")
+		executable := field(field(backend, "process"), "executable")
 		if executable != nil && executable.Tag == "!!str" && strings.ContainsAny(executable.Value, `/\`) && !filepath.IsAbs(executable.Value) {
 			executable.Value = filepath.Join(directory, executable.Value)
+		}
+		module := field(field(backend, "wasm"), "path")
+		if module != nil && module.Tag == "!!str" && module.Value != "" && !filepath.IsAbs(module.Value) {
+			module.Value = filepath.Join(directory, module.Value)
 		}
 	}
 	if overrides := field(node, "overrides"); overrides != nil {

@@ -145,7 +145,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	defer plugins.close(ctx)
 	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
-		RulePresets: presets, Analyzers: plugins.registrations(),
+		RulePresets: presets, Analyzers: plugins.registrations(), LoadScriptEngine: scriptEngineLoader(log, options.Debug),
 		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
 		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
 		ShellcheckOptions: c.ShellcheckOptions,
@@ -156,6 +156,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
+	defer func() {
+		if closeErr := app.Close(ctx); err == nil {
+			err = closeErr
+		}
+	}()
 	var renderer *actionlint.AnalysisRenderer
 	if inv.Legacy {
 		// Root invocations validate templates before reading any workflow input.

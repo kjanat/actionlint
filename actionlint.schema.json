@@ -6839,9 +6839,6 @@
                             "description": "Select the execution backend. Process settings apply only to the native adapter.",
                             "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                             "type": "object",
-                            "required": [
-                              "process"
-                            ],
                             "properties": {
                               "process": {
                                 "title": "process",
@@ -6889,9 +6886,39 @@
                                   }
                                 },
                                 "additionalProperties": false
+                              },
+                              "wasm": {
+                                "title": "wasm",
+                                "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "type": "object",
+                                "required": [
+                                  "path"
+                                ],
+                                "properties": {
+                                  "path": {
+                                    "title": "path",
+                                    "description": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "type": "string"
+                                  }
+                                },
+                                "additionalProperties": false
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "oneOf": [
+                              {
+                                "required": [
+                                  "process"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "wasm"
+                                ]
+                              }
+                            ]
                           },
                           "config": {
                             "title": "config",
@@ -7094,9 +7121,6 @@
                             "description": "Select the execution backend. Process settings apply only to the native adapter.",
                             "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                             "type": "object",
-                            "required": [
-                              "process"
-                            ],
                             "properties": {
                               "process": {
                                 "title": "process",
@@ -7144,9 +7168,39 @@
                                   }
                                 },
                                 "additionalProperties": false
+                              },
+                              "wasm": {
+                                "title": "wasm",
+                                "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "type": "object",
+                                "required": [
+                                  "path"
+                                ],
+                                "properties": {
+                                  "path": {
+                                    "title": "path",
+                                    "description": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "type": "string"
+                                  }
+                                },
+                                "additionalProperties": false
                               }
                             },
-                            "additionalProperties": false
+                            "additionalProperties": false,
+                            "oneOf": [
+                              {
+                                "required": [
+                                  "process"
+                                ]
+                              },
+                              {
+                                "required": [
+                                  "wasm"
+                                ]
+                              }
+                            ]
                           },
                           "config": {
                             "title": "config",
@@ -7570,9 +7624,6 @@
                   "description": "Select the execution backend. Process settings apply only to the native adapter.",
                   "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                   "type": "object",
-                  "required": [
-                    "process"
-                  ],
                   "properties": {
                     "process": {
                       "title": "process",
@@ -7620,9 +7671,39 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "wasm": {
+                      "title": "wasm",
+                      "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "type": "object",
+                      "required": [
+                        "path"
+                      ],
+                      "properties": {
+                        "path": {
+                          "title": "path",
+                          "description": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   },
-                  "additionalProperties": false
+                  "additionalProperties": false,
+                  "oneOf": [
+                    {
+                      "required": [
+                        "process"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "wasm"
+                      ]
+                    }
+                  ]
                 },
                 "config": {
                   "title": "config",
@@ -7825,9 +7906,6 @@
                   "description": "Select the execution backend. Process settings apply only to the native adapter.",
                   "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                   "type": "object",
-                  "required": [
-                    "process"
-                  ],
                   "properties": {
                     "process": {
                       "title": "process",
@@ -7875,9 +7953,39 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "wasm": {
+                      "title": "wasm",
+                      "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "type": "object",
+                      "required": [
+                        "path"
+                      ],
+                      "properties": {
+                        "path": {
+                          "title": "path",
+                          "description": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "Is the raw or gzip-compressed module file. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   },
-                  "additionalProperties": false
+                  "additionalProperties": false,
+                  "oneOf": [
+                    {
+                      "required": [
+                        "process"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "wasm"
+                      ]
+                    }
+                  ]
                 },
                 "config": {
                   "title": "config",

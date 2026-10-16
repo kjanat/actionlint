@@ -12,3 +12,4 @@ wit-bindgen c --world plugin --out-dir gen "${contract}"
 "${sdk}/bin/wasm32-wasip2-clang" -std=c11 -O2 -Wall -Wextra -Werror -mexec-model=reactor \
 	-o "${output}" no_sudo.c gen/plugin.c gen/plugin_component_type.o
 wasm-tools validate "${output}"
+chmod 644 "${output}"

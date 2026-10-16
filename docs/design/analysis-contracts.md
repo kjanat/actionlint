@@ -202,9 +202,16 @@ loops, reads a file, reads the environment and logs on request. Architecture tes
 and the loader free of the engine.
 
 Known limit: `wacogo` rejects a null pointer from `cabi_realloc` for a zero-size request, which the canonical ABI
-allows and TinyGo 0.42 produces, so TinyGo guests cannot run on this host until the runtime accepts it. Core WebAssembly
-JSON engines such as `actionlint-plugin-ruff` keep their own transport behind `analyzer.ScriptBackend`; a core-module
-adapter is a separate change.
+allows and TinyGo 0.42 produces, so TinyGo guests cannot run on this host until the runtime accepts it.
+
+Core WebAssembly JSON engines such as `actionlint-plugin-ruff` keep their own transport behind
+`analyzer.ScriptBackend`. `internal/corewasm` runs them on `wazero` directly: it verifies the version 1 exports and
+their signatures, refuses modules with imports, reads the metadata export to negotiate the `check` and
+`validate_config` operation versions and the request size limit, pools instances across concurrent calls and discards
+an instance after a trap or an exceeded limit. `tools.<name>.backend.wasm` selects a module in the configuration. The
+engine does not load modules itself: the CLI and library callers pass a loader, the session loads each path once and
+closes the engines when it ends, and a configuration that selects a module without a loader fails. The public
+`plugin` package exposes both loaders.
 
 ## Decision: separate language analysis from the host
 

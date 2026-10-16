@@ -1,8 +1,10 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/ruff"
 	"fmt"
+
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/ruff"
 )
 
 // builtinFactory selects visitor adapters and script analyzers. The
@@ -15,6 +17,11 @@ func builtinFactory(request AnalysisRequest, logger analysisLogger) func(ruleCon
 		c.ruff, c.ruffOptions, c.ruffCompatibility = request.Ruff, request.RuffOptions, compatibility
 		c.ruffBackend = request.RuffBackend
 		c.shellcheckBackend = request.ShellcheckBackend
+		if request.LoadScriptEngine != nil {
+			c.scriptEngine = func(path string) (analyzer.ScriptBackend, error) {
+				return request.LoadScriptEngine(c.process.ctx, path)
+			}
+		}
 		c.ruffWarning = func(err error) {
 			if logger.logOut != nil {
 				_, _ = fmt.Fprintln(logger.logOut, "warning: skipping automatically discovered Ruff:", err)

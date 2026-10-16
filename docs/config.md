@@ -285,9 +285,9 @@ The browser playground cannot run external tools.
 ## Tool execution backends
 
 Engine configuration and execution are separate. `tools.<name>.config` configures
-checks; `tools.<name>.backend.process` configures native invocation. Process is the
-currently configurable transport. Library callers may also supply an engine backend
-without an executable. Core-WASM and component-WASM loading are future adapters.
+checks; `tools.<name>.backend` selects how the engine runs. `process` invokes a native
+executable and `wasm` loads a core WebAssembly engine in-process. Library callers may
+also supply an engine backend without an executable.
 
 ```yaml
 tools:
@@ -301,8 +301,8 @@ tools:
       enable: [all]
   ruff:
     backend:
-      process:
-        executable: ./tools/ruff
+      wasm:
+        path: ./tools/actionlint-plugin-ruff.wasm.gz
     config:
       lint: { extend-select: [B, S] }
 ```
@@ -313,6 +313,14 @@ working directory. Bare names use `PATH`. Arguments are literal launcher argumen
 prepended to the engine invocation; they are never shell source. Environment entries
 affect the child only. Explicit CLI, environment or library invocation settings take
 precedence over repository process settings. An explicit disable remains disabled.
+
+A `wasm` module follows the [actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff)
+JSON ABI, version 1, raw or gzip-compressed, and its path resolves like an executable path.
+actionlint checks the module's exports and metadata when it loads, compiles it once per run,
+and keeps the machine code under the user cache directory in `actionlint/wazero`. Each call
+runs under a 256 MiB memory limit and a 10 second time limit; a trap or an exceeded limit
+fails that document's analysis. An explicit `--ruff` command, including an empty one, still
+takes precedence over the repository's `wasm` backend. See [Plugins](plugins.md#script-engines).
 
 The pinning rule supports scoped exceptions without suppressing other action checks:
 

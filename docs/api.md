@@ -135,6 +135,12 @@ accompany a failure. The host maps them into the workflow/action source, applies
 all started work. A backend must honor cancellation and permit concurrent calls; callers own its lifetime.
 It may implement `ScriptConfigValidator` to validate its engine configuration before checking a snippet.
 
+`plugin.LoadEngine` returns such a backend for a core WebAssembly module that follows the
+actionlint-plugin-ruff JSON ABI, and `plugin.Load` returns an `analyzer.Analyzer` for a component plugin.
+Both report their limits. See [Plugins](plugins.md). Repository configuration can select an engine module
+through `tools.<name>.backend.wasm`; library tool settings take precedence over it, as they do for
+configured processes.
+
 Ruff receives its native options (`target-version`, `lint`, etc.). The native process adapter implements
 this same contract. ShellCheck backends receive `shell`, `exclude`, and `external-sources: false`; the
 source includes resolved inline directives and runner startup options. That backend route has no external

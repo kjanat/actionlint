@@ -4,6 +4,7 @@ import (
 	"actionlint.kjanat.dev/internal/repoconfig"
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"actionlint.kjanat.dev/analyzer"
@@ -23,6 +24,12 @@ type shellcheckAnalyzer struct {
 func newShellcheckAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 	if c.shellcheckBackend != nil {
 		return &shellcheckAnalyzer{backend: c.shellcheckBackend, debug: c.debug}, nil
+	}
+	if engine, err := c.configuredScriptEngine("shellcheck", c.shellcheck, c.shellcheckOptions); engine != nil || err != nil {
+		if err != nil {
+			return nil, fmt.Errorf("could not initialize ShellCheck: %w", err)
+		}
+		return &shellcheckAnalyzer{backend: engine, debug: c.debug}, nil
 	}
 	if c.shellcheckRunner != nil {
 		externalSources := false
