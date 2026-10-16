@@ -11,8 +11,7 @@ import (
 
 // The canonical ABI checks only alignment and bounds on a realloc result, so a
 // null pointer is valid for a zero-size request, which TinyGo's cabi_realloc
-// returns. Upstream wacogo traps on it (partite-ai/wacogo#11); go.mod replaces
-// the module with the fix from partite-ai/wacogo#12 until that merges.
+// returns. wacogo accepts it since partite-ai/wacogo#12 (partite-ai/wacogo#11).
 func TestRuntimeAcceptsNullReallocForZeroSize(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("testdata", "wat", "null-realloc.wasm"))
 	if err != nil {

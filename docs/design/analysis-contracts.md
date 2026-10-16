@@ -201,12 +201,11 @@ version, import a socket interface, import an unknown interface or export no ana
 traps, panics, exits, allocates past the limit, loops, reads a file, reads the environment and logs on request.
 Architecture tests keep the engine free of the runtime and the loader free of the engine.
 
-Upstream `wacogo` rejects a null pointer from `cabi_realloc` for a zero-size request, which the canonical ABI allows
-and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11). `go.mod` replaces the module with
-`github.com/kjanat/wacogo` at the commit of https://github.com/partite-ai/wacogo/pull/12, which limits the trap to
-non-zero sizes. `internal/component/runtime_limit_test.go` checks that an empty string lowers into a component whose
-realloc returns null for size 0. When the pull request merges, the replace goes and the dependency moves to that
-upstream commit. Programs that import the `plugin` package need the same replace to run TinyGo guests until then.
+`wacogo` before https://github.com/partite-ai/wacogo/pull/12 rejected a null pointer from `cabi_realloc` for a
+zero-size request, which the canonical ABI allows and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11).
+`go.mod` requires the merge commit of that pull request, which limits the trap to non-zero sizes.
+`internal/component/runtime_limit_test.go` checks that an empty string lowers into a component whose realloc returns
+null for size 0.
 
 Core WebAssembly JSON engines such as `actionlint-plugin-ruff` keep their own transport behind
 `analyzer.ScriptBackend`. `internal/corewasm` runs them on `wazero` directly: it verifies the version 1 exports and

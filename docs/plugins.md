@@ -79,10 +79,8 @@ contract and TinyGo's bundled WASI definitions, then builds with:
 ./build.sh insecure-download.wasm
 ```
 
-TinyGo's `cabi_realloc` returns null for a zero-size request, which upstream wacogo rejects
-(https://github.com/partite-ai/wacogo/issues/11). actionlint's `go.mod` replaces the runtime with the fix from
-https://github.com/partite-ai/wacogo/pull/12 until it merges. A program that imports the `plugin` package needs the
-same `replace` directive to run TinyGo guests.
+TinyGo's `cabi_realloc` returns null for a zero-size request, which the canonical ABI allows. wacogo accepts it since
+https://github.com/partite-ai/wacogo/pull/12, and actionlint's `go.mod` requires that version.
 
 ### Other toolchains
 
