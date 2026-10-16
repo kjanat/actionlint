@@ -56,21 +56,13 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 
 func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 	absolute := filepath.Join(t.TempDir(), "workflow.yml")
-	for _, native := range []bool{false, true} {
-		format, template := Format(""), SARIFTemplate()
-		if native {
-			format, template = FormatSARIF, ""
-		}
-		renderer, err := New(format, template, false, testVersion, nil)
+	{
+		renderer, err := New(FormatSARIF, "", false, testVersion, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		if native {
-			err = renderer.Render(&out, Result{Diagnostics: []diagnostic.Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}}}})
-		} else {
-			err = renderer.Formatter().Print(&out, []*TemplateFields{{Filepath: absolute, Kind: "test", Message: "test", Line: 1, Column: 1, EndColumn: 1}})
-		}
+		err = renderer.Render(&out, Result{Diagnostics: []diagnostic.Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,15 +79,8 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 			t.Fatal(err)
 		}
 		artifact := document.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation
-		wantBase := "%SRCROOT%"
-		if native {
-			wantBase = ""
-		}
-		if artifact.URIBaseID != wantBase {
-			t.Errorf("native=%v: absolute artifact base = %q, want %q", native, artifact.URIBaseID, wantBase)
-		}
-		if !native && artifact.URI != absolute {
-			t.Errorf("legacy template path changed: %q", artifact.URI)
+		if artifact.URIBaseID != "" {
+			t.Errorf("absolute artifact base = %q, want none", artifact.URIBaseID)
 		}
 	}
 }
@@ -152,7 +137,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 			}
 			for i, replacement := range change.Replacements {
 				edit := finding.Fixes[0].Edits[i]
-				if replacement.DeletedRegion != (sarifRegion{edit.Start.Line, edit.Start.Column, edit.End.Line, edit.End.Column}) || replacement.InsertedContent.Text != edit.Replacement {
+				if replacement.DeletedRegion != (sarifRegion{StartLine: edit.Start.Line, StartColumn: edit.Start.Column, EndLine: edit.End.Line, EndColumn: edit.End.Column}) || replacement.InsertedContent.Text != edit.Replacement {
 					t.Fatalf("edit changed: %+v", replacement)
 				}
 			}

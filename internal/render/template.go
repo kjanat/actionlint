@@ -39,23 +39,54 @@ func compareRules(lhs, rhs *Rule) int {
 	return strings.Compare(lhs.Name, rhs.Name)
 }
 
+type ruleSet struct {
+	mu    sync.Mutex
+	rules map[string]*Rule
+}
+
+func newRuleSet(rules []Rule) *ruleSet {
+	set := &ruleSet{rules: map[string]*Rule{}}
+	for _, rule := range rules {
+		set.register(rule)
+	}
+	return set
+}
+
+func (s *ruleSet) register(rule Rule) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.rules[rule.Name]; !exists {
+		s.rules[rule.Name] = &Rule{rule.Name, rule.Description}
+	}
+}
+
+func (s *ruleSet) sorted() []*Rule {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ret := make([]*Rule, 0, len(s.rules))
+	for _, rule := range s.rules {
+		ret = append(ret, rule)
+	}
+	slices.SortFunc(ret, compareRules)
+	return ret
+}
+
 // Formatter renders TemplateFields with a user-supplied Go template.
 type Formatter struct {
-	temp    *template.Template
-	rules   map[string]*Rule
-	rulesMu sync.Mutex
+	temp  *template.Template
+	rules *ruleSet
 }
 
 // NewFormatter parses a template containing at least one {{ }} placeholder.
 // Escaped characters such as \n are unescaped. getVersion and allKinds read the
 // supplied version and initial rules; RegisterRule adds rules later.
 func NewFormatter(format string, version func() string, rules []Rule) (*Formatter, error) {
+	return newFormatter(format, version, newRuleSet(rules))
+}
+
+func newFormatter(format string, version func() string, known *ruleSet) (*Formatter, error) {
 	if !strings.Contains(format, "{{") {
 		return nil, fmt.Errorf("template to format error messages must contain at least one {{ }} placeholder: %s", format)
-	}
-	known := map[string]*Rule{}
-	for _, rule := range rules {
-		known[rule.Name] = &Rule{rule.Name, rule.Description}
 	}
 	funcs := template.FuncMap(map[string]any{
 		"json": func(data any) (string, error) {
@@ -71,20 +102,13 @@ func NewFormatter(format string, version func() string, rules []Rule) (*Formatte
 		},
 		"toPascalCase": toPascalCase,
 		"getVersion":   version,
-		"allKinds": func() []*Rule {
-			ret := make([]*Rule, 0, len(known))
-			for _, e := range known {
-				ret = append(ret, e)
-			}
-			slices.SortFunc(ret, compareRules)
-			return ret
-		},
+		"allKinds":     known.sorted,
 	})
 	t, err := template.New("error formatter").Funcs(funcs).Parse(unescapeBackslash(format))
 	if err != nil {
 		return nil, fmt.Errorf("template %q to format error messages could not be parsed: %w", format, err)
 	}
-	return &Formatter{t, known, sync.Mutex{}}, nil
+	return &Formatter{t, known}, nil
 }
 
 // Print formats the slice of template fields and prints it with given writer.
@@ -97,11 +121,7 @@ func (f *Formatter) Print(out io.Writer, t []*TemplateFields) error {
 
 // RegisterRule makes a rule visible to allKinds. It is safe to call concurrently.
 func (f *Formatter) RegisterRule(rule Rule) {
-	f.rulesMu.Lock()
-	defer f.rulesMu.Unlock()
-	if _, exists := f.rules[rule.Name]; !exists {
-		f.rules[rule.Name] = &Rule{rule.Name, rule.Description}
-	}
+	f.rules.register(rule)
 }
 
 func unescapeBackslash(s string) string {

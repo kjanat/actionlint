@@ -1,8 +1,7 @@
 package render
 
 import (
-	_ "embed"
-	"fmt"
+	"encoding/json"
 	"io"
 	"net/url"
 	"path/filepath"
@@ -11,23 +10,67 @@ import (
 	"actionlint.kjanat.dev/diagnostic"
 )
 
-//go:embed sarif_template.txt
-var sarifTemplate string
-
-// SARIFTemplate returns the canonical Go template for SARIF output.
-func SARIFTemplate() string {
-	return sarifTemplate
+type sarifDocument struct {
+	Schema  string     `json:"$schema"`
+	Version string     `json:"version"`
+	Runs    []sarifRun `json:"runs"`
 }
 
-// Native SARIF uses exclusive, possibly multiline ranges. Legacy custom templates
-// retain their inclusive, single-line TemplateFields representation.
-type sarifTemplateFields struct {
-	TemplateFields
-	EndLine   int
-	Level     string
-	Code      string
-	Fixes     []sarifFix
-	URIBaseID string
+type sarifRun struct {
+	ColumnKind string        `json:"columnKind"`
+	Tool       sarifTool     `json:"tool"`
+	Results    []sarifResult `json:"results"`
+}
+
+type sarifTool struct {
+	Driver sarifDriver `json:"driver"`
+}
+
+type sarifDriver struct {
+	Name           string      `json:"name"`
+	Version        string      `json:"version"`
+	InformationURI string      `json:"informationUri"`
+	Rules          []sarifRule `json:"rules"`
+}
+
+type sarifRule struct {
+	ID                   string              `json:"id"`
+	Name                 string              `json:"name"`
+	DefaultConfiguration sarifLevel          `json:"defaultConfiguration"`
+	Properties           sarifRuleProperties `json:"properties"`
+	FullDescription      sarifText           `json:"fullDescription"`
+	HelpURI              string              `json:"helpUri"`
+}
+
+type sarifLevel struct {
+	Level string `json:"level"`
+}
+
+type sarifRuleProperties struct {
+	Description string `json:"description"`
+	QueryURI    string `json:"queryURI"`
+}
+
+type sarifResult struct {
+	RuleID     string                 `json:"ruleId"`
+	Message    sarifText              `json:"message"`
+	Level      string                 `json:"level"`
+	Properties *sarifResultProperties `json:"properties,omitempty"`
+	Fixes      []sarifFix             `json:"fixes,omitempty"`
+	Locations  []sarifLocation        `json:"locations"`
+}
+
+type sarifResultProperties struct {
+	ExternalCode string `json:"externalCode"`
+}
+
+type sarifLocation struct {
+	PhysicalLocation sarifPhysicalLocation `json:"physicalLocation"`
+}
+
+type sarifPhysicalLocation struct {
+	ArtifactLocation sarifArtifactLocation `json:"artifactLocation"`
+	Region           sarifRegion           `json:"region"`
 }
 
 type sarifText struct {
@@ -35,10 +78,11 @@ type sarifText struct {
 }
 
 type sarifRegion struct {
-	StartLine   int `json:"startLine"`
-	StartColumn int `json:"startColumn"`
-	EndLine     int `json:"endLine"`
-	EndColumn   int `json:"endColumn"`
+	StartLine   int        `json:"startLine"`
+	StartColumn int        `json:"startColumn"`
+	EndLine     int        `json:"endLine"`
+	EndColumn   int        `json:"endColumn"`
+	Snippet     *sarifText `json:"snippet,omitempty"`
 }
 
 type sarifReplacement struct {
@@ -76,7 +120,7 @@ func sarifArtifact(path string) sarifArtifactLocation {
 	return sarifArtifactLocation{URI: (&url.URL{Path: slash}).String(), URIBaseID: "%SRCROOT%"}
 }
 
-func sarifLevel(severity string) string {
+func sarifSeverityLevel(severity string) string {
 	switch severity {
 	case "warning":
 		return "warning"
@@ -104,7 +148,7 @@ func sarifFixes(fixes []diagnostic.Fix) []sarifFix {
 			}
 			change := &converted.ArtifactChanges[index]
 			change.Replacements = append(change.Replacements, sarifReplacement{
-				DeletedRegion:   sarifRegion{edit.Start.Line, edit.Start.Column, edit.End.Line, edit.End.Column},
+				DeletedRegion:   sarifRegion{StartLine: edit.Start.Line, StartColumn: edit.Start.Column, EndLine: edit.End.Line, EndColumn: edit.End.Column},
 				InsertedContent: sarifText{edit.Replacement},
 			})
 		}
@@ -113,22 +157,48 @@ func sarifFixes(fixes []diagnostic.Fix) []sarifFix {
 	return result
 }
 
-func (f *Formatter) printSARIF(out io.Writer, diagnostics []diagnostic.Diagnostic) error {
-	fields := make([]sarifTemplateFields, 0, len(diagnostics))
-	for _, diagnostic := range diagnostics {
-		artifact := sarifArtifact(diagnostic.Path)
-		fields = append(fields, sarifTemplateFields{
-			TemplateFields: TemplateFields{
-				Message: diagnostic.Message, Filepath: artifact.URI, Kind: diagnostic.Rule,
-				Line: diagnostic.Start.Line, Column: diagnostic.Start.Column,
-				EndColumn: diagnostic.End.Column, Snippet: diagnostic.Snippet,
-			},
-			EndLine: diagnostic.End.Line, Level: sarifLevel(diagnostic.Severity), Code: diagnostic.Code, Fixes: sarifFixes(diagnostic.Fixes),
-			URIBaseID: artifact.URIBaseID,
+func sarifRules(rules []*Rule) []sarifRule {
+	result := make([]sarifRule, 0, len(rules))
+	for _, rule := range rules {
+		result = append(result, sarifRule{
+			ID: rule.Name, Name: toPascalCase(rule.Name), DefaultConfiguration: sarifLevel{"error"},
+			Properties:      sarifRuleProperties{Description: rule.Description, QueryURI: "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"},
+			FullDescription: sarifText{rule.Description}, HelpURI: "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md",
 		})
 	}
-	if err := f.temp.Execute(out, fields); err != nil {
-		return fmt.Errorf("could not format error messages: %w", err)
+	return result
+}
+
+// WriteSARIF encodes diagnostics as a SARIF 2.1.0 log with Unicode code point columns
+// and exclusive range ends.
+func WriteSARIF(out io.Writer, version string, rules []*Rule, diagnostics []diagnostic.Diagnostic) error {
+	results := make([]sarifResult, 0, len(diagnostics))
+	for _, d := range diagnostics {
+		artifact := sarifArtifact(d.Path)
+		result := sarifResult{
+			RuleID: d.Rule, Message: sarifText{d.Message}, Level: sarifSeverityLevel(d.Severity), Fixes: sarifFixes(d.Fixes),
+			Locations: []sarifLocation{{PhysicalLocation: sarifPhysicalLocation{
+				ArtifactLocation: artifact,
+				Region:           sarifRegion{StartLine: d.Start.Line, StartColumn: d.Start.Column, EndLine: d.End.Line, EndColumn: d.End.Column, Snippet: &sarifText{d.Snippet}},
+			}}},
+		}
+		if d.Code != "" {
+			result.Properties = &sarifResultProperties{ExternalCode: d.Code}
+		}
+		if len(result.Fixes) == 0 {
+			result.Fixes = nil
+		}
+		results = append(results, result)
 	}
-	return nil
+	document := sarifDocument{
+		Schema: "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json", Version: "2.1.0",
+		Runs: []sarifRun{{
+			ColumnKind: "unicodeCodePoints",
+			Tool:       sarifTool{Driver: sarifDriver{Name: "GitHub Actions lint", Version: version, InformationURI: "https://github.com/kjanat/actionlint", Rules: sarifRules(rules)}},
+			Results:    results,
+		}},
+	}
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(document)
 }

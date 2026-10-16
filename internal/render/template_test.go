@@ -28,7 +28,7 @@ func TestFormatterRegisterRuleInParallel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	initialRules := len(f.rules)
+	initialRules := len(f.rules.rules)
 
 	rules := make([]Rule, 0, 100)
 	for i := range 100 {
@@ -48,7 +48,7 @@ func TestFormatterRegisterRuleInParallel(t *testing.T) {
 		<-done
 	}
 
-	if len(f.rules) != initialRules+len(rules) {
-		t.Fatalf("not all rules were registered. %d rules were registered", len(f.rules))
+	if len(f.rules.rules) != initialRules+len(rules) {
+		t.Fatalf("not all rules were registered. %d rules were registered", len(f.rules.rules))
 	}
 }

@@ -25,9 +25,6 @@ func (r *AnalysisRenderer) Render(out io.Writer, result *AnalysisResult) error {
 	return r.renderer.Render(out, result.renderResult())
 }
 
-// SARIFTemplate returns the canonical Go template for SARIF output.
-func SARIFTemplate() string { return render.SARIFTemplate() }
-
 func (r *AnalysisResult) renderResult() render.Result {
 	rendered := render.Result{
 		FileCount: r.FileCount(), Diagnostics: r.Diagnostics, Documents: r.Documents, Configurations: r.Configurations,

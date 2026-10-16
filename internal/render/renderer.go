@@ -6,10 +6,12 @@ import (
 	"io"
 )
 
-// Renderer formats results and retains custom-template rule metadata across calls.
+// Renderer formats results and retains rule metadata across calls.
 type Renderer struct {
 	format    Format
 	oneline   bool
+	version   func() string
+	rules     *ruleSet
 	formatter *Formatter
 }
 
@@ -18,58 +20,42 @@ func New(format Format, template string, oneline bool, version func() string, ru
 	if format != "" && template != "" {
 		return nil, errors.New("OutputFormat cannot be combined with a custom Format template")
 	}
-	r := &Renderer{format: format, oneline: oneline}
+	r := &Renderer{format: format, oneline: oneline, version: version, rules: newRuleSet(rules)}
 	switch format {
-	case "", FormatJSON, FormatJSONL:
+	case "", FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub:
 	case FormatText:
 		r.oneline = false
 	case FormatOneline:
 		r.oneline = true
-	case FormatSARIF:
-		template = SARIFTemplate()
-	case FormatGitHub:
 	default:
 		return nil, fmt.Errorf("unknown output format %q", format)
 	}
 	if template != "" {
-		formatter, err := NewFormatter(template, version, rules)
+		formatter, err := newFormatter(template, version, r.rules)
 		if err != nil {
 			return nil, err
 		}
 		r.formatter = formatter
-		if format == FormatSARIF {
-			if _, err := formatter.temp.Parse(`{{define "sarifEndLine"}}"endLine": {{.EndLine}},{{end}}
-{{define "sarifColumnKind"}}"columnKind": "unicodeCodePoints",{{end}}
-{{define "sarifURIBaseID"}}{{if .URIBaseID}},"uriBaseId": {{json .URIBaseID}}{{end}}{{end}}
-{{define "sarifMetadata"}}"level": {{json .Level}},
-{{if .Code}}"properties": {"externalCode": {{json .Code}}},{{end}}
-{{if .Fixes}}"fixes": {{json .Fixes}},{{end}}{{end}}`); err != nil {
-				return nil, fmt.Errorf("could not parse SARIF range template: %w", err)
-			}
-		}
 	}
 	return r, nil
 }
 
-// Formatter returns the template formatter, or nil for built-in formats without one.
+// Formatter returns the template formatter, or nil for built-in formats.
 func (r *Renderer) Formatter() *Formatter { return r.formatter }
 
 // Render writes the result in the selected format.
 func (r *Renderer) Render(out io.Writer, result Result) error {
-	if r.format == FormatJSON || r.format == FormatJSONL {
+	for _, rule := range result.Rules {
+		r.rules.register(rule)
+	}
+	switch r.format {
+	case FormatJSON, FormatJSONL:
 		report := result.CheckResult()
 		return report.WriteJSON(out, r.format == FormatJSONL)
-	}
-	if r.format == FormatGitHub {
+	case FormatGitHub:
 		return WriteGitHub(out, result.Diagnostics)
-	}
-	if r.formatter != nil {
-		for _, rule := range result.Rules {
-			r.formatter.RegisterRule(rule)
-		}
-	}
-	if r.format == FormatSARIF {
-		return r.formatter.printSARIF(out, result.Diagnostics)
+	case FormatSARIF:
+		return WriteSARIF(out, r.version(), r.rules.sorted(), result.Diagnostics)
 	}
 	fields := make([]*TemplateFields, 0, len(result.Findings))
 	for _, finding := range result.Findings {

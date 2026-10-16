@@ -460,7 +460,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 	proj := &Project{root: dir}
 	file := filepath.Join(dir, "test.yaml")
 
-	opts := LinterOptions{Format: SARIFTemplate()}
+	opts := LinterOptions{OutputFormat: OutputFormatSARIF}
 	var b strings.Builder
 	l, err := NewLinter(&b, &opts)
 	if err != nil {

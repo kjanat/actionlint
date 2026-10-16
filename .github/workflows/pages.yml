@@ -14,7 +14,6 @@ on:
       - "go.mod"
       - "go.sum"
       - "internal/engine/config_default.yaml"
-      - "internal/render/sarif_template.txt"
       - "cmd/**"
       - "internal/**"
       - "playground/**"
