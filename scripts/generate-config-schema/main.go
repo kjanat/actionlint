@@ -311,8 +311,8 @@ func documentedReflector() (*jsonschema.Reflector, error) {
 	if err := r.AddGoComments("actionlint.kjanat.dev", "internal/toolconfig/command.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
-	for _, file := range []string{"config.go", "config_lint.go", "config_rule_settings.go", "rule_options.go", "config_file_overrides.go"} {
-		if err := r.AddGoComments("actionlint.kjanat.dev", filepath.Join("internal", "engine", file), jsonschema.WithFullComment()); err != nil {
+	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go"} {
+		if err := r.AddGoComments("actionlint.kjanat.dev", filepath.Join("internal", "repoconfig", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
 	}
@@ -351,7 +351,7 @@ func generate() ([]byte, error) {
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"
-	s.Comments = "Generated from internal/engine/config.go by go generate -run generate-config-schema. DO NOT EDIT."
+	s.Comments = "Generated from internal/repoconfig/config.go by go generate -run generate-config-schema. DO NOT EDIT."
 	return encodeSchema(s)
 }
 

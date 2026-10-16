@@ -12,7 +12,7 @@ below. It does not duplicate the supported selector catalogue. Python target
 versions reference the upstream `PythonVersion` definition directly.
 
 The configuration parser uses generated selector and Python target tables in
-`internal/ruff/selectors_generated.go`, derived from the same upstream metadata.
+`internal/ruffconfig/selectors_generated.go`, derived from the same upstream metadata.
 Configuration loading is offline; it does not download or interpret schemas.
 
 When updating the bundled Ruff release:
