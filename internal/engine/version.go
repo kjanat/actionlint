@@ -1,6 +1,10 @@
 package engine
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+
+	"actionlint.kjanat.dev/internal/render"
+)
 
 // These variables might be modified by ldflags on building release binaries by GoReleaser. Do not modify manually.
 var (
@@ -10,13 +14,13 @@ var (
 
 const (
 	// ExitStatusSuccessNoProblem means linting completed without findings.
-	ExitStatusSuccessNoProblem = 0
+	ExitStatusSuccessNoProblem = render.ExitSuccessNoProblem
 	// ExitStatusSuccessProblemFound means linting completed with findings.
-	ExitStatusSuccessProblemFound = 1
+	ExitStatusSuccessProblemFound = render.ExitSuccessProblemFound
 	// ExitStatusInvalidCommandOption means command-line parsing or validation failed.
-	ExitStatusInvalidCommandOption = 2
+	ExitStatusInvalidCommandOption = render.ExitInvalidCommandOption
 	// ExitStatusFailure means linting could not complete.
-	ExitStatusFailure = 3
+	ExitStatusFailure = render.ExitFailure
 )
 
 // InstalledFrom describes how the binary was installed.

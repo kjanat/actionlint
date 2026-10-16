@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"slices"
 	"sort"
 	"strconv"
@@ -648,22 +647,6 @@ func TestErrorFormatterPrintError(t *testing.T) {
 	}
 }
 
-func TestErrorFormatterPrintJSONEncodeError(t *testing.T) {
-	f, err := NewErrorFormatter("{{json .}}")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var b strings.Builder
-	err = f.temp.Execute(&b, math.NaN())
-	if err == nil {
-		t.Fatal("error did not occur", b.String())
-	}
-	want := "could not encode template value into JSON"
-	if !strings.Contains(err.Error(), want) {
-		t.Fatalf("%q is not contained in error message %q", want, err.Error())
-	}
-}
-
 func TestErrorFormatterPrintToPascalCase(t *testing.T) {
 	tests := []struct {
 		input string
@@ -720,43 +703,5 @@ func TestErrorFormatterPrintGetVersion(t *testing.T) {
 	out := b.String()
 	if out != "dummy version" {
 		t.Fatalf("version should be \"dummy version\" but have %q", out)
-	}
-}
-
-// Regression test for #370
-func TestErrorFormatterRegisterRuleInParallel(t *testing.T) {
-	f, err := NewErrorFormatter("{{json .}}")
-	if err != nil {
-		t.Fatal(err)
-	}
-	initialRules := len(f.rules)
-
-	rules := []Rule{}
-	for i := range 100 {
-		rules = append(rules,
-			&RuleBase{
-				name: fmt.Sprintf("rule%d", i),
-				desc: fmt.Sprintf("description for rule%d", i),
-			},
-		)
-	}
-
-	done := make(chan struct{})
-
-	for range 100 {
-		go func() {
-			for _, r := range rules {
-				f.RegisterRule(r)
-			}
-			done <- struct{}{}
-		}()
-	}
-
-	for range 100 {
-		<-done
-	}
-
-	if len(f.rules) != initialRules+len(rules) {
-		t.Fatalf("not all rules were registered. %d rules were registered", len(f.rules))
 	}
 }

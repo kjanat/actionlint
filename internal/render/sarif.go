@@ -1,4 +1,4 @@
-package engine
+package render
 
 import (
 	_ "embed"
@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+
+	"actionlint.kjanat.dev/diagnostic"
 )
 
 //go:embed sarif_template.txt
@@ -18,9 +20,9 @@ func SARIFTemplate() string {
 }
 
 // Native SARIF uses exclusive, possibly multiline ranges. Legacy custom templates
-// retain their inclusive, single-line ErrorTemplateFields representation.
+// retain their inclusive, single-line TemplateFields representation.
 type sarifTemplateFields struct {
-	ErrorTemplateFields
+	TemplateFields
 	EndLine   int
 	Level     string
 	Code      string
@@ -85,7 +87,7 @@ func sarifLevel(severity string) string {
 	}
 }
 
-func sarifFixes(fixes []DiagnosticFix) []sarifFix {
+func sarifFixes(fixes []diagnostic.Fix) []sarifFix {
 	result := make([]sarifFix, 0, len(fixes))
 	for _, fix := range fixes {
 		if len(fix.Edits) == 0 {
@@ -111,12 +113,12 @@ func sarifFixes(fixes []DiagnosticFix) []sarifFix {
 	return result
 }
 
-func (f *ErrorFormatter) printSARIF(out io.Writer, diagnostics []Diagnostic) error {
+func (f *Formatter) printSARIF(out io.Writer, diagnostics []diagnostic.Diagnostic) error {
 	fields := make([]sarifTemplateFields, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
 		artifact := sarifArtifact(diagnostic.Path)
 		fields = append(fields, sarifTemplateFields{
-			ErrorTemplateFields: ErrorTemplateFields{
+			TemplateFields: TemplateFields{
 				Message: diagnostic.Message, Filepath: artifact.URI, Kind: diagnostic.Rule,
 				Line: diagnostic.Start.Line, Column: diagnostic.Start.Column,
 				EndColumn: diagnostic.End.Column, Snippet: diagnostic.Snippet,

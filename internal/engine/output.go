@@ -1,26 +1,22 @@
 package engine
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"strings"
-
 	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 // OutputFormat selects a built-in diagnostic representation. The empty value
 // retains the existing text, Oneline and Format behavior in LinterOptions.
-type OutputFormat string
+type OutputFormat = render.Format
 
 const (
-	OutputFormatText    OutputFormat = "text"
-	OutputFormatOneline OutputFormat = "oneline"
-	OutputFormatJSON    OutputFormat = "json"
-	OutputFormatJSONL   OutputFormat = "jsonl"
-	OutputFormatSARIF   OutputFormat = "sarif"
-	OutputFormatGitHub  OutputFormat = "github"
+	OutputFormatText    = render.FormatText
+	OutputFormatOneline = render.FormatOneline
+	OutputFormatJSON    = render.FormatJSON
+	OutputFormatJSONL   = render.FormatJSONL
+	OutputFormatSARIF   = render.FormatSARIF
+	OutputFormatGitHub  = render.FormatGitHub
 )
 
 type (
@@ -28,86 +24,20 @@ type (
 	Diagnostic         = diagnostic.Diagnostic
 	DiagnosticFix      = diagnostic.Fix
 	DiagnosticEdit     = diagnostic.Edit
+	CheckResult        = render.CheckResult
+	ResultConfig       = render.ResultConfig
+	CheckSummary       = render.CheckSummary
 )
 
-// CheckResult is the versioned JSON document shared by CLI and Action checks.
-// ExitCode describes analysis, even when a caller chooses not to fail on findings.
-// Consumers should tolerate unknown fields within a supported schema version.
-type CheckResult struct {
-	SchemaVersion int              `json:"schema_version"`
-	Status        string           `json:"status"`
-	Completed     bool             `json:"completed"`
-	ExitCode      int              `json:"exit_code"`
-	FileCount     *int             `json:"file_count"`
-	Diagnostics   []Diagnostic     `json:"diagnostics"`
-	Documents     DocumentOutlines `json:"documents"`
-	Configs       []ResultConfig   `json:"configurations"`
-	Hints         []string         `json:"hints"`
-	SARIF         json.RawMessage  `json:"sarif,omitempty"`
-	Error         string           `json:"error,omitempty"`
-}
-
-// ResultConfig identifies the configuration used for a project, including overlays.
-type ResultConfig struct {
-	File      string                  `json:"file"`
-	Project   string                  `json:"project"`
-	Overrides []string                `json:"overrides"`
-	Origins   map[string]ConfigOrigin `json:"origins,omitempty"`
-	Warnings  []ConfigWarning         `json:"warnings,omitempty"`
-}
-
 // NewCheckResult initializes a result with a consistent status and non-null lists.
-// FileCount remains null until input selection is known. Unknown exit codes mean failure.
-func NewCheckResult(code int) CheckResult {
-	r := CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}}
-	switch code {
-	case ExitStatusSuccessNoProblem:
-		r.Status, r.Completed = "success", true
-	case ExitStatusSuccessProblemFound:
-		r.Status, r.Completed = "problems-found", true
-	case ExitStatusInvalidCommandOption:
-		r.Status = "invalid-options"
-	default:
-		r.Status, r.ExitCode = "failure", ExitStatusFailure
-	}
-	return r
-}
-
-// AddConfiguration preserves selection provenance without serializing internal config state.
-func (r *CheckResult) AddConfiguration(config ConfigReport) {
-	r.Configs = append(r.Configs, ResultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins, config.Inspection.Warnings})
-}
-
-// WriteJSON writes the complete result, or one versioned diagnostic per line.
-// JSONL is a findings stream; completion and failure status belong to the result document.
-func (r *CheckResult) WriteJSON(out io.Writer, lines bool) error {
-	enc := json.NewEncoder(out)
-	if !lines {
-		return enc.Encode(r)
-	}
-	for _, d := range r.Diagnostics {
-		if err := enc.Encode(struct {
-			SchemaVersion int `json:"schema_version"`
-			Diagnostic
-		}{r.SchemaVersion, d}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CheckSummary counts the selected inputs and reported findings.
-type CheckSummary struct {
-	Files    int `json:"files"`
-	Findings int `json:"findings"`
-}
+func NewCheckResult(code int) CheckResult { return render.NewCheckResult(code) }
 
 func (e *Error) diagnostic(source []byte) Diagnostic {
 	source = e.sourceFor(source)
 	end := DiagnosticPosition{Line: e.Line, Column: e.Column + 1}
-	snippet, _ := e.getLine(source)
+	snippet, _ := render.SourceLine(source, e.Line, e.rawScriptSource)
 	if snippet != "" {
-		end.Column = e.getEndColumn(snippet) + 1
+		end.Column = render.InclusiveEnd(snippet, e.Column, e.endColumn) + 1
 	}
 	if e.endPosition != nil {
 		end = DiagnosticPosition{Line: e.endPosition.Line, Column: e.endPosition.Col}
@@ -131,7 +61,7 @@ func (e *Error) diagnostic(source []byte) Diagnostic {
 	}
 }
 
-// legacyError adapts a canonical half-open span to the legacy renderer's inclusive columns.
+// legacyDiagnosticError adapts a canonical half-open span to the legacy renderer's inclusive columns.
 func legacyDiagnosticError(d Diagnostic) *Error {
 	e := &Error{
 		Kind: d.Rule, Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
@@ -141,31 +71,4 @@ func legacyDiagnosticError(d Diagnostic) *Error {
 		e.endColumn = d.End.Column - 1
 	}
 	return e
-}
-
-func writeGitHubDiagnostics(out io.Writer, diagnostics []Diagnostic) error {
-	data := strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A")
-	property := strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
-	for _, diagnostic := range diagnostics {
-		endLine := diagnostic.End.Line
-		if endLine > diagnostic.Start.Line && diagnostic.End.Column == 1 {
-			endLine-- // An exclusive end at the next line's start does not include that line.
-		}
-		position := fmt.Sprintf("line=%d,endLine=%d", diagnostic.Start.Line, endLine)
-		// GitHub rejects column properties on multiline annotations.
-		if diagnostic.Start.Line == diagnostic.End.Line {
-			position += fmt.Sprintf(",col=%d,endColumn=%d", diagnostic.Start.Column, max(diagnostic.Start.Column, diagnostic.End.Column-1))
-		}
-		level := "error"
-		switch diagnostic.Severity {
-		case "warning":
-			level = "warning"
-		case "info", "style", "note":
-			level = "notice"
-		}
-		if _, err := fmt.Fprintf(out, "::%s file=%s,%s,title=%s::%s\n", level, property.Replace(diagnostic.Path), position, property.Replace(diagnostic.Rule), data.Replace(diagnostic.Message)); err != nil {
-			return err
-		}
-	}
-	return nil
 }

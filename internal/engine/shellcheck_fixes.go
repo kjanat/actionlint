@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/yamlsource"
 )
 
 type shellcheckFix struct {
@@ -42,8 +43,8 @@ func shellcheckDiagnosticFixes(source *workflowlang.ScriptSource, script shellch
 		if original != sanitized[line-1] {
 			return nil
 		}
-		startOffset, startOK := workflowlang.ByteOffsetAtColumn(original, replacement.Column)
-		endOffset, endOK := workflowlang.ByteOffsetAtColumn(original, replacement.EndColumn)
+		startOffset, startOK := yamlsource.ByteOffsetAtColumn(original, replacement.Column)
+		endOffset, endOK := yamlsource.ByteOffsetAtColumn(original, replacement.EndColumn)
 		if !startOK || !endOK || startOffset > endOffset {
 			return nil
 		}
@@ -98,8 +99,8 @@ func shellcheckFixPreservesIndent(source *workflowlang.ScriptSource, edits []Dia
 			if edit.Start.Line != span.YamlLine {
 				continue
 			}
-			start, startOK := workflowlang.ByteOffsetAtColumn(original, edit.Start.Column-span.YamlColumn+1)
-			end, endOK := workflowlang.ByteOffsetAtColumn(original, edit.End.Column-span.YamlColumn+1)
+			start, startOK := yamlsource.ByteOffsetAtColumn(original, edit.Start.Column-span.YamlColumn+1)
+			end, endOK := yamlsource.ByteOffsetAtColumn(original, edit.End.Column-span.YamlColumn+1)
 			if !startOK || !endOK {
 				return false
 			}

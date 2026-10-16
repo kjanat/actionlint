@@ -18,3 +18,22 @@ func TokenEndColumn(line string, column int) int {
 	}
 	return max(column+1, end)
 }
+
+// ByteOffsetAtColumn converts a 1-based character column to a byte offset. The column immediately
+// after the final character is valid because external analyzers use it as an exclusive range end.
+func ByteOffsetAtColumn(s string, column int) (int, bool) {
+	if column <= 0 {
+		return 0, false
+	}
+	c := 1
+	for offset := range s {
+		if c == column {
+			return offset, true
+		}
+		c++
+	}
+	if c == column {
+		return len(s), true
+	}
+	return 0, false
+}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
@@ -52,7 +53,7 @@ func TestSourcedShellcheckPhysicalLines(t *testing.T) {
 		if !finding.rawScriptSource {
 			t.Fatal("sourced checker did not select raw script coordinates")
 		}
-		if got, ok := finding.getLine(content); !ok || got != want {
+		if got, ok := render.SourceLine(content, finding.Line, finding.rawScriptSource); !ok || got != want {
 			t.Fatalf("line %d = %q, %v; want %q", line+1, got, ok, want)
 		}
 		fields := finding.GetTemplateFields([]byte("workflow source"))
@@ -66,7 +67,7 @@ func TestDiagnosticLongSourceLine(t *testing.T) {
 	line := strings.Repeat("x", 70*1024)
 	for _, raw := range []bool{false, true} {
 		finding := &Error{Line: 2, Column: 1, rawScriptSource: raw}
-		if got, ok := finding.getLine([]byte("first\n" + line + "\n")); !ok || got != line {
+		if got, ok := render.SourceLine([]byte("first\n"+line+"\n"), finding.Line, finding.rawScriptSource); !ok || got != line {
 			t.Fatalf("raw=%v: long source line missing or truncated", raw)
 		}
 	}

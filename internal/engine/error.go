@@ -1,26 +1,12 @@
 package engine
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
-	"sync"
-	"text/template"
 
+	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yamlsource"
-	"github.com/fatih/color"
-	"github.com/mattn/go-runewidth"
-)
-
-var (
-	// Follow color.NoColor so command-line overrides also apply after initialization.
-	bold   = new(color.Color).Add(color.Bold)
-	green  = new(color.Color).Add(color.FgGreen)
-	yellow = new(color.Color).Add(color.FgYellow)
-	gray   = new(color.Color).Add(color.FgHiBlack)
 )
 
 // Error represents an error detected by actionlint rules
@@ -93,111 +79,25 @@ func (e *Error) sourceFor(source []byte) []byte {
 	return source
 }
 
+func (e *Error) finding(source []byte) render.Finding {
+	return render.Finding{
+		Diagnostic: Diagnostic{Rule: e.Kind, Message: e.Message, Path: e.Filepath, Start: DiagnosticPosition{Line: e.Line, Column: e.Column}},
+		Source:     e.sourceFor(source),
+		EndColumn:  e.endColumn,
+		RawScript:  e.rawScriptSource,
+	}
+}
+
 // GetTemplateFields fields for formatting this error with Go template.
 func (e *Error) GetTemplateFields(source []byte) *ErrorTemplateFields {
-	source = e.sourceFor(source)
-	snippet := ""
-	end := e.Column
-	if len(source) > 0 && e.Line > 0 {
-		if l, ok := e.getLine(source); ok {
-			snippet = l
-			if i := e.getIndicator(l); i != "" {
-				snippet += "\n" + i
-				end = e.getEndColumn(l)
-			}
-		}
-	}
-
-	return &ErrorTemplateFields{
-		Message:   e.Message,
-		Filepath:  e.Filepath,
-		Line:      e.Line,
-		Column:    e.Column,
-		Kind:      e.Kind,
-		Snippet:   snippet,
-		EndColumn: end,
-	}
+	return e.finding(source).TemplateFields()
 }
 
 // PrettyPrint prints the error with user-friendly way. It prints file name, source position, error
 // message with colorful output and source snippet with indicator. When nil is set to source, no
 // source snippet is not printed. To disable colorful output, set true to fatih/color.NoColor.
 func (e *Error) PrettyPrint(w io.Writer, source []byte) {
-	source = e.sourceFor(source)
-	_, _ = yellow.Fprint(w, e.Filepath)
-	_, _ = gray.Fprint(w, ":")
-	_, _ = fmt.Fprint(w, e.Line)
-	_, _ = gray.Fprint(w, ":")
-	_, _ = fmt.Fprint(w, e.Column)
-	_, _ = gray.Fprint(w, ": ")
-	_, _ = bold.Fprint(w, e.Message)
-	_, _ = gray.Fprintf(w, " [%s]\n", e.Kind)
-
-	if len(source) == 0 || e.Line <= 0 {
-		return
-	}
-	line, ok := e.getLine(source)
-	if !ok || len(line) < e.Column-1 {
-		return
-	}
-
-	lnum := fmt.Sprintf("%d | ", e.Line)
-	indent := strings.Repeat(" ", len(lnum)-2)
-	_, _ = gray.Fprintf(w, "%s|\n", indent)
-	_, _ = gray.Fprint(w, lnum)
-	_, _ = fmt.Fprintln(w, line)
-	_, _ = gray.Fprintf(w, "%s| ", indent)
-	_, _ = green.Fprintln(w, e.getIndicator(line))
-}
-
-func (e *Error) getLine(source []byte) (string, bool) {
-	if !e.rawScriptSource {
-		return yamlsource.SourceLine(string(source), e.Line)
-	}
-	line := 0
-	for text := range strings.SplitSeq(string(source), "\n") {
-		line++
-		if line == e.Line {
-			return strings.TrimSuffix(text, "\r"), true
-		}
-	}
-	return "", false
-}
-
-func (e *Error) getEndColumn(line string) int {
-	if e.endColumn >= e.Column {
-		return e.endColumn
-	}
-
-	return yamlsource.TokenEndColumn(line, e.Column) - 1
-}
-
-func (e *Error) getIndicator(line string) string {
-	if e.Column <= 0 {
-		return ""
-	}
-
-	start, ok := workflowlang.ByteOffsetAtColumn(line, e.Column)
-	if !ok {
-		return ""
-	}
-
-	// Count width of non-space characters after '^' for underline
-	uw := 0
-	if end := e.getEndColumn(line); end >= e.Column {
-		off, ok := workflowlang.ByteOffsetAtColumn(line, end+1)
-		if !ok {
-			off = len(line)
-		}
-		uw = runewidth.StringWidth(line[start:off])
-	}
-	if uw > 0 {
-		uw-- // Decrement for place for '^'
-	}
-
-	// Count width of spaces before '^'
-	sw := runewidth.StringWidth(line[:start])
-	return fmt.Sprintf("%s^%s", strings.Repeat(" ", sw), strings.Repeat("~", uw))
+	e.finding(source).PrettyPrint(w)
 }
 
 func compareErrors(lhs, rhs *Error) int {
@@ -229,126 +129,21 @@ func equalsErrors(lhs, rhs *Error) bool {
 }
 
 // ErrorTemplateFields holds all fields to format one error message.
-type ErrorTemplateFields struct {
-	// Message is error message body.
-	Message string `json:"message"`
-	// Filepath is a canonical relative file path. This is empty when input was read from stdin.
-	// When encoding into JSON, this field may be omitted when the file path is empty.
-	Filepath string `json:"filepath,omitempty"`
-	// Line is a line number of error position.
-	Line int `json:"line"`
-	// Column is a column number of error position.
-	Column int `json:"column"`
-	// Kind is a rule name the error belongs to.
-	Kind string `json:"kind"`
-	// Snippet is a code snippet and indicator to indicate where the error occurred.
-	// When encoding into JSON, this field may be omitted when the snippet is empty.
-	Snippet string `json:"snippet,omitempty"`
-	// EndColumn is a column number where the error indicator (^~~~~~~) ends. When no indicator
-	// can be shown, EndColumn is equal to Column.
-	EndColumn int `json:"end_column"`
-}
+type ErrorTemplateFields = render.TemplateFields
 
-func unescapeBackslash(s string) string {
-	// https://golang.org/ref/spec#Rune_literals
-	r := strings.NewReplacer(
-		`\a`, "\a",
-		`\b`, "\b",
-		`\f`, "\f",
-		`\n`, "\n",
-		`\r`, "\r",
-		`\t`, "\t",
-		`\v`, "\v",
-		`\\`, "\\",
-	)
-	return r.Replace(s)
-}
-
-func toPascalCase(s string) string {
-	ss := strings.FieldsFunc(s, func(r rune) bool {
-		alnum := 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || '0' <= r && r <= '9'
-		return !alnum
-	})
-	for i, s := range ss {
-		var c rune
-		for _, c = range s {
-			break
-		}
-		if 'a' <= c && c <= 'z' {
-			ss[i] = strings.ToUpper(s[:1]) + s[1:]
-		}
-	}
-	return strings.Join(ss, "")
-}
-
-type ruleTemplateFields struct {
-	Name        string
-	Description string
-}
-
-func compareRuleTemplateByName(lhs, rhs *ruleTemplateFields) int {
-	return strings.Compare(lhs.Name, rhs.Name)
-}
-
-// ErrorFormatter is a formatter to format a slice of ErrorTemplateFields. It is used for
-// formatting error messages with -format option.
+// ErrorFormatter formats errors with the template given to the -format option.
 type ErrorFormatter struct {
-	temp    *template.Template
-	rules   map[string]*ruleTemplateFields
-	rulesMu sync.Mutex
+	*render.Formatter
 }
 
 // NewErrorFormatter creates new ErrorFormatter instance. Given format must contain at least one
 // {{ }} placeholder. Escaped characters like \n in the format string are unescaped.
 func NewErrorFormatter(format string) (*ErrorFormatter, error) {
-	if !strings.Contains(format, "{{") {
-		return nil, fmt.Errorf("template to format error messages must contain at least one {{ }} placeholder: %s", format)
-	}
-
-	r := map[string]*ruleTemplateFields{}
-	for _, descriptor := range builtinRuleDescriptors() {
-		if descriptor.build == nil && descriptor.buildScripts == nil {
-			r[descriptor.Name] = &ruleTemplateFields{descriptor.Name, descriptor.Description}
-		}
-	}
-
-	funcs := template.FuncMap(map[string]any{
-		"json": func(data any) (string, error) {
-			var b strings.Builder
-			enc := json.NewEncoder(&b)
-			if err := enc.Encode(data); err != nil {
-				return "", fmt.Errorf("could not encode template value into JSON: %w", err)
-			}
-			return b.String(), nil
-		},
-		"replace": func(s string, oldnew ...string) string {
-			return strings.NewReplacer(oldnew...).Replace(s)
-		},
-		"toPascalCase": toPascalCase,
-		"getVersion":   Version,
-		"allKinds": func() []*ruleTemplateFields {
-			ret := make([]*ruleTemplateFields, 0, len(r))
-			for _, e := range r {
-				ret = append(ret, e)
-			}
-			slices.SortFunc(ret, compareRuleTemplateByName)
-			return ret
-		},
-	})
-	t, err := template.New("error formatter").Funcs(funcs).Parse(unescapeBackslash(format))
+	formatter, err := render.NewFormatter(format, Version, templateRules())
 	if err != nil {
-		return nil, fmt.Errorf("template %q to format error messages could not be parsed: %w", format, err)
+		return nil, err
 	}
-
-	return &ErrorFormatter{t, r, sync.Mutex{}}, nil
-}
-
-// Print formats the slice of template fields and prints it with given writer.
-func (f *ErrorFormatter) Print(out io.Writer, t []*ErrorTemplateFields) error {
-	if err := f.temp.Execute(out, t); err != nil {
-		return fmt.Errorf("could not format error messages: %w", err)
-	}
-	return nil
+	return &ErrorFormatter{formatter}, nil
 }
 
 // PrintErrors prints the errors after formatting them with template.
@@ -364,17 +159,19 @@ func (f *ErrorFormatter) PrintErrors(out io.Writer, errs []*Error, src []byte) e
 // kinds when you use `kindDescription` or `kindIndex` functions in an error format template. This
 // method can be called multiple times safely in parallel.
 func (f *ErrorFormatter) RegisterRule(r Rule) {
-	info := RuleInfo{Name: r.Name()}
+	info := render.Rule{Name: r.Name()}
 	if described, ok := r.(describedRule); ok {
 		info.Description = described.Description()
 	}
-	f.registerRuleInfo(info)
+	f.Formatter.RegisterRule(info)
 }
 
-func (f *ErrorFormatter) registerRuleInfo(info RuleInfo) {
-	f.rulesMu.Lock()
-	defer f.rulesMu.Unlock()
-	if _, exists := f.rules[info.Name]; !exists {
-		f.rules[info.Name] = &ruleTemplateFields{info.Name, info.Description}
+func templateRules() []render.Rule {
+	var rules []render.Rule
+	for _, descriptor := range builtinRuleDescriptors() {
+		if descriptor.build == nil && descriptor.buildScripts == nil {
+			rules = append(rules, render.Rule{Name: descriptor.Name, Description: descriptor.Description})
+		}
 	}
+	return rules
 }

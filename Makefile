@@ -3,7 +3,7 @@
 MAKEFLAGS += --no-builtin-rules
 
 GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go cmd/*/*.go internal/*/*.go)
-SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/engine/config_default.yaml internal/engine/sarif_template.txt internal/actioncatalog/popular_actions.json go.mod go.sum
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/engine/config_default.yaml internal/render/sarif_template.txt internal/actioncatalog/popular_actions.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/yamlsource"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -34,7 +35,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix DiagnosticFix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := workflowlang.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := yamlsource.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}

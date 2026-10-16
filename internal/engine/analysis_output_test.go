@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/repoconfig"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
@@ -69,7 +70,7 @@ func TestEffectiveConfigFieldCoverage(t *testing.T) {
 func TestGitHubAnnotationEscaping(t *testing.T) {
 	var out bytes.Buffer
 	diagnostics := []Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: DiagnosticPosition{Line: 2, Column: 3}, End: DiagnosticPosition{Line: 2, Column: 5}}}
-	if err := writeGitHubDiagnostics(&out, diagnostics); err != nil {
+	if err := render.WriteGitHub(&out, diagnostics); err != nil {
 		t.Fatal(err)
 	}
 	want := "::error file=a%25%2C%3A%0D%0Ab.yml,line=2,endLine=2,col=3,endColumn=4,title=expression::bad%25%0D%0A::notice::text\n"
@@ -81,7 +82,7 @@ func TestGitHubAnnotationEscaping(t *testing.T) {
 func TestGitHubAnnotationLevels(t *testing.T) {
 	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}, {"style", "notice"}} {
 		var out bytes.Buffer
-		if err := writeGitHubDiagnostics(&out, []Diagnostic{{Severity: tc.severity, Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}}}); err != nil {
+		if err := render.WriteGitHub(&out, []Diagnostic{{Severity: tc.severity, Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}}}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.HasPrefix(out.String(), "::"+tc.annotation+" ") {

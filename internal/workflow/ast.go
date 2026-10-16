@@ -10,6 +10,7 @@ import (
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
+	"actionlint.kjanat.dev/internal/yamlsource"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -76,7 +77,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	l := s.Lines[line-1]
-	rel, ok := ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
+	rel, ok := yamlsource.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
 	if !ok {
 		return nil, false
 	}
@@ -126,25 +127,6 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		line = span.YamlEndLine
 	}
 	return &Pos{Line: line, Col: column}, true
-}
-
-// ByteOffsetAtColumn converts a 1-based character column to a byte offset. The column immediately
-// after the final character is valid because external analyzers use it as an exclusive range end.
-func ByteOffsetAtColumn(s string, column int) (int, bool) {
-	if column <= 0 {
-		return 0, false
-	}
-	c := 1
-	for offset := range s {
-		if c == column {
-			return offset, true
-		}
-		c++
-	}
-	if c == column {
-		return len(s), true
-	}
-	return 0, false
 }
 
 func (p *Pos) String() string {

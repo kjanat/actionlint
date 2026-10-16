@@ -19,7 +19,8 @@ generation directives. The analysis host and remaining visitor rules live in `in
 `internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
 parsing, types, constant evaluation and semantic checks. Both implementations can run without the analysis host.
 `internal/repoconfig` owns the configuration document, its validation and the built-in rule catalog; the engine
-attaches execution behaviour to catalog entries by name.
+attaches execution behaviour to catalog entries by name. `internal/render` presents results as text, Go templates,
+JSON, SARIF and GitHub annotations from diagnostics, source text and rule metadata.
 `internal/analyzerhost` owns generic execution and resource scopes. `internal/report` owns document models and their codecs; the public `document` package exposes those models without
 importing the engine. Existing focused internal packages retain ownership
 of mapping resolution, external checker logic, filesystem reads, configuration trees and suppressions.
@@ -38,6 +39,9 @@ flowchart TD
     Expressions --> Scalars
     Config[config] --> RepoConfig[internal/repoconfig]
     Engine --> RepoConfig
+    Engine --> Render[internal/render]
+    CLI --> Render
+    Render --> Diagnostic
     Engine --> Host[internal/analyzerhost]
     Engine --> Mapping[internal/mapping]
     Factory[Built-in composition] --> Adapters[Internal visitor adapters]
@@ -92,7 +96,7 @@ shapes, and must not parse expression-looking text returned as data a second tim
 - Configuration and syntax alias independent implementations. Importing either public package no longer imports
   discovery, rule execution or native tools. The parser retains
   decoded source maps alongside syntax because accurate diagnostics require both.
-- Remaining engine work includes discovery, action metadata, visitor rules and rendering.
+- Remaining engine work includes discovery, action metadata and visitor rules.
   These extractions remove two language subsystems; they do not make the engine a composition-only package yet.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
@@ -108,8 +112,8 @@ External-package tests exercise the public root entry point, config and syntax p
 partial results and composite-action scripts. Host tests cover input isolation, unavailable facts, cancellation and
 joining all resources once. Engine regressions cover traversal failure, cancellation with retained findings, independent script scopes and fallback
 when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that the public analyzer, diagnostic,
-document, syntax and config contracts, together with the standalone language and configuration implementations, have
-no transitive dependency on the engine, CLI or process execution. A separate guard prevents expression semantics from importing
+document, syntax and config contracts, together with the standalone language, configuration and rendering implementations,
+have no transitive dependency on the engine, CLI or process execution. A separate guard prevents expression semantics from importing
 workflow ASTs, analyzer execution or repository configuration trees. Existing semantic, CLI,
 generator and conformance suites remain applicable.
 

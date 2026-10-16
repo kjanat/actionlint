@@ -1,4 +1,4 @@
-package engine
+package render
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"actionlint.kjanat.dev/diagnostic"
 )
 
 func TestNativeSARIFUNCPaths(t *testing.T) {
@@ -14,17 +16,17 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 	}
 	for _, path := range []string{`\\server\share\my workflow.yml`, `//server/share/my workflow.yml`} {
 		t.Run(path, func(t *testing.T) {
-			diagnostic := Diagnostic{Rule: "shellcheck", Message: "Quote", Path: path,
-				Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2},
-				Fixes: []DiagnosticFix{{Description: "Quote", Edits: []DiagnosticEdit{
-					{Path: path, Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}, Replacement: `"$x"`},
+			finding := diagnostic.Diagnostic{Rule: "shellcheck", Message: "Quote", Path: path,
+				Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2},
+				Fixes: []diagnostic.Fix{{Description: "Quote", Edits: []diagnostic.Edit{
+					{Path: path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: `"$x"`},
 				}}}}
-			renderer, err := NewAnalysisRenderer(OutputFormatSARIF, "", false)
+			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var out bytes.Buffer
-			if err := renderer.Render(&out, &AnalysisResult{Diagnostics: []Diagnostic{diagnostic}}); err != nil {
+			if err := renderer.Render(&out, Result{Diagnostics: []diagnostic.Diagnostic{finding}}); err != nil {
 				t.Fatal(err)
 			}
 			var document struct {
@@ -55,19 +57,19 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 	absolute := filepath.Join(t.TempDir(), "workflow.yml")
 	for _, native := range []bool{false, true} {
-		format, template := OutputFormat(""), SARIFTemplate()
+		format, template := Format(""), SARIFTemplate()
 		if native {
-			format, template = OutputFormatSARIF, ""
+			format, template = FormatSARIF, ""
 		}
-		renderer, err := NewAnalysisRenderer(format, template, false)
+		renderer, err := New(format, template, false, testVersion, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
 		if native {
-			err = renderer.Render(&out, &AnalysisResult{Diagnostics: []Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}}}})
+			err = renderer.Render(&out, Result{Diagnostics: []diagnostic.Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}}}})
 		} else {
-			err = renderer.formatter.Print(&out, []*ErrorTemplateFields{{Filepath: absolute, Kind: "test", Message: "test", Line: 1, Column: 1, EndColumn: 1}})
+			err = renderer.Formatter().Print(&out, []*TemplateFields{{Filepath: absolute, Kind: "test", Message: "test", Line: 1, Column: 1, EndColumn: 1}})
 		}
 		if err != nil {
 			t.Fatal(err)
@@ -103,18 +105,18 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 		{"error", "error"}, {"warning", "warning"}, {"info", "note"}, {"style", "note"}, {"", "error"},
 	} {
 		t.Run(tc.severity, func(t *testing.T) {
-			diagnostic := Diagnostic{Rule: "shellcheck", Code: "SC2086", Severity: tc.severity, Message: "Quote", Path: "dir/my workflow.yml",
-				Start: DiagnosticPosition{Line: 7, Column: 12}, End: DiagnosticPosition{Line: 7, Column: 16},
-				Fixes: []DiagnosticFix{{Description: "Quote variable", Edits: []DiagnosticEdit{
-					{Path: "dir/my workflow.yml", Start: DiagnosticPosition{Line: 7, Column: 12}, End: DiagnosticPosition{Line: 7, Column: 12}, Replacement: `"`},
-					{Path: "dir/my workflow.yml", Start: DiagnosticPosition{Line: 7, Column: 16}, End: DiagnosticPosition{Line: 7, Column: 16}, Replacement: `"`},
+			finding := diagnostic.Diagnostic{Rule: "shellcheck", Code: "SC2086", Severity: tc.severity, Message: "Quote", Path: "dir/my workflow.yml",
+				Start: diagnostic.Position{Line: 7, Column: 12}, End: diagnostic.Position{Line: 7, Column: 16},
+				Fixes: []diagnostic.Fix{{Description: "Quote variable", Edits: []diagnostic.Edit{
+					{Path: "dir/my workflow.yml", Start: diagnostic.Position{Line: 7, Column: 12}, End: diagnostic.Position{Line: 7, Column: 12}, Replacement: `"`},
+					{Path: "dir/my workflow.yml", Start: diagnostic.Position{Line: 7, Column: 16}, End: diagnostic.Position{Line: 7, Column: 16}, Replacement: `"`},
 				}}}}
-			renderer, err := NewAnalysisRenderer(OutputFormatSARIF, "", false)
+			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var out bytes.Buffer
-			if err := renderer.Render(&out, &AnalysisResult{Diagnostics: []Diagnostic{diagnostic}}); err != nil {
+			if err := renderer.Render(&out, Result{Diagnostics: []diagnostic.Diagnostic{finding}}); err != nil {
 				t.Fatal(err)
 			}
 			var document struct {
@@ -135,7 +137,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 			}
 			run := document.Runs[0]
 			result := run.Results[0]
-			if run.ColumnKind != "unicodeCodePoints" || result.Level != tc.level || result.Properties.ExternalCode != diagnostic.Code {
+			if run.ColumnKind != "unicodeCodePoints" || result.Level != tc.level || result.Properties.ExternalCode != finding.Code {
 				t.Fatalf("metadata lost: %s", out.String())
 			}
 			if result.Locations[0].PhysicalLocation.ArtifactLocation.URI != "dir/my%20workflow.yml" {
@@ -149,7 +151,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 				t.Fatalf("fix path or group lost: %+v", change)
 			}
 			for i, replacement := range change.Replacements {
-				edit := diagnostic.Fixes[0].Edits[i]
+				edit := finding.Fixes[0].Edits[i]
 				if replacement.DeletedRegion != (sarifRegion{edit.Start.Line, edit.Start.Column, edit.End.Line, edit.End.Column}) || replacement.InsertedContent.Text != edit.Replacement {
 					t.Fatalf("edit changed: %+v", replacement)
 				}
@@ -157,3 +159,5 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 		})
 	}
 }
+
+func testVersion() string { return "test" }
