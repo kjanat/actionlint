@@ -19,6 +19,7 @@ node                                     = { prefix = "26" }
 "github:tombi-toml/tombi".prefix         = "1.8"
 "npm:yaml-language-server".prefix        = "1.25"
 ruff                                     = "0.17.0"
+tinygo                                   = { prefix = "0.43" }
 
 [tools."golangci-lint"]
 prefix  = "2"
