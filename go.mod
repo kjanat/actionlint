@@ -36,3 +36,5 @@ require (
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 )
+
+replace github.com/partite-ai/wacogo => github.com/kjanat/wacogo v0.0.0-20261016025519-2992ab72f987

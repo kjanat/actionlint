@@ -8,7 +8,7 @@
 
 - Emit SARIF from a typed document.
 
-- Load WebAssembly component plugins with `--plugin`. A plugin implements the `kjanat:actionlint/analyzer@0.1.0` WIT interface, runs in a fresh instance per document with memory and time limits, and reports traps, exits and exceeded limits as analysis failures. Rust and C examples live under `plugins/examples`. See [Plugins](docs/plugins.md).
+- Load WebAssembly component plugins with `--plugin`. A plugin implements the `kjanat:actionlint/analyzer@0.1.0` WIT interface, runs in a fresh instance per document with memory and time limits, and reports traps, exits and exceeded limits as analysis failures. Rust, C and TinyGo examples live under `plugins/examples`. See [Plugins](docs/plugins.md).
 
 - Run core WebAssembly script engines in-process. `tools.<name>.backend.wasm.path` selects a raw or gzip-compressed module that follows the actionlint-plugin-ruff JSON ABI, version 1. actionlint checks its exports and metadata, caches the compiled code under the user cache directory, pools instances, and fails a document's analysis on a trap or an exceeded limit. The new `plugin` package loads component analyzers and script engines from Go.
 

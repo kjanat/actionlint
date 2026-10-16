@@ -159,7 +159,7 @@ PLUGIN_WAT := $(wildcard internal/component/testdata/wat/*.wat internal/corewasm
 ENGINE_FIXTURES := internal/corewasm/testdata/engines
 
 .PHONY: plugins
-plugins: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
+plugins: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
 $(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit plugins/examples/pipe-to-shell/Cargo.toml plugins/examples/pipe-to-shell/Cargo.lock $(wildcard plugins/examples/pipe-to-shell/src/*.rs)
 	cargo build --locked --release --target wasm32-wasip2 --manifest-path plugins/examples/pipe-to-shell/Cargo.toml
@@ -171,6 +171,9 @@ $(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit internal/component/t
 
 $(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit plugins/examples/no-sudo/build.sh $(wildcard plugins/examples/no-sudo/*.c)
 	plugins/examples/no-sudo/build.sh $(abspath $@)
+
+$(PLUGIN_FIXTURES)/insecure-download.wasm: plugins/wit/analyzer.wit plugins/examples/insecure-download/build.sh plugins/examples/insecure-download/go.mod $(wildcard plugins/examples/insecure-download/*.go)
+	plugins/examples/insecure-download/build.sh $(abspath $@)
 
 internal/component/testdata/wat/%.wasm: internal/component/testdata/wat/%.wat
 	wasm-tools parse $< -o $@

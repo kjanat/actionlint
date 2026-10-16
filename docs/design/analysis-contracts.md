@@ -196,15 +196,17 @@ analysis fails instead of reporting a clean result. The engine and the public `a
 runtime; the CLI loads plugins from `--plugin` and registers them as analyzers.
 
 Verification uses a Rust example built with `wit-bindgen` for `wasm32-wasip2`, a C example built with `wit-bindgen c`
-and wasi-sdk, hand-written components that export the wrong interface version, import a socket interface, import an
-unknown interface or export no analyzer, and a Rust test plugin that traps, panics, exits, allocates past the limit,
-loops, reads a file, reads the environment and logs on request. Architecture tests keep the engine free of the runtime
-and the loader free of the engine.
+and wasi-sdk, a TinyGo example built with `wit-bindgen-go`, hand-written components that export the wrong interface
+version, import a socket interface, import an unknown interface or export no analyzer, and a Rust test plugin that
+traps, panics, exits, allocates past the limit, loops, reads a file, reads the environment and logs on request.
+Architecture tests keep the engine free of the runtime and the loader free of the engine.
 
-Known limit: `wacogo` rejects a null pointer from `cabi_realloc` for a zero-size request, which the canonical ABI
-allows and TinyGo 0.42 and 0.43 produce, so TinyGo guests cannot run on this host until the runtime accepts it.
-`internal/component/runtime_limit_test.go` pins the behaviour with a minimal component; the report is
-https://github.com/partite-ai/wacogo/issues/11.
+Upstream `wacogo` rejects a null pointer from `cabi_realloc` for a zero-size request, which the canonical ABI allows
+and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11). `go.mod` replaces the module with
+`github.com/kjanat/wacogo` at the commit of https://github.com/partite-ai/wacogo/pull/12, which limits the trap to
+non-zero sizes. `internal/component/runtime_limit_test.go` checks that an empty string lowers into a component whose
+realloc returns null for size 0. When the pull request merges, the replace goes and the dependency moves to that
+upstream commit. Programs that import the `plugin` package need the same replace to run TinyGo guests until then.
 
 Core WebAssembly JSON engines such as `actionlint-plugin-ruff` keep their own transport behind
 `analyzer.ScriptBackend`. `internal/corewasm` runs them on `wazero` directly: it verifies the version 1 exports and

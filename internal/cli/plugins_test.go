@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const pluginWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n"
+const pluginWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n      - run: wget --no-check-certificate https://example.com/x.sh\n"
 
 var componentTestdata = func() string {
 	dir, err := filepath.Abs(filepath.Join("..", "component", "testdata"))
@@ -22,11 +22,11 @@ func pluginFixture(name string) string {
 }
 
 func TestCheckLoadsComponentPlugins(t *testing.T) {
-	got := testRunCommand(pluginWorkflow, "check", "--no-config", "--plugin", pluginFixture("pipe-to-shell"), "--plugin", pluginFixture("no-sudo"), "-")
+	got := testRunCommand(pluginWorkflow, "check", "--no-config", "--plugin", pluginFixture("pipe-to-shell"), "--plugin", pluginFixture("no-sudo"), "--plugin", pluginFixture("insecure-download"), "-")
 	if got.Status != 1 || got.Stderr != "" {
 		t.Fatalf("status=%d stderr=%q stdout=%q", got.Status, got.Stderr, got.Stdout)
 	}
-	for _, want := range []string{"<stdin>:6:57: step runs sudo", "[no-sudo]", "<stdin>:6:62: script pipes a download into bash", "[pipe-to-shell]"} {
+	for _, want := range []string{"<stdin>:6:57: step runs sudo", "[no-sudo]", "<stdin>:6:62: script pipes a download into bash", "[pipe-to-shell]", "<stdin>:7:19: step disables TLS verification with --no-check-certificate for a download", "[insecure-download]"} {
 		if !strings.Contains(got.Stdout, want) {
 			t.Fatalf("stdout lacks %q:\n%s", want, got.Stdout)
 		}

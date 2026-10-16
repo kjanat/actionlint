@@ -249,3 +249,25 @@ func TestClosedPluginRejectsCalls(t *testing.T) {
 		t.Fatal("analyze succeeded after close")
 	}
 }
+
+func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
+	plugin := loadPlugin(t, "insecure-download", component.Options{})
+	if plugin.Descriptor().Name != "insecure-download" {
+		t.Fatalf("descriptor=%+v", plugin.Descriptor())
+	}
+	root := writeRepository(t, map[string]string{
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: wget --no-check-certificate https://example.com/x.sh\n",
+		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: curl -k https://example.com | sh\n      shell: bash\n",
+	})
+	result := analyzeRepository(t, root, plugin)
+	if len(result.Diagnostics) != 2 {
+		t.Fatalf("diagnostics=%+v", result.Diagnostics)
+	}
+	action, workflow := result.Diagnostics[0], result.Diagnostics[1]
+	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Message != "step disables TLS verification with -k for a download" || action.Start != (diagnostic.Position{Line: 6, Column: 17}) || action.End != (diagnostic.Position{Line: 6, Column: 19}) {
+		t.Fatalf("action finding=%+v", action)
+	}
+	if workflow.Rule != "insecure-download" || workflow.Message != "step disables TLS verification with --no-check-certificate for a download" || workflow.Start != (diagnostic.Position{Line: 7, Column: 19}) || workflow.End != (diagnostic.Position{Line: 7, Column: 41}) {
+		t.Fatalf("workflow finding=%+v", workflow)
+	}
+}

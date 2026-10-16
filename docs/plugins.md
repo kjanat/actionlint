@@ -68,11 +68,25 @@ bindings with `wit-bindgen c` and compiles with wasi-sdk:
 WASI_SDK_PATH=/opt/wasi-sdk ./build.sh no-sudo.wasm
 ```
 
+### TinyGo
+
+[`plugins/examples/insecure-download`](../plugins/examples/insecure-download) flags `curl -k` and
+`wget --no-check-certificate`. It is a Go module that depends on `go.bytecodealliance.org/cm`, with `wit-bindgen-go`
+pinned as a Go tool. TinyGo needs the WASI imports in the compiled world, so `build.sh` composes a world from the
+contract and TinyGo's bundled WASI definitions, then builds with:
+
+```sh
+./build.sh insecure-download.wasm
+```
+
+TinyGo's `cabi_realloc` returns null for a zero-size request, which upstream wacogo rejects
+(https://github.com/partite-ai/wacogo/issues/11). actionlint's `go.mod` replaces the runtime with the fix from
+https://github.com/partite-ai/wacogo/pull/12 until it merges. A program that imports the `plugin` package needs the
+same `replace` directive to run TinyGo guests.
+
 ### Other toolchains
 
-Any toolchain that emits a component for the `plugin` world works when its `cabi_realloc` returns a non-null pointer
-for a zero-size request. TinyGo 0.42 and 0.43 return null there, which this host rejects; see
-https://github.com/partite-ai/wacogo/issues/11.
+Any toolchain that emits a component for the `plugin` world works.
 
 ### Build outside this repository
 
