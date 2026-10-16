@@ -90,8 +90,9 @@ Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing
 constructors include `RequireJobTimeout`, `RequireJobTimeoutRange` and `RequirePermissions`.
 `syntax.Parse` returns a workflow and structured parser diagnostics. Parsing does not execute semantic checks.
 
-The configuration and syntax packages currently expose selected model aliases backed by the internal engine. Their
-public names are the supported import surface. Treat unexported state as opaque and use keyed struct literals.
+The configuration package currently exposes selected model aliases backed by the internal engine. The syntax package
+aliases the standalone workflow implementation. Their public names are the supported import surface. Treat unexported
+state as opaque and use keyed struct literals.
 
 ## Migration from the flat API
 
@@ -104,7 +105,7 @@ public names are the supported import surface. Treat unexported state as opaque 
 | `Error`, diagnostic output fields                          | `diagnostic.Diagnostic`                                                         |
 | `Config`, `ParseConfig`, `ReadConfigFile`, `InspectConfig` | `config.Config`, `Parse`, `Load`, `Inspect`                                     |
 | `Workflow`, `Job`, `Step`, `Parse`                         | `syntax.Workflow`, `Job`, `Step`, `Parse`                                       |
-| `Rule`, `RuleBase`, `Visitor`, `OnRulesCreated`            | `analyzer.Analyzer` and registrations                                           |
+| `Rule`, `RuleBase`, `Visitor`, `OnRulesCreated`            | `analyzer.Analyzer` in `Options.Analyzers`, limited to declared facts           |
 | `Linter`, `AnalysisRenderer`, CLI output selection         | Run the CLI for its presentation contract; consume library diagnostics directly |
 | Expression checker internals, process and cache types      | Internal implementation; no compatibility re-export                             |
 
