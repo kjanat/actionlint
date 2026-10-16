@@ -11,17 +11,17 @@ import (
 
 // InlineSuppressibleRules returns the rule IDs accepted by inline directives and
 // disallow-suppressions configuration. The returned slice is owned by the caller.
-func InlineSuppressibleRules() []string {
+func InlineSuppressibleRules(additional ...string) []string {
 	rules := builtinRuleDescriptors()
 	names := make([]string, 0, len(rules))
 	for _, rule := range rules {
 		names = append(names, rule.Name)
 	}
-	return names
+	return append(names, additional...)
 }
 
-func isInlineSuppressibleRule(name string) bool {
-	return slices.Contains(InlineSuppressibleRules(), name)
+func isInlineSuppressibleRule(name string, additional ...string) bool {
+	return repoconfig.Suppressible(name, additional...)
 }
 
 // inlineSuppressionDirective is validated before policy evaluation. targetLine
@@ -40,7 +40,7 @@ type suppressionOrigin struct {
 	first, last int
 }
 
-func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppressionDirective, *Error) {
+func parseInlineSuppression(comment inlineSuppressionComment, additional ...string) (inlineSuppressionDirective, *Error) {
 	invalid := func(message string) *Error {
 		return errorAt(&comment.pos, "inline-suppression", message)
 	}
@@ -72,8 +72,8 @@ func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppression
 	var rules []string
 	for name := range strings.SplitSeq(selectors, ",") {
 		name = strings.TrimSpace(name)
-		if !isInlineSuppressibleRule(name) {
-			allowed := InlineSuppressibleRules()
+		if !isInlineSuppressibleRule(name, additional...) {
+			allowed := InlineSuppressibleRules(additional...)
 			for i, rule := range allowed {
 				allowed[i] = strconv.Quote(rule)
 			}
@@ -86,11 +86,11 @@ func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppression
 	return inlineSuppressionDirective{pos: comment.pos, targetLine: target, endLine: comment.endLine, rules: rules, reason: strings.TrimSpace(reason)}, nil
 }
 
-func filterInlineSuppressions(source []byte, errors []*Error, policy *SuppressionsPolicy) []*Error {
-	return filterInlineSuppressionsAt(source, errors, policy, "")
+func filterInlineSuppressions(source []byte, errors []*Error, policy *SuppressionsPolicy, additional ...string) []*Error {
+	return filterInlineSuppressionsAt(source, errors, policy, "", additional...)
 }
 
-func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *SuppressionsPolicy, scope string) []*Error {
+func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *SuppressionsPolicy, scope string, additional ...string) []*Error {
 	comments := collectInlineSuppressionComments(source)
 	if len(comments) == 0 {
 		return errors
@@ -98,7 +98,7 @@ func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *Suppress
 	var directives []inlineSuppressionDirective
 	var directiveErrors []*Error
 	for _, comment := range comments {
-		directive, err := parseInlineSuppression(comment)
+		directive, err := parseInlineSuppression(comment, additional...)
 		if err != nil {
 			directiveErrors = append(directiveErrors, err)
 		} else {
@@ -109,7 +109,7 @@ func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *Suppress
 }
 
 // Scope directives to their owning YAML while retaining diagnostic sources.
-func filterForeignInlineSuppressions(path string, source []byte, findings []*Error, policy *SuppressionsPolicy) []*Error {
+func filterForeignInlineSuppressions(path string, source []byte, findings []*Error, policy *SuppressionsPolicy, additional ...string) []*Error {
 	local := make([]*Error, len(findings))
 	for i, finding := range findings {
 		scoped := *finding
@@ -118,7 +118,7 @@ func filterForeignInlineSuppressions(path string, source []byte, findings []*Err
 		}
 		local[i] = &scoped
 	}
-	local = filterInlineSuppressionsAt(source, local, policy, path)
+	local = filterInlineSuppressionsAt(source, local, policy, path, additional...)
 	for _, finding := range local {
 		if finding.suppressionOrigin == nil {
 			finding.source = source

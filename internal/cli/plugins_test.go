@@ -2,10 +2,44 @@ package cli
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestPluginSuppressionsUseInvocationRegistry(t *testing.T) {
+	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo make install # actionlint:ignore no-sudo -- intentional\n"
+	args := []string{"check", "--no-config", "--plugin", pluginFixture("no-sudo"), "-"}
+	got := testRunCommand(workflow, args...)
+	if got.Status != 0 || got.Stdout != "" {
+		t.Fatalf("inline: %+v", got)
+	}
+	// Registrations belong to one invocation, including back-to-back CLI calls.
+	got = testRunCommand(workflow, "check", "--no-config", "-")
+	if got.Status != 1 || !strings.Contains(got.Stdout, "unknown inline suppression rule") {
+		t.Fatalf("leaked registry: %+v", got)
+	}
+	path := filepath.Join(t.TempDir(), "actionlint.yaml")
+	for _, tc := range []struct {
+		config string
+		want   int
+	}{
+		{"ignores: [{rule: no-sudo, file: '**'}]\n", 0},
+		{"policy: {disallow-suppressions: {rules: [no-sudo], report: all}}\n", 1},
+	} {
+		if err := os.WriteFile(path, []byte(tc.config), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		got = testRunCommand(workflow, "check", "--config", path, "--plugin", pluginFixture("no-sudo"), "-")
+		if got.Status != tc.want || strings.Contains(got.Stdout, "unknown inline suppression") {
+			t.Fatalf("config %s: %+v", tc.config, got)
+		}
+		if tc.want == 1 && !strings.Contains(got.Stdout, "[disallow-suppressions]") {
+			t.Fatalf("policy ignored: %+v", got)
+		}
+	}
+}
 
 const pluginWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n      - run: wget --no-check-certificate https://example.com/x.sh\n"
 

@@ -79,8 +79,8 @@ func NewProject(root string) (*Project, error) {
 	return newProject(root, fsread.Disk)
 }
 
-func newProject(root string, readFile func(string) ([]byte, error)) (*Project, error) {
-	c, path, err := repoconfig.LoadRepository(root, readFile)
+func newProject(root string, readFile func(string) ([]byte, error), additional ...string) (*Project, error) {
+	c, path, err := repoconfig.LoadRepository(root, readFile, additional...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +120,7 @@ func (p *Project) Config() *Config {
 // and reuses them.
 // Create a new instance after changing repository boundaries or loaded configuration.
 type Projects struct {
+	ruleNames  []string
 	known      []*Project
 	roots      map[string]string
 	skipConfig bool
@@ -156,7 +157,7 @@ func (ps *Projects) At(path string) (*Project, error) {
 	p := &Project{root: root}
 	if !ps.skipConfig {
 		var err error
-		p, err = newProject(root, readFile)
+		p, err = newProject(root, readFile, ps.ruleNames...)
 		if err != nil {
 			return nil, err
 		}

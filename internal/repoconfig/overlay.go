@@ -50,7 +50,7 @@ func (e *OverlayError) Unwrap() error { return e.cause }
 // ParseOverlay parses a complete YAML/JSON document (input "config") or
 // the YAML/JSON value of one ConfigKeys entry. Unknown keys are rejected here;
 // existing config files retain their parsing behavior.
-func ParseOverlay(input string, content []byte) (Overlay, error) {
+func ParseOverlay(input string, content []byte, additional ...string) (Overlay, error) {
 	var doc yaml.Node
 	d := yaml.NewDecoder(bytes.NewReader(content))
 	if err := d.Decode(&doc); err != nil {
@@ -83,7 +83,7 @@ func ParseOverlay(input string, content []byte) (Overlay, error) {
 	if len(config.Extends) > 0 {
 		return Overlay{}, fmt.Errorf("input %s: extends requires a config file origin", input)
 	}
-	if _, err := ResolveNode(node, nil); err != nil {
+	if _, err := ResolveNode(node, nil, additional...); err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
 	node, err := configtree.Expand(node, make(map[*yaml.Node]bool))
@@ -128,7 +128,7 @@ func (o Overlay) Name() string { return o.name }
 
 // Overlaid merges parsed overlays over a loaded source and resolves the result.
 // Without overlays it returns the supplied configuration and the source's document.
-func Overlaid(cfg *Config, source *Loaded, overlays []Overlay) (*Config, Resolved, error) {
+func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...string) (*Config, Resolved, error) {
 	var node *yaml.Node
 	var resolved Resolved
 	if source != nil {
@@ -146,7 +146,7 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay) (*Config, Resolve
 	}
 	if len(overlays) > 0 {
 		var err error
-		resolved, err = ResolveNode(node, inputs)
+		resolved, err = ResolveNode(node, inputs, additional...)
 		if err != nil {
 			return nil, Resolved{}, &OverlayError{names, err}
 		}
@@ -163,7 +163,7 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay) (*Config, Resolve
 		}
 	} else if source == nil {
 		var err error
-		resolved, err = ResolveNode(nil, nil)
+		resolved, err = ResolveNode(nil, nil, additional...)
 		if err != nil {
 			return nil, Resolved{}, err
 		}

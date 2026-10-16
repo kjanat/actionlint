@@ -18,18 +18,17 @@ type shellcheckAnalyzer struct {
 	settings  *ShellcheckSettings
 	debug     func(string, ...any)
 	embedded  bool
-	forConfig func(*Config) (*externalCommand, error)
+	forConfig func(*Config) (shellcheckTransport, error)
+}
+
+type shellcheckTransport struct {
+	backend analyzer.ScriptBackend
+	cmd     *externalCommand
 }
 
 func newShellcheckAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 	if c.shellcheckBackend != nil {
 		return &shellcheckAnalyzer{backend: c.shellcheckBackend, debug: c.debug}, nil
-	}
-	if engine, err := c.configuredScriptEngine("shellcheck", c.shellcheck, c.shellcheckOptions); engine != nil || err != nil {
-		if err != nil {
-			return nil, fmt.Errorf("could not initialize ShellCheck: %w", err)
-		}
-		return &shellcheckAnalyzer{backend: engine, debug: c.debug}, nil
 	}
 	if c.shellcheckRunner != nil {
 		externalSources := false
@@ -39,19 +38,28 @@ func newShellcheckAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 			debug:    c.debug, embedded: true,
 		}, nil
 	}
-	commandFor := func(cfg *Config) (*externalCommand, error) {
+	transportFor := func(cfg *Config) (shellcheckTransport, error) {
+		scope := c
+		scope.config = cfg
+		if backend, err := scope.configuredScriptEngine("shellcheck", c.shellcheck, c.shellcheckOptions); backend != nil || err != nil {
+			if err != nil {
+				return shellcheckTransport{}, fmt.Errorf("could not initialize ShellCheck: %w", err)
+			}
+			return shellcheckTransport{backend: backend}, nil
+		}
 		options := projectToolOptions("shellcheck", c.shellcheck, c.shellcheckOptions, cfg, c.workingDir)
-		return c.process.configuredCommandRunner(c.shellcheck, options, false)
+		cmd, err := c.process.configuredCommandRunner(c.shellcheck, options, false)
+		return shellcheckTransport{cmd: cmd}, err
 	}
-	cmd, err := commandFor(c.config)
+	selected, err := transportFor(c.config)
 	if err != nil {
 		return nil, err
 	}
-	return &shellcheckAnalyzer{cmd: cmd, settings: c.shellcheckSettings, debug: c.debug, forConfig: func(cfg *Config) (*externalCommand, error) {
+	return &shellcheckAnalyzer{backend: selected.backend, cmd: selected.cmd, settings: c.shellcheckSettings, debug: c.debug, forConfig: func(cfg *Config) (shellcheckTransport, error) {
 		if cfg == c.config {
-			return cmd, nil
+			return selected, nil
 		}
-		return commandFor(cfg)
+		return transportFor(cfg)
 	}}, nil
 }
 
@@ -60,7 +68,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 	var failure, deferred error
 	var deferredScope *scriptScope
 	compositePrepared := false
-	commands := map[*Config]*externalCommand{}
+	transports := map[*Config]shellcheckTransport{}
 	pending := []*externalCommand{analyzer.cmd}
 	for _, scope := range batch.scopes {
 		if err := ctx.Err(); err != nil {
@@ -70,8 +78,25 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 		if scope.config != nil && (diagnosticLevel(scope.config, "shellcheck") == "off" || scope.config.Tools.Shellcheck.Enabled != nil && !*scope.config.Tools.Shellcheck.Enabled) {
 			continue
 		}
-		if analyzer.backend != nil {
-			run := &shellcheckRun{backend: analyzer.backend, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug, rcArgs: []string{}}
+		selected := shellcheckTransport{backend: analyzer.backend, cmd: analyzer.cmd}
+		if analyzer.forConfig != nil {
+			var ok bool
+			selected, ok = transports[scope.config]
+			if !ok {
+				var err error
+				selected, err = analyzer.forConfig(scope.config)
+				if err != nil {
+					failure = errors.Join(failure, err)
+					continue
+				}
+				transports[scope.config] = selected
+				if selected.cmd != nil && selected.cmd != analyzer.cmd {
+					pending = append(pending, selected.cmd)
+				}
+			}
+		}
+		if selected.backend != nil {
+			run := &shellcheckRun{backend: selected.backend, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug, rcArgs: []string{}}
 			if scope.config != nil && scope.config.Tools.Shellcheck.Config.Path() != "" {
 				failure = errors.Join(failure, errors.New("ShellCheck backend needs inline configuration; rc-file access requires a process backend"))
 				continue
@@ -87,24 +112,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 			prepared[scope] = run
 			continue
 		}
-		cmd := analyzer.cmd
-		if analyzer.forConfig != nil {
-			var ok bool
-			cmd, ok = commands[scope.config]
-			if !ok {
-				var err error
-				cmd, err = analyzer.forConfig(scope.config)
-				if err != nil {
-					failure = errors.Join(failure, err)
-					continue
-				}
-				commands[scope.config] = cmd
-				if cmd != analyzer.cmd {
-					pending = append(pending, cmd)
-				}
-			}
-		}
-		run := &shellcheckRun{cmd: cmd, config: analyzer.settings, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug}
+		run := &shellcheckRun{cmd: selected.cmd, config: analyzer.settings, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug}
 		if analyzer.embedded {
 			run.paths.analysis = "/"
 		}

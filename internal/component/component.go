@@ -71,9 +71,10 @@ type Plugin struct {
 	component *wacogo.Component
 	factory   *hostbind.Factory
 
-	mu    sync.Mutex
-	host  *host.ComponentInstance
-	world *wasi.World
+	mu     sync.Mutex
+	host   *host.ComponentInstance
+	world  *wasi.World
+	output *lineWriter
 }
 
 // Load reads and validates a component and asks it to describe itself.
@@ -218,6 +219,15 @@ func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (res
 	if err := p.prepareImports(ctx); err != nil {
 		return nil, p.failure(ctx, err)
 	}
+	output := p.output
+	output.reset()
+	defer func() {
+		output.flush()
+		if outputErr := output.err; outputErr != nil {
+			err = errors.Join(err, p.failure(ctx, outputErr))
+			p.discardImports(ctx)
+		}
+	}()
 	// wacogo's stdin component hands out one stream handle per host instance.
 	input, err := stdin.NewInstance(ctx, p.engine, p.world.Streams, p.world.Error, p.world.Poll, nil)
 	if err != nil {
@@ -271,7 +281,7 @@ func (p *Plugin) prepareImports(ctx context.Context) error {
 		_ = hostInstance.Close(ctx)
 		return err
 	}
-	p.host, p.world = hostInstance, world
+	p.host, p.world, p.output = hostInstance, world, output
 	return nil
 }
 
@@ -284,6 +294,7 @@ func (p *Plugin) discardImports(ctx context.Context) {
 		_ = p.host.Close(ctx)
 		p.host = nil
 	}
+	p.output = nil
 }
 
 func (p *Plugin) failure(ctx context.Context, err error) error {
@@ -330,16 +341,49 @@ func (h hostImplementation) Log(_ context.Context, message string) error {
 type lineWriter struct {
 	log     func(string)
 	pending []byte
+	written int
+	err     error
 }
 
+// Bound both retained partial lines and total output per invocation. The budget
+// applies even when the guest handles an I/O error instead of propagating it.
+const maxPluginOutput = 1 << 20
+const maxPluginLine = 64 << 10
+
 func (w *lineWriter) Write(data []byte) (int, error) {
-	w.pending = append(w.pending, data...)
-	for {
-		index := bytes.IndexByte(w.pending, '\n')
-		if index < 0 {
-			return len(data), nil
-		}
-		w.log(string(w.pending[:index]))
-		w.pending = w.pending[index+1:]
+	if w.err != nil {
+		return 0, w.err
 	}
+	if len(data) > maxPluginOutput-w.written {
+		w.err = fmt.Errorf("plugin output exceeds %d bytes per call", maxPluginOutput)
+		return 0, w.err
+	}
+	w.written += len(data)
+	n := len(data)
+	for len(data) > 0 {
+		count := min(len(data), maxPluginLine-len(w.pending))
+		if index := bytes.IndexByte(data[:count], '\n'); index >= 0 {
+			w.pending = append(w.pending, data[:index]...)
+			w.flush()
+			data = data[index+1:]
+			continue
+		}
+		w.pending = append(w.pending, data[:count]...)
+		data = data[count:]
+		if len(w.pending) == maxPluginLine {
+			w.flush()
+		}
+	}
+	return n, nil
+}
+
+func (w *lineWriter) flush() {
+	if len(w.pending) != 0 && w.log != nil {
+		w.log(string(w.pending))
+	}
+	w.pending = nil
+}
+
+func (w *lineWriter) reset() {
+	w.pending, w.written, w.err = nil, 0, nil
 }

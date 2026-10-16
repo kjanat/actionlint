@@ -153,12 +153,14 @@ func Load(ctx context.Context, path string, options Options) (*Engine, error) {
 	e := &Engine{path: path, limits: limits, runtime: wazero.NewRuntimeWithConfig(ctx, config), cache: cache, maxInput: defaultMaxInputBytes}
 	if err := e.load(ctx, data); err != nil {
 		_ = e.Close(ctx)
-		return nil, fmt.Errorf("engine %s: %w", path, err)
+		return nil, e.failure(ctx, err)
 	}
 	return e, nil
 }
 
 func (e *Engine) load(ctx context.Context, data []byte) error {
+	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
+	defer cancel()
 	compiled, err := e.runtime.CompileModule(ctx, data)
 	if err != nil {
 		return err
@@ -333,6 +335,8 @@ func (e *Engine) name() string {
 }
 
 func (e *Engine) call(ctx context.Context, operation string, body []byte) (*response, error) {
+	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
+	defer cancel()
 	if len(body) > e.maxInput {
 		return nil, fmt.Errorf("engine %s: request of %d bytes exceeds the engine limit of %d bytes", e.name(), len(body), e.maxInput)
 	}
@@ -340,8 +344,6 @@ func (e *Engine) call(ctx context.Context, operation string, body []byte) (*resp
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
-	defer cancel()
 	raw, err := e.invoke(ctx, instance, operation, body)
 	if err != nil {
 		_ = instance.Close(context.WithoutCancel(ctx))
@@ -366,7 +368,13 @@ func (e *Engine) failure(ctx context.Context, err error) error {
 	}
 }
 
-func (e *Engine) invoke(ctx context.Context, instance api.Module, operation string, body []byte) ([]byte, error) {
+func (e *Engine) invoke(ctx context.Context, instance api.Module, operation string, body []byte) (output []byte, err error) {
+	free := func(pointer uint32) {
+		_, cleanupErr := instance.ExportedFunction("dealloc").Call(ctx, uint64(pointer))
+		if cleanupErr != nil {
+			err = errors.Join(err, fmt.Errorf("dealloc: %w", cleanupErr))
+		}
+	}
 	var args []uint64
 	if body != nil {
 		allocated, err := instance.ExportedFunction("alloc").Call(ctx, uint64(len(body)))
@@ -377,7 +385,7 @@ func (e *Engine) invoke(ctx context.Context, instance api.Module, operation stri
 		if pointer == 0 {
 			return nil, fmt.Errorf("engine refused to allocate %d bytes", len(body))
 		}
-		defer func() { _, _ = instance.ExportedFunction("dealloc").Call(ctx, uint64(pointer)) }()
+		defer free(pointer)
 		if !instance.Memory().Write(pointer, body) {
 			return nil, fmt.Errorf("engine memory write of %d bytes at %d failed", len(body), pointer)
 		}
@@ -388,7 +396,7 @@ func (e *Engine) invoke(ctx context.Context, instance api.Module, operation stri
 		return nil, err
 	}
 	pointer, length := uint32(results[0]>>32), uint32(results[0])
-	defer func() { _, _ = instance.ExportedFunction("dealloc").Call(ctx, uint64(pointer)) }()
+	defer free(pointer)
 	raw, ok := instance.Memory().Read(pointer, length)
 	if !ok {
 		return nil, fmt.Errorf("engine returned %d bytes at %d outside its memory", length, pointer)
@@ -402,16 +410,21 @@ func (e *Engine) instantiate(ctx context.Context) (api.Module, error) {
 
 func (e *Engine) acquire(ctx context.Context) (api.Module, error) {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	if e.closed {
+		e.mu.Unlock()
 		return nil, fmt.Errorf("engine %s is closed", e.name())
 	}
 	if n := len(e.idle); n > 0 {
 		instance := e.idle[n-1]
 		e.idle = e.idle[:n-1]
+		e.mu.Unlock()
 		return instance, nil
 	}
-	instance, err := e.instantiate(ctx)
+	// Instantiation can execute guest start functions. Never hold the pool lock
+	// while guest code runs, so another call can cancel or close the runtime.
+	runtime, compiled := e.runtime, e.compiled
+	e.mu.Unlock()
+	instance, err := runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().WithName(""))
 	if err != nil {
 		return nil, e.failure(ctx, err)
 	}

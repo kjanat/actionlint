@@ -42,10 +42,16 @@ const (
 )
 
 // Parse decodes a standalone configuration document. Use Load to resolve extends.
-func Parse(source []byte) (*Config, error) { return repoconfig.Parse(source) }
+// additionalRules lists registered analyzer names accepted in suppression settings.
+func Parse(source []byte, additionalRules ...string) (*Config, error) {
+	return repoconfig.Parse(source, additionalRules...)
+}
 
 // Load reads a configuration file and resolves its inheritance.
-func Load(path string) (*Config, error) { return repoconfig.Load(path) }
+// additionalRules lists registered analyzer names accepted in suppression settings.
+func Load(path string, additionalRules ...string) (*Config, error) {
+	return repoconfig.Load(path, additionalRules...)
+}
 
 // Inspect reports effective configuration and optionally its origins.
 func Inspect(selection Selection, origins bool) (Inspection, error) {

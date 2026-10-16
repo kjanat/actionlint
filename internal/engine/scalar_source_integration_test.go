@@ -3,6 +3,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,6 +13,40 @@ import (
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"go.yaml.in/yaml/v4"
 )
+
+func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "library.sh")
+	if err := os.WriteFile(path, []byte("echo first\u2028still-first\u0085same-line\u2029same-line\necho $VALUE\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Analyze(t.Context(), AnalysisRequest{
+		WorkingDir: dir, ShellCheck: "shellcheck",
+		Sources: []SourceUnit{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")}},
+		ShellcheckRunner: func([]string, string) ([]byte, error) {
+			return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Snippet != "echo $VALUE" {
+		t.Fatalf("diagnostics: %+v", result.Diagnostics)
+	}
+	for _, template := range []string{"", "{{range .}}{{.Snippet}}{{end}}"} {
+		renderer, err := NewAnalysisRenderer("", template, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		if err := renderer.Render(&out, result); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "echo $VALUE") || strings.Contains(out.String(), "still-first") {
+			t.Fatalf("wrong source line: %s", out.String())
+		}
+	}
+}
 
 func TestPhysicalYAMLLineRendering(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n", "\r", "\u0085", "\u2028", "\u2029"} {

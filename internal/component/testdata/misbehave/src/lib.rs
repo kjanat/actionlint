@@ -43,6 +43,21 @@ impl Guest for Plugin {
                 Ok(Vec::new())
             }
             "error" => Err("analysis failed on purpose".to_string()),
+            "output" => {
+                use std::io::Write;
+                let chunk = vec![b'x'; 65536];
+                for _ in 0..32 {
+                    // The host must retain the limit failure even if the guest ignores it.
+                    let _ = std::io::stdout().write_all(&chunk);
+                }
+                Ok(Vec::new())
+            }
+            "partial-log" => {
+                use std::io::Write;
+                print!("partial stdout");
+                let _ = std::io::stdout().flush();
+                Ok(Vec::new())
+            }
             _ => Ok(vec![Diagnostic {
                 rule: String::new(),
                 code: "MB001".to_string(),

@@ -15,6 +15,16 @@ type factAvailability struct {
 	execution bool
 }
 
+func registeredRuleNames(registrations []analyzer.Registration) []string {
+	var names []string
+	for _, registration := range registrations {
+		if registration.Analyzer != nil {
+			names = append(names, registration.Analyzer.Descriptor().Name)
+		}
+	}
+	return names
+}
+
 func requiredFacts(registrations []analyzer.Registration) map[analyzer.Fact]bool {
 	facts := map[analyzer.Fact]bool{}
 	for _, registration := range registrations {

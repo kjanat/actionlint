@@ -143,6 +143,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.readFile = fsread.Disk
 	}
 	a.projects.readFile = a.readFile
+	a.projects.ruleNames = registeredRuleNames(opts.Analyzers)
 	a.request.ReadFile = opts.ReadFile
 	a.request.RulePresets = opts.RulePresets
 	if a.logOut == nil {
@@ -155,7 +156,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	var err error
 	if opts.ConfigFile != "" {
-		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile)
+		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile, a.projects.ruleNames...)
 		err = loadErr
 		if err != nil {
 			return nil, err

@@ -1,10 +1,7 @@
 package configtree
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strings"
 
@@ -53,18 +50,9 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 		if err != nil {
 			return nil, fmt.Errorf("read config %q: %w", path, err)
 		}
-		var document yaml.Node
-		decoder := yaml.NewDecoder(bytes.NewReader(data))
-		if err := decoder.Decode(&document); err != nil && !errors.Is(err, io.EOF) {
+		node, err := Decode(readPath, data)
+		if err != nil {
 			return nil, fmt.Errorf("config %q: %w", path, err)
-		}
-		var extra yaml.Node
-		if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("config %q must contain one document", path)
-		}
-		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		if len(document.Content) > 0 {
-			node = document.Content[0]
 		}
 		node, err = Expand(node, map[*yaml.Node]bool{})
 		if err != nil {

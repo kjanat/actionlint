@@ -290,7 +290,8 @@ actionlint config validate
 ```
 
 Configuration selection remains one explicit file or the repository's
-`.github/actionlint.yaml`, then `.github/actionlint.yml`. There is no new global
+`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, then
+`.github/actionlint.toml`. There is no new global
 configuration search or merge policy. `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
 both. `--no-config` skips

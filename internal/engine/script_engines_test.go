@@ -137,3 +137,58 @@ func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
 		t.Fatalf("explicit: result=%+v err=%v loads=%d", result, err, loads)
 	}
 }
+
+type namedShellEngine string
+
+func (e namedShellEngine) Check(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+	row := strings.Count(strings.TrimSuffix(request.Source, "\n"), "\n") + 1
+	return []analyzer.ScriptDiagnostic{{Filename: request.Filename, Code: "SC2086", Message: string(e), Severity: "warning", Location: analyzer.ScriptPosition{Row: row, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: row, Column: 5}}}, nil
+}
+
+func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		".git/HEAD":                        "ref: refs/heads/main\n",
+		".github/actionlint.yaml":          "tools:\n  shellcheck:\n    backend:\n      wasm: {path: workflow.wasm}\noverrides:\n  - includes: ['.github/actions/**/action.yml']\n    tools:\n      shellcheck:\n        backend:\n          wasm: {path: action.wasm}\n",
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: echo workflow\n",
+		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: echo action\n      shell: bash\n",
+	}
+	for path, content := range files {
+		full := filepath.Join(root, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, input := range []string{".github/workflows/ci.yml", ".github/actions/setup/action.yml"} {
+		session, err := NewAnalysisSession(AnalysisOptions{
+			Context: t.Context(), WorkingDir: root, Shellcheck: "shellcheck", ShellcheckOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true,
+			LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
+				return namedShellEngine(filepath.Base(path)), nil
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := session.Files([]string{filepath.Join(root, filepath.FromSlash(input))}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		foundAction := false
+		for _, d := range result.Diagnostics {
+			if strings.HasSuffix(filepath.ToSlash(d.Path), "action.yml") {
+				foundAction = true
+				if !strings.Contains(d.Message, "action.wasm") {
+					t.Fatalf("%s: action used workflow backend: %+v", input, d)
+				}
+			} else if !strings.Contains(d.Message, "workflow.wasm") {
+				t.Fatalf("unexpected workflow finding: %+v", d)
+			}
+		}
+		if !foundAction {
+			t.Fatalf("%s: missing composite finding: %+v", input, result.Diagnostics)
+		}
+	}
+}

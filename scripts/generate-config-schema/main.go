@@ -59,8 +59,10 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			if name == "disallow-suppressions" {
 				continue
 			}
-			rule.Enum = append(rule.Enum, name)
+			rule.Examples = append(rule.Examples, name)
 		}
+		rule.Description = "Built-in rule ID or registered analyzer name. actionlint validates names against the loaded analyzers."
+		rule.Not = &jsonschema.Schema{Enum: []any{"disallow-suppressions"}}
 		for _, name := range []string{"file", "uses", "job", "step", "reason"} {
 			property, _ := mapping.Properties.Get(name)
 			// Match strings containing a character outside Go's Unicode whitespace set.
@@ -249,10 +251,12 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Report the prohibited directive or retain original violations or both."`
 		}{})
 		rules, _ := mapping.Properties.Get("rules")
+		rules.Items.Description = "Built-in rule ID or registered analyzer name."
+		rules.Items.MinLength = new(uint64(1))
 		names := actionlint.InlineSuppressibleRules()
 		slices.Sort(names)
 		for _, name := range names {
-			rules.Items.Enum = append(rules.Items.Enum, name)
+			rules.Items.Examples = append(rules.Items.Examples, name)
 		}
 		mapping.Version = ""
 		mapping.ID = ""
@@ -355,6 +359,7 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
+	s.Properties.Set("$schema", &jsonschema.Schema{Type: "string", Description: "Schema reference for editors. actionlint ignores it."})
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"

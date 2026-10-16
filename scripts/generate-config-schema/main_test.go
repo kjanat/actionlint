@@ -428,6 +428,7 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"plugin ignore requires registration", `ignores: [{rule: no-sudo, file: '**'}]`, true, false},
 		{"ignore policy itself", `ignores: [{rule: disallow-suppressions, file: '**'}]`, false, false},
 		{"ignore blank job", `ignores: [{rule: expression, job: ' '}]`, false, false},
 		{"ignore blank step", `ignores: [{rule: expression, step: "\t\n"}]`, false, false},
@@ -646,7 +647,7 @@ policy: {required-actions: []}
 		{"suppressions empty rules", `policy: {disallow-suppressions: {rules: []}}`, false, false},
 		{"suppressions null rules", `policy: {disallow-suppressions: {rules: null}}`, false, false},
 		{"suppressions scalar rules", `policy: {disallow-suppressions: {rules: cache-operation}}`, false, false},
-		{"suppressions unknown rule", `policy: {disallow-suppressions: {rules: [cache-operation, typo]}}`, false, false},
+		{"suppressions unregistered rule", `policy: {disallow-suppressions: {rules: [cache-operation, typo]}}`, true, false},
 		{"suppressions numeric rule", `policy: {disallow-suppressions: {rules: [1]}}`, false, false},
 		{"suppressions unknown report", `policy: {disallow-suppressions: {report: ignore}}`, false, false},
 		{"suppressions null report", `policy: {disallow-suppressions: {report: null}}`, false, false},

@@ -23,6 +23,10 @@ Every analysis call runs in a fresh instance with 64 MiB of memory and 10 second
 exhausted limit or a cancelled run fails the analysis of that document with an error that names the plugin and its
 limits. The run then continues with the next document and actionlint exits with status 3.
 
+Stdout and stderr share a 1 MiB output budget per call, including when debug logging is disabled. Exceeding it fails
+the analysis even if the plugin handles the write error. Log lines are emitted in chunks of at most 64 KiB, and an
+unfinished line is flushed at the end of its call.
+
 The host grants these imports and nothing else:
 
 | Interface                        | What the plugin gets                                              |
@@ -34,8 +38,7 @@ The host grants these imports and nothing else:
 
 `wasi:sockets`, `wasi:http` and custom interfaces are refused at load.
 
-The Go API offers the same loader as `internal/component` for programs built from this module and exposes the limits
-through `Options` and `Limits`.
+The public `plugin` package exposes the loader and its resource limits through `Options` and `Limits`.
 
 ## Write a plugin
 
@@ -100,8 +103,10 @@ Run it against a workflow:
 actionlint --no-config --plugin ./plugin.wasm .github/workflows/ci.yml
 ```
 
-From Go, load it with `component.Load` and pass it in `analysis.Options.Analyzers`; `internal/component/component_test.go`
-does this for both examples, including a composite action call. The Rust crate under
+From Go, load it with `plugin.Load` and pass it in `analysis.Options.Analyzers`; `internal/component/component_test.go`
+does this for the examples, including a composite action call. When parsing configuration yourself, pass the
+registered analyzer names to `config.Parse` or `config.Load` so suppression names can be validated. File analysis and
+the CLI derive those names from the registered analyzers automatically. The Rust crate under
 `internal/component/testdata/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
 file access are reported.
 
@@ -123,7 +128,8 @@ tools:
 
 The host checks the ABI version, the export signatures and the advertised operation versions when it loads the module,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
-limit. A trap or an exceeded limit discards that instance and fails the document's analysis. From Go, call
+limit. Initialization and creation of pooled instances use the same time limit. A trap or an exceeded limit, including
+during allocation cleanup, discards that instance and fails the document's analysis. From Go, call
 `plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the
 repository configuration.
 

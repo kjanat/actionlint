@@ -121,7 +121,7 @@ func configForDocument(config *Config, path, root string) (*Config, error) {
 	return repoconfig.ForFile(config, path, root)
 }
 
-func filterConfigIgnores(path, root string, source []byte, findings []*Error, cfg *Config, foreign bool, level func(string) RuleLevel) []*Error {
+func filterConfigIgnores(path, root string, source []byte, findings []*Error, cfg *Config, foreign bool, level func(string) RuleLevel, additional ...string) []*Error {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
@@ -145,7 +145,7 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 		ignored := false
 		if applies && finding.Kind != "disallow-suppressions" {
 			for _, ignore := range cfg.Ignores {
-				if finding.Kind != ignore.Rule || ignore.Validate() != nil {
+				if finding.Kind != ignore.Rule || ignore.Validate(additional...) != nil {
 					continue
 				}
 				if ignore.File != "" && !(filefilter.Selection{Includes: []string{ignore.File}}).Match(file) {
@@ -225,7 +225,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	for _, overlay := range s.overlays {
 		report.Overrides = append(report.Overrides, overlay.Name())
 	}
-	cfg, resolved, err := repoconfig.Overlaid(cfg, source, s.overlays)
+	cfg, resolved, err := repoconfig.Overlaid(cfg, source, s.overlays, registeredRuleNames(a.request.Analyzers)...)
 	if err != nil {
 		return nil, err
 	}

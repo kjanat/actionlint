@@ -191,3 +191,36 @@ func TestClosedEngineRejectsCalls(t *testing.T) {
 		t.Fatal("check succeeded after close")
 	}
 }
+
+func TestInitializationHonorsEngineTimeout(t *testing.T) {
+	for _, name := range []string{"hang-start", "hang-abi", "hang-metadata"} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+			start := time.Now()
+			engine, err := corewasm.Load(ctx, filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{Timeout: 100 * time.Millisecond})
+			if engine != nil {
+				_ = engine.Close(context.Background())
+			}
+			if err == nil || ctx.Err() != nil || time.Since(start) > 2*time.Second {
+				t.Fatalf("engine timeout was not enforced: elapsed=%s err=%v caller=%v", time.Since(start), err, ctx.Err())
+			}
+		})
+	}
+}
+
+func TestCleanupFailureDiscardsInstance(t *testing.T) {
+	for _, name := range []string{"trap-free-output", "trap-free-input", "hang-free-output"} {
+		t.Run(name, func(t *testing.T) {
+			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{Timeout: 100 * time.Millisecond})
+			// Trap fixtures fail only their first deallocation. Both calls must
+			// fail, proving the second call receives a fresh instance.
+			for range 2 {
+				_, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "hello", Filename: "step.py"})
+				if err == nil || !strings.Contains(err.Error(), "engine lifecycle") {
+					t.Fatalf("cleanup failure was lost: %v", err)
+				}
+			}
+		})
+	}
+}

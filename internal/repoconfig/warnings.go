@@ -64,6 +64,6 @@ func configWarnings(root *yaml.Node, inputs map[*yaml.Node]Input) []Warning {
 			}
 		}
 	}
-	check(root, "", Keys())
+	check(root, "", append(Keys(), "$schema"))
 	return warnings
 }

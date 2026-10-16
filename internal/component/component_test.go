@@ -271,3 +271,26 @@ func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
 		t.Fatalf("workflow finding=%+v", workflow)
 	}
 }
+
+func TestOutputLimitAndPartialLines(t *testing.T) {
+	for _, debug := range []bool{false, true} {
+		var logged []string
+		options := component.Options{}
+		if debug {
+			options.Log = func(line string) { logged = append(logged, line) }
+		}
+		plugin := loadPlugin(t, "misbehave", options)
+		if _, err := misbehave(t, plugin, "output"); err == nil || !strings.Contains(err.Error(), "plugin output exceeds") {
+			t.Fatalf("debug=%v: swallowed output failure: %v", debug, err)
+		}
+		logged = nil
+		for range 2 {
+			if _, err := misbehave(t, plugin, "partial-log"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if debug && strings.Join(logged, "|") != "partial stdout|partial stdout" {
+			t.Fatalf("partial lines: %q", logged)
+		}
+	}
+}

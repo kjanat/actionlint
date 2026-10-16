@@ -3,6 +3,7 @@ package repoconfig
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -34,8 +35,9 @@ func parseSuppressionReport(value string) (SuppressionReport, bool) {
 // A nil pointer or zero value permits suppressions. Use DisallowSuppressions
 // to construct an enabled policy.
 type SuppressionsPolicy struct {
-	report SuppressionReport
-	rules  []string
+	report    SuppressionReport
+	rules     []string
+	locations map[string]*yaml.Node
 }
 
 // DisallowSuppressions enables restrictions with report set to "suppression",
@@ -95,7 +97,7 @@ func (p *SuppressionsPolicy) Rules() []string {
 // UnmarshalYAML implements yaml.Unmarshaler. Each successful decode replaces the
 // previous rule selection and reporting mode.
 func (p *SuppressionsPolicy) UnmarshalYAML(n *yaml.Node) error {
-	next := SuppressionsPolicy{report: ReportAll}
+	next := SuppressionsPolicy{report: ReportAll, locations: make(map[string]*yaml.Node)}
 	switch {
 	case n.Kind == yaml.ScalarNode && n.Tag == "!!bool":
 		var enabled bool
@@ -128,11 +130,12 @@ func (p *SuppressionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 					return suppressionConfigError(value, "rules must be a nonempty list of suppressible rule IDs")
 				}
 				for _, rule := range value.Content {
-					if rule.Kind != yaml.ScalarNode || rule.Tag != "!!str" || !Suppressible(rule.Value) {
+					if rule.Kind != yaml.ScalarNode || rule.Tag != "!!str" || strings.TrimSpace(rule.Value) == "" {
 						return suppressionConfigError(rule, fmt.Sprintf("unknown suppressible rule %q", rule.Value))
 					}
 					if !slices.Contains(next.rules, rule.Value) {
 						next.rules = append(next.rules, rule.Value)
+						next.locations[rule.Value] = rule
 					}
 				}
 			default:

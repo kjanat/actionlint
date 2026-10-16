@@ -1,0 +1,40 @@
+package component
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestOutputBoundsAndCallBoundary(t *testing.T) {
+	var lines []string
+	w := &lineWriter{log: func(line string) { lines = append(lines, line) }}
+	chunk := strings.Repeat("x", maxPluginLine)
+	for range maxPluginOutput / len(chunk) {
+		if n, err := w.Write([]byte(chunk)); err != nil || n != len(chunk) {
+			t.Fatalf("write=%d, %v", n, err)
+		}
+		if cap(w.pending) > maxPluginLine {
+			t.Fatalf("retained %d bytes", cap(w.pending))
+		}
+	}
+	if _, err := w.Write([]byte("overflow")); err == nil {
+		t.Fatal("output budget ignored")
+	}
+	if _, err := w.Write([]byte("\n")); err == nil {
+		t.Fatal("output error was not sticky")
+	}
+	for _, line := range lines {
+		if len(line) > maxPluginLine {
+			t.Fatal("unbounded log entry")
+		}
+	}
+	w.reset()
+	lines = nil
+	_, _ = w.Write([]byte("first call"))
+	w.flush()
+	w.reset()
+	_, _ = w.Write([]byte("second call\n"))
+	if strings.Join(lines, "|") != "first call|second call" {
+		t.Fatalf("partial output crossed calls: %q", lines)
+	}
+}

@@ -82,7 +82,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.checkFlags(preCommit, true)
 	config := &cobra.Command{
 		Use: "config", Short: "Inspect and validate configuration",
-		Long: "Select a configuration file or the repository's .github/actionlint.yaml or .yml.\nUse extends for shared configuration and overrides for file-specific settings.",
+		Long: "Select a configuration file or the repository's .github/actionlint.yaml, .yml, .json or .toml.\nUse extends for shared configuration and overrides for file-specific settings.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, args []string) error {
 			if a.opts.initConfig {

@@ -1,6 +1,6 @@
 module actionlint.kjanat.dev
 
-go 1.26.0
+go 1.27.0
 
 toolchain go1.27.2
 
@@ -14,6 +14,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.31
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/partite-ai/wacogo v0.0.0-20261016032519-b3984dc3d485
+	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2

@@ -69,6 +69,10 @@ func (l *analysisEngine) check(
 		w, all := Parse(content)
 		return nil, workflowOutline(path, w, len(all) != 0), configErr
 	}
+	additionalRules := registeredRuleNames(l.analyzers)
+	if err := repoconfig.ValidateRuleNames(cfg, additionalRules...); err != nil {
+		return nil, nil, err
+	}
 	cfg = applyRulePresets(l.rulePresets, cfg)
 
 	var start time.Time
@@ -271,8 +275,8 @@ func (l *analysisEngine) check(
 			}
 		}
 	} else {
-		all = filterInlineSuppressions(content, all, suppressionPolicy)
-		all = filterConfigIgnores(configPath, root, content, all, cfg, false, diagnosticLevels(cfg))
+		all = filterInlineSuppressions(content, all, suppressionPolicy, additionalRules...)
+		all = filterConfigIgnores(configPath, root, content, all, cfg, false, diagnosticLevels(cfg), additionalRules...)
 	}
 	var projectDir string
 	if project != nil {
@@ -345,8 +349,8 @@ func (l *analysisEngine) check(
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions
 			}
-			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
-			findings = filterConfigIgnores(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel)
+			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy, additionalRules...)
+			findings = filterConfigIgnores(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
 			switch diagnosticLevel(e.Kind) {
