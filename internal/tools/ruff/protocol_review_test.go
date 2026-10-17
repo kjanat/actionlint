@@ -149,8 +149,8 @@ func TestVersionedShellTarget(t *testing.T) {
 		{`C:\Python\PYTHON3.10.EXE {0}`, "", "py310"},
 		{"python3.9 {0}", "py314", "py314"},
 		{"python3.15 {0}", "", "py315"},
-		{"python3.6 {0}", "", "py314"},
-		{"python3.99 {0}", "", "py314"},
+		{"python3.6 {0}", "", "py36"},
+		{"python3.99 {0}", "", "py399"},
 		{"python3 {0}", "", "py314"},
 		{"py -3.9 {0}", "", "py39"},
 		{"py -3.10 -u {0}", "", "py310"},
@@ -169,8 +169,8 @@ func TestVersionedShellTarget(t *testing.T) {
 		{"py -3.10 {0}", "py39", "py39"},
 		{"py -3 {0}", "", "py314"},
 		{"py -V:3 {0}", "", "py314"},
-		{"py -3.6 {0}", "", "py314"},
-		{"py -3.99 {0}", "", "py314"},
+		{"py -3.6 {0}", "", "py36"},
+		{"py -3.99 {0}", "", "py399"},
 		{"py -3.9-invalid {0}", "", "py314"},
 		{"py -3.9-32-64 {0}", "", "py314"},
 		{"py -V:OtherCompany/3.9 {0}", "", "py314"},
@@ -198,7 +198,7 @@ func TestVersionedShellTarget(t *testing.T) {
 		{"actions-shells py -u -3.9 {0}", "", "py314"},
 		{"actions-shells py -W '-3.9' {0}", "", "py314"},
 		{"actions-shells py -V:OtherCompany/3.9 {0}", "", "py314"},
-		{"actions-shells py -3.99 {0}", "", "py314"},
+		{"actions-shells py -3.99 {0}", "", "py399"},
 		{"actions-shells py -3 {0}", "", "py314"},
 		{"actions-shells py -V:3.9.1 {0}", "", "py314"},
 		{"actions-shells py -v:3.9 {0}", "", "py314"},
@@ -208,7 +208,7 @@ func TestVersionedShellTarget(t *testing.T) {
 			calls := 0
 			checker := New(func(args []string, _ string, _ func([]byte, error) error) {
 				calls++
-				if i := slices.Index(args, "--target-version"); i < 0 || args[i+1] != tc.want {
+				if !slices.Contains(args, "--target-version="+tc.want) {
 					t.Fatalf("target: %v; want %s", args, tc.want)
 				}
 			}, func() error { return nil }, nil)

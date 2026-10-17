@@ -25,14 +25,13 @@ func TestArguments(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			args := arguments(tc.config)
 			for flag, want := range map[string]string{"--select": tc.selectRules, "--ignore": tc.ignore, "--target-version": tc.target} {
-				i := slices.Index(args, flag)
 				if want == "" {
-					if i != -1 {
+					if slices.ContainsFunc(args, func(arg string) bool { return strings.HasPrefix(arg, flag+"=") }) {
 						t.Fatalf("unexpected %s", flag)
 					}
 					continue
 				}
-				if i < 0 || i+1 >= len(args) || args[i+1] != want {
+				if !slices.Contains(args, flag+"="+want) {
 					t.Fatalf("%s: %v", flag, args)
 				}
 			}

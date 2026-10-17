@@ -25,7 +25,7 @@ func (o Options) Registration() tools.Registration {
 	compatibility := &Compatibility{}
 	registration := tools.Registration{Descriptor: descriptor,
 		Enabled: func(c tools.Context) bool {
-			possible, err := config.RuffProjectMayEnable(c.Config, c.ProjectConfig, c.ProjectRoot != "")
+			possible, err := projectMayEnable(c.Config, c.ProjectConfig, c.ProjectRoot != "")
 			return (o.Backend != nil || processconfig.Enabled(o.Command, o.Process)) && (possible || err != nil)
 		},
 		Required: func(c tools.Context) bool {
@@ -40,7 +40,7 @@ func (o Options) Registration() tools.Registration {
 			return adapter, nil
 		},
 		NeedsProcess: func(cfg, project *config.Config, inside bool) (bool, error) {
-			possible, err := config.RuffProjectMayEnable(cfg, project, inside)
+			possible, err := projectMayEnable(cfg, project, inside)
 			return o.Backend == nil && selection.Module("ruff", o.Command, o.Process, cfg) == nil && processconfig.Enabled(o.Command, o.Process) && possible, err
 		},
 		Validate: func() error {

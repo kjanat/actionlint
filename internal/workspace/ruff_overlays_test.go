@@ -48,12 +48,12 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := "py312"
+		var want any = "py312"
 		if strings.Contains(overlayText, "null") {
-			want = "py314"
+			want = nil
 		}
 		if got := resolved["tools"].(map[string]any)["ruff"].(map[string]any)["target-version"]; got != want {
-			t.Fatalf("overlay %q resolved to %v, want %s", overlayText, got, want)
+			t.Fatalf("overlay %q resolved to %v, want %v", overlayText, got, want)
 		}
 	}
 }

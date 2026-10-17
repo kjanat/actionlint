@@ -22,30 +22,20 @@ loading disabled.
 
 ## Ruff definitions
 
-Ruff selectors and Python target versions reuse definitions from the unmodified
-upstream `schemas/ruff/0.17.0.schema.json`. Its provenance sidecar identifies the
-release URL, immutable source revision, and content digest. The generated selector
-wrapper adds compatibility aliases and excludes unsupported preview/removed
-selectors; it does not copy the positive selector catalogue. Target versions use
-the upstream definition directly.
+The host schema describes tool selection, enablement, and the shape of the Ruff
+wrapper. It leaves rule selectors, target versions, preview behavior, and the
+contents of `config` to the selected engine. For native analysis, the Ruff
+executable validates the options. WebAssembly engines expose `validate_config` for this.
+The engine's metadata carries its configuration schema.
 
-The upstream document retains its draft-07 dialect; the root and selector wrapper
-use draft 2020-12. Validators must support references between these dialects.
-Relative references keep the root, wrapper, and upstream snapshot together in a
-checkout, npm package, or versioned CDN path. Tests disable external loading and
-check every upstream selector and runtime alias against the configuration parser.
+The root schema provides small completion examples without constraining settings
+to one bundled Ruff release. Tests exercise base and override settings through
+the parser, JSON Schema validator, and the real YAML language service offline.
+Run `npm ci` first for the language-service test.
 
-Selector validation is an array-level constraint so editors do not offer excluded
-upstream values as item completions. Some clients collect suggestions from every
-referenced branch without applying its restrictions. Selector completion therefore
-offers the small `F` and `F821` examples. Every supported code and compatibility
-alias remains valid. Python target completion
-uses the full upstream definition. The Go tests exercise the real language
-service offline through the `yaml-language-server` dev dependency; run `npm ci`
-first.
-
-Run `internal/config/tools/ruff/generate` with the pinned Ruff executable before
-regenerating the root schema when upgrading Ruff; see that generator's README.
+Previously published Ruff snapshots remain available under `schemas/ruff` for
+existing consumers. Current configuration decoding and schema generation do not
+use them.
 
 ## Updating ShellCheck support
 

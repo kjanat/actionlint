@@ -28,12 +28,12 @@ func TestNativeConfiguration(t *testing.T) {
 `), &config); err != nil {
 		t.Fatal(err)
 	}
-	native, err := config.NativeArguments()
+	native, err := nativeArguments(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defaults := arguments(config)
-	if slices.Contains(defaults, "--target-version") {
+	if slices.ContainsFunc(defaults, func(arg string) bool { return strings.HasPrefix(arg, "--target-version=") }) {
 		t.Fatal("inferred target overrides native configuration")
 	}
 	args := append([]string{"check"}, native...)

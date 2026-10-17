@@ -8146,8 +8146,8 @@
                         "properties": {
                           "backend": {
                             "title": "backend",
-                            "description": "Select the execution backend. Process settings apply only to the native adapter.",
-                            "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
+                            "description": "Choose how Ruff runs. Process settings only apply to the native adapter.",
+                            "markdownDescription": "Choose how Ruff runs. Process settings only apply to the native adapter.",
                             "type": "object",
                             "properties": {
                               "process": {
@@ -8232,85 +8232,11 @@
                           },
                           "config": {
                             "title": "config",
-                            "description": "Ruff's native configuration, including target-version and lint settings. Validated by the selected Ruff engine. Omission or null uses defaults.",
-                            "markdownDescription": "Ruff's native configuration, including target-version and lint settings. Validated by the selected Ruff engine. Omission or null uses defaults.",
-                            "allOf": [
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "extend"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "cache-dir"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "src"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "namespace-packages"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "fix"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "fix-only"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "unsafe-fixes"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "show-fixes"
-                                  ]
-                                }
-                              },
-                              {
-                                "not": {
-                                  "type": "object",
-                                  "required": [
-                                    "output-file"
-                                  ]
-                                }
-                              }
-                            ],
+                            "description": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
+                            "markdownDescription": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
                             "anyOf": [
                               {
-                                "$ref": "schemas/ruff/0.17.0.schema.json"
+                                "type": "object"
                               },
                               {
                                 "type": "null"
@@ -8319,8 +8245,8 @@
                           },
                           "enabled": {
                             "title": "enabled",
-                            "description": "Enable Ruff analysis with the selected backend.",
-                            "markdownDescription": "Enable Ruff analysis with the selected backend.",
+                            "description": "Enable Ruff analysis.",
+                            "markdownDescription": "Enable Ruff analysis.",
                             "oneOf": [
                               {
                                 "default": true,
@@ -8333,14 +8259,15 @@
                           },
                           "ignore": {
                             "title": "ignore",
-                            "description": "Ruff rule codes or prefixes to exclude.",
-                            "markdownDescription": "Ruff rule codes or prefixes to exclude.",
+                            "description": "Rule codes or prefixes to skip, such as F401.",
+                            "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
                             "items": {
                               "examples": [
                                 "F",
                                 "F821"
                               ],
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             },
                             "oneOf": [
                               {
@@ -8352,26 +8279,19 @@
                               {
                                 "type": "null"
                               }
-                            ],
-                            "not": {
-                              "type": "array",
-                              "contains": {
-                                "not": {
-                                  "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
-                                }
-                              }
-                            }
+                            ]
                           },
                           "select": {
                             "title": "select",
-                            "description": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
-                            "markdownDescription": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
+                            "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                            "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
                             "items": {
                               "examples": [
                                 "F",
                                 "F821"
                               ],
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1
                             },
                             "oneOf": [
                               {
@@ -8383,23 +8303,19 @@
                               {
                                 "type": "null"
                               }
-                            ],
-                            "not": {
-                              "type": "array",
-                              "contains": {
-                                "not": {
-                                  "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
-                                }
-                              }
-                            }
+                            ]
                           },
                           "target-version": {
                             "title": "target-version",
-                            "description": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
-                            "markdownDescription": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                            "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                            "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
                             "oneOf": [
                               {
-                                "$ref": "schemas/ruff/0.17.0.schema.json#/definitions/PythonVersion"
+                                "examples": [
+                                  "py314"
+                                ],
+                                "type": "string",
+                                "minLength": 1
                               },
                               {
                                 "type": "null",
@@ -8941,8 +8857,8 @@
               "properties": {
                 "backend": {
                   "title": "backend",
-                  "description": "Select the execution backend. Process settings apply only to the native adapter.",
-                  "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
+                  "description": "Choose how Ruff runs. Process settings only apply to the native adapter.",
+                  "markdownDescription": "Choose how Ruff runs. Process settings only apply to the native adapter.",
                   "type": "object",
                   "properties": {
                     "process": {
@@ -9027,85 +8943,11 @@
                 },
                 "config": {
                   "title": "config",
-                  "description": "Ruff's native configuration, including target-version and lint settings. Validated by the selected Ruff engine. Omission or null uses defaults.",
-                  "markdownDescription": "Ruff's native configuration, including target-version and lint settings. Validated by the selected Ruff engine. Omission or null uses defaults.",
-                  "allOf": [
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "extend"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "cache-dir"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "src"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "namespace-packages"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "fix"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "fix-only"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "unsafe-fixes"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "show-fixes"
-                        ]
-                      }
-                    },
-                    {
-                      "not": {
-                        "type": "object",
-                        "required": [
-                          "output-file"
-                        ]
-                      }
-                    }
-                  ],
+                  "description": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
+                  "markdownDescription": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
                   "anyOf": [
                     {
-                      "$ref": "schemas/ruff/0.17.0.schema.json"
+                      "type": "object"
                     },
                     {
                       "type": "null"
@@ -9114,8 +8956,8 @@
                 },
                 "enabled": {
                   "title": "enabled",
-                  "description": "Enable Ruff analysis with the selected backend.",
-                  "markdownDescription": "Enable Ruff analysis with the selected backend.",
+                  "description": "Enable Ruff analysis.",
+                  "markdownDescription": "Enable Ruff analysis.",
                   "oneOf": [
                     {
                       "default": true,
@@ -9128,14 +8970,15 @@
                 },
                 "ignore": {
                   "title": "ignore",
-                  "description": "Ruff rule codes or prefixes to exclude.",
-                  "markdownDescription": "Ruff rule codes or prefixes to exclude.",
+                  "description": "Rule codes or prefixes to skip, such as F401.",
+                  "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
                   "items": {
                     "examples": [
                       "F",
                       "F821"
                     ],
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "oneOf": [
                     {
@@ -9147,26 +8990,19 @@
                     {
                       "type": "null"
                     }
-                  ],
-                  "not": {
-                    "type": "array",
-                    "contains": {
-                      "not": {
-                        "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
-                      }
-                    }
-                  }
+                  ]
                 },
                 "select": {
                   "title": "select",
-                  "description": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
-                  "markdownDescription": "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
+                  "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                  "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
                   "items": {
                     "examples": [
                       "F",
                       "F821"
                     ],
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "oneOf": [
                     {
@@ -9178,23 +9014,19 @@
                     {
                       "type": "null"
                     }
-                  ],
-                  "not": {
-                    "type": "array",
-                    "contains": {
-                      "not": {
-                        "$ref": "schemas/ruff/0.17.0-selectors.schema.json"
-                      }
-                    }
-                  }
+                  ]
                 },
                 "target-version": {
                   "title": "target-version",
-                  "description": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
-                  "markdownDescription": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
+                  "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                  "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
                   "oneOf": [
                     {
-                      "$ref": "schemas/ruff/0.17.0.schema.json#/definitions/PythonVersion"
+                      "examples": [
+                        "py314"
+                      ],
+                      "type": "string",
+                      "minLength": 1
                     },
                     {
                       "type": "null",

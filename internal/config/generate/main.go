@@ -14,7 +14,6 @@ import (
 
 	actionlint "actionlint.kjanat.dev/internal/config"
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
 	"actionlint.kjanat.dev/internal/genfile"
 
 	"github.com/invopop/jsonschema"
@@ -199,31 +198,31 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version, mapping.ID = "", ""
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
-		native := &jsonschema.Schema{Description: "Ruff's native configuration, including target-version and lint settings. Validated by the selected Ruff engine. Omission or null uses defaults.", AnyOf: []*jsonschema.Schema{{Ref: ruffconfig.SchemaPath}, {Type: "null"}}}
-		for _, key := range ruffconfig.UnsupportedConfigOptions() {
-			native.AllOf = append(native.AllOf, &jsonschema.Schema{Not: &jsonschema.Schema{Type: "object", Required: []string{key}}})
-		}
-		mapping.Properties.Set("config", native)
+		mapping.Properties.Set("config", &jsonschema.Schema{
+			Description: "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
+			AnyOf:       []*jsonschema.Schema{{Type: "object"}, {Type: "null"}},
+		})
 		target, _ := mapping.Properties.Get("target-version")
 		target.Type = ""
-		target.OneOf = []*jsonschema.Schema{{Ref: ruffconfig.SchemaPath + "#/definitions/PythonVersion"}, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
+		target.OneOf = []*jsonschema.Schema{{Type: "string", MinLength: new(uint64(1)), Examples: []any{"py314"}}, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
 		for _, name := range []string{"select", "ignore"} {
 			property, _ := mapping.Properties.Get(name)
-			// Item-level references make editors suggest excluded upstream values.
-			// Validate every item through the array, separately from completion examples.
-			property.Items = &jsonschema.Schema{Type: "string", Examples: []any{"F", "F821"}}
-			property.Not = &jsonschema.Schema{Type: "array", Contains: &jsonschema.Schema{Not: &jsonschema.Schema{Ref: ruffconfig.SelectorSchemaPath}}}
+			property.Items = &jsonschema.Schema{Type: "string", MinLength: new(uint64(1)), Examples: []any{"F", "F821"}}
 		}
 		requireOneBackend(mapping)
 		for name, description := range map[string]string{
-			"backend":        "Select the execution backend. Process settings apply only to the native adapter.",
-			"enabled":        "Enable Ruff analysis with the selected backend.",
-			"target-version": "Ruff Python target version; omission uses a supported versioned Python shell target, otherwise py314.",
-			"select":         "Ruff rule codes or prefixes to select; omission uses Ruff's defaults.",
-			"ignore":         "Ruff rule codes or prefixes to exclude.",
+			"backend":        "Choose how Ruff runs. Process settings only apply to the native adapter.",
+			"enabled":        "Enable Ruff analysis.",
+			"target-version": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+			"select":         "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+			"ignore":         "Rule codes or prefixes to skip, such as `F401`.",
 		} {
 			property, _ := mapping.Properties.Get(name)
-			property.Description = description
+			property.Description = strings.ReplaceAll(description, "`", "")
+			if property.Extras == nil {
+				property.Extras = map[string]any{}
+			}
+			property.Extras["markdownDescription"] = description
 		}
 		return mapping
 	case reflect.TypeFor[actionlint.IgnorePatterns]():

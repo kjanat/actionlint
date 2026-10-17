@@ -10,14 +10,14 @@ import (
 	"strings"
 )
 
-// UnsupportedConfigOptions matches the read-only boundary of actionlint-plugin-ruff.
+// unsupportedConfigOptions enforces the native process read-only boundary.
 // Ruff itself validates option names, values, and rule selectors.
-func UnsupportedConfigOptions() []string {
+func unsupportedConfigOptions() []string {
 	return []string{"extend", "cache-dir", "src", "namespace-packages", "fix", "fix-only", "unsafe-fixes", "show-fixes", "output-file"}
 }
 
-func (c Config) NativeArguments() ([]string, error) {
-	for _, key := range UnsupportedConfigOptions() {
+func nativeArguments(c Config) ([]string, error) {
+	for _, key := range unsupportedConfigOptions() {
 		if _, exists := c.Native[key]; exists {
 			return nil, fmt.Errorf("tools.ruff.config: %q is unavailable in isolated, read-only analysis", key)
 		}
@@ -79,19 +79,15 @@ func inlineTOML(value any) (string, error) {
 	}
 }
 
-// EngineOptions projects legacy settings into Ruff's own configuration. The
+// engineOptions projects legacy settings into Ruff's own configuration. The
 // JSON round trip also isolates nested maps from a caller-owned config.
-func (c Config) EngineOptions() (map[string]any, error) {
+func engineOptions(c Config) (map[string]any, error) {
 	options, err := cloneOptions(c.Native)
 	if err != nil {
 		return nil, err
 	}
-	if options["target-version"] == nil {
-		target := c.TargetVersion
-		if target == "" {
-			target = "py314"
-		}
-		options["target-version"] = target
+	if options["target-version"] == nil && c.TargetVersion != "" {
+		options["target-version"] = c.TargetVersion
 	}
 	if c.Select != nil || c.Ignore != nil {
 		lint, ok := options["lint"].(map[string]any)

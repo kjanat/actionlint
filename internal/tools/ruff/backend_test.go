@@ -18,7 +18,7 @@ func (f testBackend) Check(ctx context.Context, request analyzer.ScriptRequest) 
 
 func TestBackendConfigIsolationAndCancellation(t *testing.T) {
 	cfg := Config{Native: map[string]any{"lint": map[string]any{"select": []any{"F"}}}, Ignore: []string{"F401"}}
-	options, err := cfg.EngineOptions()
+	options, err := engineOptions(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

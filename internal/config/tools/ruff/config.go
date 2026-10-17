@@ -1,20 +1,15 @@
-// Package ruff owns Ruff tool settings and native option validation.
+// Package ruff owns the host configuration shape for Ruff backends.
 package ruff
 
 import (
+	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
 
 	"go.yaml.in/yaml/v4"
 )
-
-// SupportedTargetVersions lists the Python targets accepted by Ruff.
-func SupportedTargetVersions() []string {
-	return slices.Clone(supportedTargetVersions)
-}
 
 // Config controls isolated analysis of embedded Python scripts.
 type Config struct {
@@ -23,7 +18,7 @@ type Config struct {
 	// Native contains Ruff's own options, using its target-version and lint mapping.
 	// The selected Ruff engine validates these options. Null values reset defaults.
 	Native map[string]any `yaml:"config,omitempty"`
-	// TargetVersion overrides the versioned Python shell target, or py314 fallback.
+	// TargetVersion overrides the versioned Python shell target.
 	TargetVersion string `yaml:"target-version,omitempty"`
 	// Select chooses rule codes or prefixes. Omission uses Ruff's defaults.
 	Select []string `yaml:"select,omitempty" jsonschema:"nullable"`
@@ -56,7 +51,7 @@ func (c Config) MarshalYAML() (any, error) {
 	return value, nil
 }
 
-// UnmarshalYAML validates tool settings before an external process is started.
+// UnmarshalYAML validates the host wrapper. The selected engine validates options.
 func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind == yaml.ScalarNode && node.Tag == "!!bool" {
 		var enabled bool
@@ -88,18 +83,10 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 			}
 		}
 	}
-	if next.TargetVersion != "" && !slices.Contains(SupportedTargetVersions(), next.TargetVersion) {
-		return fmt.Errorf("tools.ruff.target-version must be one of %s; got %q", strings.Join(SupportedTargetVersions(), ", "), next.TargetVersion)
-	}
 	for _, selectors := range [][]string{next.Select, next.Ignore} {
-		for _, selector := range selectors {
-			if _, ok := slices.BinarySearch(supportedRuleSelectors, selector); !ok {
-				return fmt.Errorf("tools.ruff: invalid rule selector %q", selector)
-			}
+		if slices.Contains(selectors, "") {
+			return errors.New("tools.ruff: rule selector must not be empty")
 		}
-	}
-	if _, err := Config(next).NativeArguments(); err != nil {
-		return err
 	}
 	*c = Config(next)
 	return nil

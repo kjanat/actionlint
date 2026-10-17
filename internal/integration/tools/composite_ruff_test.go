@@ -110,11 +110,6 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if tc.code != "" {
-				if enabled, err := repoconfig.RuffMayEnable(repoconfig.ResolveRules(repoconfig.Presets{}, config)); err != nil || !enabled {
-					t.Fatalf("composite checker cannot be provisioned: enabled=%v, error=%v", enabled, err)
-				}
-			}
 			source := `on: push
 jobs:
   test:

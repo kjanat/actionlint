@@ -89,7 +89,7 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 			delete(config.Native, "lint")
 		}
 	}
-	native, err := config.NativeArguments()
+	native, err := nativeArguments(config)
 	if err != nil {
 		return nil, err
 	}

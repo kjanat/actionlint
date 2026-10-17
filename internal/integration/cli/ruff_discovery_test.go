@@ -115,7 +115,7 @@ jobs:
 				if strings.Count(string(invocations), "--version") != wantProbes || tc.warning && strings.Contains(string(invocations), "check") {
 					t.Fatalf("unexpected probe/check invocations: %s", invocations)
 				}
-				if tc.version == "ruff 0.17.0" && (strings.Count(string(invocations), "check ") != 2 || strings.Count(string(invocations), "--target-version py315") != 2) {
+				if tc.version == "ruff 0.17.0" && (strings.Count(string(invocations), "check ") != 2 || strings.Count(string(invocations), "--target-version=py315") != 2) {
 					t.Fatalf("compatible checker did not check both py315 scripts: %s", invocations)
 				}
 				if tc.name == "independent findings" && !strings.Contains(stdout.String(), "missing") {

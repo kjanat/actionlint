@@ -16,7 +16,6 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
-	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
 
 	"github.com/mattn/go-shellwords"
 	"golang.org/x/text/unicode/norm"
@@ -190,7 +189,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		return err
 	}
 	if c.backend != nil {
-		options, err := config.EngineOptions()
+		options, err := engineOptions(config)
 		if err != nil {
 			return err
 		}
@@ -210,7 +209,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		})
 	} else {
 		defaults := arguments(config)
-		native, err := config.NativeArguments()
+		native, err := nativeArguments(config)
 		if err != nil {
 			return err
 		}
@@ -339,8 +338,8 @@ func pythonShellTarget(shell string) string {
 		command = "python" + version
 	}
 	if minor, ok := strings.CutPrefix(command, "python3."); ok {
-		if target := "py3" + minor; slices.Contains(ruffconfig.SupportedTargetVersions(), target) {
-			return target
+		if version, err := strconv.Atoi(minor); err == nil && version >= 0 && strconv.Itoa(version) == minor {
+			return "py3" + minor
 		}
 	}
 	return ""
@@ -357,15 +356,15 @@ func arguments(config Config) []string {
 		// lint codes without suppressing Python syntax errors.
 		selectRules, ignoreRules = []string{"ALL"}, []string{"ALL"}
 	}
-	args := []string{"check", "--isolated", "--target-version", target, "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
+	args := []string{"check", "--isolated", "--target-version=" + target, "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
 	if config.Native["target-version"] != nil {
-		args = append(args[:2], args[4:]...)
+		args = append(args[:2], args[3:]...)
 	}
 	if selectRules != nil {
-		args = append(args, "--select", strings.Join(selectRules, ","))
+		args = append(args, "--select="+strings.Join(selectRules, ","))
 	}
 	if len(ignoreRules) > 0 {
-		args = append(args, "--ignore", strings.Join(ignoreRules, ","))
+		args = append(args, "--ignore="+strings.Join(ignoreRules, ","))
 	}
 	return append(args, "-")
 }

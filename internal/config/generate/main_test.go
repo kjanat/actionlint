@@ -9,17 +9,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	actionlint "actionlint.kjanat.dev/internal/config"
-	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
 	"actionlint.kjanat.dev/internal/genfile"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/invopop/jsonschema"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v4"
 )
@@ -59,24 +56,13 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
 		t.Fatal("expected version choices and a hidden reset branch")
 	}
-	if target.OneOf[0].Ref != ruffconfig.SchemaPath+"#/definitions/PythonVersion" || len(target.OneOf[0].Enum) != 0 {
-		t.Fatal("Ruff target choices must reference the unchanged upstream definition")
+	if target.OneOf[0].Type != "string" || len(target.OneOf[0].Enum) != 0 || target.OneOf[0].Ref != "" {
+		t.Fatal("Ruff targets must be validated by the selected engine")
 	}
 }
 
 func TestRuffSelectorSuggestions(t *testing.T) {
 	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
-	var root jsonschema.Schema
-	generated := generatedSchema(t)
-	if strings.Count(string(generated), `"`+ruffconfig.SelectorSchemaPath+`"`) != 4 {
-		t.Fatal("base and override selections must share the selector definition")
-	}
-	if err := json.Unmarshal(generated, &root); err != nil {
-		t.Fatal(err)
-	}
-	if _, exists := root.Definitions["RuffRuleSelector"]; exists {
-		t.Fatal("root schema must not copy the upstream selector catalogue")
-	}
 	for _, key := range []string{"select", "ignore"} {
 		property, ok := schema.Properties.Get(key)
 		if !ok || property.Items == nil {
@@ -85,9 +71,8 @@ func TestRuffSelectorSuggestions(t *testing.T) {
 		if property.Items.Ref != "" || len(property.Items.Enum) != 0 || !reflect.DeepEqual(property.Items.Examples, []any{"F", "F821"}) {
 			t.Fatalf("Ruff %s completion must use small safe examples, not an upstream or copied catalogue", key)
 		}
-		guard := property.Not
-		if guard == nil || guard.Type != "array" || guard.Contains == nil || guard.Contains.Not == nil || guard.Contains.Not.Ref != ruffconfig.SelectorSchemaPath {
-			t.Fatalf("Ruff %s must reject arrays containing an unsupported selector through the shared wrapper", key)
+		if property.Not != nil || property.Items.MinLength == nil {
+			t.Fatalf("Ruff %s must constrain shape without pinning engine semantics", key)
 		}
 	}
 }
@@ -117,7 +102,7 @@ func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, filename := range []string{shellcheckSchemaPath, ruffconfig.SchemaPath, ruffconfig.SelectorSchemaPath} {
+	for _, filename := range []string{shellcheckSchemaPath} {
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			t.Fatal(err)
@@ -133,7 +118,7 @@ func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
 	}
 }
 
-func TestRuffUpstreamSchemaParity(t *testing.T) {
+func TestRuffEngineIndependentSchema(t *testing.T) {
 	root := generatedSchema(t)
 	var document any
 	if err := json.Unmarshal(root, &document); err != nil {
@@ -150,39 +135,19 @@ func TestRuffUpstreamSchemaParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	upstream, err := os.ReadFile(ruffconfig.SchemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var raw struct {
-		Definitions map[string]struct {
-			Enum []string `json:"enum"`
-		} `json:"definitions"`
-	}
-	if err := json.Unmarshal(upstream, &raw); err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(raw.Definitions["PythonVersion"].Enum, ruffconfig.SupportedTargetVersions()); diff != "" {
-		t.Fatalf("runtime targets differ from upstream (-upstream +runtime):\n%s", diff)
-	}
-	supported := ruffconfig.SupportedRuleSelectors()
-	targets := ruffconfig.SupportedTargetVersions()
-	selectors := append(slices.Clone(raw.Definitions["RuleSelector"].Enum), supported...)
-	selectors = append(selectors, "XYZ", "F9999", "", "f821")
-	slices.Sort(selectors)
-	selectors = slices.Compact(selectors)
+	selectors := []string{"F", "E111", "RUF055", "ENGINE999", ""}
 	for _, key := range []string{"select", "ignore", "target-version"} {
 		values := selectors
 		if key == "target-version" {
-			values = append(slices.Clone(targets), "py36", "py316", "")
+			values = []string{"py36", "py316", "py399", ""}
 		}
 		for _, value := range values {
 			for _, override := range []bool{false, true} {
 				var property any = []any{value}
-				want := slices.Contains(supported, value)
+				want := value != ""
 				if key == "target-version" {
 					property = value
-					want = slices.Contains(targets, value)
+					want = value != ""
 				}
 				input := map[string]any{"tools": map[string]any{"ruff": map[string]any{key: property}}}
 				if override {
@@ -345,13 +310,13 @@ func TestSchemaValidation(t *testing.T) {
 		{"ruff oldest target", `tools: {ruff: {target-version: py37}}`, true, true},
 		{"ruff selector prefix", `tools: {ruff: {select: [F82]}}`, true, true},
 		{"ruff selector alias", `tools: {ruff: {select: [C9, U004, SIM111]}}`, true, true},
-		{"ruff preview rule codes", `tools: {ruff: {select: [E111, RUF055]}}`, false, false},
+		{"ruff preview rule codes", `tools: {ruff: {select: [E111, RUF055]}}`, true, true},
 		{"ruff stable copyright rule", `tools: {ruff: {select: [CPY001]}}`, true, true},
-		{"ruff removed rules", `tools: {ruff: {select: [ANN101, ANN102, S320]}}`, false, false},
+		{"ruff removed rules", `tools: {ruff: {select: [ANN101, ANN102, S320]}}`, true, true},
 		{"ruff redirected removed names", `tools: {ruff: {select: [PGH001, RUF035]}}`, true, true},
-		{"ruff unknown selector", `tools: {ruff: {select: [XYZ]}}`, false, false},
-		{"ruff unknown ignored selector", `tools: {ruff: {ignore: [F9999]}}`, false, false},
-		{"ruff invalid selector override", `overrides: [{includes: ['**'], tools: {ruff: {select: [XYZ]}}}]`, false, false},
+		{"ruff unknown selector", `tools: {ruff: {select: [XYZ]}}`, true, true},
+		{"ruff unknown ignored selector", `tools: {ruff: {ignore: [F9999]}}`, true, true},
+		{"ruff invalid selector override", `overrides: [{includes: ['**'], tools: {ruff: {select: [XYZ]}}}]`, true, true},
 		{"ruff selection reset", `tools: {ruff: {select: null, ignore: null}}`, true, true},
 		{"ruff empty selection", `tools: {ruff: {select: [], ignore: []}}`, true, true},
 		{"ruff newest target", `tools: {ruff: {target-version: py315}}`, true, true},
@@ -359,10 +324,10 @@ func TestSchemaValidation(t *testing.T) {
 		{"ruff target reset", `tools: {ruff: {target-version: null}}`, true, true},
 		{"ruff empty single-quoted target", `tools: {ruff: {target-version: ''}}`, false, false},
 		{"ruff empty double-quoted target", `tools: {ruff: {target-version: ""}}`, false, false},
-		{"ruff unsupported old target", `tools: {ruff: {target-version: py30}}`, false, false},
-		{"ruff unsupported future target", `tools: {ruff: {target-version: py316}}`, false, false},
+		{"ruff unsupported old target", `tools: {ruff: {target-version: py30}}`, true, true},
+		{"ruff unsupported future target", `tools: {ruff: {target-version: py316}}`, true, true},
 		{"ruff override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py315}}}]`, true, true},
-		{"ruff unsupported override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py36}}}]`, false, false},
+		{"ruff unsupported override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py36}}}]`, true, true},
 		{"nursery group", `lint: {rules: {nursery: {preset: all}}}`, true, true},
 		{"nursery level", `lint: {rules: {nursery: warn}}`, true, true},
 		{"nursery null", `lint: {rules: {nursery: null}}`, true, true},

@@ -441,6 +441,8 @@ Ruff consumes it directly; ShellCheck additionally prepares per-scope source acc
 `internal/tools/selection` owns the shared precedence between an explicit command and repository-selected
 process or WebAssembly settings. It loads modules through a callback and launches no processes.
 
-Configuration remains a leaf under `internal/config/tools`: ShellCheck settings live there, and Ruff's
-native option validation, generated selectors and generator live under `internal/config/tools/ruff`.
-This direction lets configuration decoding and schema generation run without either execution adapter.
+Configuration shape remains under `internal/config/tools`. Ruff's native command encoding and process
+restrictions belong to `internal/tools/ruff`. The selected engine validates its own options, including rule selectors,
+Python targets and preview settings. It also supplies the defaults. Configuration decoding and editor schemas do not gate engine
+options through a bundled Ruff catalog. Core WebAssembly engines receive JSON directly, without native
+TOML encoding.

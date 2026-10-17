@@ -271,12 +271,14 @@ lint:
 
 Ruff uses its own default rule selection. `config` accepts Ruff’s native options, including nested `lint` settings and rule-specific options. The selected Ruff engine validates them. Omitted or null options retain engine defaults.
 
-The legacy flat `select` and `ignore`
-accept Ruff codes or prefixes matching stable rules; preview-only selectors are
-rejected. Lists replace inherited lists. Flat selectors override their equivalents inside `config.lint`; `config.target-version` takes precedence over the flat target. `select: []` selects
-no lint rules (Python syntax errors can still be reported). `target-version`
-defaults to the version in an explicit interpreter such as `python3.9`, when
-supported by Ruff, and otherwise to `py314`. An explicit setting takes precedence.
+The legacy flat `select` and `ignore` accept Ruff codes or prefixes. The selected
+engine validates them, including preview selectors when `config.preview` is enabled.
+Lists replace inherited lists. Flat `select` and `ignore` replace the corresponding lists in
+`config.lint`. For Python targets, `config.target-version` takes precedence over the flat setting.
+`select: []` selects no lint rules (Python syntax errors can still be reported).
+If no target is configured, actionlint infers it from a versioned interpreter such as
+`python3.9`. The selected engine checks whether it supports that version. Without a
+versioned interpreter, the engine chooses its default. The native process adapter uses `py314`.
 
 Following [Astral's actionlint integration](https://github.com/astral-sh/actionlint/blob/0141e7822652fbee3a1b878c3d83d9c1dce87d67/rule_ruff.go),
 Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,

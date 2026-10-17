@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
@@ -9,9 +10,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/cli"
 
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 )
@@ -97,5 +101,72 @@ func TestRealRemoteRuffArtifact(t *testing.T) {
 	got = runWithDefaultRuff(pythonWorkflow, "--config", config, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "<stdin>:6:20:") || !strings.Contains(got.Stdout, "F821") {
 		t.Fatalf("Ruff remote config: %+v", got)
+	}
+}
+
+func TestRealRuffEngineConfiguration(t *testing.T) {
+	module := os.Getenv("ACTIONLINT_TEST_RUFF_WASM")
+	if module == "" {
+		t.Skip("set ACTIONLINT_TEST_RUFF_WASM to a packaged Ruff artifact")
+	}
+	config := filepath.Join(t.TempDir(), "actionlint.yaml")
+	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          if True:\n            print(1)\n        shell: python\n"
+	for _, command := range [][]string{nil, {"check"}} {
+		for _, configured := range []bool{false, true} {
+			for _, tc := range []struct {
+				settings, want string
+				status         int
+			}{
+				{"config: {preview: true}, select: [E111]", "E111", 1},
+				{"select: [XYZ]", "Unknown rule selector", 3},
+				{"target-version: py399", "unknown variant", 3},
+			} {
+				settings := tc.settings
+				if configured {
+					settings += ", backend: {wasm: {path: " + strconv.Quote(module) + "}}"
+				}
+				content := "lint: {rules: {external: {ruff: error}}}\ntools: {ruff: {" + settings + "}}\n"
+				if err := os.WriteFile(config, []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				args := append([]string{"actionlint"}, command...)
+				args = append(args, "--config="+config, "--no-shellcheck", "--no-color", "--summary=false")
+				if !configured {
+					args = append(args, "--plugin="+module)
+				}
+				var stdout, stderr bytes.Buffer
+				cmd := cli.Command{Stdin: strings.NewReader(workflow), Stdout: &stdout, Stderr: &stderr}
+				status := cmd.Main(append(args, "-"))
+				if status != tc.status || !strings.Contains(stdout.String()+stderr.String(), tc.want) {
+					t.Fatalf("command=%v configured=%v settings=%s: exit=%d stdout=%s stderr=%s", command, configured, tc.settings, status, &stdout, &stderr)
+				}
+			}
+		}
+	}
+}
+
+func TestRealShellcheckComponentConfiguration(t *testing.T) {
+	module := os.Getenv("ACTIONLINT_TEST_SHELLCHECK_WASM")
+	if module == "" {
+		t.Skip("set ACTIONLINT_TEST_SHELLCHECK_WASM to a packaged ShellCheck component")
+	}
+	config := filepath.Join(t.TempDir(), "actionlint.yaml")
+	const workflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $HOME\n        shell: bash\n"
+	for _, tc := range []struct {
+		options, want string
+		status        int
+	}{
+		{"{}", "SC2086", 1},
+		{"{disable: [SC2086]}", "", 0},
+		{"{shel: sh}", "unknown field", 3},
+	} {
+		content := "lint: {rules: {preset: none, plugins: {shellcheck-rs: {level: error, options: " + tc.options + "}}}}\n"
+		if err := os.WriteFile(config, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		got := testRunCommand(workflow, "check", "--config="+config, "--plugin="+module, "-")
+		if got.Status != tc.status || !strings.Contains(got.Stdout+got.Stderr, tc.want) || tc.status == 0 && got.Stdout != "" {
+			t.Fatalf("options=%s: %+v", tc.options, got)
+		}
 	}
 }
