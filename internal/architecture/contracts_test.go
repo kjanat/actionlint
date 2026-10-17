@@ -422,3 +422,27 @@ func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 		}
 	}
 }
+
+// Integration suites must exercise the application boundary, without reopening
+// the engine's private state through aliases or a replacement test facade.
+func TestIntegrationSuitesUseApplicationBoundary(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/internal/integration/...").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath                         string
+			Imports, TestImports, XTestImports []string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		for _, dependency := range append(append(pkg.Imports, pkg.TestImports...), pkg.XTestImports...) {
+			if dependency == "actionlint.kjanat.dev/internal/engine" {
+				t.Errorf("%s bypasses the application boundary", pkg.ImportPath)
+			}
+		}
+	}
+}

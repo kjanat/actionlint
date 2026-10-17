@@ -126,7 +126,7 @@ jobs:
 					if len(diagnostics) != 0 {
 						t.Fatal(diagnostics)
 					}
-					local := lintCachePolicy(t, tc.callee, tc.config)
+					local := analyzeConfiguredWorkflow(t, tc.callee, tc.config)
 					if len(local) != 1 || local[0].Rule != tc.kind || !strings.Contains(local[0].Message, tc.fragment) {
 						t.Fatalf("expected only the callee's own cache-operation diagnostic: %v", local)
 					}

@@ -102,3 +102,23 @@ func testFindings(result *AnalysisResult, err error) ([]*findingmodel.Finding, e
 	}
 	return findings, nil
 }
+
+func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*findingmodel.Finding {
+	t.Helper()
+	request := Request{}
+	var lConfig *repoconfig.Config
+	var err error
+
+	if config != "" {
+		lConfig, err = repoconfig.Parse([]byte(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	request.Sources = []SourceUnit{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil, Config: lConfig}}
+	errs, err := testFindings(runTestAnalysis(t.Context(), request))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return errs
+}

@@ -613,4 +613,4 @@ jobs:
           grep -Eq '^attestation verify .* --repo kjanat/shellcheck-rs( |$)' "${RUNNER_TEMP}/gh-calls.txt"
       - name: Run the deletion-only pre-commit integration test
         env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
-        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' ./internal/engine
+        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' ./internal/cli

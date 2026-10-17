@@ -310,6 +310,13 @@ The migration facades and their test-only implementations are gone. Configuratio
 and selection tests call `workspace`; invocation-lifetime and native-tool integration
 tests call `application`; rendering tests consume completed report values. Engine
 tests supply their own process pool to the actual `Request` and `Run` contract.
+End-to-end regression tests live under `internal/integration`, split into actions,
+expressions, workflow, configuration, suppression, tools and result contracts. They
+call `application` and assert report values. Unit tests live beside the domain they
+exercise; engine tests cover its private traversal, scheduling, cache sharing,
+provenance and projection state. `internal/testutil` supplies fixture files and
+source inputs without exposing engine state.
+
 Public examples use `analysis` and the `analyzer.Analyzer` contract. Architecture tests
 reject the old facade declarations and migration files, and enforce the production
 import boundaries, including the absence of rendering dependencies in semantic execution.

@@ -221,3 +221,12 @@ runs: {using: node24, main: main.mjs}
 		})
 	}
 }
+
+func TestStandaloneMetadataConstruction(t *testing.T) {
+	for _, content := range []string{"null\n", "name: standalone\nruns: {using: composite, steps: []}\n"} {
+		outline, err := ParseActionOutline("action.yml", []byte(content))
+		if (err != nil) != (content == "null\n") || outline.Path != "action.yml" {
+			t.Fatalf("standalone construction: %+v, %v", outline, err)
+		}
+	}
+}
