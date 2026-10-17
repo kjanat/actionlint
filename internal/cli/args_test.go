@@ -34,14 +34,14 @@ func TestCommandArgumentCompatibility(t *testing.T) {
 		{"option-like equal value", []string{"-stdin-filename=-completions", "-"}, 1, "-completions:6:"},
 		{"ignore literal flag", []string{"-ignore", "--json", "-"}, 1, "[expression-reference]"},
 		{"true value", []string{"--oneline=TRUE", "-"}, 1, "[expression-reference]"},
-		{"unknown", []string{"--unknown"}, 2, "flag provided but not defined"},
+		{"unknown", []string{"--unknown"}, 2, "unknown flag"},
 		{"missing value", []string{"--output"}, 2, "needs an argument"},
-		{"invalid bool", []string{"--oneline=maybe"}, 2, "invalid boolean value"},
+		{"invalid bool", []string{"--oneline=maybe"}, 2, "invalid argument"},
 		{"unknown shell", []string{"--completion", "not-a-shell"}, 2, "shell"},
 		{"help exits early", []string{"--help", "--unknown"}, 0, "Usage:"},
 		{"legacy help value", []string{"-help=false"}, 0, "Usage:"},
 		{"help short", []string{"-h"}, 0, "Usage:"},
-		{"invalid before help", []string{"--unknown", "--help"}, 2, "flag provided but not defined"},
+		{"invalid before help", []string{"--unknown", "--help"}, 2, "unknown flag"},
 		{"format conflict", []string{"--json", "--format={{json .}}", "-"}, 2, "cannot be combined"},
 		{"output conflict", []string{"--json", "--output=jsonl", "-"}, 2, "cannot be combined"},
 		{"bad output", []string{"--output=csv", "-"}, 2, "invalid output mode"},
@@ -53,6 +53,29 @@ func TestCommandArgumentCompatibility(t *testing.T) {
 				t.Fatalf("got %+v, want status=%d containing %q", got, tc.status, tc.contains)
 			}
 		})
+	}
+}
+
+func TestRootAndCheckArgumentParity(t *testing.T) {
+	for _, args := range [][]string{
+		{"-qv", "-"},
+		{"-qojson", "-"},
+		{"-qvo", "json", "-"},
+		{"-q=false", "--oneline", "-"},
+		{"-stdin-filename", "check", "--json", "-"},
+		{"--stdin-filename", "--json", "-"},
+		{"-ignore", "--json", "-"},
+		{"--ignore", "undefined variable", "-ignore", "other", "-"},
+		{"--unknown"},
+		{"--output"},
+		{"-oneline=maybe"},
+		{"--unknown", "-qofalse"},
+	} {
+		root := testRunCommand(commandBadWorkflow, args...)
+		check := testRunCommand(commandBadWorkflow, append([]string{"check"}, args...)...)
+		if root != check {
+			t.Errorf("%q: root=%+v check=%+v", args, root, check)
+		}
 	}
 }
 
@@ -128,7 +151,7 @@ func TestRootUsesCommandFlagDefinitions(t *testing.T) {
 	var enabled bool
 	app.root.Flags().BoolVarP(&enabled, "test-option", "t", false, "")
 	rest, _, _, err := app.parseRoot([]string{"-t", "input.yml"})
-	if err != nil || !enabled || !app.set["t"] || len(rest) != 1 || rest[0] != "input.yml" {
+	if err != nil || !enabled || !app.set["test-option"] || len(rest) != 1 || rest[0] != "input.yml" {
 		t.Fatalf("root did not use the shared flag definition: enabled=%v rest=%v err=%v", enabled, rest, err)
 	}
 }
@@ -145,12 +168,12 @@ func TestSubcommandLegacyFlagBoundaries(t *testing.T) {
 		{"nested command", []string{"config", "show", "-origin"}, []string{"config", "show", "--origin"}},
 		{"parent flag", []string{"config", "-no-config", "show", "-origin"}, []string{"config", "--no-config", "show", "--origin"}},
 		{"command-like value", []string{"config", "-config", "show", "show", "-origin"}, []string{"config", "--config", "show", "show", "--origin"}},
-		{"short value", []string{"check", "-f", "-shellcheck", "-"}, []string{"check", "-f", "-shellcheck", "-"}},
-		{"short flags", []string{"check", "-q", "-ojson", "-"}, []string{"check", "-q", "-ojson", "-"}},
+		{"short value", []string{"check", "-f", "-shellcheck", "-"}, []string{"check", "--template", "-shellcheck", "-"}},
+		{"short flags", []string{"check", "-q", "-ojson", "-"}, []string{"check", "--quiet", "--output-format=json", "-"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := newCommandApp(&Command{})
-			if got := normalizeSubcommandArgs(app.root, tc.args); !slices.Equal(got, tc.want) {
+			if got := normalizeCommandArgs(app.root, tc.args); !slices.Equal(got, tc.want) {
 				t.Fatalf("got %q, want %q", got, tc.want)
 			}
 		})

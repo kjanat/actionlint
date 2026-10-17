@@ -37,7 +37,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	}
 	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)
-		app.root.SetArgs(normalizeCommandArgs(app.root.Flags(), args))
+		app.root.SetArgs(normalizeCommandArgs(app.root, args))
 		if err := app.root.ExecuteContext(ctx); err != nil {
 			return app.reportError(commandUsageError{err})
 		}
@@ -66,7 +66,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		if rest[0] == "pre-commit" {
 			app.inv.Operation = operationCheck
 		}
-		rest = normalizeSubcommandArgs(app.root, rest)
+		rest = normalizeCommandArgs(app.root, rest)
 		app.root.SetArgs(rest)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
 		if err := app.root.ExecuteContext(ctx); err != nil {

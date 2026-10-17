@@ -9,108 +9,135 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// Accept the root's legacy single-dash names on subcommands too. Consume option
-// values before looking for commands or aliases, and preserve literal filenames.
-func normalizeSubcommandArgs(root *cobra.Command, args []string) []string {
-	ret := slices.Clone(args)
-	command := root
-	positional := false
-	for i := 0; i < len(ret); i++ {
-		arg := ret[i]
-		if arg == "--" {
+type argumentFlag struct {
+	flag  *pflag.Flag
+	value string
+	index int
+}
+
+type commandArgument struct {
+	tokens                 []string
+	flags                  []argumentFlag
+	positional, terminated bool
+}
+
+// All CLI paths use the registered pflag definitions to distinguish option
+// values, optional values, shorthand groups and positional arguments.
+type argumentScanner struct {
+	args  []string
+	index int
+}
+
+func (s *argumentScanner) next(flags *pflag.FlagSet) (commandArgument, bool) {
+	if s.index >= len(s.args) {
+		return commandArgument{}, false
+	}
+	raw := s.args[s.index]
+	s.index++
+	arg := commandArgument{tokens: []string{raw}}
+	if raw == "--" {
+		arg.terminated = true
+		return arg, true
+	}
+	if raw == "-" || !strings.HasPrefix(raw, "-") {
+		arg.positional = true
+		return arg, true
+	}
+	name, value, equals := strings.Cut(strings.TrimPrefix(raw, "-"), "=")
+	if strings.HasPrefix(raw, "--") {
+		name = strings.TrimPrefix(name, "-")
+	}
+	if flag := flags.Lookup(name); flag != nil {
+		arg.tokens = nil
+		s.option(&arg, flag, value, equals)
+		return arg, true
+	}
+	if strings.HasPrefix(raw, "--") {
+		return arg, true
+	}
+	arg.tokens = nil
+	for short := raw[1:]; short != ""; {
+		flag := flags.ShorthandLookup(short[:1])
+		if flag == nil {
+			arg.tokens = append(arg.tokens, "-"+short)
 			break
 		}
-		if arg == "-" || !strings.HasPrefix(arg, "-") {
+		short = short[1:]
+		value, equals = "", false
+		if strings.HasPrefix(short, "=") {
+			value, equals, short = short[1:], true, ""
+		} else if flag.NoOptDefVal == "" && short != "" {
+			value, equals, short = short, true, ""
+		}
+		s.option(&arg, flag, value, equals)
+	}
+	return arg, true
+}
+
+func (s *argumentScanner) option(arg *commandArgument, flag *pflag.Flag, value string, equals bool) {
+	index := len(arg.tokens)
+	token := "--" + flag.Name
+	if equals {
+		token += "=" + value
+		arg.tokens = append(arg.tokens, token)
+	} else {
+		arg.tokens = append(arg.tokens, token)
+		value = flag.NoOptDefVal
+		if value == "" && s.index < len(s.args) {
+			value = s.args[s.index]
+			s.index++
+			arg.tokens = append(arg.tokens, value)
+		}
+	}
+	arg.flags = append(arg.flags, argumentFlag{flag, value, index})
+}
+
+func commandFlags(command *cobra.Command) *pflag.FlagSet {
+	command.InitDefaultHelpFlag()
+	flags := pflag.NewFlagSet(command.Name(), pflag.ContinueOnError)
+	flags.AddFlagSet(command.Flags())
+	flags.AddFlagSet(command.PersistentFlags())
+	flags.AddFlagSet(command.InheritedFlags())
+	return flags
+}
+
+// Completion leaves the word being completed untouched; all preceding words use
+// the same scanner and command definitions as normal invocations.
+func normalizeCommandArgs(root *cobra.Command, args []string) []string {
+	if len(args) > 1 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
+		ret := append([]string{args[0]}, normalizeCommandArgs(root, args[1:len(args)-1])...)
+		return append(ret, args[len(args)-1])
+	}
+	command := root
+	flags := commandFlags(command)
+	scanner := argumentScanner{args: args}
+	ret := make([]string, 0, len(args))
+	positional := false
+	for {
+		arg, ok := scanner.next(flags)
+		if !ok {
+			break
+		}
+		ret = append(ret, arg.tokens...)
+		if arg.terminated {
+			ret = append(ret, args[scanner.index:]...)
+			break
+		}
+		if arg.positional {
 			found := false
 			if !positional {
 				for _, child := range command.Commands() {
-					if arg == child.Name() || slices.Contains(child.Aliases, arg) {
+					if arg.tokens[0] == child.Name() || slices.Contains(child.Aliases, arg.tokens[0]) {
 						command, found = child, true
+						flags = commandFlags(command)
 						break
 					}
 				}
 			}
 			positional = positional || !found
-			continue
-		}
-		name, _, equals := strings.Cut(strings.TrimLeft(arg, "-"), "=")
-		flag := command.Flags().Lookup(name)
-		if flag == nil {
-			flag = command.PersistentFlags().Lookup(name)
-		}
-		if flag == nil {
-			flag = command.InheritedFlags().Lookup(name)
-		}
-		if flag != nil && !strings.HasPrefix(arg, "--") && len(name) > 1 {
-			ret[i] = "-" + arg
-		}
-		if flag == nil && !strings.HasPrefix(arg, "--") && len(name) == 1 {
-			flag = command.Flags().ShorthandLookup(name)
-			if flag == nil {
-				flag = command.PersistentFlags().ShorthandLookup(name)
-			}
-			if flag == nil {
-				flag = command.InheritedFlags().ShorthandLookup(name)
-			}
-		}
-		if flag != nil && flag.NoOptDefVal == "" && !equals {
-			i++
 		}
 	}
 	return ret
-}
-
-// Normalize root option tokens, including those between filenames. Stop at a
-// command or --, and leave option values untouched.
-func normalizeCommandArgs(flags *pflag.FlagSet, args []string) []string {
-	if len(args) > 1 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
-		ret := append([]string{args[0]}, normalizeCommandArgs(flags, args[1:len(args)-1])...)
-		return append(ret, args[len(args)-1])
-	}
-	ret := slices.Clone(args)
-	hasInput := false
-	for i := 0; i < len(ret); i++ {
-		a := ret[i]
-		if a == "--" {
-			break
-		}
-		if a == "-" || !strings.HasPrefix(a, "-") {
-			if !hasInput && isCommandName(a) && !commandFileExists(a) {
-				break
-			}
-			hasInput = true
-			continue
-		}
-		name, value, equals := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(a, "-"), "-"), "=")
-		if name == "h" || name == "help" {
-			ret[i] = "--help"
-			// Go's help flag exits immediately, including with an explicit value.
-			// The new JSON help modifier is the only trailing option consumed here.
-			if commandRequestsJSON(flags, ret[i+1:]) {
-				return append(ret[:i+1], "--json")
-			}
-			return ret[:i+1]
-		}
-		f := flags.Lookup(name)
-		if f != nil {
-			ret[i] = "--" + f.Name
-			if equals {
-				ret[i] += "=" + value
-			}
-		} else if len(name) == 1 && !strings.HasPrefix(a, "--") {
-			f = flags.ShorthandLookup(name)
-		}
-		if f != nil && f.NoOptDefVal == "" && !equals {
-			i++
-		}
-	}
-	return ret
-}
-
-// Select the error format even when a bad option precedes --json. Known option
-// values and filenames remain data during this scan.
-func commandRequestsJSON(flags *pflag.FlagSet, args []string) bool {
-	return requestsJSON(flags, args, false)
 }
 
 func requestsJSON(flags *pflag.FlagSet, args []string, interspersed bool) bool {
@@ -125,52 +152,26 @@ func scanJSONOptions(flags *pflag.FlagSet, args []string, interspersed bool) req
 	jsonMode, output := false, ""
 	formatSelected := false
 	options := requestedJSONOptions{}
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
+	scanner := argumentScanner{args: args}
+	for {
+		arg, ok := scanner.next(flags)
+		if !ok || arg.terminated || arg.positional && !interspersed {
 			break
 		}
-		if arg == "-" || !strings.HasPrefix(arg, "-") {
-			if interspersed {
-				continue
+		for _, option := range arg.flags {
+			switch option.flag.Name {
+			case "json":
+				formatSelected = true
+				jsonMode, _ = strconv.ParseBool(option.value)
+			case "json-pretty":
+				options.PrettySet = true
+				options.Pretty, _ = strconv.ParseBool(option.value)
+			case "output", "output-format":
+				formatSelected = true
+				output = option.value
+			case "template", "format", "template-file", "oneline":
+				formatSelected = true
 			}
-			break
-		}
-		name, value, equal := strings.Cut(strings.TrimLeft(arg, "-"), "=")
-		flag := flags.Lookup(name)
-		if flag == nil && len(name) >= 1 && !strings.HasPrefix(arg, "--") {
-			flag = flags.ShorthandLookup(name[:1])
-			if flag != nil && flag.NoOptDefVal == "" && len(name) > 1 {
-				if equal {
-					value = name[1:] + "=" + value
-				} else {
-					value = name[1:]
-				}
-				equal = true
-			}
-		}
-		if flag == nil {
-			continue
-		}
-		if !equal {
-			value = flag.NoOptDefVal
-			if value == "" && i+1 < len(args) {
-				i++
-				value = args[i]
-			}
-		}
-		switch flag.Name {
-		case "json":
-			formatSelected = true
-			jsonMode, _ = strconv.ParseBool(value)
-		case "json-pretty":
-			options.PrettySet = true
-			options.Pretty, _ = strconv.ParseBool(value)
-		case "output", "output-format":
-			formatSelected = true
-			output = value
-		case "template", "format", "template-file", "oneline":
-			formatSelected = true
 		}
 	}
 	options.JSON = jsonMode || output == "json" || output == "jsonl" || options.Pretty && !formatSelected

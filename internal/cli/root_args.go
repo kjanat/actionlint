@@ -2,93 +2,74 @@ package cli
 
 import (
 	"errors"
-	"flag"
 	"io"
 	"os"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/spf13/pflag"
 )
 
-// The command tree owns every flag definition. This adapter accepts options
-// between filenames while preserving single-dash names, boolean values and early
-// help. Commands and -- delimit the root options.
+// Split root options from command routing, then parse them with the same pflag
+// definitions and argument scanner used for subcommands and completion.
 func (a *commandApp) parseRoot(args []string) (rest []string, forced string, terminated bool, err error) {
-	f := flag.NewFlagSet("actionlint", flag.ContinueOnError)
-	f.SetOutput(io.Discard)
-	f.Usage = func() {}
-	a.root.Flags().VisitAll(func(v *pflag.Flag) {
-		// Leave help to flag's early-exit handling, including -help=false.
-		if v.Name == "help" {
-			return
-		}
-		value := rootFlagValue{Value: v.Value}
-		f.Var(value, v.Name, "")
-		if v.Shorthand != "" {
-			f.Var(value, v.Shorthand, "")
-		}
-	})
-	// --command selects the modern parser for everything after its value.
-	// Option values that happen to contain --command or -- remain data.
+	flags := a.root.Flags()
+	flags.SetOutput(io.Discard)
+	scanner := argumentScanner{args: args}
 	parsedArgs := make([]string, 0, len(args))
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == "--" {
-			terminated = true
-			rest = append(rest, args[i+1:]...)
+	hasInput := false
+	helpIndex := -1
+	for {
+		arg, ok := scanner.next(flags)
+		if !ok {
 			break
 		}
-		if arg == "-" || !strings.HasPrefix(arg, "-") {
-			if len(rest) == 0 && isCommandName(arg) && !commandFileExists(arg) {
-				rest = append(rest, args[i:]...)
+		if arg.terminated {
+			terminated = true
+			parsedArgs = append(parsedArgs, arg.tokens...)
+			parsedArgs = append(parsedArgs, args[scanner.index:]...)
+			break
+		}
+		if arg.positional {
+			name := arg.tokens[0]
+			if !hasInput && isCommandName(name) && !commandFileExists(name) {
+				rest = append([]string{name}, args[scanner.index:]...)
 				break
 			}
-			rest = append(rest, arg)
-			continue
+			hasInput = true
 		}
-		parsedArgs = append(parsedArgs, arg)
-		name, _, equals := strings.Cut(strings.TrimLeft(arg, "-"), "=")
-		v := f.Lookup(name)
-		if v == nil {
-			continue
-		}
-		if !equals {
-			option := a.root.Flags().Lookup(name)
-			if option != nil && option.Value.Type() != "bool" && option.NoOptDefVal != "" {
-				parsedArgs[len(parsedArgs)-1] += "=" + option.NoOptDefVal
-				continue
-			}
-			b, ok := v.Value.(interface{ IsBoolFlag() bool })
-			if !ok || !b.IsBoolFlag() {
-				if i+1 < len(args) {
-					i++
-					parsedArgs = append(parsedArgs, args[i])
-				}
+		for _, option := range arg.flags {
+			if option.flag.Name == "help" && helpIndex < 0 {
+				helpIndex = len(parsedArgs) + option.index
 			}
 		}
-		if name == "command" {
-			rest = append(rest, args[i+1:]...)
+		parsedArgs = append(parsedArgs, arg.tokens...)
+		if slices.ContainsFunc(arg.flags, func(option argumentFlag) bool { return option.flag.Name == "command" }) {
+			rest = slices.Clone(args[scanner.index:])
 			break
 		}
 	}
-	jsonOptions := scanJSONOptions(a.root.Flags(), parsedArgs, false)
+	jsonOptions := scanJSONOptions(flags, parsedArgs, true)
 	a.errorJSON = jsonOptions.JSON
-	err = f.Parse(parsedArgs)
-	f.Visit(func(v *flag.Flag) { a.set[v.Name] = true })
+	// Preserve root help's early exit, including the legacy -help=false spelling.
+	if helpIndex >= 0 {
+		parsedArgs = append(parsedArgs[:helpIndex], "--help")
+	}
+	err = flags.Parse(parsedArgs)
+	flags.Visit(func(flag *pflag.Flag) { a.set[flag.Name] = true })
 	if err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			a.inv.JSON = a.errorJSON
-			if jsonOptions.PrettySet {
-				a.set["json-pretty"] = true
-				a.inv.Render.PrettyJSON = jsonOptions.Pretty
-			}
-			a.help(a.root, nil)
-			return nil, "", false, nil
-		}
 		return nil, "", false, commandUsageError{err}
 	}
+	if helpIndex >= 0 {
+		a.inv.JSON = a.errorJSON
+		if jsonOptions.PrettySet {
+			a.set["json-pretty"] = true
+			a.inv.Render.PrettyJSON = jsonOptions.Pretty
+		}
+		a.help(a.root, nil)
+		return nil, "", false, nil
+	}
+	rest = append(slices.Clone(flags.Args()), rest...)
 	forced = a.opts.command
 	if a.set["command"] {
 		if forced == "" {
@@ -98,12 +79,6 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 	}
 	return rest, forced, terminated, nil
 }
-
-// flag and pflag share the value contract, but flag also needs this marker to
-// distinguish a bare boolean from an option that consumes the next argument.
-type rootFlagValue struct{ pflag.Value }
-
-func (v rootFlagValue) IsBoolFlag() bool { return v.Type() == "bool" }
 
 func commandFileExists(name string) bool {
 	if name == "pre-commit" {
