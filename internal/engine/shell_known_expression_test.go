@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
@@ -132,7 +134,7 @@ func TestKnownShellExternalLinters(t *testing.T) {
 			if tc.stepShell != "" {
 				source += "        shell: " + tc.stepShell + "\n"
 			}
-			session, err := NewAnalysisSession(AnalysisOptions{ShellcheckOptions: &ExternalCommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestKnownShellCommandHelper$", "--", "shellcheck"}}})
+			session, err := NewAnalysisSession(AnalysisOptions{ShellcheckOptions: &processconfig.Options{Executable: &exe, Arguments: []string{"-test.run=^TestKnownShellCommandHelper$", "--", "shellcheck"}}})
 			if err != nil {
 				t.Fatal(err)
 			}

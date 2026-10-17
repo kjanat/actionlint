@@ -7,6 +7,11 @@ import (
 	"strings"
 	"time"
 
+	analyzerhost "actionlint.kjanat.dev/internal/analyzerhost"
+	report "actionlint.kjanat.dev/internal/report"
+	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
+	workspace "actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/analyzer"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	repoconfig "actionlint.kjanat.dev/internal/config"
@@ -29,21 +34,21 @@ type analysisEngine struct {
 	workingDir     string
 	reader         *fsread.Reader
 	gitModes       *gitModes
-	ignorePats     IgnorePatterns
+	ignorePats     repoconfig.IgnorePatterns
 	onRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
-	rulePresets    RulePresets
+	rulePresets    repoconfig.Presets
 }
 
 func (l *analysisEngine) check(
 	path string,
 	content []byte,
-	project *Project,
-	cfg *Config,
-	proc *concurrentProcess,
+	project *workspace.Project,
+	cfg *repoconfig.Config,
+	proc *analyzerhost.ProcessPool,
 	localActions *actionlocal.Cache,
 	localReusableWorkflows *calls.Cache,
 	usedRules *[]RuleInfo,
-) (findings []*findingmodel.Finding, outline DocumentOutline, resultErr error) {
+) (findings []*findingmodel.Finding, outline report.DocumentOutline, resultErr error) {
 	proc = proc.Fork()
 	joined := false
 	defer func() {
@@ -62,7 +67,7 @@ func (l *analysisEngine) check(
 	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(l.workingDir, configPath)
 	}
-	cfg, configErr = configForDocument(cfg, configPath, root)
+	cfg, configErr = repoconfig.ForDocument(cfg, configPath, root)
 	if configErr != nil {
 		if isActionInput(configPath) {
 			outline, _ := ParseActionOutline(path, content)
@@ -105,7 +110,7 @@ func (l *analysisEngine) check(
 	outline = parsed.outline
 	var analysisErr error
 	metadataSources := map[string][]byte{}
-	compositeConfigs := map[string]*Config{}
+	compositeConfigs := map[string]*repoconfig.Config{}
 
 	if l.logLevel >= LogLevelVerbose {
 		elapsed := time.Since(start)
@@ -139,16 +144,16 @@ func (l *analysisEngine) check(
 		analysisErr = errors.Join(analysisErr, externalErr)
 	}
 
-	references := map[string]sourceReferences{}
+	references := map[string]workflowfacts.References{}
 	rootWorkflow := w
 	if metadata != nil && w != nil {
 		rootWorkflow = actionFactsWorkflow(metadata)
 	}
-	references[configPath] = workflowReferences(configPath, content, rootWorkflow, metadata != nil)
+	references[configPath] = workflowfacts.Index(configPath, content, rootWorkflow, metadata != nil)
 	for filename, source := range metadataSources {
 		parsed := parseDocument(filename, filename, source)
 		if parsed.metadata != nil && parsed.workflow != nil {
-			references[filename] = workflowReferences(filename, source, actionFactsWorkflow(parsed.metadata), true)
+			references[filename] = workflowfacts.Index(filename, source, actionFactsWorkflow(parsed.metadata), true)
 		}
 	}
 	for _, finding := range all {

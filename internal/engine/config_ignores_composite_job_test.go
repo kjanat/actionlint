@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -23,7 +26,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 		} {
 			t.Run(fmt.Sprintf("nested=%t/%s/%s", nested, tc.jobs, tc.ignores), func(t *testing.T) {
 				root, _ := executableFixture(t)
-				config, err := ParseConfig([]byte("tools: {shellcheck: true, ruff: false}\nignores: " + tc.ignores + "\n"))
+				config, err := repoconfig.Parse([]byte("tools: {shellcheck: true, ruff: false}\nignores: " + tc.ignores + "\n"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -40,7 +43,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 					fmt.Fprintf(&source, "  %c:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n", job, uses)
 				}
 				path := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", source.String())
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}}, ShellCheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}}, ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 				if err != nil {
 					t.Fatal(err)
 				}

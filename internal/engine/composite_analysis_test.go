@@ -8,6 +8,8 @@ import (
 	"slices"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 )
@@ -53,7 +55,7 @@ jobs:
 				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 					if actionRule {
 						for _, rule := range rules {
-							if _, ok := rule.(*RuleAction); ok {
+							if _, ok := rule.(*builtin.RuleAction); ok {
 								return []workflowvisit.Rule{rule}
 							}
 						}

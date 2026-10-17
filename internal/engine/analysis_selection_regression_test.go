@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/workspace"
@@ -41,7 +43,7 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 		}
 	}
 	// Direct API callers also consume config dependencies before filtering.
-	cfg, err := ReadConfigFile(config)
+	cfg, err := repoconfig.Load(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,13 +100,13 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 		if filtered {
 			config += "files: {includes: ['.github/workflows/**']}\n"
 		}
-		cfg, err := ParseConfig([]byte(config))
+		cfg, err := repoconfig.Parse([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}
 		writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
 		for _, roots := range [][2]string{{root, alias}, {alias, root}} {
-			project, err := NewProject(roots[0])
+			project, err := workspace.NewProject(roots[0])
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -201,7 +203,7 @@ overrides: [{includes: ['.github/workflows/**'], lint: {rules: {correctness: {if
 	workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", `on: push
 jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 `)
-	cfg, err := ParseConfig([]byte(config))
+	cfg, err := repoconfig.Parse([]byte(config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +303,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 
 			session, err := NewAnalysisSession(AnalysisOptions{
 				WorkingDir:        root,
-				ShellcheckOptions: &ExternalCommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestKnownShellCommandHelper$", "--", "shellcheck"}},
+				ShellcheckOptions: &processconfig.Options{Executable: &executable, Arguments: []string{"-test.run=^TestKnownShellCommandHelper$", "--", "shellcheck"}},
 			})
 			if err != nil {
 				t.Fatal(err)

@@ -4,25 +4,27 @@ import (
 	"fmt"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestCatalogRuleConfiguration(t *testing.T) {
-	for _, d := range builtinRuleDescriptors() {
+	for _, d := range repoconfig.Rules() {
 		t.Run(d.Name, func(t *testing.T) {
-			cfg, err := ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Group, d.Name))
+			cfg, err := repoconfig.Parse(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Group, d.Name))
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, p := range []RulePresets{{}, {Strict: true, Experimental: new(true)}} {
-				if got := diagnosticLevel(applyRulePresets(p, cfg), d.Name); got != "off" {
+			for _, p := range []repoconfig.Presets{{}, {Strict: true, Experimental: new(true)}} {
+				if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(p, cfg), d.Name); got != "off" {
 					t.Fatalf("explicit off overridden: %s", got)
 				}
 			}
 			if _, ok := cfg.Lint.Rules.ResolvedLevel(d.Name); ok {
 				t.Fatal("shared config mutated")
 			}
-			if d.isNursery() && d.Recommended {
+			if d.Maturity == "nursery" && d.Recommended {
 				t.Fatal("nursery rule marked recommended")
 			}
 		})
@@ -32,30 +34,30 @@ func TestCatalogRuleConfiguration(t *testing.T) {
 func TestRuleLevelPrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		rules  string
-		preset RulePresets
+		preset repoconfig.Presets
 		name   string
-		want   RuleLevel
+		want   repoconfig.Level
 	}{
-		{"preset: none", RulePresets{}, "expression", "off"},
-		{"preset: none, correctness: {expression: warn}", RulePresets{}, "expression", "warn"},
-		{"correctness: off", RulePresets{Strict: true}, "expression", "off"},
-		{"correctness: {preset: none, expression: info}", RulePresets{Strict: true}, "expression", "info"},
-		{"preset: all", RulePresets{}, "require-job-timeout", "on"},
-		{"preset: all", RulePresets{}, "case-insensitive-conditions", "on"},
-		{"suspicious: warn", RulePresets{}, "case-insensitive-conditions", "warn"},
-		{"suspicious: warn", RulePresets{Experimental: new(true)}, "case-insensitive-conditions", "warn"},
-		{"suspicious: off", RulePresets{Experimental: new(true)}, "case-insensitive-conditions", "off"},
-		{"suspicious: {case-insensitive-conditions: info}", RulePresets{}, "case-insensitive-conditions", "info"},
-		{"suspicious: {case-insensitive-conditions: info}", RulePresets{Experimental: new(false)}, "case-insensitive-conditions", "info"},
-		{"policy: {preset: all, require-job-timeout: off}", RulePresets{}, "require-job-timeout", "off"},
-		{"disable: [expression], correctness: error", RulePresets{Strict: true}, "expression", "off"},
+		{"preset: none", repoconfig.Presets{}, "expression", "off"},
+		{"preset: none, correctness: {expression: warn}", repoconfig.Presets{}, "expression", "warn"},
+		{"correctness: off", repoconfig.Presets{Strict: true}, "expression", "off"},
+		{"correctness: {preset: none, expression: info}", repoconfig.Presets{Strict: true}, "expression", "info"},
+		{"preset: all", repoconfig.Presets{}, "require-job-timeout", "on"},
+		{"preset: all", repoconfig.Presets{}, "case-insensitive-conditions", "on"},
+		{"suspicious: warn", repoconfig.Presets{}, "case-insensitive-conditions", "warn"},
+		{"suspicious: warn", repoconfig.Presets{Experimental: new(true)}, "case-insensitive-conditions", "warn"},
+		{"suspicious: off", repoconfig.Presets{Experimental: new(true)}, "case-insensitive-conditions", "off"},
+		{"suspicious: {case-insensitive-conditions: info}", repoconfig.Presets{}, "case-insensitive-conditions", "info"},
+		{"suspicious: {case-insensitive-conditions: info}", repoconfig.Presets{Experimental: new(false)}, "case-insensitive-conditions", "info"},
+		{"policy: {preset: all, require-job-timeout: off}", repoconfig.Presets{}, "require-job-timeout", "off"},
+		{"disable: [expression], correctness: error", repoconfig.Presets{Strict: true}, "expression", "off"},
 	} {
 		t.Run(tc.rules+"/"+tc.name+"/"+string(tc.want), func(t *testing.T) {
-			cfg, err := ParseConfig([]byte("lint: {rules: {" + tc.rules + "}}"))
+			cfg, err := repoconfig.Parse([]byte("lint: {rules: {" + tc.rules + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := diagnosticLevel(applyRulePresets(tc.preset, cfg), tc.name); got != tc.want {
+			if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(tc.preset, cfg), tc.name); got != tc.want {
 				t.Fatalf("got %s, want %s", got, tc.want)
 			}
 		})
@@ -75,7 +77,7 @@ func TestRuleSettingsInvalid(t *testing.T) {
 		"policy: {required-actions: {level: error, options: {actions: ['[']}}}",
 	} {
 		t.Run(rules, func(t *testing.T) {
-			if _, err := ParseConfig([]byte("lint: {rules: {" + rules + "}}")); err == nil {
+			if _, err := repoconfig.Parse([]byte("lint: {rules: {" + rules + "}}")); err == nil {
 				t.Fatal("invalid settings accepted")
 			}
 		})
@@ -96,13 +98,13 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 			}
 			for _, option := range options {
 				text := fmt.Sprintf("lint: {rules: {policy: {%s: {level: on, options: %s}}}}", rule, option)
-				if _, err := ParseConfig([]byte(text)); err == nil {
+				if _, err := repoconfig.Parse([]byte(text)); err == nil {
 					t.Fatalf("accepted invalid typed options: %s", text)
 				}
 			}
 			for _, level := range []string{"null", "false", "default", "off"} {
 				text := fmt.Sprintf("lint: {rules: {policy: {%s: %s}}}", rule, level)
-				if _, err := ParseConfig([]byte(text)); err != nil {
+				if _, err := repoconfig.Parse([]byte(text)); err != nil {
 					t.Fatalf("level %s rejected: %v", level, err)
 				}
 			}
@@ -112,11 +114,11 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 		"policy: {required-actions: null}",
 		"lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}",
 	} {
-		cfg, err := ParseConfig([]byte(text))
+		cfg, err := repoconfig.Parse([]byte(text))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := applyRulePresets(RulePresets{}, cfg).RequiredActions(); len(got) != 0 {
+		if got := repoconfig.ResolveRules(repoconfig.Presets{}, cfg).RequiredActions(); len(got) != 0 {
 			t.Fatalf("empty selection invented required actions: %v", got)
 		}
 	}
@@ -126,7 +128,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 	for _, tc := range []struct {
 		rules string
 		name  string
-		want  RuleLevel
+		want  repoconfig.Level
 	}{
 		{"correctness: false", "expression", "off"},
 		{"preset: none, correctness: true", "expression", "on"},
@@ -154,19 +156,19 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 		{"suspicious: {case-insensitive-conditions: default}", "case-insensitive-conditions", "off"},
 	} {
 		t.Run(tc.rules, func(t *testing.T) {
-			cfg, err := ParseConfig([]byte("lint: {rules: {" + tc.rules + "}}"))
+			cfg, err := repoconfig.Parse([]byte("lint: {rules: {" + tc.rules + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			for range 2 {
-				if got := diagnosticLevel(applyRulePresets(RulePresets{}, cfg), tc.name); got != tc.want {
+				if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(repoconfig.Presets{}, cfg), tc.name); got != tc.want {
 					t.Fatalf("got %s, want %s", got, tc.want)
 				}
 				encoded, err := yaml.Marshal(cfg)
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg, err = ParseConfig(encoded)
+				cfg, err = repoconfig.Parse(encoded)
 				if err != nil {
 					t.Fatalf("round trip: %s: %v", encoded, err)
 				}
@@ -177,7 +179,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 		"correctness: ''", "correctness: {level: ''}",
 		"correctness: {expression: ''}", "correctness: {expression: {level: ''}}",
 	} {
-		if _, err := ParseConfig([]byte("lint: {rules: {" + rules + "}}")); err == nil {
+		if _, err := repoconfig.Parse([]byte("lint: {rules: {" + rules + "}}")); err == nil {
 			t.Fatalf("invalid setting accepted: %s", rules)
 		}
 	}
@@ -185,22 +187,22 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 
 func TestRuleLevelAliasesWithStrict(t *testing.T) {
 	for _, level := range []string{"off", "false", "default", "null"} {
-		cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {case-insensitive-conditions: " + level + "}}}"))
+		cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {case-insensitive-conditions: " + level + "}}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := RuleLevel("on")
+		want := repoconfig.Level("on")
 		if level == "off" || level == "false" {
 			want = "off"
 		}
-		if got := diagnosticLevel(applyRulePresets(RulePresets{Strict: true}, cfg), "case-insensitive-conditions"); got != want {
+		if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(repoconfig.Presets{Strict: true}, cfg), "case-insensitive-conditions"); got != want {
 			t.Fatalf("%s: got %s, want %s", level, got, want)
 		}
 	}
 }
 
 func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
-	cfg, err := ParseConfig([]byte(`lint:
+	cfg, err := repoconfig.Parse([]byte(`lint:
   rules:
     correctness: warn
     policy:
@@ -213,21 +215,21 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		got := applyRulePresets(RulePresets{}, cfg)
+		got := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
 		if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 {
 			t.Fatal(got.Policy)
 		}
 		if got.RequiresPermissions().Scope() != "job" || len(got.RequiredActions()) != 1 || got.Policy.DisallowSuppressions.Report() != "violation" {
 			t.Fatal(got.Policy)
 		}
-		if diagnosticLevel(got, "expression") != "warn" {
+		if repoconfig.DiagnosticLevel(got, "expression") != "warn" {
 			t.Fatal(got.Lint)
 		}
 		encoded, err := yaml.Marshal(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg, err = ParseConfig(encoded)
+		cfg, err = repoconfig.Parse(encoded)
 		if err != nil {
 			t.Fatalf("%s\n%v", encoded, err)
 		}

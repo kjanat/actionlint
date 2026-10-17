@@ -14,8 +14,11 @@ import (
 	"testing"
 	"time"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/tools/ruff"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -112,7 +115,7 @@ func TestRuffPythonScripts(t *testing.T) {
 			if tc.shell != "" {
 				src += "        shell: " + tc.shell + "\n"
 			}
-			config, err := ParseConfig([]byte(tc.config))
+			config, err := repoconfig.Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -248,7 +251,7 @@ func TestRuffCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer cancel()
-	options := &ExternalCommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
+	options := &processconfig.Options{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
 	src := `on: push
 jobs:
   test:
@@ -277,13 +280,13 @@ func TestRuffMissingExecutable(t *testing.T) {
 		{"disabled rule", false, "lint: {rules: {external: {ruff: off}}}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			config, err := ParseConfig([]byte(tc.config))
+			config, err := repoconfig.Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
 			missing := filepath.Join(t.TempDir(), "missing-ruff")
 			_, err = Analyze(t.Context(), AnalysisRequest{
-				RuffOptions: &ExternalCommandOptions{Executable: &missing, Optional: tc.optional},
+				RuffOptions: &processconfig.Options{Executable: &missing, Optional: tc.optional},
 				WorkingDir:  t.TempDir(),
 				Sources: []SourceUnit{{Path: "ci.yml", Config: config, Content: []byte(`on: push
 jobs:
@@ -316,7 +319,7 @@ jobs:
 		t.Fatalf("%+v %v", result, err)
 	}
 	src = strings.Split(src, " # actionlint:")[0] + "\n"
-	cfg, err := ParseConfig([]byte("overrides: [{includes: [ci.yml], lint: {rules: {external: {ruff: warn}}}}]"))
+	cfg, err := repoconfig.Parse([]byte("overrides: [{includes: [ci.yml], lint: {rules: {external: {ruff: warn}}}}]"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +424,7 @@ func TestRuffProcessFailures(t *testing.T) {
 		{"invalid diagnostic", `[{"code":"F821"}]`, 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			options := &ExternalCommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
+			options := &processconfig.Options{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
 			src := `on: push
 jobs:
   test:
@@ -446,7 +449,7 @@ func TestRuffConfiguredFlagsAndEnvironment(t *testing.T) {
 	t.Setenv("RUFF_OUTPUT_FILE", filepath.Join(t.TempDir(), "must-not-write.json"))
 	for _, legacy := range []bool{false, true} {
 		t.Run(strconv.FormatBool(legacy), func(t *testing.T) {
-			options := &ExternalCommandOptions{
+			options := &processconfig.Options{
 				Executable:  &executable,
 				Arguments:   []string{"--preview", "--exclude", "vendor/**"},
 				Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_FLAGS=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "RUFF_OUTPUT_FILE=explicit-output.json"},
@@ -486,7 +489,7 @@ jobs:
         run: 'if:'
 `
 	result, err := Analyze(t.Context(), AnalysisRequest{
-		RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{"--preview"}},
+		RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--preview"}},
 		WorkingDir:  root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
 	})
 	if err != nil {
@@ -516,7 +519,7 @@ jobs:
         run: print(missing)
 `
 	for _, language := range []string{"ipynb", "pyi"} {
-		options := &ExternalCommandOptions{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
+		options := &processconfig.Options{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
 		result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 		if err != nil {
 			t.Fatal(err)

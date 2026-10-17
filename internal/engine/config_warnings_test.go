@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestConfigUnknownKeysWarnWithoutRejecting(t *testing.T) {
@@ -14,7 +16,7 @@ paths:
   '**':
     ignores: [something]
 `)
-	inspection, err := InspectConfig(ConfigSelection{Path: path}, true)
+	inspection, err := repoconfig.Inspect(repoconfig.Selection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,19 +42,19 @@ paths:
 	if strings.Count(log.String(), "warning:") != 3 {
 		t.Fatalf("warnings missing or repeated: %s", &log)
 	}
-	if _, err := ParseConfigOverlay("config", []byte("config-variable: [FOO]")); err == nil {
+	if _, err := repoconfig.ParseOverlay("config", []byte("config-variable: [FOO]")); err == nil {
 		t.Fatal("new inline input must reject unknown keys")
 	}
 }
 
 func TestConfigWarningSurvivesOverlay(t *testing.T) {
 	path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yaml", "config-variable: [FOO]\n")
-	overlay, err := ParseConfigOverlay("config", []byte("config-variables: [BAR]"))
+	overlay, err := repoconfig.ParseOverlay("config", []byte("config-variables: [BAR]"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var report ConfigReport
-	session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}, OnConfigLoaded: func(value ConfigReport) { report = value }})
+	var report repoconfig.Report
+	session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }})
 	if err != nil {
 		t.Fatal(err)
 	}

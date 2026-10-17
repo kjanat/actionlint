@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
@@ -67,7 +69,7 @@ runs:
     `+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 						steps = "- uses: ./local"
 					}
-					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 					counts := map[string]int{}
 					for _, diagnostic := range result.Diagnostics {
 						counts[diagnostic.Rule]++
@@ -145,7 +147,7 @@ runs:
 `)
 					steps = "- uses: ./outer"
 				}
-				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 				want := 1
 				if both {
 					want = 0
@@ -171,7 +173,7 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
 - shell: bash
   working-directory: .
   run: *script`
-	result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+	result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SC2086" {
 		t.Fatalf("alias origin crossed intervening declarations: %+v", result.Diagnostics)
 	}
@@ -210,7 +212,7 @@ runs:
 			if err := os.Symlink(filepath.Join(root, "local"), filepath.Join(root, "alias")); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			result := compositeAnalysis(t, root, "- uses: ./local\n- uses: ./alias", AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+			result := compositeAnalysis(t, root, "- uses: ./local\n- uses: ./alias", AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 			var sourced, policy int
 			for _, diagnostic := range result.Diagnostics {
 				switch diagnostic.Rule {
@@ -267,7 +269,7 @@ runs:
       run: . ./`+name+"\n")
 						steps = "- uses: ./local"
 					}
-					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 					if len(result.Diagnostics) != 1 {
 						t.Fatalf("sourced script comment changed diagnostics: %+v", result.Diagnostics)
 					}

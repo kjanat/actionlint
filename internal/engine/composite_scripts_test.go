@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/render"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
@@ -36,7 +38,7 @@ runs:
 					switch selection {
 					case "removed":
 						return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool {
-							_, action := rule.(*RuleAction)
+							_, action := rule.(*builtin.RuleAction)
 							return action
 						})
 					case "empty":

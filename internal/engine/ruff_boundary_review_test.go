@@ -6,11 +6,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
 )
 
 func TestRuffTemplateParenthesisFindings(t *testing.T) {
 	command := ruffForTest(t)
-	config, err := ParseConfig([]byte("tools: {ruff: {select: [F, UP034]}}"))
+	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, UP034]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +63,7 @@ jobs:
 
 func TestRuffStdinUsesCommandDirectory(t *testing.T) {
 	command := ruffForTest(t)
-	config, err := ParseConfig([]byte("tools: {ruff: {select: [F, INP001]}}"))
+	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, INP001]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +107,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, WorkingDir: working}, WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
+			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, WorkingDir: working}, WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -127,7 +130,7 @@ jobs:
 `
 	for _, flags := range [][]string{{"--no-cache"}, {"--isolated"}, {"--ignore-noqa"}, {"--no-fix"}, {"--target-version", "py314"}, {"--target-version=py314"}, {"--stdin-filename", "actionlint.py"}, {"--stdin-filename=actionlint.py"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+			_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 			if err == nil || !strings.Contains(err.Error(), "integration-owned option") {
 				t.Fatalf("integration flag not rejected: %v", err)
 			}
@@ -137,7 +140,7 @@ jobs:
 
 func TestRuffRepeatableSelectionFlags(t *testing.T) {
 	command := ruffForTest(t)
-	config, err := ParseConfig([]byte("tools: {ruff: {select: [F], ignore: [F401]}}"))
+	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F], ignore: [F401]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +154,7 @@ jobs:
 `
 	for _, flags := range [][]string{{"--select", "F"}, {"--ignore", "F401"}, {"--select=F", "--ignore=F401"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
+			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
 			if err != nil {
 				t.Fatal(err)
 			}

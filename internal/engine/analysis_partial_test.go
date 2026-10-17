@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 
 	"github.com/google/go-cmp/cmp"
@@ -65,8 +67,8 @@ jobs:
 			t.Fatal(err)
 		}
 	}
-	options := func(tool string) *ExternalCommandOptions {
-		return &ExternalCommandOptions{
+	options := func(tool string) *processconfig.Options {
+		return &processconfig.Options{
 			Executable: &executable,
 			Arguments:  []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", tool},
 		}

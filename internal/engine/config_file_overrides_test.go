@@ -10,7 +10,7 @@ import (
 )
 
 func TestFileOverrideRuleSettings(t *testing.T) {
-	cfg, err := ParseConfig([]byte(`lint:
+	cfg, err := repoconfig.Parse([]byte(`lint:
   rules:
     correctness: off
     policy:
@@ -33,30 +33,30 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		got = applyRulePresets(RulePresets{Strict: true}, got)
-		if diagnosticLevel(got, "if-cond") != "warn" || diagnosticLevel(got, "expression-reference") != "off" {
+		got = repoconfig.ResolveRules(repoconfig.Presets{Strict: true}, got)
+		if repoconfig.DiagnosticLevel(got, "if-cond") != "warn" || repoconfig.DiagnosticLevel(got, "expression-reference") != "off" {
 			t.Fatal(got.Lint.Rules)
 		}
 		minimum, _ := got.RequiresJobTimeout().MinMinutes()
 		maximum, _ := got.RequiresJobTimeout().MaxMinutes()
-		if minimum != 5 || maximum != 60 || diagnosticLevel(got, "require-job-timeout") != "warn" {
+		if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(got, "require-job-timeout") != "warn" {
 			t.Fatal(got.Policy)
 		}
 		reset, err := repoconfig.ForFile(cfg, ".github/workflows/reset.yml", "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diagnosticLevel(reset, "expression-reference") != "on" {
+		if repoconfig.DiagnosticLevel(reset, "expression-reference") != "on" {
 			t.Fatal(reset.Lint.Rules)
 		}
-		if diagnosticLevel(cfg, "if-cond") != "off" {
+		if repoconfig.DiagnosticLevel(cfg, "if-cond") != "off" {
 			t.Fatal("override mutated base")
 		}
 		encoded, err := yaml.Marshal(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg, err = ParseConfig(encoded)
+		cfg, err = repoconfig.Parse(encoded)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,12 +66,12 @@ overrides:
 func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 	for _, tc := range []struct {
 		name, yaml string
-		lint       *LintConfig
-		want       RuleLevel
+		lint       *repoconfig.LintConfig
+		want       repoconfig.Level
 	}{
-		{"enabled", "{enabled: true}", &LintConfig{Enabled: new(true)}, "off"},
-		{"empty", "{}", &LintConfig{}, "off"},
-		{"clear", "{rules: {disable: []}}", &LintConfig{Rules: LintRulesConfig{Disable: []string{}}}, "on"},
+		{"enabled", "{enabled: true}", &repoconfig.LintConfig{Enabled: new(true)}, "off"},
+		{"empty", "{}", &repoconfig.LintConfig{}, "off"},
+		{"clear", "{rules: {disable: []}}", &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Disable: []string{}}}, "on"},
 		{"null-disable", "{rules: {disable: null}}", nil, "on"},
 		{"null-rules", "{rules: null}", nil, "on"},
 		{"null-lint", "null", nil, "on"},
@@ -81,23 +81,23 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 				if programmatic && tc.lint == nil {
 					continue
 				}
-				cfg, err := ParseConfig([]byte("lint: {rules: {disable: [expression-reference]}}\noverrides: [{includes: ['**'], lint: " + tc.yaml + "}]"))
+				cfg, err := repoconfig.Parse([]byte("lint: {rules: {disable: [expression-reference]}}\noverrides: [{includes: ['**'], lint: " + tc.yaml + "}]"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				if programmatic {
-					cfg.Overrides = []ConfigOverride{{Includes: []string{"**"}, Lint: tc.lint}}
+					cfg.Overrides = []repoconfig.Override{{Includes: []string{"**"}, Lint: tc.lint}}
 				}
 				for range 2 {
 					effective, err := repoconfig.ForFile(cfg, "ci.yml", "")
-					if err != nil || diagnosticLevel(effective, "expression-reference") != tc.want {
+					if err != nil || repoconfig.DiagnosticLevel(effective, "expression-reference") != tc.want {
 						t.Fatalf("programmatic=%t: want %s, got %+v, %v", programmatic, tc.want, effective, err)
 					}
 					encoded, err := yaml.Marshal(cfg)
 					if err != nil {
 						t.Fatal(err)
 					}
-					cfg, err = ParseConfig(encoded)
+					cfg, err = repoconfig.Parse(encoded)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -110,7 +110,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 func TestRuleLevelAliasOverrides(t *testing.T) {
 	for _, tc := range []struct {
 		base, overlay string
-		want          RuleLevel
+		want          repoconfig.Level
 	}{
 		{"correctness: {expression-reference: error}", "correctness: {expression-reference: false}", "off"},
 		{"correctness: {expression-reference: false}", "correctness: {expression-reference: null}", "on"},
@@ -123,7 +123,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 		{"correctness: {expression-reference: off}", "correctness: default", "on"},
 		{"correctness: {level: off}", "correctness: {level: default}", "on"},
 	} {
-		cfg, err := ParseConfig([]byte("lint: {rules: {" + tc.base + "}}\noverrides: [{includes: ['**'], lint: {rules: {" + tc.overlay + "}}}]"))
+		cfg, err := repoconfig.Parse([]byte("lint: {rules: {" + tc.base + "}}\noverrides: [{includes: ['**'], lint: {rules: {" + tc.overlay + "}}}]"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,14 +132,14 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diagnosticLevel(got, "expression-reference") != tc.want {
-				t.Fatalf("%s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression-reference"), tc.want)
+			if repoconfig.DiagnosticLevel(got, "expression-reference") != tc.want {
+				t.Fatalf("%s -> %s: got %s, want %s", tc.base, tc.overlay, repoconfig.DiagnosticLevel(got, "expression-reference"), tc.want)
 			}
 			encoded, err := yaml.Marshal(cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err = ParseConfig(encoded)
+			cfg, err = repoconfig.Parse(encoded)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -147,12 +147,12 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 		root := t.TempDir()
 		writeShellcheckFixture(t, root, "base.yml", "lint: {rules: {"+tc.base+"}}")
 		path := writeShellcheckFixture(t, root, "child.yml", "extends: [base.yml]\nlint: {rules: {"+tc.overlay+"}}")
-		got, err := ReadConfigFile(path)
+		got, err := repoconfig.Load(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diagnosticLevel(got, "expression-reference") != tc.want {
-			t.Fatalf("extends %s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression-reference"), tc.want)
+		if repoconfig.DiagnosticLevel(got, "expression-reference") != tc.want {
+			t.Fatalf("extends %s -> %s: got %s, want %s", tc.base, tc.overlay, repoconfig.DiagnosticLevel(got, "expression-reference"), tc.want)
 		}
 	}
 }
@@ -173,7 +173,7 @@ overrides:
     lint: null
   - includes: ['.github/workflows/noop.yml']
 `
-	cfg, err := ParseConfig([]byte(source))
+	cfg, err := repoconfig.Parse([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ overrides:
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err = ParseConfig(encoded)
+			cfg, err = repoconfig.Parse(encoded)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -208,7 +208,7 @@ overrides:
 				if err != nil {
 					t.Fatal(err)
 				}
-				if (len(got.Lint.Rules.Disable) != 0) != tc.expression || (diagnosticLevel(got, "case-insensitive-conditions") != "off") != tc.cases || (diagnosticLevel(got, "string-conditions") != "off") != tc.strings {
+				if (len(got.Lint.Rules.Disable) != 0) != tc.expression || (repoconfig.DiagnosticLevel(got, "case-insensitive-conditions") != "off") != tc.cases || (repoconfig.DiagnosticLevel(got, "string-conditions") != "off") != tc.strings {
 					t.Fatalf("%+v", got.Lint.Rules)
 				}
 			})
@@ -222,14 +222,14 @@ func TestInvalidFileOverrides(t *testing.T) {
 		"{includes: ['../*']}", "{includes: ['a/../b']}", "{includes: ['[']}",
 		"{includes: [1]}", "{includes: ['**'], typo: true}", "{includes: ['**'], lint: {typo: true}}",
 	} {
-		if _, err := ParseConfig([]byte("overrides: [" + value + "]")); err == nil {
+		if _, err := repoconfig.Parse([]byte("overrides: [" + value + "]")); err == nil {
 			t.Errorf("accepted %s", value)
 		}
 	}
 }
 
 func TestFileOverrideAnalysisIsolation(t *testing.T) {
-	cfg, err := ParseConfig([]byte(`overrides:
+	cfg, err := repoconfig.Parse([]byte(`overrides:
   - includes: ['.github/workflows/suspicious.yml']
     lint: {rules: {suspicious: on}}
   - includes: ['.github/workflows/suppressed.yml']
@@ -272,7 +272,7 @@ jobs:
 			t.Fatal(result.Diagnostics)
 		}
 	}
-	if !reflect.DeepEqual(cfg.Lint.Rules, LintRulesConfig{}) {
+	if !reflect.DeepEqual(cfg.Lint.Rules, repoconfig.LintRulesConfig{}) {
 		t.Fatal("shared configuration mutated")
 	}
 }

@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
 )
 
 func TestShellcheckScriptSemantics(t *testing.T) {
@@ -56,7 +58,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 			t.Setenv("SHELLCHECK_OPTS", tc.env)
 			options := AnalysisOptions{
 				WorkingDir: t.TempDir(), StdinFileName: "workflow.yml", Shellcheck: command,
-				ShellcheckOptions: &ExternalCommandOptions{Arguments: tc.args},
+				ShellcheckOptions: &processconfig.Options{Arguments: tc.args},
 			}
 			if tc.config != "" {
 				options.ConfigFile = writeShellcheckFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")

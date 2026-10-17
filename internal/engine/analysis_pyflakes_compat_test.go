@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/processconfig"
+
 	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
@@ -23,14 +25,14 @@ jobs:
 `
 	for _, tc := range []struct {
 		name, command string
-		options       *actionlint.ExternalCommandOptions
+		options       *processconfig.Options
 	}{
 		{name: "omitted"},
 		{name: "legacy command", command: "missing-pyflakes --invalid '"},
-		{name: "missing executable", options: &actionlint.ExternalCommandOptions{Executable: &missing}},
-		{name: "invalid arguments", command: missing, options: &actionlint.ExternalCommandOptions{Arguments: []string{"\x00"}}},
-		{name: "invalid environment", command: missing, options: &actionlint.ExternalCommandOptions{Environment: []string{"invalid"}}},
-		{name: "missing working directory", command: missing, options: &actionlint.ExternalCommandOptions{WorkingDir: filepath.Join(root, "missing-directory")}},
+		{name: "missing executable", options: &processconfig.Options{Executable: &missing}},
+		{name: "invalid arguments", command: missing, options: &processconfig.Options{Arguments: []string{"\x00"}}},
+		{name: "invalid environment", command: missing, options: &processconfig.Options{Environment: []string{"invalid"}}},
+		{name: "missing working directory", command: missing, options: &processconfig.Options{WorkingDir: filepath.Join(root, "missing-directory")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assertResult := func(result *actionlint.AnalysisResult, err error) {

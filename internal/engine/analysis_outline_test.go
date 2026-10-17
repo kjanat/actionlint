@@ -11,6 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	report "actionlint.kjanat.dev/internal/report"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/workspace"
@@ -64,7 +67,7 @@ jobs:
 	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
 		t.Fatalf("reusable call lost: %+v", deploy)
 	}
-	if !reflect.DeepEqual(deploy.Reference, SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+	if !reflect.DeepEqual(deploy.Reference, report.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
 		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference)
 	}
 	if partial.Path != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {
@@ -111,19 +114,19 @@ jobs:
 		t.Fatal(errs)
 	}
 	outline := workflowOutline("ci.yml", workflow, false)
-	got := map[string]UsesReference{}
+	got := map[string]report.UsesReference{}
 	for _, job := range outline.Jobs {
 		got[job.ID] = job.Reference
 		for _, step := range job.Steps {
 			got[step.Uses] = step.Reference
 		}
 	}
-	want := map[string]UsesReference{
-		"local":                   SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
-		"self":                    SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+	want := map[string]report.UsesReference{
+		"local":                   report.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"self":                    report.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
 		"build":                   nil,
-		"./.github/actions/setup": WorkspaceReference{Path: ".github/actions/setup"},
-		"$/.github/actions/setup": SelfRepositoryReference{Path: ".github/actions/setup"},
+		"./.github/actions/setup": report.WorkspaceReference{Path: ".github/actions/setup"},
+		"$/.github/actions/setup": report.SelfRepositoryReference{Path: ".github/actions/setup"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("references by scope:\ngot  %#v\nwant %#v", got, want)
@@ -171,11 +174,11 @@ jobs:
 	if len(analysis.Documents) != 3 {
 		t.Fatalf("wanted workflow and two read manifests: %+v", analysis.Documents)
 	}
-	action, ok := analysis.Documents[1].(ActionOutline)
+	action, ok := analysis.Documents[1].(report.ActionOutline)
 	if !ok || action.Path != "action.yml" || action.ParseStatus != "complete" {
 		t.Fatalf("wrong action document: %+v", analysis.Documents[1])
 	}
-	broken, ok := analysis.Documents[2].(ActionOutline)
+	broken, ok := analysis.Documents[2].(report.ActionOutline)
 	if !ok || broken.ParseStatus != "failed" {
 		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
 	}
@@ -229,7 +232,7 @@ jobs:
 			if len(analysis.Documents) != 2 {
 				t.Fatalf("missing action inventory: %+v", analysis.Documents)
 			}
-			action, ok := analysis.Documents[1].(ActionOutline)
+			action, ok := analysis.Documents[1].(report.ActionOutline)
 			if !ok || action.ParseStatus != "complete" {
 				t.Fatalf("analysis validation changed decoding status: %+v", analysis.Documents[1])
 			}
@@ -249,9 +252,9 @@ jobs:
 	}
 }
 
-func requireWorkflowOutline(t *testing.T, document DocumentOutline) WorkflowOutline {
+func requireWorkflowOutline(t *testing.T, document report.DocumentOutline) report.WorkflowOutline {
 	t.Helper()
-	workflow, ok := document.(WorkflowOutline)
+	workflow, ok := document.(report.WorkflowOutline)
 	if !ok {
 		t.Fatalf("expected workflow, got %T", document)
 	}
@@ -375,14 +378,14 @@ jobs:
     steps:
       - uses: ./local
 `
-	bogus := func(include string) *Config {
-		lint := &LintConfig{Rules: LintRulesConfig{Correctness: RuleGroupConfig{Rules: map[string]RuleSetting{"inline-suppression": {Level: "bogus"}}}}}
-		return &Config{Overrides: []ConfigOverride{{Includes: []string{include}, Lint: lint}}}
+	bogus := func(include string) *repoconfig.Config {
+		lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.Group{Rules: map[string]repoconfig.Setting{"inline-suppression": {Level: "bogus"}}}}}
+		return &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{include}, Lint: lint}}}
 	}
 	action := filepath.FromSlash("local/action.yml") + ":complete"
 	for _, tc := range []struct {
 		name    string
-		config  *Config
+		config  *repoconfig.Config
 		ruff    string
 		sources map[string]string
 		wantErr string
@@ -410,9 +413,9 @@ jobs:
 			got := make([]string, 0, len(analysis.Documents))
 			for _, document := range analysis.Documents {
 				switch document := document.(type) {
-				case WorkflowOutline:
+				case report.WorkflowOutline:
 					got = append(got, document.Path+":"+document.ParseStatus)
-				case ActionOutline:
+				case report.ActionOutline:
 					got = append(got, document.Path+":"+document.ParseStatus)
 				default:
 					t.Fatalf("unexpected document %T", document)

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -98,7 +100,7 @@ func TestGenerateConfigActionOnlyRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ParseConfig(content); err != nil {
+	if _, err := repoconfig.Parse(content); err != nil {
 		t.Fatalf("generated config is invalid: %v", err)
 	}
 	if _, err := GenerateProjectConfig(root, false); err == nil {
@@ -180,7 +182,7 @@ func TestRelativeProjectExplicitActionSnapshot(t *testing.T) {
 				if disk {
 					writeShellcheckFixture(t, root, "inner/action.yml", "name: stale\nruns: {using: node24}\n")
 				}
-				project, err := NewProject(projectRoot)
+				project, err := workspace.NewProject(projectRoot)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -214,7 +216,7 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 		} {
 			t.Run(fmt.Sprintf("%s/reverse=%t", tc.name, reverse), func(t *testing.T) {
 				root := t.TempDir()
-				cfg, err := ParseConfig([]byte(tc.config))
+				cfg, err := repoconfig.Parse([]byte(tc.config))
 				if err != nil {
 					t.Fatal(err)
 				}

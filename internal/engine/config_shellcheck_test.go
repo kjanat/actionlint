@@ -37,12 +37,12 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yml", tc.base)
-			overlay, err := ParseConfigOverlay("tools", []byte(tc.overlay))
+			overlay, err := repoconfig.ParseOverlay("tools", []byte(tc.overlay))
 			if err != nil {
 				t.Fatal(err)
 			}
-			var report ConfigReport
-			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}, OnConfigLoaded: func(value ConfigReport) { report = value }})
+			var report repoconfig.Report
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -150,12 +150,12 @@ func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 `), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	overlay, err := ParseConfigOverlay("tools", []byte("shellcheck: {enabled: null, config: {disable: []}}"))
+	overlay, err := repoconfig.ParseOverlay("tools", []byte("shellcheck: {enabled: null, config: {disable: []}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var report ConfigReport
-	session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}, OnConfigLoaded: func(value ConfigReport) { report = value }})
+	var report repoconfig.Report
+	session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }})
 	if err != nil {
 		t.Fatal(err)
 	}

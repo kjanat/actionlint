@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
 )
 
 func TestMatrixExpressionFilterTypes(t *testing.T) {
@@ -46,11 +50,11 @@ jobs:
 					if len(parseErrors) != 0 {
 						t.Fatal(parseErrors)
 					}
-					cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: " + enabled + "}}}"))
+					cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: " + enabled + "}}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					rule := NewRuleMatrix()
+					rule := builtin.NewRuleMatrix()
 					rule.SetConfig(cfg)
 					if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 						t.Fatal(err)
@@ -140,11 +144,11 @@ jobs:
 				if len(parseErrors) != 0 {
 					t.Fatal(parseErrors)
 				}
-				cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
+				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := NewRuleMatrix()
+				rule := builtin.NewRuleMatrix()
 				rule.SetConfig(cfg)
 				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
@@ -212,11 +216,11 @@ jobs:
 				if len(parseErrors) != 0 {
 					t.Fatal(parseErrors)
 				}
-				cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
+				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := NewRuleMatrix()
+				rule := builtin.NewRuleMatrix()
 				rule.SetConfig(cfg)
 				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
@@ -295,11 +299,11 @@ jobs:
 				}
 				job := workflow.Jobs["test"]
 				originalMatrix := job.Strategy.Matrix
-				cfg, err := ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
+				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := NewRuleMatrix()
+				rule := builtin.NewRuleMatrix()
 				rule.SetConfig(cfg)
 				if err := rule.VisitJobPre(job); err != nil {
 					t.Fatal(err)

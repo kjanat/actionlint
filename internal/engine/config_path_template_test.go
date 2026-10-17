@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	workspace "actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestShellcheckWorkflowPathValidation(t *testing.T) {
@@ -68,7 +70,7 @@ jobs:
 	} {
 		t.Run(selection, func(t *testing.T) {
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: '"+selection+"'}}\n")
-			project, err := NewProject(".")
+			project, err := workspace.NewProject(".")
 			if err != nil {
 				t.Fatal(err)
 			}

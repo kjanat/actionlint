@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	report "actionlint.kjanat.dev/internal/report"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
@@ -70,7 +73,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			outline, ok := result.Documents[0].(ActionOutline)
+			outline, ok := result.Documents[0].(report.ActionOutline)
 			if !ok || outline.ParseStatus == "failed" {
 				t.Fatalf("expected decoded action outline, got %#v", result.Documents)
 			}
@@ -100,10 +103,10 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 	if len(result.Documents) != 3 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "syntax-check" {
 		t.Fatalf("unexpected mixed result: %+v", result)
 	}
-	if _, ok := result.Documents[0].(WorkflowOutline); !ok {
+	if _, ok := result.Documents[0].(report.WorkflowOutline); !ok {
 		t.Fatalf("workflow routed as %T", result.Documents[0])
 	}
-	if outline, ok := result.Documents[2].(ActionOutline); !ok || outline.ParseStatus != "failed" {
+	if outline, ok := result.Documents[2].(report.ActionOutline); !ok || outline.ParseStatus != "failed" {
 		t.Fatalf("broken action outline: %#v", result.Documents[2])
 	}
 }
@@ -121,7 +124,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("cwd=%s path=%s: workflow failed: result=%+v err=%v", cwd, path, result, err)
 			}
-			if _, ok := result.Documents[0].(WorkflowOutline); !ok {
+			if _, ok := result.Documents[0].(report.WorkflowOutline); !ok {
 				t.Fatalf("cwd=%s path=%s: workflow routed to metadata parser: %#v", cwd, path, result.Documents)
 			}
 		}
@@ -205,7 +208,7 @@ func TestStandaloneActionSuppression(t *testing.T) {
 		{"override", bad, "overrides: [{includes: [action.yml], lint: {rules: {correctness: {action: off}}}}]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			config, err := ParseConfig([]byte(tc.config))
+			config, err := repoconfig.Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -255,7 +258,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 	for _, level := range []string{"warn", "info", "off"} {
 		t.Run(level, func(t *testing.T) {
 			root := t.TempDir()
-			cfg, err := ParseConfig([]byte("overrides: [{includes: [inner/action.yml], lint: {rules: {external: {shellcheck: " + level + "}}}}]"))
+			cfg, err := repoconfig.Parse([]byte("overrides: [{includes: [inner/action.yml], lint: {rules: {external: {shellcheck: " + level + "}}}}]"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
@@ -79,7 +81,7 @@ jobs:
 			{"off", "off", false, false},
 		} {
 			t.Run(field.name+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
-				cfg, err := ParseConfig([]byte("lint: {rules: {correctness: {expression-reference: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
+				cfg, err := repoconfig.Parse([]byte("lint: {rules: {correctness: {expression-reference: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}

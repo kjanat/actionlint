@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -48,7 +50,7 @@ jobs:
 			if len(findings) != 0 {
 				t.Fatal(findings)
 			}
-			rule := NewRuleMatrix()
+			rule := builtin.NewRuleMatrix()
 			if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 				t.Fatal(err)
 			}

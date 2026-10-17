@@ -9,7 +9,7 @@ import (
 )
 
 func TestFileOverrideToolSettings(t *testing.T) {
-	config, err := ParseConfig([]byte(`tools:
+	config, err := repoconfig.Parse([]byte(`tools:
   shellcheck: {enabled: true, config: {disable: [SC2086]}}
 overrides:
   - includes: [action.yml]
@@ -52,7 +52,7 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		config, err = ParseConfig(encoded)
+		config, err = repoconfig.Parse(encoded)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -65,11 +65,11 @@ func TestFileOverrideToolConfigOrigins(t *testing.T) {
 		"overrides: [{includes: [ci.yml], tools: {shellcheck: {config: .shellcheckrc}}}]",
 	} {
 		t.Run(content, func(t *testing.T) {
-			overlay, err := ParseConfigOverlay("config", []byte(content))
+			overlay, err := repoconfig.ParseOverlay("config", []byte(content))
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: t.TempDir(), ConfigOverlays: []ConfigOverlay{overlay}})
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: t.TempDir(), ConfigOverlays: []repoconfig.Overlay{overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,7 +92,7 @@ func TestFileOverrideInheritedToolConfigPath(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "base/base.yml", "overrides: [{includes: [ci.yml], tools: {shellcheck: {config: .shellcheckrc}}}]")
 	path := writeShellcheckFixture(t, root, "project/actionlint.yml", "extends: [../base/base.yml]")
-	config, err := ReadConfigFile(path)
+	config, err := repoconfig.Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestFileOverrideToolRequirements(t *testing.T) {
 
 func TestFileOverrideRejectsInvalidTools(t *testing.T) {
 	for _, settings := range []string{"{typo: true}", "{shellcheck: {enabled: wrong}}", "{shellcheck: {config: {typo: true}}}"} {
-		if _, err := ParseConfig([]byte("overrides: [{includes: [ci.yml], tools: " + settings + "}]")); err == nil {
+		if _, err := repoconfig.Parse([]byte("overrides: [{includes: [ci.yml], tools: " + settings + "}]")); err == nil {
 			t.Errorf("accepted invalid override tool settings: %s", settings)
 		}
 	}

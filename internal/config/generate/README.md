@@ -44,7 +44,7 @@ uses the full upstream definition. The Go tests exercise the real language
 service offline through the `yaml-language-server` dev dependency; run `npm ci`
 first.
 
-Run `internal/ruffconfig/generate` with the pinned Ruff executable before
+Run `internal/config/tools/ruff/generate` with the pinned Ruff executable before
 regenerating the root schema when upgrading Ruff; see that generator's README.
 
 ## Updating ShellCheck support

@@ -15,13 +15,14 @@ inputs and returned results, while the host must own completion even when traver
 ## Decision
 
 Keep one module and separate the public packages by responsibility. Root contains the convenience entry point and
-generation directives. The remaining semantic coordinator and visitor adapters live in `internal/engine`.
+generation directives. `internal/engine` coordinates traversal and shared analysis state; `internal/builtin`
+constructs the concrete visitor adapters.
 `internal/application` owns an invocation; `internal/workspace` prepares its inputs;
 `internal/analyzerhost` schedules its execution and drains outstanding callbacks.
 `internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
 parsing, types, constant evaluation and semantic checks. Both implementations can run without the analysis host.
-`internal/config` owns the configuration document, its validation and the built-in rule catalog; the engine
-attaches execution behaviour to catalog entries by name. `internal/render` presents results as text, Go templates,
+`internal/config` owns the configuration document, its validation and the built-in rule catalog;
+`internal/builtin` attaches execution behaviour to catalog entries by name. `internal/render` presents results as text, Go templates,
 JSON, SARIF and GitHub annotations from diagnostics, source text and rule metadata.
 `internal/analyzerhost` owns generic execution and resource scopes. `internal/report` owns document models and their codecs; the public `document` package exposes those models without
 importing the engine. Existing focused internal packages retain ownership
@@ -42,7 +43,8 @@ flowchart TD
     Engine --> Config
     Engine --> Workflow[internal/workflow]
     Engine --> Facts[internal/workflow/facts]
-    Engine --> Checks[internal/workflow/checks]
+    Engine --> Builtin[internal/builtin]
+    Builtin --> Checks[internal/workflow/checks]
     Checks --> Semantics[internal/checks]
     Engine --> Expressions[internal/expression]
     Workflow --> Expressions
@@ -95,8 +97,9 @@ shapes, and must not parse expression-looking text returned as data a second tim
 - Configuration and syntax alias independent implementations. Importing either public package no longer imports
   discovery, rule execution or native tools. The parser retains
   decoded source maps alongside syntax because accurate diagnostics require both.
-- Composite expansion, local dependency resolution and remaining visitor adapters still live in the engine.
-  Input discovery, configuration selection, process execution and rendering have separate owners.
+- Composite expansion and traversal remain in the engine. Built-in composition owns visitor adapters;
+  `internal/action/local` owns local action resolution. Input discovery, configuration selection, process execution
+  and rendering have separate owners.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
   rule has been rewritten as a fact consumer.
@@ -382,3 +385,29 @@ select dependencies and attach results to the active traversal scope.
 accumulator independently of orchestration. Engine and rule adapters import this
 contract directly. It has no configuration, registration, process or lifecycle
 capabilities; those remain explicit capabilities at the host boundary.
+
+`internal/builtin` owns built-in adapters and their registration. Constructors take
+resolved configuration, dependency lookup objects and an index-snapshot callback;
+they cannot import engine, workspace sessions, process execution or presentation.
+Configuration metadata remains owned by `config`, independently of executable
+registrations. `workflow/visit` supplies the common visitor/result contract.
+
+Engine composes visitor rules and script fact analyzers from these registrations,
+then schedules traversal and joins resources. Deprecated-command checking uses the
+same generic script-fact adapter as any registered fact analyzer; engine does not
+import its implementation. Optional metadata and composite invocation capabilities
+are explicit interfaces on the composition boundary, rather than private engine
+methods that force implementations back into the host package.
+
+## Bundled tools
+
+`internal/tools/ruff` and `internal/tools/shellcheck` each own their registration, transport construction,
+snippet preparation and diagnostic conversion. Both consume the same prepared `tools.Batch` contract.
+Ruff consumes it directly; ShellCheck additionally prepares per-scope source access and fix maps.
+`internal/tools/adapters` only projects the bundled options into the two registrations.
+`internal/tools/selection` owns the shared precedence between an explicit command and repository-selected
+process or WebAssembly settings. It loads modules through a callback and launches no processes.
+
+Configuration remains a leaf under `internal/config/tools`: ShellCheck settings live there, and Ruff's
+native option validation, generated selectors and generator live under `internal/config/tools/ruff`.
+This direction lets configuration decoding and schema generation run without either execution adapter.

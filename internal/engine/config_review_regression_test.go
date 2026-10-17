@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
@@ -32,7 +34,7 @@ overrides:
 				if ignore {
 					text += "paths: {'**': {ignore: ['dependency finding']}}\n"
 				}
-				cfg, err := ParseConfig([]byte(text))
+				cfg, err := repoconfig.Parse([]byte(text))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -72,7 +74,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 			writeShellcheckFixture(t, root, "left.yml", "extends: [base.yml]\n")
 			writeShellcheckFixture(t, root, "right.yml", "extends: [base.yml]\n")
 			leaf := writeShellcheckFixture(t, root, "leaf.yml", "extends: [left.yml, right.yml]\n"+replacement+"\n")
-			inspection, err := InspectConfig(ConfigSelection{Path: leaf}, true)
+			inspection, err := repoconfig.Inspect(repoconfig.Selection{Path: leaf}, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -87,12 +89,12 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 				t.Fatalf("leaf warning attribution: %+v", inspection.Warnings)
 			}
 			for _, text := range []string{"self-hosted-runner: null", "config-variables: [SAFE]"} {
-				overlay, err := ParseConfigOverlay("config", []byte(text))
+				overlay, err := repoconfig.ParseOverlay("config", []byte(text))
 				if err != nil {
 					t.Fatal(err)
 				}
-				var report ConfigReport
-				session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: []ConfigOverlay{overlay}, OnConfigLoaded: func(r ConfigReport) { report = r }})
+				var report repoconfig.Report
+				session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -103,7 +105,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 					t.Fatalf("overlay changed source warnings: %+v, want %+v", report.Inspection.Warnings, inspection.Warnings)
 				}
 				var log bytes.Buffer
-				session, err = NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: []ConfigOverlay{overlay}, LogWriter: &log})
+				session, err = NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, LogWriter: &log})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -131,16 +133,16 @@ config-secrets: [SECRET]
 `)
 	for _, overlayText := range []string{"", "policy: {require-commit-hash: false}", "config-variables: [OVERLAY]"} {
 		t.Run(overlayText, func(t *testing.T) {
-			var overlays []ConfigOverlay
+			var overlays []repoconfig.Overlay
 			if overlayText != "" {
-				overlay, err := ParseConfigOverlay("config", []byte(overlayText))
+				overlay, err := repoconfig.ParseOverlay("config", []byte(overlayText))
 				if err != nil {
 					t.Fatal(err)
 				}
 				overlays = append(overlays, overlay)
 			}
-			var report ConfigReport
-			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r ConfigReport) { report = r }})
+			var report repoconfig.Report
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -187,7 +189,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 		for _, dependency := range []string{"local/action.yml", "scripts/lib.sh"} {
 			t.Run(tc.name+"/"+dependency, func(t *testing.T) {
 				root := t.TempDir()
-				cfg, err := ParseConfig([]byte("overrides: [{includes: ['./.github/workflows/**'], lint: {" + tc.lint + "}}]"))
+				cfg, err := repoconfig.Parse([]byte("overrides: [{includes: ['./.github/workflows/**'], lint: {" + tc.lint + "}}]"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -233,7 +235,7 @@ runs:
       with:
         nonexistent-input: value
 `)
-			cfg, err := ParseConfig([]byte("overrides: [{includes: ['.github/workflows/**'], lint: {" + tc.lint + "}}]"))
+			cfg, err := repoconfig.Parse([]byte("overrides: [{includes: ['.github/workflows/**'], lint: {" + tc.lint + "}}]"))
 			if err != nil {
 				t.Fatal(err)
 			}

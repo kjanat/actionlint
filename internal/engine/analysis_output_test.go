@@ -30,7 +30,7 @@ func TestAnalysisSourceRanges(t *testing.T) {
 }
 
 func TestEffectiveConfigFieldCoverage(t *testing.T) {
-	resolved, err := repoconfig.EffectiveValues(&Config{})
+	resolved, err := repoconfig.EffectiveValues(&repoconfig.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestEffectiveConfigFieldCoverage(t *testing.T) {
 			}
 		}
 	}
-	check(reflect.TypeFor[Config](), resolved)
+	check(reflect.TypeFor[repoconfig.Config](), resolved)
 }
 
 func TestGitHubAnnotationEscaping(t *testing.T) {

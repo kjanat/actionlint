@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 
+	report "actionlint.kjanat.dev/internal/report"
+
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
@@ -12,19 +14,19 @@ import (
 // ParseActionOutline parses a standalone action manifest without reading files
 // or running analyzers. Decoder errors accompany any recovered declarations.
 // Complete means decoding succeeded. Validity and executability need separate checks.
-func ParseActionOutline(path string, content []byte) (ActionOutline, error) {
+func ParseActionOutline(path string, content []byte) (report.ActionOutline, error) {
 	metadata, err := actionmeta.Parse(path, content)
 	return parsedActionOutline(path, metadata, err)
 }
 
 // actionOutline projects metadata already decoded by the local-action cache.
-func actionOutline(path string, metadata *actionmeta.Metadata, parseErr error) ActionOutline {
+func actionOutline(path string, metadata *actionmeta.Metadata, parseErr error) report.ActionOutline {
 	outline, _ := parsedActionOutline(path, metadata, parseErr)
 	return outline
 }
 
-func parsedActionOutline(path string, metadata *actionmeta.Metadata, parseErr error) (ActionOutline, error) {
-	outline := ActionOutline{Path: path, ParseStatus: "failed", Inputs: []ActionInputOutline{}, Outputs: []ActionOutputOutline{}, Runs: UnknownRuns{}}
+func parsedActionOutline(path string, metadata *actionmeta.Metadata, parseErr error) (report.ActionOutline, error) {
+	outline := report.ActionOutline{Path: path, ParseStatus: "failed", Inputs: []report.ActionInputOutline{}, Outputs: []report.ActionOutputOutline{}, Runs: report.UnknownRuns{}}
 	if metadata == nil || metadata.Root == nil {
 		if parseErr == nil {
 			parseErr = errors.New("action metadata is empty")
@@ -62,8 +64,8 @@ func actionOutlineString(node *yaml.Node) string {
 	return ""
 }
 
-func actionInputOutlines(node *yaml.Node) []ActionInputOutline {
-	inputs := []ActionInputOutline{}
+func actionInputOutlines(node *yaml.Node) []report.ActionInputOutline {
+	inputs := []report.ActionInputOutline{}
 	node = actionmeta.Node(node)
 	if node == nil || node.Kind != yaml.MappingNode {
 		return inputs
@@ -71,7 +73,7 @@ func actionInputOutlines(node *yaml.Node) []ActionInputOutline {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key := node.Content[i]
 		fields := actionOutlineFields(node.Content[i+1])
-		input := ActionInputOutline{
+		input := report.ActionInputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
 			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		}
@@ -86,8 +88,8 @@ func actionInputOutlines(node *yaml.Node) []ActionInputOutline {
 	return inputs
 }
 
-func actionOutputOutlines(node *yaml.Node) []ActionOutputOutline {
-	outputs := []ActionOutputOutline{}
+func actionOutputOutlines(node *yaml.Node) []report.ActionOutputOutline {
+	outputs := []report.ActionOutputOutline{}
 	node = actionmeta.Node(node)
 	if node == nil || node.Kind != yaml.MappingNode {
 		return outputs
@@ -95,7 +97,7 @@ func actionOutputOutlines(node *yaml.Node) []ActionOutputOutline {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key := node.Content[i]
 		fields := actionOutlineFields(node.Content[i+1])
-		outputs = append(outputs, ActionOutputOutline{
+		outputs = append(outputs, report.ActionOutputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
 			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		})
@@ -103,12 +105,12 @@ func actionOutputOutlines(node *yaml.Node) []ActionOutputOutline {
 	return outputs
 }
 
-func actionRunsOutline(node *yaml.Node) ActionRuns {
+func actionRunsOutline(node *yaml.Node) report.ActionRuns {
 	fields := actionOutlineFields(node)
 	using := actionOutlineString(fields["using"])
 	switch strings.ToLower(using) {
 	case "composite":
-		return CompositeRuns{Steps: actionStepOutlines(fields["steps"])}
+		return report.CompositeRuns{Steps: actionStepOutlines(fields["steps"])}
 	case "docker":
 		args := []string{}
 		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == yaml.SequenceNode {
@@ -118,33 +120,33 @@ func actionRunsOutline(node *yaml.Node) ActionRuns {
 				}
 			}
 		}
-		return DockerRuns{
+		return report.DockerRuns{
 			Image: actionOutlineString(fields["image"]), Entrypoint: actionOutlineString(fields["entrypoint"]),
 			PreEntrypoint: actionOutlineString(fields["pre-entrypoint"]), PostEntrypoint: actionOutlineString(fields["post-entrypoint"]), Args: args,
 		}
 	case "":
 		if plugin := actionOutlineString(fields["plugin"]); plugin != "" {
-			return PluginRuns{Plugin: plugin}
+			return report.PluginRuns{Plugin: plugin}
 		}
 	}
 	if _, known := actionmeta.Runtimes[strings.ToLower(using)]; known && strings.HasPrefix(strings.ToLower(using), "node") {
-		return JavaScriptRuns{
+		return report.JavaScriptRuns{
 			Using: using, Main: actionOutlineString(fields["main"]), Pre: actionOutlineString(fields["pre"]), Post: actionOutlineString(fields["post"]),
 			PreIf: actionOutlineString(fields["pre-if"]), PostIf: actionOutlineString(fields["post-if"]),
 		}
 	}
-	return UnknownRuns{Using: using}
+	return report.UnknownRuns{Using: using}
 }
 
-func actionStepOutlines(node *yaml.Node) []StepOutline {
-	steps := []StepOutline{}
+func actionStepOutlines(node *yaml.Node) []report.StepOutline {
+	steps := []report.StepOutline{}
 	node = actionmeta.Node(node)
 	if node == nil || node.Kind != yaml.SequenceNode {
 		return steps
 	}
 	for _, node := range node.Content {
 		fields := actionOutlineFields(node)
-		step := StepOutline{
+		step := report.StepOutline{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
 			Start: outlinePosition(workflowlang.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
 		}
@@ -156,7 +158,7 @@ func actionStepOutlines(node *yaml.Node) []StepOutline {
 		case hasUses && !hasRun:
 			step.Kind = "uses"
 		}
-		step.Reference = ParseUsesReference(step.Uses)
+		step.Reference = report.ParseUsesReference(step.Uses)
 		steps = append(steps, step)
 	}
 	return steps

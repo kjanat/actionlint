@@ -3,6 +3,10 @@ package engine
 import (
 	"context"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -21,7 +25,7 @@ type compositeAnalyzer struct {
 	scriptPaths                       execution.Paths
 	scriptJobShell, scriptRunnerShell execution.ShellValue
 	scriptWorkflowDir, scriptJobDir   execution.Directory
-	scriptConfig                      *Config
+	scriptConfig                      *repoconfig.Config
 	collectScripts                    bool
 	workflowScriptShell               *string
 	jobScriptShell                    *string
@@ -31,7 +35,7 @@ type compositeAnalyzer struct {
 	rules                             []compositeScriptRules
 	workflowEnv                       *workflowlang.Env
 	workflowShell                     execution.ShellValue
-	configForFile                     func(string) (*Config, error)
+	configForFile                     func(string) (*repoconfig.Config, error)
 	jobID                             string
 }
 
@@ -82,7 +86,7 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	analysis.collectScript(step, analysis.scriptConfig, "", nil, analysis.jobScriptShell, analysis.workflowScriptShell)
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
-		if participant, ok := pass.(invocationParticipant); ok && participant.deferActionInvocation() {
+		if participant, ok := pass.(builtin.InvocationParticipant); ok && participant.DeferActionInvocation() {
 			if _, action := step.Exec.(*workflowlang.ExecAction); action {
 				continue // Preserve checkout state while entering a local composite.
 			}
@@ -96,7 +100,7 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	}
 	var scripts []workflowvisit.Rule
 	for _, pass := range analysis.passes {
-		if participant, ok := pass.(compositeParticipant); ok {
+		if participant, ok := pass.(builtin.CompositeParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}

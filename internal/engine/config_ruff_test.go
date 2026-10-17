@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -17,7 +19,7 @@ func TestRuffConfiguration(t *testing.T) {
 		"tools: {ruff: {select: []}}",
 		"tools: {ruff: {ignore: []}}",
 	} {
-		cfg, err := ParseConfig([]byte(text))
+		cfg, err := repoconfig.Parse([]byte(text))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -25,7 +27,7 @@ func TestRuffConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		again, err := ParseConfig(data)
+		again, err := repoconfig.Parse(data)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -47,7 +49,7 @@ func TestRuffConfiguration(t *testing.T) {
 		"tools: {ruff: {select: ['F,--fix']}}",
 		"tools: {ruff: {ignore: ['']}}",
 	} {
-		if _, err := ParseConfig([]byte(text)); err == nil {
+		if _, err := repoconfig.Parse([]byte(text)); err == nil {
 			t.Fatalf("accepted %s", text)
 		}
 	}
@@ -59,12 +61,12 @@ func TestRuffTargetVersionConfiguration(t *testing.T) {
 			valid := version == "py37" || version == "py38" || version == "py39" || version == "py310" || version == "py311" || version == "py312" || version == "py313" || version == "py314" || version == "py315"
 			setting := "ruff: {target-version: '" + version + "'}"
 			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
-				_, err := ParseConfig([]byte(text))
+				_, err := repoconfig.Parse([]byte(text))
 				if (err == nil) != valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
 					t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, valid)
 				}
 			}
-			if _, err := ParseConfigOverlay("tools", []byte(setting)); (err == nil) != valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
+			if _, err := repoconfig.ParseOverlay("tools", []byte(setting)); (err == nil) != valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
 				t.Fatalf("ParseConfigOverlay(%q): %v; valid=%v", setting, err, valid)
 			}
 		})
@@ -89,12 +91,12 @@ func TestRuffSelectorConfiguration(t *testing.T) {
 			for _, key := range []string{"select", "ignore"} {
 				setting := "ruff: {" + key + ": ['" + tc.selector + "']}"
 				for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
-					_, err := ParseConfig([]byte(text))
+					_, err := repoconfig.Parse([]byte(text))
 					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "invalid rule selector")) {
 						t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 					}
 				}
-				if _, err := ParseConfigOverlay("tools", []byte(setting)); (err == nil) != tc.valid {
+				if _, err := repoconfig.ParseOverlay("tools", []byte(setting)); (err == nil) != tc.valid {
 					t.Fatalf("ParseConfigOverlay(%q): %v; valid=%v", setting, err, tc.valid)
 				}
 			}
@@ -114,23 +116,23 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		t.Run(tc.value, func(t *testing.T) {
 			setting := "ruff: {target-version: " + tc.value + "}"
 			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
-				_, err := ParseConfig([]byte(text))
+				_, err := repoconfig.Parse([]byte(text))
 				if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
 					t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 				}
 			}
-			if _, err := ParseConfigOverlay("tools", []byte(setting)); (err == nil) != tc.valid {
+			if _, err := repoconfig.ParseOverlay("tools", []byte(setting)); (err == nil) != tc.valid {
 				t.Fatalf("ParseConfigOverlay(%q): %v; valid=%v", setting, err, tc.valid)
 			}
 		})
 	}
 	for _, overlayText := range []string{"ruff: {}", "ruff: {target-version: null}"} {
 		path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yml", "tools: {ruff: {target-version: py312}}")
-		overlay, err := ParseConfigOverlay("tools", []byte(overlayText))
+		overlay, err := repoconfig.ParseOverlay("tools", []byte(overlayText))
 		if err != nil {
 			t.Fatal(err)
 		}
-		session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}})
+		session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -163,11 +165,11 @@ func TestRuffShorthandOverlay(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yml", tc.base)
-			overlay, err := ParseConfigOverlay("tools", []byte(tc.overlay))
+			overlay, err := repoconfig.ParseOverlay("tools", []byte(tc.overlay))
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}})
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -418,7 +420,7 @@ runs:
 			}
 			session, err := NewAnalysisSession(AnalysisOptions{
 				WorkingDir:  root,
-				RuffOptions: &ExternalCommandOptions{Executable: &command, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]"}},
+				RuffOptions: &processconfig.Options{Executable: &command, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]"}},
 			})
 			if err != nil {
 				t.Fatal(err)

@@ -3,6 +3,8 @@ package engine
 import (
 	"io"
 
+	buildinfo "actionlint.kjanat.dev/internal/buildinfo"
+
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
@@ -15,7 +17,7 @@ type AnalysisRenderer struct {
 
 // NewAnalysisRenderer validates a built-in format or custom Go template before rendering.
 func NewAnalysisRenderer(format render.Format, template string, oneline bool) (*AnalysisRenderer, error) {
-	renderer, err := render.New(format, template, oneline, Version, templateRules())
+	renderer, err := render.New(format, template, oneline, buildinfo.Version, templateRules())
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +50,6 @@ func (r *AnalysisResult) legacyErrors() []*findingmodel.Finding {
 	return errors
 }
 
-func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
+func CompileIgnorePatterns(patterns []string) (repoconfig.IgnorePatterns, error) {
 	return repoconfig.CompileIgnorePatterns(patterns)
 }

@@ -4,12 +4,14 @@ import (
 	"cmp"
 	"slices"
 
+	report "actionlint.kjanat.dev/internal/report"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func workflowOutline(path string, workflow *workflowlang.Workflow, parseErrors bool) WorkflowOutline {
-	outline := WorkflowOutline{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []JobOutline{}}
+func workflowOutline(path string, workflow *workflowlang.Workflow, parseErrors bool) report.WorkflowOutline {
+	outline := report.WorkflowOutline{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []report.JobOutline{}}
 	if workflow == nil {
 		return outline
 	}
@@ -22,7 +24,7 @@ func workflowOutline(path string, workflow *workflowlang.Workflow, parseErrors b
 		outline.Triggers = append(outline.Triggers, event.EventName())
 	}
 	for _, job := range workflow.Jobs {
-		record := JobOutline{
+		record := report.JobOutline{
 			ID: outlineString(job.ID), Name: outlineString(job.Name), Start: outlinePosition(job.Pos),
 			Needs: []string{}, Steps: stepOutlines(job.Steps),
 		}
@@ -34,10 +36,10 @@ func workflowOutline(path string, workflow *workflowlang.Workflow, parseErrors b
 		} else {
 			record.Uses = outlineString(job.DeclaredUses)
 		}
-		record.Reference = ParseWorkflowCallReference(record.Uses)
+		record.Reference = report.ParseWorkflowCallReference(record.Uses)
 		outline.Jobs = append(outline.Jobs, record)
 	}
-	slices.SortFunc(outline.Jobs, func(a, b JobOutline) int {
+	slices.SortFunc(outline.Jobs, func(a, b report.JobOutline) int {
 		switch {
 		case a.Start != nil && b.Start != nil:
 			if order := cmp.Compare(a.Start.Line, b.Start.Line); order != 0 {
@@ -56,10 +58,10 @@ func workflowOutline(path string, workflow *workflowlang.Workflow, parseErrors b
 	return outline
 }
 
-func stepOutlines(steps []*workflowlang.Step) []StepOutline {
-	records := make([]StepOutline, 0, len(steps))
+func stepOutlines(steps []*workflowlang.Step) []report.StepOutline {
+	records := make([]report.StepOutline, 0, len(steps))
 	for _, step := range steps {
-		record := StepOutline{
+		record := report.StepOutline{
 			ID: outlineString(step.ID), Name: outlineString(step.Name),
 			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.DeclaredUses),
 		}
@@ -75,7 +77,7 @@ func stepOutlines(steps []*workflowlang.Step) []StepOutline {
 		case *workflowlang.ExecParallel:
 			record.Kind, record.Steps = "parallel", stepOutlines(exec.Steps)
 		}
-		record.Reference = ParseUsesReference(record.Uses)
+		record.Reference = report.ParseUsesReference(record.Uses)
 		records = append(records, record)
 	}
 	return records

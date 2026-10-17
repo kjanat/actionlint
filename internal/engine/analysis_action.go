@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
@@ -28,10 +30,10 @@ func visitStandaloneAction(meta *actionmeta.Metadata, rules []workflowvisit.Rule
 		if err := rule.VisitWorkflowPre(workflow); err != nil {
 			return err
 		}
-		if participant, ok := rule.(metadataParticipant); ok {
-			participant.checkStandaloneMetadata(meta)
+		if participant, ok := rule.(builtin.MetadataParticipant); ok {
+			participant.CheckStandaloneMetadata(meta)
 		}
-		if participant, ok := rule.(compositeParticipant); ok {
+		if participant, ok := rule.(builtin.CompositeParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}

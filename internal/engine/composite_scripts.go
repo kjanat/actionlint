@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
@@ -84,11 +86,11 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 			// Source metadata does not establish the generated action's runtime directory.
 			actionPath = ""
 		}
-		participant, ok := parent.(compositeParticipant)
+		participant, ok := parent.(builtin.CompositeParticipant)
 		if !ok {
 			continue
 		}
-		child, err := participant.forComposite(compositeInvocation{call, actionPath, analysis.actions})
+		child, err := participant.ForComposite(builtin.Invocation{Call: call, ActionPath: actionPath, Actions: analysis.actions})
 		if err != nil {
 			return err
 		}
@@ -108,8 +110,8 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		analysis.collectScript(step, scriptConfig, meta.Path(), meta.Source, nil, nil)
 		if _, action := step.Exec.(*workflowlang.ExecAction); action {
 			for _, pass := range analysis.passes {
-				if parent, enabled := pass.(metadataParticipant); enabled {
-					validation := parent.forMetadata(analysis.actions)
+				if parent, enabled := pass.(builtin.MetadataParticipant); enabled {
+					validation := parent.ForMetadata(analysis.actions)
 					if err := visitWithIgnoreOrigin(validation, findingmodel.StepOrigin(analysis.jobID, step), hasConfiguredIgnores(scriptConfig), func() error { return validation.VisitStep(step) }); err != nil {
 						return err
 					}
@@ -130,19 +132,19 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		}
 	}
 	for i, parent := range participants {
-		if joiner, ok := parent.(compositeJoiner); ok {
-			joiner.joinCompositeResult(call, children[i])
+		if joiner, ok := parent.(builtin.CompositeJoiner); ok {
+			joiner.JoinCompositeResult(call, children[i])
 		}
 	}
 	return nil
 }
 
 func compositeCheckoutPaths(rule workflowvisit.Pass, actions *actionlocal.Resolver) {
-	participant, ok := rule.(checkoutParticipant)
+	participant, ok := rule.(builtin.CheckoutParticipant)
 	if !ok {
 		return
 	}
-	compositeCheckoutScope(participant.checkoutPaths(), actions)
+	compositeCheckoutScope(participant.CheckoutPaths(), actions)
 }
 
 func compositeCheckoutScope(paths *execution.Paths, actions *actionlocal.Resolver) {

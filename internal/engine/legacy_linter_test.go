@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	buildinfo "actionlint.kjanat.dev/internal/buildinfo"
+
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
@@ -52,10 +54,10 @@ type LinterOptions struct {
 	// the case, actionlint will try to read config from .github/actionlint.yaml.
 	ConfigFile string
 	// ConfigOverlays apply in order over each project's selected config file.
-	ConfigOverlays []ConfigOverlay
+	ConfigOverlays []repoconfig.Overlay
 	// OnConfigLoaded reports actual config sources once per project, outside the cache lock.
 	// Callbacks may reenter the session; concurrent callers must synchronize callback state.
-	OnConfigLoaded func(ConfigReport)
+	OnConfigLoaded func(repoconfig.Report)
 	// Format is a custom template to format error messages. It must follow Go Template format and
 	// contain at least one {{ }} placeholder. https://pkg.go.dev/text/template
 	Format string
@@ -145,7 +147,7 @@ func (l *Linter) generateDefaultConfig(dir string) (string, error) {
 	return GenerateProjectConfig(dir, false)
 }
 
-func generateProjectConfig(projects *Projects, dir string) (string, error) {
+func generateProjectConfig(projects *workspace.Projects, dir string) (string, error) {
 	project, err := projects.At(dir)
 	if err != nil {
 		return "", err
@@ -154,7 +156,7 @@ func generateProjectConfig(projects *Projects, dir string) (string, error) {
 	if project != nil {
 		root = project.RootDir()
 	}
-	return repoconfig.Generate(root, true, Version())
+	return repoconfig.Generate(root, true, buildinfo.Version())
 }
 
 // LintRepository finds workflows and actions in the nearest project and prints their findings.
@@ -164,17 +166,17 @@ func (l *Linter) LintRepository(dir string) ([]*findingmodel.Finding, error) {
 }
 
 // LintDir checks YAML workflows recursively in dir, in sorted path order.
-func (l *Linter) LintDir(dir string, project *Project) ([]*findingmodel.Finding, error) {
+func (l *Linter) LintDir(dir string, project *workspace.Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.directory(dir, project))
 }
 
 // LintFiles checks paths in the supplied order. A nil project enables per-file discovery.
-func (l *Linter) LintFiles(paths []string, project *Project) ([]*findingmodel.Finding, error) {
+func (l *Linter) LintFiles(paths []string, project *workspace.Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.Files(paths, project))
 }
 
 // LintFile reads and checks one workflow. A nil project enables discovery from path.
-func (l *Linter) LintFile(path string, project *Project) ([]*findingmodel.Finding, error) {
+func (l *Linter) LintFile(path string, project *workspace.Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.readFiles([]string{path}, project))
 }
 
@@ -184,7 +186,7 @@ func (l *Linter) LintStdin(stdin io.Reader) ([]*findingmodel.Finding, error) {
 }
 
 // Lint checks content without reading path. An existing path can identify its project.
-func (l *Linter) Lint(path string, content []byte, project *Project) ([]*findingmodel.Finding, error) {
+func (l *Linter) Lint(path string, content []byte, project *workspace.Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.content(path, content, project, false))
 }
 

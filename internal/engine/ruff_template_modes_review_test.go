@@ -5,12 +5,15 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
 	command := ruffForTest(t)
-	config, err := ParseConfig([]byte("tools: {ruff: {select: [F, B018]}}"))
+	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, B018]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +75,7 @@ jobs:
 
 func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
 	command := ruffForTest(t)
-	config, err := ParseConfig([]byte("tools: {ruff: {target-version: py314}}"))
+	config, err := repoconfig.Parse([]byte("tools: {ruff: {target-version: py314}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +128,7 @@ jobs:
         run: print(missing)
 `
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
-		_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{flag}}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+		_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
 		if err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {
 			t.Fatalf("mode not rejected: flag=%s error=%v", flag, err)
 		}

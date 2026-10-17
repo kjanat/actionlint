@@ -3,12 +3,14 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestExprDeclaredWorkflowInputSuggestion(t *testing.T) {
 	for _, expression := range []string{"github_repository", "inputs.github_repository"} {
 		t.Run(expression, func(t *testing.T) {
-			config, err := ParseConfig([]byte("tools: {shellcheck: false, ruff: false}"))
+			config, err := repoconfig.Parse([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	report "actionlint.kjanat.dev/internal/report"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
@@ -52,7 +54,7 @@ runs:
 	if len(outline.Outputs) != 1 || outline.Outputs[0].ID != "Value" || outline.Outputs[0].Value == nil || *outline.Outputs[0].Value != "${{ steps.build.outputs.value }}" {
 		t.Fatalf("output declaration lost: %+v", outline.Outputs)
 	}
-	runs, ok := outline.Runs.(CompositeRuns)
+	runs, ok := outline.Runs.(report.CompositeRuns)
 	if !ok || len(runs.Steps) != 2 || runs.Steps[0].Kind != "run" || runs.Steps[0].ID != "build" || runs.Steps[1].Reference == nil {
 		t.Fatalf("composite declarations lost: %+v", outline.Runs)
 	}
@@ -63,7 +65,7 @@ runs:
 	if strings.Contains(string(encoded), "hidden-script-body") {
 		t.Fatal("outline leaked script body")
 	}
-	var decoded ActionOutline
+	var decoded report.ActionOutline
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatal(err)
 	}
@@ -75,23 +77,23 @@ runs:
 func TestParseActionOutlineRuntimes(t *testing.T) {
 	for _, tc := range []struct {
 		name, runs string
-		want       ActionRuns
+		want       report.ActionRuns
 	}{
 		{"javascript", `using: node24
   main: main.mjs
   pre: pre.mjs
   pre-if: always()
   post: post.mjs
-  post-if: success()`, JavaScriptRuns{Using: "node24", Main: "main.mjs", Pre: "pre.mjs", PreIf: "always()", Post: "post.mjs", PostIf: "success()"}},
+  post-if: success()`, report.JavaScriptRuns{Using: "node24", Main: "main.mjs", Pre: "pre.mjs", PreIf: "always()", Post: "post.mjs", PostIf: "success()"}},
 		{"docker", `using: docker
   image: docker://alpine:3
   entrypoint: /entry.sh
   pre-entrypoint: /pre.sh
   post-entrypoint: /post.sh
-  args: [test, 42]`, DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
-		{"plugin", "plugin: GitHub.Runner.Plugins.Repository.CheckoutAction", PluginRuns{Plugin: "GitHub.Runner.Plugins.Repository.CheckoutAction"}},
+  args: [test, 42]`, report.DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
+		{"plugin", "plugin: GitHub.Runner.Plugins.Repository.CheckoutAction", report.PluginRuns{Plugin: "GitHub.Runner.Plugins.Repository.CheckoutAction"}},
 		{"empty composite", `using: composite
-  steps: []`, CompositeRuns{Steps: []StepOutline{}}},
+  steps: []`, report.CompositeRuns{Steps: []report.StepOutline{}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outline, err := ParseActionOutline("action.yaml", []byte(`name: Test
@@ -108,7 +110,7 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var decoded ActionOutline
+			var decoded report.ActionOutline
 			if err := json.Unmarshal(encoded, &decoded); err != nil {
 				t.Fatal(err)
 			}
@@ -139,7 +141,7 @@ runs: {using: node24, main: main.mjs}
 				t.Fatalf("partial name lost: %+v", outline)
 			}
 			if tc.name == "invalid inputs" {
-				if runs, ok := outline.Runs.(JavaScriptRuns); !ok || runs.Main != "main.mjs" {
+				if runs, ok := outline.Runs.(report.JavaScriptRuns); !ok || runs.Main != "main.mjs" {
 					t.Fatalf("early decode error lost later runs declaration: %+v", outline.Runs)
 				}
 			}
@@ -173,12 +175,12 @@ func TestActionOutlineParseStatusDoesNotValidate(t *testing.T) {
 				t.Fatalf("decoded declarations treated as validation failure: status=%q error=%v", outline.ParseStatus, err)
 			}
 			if tc.name == "unknown runtime" {
-				if runtime, ok := outline.Runs.(UnknownRuns); !ok || runtime.Using != "future-runtime" {
+				if runtime, ok := outline.Runs.(report.UnknownRuns); !ok || runtime.Using != "future-runtime" {
 					t.Fatalf("unknown classification lost declaration: %+v", outline.Runs)
 				}
 			}
 			if tc.name == "conflicting step" {
-				runtime, ok := outline.Runs.(CompositeRuns)
+				runtime, ok := outline.Runs.(report.CompositeRuns)
 				if !ok || len(runtime.Steps) != 1 || runtime.Steps[0].Kind != "unknown" || runtime.Steps[0].Uses != "actions/checkout@v7" || runtime.Steps[0].Reference == nil {
 					t.Fatalf("conflicting step lost declarations or invented execution: %+v", outline.Runs)
 				}

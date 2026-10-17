@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 	"actionlint.kjanat.dev/internal/workspace"
@@ -363,7 +365,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		t.Fatal(err)
 	}
 	if config != "" {
-		l.DefaultConfig, err = ParseConfig([]byte(config))
+		l.DefaultConfig, err = repoconfig.Parse([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
 )
 
 func TestRuffLauncherArguments(t *testing.T) {
@@ -62,14 +65,14 @@ jobs:
 				if launcher == "env" {
 					args = []string{"RUFF_OUTPUT_FILE=" + output, "ruff"}
 				}
-				options := &ExternalCommandOptions{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
+				options := &processconfig.Options{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 				input := source
-				var config *Config
+				var config *repoconfig.Config
 				switch disabled {
 				case "shell":
 					input = strings.Replace(source, "shell: python", "shell: bash", 1)
 				case "config":
-					config, err = ParseConfig([]byte("tools: {ruff: false}"))
+					config, err = repoconfig.Parse([]byte("tools: {ruff: false}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -89,7 +92,7 @@ jobs:
 			for _, flags := range [][]string{{"--preview"}, {"other.py"}, {"--select", "F", "other.py"}, {"--silent"}, {"--extension=py:ipynb"}, {"--output-file", "output.json"}, {"--isolated"}} {
 				t.Run(launcher+strconv.FormatBool(literal)+strings.Join(flags, " "), func(t *testing.T) {
 					calls := filepath.Join(t.TempDir(), "calls")
-					options := &ExternalCommandOptions{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
+					options := &processconfig.Options{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 					command := strconv.Quote(tool)
 					if literal {
 						options.Executable = &tool

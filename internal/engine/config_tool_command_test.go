@@ -38,7 +38,7 @@ overrides:
 	if err := os.WriteFile(child, []byte("extends: [./parent/base.yaml]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := ReadConfigFile(child)
+	cfg, err := repoconfig.Load(child)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	}}
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
-			cfg := &Config{}
+			cfg := &repoconfig.Config{}
 			request := AnalysisRequest{WorkingDir: t.TempDir()}
 			shell := "python"
 			if name == "ruff" {

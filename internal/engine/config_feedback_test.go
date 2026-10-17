@@ -4,10 +4,12 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestCommitHashExceptionsPreserveOtherFindings(t *testing.T) {
-	cfg, err := ParseConfig([]byte(`lint:
+	cfg, err := repoconfig.Parse([]byte(`lint:
   rules:
     policy:
       require-commit-hash:
@@ -51,7 +53,7 @@ jobs:
 }
 
 func TestNativeRuffConfigRoundTrip(t *testing.T) {
-	cfg, err := ParseConfig([]byte(`tools:
+	cfg, err := repoconfig.Parse([]byte(`tools:
   ruff:
     config:
       target-version: py312

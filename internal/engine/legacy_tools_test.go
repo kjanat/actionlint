@@ -1,6 +1,9 @@
 package engine
 
-import "actionlint.kjanat.dev/internal/workspace"
+import (
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/workspace"
+)
 
 type ExternalToolRequirements struct {
 	Shellcheck bool `json:"shellcheck"`
@@ -9,7 +12,7 @@ type ExternalToolRequirements struct {
 }
 
 func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirements, error) {
-	tools, err := a.Session.RequiredTools(a.ctx, paths, workspace.ToolOptions{Presets: a.request.RulePresets, Required: func(cfg, project *Config, inside bool) ([]string, error) {
+	tools, err := a.Session.RequiredTools(a.ctx, paths, workspace.ToolOptions{Presets: a.request.RulePresets, Required: func(cfg, project *repoconfig.Config, inside bool) ([]string, error) {
 		var names []string
 		for _, r := range a.request.prepared().Tools {
 			if r.NeedsProcess == nil {

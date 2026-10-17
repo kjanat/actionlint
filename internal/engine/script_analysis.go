@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/execution"
@@ -14,7 +16,7 @@ import (
 type scriptUnit struct {
 	run       *workflowlang.ExecRun
 	shell     *string
-	config    *Config
+	config    *repoconfig.Config
 	path      string
 	content   []byte
 	origin    *findingmodel.IgnoreOrigin
@@ -26,7 +28,7 @@ type scriptUnit struct {
 // whether it contains scripts, so configuration failures are still observable.
 type scriptScope struct {
 	paths      execution.Paths
-	config     *Config
+	config     *repoconfig.Config
 	actionPath string
 	composite  bool
 	document   string
@@ -63,7 +65,7 @@ func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
 	return &defaults.Run.Shell.Value
 }
 
-func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *Config, path string, content []byte, jobShell, workflowShell *string) {
+func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, path string, content []byte, jobShell, workflowShell *string) {
 	if !analysis.collectScripts {
 		return
 	}

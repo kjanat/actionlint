@@ -4,6 +4,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	actionmeta "actionlint.kjanat.dev/internal/action"
+	report "actionlint.kjanat.dev/internal/report"
 	"actionlint.kjanat.dev/internal/sourceid"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/execution"
@@ -73,14 +74,14 @@ func scriptFact(unit scriptUnit, document, documentAbs string, includeExecution 
 	return script
 }
 
-func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workflowlang.Workflow, outline DocumentOutline, units []scriptUnit, facts factAvailability, sources map[string][]byte) analyzer.Input {
-	refs := workflowReferences(pathAbs, content, workflow, false)
+func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workflowlang.Workflow, outline report.DocumentOutline, units []scriptUnit, facts factAvailability, sources map[string][]byte) analyzer.Input {
+	refs := workflowfacts.Index(pathAbs, content, workflow, false)
 	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
 	switch outline := outline.(type) {
-	case WorkflowOutline:
+	case report.WorkflowOutline:
 		input.ParseStatus = outline.ParseStatus
-	case ActionOutline:
-		refs = workflowReferences(pathAbs, content, workflow, true)
+	case report.ActionOutline:
+		refs = workflowfacts.Index(pathAbs, content, workflow, true)
 		input.Kind = "action"
 		input.ParseStatus = outline.ParseStatus
 	}
@@ -91,7 +92,7 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 		}
 		return sourceid.Document(p)
 	}
-	byPath := map[string]sourceReferences{refs.Document.Document: refs}
+	byPath := map[string]workflowfacts.References{refs.Document.Document: refs}
 	// Caller actions may contain only uses steps, so they have no script unit.
 	// Index every loaded metadata source before linking invocation identities.
 	for filename, content := range sources {
@@ -104,7 +105,7 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 		if parsed.metadata != nil && workflow != nil {
 			workflow = actionFactsWorkflow(parsed.metadata)
 		}
-		byPath[key] = workflowReferences(filename, content, workflow, parsed.metadata != nil)
+		byPath[key] = workflowfacts.Index(filename, content, workflow, parsed.metadata != nil)
 	}
 	for _, unit := range units {
 		if len(unit.content) == 0 {
@@ -119,7 +120,7 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 		if parsed.metadata != nil && w != nil {
 			w = actionFactsWorkflow(parsed.metadata)
 		}
-		byPath[key] = workflowReferences(unit.path, unit.content, w, parsed.metadata != nil)
+		byPath[key] = workflowfacts.Index(unit.path, unit.content, w, parsed.metadata != nil)
 	}
 	if workflow == nil {
 		return input

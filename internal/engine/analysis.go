@@ -12,6 +12,10 @@ import (
 	"slices"
 	"sync"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	"actionlint.kjanat.dev/internal/builtin"
+
 	"actionlint.kjanat.dev/analyzer"
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	actionmeta "actionlint.kjanat.dev/internal/action"
@@ -41,11 +45,11 @@ type Request struct {
 	Sources          []SourceUnit
 	Analyzers        []analyzer.Registration
 	Tools            []tools.Registration
-	IgnorePatterns   IgnorePatterns
+	IgnorePatterns   repoconfig.IgnorePatterns
 	OnRulesCreated   func([]workflowvisit.Rule) []workflowvisit.Rule
 	WorkingDir       string
 	ReadFile         func(string) ([]byte, error)
-	RulePresets      RulePresets
+	RulePresets      repoconfig.Presets
 	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 	LogWriter        io.Writer
 	LogLevel         LogLevel
@@ -62,14 +66,16 @@ type analyzedFile struct {
 	source  SourceUnit
 	errors  []*findingmodel.Finding
 	rules   []RuleInfo
-	outline DocumentOutline
+	outline report.DocumentOutline
 }
 
 type inputFiles struct{ workspace.Inputs }
 
-func (f *inputFiles) add(path string)                         { f.Add(path) }
-func (f *inputFiles) list() []string                          { return f.List() }
-func (f *inputFiles) addConfig(cfg *Config, project *Project) { f.AddConfig(cfg, project) }
+func (f *inputFiles) add(path string) { f.Add(path) }
+func (f *inputFiles) list() []string  { return f.List() }
+func (f *inputFiles) addConfig(cfg *repoconfig.Config, project *workspace.Project) {
+	f.AddConfig(cfg, project)
+}
 
 // Run checks resolved workflows and action manifests without rendering diagnostics.
 // On analysis failure, a non-nil result retains findings collected before the failure.
@@ -99,8 +105,7 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 			return nil, fmt.Errorf("duplicate script tool %q", name)
 		}
 		seenTools[name] = true
-		behaviour := ruleBehaviours()[name]
-		if behaviour.build != nil || behaviour.buildScripts != nil {
+		if builtin.Owns(name) {
 			return nil, fmt.Errorf("script tool %q conflicts with a built-in analyzer", name)
 		}
 		if _, builtIn := rulecatalog.Find(name); !builtIn {
@@ -169,7 +174,7 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
 	}
 
-	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
+	documents := &actionDocuments{byPath: map[string]report.ActionOutline{}}
 	proc := request.Processes
 	actions := actionlocal.NewFactory(engine.debugWriter())
 	cwd := request.WorkingDir
@@ -271,11 +276,11 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 			result.Rules = append(result.Rules, descriptor.Clone())
 		}
 	}
-	result.Documents = make(DocumentOutlines, 0, len(result.files))
+	result.Documents = make(report.DocumentOutlines, 0, len(result.files))
 	explicitActions := make(map[string]bool)
 	for _, file := range result.files {
 		result.Documents = append(result.Documents, file.outline)
-		if _, action := file.outline.(ActionOutline); action {
+		if _, action := file.outline.(report.ActionOutline); action {
 			explicitActions[fsread.PhysicalPath(file.source.InputPath)] = true
 		}
 	}
@@ -291,10 +296,10 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 
 type actionDocuments struct {
 	mu     sync.Mutex
-	byPath map[string]ActionOutline
+	byPath map[string]report.ActionOutline
 }
 
-func (d *actionDocuments) add(document ActionOutline) {
+func (d *actionDocuments) add(document report.ActionOutline) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	path := absPath(document.Path)
@@ -304,7 +309,7 @@ func (d *actionDocuments) add(document ActionOutline) {
 	d.byPath[path] = document
 }
 
-func (d *actionDocuments) list() DocumentOutlines {
+func (d *actionDocuments) list() report.DocumentOutlines {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	paths := make([]string, 0, len(d.byPath))
@@ -312,7 +317,7 @@ func (d *actionDocuments) list() DocumentOutlines {
 		paths = append(paths, path)
 	}
 	slices.Sort(paths)
-	documents := make(DocumentOutlines, 0, len(paths))
+	documents := make(report.DocumentOutlines, 0, len(paths))
 	for _, path := range paths {
 		documents = append(documents, d.byPath[path])
 	}
@@ -343,7 +348,7 @@ func (r *AnalysisResult) collectDiagnostics() {
 			project = absPath(file.source.Project.RootDir())
 		}
 		for _, finding := range file.errors {
-			if _, action := file.outline.(ActionOutline); action && finding.Rule == "syntax-check" {
+			if _, action := file.outline.(report.ActionOutline); action && finding.Rule == "syntax-check" {
 				parseDeclarations[fsread.PhysicalPath(file.source.InputPath)] = true
 			}
 			if identity := finding.MetadataIdentity; identity != nil && identity.Declaration && finding.Rule == "action" {

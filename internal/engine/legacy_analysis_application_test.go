@@ -5,6 +5,9 @@ import (
 	"io"
 	"slices"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	"actionlint.kjanat.dev/analyzer"
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
@@ -19,9 +22,9 @@ type AnalysisOptions struct {
 	StdinFileName string
 	ConfigFile    string
 	// ConfigOverlays apply in order over the selected file.
-	ConfigOverlays []ConfigOverlay
+	ConfigOverlays []repoconfig.Overlay
 	// OnConfigLoaded reports selected files and overlays.
-	OnConfigLoaded func(ConfigReport)
+	OnConfigLoaded func(repoconfig.Report)
 	// SkipProjectConfig disables per-project config reads; ConfigFile still applies.
 	SkipProjectConfig bool
 	// QuietSelection suppresses the legacy file-selection and completion log messages.
@@ -29,10 +32,10 @@ type AnalysisOptions struct {
 	Shellcheck     string
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes           string
-	ShellcheckOptions  *ExternalCommandOptions
+	ShellcheckOptions  *processconfig.Options
 	ShellcheckSettings *ShellcheckSettings
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	PyflakesOptions *ExternalCommandOptions
+	PyflakesOptions *processconfig.Options
 	IgnorePatterns  []string
 	Verbose         bool
 	Debug           bool
@@ -45,9 +48,9 @@ type AnalysisOptions struct {
 	// Custom readers own path resolution and filesystem boundary enforcement.
 	// This does not restrict filesystem access by external tools.
 	ReadFile          func(string) ([]byte, error)
-	RulePresets       RulePresets
+	RulePresets       repoconfig.Presets
 	Ruff              string
-	RuffOptions       *ExternalCommandOptions
+	RuffOptions       *processconfig.Options
 	RuffBackend       analyzer.ScriptBackend
 	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
@@ -112,23 +115,23 @@ func (a *AnalysisSession) selectionLog(args ...any) {
 func (a *AnalysisSession) Repository(dir string) (*AnalysisResult, error) {
 	return a.run(a.Session.Repository(dir))
 }
-func (a *AnalysisSession) directory(dir string, project *Project) (*AnalysisResult, error) {
+func (a *AnalysisSession) directory(dir string, project *workspace.Project) (*AnalysisResult, error) {
 	return a.run(a.Directory(dir, project))
 }
-func (a *AnalysisSession) Files(paths []string, project *Project) (*AnalysisResult, error) {
+func (a *AnalysisSession) Files(paths []string, project *workspace.Project) (*AnalysisResult, error) {
 	return a.run(a.Session.Files(paths, project))
 }
 func (a *AnalysisSession) Empty() (*AnalysisResult, error) { return a.run(a.Session.Empty()) }
-func (a *AnalysisSession) readFiles(paths []string, project *Project) (*AnalysisResult, error) {
+func (a *AnalysisSession) readFiles(paths []string, project *workspace.Project) (*AnalysisResult, error) {
 	return a.run(a.ReadFiles(paths, project))
 }
 func (a *AnalysisSession) ReadStdin(reader io.Reader, normalize bool) (*AnalysisResult, error) {
 	return a.run(a.Session.ReadStdin(reader, normalize))
 }
-func (a *AnalysisSession) content(path string, content []byte, project *Project, normalize bool) (*AnalysisResult, error) {
+func (a *AnalysisSession) content(path string, content []byte, project *workspace.Project, normalize bool) (*AnalysisResult, error) {
 	return a.run(a.Content(path, content, project, normalize))
 }
-func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
+func (a *AnalysisSession) configForProject(project *workspace.Project) (*repoconfig.Config, error) {
 	return a.ConfigForProject(project)
 }
 func (a *AnalysisSession) run(selection *workspace.Selection, err error) (*AnalysisResult, error) {

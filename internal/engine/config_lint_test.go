@@ -3,35 +3,37 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestStableSuspiciousRuleSelection(t *testing.T) {
 	for _, name := range []string{"string-conditions", "mixed-type-comparisons", "case-insensitive-conditions", "mixed-type-matrix-filters"} {
-		descriptor, ok := findRuleDescriptor(name)
-		if !ok || descriptor.Category != "suspicious" || descriptor.maturity() != "stable" || descriptor.Recommended {
+		descriptor, ok := repoconfig.FindRule(name)
+		if !ok || descriptor.Category != "suspicious" || descriptor.Maturity == "nursery" || descriptor.Recommended {
 			t.Fatalf("incorrect metadata: %+v", descriptor)
 		}
 		for _, tc := range []struct {
 			rules   string
-			presets RulePresets
-			want    RuleLevel
+			presets repoconfig.Presets
+			want    repoconfig.Level
 		}{
-			{"{}", RulePresets{}, "off"},
-			{"{preset: recommended}", RulePresets{}, "off"},
-			{"{preset: all}", RulePresets{}, "on"},
-			{"{}", RulePresets{Strict: true}, "on"},
-			{"{}", RulePresets{Experimental: new(true)}, "off"},
-			{"{suspicious: {" + name + ": warn}}", RulePresets{}, "warn"},
-			{"{suspicious: {" + name + ": warn}}", RulePresets{Experimental: new(false)}, "warn"},
-			{"{suspicious: {" + name + ": off}}", RulePresets{Strict: true}, "off"},
-			{"{suspicious: {preset: all}}", RulePresets{}, "on"},
-			{"{suspicious: {preset: recommended}}", RulePresets{}, "off"},
+			{"{}", repoconfig.Presets{}, "off"},
+			{"{preset: recommended}", repoconfig.Presets{}, "off"},
+			{"{preset: all}", repoconfig.Presets{}, "on"},
+			{"{}", repoconfig.Presets{Strict: true}, "on"},
+			{"{}", repoconfig.Presets{Experimental: new(true)}, "off"},
+			{"{suspicious: {" + name + ": warn}}", repoconfig.Presets{}, "warn"},
+			{"{suspicious: {" + name + ": warn}}", repoconfig.Presets{Experimental: new(false)}, "warn"},
+			{"{suspicious: {" + name + ": off}}", repoconfig.Presets{Strict: true}, "off"},
+			{"{suspicious: {preset: all}}", repoconfig.Presets{}, "on"},
+			{"{suspicious: {preset: recommended}}", repoconfig.Presets{}, "off"},
 		} {
-			cfg, err := ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
+			cfg, err := repoconfig.Parse([]byte("lint: {rules: " + tc.rules + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := diagnosticLevel(applyRulePresets(tc.presets, cfg), name); got != tc.want {
+			if got := repoconfig.DiagnosticLevel(repoconfig.ResolveRules(tc.presets, cfg), name); got != tc.want {
 				t.Fatalf("%s %s: got %s, want %s", name, tc.rules, got, tc.want)
 			}
 		}
@@ -47,13 +49,13 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 		"lint: {rules: {nursery: {case-insensitive-conditions: on}}}",
 	} {
 		t.Run(input, func(t *testing.T) {
-			if _, err := ParseConfig([]byte(input)); err == nil {
+			if _, err := repoconfig.Parse([]byte(input)); err == nil {
 				t.Fatal("invalid config accepted")
 			}
 		})
 	}
 	for _, name := range []string{"string-conditions", "mixed-type-comparisons", "case-insensitive-conditions", "mixed-type-matrix-filters"} {
-		if _, err := ParseConfig([]byte("policy: {" + name + ": true}")); err == nil || !strings.Contains(err.Error(), "unknown key") {
+		if _, err := repoconfig.Parse([]byte("policy: {" + name + ": true}")); err == nil || !strings.Contains(err.Error(), "unknown key") {
 			t.Fatalf("%s accepted as policy: %v", name, err)
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
 )
 
 func TestRuleMatrixKnownStrategyExpression(t *testing.T) {
@@ -81,7 +83,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := NewRuleMatrix()
+			rule := builtin.NewRuleMatrix()
 			if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 				t.Fatal(err)
 			}

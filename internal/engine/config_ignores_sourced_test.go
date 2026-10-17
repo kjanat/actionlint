@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
 )
 
 func TestReusableIgnoreSourcedFile(t *testing.T) {
@@ -29,7 +31,7 @@ func TestReusableIgnoreSourcedFile(t *testing.T) {
 					writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    "+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 					steps = "- uses: ./local"
 				}
-				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 				if len(result.Diagnostics) != tc.want {
 					t.Fatalf("want %d findings, got %+v", tc.want, result.Diagnostics)
 				}

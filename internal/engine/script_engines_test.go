@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	"actionlint.kjanat.dev/analyzer"
 )
 
@@ -61,7 +63,7 @@ func TestConfiguredScriptEngineLoadsOncePerSession(t *testing.T) {
 	engine := &recordingEngine{}
 	var paths []string
 	session, err := NewAnalysisSession(AnalysisOptions{
-		Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true,
+		Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}, QuietSelection: true,
 		LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
 			paths = append(paths, path)
 			return engine, nil
@@ -94,7 +96,7 @@ func TestConfiguredScriptEngineLoadsOncePerSession(t *testing.T) {
 
 func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
-	session, err := NewAnalysisSession(AnalysisOptions{Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true})
+	session, err := NewAnalysisSession(AnalysisOptions{Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}, QuietSelection: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +105,7 @@ func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 	}
 	failing := errors.New("module is broken")
 	session, err = NewAnalysisSession(AnalysisOptions{
-		Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true,
+		Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &processconfig.Options{Optional: true}, QuietSelection: true,
 		LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return nil, failing },
 	})
 	if err != nil {
@@ -164,7 +166,7 @@ func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
 	}
 	for _, input := range []string{".github/workflows/ci.yml", ".github/actions/setup/action.yml"} {
 		session, err := NewAnalysisSession(AnalysisOptions{
-			Context: t.Context(), WorkingDir: root, Shellcheck: "shellcheck", ShellcheckOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true,
+			Context: t.Context(), WorkingDir: root, Shellcheck: "shellcheck", ShellcheckOptions: &processconfig.Options{Optional: true}, QuietSelection: true,
 			LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
 				return namedShellEngine(filepath.Base(path)), nil
 			},

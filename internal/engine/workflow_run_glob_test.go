@@ -7,6 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workspace"
 )
@@ -61,7 +65,7 @@ jobs:
 
 func TestWorkflowRunGlobWithoutProject(t *testing.T) {
 	for _, config := range []string{"", "lint: {rules: {correctness: {glob: off}}}"} {
-		cfg, err := ParseConfig([]byte(config))
+		cfg, err := repoconfig.Parse([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +87,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 }
 
 func TestWorkflowRunGlobUnknownExpression(t *testing.T) {
-	rule := NewRuleGlob()
+	rule := builtin.NewRuleGlob()
 	workflow := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Workflows: []*workflowlang.String{{Value: "${{ inputs.pattern }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}}}
 	if err := rule.VisitWorkflowPre(workflow); err != nil || len(rule.Errs()) != 0 {
 		t.Fatalf("unknown expression treated as a literal glob: %v, %v", rule.Errs(), err)
@@ -118,7 +122,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := NewRuleGlob()
+			rule := builtin.NewRuleGlob()
 			if err := rule.VisitWorkflowPre(workflow); err != nil {
 				t.Fatal(err)
 			}

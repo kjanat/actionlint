@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestUnsoundTernaryConfigurationAndSuppression(t *testing.T) {
@@ -16,7 +18,7 @@ jobs:
       - run: echo ok
 `
 	for _, config := range []string{"", "lint: {rules: {correctness: {unsound-ternary: off}}}", "lint: {rules: {correctness: {unsound-ternary: warn}}}"} {
-		cfg, err := ParseConfig([]byte(config))
+		cfg, err := repoconfig.Parse([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

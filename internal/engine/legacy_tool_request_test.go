@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/internal/config"
@@ -18,11 +20,11 @@ type AnalysisRequest struct {
 	ShellCheck string
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes           string
-	ShellcheckOptions  *ExternalCommandOptions
+	ShellcheckOptions  *processconfig.Options
 	ShellcheckSettings *ShellcheckSettings
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	PyflakesOptions *ExternalCommandOptions
-	IgnorePatterns  IgnorePatterns
+	PyflakesOptions *processconfig.Options
+	IgnorePatterns  repoconfig.IgnorePatterns
 	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
 	OnRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
@@ -31,9 +33,9 @@ type AnalysisRequest struct {
 	// Custom readers own path resolution and filesystem boundary enforcement.
 	// It must support concurrent calls and does not restrict external tools.
 	ReadFile          func(string) ([]byte, error)
-	RulePresets       RulePresets
+	RulePresets       repoconfig.Presets
 	Ruff              string
-	RuffOptions       *ExternalCommandOptions
+	RuffOptions       *processconfig.Options
 	RuffBackend       analyzer.ScriptBackend
 	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
@@ -84,5 +86,3 @@ type RuffToolConfig = repoconfig.RuffToolConfig
 type ShellcheckConfig = repoconfig.ShellcheckConfig
 type ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
 type ShellcheckToolConfig = repoconfig.ShellcheckToolConfig
-
-func applyRulePresets(p RulePresets, cfg *Config) *Config { return repoconfig.ResolveRules(p, cfg) }

@@ -4,6 +4,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
 )
 
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
@@ -42,7 +45,7 @@ jobs:
         run: print(missing)
 `
 	_, err := Analyze(t.Context(), AnalysisRequest{
-		RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{"--statistics"}},
+		RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}},
 		WorkingDir:  t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
 	})
 	if err == nil || !strings.Contains(err.Error(), "statistics output is not supported") {
@@ -101,7 +104,7 @@ jobs:
         run: print(missing)
 `
 		_, err := Analyze(t.Context(), AnalysisRequest{
-			RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: []string{flag}},
+			RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}},
 			WorkingDir:  t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
 		})
 		if err == nil || !strings.Contains(err.Error(), "silent output is not supported") {
@@ -140,7 +143,7 @@ func TestRuffVersionedShellGrammar(t *testing.T) {
 	}{
 		{"", true}, {"tools: {ruff: {target-version: py314}}", false},
 	} {
-		config, err := ParseConfig([]byte(tc.config))
+		config, err := repoconfig.Parse([]byte(tc.config))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,7 +194,7 @@ jobs:
         run: print(missing)
 `
 			_, err := Analyze(t.Context(), AnalysisRequest{
-				RuffOptions: &ExternalCommandOptions{Executable: &command, Arguments: flags},
+				RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags},
 				WorkingDir:  root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
 			})
 			if err == nil || !strings.Contains(err.Error(), "output redirection") {

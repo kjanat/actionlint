@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
+
 	"actionlint.kjanat.dev/analyzer"
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -155,7 +157,7 @@ func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 	if len(parsed.findings) != 0 {
 		t.Fatal(parsed.findings)
 	}
-	refs := workflowReferences("workflow.yml", []byte(content), parsed.workflow, false)
+	refs := workflowfacts.Index("workflow.yml", []byte(content), parsed.workflow, false)
 	var result []source.Reference
 	for _, step := range parsed.workflow.Jobs["build"].Steps {
 		result = append(result, refs.Steps[step])

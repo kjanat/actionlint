@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
@@ -44,7 +46,7 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 		{`uses: './generated', job: other`, false},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
-			cfg, err := ParseConfig([]byte("ignores: [{rule: expression-reference, " + tc.selector + "}]"))
+			cfg, err := repoconfig.Parse([]byte("ignores: [{rule: expression-reference, " + tc.selector + "}]"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -66,7 +68,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 		{"{report: suppression}", []string{"disallow-suppressions"}},
 		{"true", []string{"disallow-suppressions", "expression-reference"}},
 	} {
-		cfg, err := ParseConfig([]byte("ignores: [{rule: expression-reference, uses: './generated'}]\npolicy: {disallow-suppressions: " + tc.policy + "}"))
+		cfg, err := repoconfig.Parse([]byte("ignores: [{rule: expression-reference, uses: './generated'}]\npolicy: {disallow-suppressions: " + tc.policy + "}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -80,7 +82,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 			t.Fatalf("policy %s: %#v", tc.policy, got)
 		}
 	}
-	cfg, err := ParseConfig([]byte("ignores: [{rule: expression-reference, uses: './generated'}]"))
+	cfg, err := repoconfig.Parse([]byte("ignores: [{rule: expression-reference, uses: './generated'}]"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +180,7 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 		t.Run(pattern, func(t *testing.T) {
 			config := "ignores: [{rule: expression-reference, file: '" + pattern + "'}]"
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
-			cfg, err := ParseConfig([]byte(config))
+			cfg, err := repoconfig.Parse([]byte(config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -234,7 +236,7 @@ runs:
 }
 
 func TestReusableIgnoreCannotSuppressPolicy(t *testing.T) {
-	_, err := ParseConfig([]byte(`ignores: [{rule: disallow-suppressions, file: '*.yaml'}]`))
+	_, err := repoconfig.Parse([]byte(`ignores: [{rule: disallow-suppressions, file: '*.yaml'}]`))
 	if err == nil || !strings.Contains(err.Error(), "disallow-suppressions") {
 		t.Fatalf("ineffective suppression was accepted: %v", err)
 	}
@@ -254,7 +256,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 		{"file: scripts/check.sh, job: other", 1},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
-			cfg, err := ParseConfig([]byte("ignores: [{rule: shellcheck, " + tc.selector + "}]"))
+			cfg, err := repoconfig.Parse([]byte("ignores: [{rule: shellcheck, " + tc.selector + "}]"))
 			if err != nil {
 				t.Fatal(err)
 			}

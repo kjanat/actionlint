@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -41,7 +43,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			config, err := ParseConfig([]byte(tc.config))
+			config, err := repoconfig.Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -90,7 +92,7 @@ jobs:
 `
 				sources := []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project}}
 				if inMemory {
-					cfg, err := ParseConfig([]byte("files: {excludes: ['**/build.yml']}"))
+					cfg, err := repoconfig.Parse([]byte("files: {excludes: ['**/build.yml']}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -156,7 +158,7 @@ func TestWorkflowRunNamesRelativeProject(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 	writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+commandGoodWorkflow)
-	project, err := NewProject(".")
+	project, err := workspace.NewProject(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +240,7 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 			if onDisk {
 				writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Old\n"+commandGoodWorkflow)
 			}
-			cfg, err := ParseConfig([]byte("files: {excludes: ['**/build.yml']}"))
+			cfg, err := repoconfig.Parse([]byte("files: {excludes: ['**/build.yml']}"))
 			if err != nil {
 				t.Fatal(err)
 			}

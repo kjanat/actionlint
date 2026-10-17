@@ -4,6 +4,8 @@ import (
 	"os"
 	"slices"
 	"testing"
+
+	workspace "actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
@@ -37,7 +39,7 @@ func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
 func TestRelativeProjectKeepsInMemoryWorkflowMetadata(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	project, err := NewProject(".")
+	project, err := workspace.NewProject(".")
 	if err != nil {
 		t.Fatal(err)
 	}

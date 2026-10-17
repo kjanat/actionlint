@@ -25,7 +25,7 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 				base := writeShellcheckFixture(t, root, "base/base.yml", setting)
 				writeShellcheckFixture(t, root, "middle/config.yml", "extends: [../base/base.yml]")
 				leaf := writeShellcheckFixture(t, root, "project/actionlint.yml", "extends: [../middle/config.yml]")
-				cfg, err := ReadConfigFile(leaf)
+				cfg, err := repoconfig.Load(leaf)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -39,7 +39,7 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 				if err != nil || got != want {
 					t.Fatalf("inherited rc path = %q, %v; want %q", got, err, want)
 				}
-				inspection, err := InspectConfig(ConfigSelection{Path: leaf}, true)
+				inspection, err := repoconfig.Inspect(repoconfig.Selection{Path: leaf}, true)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -6,6 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -38,7 +42,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 	} {
 		for _, assumption := range []string{"restricted", "permissive"} {
 			t.Run(tc.name+"/"+assumption, func(t *testing.T) {
-				cfg, err := ParseConfig(fmt.Appendf(nil, "assume-default-permissions: %s\npolicy: {require-permissions: %s}", assumption, tc.policy))
+				cfg, err := repoconfig.Parse(fmt.Appendf(nil, "assume-default-permissions: %s\npolicy: {require-permissions: %s}", assumption, tc.policy))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -92,7 +96,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 }
 
 func TestWorkflowPermissionsDeclarationPosition(t *testing.T) {
-	policy, err := RequirePermissions("workflow")
+	policy, err := repoconfig.RequirePermissions("workflow")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +123,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (workflowlang.Pos{Line: tc.line, Col: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}
-				rule := NewRuleRequirePermissions(policy)
+				rule := builtin.NewRuleRequirePermissions(policy)
 				if err := rule.VisitWorkflowPre(workflow); err != nil {
 					t.Fatal(err)
 				}
@@ -129,7 +133,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			}
 		}
 	}
-	rule := NewRuleRequirePermissions(policy)
+	rule := builtin.NewRuleRequirePermissions(policy)
 	if err := rule.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
 		t.Fatal(err)
 	}

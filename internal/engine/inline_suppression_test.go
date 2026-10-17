@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
@@ -90,7 +92,7 @@ jobs:
 func TestInlineSuppressionRegistry(t *testing.T) {
 	for _, name := range diagnosticpolicy.SuppressionRules() {
 		t.Run(name, func(t *testing.T) {
-			cfg, err := ParseConfig(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
+			cfg, err := repoconfig.Parse(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -281,7 +283,7 @@ jobs: [`,
 	if len(got) != 2 || got[1].Rule != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
 		t.Fatalf("explicit empty reason was accepted: %+v", got)
 	}
-	cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
+	cfg, err := repoconfig.Parse([]byte("policy: {disallow-suppressions: true}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +355,7 @@ jobs: [`,
 		for _, reason := range []string{" --", " -- intentional"} {
 			source := []byte(strings.ReplaceAll("run: # actionlint:ignore syntax-check"+reason+"\n  !!str\n  | bad\n    echo ok", "\n", ending))
 			_, findings := Parse(source)
-			cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
+			cfg, err := repoconfig.Parse([]byte("policy: {disallow-suppressions: true}"))
 			if err != nil {
 				t.Fatal(err)
 			}

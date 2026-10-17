@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -33,7 +35,7 @@ func TestWorkflowRunOrderedFilters(t *testing.T) {
 			t.Run(tc.name+strconv.Quote(ending), func(t *testing.T) {
 				root := t.TempDir()
 				writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: "+strconv.Quote(tc.producer)+"\n"+commandGoodWorkflow)
-				config, err := ParseConfig([]byte(tc.config))
+				config, err := repoconfig.Parse([]byte(tc.config))
 				if err != nil {
 					t.Fatal(err)
 				}

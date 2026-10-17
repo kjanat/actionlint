@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 const separatedExpressionWorkflow = `on: issues
@@ -25,11 +27,11 @@ func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
 	rules := []string{"expression-reference", "event-payload", "expression-type", "expression-call", "expression-syntax", "context-availability", "script-injection"}
 	for _, selected := range rules {
 		t.Run(selected, func(t *testing.T) {
-			descriptor, ok := findRuleDescriptor(selected)
+			descriptor, ok := repoconfig.FindRule(selected)
 			if !ok {
 				t.Fatal("missing descriptor")
 			}
-			cfg, err := ParseConfig(fmt.Appendf(nil, "lint: {rules: {preset: none, %s: {%s: warn}}}", descriptor.Group, selected))
+			cfg, err := repoconfig.Parse(fmt.Appendf(nil, "lint: {rules: {preset: none, %s: {%s: warn}}}", descriptor.Group, selected))
 			if err != nil {
 				t.Fatal(err)
 			}

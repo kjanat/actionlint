@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/workflow/execution"
 	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
@@ -95,7 +98,7 @@ jobs:
 				workflow += "        working-directory: ${{ vars.DIRECTORY }}\n"
 			}
 			path := writeShellcheckFixture(t, root, ".github/workflows/test.yml", workflow)
-			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: tc.args}})
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: tc.args}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -157,11 +160,11 @@ jobs:
 				options.ConfigFile = config
 			}
 			if tc.overlay {
-				overlay, err := ParseConfigOverlay("tools", []byte("shellcheck: true"))
+				overlay, err := repoconfig.ParseOverlay("tools", []byte("shellcheck: true"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				options.ConfigOverlays = []ConfigOverlay{overlay}
+				options.ConfigOverlays = []repoconfig.Overlay{overlay}
 			}
 			session, err := NewAnalysisSession(options)
 			if err != nil {
@@ -620,11 +623,11 @@ jobs:
     steps:
       - run: echo $VALUE
 `)
-			overlay, err := ParseConfigOverlay("config", []byte("tools: {shellcheck: {config: '"+selection+"'}}"))
+			overlay, err := repoconfig.ParseOverlay("config", []byte("tools: {shellcheck: {config: '"+selection+"'}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: config, WorkingDir: workingDir, Shellcheck: command, ConfigOverlays: []ConfigOverlay{overlay}})
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: config, WorkingDir: workingDir, Shellcheck: command, ConfigOverlays: []repoconfig.Overlay{overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -645,7 +648,7 @@ func TestShellcheckSourcesUseAnalysisDirectoryWithoutProject(t *testing.T) {
 	result, err := Analyze(t.Context(), AnalysisRequest{
 		WorkingDir:        root,
 		ShellCheck:        shellcheckForTest(t),
-		ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}},
+		ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}},
 		Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(`on: push
 jobs:
   test:

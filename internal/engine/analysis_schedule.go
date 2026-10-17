@@ -5,6 +5,8 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
@@ -45,11 +47,11 @@ func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registra
 
 // Explicit registration enables a plugin by default; presets and per-rule settings
 // still apply. Library registration options take precedence over repository options.
-func configuredAnalyzers(config *Config, registrations []analyzer.Registration) ([]analyzer.Registration, error) {
+func configuredAnalyzers(config *repoconfig.Config, registrations []analyzer.Registration) ([]analyzer.Registration, error) {
 	selected := make([]analyzer.Registration, 0, len(registrations))
 	for _, registration := range registrations {
 		name := registration.Analyzer.Descriptor().Name
-		if diagnosticLevel(config, name) == "off" {
+		if repoconfig.DiagnosticLevel(config, name) == "off" {
 			continue
 		}
 		if config != nil && len(registration.Options) == 0 {

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/calls"
@@ -118,7 +120,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := NewRuleWorkflowCall("caller.yaml", cache)
+	rule := builtin.NewRuleWorkflowCall("caller.yaml", cache)
 	if err := rule.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
 	}

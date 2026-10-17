@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -25,20 +27,20 @@ config-variables: [second]
 lint: {rules: {policy: {require-job-timeout: {level: warn, options: {max-minutes: 60}}}}}
 files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 `)
-	cfg, err := ReadConfigFile(path)
+	cfg, err := repoconfig.Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved := applyRulePresets(RulePresets{}, cfg)
+	resolved := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
 	minimum, _ := resolved.RequiresJobTimeout().MinMinutes()
 	maximum, _ := resolved.RequiresJobTimeout().MaxMinutes()
-	if minimum != 5 || maximum != 60 || diagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(cfg.ConfigVariables, []string{"second"}) {
+	if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(cfg.ConfigVariables, []string{"second"}) {
 		t.Fatalf("%+v", resolved)
 	}
 	if len(cfg.Sources()) != 3 {
 		t.Fatal(cfg.Sources())
 	}
-	inspection, err := InspectConfig(ConfigSelection{Path: path}, true)
+	inspection, err := repoconfig.Inspect(repoconfig.Selection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +92,7 @@ func TestRelativeConfigCallbackPath(t *testing.T) {
 				if inherited {
 					want = append(want, base)
 				}
-				if !slices.Equal(reads, want) || diagnosticLevel(session.DefaultConfig, "if-cond") != "warn" {
+				if !slices.Equal(reads, want) || repoconfig.DiagnosticLevel(session.DefaultConfig, "if-cond") != "warn" {
 					t.Fatalf("callback paths=%v, want=%v", reads, want)
 				}
 				if !slices.Contains(session.DefaultConfig.Sources(), filepath.Join(root, "config.yml")) {
@@ -111,7 +113,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := writeShellcheckFixture(t, t.TempDir(), "actionlint.yml", tc.content)
-			_, err := ReadConfigFile(path)
+			_, err := repoconfig.Load(path)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatal(err)
 			}
@@ -120,7 +122,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 			}
 		})
 	}
-	if _, err := ParseConfig([]byte("extends: [base.yml]")); err == nil {
+	if _, err := repoconfig.Parse([]byte("extends: [base.yml]")); err == nil {
 		t.Fatal("in-memory config silently ignored extends")
 	}
 }
@@ -136,7 +138,7 @@ func TestFilesSelection(t *testing.T) {
 		{"{includes: ['!**/ci.yml', '**/*.yml']}", false},
 	} {
 		t.Run(tc.setting, func(t *testing.T) {
-			cfg, err := ParseConfig([]byte("files: " + tc.setting))
+			cfg, err := repoconfig.Parse([]byte("files: " + tc.setting))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -152,7 +154,7 @@ func TestFilesSelection(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg, err = ParseConfig(b)
+				cfg, err = repoconfig.Parse(b)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -160,7 +162,7 @@ func TestFilesSelection(t *testing.T) {
 		})
 	}
 	for _, setting := range []string{"{includes: ['../*']}", "{includes: [1]}", "{excludes: ['[']}", "{exclude: []}"} {
-		if _, err := ParseConfig([]byte("files: " + setting)); err == nil {
+		if _, err := repoconfig.Parse([]byte("files: " + setting)); err == nil {
 			t.Fatalf("accepted %s", setting)
 		}
 	}

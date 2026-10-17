@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workspace"
 )
@@ -115,7 +117,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 		if workflow == nil || len(errs) != 0 {
 			t.Fatalf("parse %q: %v", reference, errs)
 		}
-		rule := NewRuleGlob()
+		rule := builtin.NewRuleGlob()
 		if err := rule.VisitWorkflowPre(workflow); err != nil {
 			t.Fatal(err)
 		}

@@ -4,6 +4,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	report "actionlint.kjanat.dev/internal/report"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -11,13 +12,13 @@ import (
 type parsedDocument struct {
 	workflow *workflowlang.Workflow
 	metadata *actionmeta.Metadata
-	outline  DocumentOutline
+	outline  report.DocumentOutline
 	findings []*findingmodel.Finding
 }
 
 func parseDocument(path, configPath string, content []byte) parsedDocument {
 	var w *workflowlang.Workflow
-	var outline DocumentOutline
+	var outline report.DocumentOutline
 	var all []*findingmodel.Finding
 	var metadata *actionmeta.Metadata
 	if isActionInput(configPath) {

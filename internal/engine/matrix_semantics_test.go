@@ -3,6 +3,10 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
 )
 
 func TestSuspiciousMatrixFilterSelection(t *testing.T) {
@@ -47,9 +51,9 @@ jobs:
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				rule := NewRuleMatrix()
+				rule := builtin.NewRuleMatrix()
 				if config != "" {
-					cfg, err := ParseConfig([]byte(config))
+					cfg, err := repoconfig.Parse([]byte(config))
 					if err != nil {
 						t.Fatal(err)
 					}

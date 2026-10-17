@@ -16,7 +16,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/processconfig"
 
-	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/tools/ruff"
 )
 
 type doctorTool struct {

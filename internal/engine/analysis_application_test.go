@@ -15,6 +15,9 @@ import (
 	"sync/atomic"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	workspace "actionlint.kjanat.dev/internal/workspace"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
@@ -102,7 +105,7 @@ func TestAnalysisDiagnosticProjects(t *testing.T) {
 			root := t.TempDir()
 			request := AnalysisRequest{WorkingDir: root}
 			for _, name := range tc.roots {
-				project, err := NewProject(filepath.Join(root, name))
+				project, err := workspace.NewProject(filepath.Join(root, name))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -215,7 +218,7 @@ func TestLinterAnalysisFacades(t *testing.T) {
 				if findings[i].Path != path || findings[i].Rule != "expression-reference" {
 					t.Fatalf("wrong finding order or path: %v", findings)
 				}
-				request.Sources = append(request.Sources, SourceUnit{Path: path, Content: content, Config: &Config{ConfigVariables: []string{}}})
+				request.Sources = append(request.Sources, SourceUnit{Path: path, Content: content, Config: &repoconfig.Config{ConfigVariables: []string{}}})
 			}
 			result, err := Analyze(t.Context(), request)
 			if err != nil {

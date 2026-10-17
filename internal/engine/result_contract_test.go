@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	report "actionlint.kjanat.dev/internal/report"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/render"
 
@@ -82,7 +84,7 @@ description: Test action
 runs:
   `+runtime+"\n"))
 		result := render.NewCheckResult(0)
-		result.Documents = DocumentOutlines{action}
+		result.Documents = report.DocumentOutlines{action}
 		data, err := json.Marshal(result)
 		if err != nil {
 			t.Fatal(err)
@@ -132,7 +134,7 @@ jobs:
 		if len(parseErrors) != 0 {
 			t.Fatal(parseErrors)
 		}
-		result.Documents = DocumentOutlines{workflowOutline("ci.yml", workflow, false)}
+		result.Documents = report.DocumentOutlines{workflowOutline("ci.yml", workflow, false)}
 		if code == 1 || code == 3 {
 			result.Diagnostics = []diagmodel.Diagnostic{diagnostic}
 		}

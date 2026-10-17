@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
 )
 
 func TestMatrixExcludeSequenceInsertions(t *testing.T) {
@@ -51,7 +53,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			rule := NewRuleMatrix()
+			rule := builtin.NewRuleMatrix()
 			if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 				t.Fatal(err)
 			}

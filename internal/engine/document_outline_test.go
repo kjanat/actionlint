@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	report "actionlint.kjanat.dev/internal/report"
 )
 
 func TestDocumentOutlinesRoundTrip(t *testing.T) {
@@ -24,12 +26,12 @@ runs: {using: docker, image: 'docker://alpine:3'}
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := DocumentOutlines{workflowOutline("ci.yml", workflow, false), action}
+	want := report.DocumentOutlines{workflowOutline("ci.yml", workflow, false), action}
 	encoded, err := json.Marshal(want)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got DocumentOutlines
+	var got report.DocumentOutlines
 	if err := json.Unmarshal(encoded, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +55,7 @@ func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {
 		`[{"kind":"action","runs":null}]`,
 		`[{"kind":"action"}]`,
 	} {
-		var documents DocumentOutlines
+		var documents report.DocumentOutlines
 		if err := json.Unmarshal([]byte(input), &documents); err == nil {
 			t.Fatalf("accepted unsupported document/runtime: %s", input)
 		}

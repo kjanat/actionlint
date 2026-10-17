@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 )
@@ -274,7 +276,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := NewRuleExpression(nil, nil)
+			rule := builtin.NewRuleExpression(nil, nil)
 			visitor := NewVisitor()
 			visitor.AddPass(rule)
 			if err := visitor.Visit(workflow); err != nil {
@@ -313,7 +315,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := NewRuleExpression(nil, nil)
+			rule := builtin.NewRuleExpression(nil, nil)
 			visitor := NewVisitor()
 			visitor.AddPass(rule)
 			if err := visitor.Visit(workflow); err != nil {

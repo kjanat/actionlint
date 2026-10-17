@@ -17,7 +17,7 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/syntax",
 		"actionlint.kjanat.dev/config",
 		"actionlint.kjanat.dev/internal/config",
-		"actionlint.kjanat.dev/internal/ruffconfig",
+		"actionlint.kjanat.dev/internal/config/tools/ruff",
 		"actionlint.kjanat.dev/internal/render",
 		"actionlint.kjanat.dev/internal/plugins/component",
 		"actionlint.kjanat.dev/internal/plugins/core",
@@ -58,7 +58,7 @@ func TestExpressionDependencyDirection(t *testing.T) {
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
 		switch dependency {
-		case "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/analyzerhost", "actionlint.kjanat.dev/analyzer", "actionlint.kjanat.dev/internal/ruff", "actionlint.kjanat.dev/internal/config/tree":
+		case "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/analyzerhost", "actionlint.kjanat.dev/analyzer", "actionlint.kjanat.dev/internal/tools/ruff", "actionlint.kjanat.dev/internal/config/tree":
 			t.Errorf("expression semantics imports host domain %s", dependency)
 		}
 	}
@@ -268,14 +268,14 @@ func TestEntrypointsUseApplicationBoundary(t *testing.T) {
 }
 
 func TestToolIntegrationDependencyDirection(t *testing.T) {
-	for _, name := range []string{"engine", "application", "tools", "tools/adapters", "tools/backend"} {
+	for _, name := range []string{"engine", "application", "tools", "tools/adapters", "tools/backend", "tools/ruff", "tools/shellcheck", "tools/selection"} {
 		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/"+name).Output()
 		if err != nil {
 			t.Fatal(err)
 		}
 		for dependency := range strings.SplitSeq(string(output), "\n") {
 			if name == "engine" || name == "application" {
-				if dependency == "actionlint.kjanat.dev/internal/tools/adapters" || dependency == "actionlint.kjanat.dev/internal/ruff" || dependency == "actionlint.kjanat.dev/internal/tools/backend" {
+				if dependency == "actionlint.kjanat.dev/internal/tools/adapters" || dependency == "actionlint.kjanat.dev/internal/tools/ruff" || dependency == "actionlint.kjanat.dev/internal/tools/backend" || dependency == "actionlint.kjanat.dev/internal/tools/shellcheck" || dependency == "actionlint.kjanat.dev/internal/tools/selection" {
 					t.Errorf("%s depends on tool implementation %s", name, dependency)
 				}
 			} else if dependency == "actionlint.kjanat.dev/internal/engine" || dependency == "actionlint.kjanat.dev/internal/application" {
@@ -354,6 +354,59 @@ func TestDiagnosticPolicyDoesNotImportHost(t *testing.T) {
 			prefix := "actionlint.kjanat.dev/internal/" + forbidden
 			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
 				t.Errorf("diagnostic policy imports host %s", dependency)
+			}
+		}
+	}
+}
+
+// Built-in registration owns concrete adapters; it receives observations through
+// callbacks and cannot construct application sessions or execution transports.
+func TestBuiltinCompositionDoesNotImportHost(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/builtin").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		for _, forbidden := range []string{"engine", "application", "cli", "workspace", "analyzerhost", "tools", "render"} {
+			prefix := "actionlint.kjanat.dev/internal/" + forbidden
+			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
+				t.Errorf("built-in composition imports host implementation %s", dependency)
+			}
+		}
+		if dependency == "os/exec" {
+			t.Error("built-in composition launches processes")
+		}
+	}
+}
+
+// The engine consumes registration and visitor contracts instead of constructing
+// semantic implementations. Domain dependencies remain behind composition.
+func TestEngineUsesBuiltinComposition(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Imports "\n"}}`, "actionlint.kjanat.dev/internal/engine").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		for _, domain := range []string{"checks", "action/validation", "workflow/checks", "workflow/expressions", "workflow/cachepolicy", "workflow/matrix", "workflow/commands"} {
+			prefix := "actionlint.kjanat.dev/internal/" + domain
+			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
+				t.Errorf("engine constructs semantic checks through %s", dependency)
+			}
+		}
+	}
+}
+
+// Bundling must not turn the two native integrations into a shared implementation.
+func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
+	for _, name := range []string{"ruff", "shellcheck"} {
+		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/tools/"+name).Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for dependency := range strings.SplitSeq(string(output), "\n") {
+			prefix := "actionlint.kjanat.dev/internal/tools/"
+			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"selection" {
+				t.Errorf("tool %s imports another execution implementation %s", name, dependency)
 			}
 		}
 	}

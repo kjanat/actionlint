@@ -79,17 +79,17 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 }
 
 func TestRegisteredNurseryPresetSelection(t *testing.T) {
-	descriptor := ruleDescriptor{Name: "experimental-plugin", Maturity: "nursery", Group: "plugins", selected: true}
+	descriptor := repoconfig.Rule{Name: "experimental-plugin", Maturity: "nursery", Group: "plugins"}
 	for _, test := range []struct {
-		root, group RulePreset
-		want        RuleLevel
+		root, group repoconfig.Preset
+		want        repoconfig.Level
 	}{
 		{"", "", "on"}, {"all", "", "off"}, {"", "all", "off"}, {"recommended", "", "off"}, {"none", "", "off"},
 	} {
-		cfg := &Config{}
+		cfg := &repoconfig.Config{}
 		cfg.Lint.Rules.Preset = test.root
 		cfg.Lint.Rules.Plugins.Preset = test.group
-		if got := ruleSetting(cfg, descriptor, RulePresets{}).Level; got != test.want {
+		if got := repoconfig.SettingFor(cfg, descriptor, repoconfig.Presets{}, true).Level; got != test.want {
 			t.Errorf("root=%s group=%s: %s want %s", test.root, test.group, got, test.want)
 		}
 	}

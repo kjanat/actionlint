@@ -4,6 +4,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
 )
 
 func TestSchemaNestedWaitAllStaticValue(t *testing.T) {
@@ -64,7 +66,7 @@ jobs:
 		if len(errs) != 0 {
 			t.Fatalf("schema-supported image filters rejected: %v", errs)
 		}
-		rule := NewRuleEvents()
+		rule := builtin.NewRuleEvents()
 		if err := rule.VisitWorkflowPre(w); err != nil {
 			t.Fatal(err)
 		}
@@ -88,7 +90,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := NewRuleEvents()
+	rule := builtin.NewRuleEvents()
 	if err := rule.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +134,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := NewRuleEvents()
+	rule := builtin.NewRuleEvents()
 	if err := rule.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +158,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := NewRuleEvents()
+	rule := builtin.NewRuleEvents()
 	if err := rule.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +292,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := NewRuleID()
+			rule := builtin.NewRuleID()
 			if err := rule.VisitJobPre(w.Jobs["test"]); err != nil {
 				t.Fatal(err)
 			}

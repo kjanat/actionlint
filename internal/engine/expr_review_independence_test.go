@@ -3,6 +3,8 @@ package engine
 import (
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestReferencedWorkflowInjectionSources(t *testing.T) {
@@ -121,7 +123,7 @@ func TestUnsoundTernaryIndependentExpressionErrors(t *testing.T) {
 		} {
 			t.Run(expression+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
 				configText := "lint: {rules: {correctness: {unsound-ternary: " + levels.ternary + ", context-availability: " + levels.expression + "}, security: {script-injection: " + levels.expression + "}}}"
-				cfg, err := ParseConfig([]byte(configText))
+				cfg, err := repoconfig.Parse([]byte(configText))
 				if err != nil {
 					t.Fatal(err)
 				}

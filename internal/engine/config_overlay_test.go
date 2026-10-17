@@ -15,22 +15,22 @@ import (
 )
 
 func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
-	overlay, err := ParseConfigOverlay("config-variables", []byte("[ALLOWED]"))
+	overlay, err := repoconfig.ParseOverlay("config-variables", []byte("[ALLOWED]"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
 	session, err := NewAnalysisSession(AnalysisOptions{
-		ConfigOverlays: []ConfigOverlay{overlay},
-		OnConfigLoaded: func(ConfigReport) { calls.Add(1) },
+		ConfigOverlays: []repoconfig.Overlay{overlay},
+		OnConfigLoaded: func(repoconfig.Report) { calls.Add(1) },
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	projects := []*Project{workspace.Identity("first"), workspace.Identity("second")}
+	projects := []*workspace.Project{workspace.Identity("first"), workspace.Identity("second")}
 	type loaded struct {
 		project int
-		config  *Config
+		config  *repoconfig.Config
 		err     error
 	}
 	const requests = 16
@@ -48,7 +48,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	close(start)
 	group.Wait()
 	close(results)
-	configs := make(map[int]*Config)
+	configs := make(map[int]*repoconfig.Config)
 	for result := range results {
 		if result.err != nil || result.config == nil || !reflect.DeepEqual(result.config.ConfigVariables, []string{"ALLOWED"}) {
 			t.Fatalf("concurrent configuration: %+v", result)
@@ -79,7 +79,7 @@ paths:
 	if err := os.WriteFile(path, []byte(base), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var overlays []ConfigOverlay
+	var overlays []repoconfig.Overlay
 	for _, in := range []struct{ name, value string }{
 		{"config", `{"self-hosted-runner":{"labels":["inline"]},"config-secrets":[],"policy":{"require-commit-hash":false,"require-job-timeout":{"max-minutes":60}}}`},
 		{"self-hosted-runner", "labels: [individual]"},
@@ -87,14 +87,14 @@ paths:
 		{"paths", `"**/*.yaml": {ignore: [added]}`},
 		{"policy", "cache-write-untrusted: null"},
 	} {
-		o, err := ParseConfigOverlay(in.name, []byte(in.value))
+		o, err := repoconfig.ParseOverlay(in.name, []byte(in.value))
 		if err != nil {
 			t.Fatal(err)
 		}
 		overlays = append(overlays, o)
 	}
-	var reports []ConfigReport
-	l, err := NewLinter(io.Discard, &LinterOptions{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r ConfigReport) { reports = append(reports, r) }})
+	var reports []repoconfig.Report
+	l, err := NewLinter(io.Discard, &LinterOptions{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { reports = append(reports, r) }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ paths:
 	if cfg.ConfigVariables != nil || cfg.ConfigSecrets == nil || len(cfg.ConfigSecrets) != 0 {
 		t.Errorf("null must disable variable checking, [] must forbid custom secrets: %#v", cfg)
 	}
-	if cfg.AssumeDefaultPermissions != DefaultPermissionsAssumptionPermissive || cfg.RequiresCommitHash() || cfg.Policy.RequireCommitHash == nil {
+	if cfg.AssumeDefaultPermissions != repoconfig.DefaultPermissionsAssumptionPermissive || cfg.RequiresCommitHash() || cfg.Policy.RequireCommitHash == nil {
 		t.Errorf("file settings and explicit false must survive merging: %#v", cfg)
 	}
 	if !cfg.CachePolicyEnabled("cache-write-untrusted") {
@@ -129,7 +129,7 @@ paths:
 		t.Fatalf("report selected file and inputs once per project: %#v", reports)
 	}
 	inspection := reports[0].Inspection
-	for pointer, want := range map[string]ConfigOrigin{
+	for pointer, want := range map[string]repoconfig.Origin{
 		"/self-hosted-runner/labels":              {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
 		"/config-variables":                       {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
 		"/assume-default-permissions":             {Source: "config", State: "value", Line: 4, Column: 29},
@@ -148,7 +148,7 @@ paths:
 	if err != nil || !reflect.DeepEqual(inspection.Config, serialized) {
 		t.Fatalf("inspection differs from analyzed configuration: %#v, %v", inspection.Config, err)
 	}
-	original, err := ReadConfigFile(path)
+	original, err := repoconfig.Load(path)
 	if err != nil || !original.RequiresCommitHash() || original.ConfigVariables[0] != "ORIGINAL" {
 		t.Errorf("overlays must leave the config file unchanged: %#v, %v", original, err)
 	}
@@ -167,12 +167,12 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 			if err := os.WriteFile(path, []byte("policy: {require-commit-hash: true}"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			overlay, err := ParseConfigOverlay(tc.input, []byte(tc.value))
+			overlay, err := repoconfig.ParseOverlay(tc.input, []byte(tc.value))
 			if err != nil {
 				t.Fatal(err)
 			}
-			var report ConfigReport
-			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}, OnConfigLoaded: func(r ConfigReport) { report = r }})
+			var report repoconfig.Report
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -194,20 +194,20 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 	for _, reset := range []string{"null", "policy: null"} {
 		t.Run(reset, func(t *testing.T) {
-			var overlays []ConfigOverlay
+			var overlays []repoconfig.Overlay
 			for _, input := range []struct{ name, value string }{
 				{"config", reset},
 				{"policy", "cache-operation: false"},
 				{"policy", "required-actions: []"},
 			} {
-				overlay, err := ParseConfigOverlay(input.name, []byte(input.value))
+				overlay, err := repoconfig.ParseOverlay(input.name, []byte(input.value))
 				if err != nil {
 					t.Fatal(err)
 				}
 				overlays = append(overlays, overlay)
 			}
-			var report ConfigReport
-			session, err := NewAnalysisSession(AnalysisOptions{ConfigOverlays: overlays, OnConfigLoaded: func(r ConfigReport) { report = r }})
+			var report repoconfig.Report
+			session, err := NewAnalysisSession(AnalysisOptions{ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -238,15 +238,15 @@ func TestConfigOverlayEmptyAndNullMappings(t *testing.T) {
 		{"null", false},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
-			base, err := ParseConfigOverlay("config", []byte("policy: {require-commit-hash: true}"))
+			base, err := repoconfig.ParseOverlay("config", []byte("policy: {require-commit-hash: true}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			overlay, err := ParseConfigOverlay("config", []byte(tc.value))
+			overlay, err := repoconfig.ParseOverlay("config", []byte(tc.value))
 			if err != nil {
 				t.Fatal(err)
 			}
-			l, err := NewLinter(io.Discard, &LinterOptions{ConfigOverlays: []ConfigOverlay{base, overlay}})
+			l, err := NewLinter(io.Discard, &LinterOptions{ConfigOverlays: []repoconfig.Overlay{base, overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -278,7 +278,7 @@ func TestConfigOverlayRejectsInvalidInputs(t *testing.T) {
 		{"unknown", "null"},
 	} {
 		t.Run(tc.input+"/"+tc.value, func(t *testing.T) {
-			_, err := ParseConfigOverlay(tc.input, []byte(tc.value))
+			_, err := repoconfig.ParseOverlay(tc.input, []byte(tc.value))
 			if err == nil || !strings.Contains(err.Error(), tc.input) {
 				t.Errorf("want error naming input %q, got %v", tc.input, err)
 			}
@@ -301,11 +301,11 @@ func TestConfigOverlaysPreserveYAMLAliases(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.base), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			overlay, err := ParseConfigOverlay("self-hosted-runner", []byte(tc.overlay))
+			overlay, err := repoconfig.ParseOverlay("self-hosted-runner", []byte(tc.overlay))
 			if err != nil {
 				t.Fatal(err)
 			}
-			l, err := NewLinter(io.Discard, &LinterOptions{ConfigFile: path, ConfigOverlays: []ConfigOverlay{overlay}})
+			l, err := NewLinter(io.Discard, &LinterOptions{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}

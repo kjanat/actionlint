@@ -3,6 +3,9 @@ package engine
 import (
 	"errors"
 
+	analyzerhost "actionlint.kjanat.dev/internal/analyzerhost"
+	workspace "actionlint.kjanat.dev/internal/workspace"
+
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
@@ -33,7 +36,7 @@ func (commandFailingIO) Read([]byte) (int, error)  { return 0, errors.New("read 
 func (commandFailingIO) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 
 // check lets cache-order regressions share one cache across explicitly ordered analyses.
-func (l *Linter) check(path string, content []byte, project *Project, proc *concurrentProcess, actions *actionlocal.Cache, workflows *calls.Cache) ([]*findingmodel.Finding, error) {
+func (l *Linter) check(path string, content []byte, project *workspace.Project, proc *analyzerhost.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache) ([]*findingmodel.Finding, error) {
 	engine := analysisEngine{
 		analysisLogger: l.analysisLogger, ctx: l.ctx, reader: fsread.New(l.ctx, l.request.ReadFile, nil),
 		buildRules: builtinFactory(l.request, l.analysisLogger),

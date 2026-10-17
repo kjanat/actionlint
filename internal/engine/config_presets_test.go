@@ -6,6 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
@@ -19,20 +23,20 @@ jobs:
 `)
 	for _, tc := range []struct {
 		name    string
-		config  *Config
-		presets RulePresets
+		config  *repoconfig.Config
+		presets repoconfig.Presets
 		wantNil bool
 	}{
-		{"default", nil, RulePresets{}, true},
-		{"explicit configuration", &Config{}, RulePresets{}, false},
-		{"strict", nil, RulePresets{Strict: true}, false},
-		{"experimental enabled", nil, RulePresets{Experimental: new(true)}, false},
-		{"experimental disabled", nil, RulePresets{Experimental: new(false)}, false},
+		{"default", nil, repoconfig.Presets{}, true},
+		{"explicit configuration", &repoconfig.Config{}, repoconfig.Presets{}, false},
+		{"strict", nil, repoconfig.Presets{Strict: true}, false},
+		{"experimental enabled", nil, repoconfig.Presets{Experimental: new(true)}, false},
+		{"experimental disabled", nil, repoconfig.Presets{Experimental: new(false)}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rule := struct {
 				workflowvisit.Base
-				ruleConfiguration
+				builtin.Configuration
 			}{Base: workflowvisit.NewBase("custom-config", "")}
 			called := false
 			_, err := Analyze(context.Background(), AnalysisRequest{
@@ -59,7 +63,7 @@ jobs:
 		root := t.TempDir()
 		rule := struct {
 			workflowvisit.Base
-			ruleConfiguration
+			builtin.Configuration
 		}{Base: workflowvisit.NewBase("custom-config", "")}
 		called := false
 		linter, err := NewLinter(io.Discard, &LinterOptions{
@@ -83,30 +87,30 @@ jobs:
 
 func TestNurserySelectionIsIndependent(t *testing.T) {
 	// Exercise the lifecycle without misclassifying a shipping rule as nursery.
-	descriptor := ruleDescriptor{Name: "under-development", Category: "correctness", Maturity: "nursery", Group: "nursery"}
+	descriptor := repoconfig.Rule{Name: "under-development", Category: "correctness", Maturity: "nursery", Group: "nursery"}
 	for _, tc := range []struct {
 		rules   string
-		presets RulePresets
-		want    RuleLevel
+		presets repoconfig.Presets
+		want    repoconfig.Level
 	}{
-		{"{}", RulePresets{}, "off"},
-		{"{preset: all}", RulePresets{}, "off"},
-		{"{}", RulePresets{Strict: true}, "off"},
-		{"{}", RulePresets{Experimental: new(true)}, "on"},
-		{"{nursery: warn}", RulePresets{}, "warn"},
-		{"{nursery: {preset: all}}", RulePresets{}, "on"},
-		{"{nursery: off}", RulePresets{Experimental: new(true)}, "off"},
-		{"{nursery: warn}", RulePresets{Experimental: new(false)}, "off"},
+		{"{}", repoconfig.Presets{}, "off"},
+		{"{preset: all}", repoconfig.Presets{}, "off"},
+		{"{}", repoconfig.Presets{Strict: true}, "off"},
+		{"{}", repoconfig.Presets{Experimental: new(true)}, "on"},
+		{"{nursery: warn}", repoconfig.Presets{}, "warn"},
+		{"{nursery: {preset: all}}", repoconfig.Presets{}, "on"},
+		{"{nursery: off}", repoconfig.Presets{Experimental: new(true)}, "off"},
+		{"{nursery: warn}", repoconfig.Presets{Experimental: new(false)}, "off"},
 	} {
-		cfg, err := ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
+		cfg, err := repoconfig.Parse([]byte("lint: {rules: " + tc.rules + "}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := ruleSetting(cfg, descriptor, tc.presets).Level; got != tc.want {
+		if got := repoconfig.SettingFor(cfg, descriptor, tc.presets, false).Level; got != tc.want {
 			t.Fatalf("%s: got %s, want %s", tc.rules, got, tc.want)
 		}
 	}
-	for _, info := range BuiltinRules() {
+	for _, info := range repoconfig.RuleInfos() {
 		if info.Category == "nursery" || info.Maturity != "stable" {
 			t.Fatalf("unexpected nursery rule: %+v", info)
 		}
@@ -114,7 +118,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 }
 
 func TestStrictPreservesConfiguredPolicyOptions(t *testing.T) {
-	cfg, err := ParseConfig([]byte(`policy:
+	cfg, err := repoconfig.Parse([]byte(`policy:
   require-job-timeout: {min-minutes: 5, max-minutes: 30}
   require-permissions: {scope: job}
   disallow-suppressions: {rules: [if-cond], report: violation}
@@ -123,14 +127,14 @@ lint: {rules: {disable: [require-commit-hash], suspicious: {case-insensitive-con
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := applyRulePresets(RulePresets{Strict: true, Experimental: new(true)}, cfg)
+	got := repoconfig.ResolveRules(repoconfig.Presets{Strict: true, Experimental: new(true)}, cfg)
 	if got.Policy.RequireJobTimeout != cfg.Policy.RequireJobTimeout || got.Policy.RequirePermissions != cfg.Policy.RequirePermissions || got.Policy.DisallowSuppressions != cfg.Policy.DisallowSuppressions {
 		t.Fatal("preset replaced configured options")
 	}
-	if len(got.Lint.Rules.Disable) != 1 || diagnosticLevel(got, "case-insensitive-conditions") != "off" || diagnosticLevel(got, "string-conditions") == "off" {
+	if len(got.Lint.Rules.Disable) != 1 || repoconfig.DiagnosticLevel(got, "case-insensitive-conditions") != "off" || repoconfig.DiagnosticLevel(got, "string-conditions") == "off" {
 		t.Fatal(got.Lint.Rules)
 	}
-	if cfg.RequiresCommitHash() || diagnosticLevel(cfg, "string-conditions") != "off" {
+	if cfg.RequiresCommitHash() || repoconfig.DiagnosticLevel(cfg, "string-conditions") != "off" {
 		t.Fatal("preset mutated shared config")
 	}
 }

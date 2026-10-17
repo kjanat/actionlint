@@ -9,6 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
+	"actionlint.kjanat.dev/internal/checks/permission"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/stringutil"
@@ -187,7 +193,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
 			c := calls.NewCache("", "", nil)
-			r := NewRuleWorkflowCall("", c)
+			r := builtin.NewRuleWorkflowCall("", c)
 			j := &workflowlang.Job{
 				WorkflowCall: &workflowlang.WorkflowCall{
 					Uses: &workflowlang.String{
@@ -232,7 +238,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	}
 
 	c := calls.NewCache("", "", nil)
-	r := NewRuleWorkflowCall("", c)
+	r := builtin.NewRuleWorkflowCall("", c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
@@ -275,7 +281,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 
 	cwd := filepath.Join("path", "to", "project")
 	c := calls.NewCache(cwd, cwd, nil)
-	r := NewRuleWorkflowCall("test-workflow.yaml", c)
+	r := builtin.NewRuleWorkflowCall("test-workflow.yaml", c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
@@ -332,7 +338,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 	run := func(t *testing.T, cache *calls.Cache) []string {
 		t.Helper()
-		r := NewRuleWorkflowCall("caller.yaml", cache)
+		r := builtin.NewRuleWorkflowCall("caller.yaml", cache)
 		if err := r.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
 			t.Fatal(err)
 		}
@@ -394,9 +400,9 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 }
 
 func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
-	scopes := make([]string, 0, len(allPermissionScopes))
+	scopes := make([]string, 0, len(permission.Scopes()))
 	writeAll := calls.PermissionScopeLevels{}
-	for s, vs := range allPermissionScopes {
+	for s, vs := range permission.Scopes() {
 		scopes = append(scopes, s)
 		if slices.Contains(vs, "write") {
 			writeAll[s] = calls.PermissionLevelWrite
@@ -426,7 +432,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		workflowPerms string
 		jobIf         bool
 		callee        map[string]calls.PermissionScopeLevels
-		cfg           *Config
+		cfg           *repoconfig.Config
 		errs          []string
 	}{
 		{
@@ -483,12 +489,12 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:   "permissive default covers pull-requests",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionPermissive},
+			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionPermissive},
 		},
 		{
 			what:   "permissive default never covers id-token",
 			callee: map[string]calls.PermissionScopeLevels{"attest": {"id-token": calls.PermissionLevelWrite}},
-			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionPermissive},
+			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionPermissive},
 			errs: []string{
 				"nested job \"attest\" of \"./callee.yaml\" requires \"id-token: write\" but the calling job grants \"id-token: none\"",
 			},
@@ -496,7 +502,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:   "restricted assumption set explicitly",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionRestricted},
+			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionRestricted},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
 			},
@@ -589,7 +595,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache := calls.NewCache(cwd, cwd, nil)
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee}, nil)
 
-			r := NewRuleWorkflowCall("caller.yaml", cache)
+			r := builtin.NewRuleWorkflowCall("caller.yaml", cache)
 			if tc.cfg != nil {
 				r.SetConfig(tc.cfg)
 			}

@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/diagnostic"
 
-	ruffcheck "actionlint.kjanat.dev/internal/ruff"
+	ruffcheck "actionlint.kjanat.dev/internal/tools/ruff"
 )
 
 func TestRuffDefaultAndPyflakesSelection(t *testing.T) {

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/render"
 )
@@ -47,7 +49,7 @@ jobs:
       - run: . ./lib/check.sh
       - run: . ./lib/check.sh
 `)
-			options := AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}}
+			options := AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}
 			if tc.rc {
 				rc := writeShellcheckFixture(t, root, ".shellcheckrc", "shell=bash\n")
 				options.ShellcheckSettings = &ShellcheckSettings{Config: ShellcheckRCFile(rc)}
@@ -112,7 +114,7 @@ runs:
       run: . ./lib/check.sh
 `)
 	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{
-		Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"-a"}},
+		Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"-a"}},
 	})
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
@@ -188,7 +190,7 @@ jobs:
           echo $INLINE
           . ./scripts/lib.sh
 `)
-			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}}})
+			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
 			if err != nil {
 				t.Fatal(err)
 			}

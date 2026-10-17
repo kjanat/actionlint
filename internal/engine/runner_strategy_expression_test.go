@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	builtin "actionlint.kjanat.dev/internal/builtin"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 )
@@ -72,7 +74,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := NewRuleRunnerLabel()
+			rule := builtin.NewRuleRunnerLabel()
 			visitor := NewVisitor()
 			visitor.AddPass(rule)
 			if err := visitor.Visit(workflow); err != nil {
@@ -201,7 +203,7 @@ jobs:
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				rule := NewRuleRunnerLabel()
+				rule := builtin.NewRuleRunnerLabel()
 				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
 				}

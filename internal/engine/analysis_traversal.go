@@ -3,6 +3,9 @@ package engine
 import (
 	"context"
 
+	analyzerhost "actionlint.kjanat.dev/internal/analyzerhost"
+	workspace "actionlint.kjanat.dev/internal/workspace"
+
 	"actionlint.kjanat.dev/analyzer"
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
@@ -29,7 +32,7 @@ type traversalHost struct {
 	gitModes       *gitModes
 	workflowNames  *workflownames.Index
 	onRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
-	rulePresets    RulePresets
+	rulePresets    repoconfig.Presets
 	requires       map[analyzer.Fact]bool
 }
 
@@ -40,11 +43,11 @@ type traversalResult struct {
 	builtins         builtinAnalyzers
 	composites       *compositeAnalyzer
 	metadataSources  map[string][]byte
-	compositeConfigs map[string]*Config
+	compositeConfigs map[string]*repoconfig.Config
 }
 
-func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, metadata *actionmeta.Metadata, project *Project, cfg, projectConfig *Config, proc *concurrentProcess, localActions *actionlocal.Cache, localReusableWorkflows *calls.Cache) (*traversalResult, error) {
-	compositeConfigs := map[string]*Config{}
+func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, metadata *actionmeta.Metadata, project *workspace.Project, cfg, projectConfig *repoconfig.Config, proc *analyzerhost.ProcessPool, localActions *actionlocal.Cache, localReusableWorkflows *calls.Cache) (*traversalResult, error) {
+	compositeConfigs := map[string]*repoconfig.Config{}
 	dbg := l.debugWriter()
 	var mappings map[string]string
 	if cfg != nil {
@@ -87,7 +90,7 @@ func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, met
 		collectScripts:         len(builtins.scripts) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
 		resolveScriptExecution: builtins.resolveExecution || requires[analyzer.Execution],
 	}
-	v.composites.configForFile = func(path string) (*Config, error) {
+	v.composites.configForFile = func(path string) (*repoconfig.Config, error) {
 		config, err := repoconfig.ForAction(projectConfig, path, root)
 		if err != nil {
 			return nil, err

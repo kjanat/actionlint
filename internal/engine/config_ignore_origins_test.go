@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	processconfig "actionlint.kjanat.dev/internal/processconfig"
+
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -86,13 +89,13 @@ jobs:
 		{"[{rule: shellcheck, job: b, step: validate}]", 1},
 		{"[{rule: shellcheck, job: a}, {rule: shellcheck, job: b}]", 0},
 	} {
-		config, err := ParseConfig([]byte("tools: {shellcheck: true, ruff: false}\nignores: " + tc.ignores))
+		config, err := repoconfig.Parse([]byte("tools: {shellcheck: true, ruff: false}\nignores: " + tc.ignores))
 		if err != nil {
 			t.Fatal(err)
 		}
 		result, err := Analyze(t.Context(), AnalysisRequest{
 			WorkingDir: root, ShellCheck: command,
-			ShellcheckOptions: &ExternalCommandOptions{Arguments: []string{"--check-sourced"}},
+			ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}},
 			Sources:           []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}},
 		})
 		if err != nil {

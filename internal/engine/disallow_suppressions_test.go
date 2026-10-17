@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
@@ -57,7 +59,7 @@ cache-mode: write`, "true", []string{"cache-write-untrusted"}},
 
 func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 	const source = "name: café # actionlint:ignore cache-operation, cache-operation -- reviewed"
-	cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
+	cfg, err := repoconfig.Parse([]byte("policy: {disallow-suppressions: true}"))
 	if err != nil {
 		t.Fatal(err)
 	}

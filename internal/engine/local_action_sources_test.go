@@ -13,7 +13,7 @@ import (
 )
 
 func TestLocalActionSourceConfig(t *testing.T) {
-	config, err := ParseConfig([]byte("local-actions: {'$/generated/': './source'}\noverrides:\n  - includes: ['special.yml']\n    local-actions: {'./generated': './other'}\n  - includes: ['reset.yml']\n    local-actions: null\n"))
+	config, err := repoconfig.Parse([]byte("local-actions: {'$/generated/': './source'}\noverrides:\n  - includes: ['special.yml']\n    local-actions: {'./generated': './other'}\n  - includes: ['reset.yml']\n    local-actions: null\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,20 +26,20 @@ func TestLocalActionSourceConfig(t *testing.T) {
 	if config.LocalActions["./generated"] != "./source" {
 		t.Fatal("override mutated shared config")
 	}
-	programmatic := &Config{LocalActions: LocalActionSources{"$/generated/": "$/source"}, Overrides: []ConfigOverride{{Includes: []string{"special.yml"}, LocalActions: LocalActionSources{"$/generated": "$/other"}}}}
+	programmatic := &repoconfig.Config{LocalActions: repoconfig.LocalActionSources{"$/generated/": "$/source"}, Overrides: []repoconfig.Override{{Includes: []string{"special.yml"}, LocalActions: repoconfig.LocalActionSources{"$/generated": "$/other"}}}}
 	got, err := repoconfig.ForFile(programmatic, "special.yml", "")
 	if err != nil || got.LocalActions["./generated"] != "./other" {
 		t.Fatalf("programmatic mappings: %+v %v", got, err)
 	}
 	for _, value := range []string{"{'./generated': '../outside'}", "{'./generated': 42}", "{'./generated': './source', '$/generated': './other'}", "{'./generated': '${{ inputs.path }}'}", "[]"} {
-		if _, err := ParseConfig([]byte("local-actions: " + value)); err == nil {
+		if _, err := repoconfig.Parse([]byte("local-actions: " + value)); err == nil {
 			t.Fatalf("accepted %s", value)
 		}
 	}
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "base.yml", "local-actions: {'./generated': './source', './second': './two'}\n")
 	file := writeShellcheckFixture(t, root, "config.yml", "extends: [base.yml]\nlocal-actions: {'$/generated/': './override'}\n")
-	merged, err := ReadConfigFile(file)
+	merged, err := repoconfig.Load(file)
 	if err != nil || merged.LocalActions["./generated"] != "./override" || merged.LocalActions["./second"] != "./two" {
 		t.Fatalf("extends: %+v %v", merged, err)
 	}
@@ -90,7 +90,7 @@ func TestLocalActionSourceCustomReader(t *testing.T) {
 				return os.ReadFile(path)
 			}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated\n        id: generated\n      - run: echo '${{ steps.generated.outputs.result }}'\n        shell: bash\n")
-			config, err := ParseConfig([]byte("local-actions: {'./generated': './virtual'}"))
+			config, err := repoconfig.Parse([]byte("local-actions: {'./generated': './virtual'}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -172,7 +172,7 @@ func TestMissingLocalActionSourceSuppression(t *testing.T) {
 	for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
 		for _, ignored := range []bool{false, true} {
 			root, _ := executableFixture(t)
-			config, err := ParseConfig([]byte("local-actions: {'./generated': './absent-source'}\n"))
+			config, err := repoconfig.Parse([]byte("local-actions: {'./generated': './absent-source'}\n"))
 			if err != nil {
 				t.Fatal(err)
 			}

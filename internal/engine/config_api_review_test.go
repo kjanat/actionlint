@@ -55,8 +55,8 @@ func TestInspectConfigErrorClassification(t *testing.T) {
 				if inherited {
 					path = writeShellcheckFixture(t, root, "actionlint.yml", "extends: [invalid.yml]\n")
 				}
-				_, want := ReadConfigFile(path)
-				got, err := InspectConfig(ConfigSelection{Path: path}, true)
+				_, want := repoconfig.Load(path)
+				got, err := repoconfig.Inspect(repoconfig.Selection{Path: path}, true)
 				if want == nil || err == nil || err.Error() != want.Error() || !strings.Contains(err.Error(), "could not parse config file") || strings.Contains(err.Error(), "could not read config file") || got.Path != path {
 					t.Fatalf("inspection=%+v error=%v, want %v", got, err, want)
 				}
@@ -64,8 +64,8 @@ func TestInspectConfigErrorClassification(t *testing.T) {
 		}
 	}
 	path := filepath.Join(t.TempDir(), "missing.yml")
-	_, want := ReadConfigFile(path)
-	_, err := InspectConfig(ConfigSelection{Path: path}, true)
+	_, want := repoconfig.Load(path)
+	_, err := repoconfig.Inspect(repoconfig.Selection{Path: path}, true)
 	if err == nil || err.Error() != want.Error() || strings.Count(err.Error(), "could not read config file") != 1 {
 		t.Fatalf("read error=%v, want %v", err, want)
 	}
@@ -78,7 +78,7 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 		"null",
 	} {
 		t.Run(overlay, func(t *testing.T) {
-			config, err := ParseConfig([]byte("tools: {shellcheck: {enabled: false, config: .shellcheckrc}}\noverrides: [{includes: [ci.yml], tools: " + overlay + "}]\n"))
+			config, err := repoconfig.Parse([]byte("tools: {shellcheck: {enabled: false, config: .shellcheckrc}}\noverrides: [{includes: [ci.yml], tools: " + overlay + "}]\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -94,7 +94,7 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				config, err = ParseConfig(encoded)
+				config, err = repoconfig.Parse(encoded)
 				if err != nil {
 					t.Fatal(err)
 				}

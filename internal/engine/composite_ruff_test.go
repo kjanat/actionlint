@@ -26,7 +26,7 @@ runs:
 	if err := os.Symlink(filepath.Join(root, "python-action"), filepath.Join(root, "python-alias")); err != nil {
 		t.Skipf("directory symlinks unavailable: %v", err)
 	}
-	config, err := ParseConfig([]byte(`overrides:
+	config, err := repoconfig.Parse([]byte(`overrides:
   - includes: ['python-action/action.yml']
     tools: {ruff: {select: [F401]}}
     lint: {rules: {external: {ruff: warn}}}
@@ -103,12 +103,12 @@ runs:
   - includes: ['python-action/action.yml']
     ` + tc.override + "\n"
 			}
-			config, err := ParseConfig([]byte(configText))
+			config, err := repoconfig.Parse([]byte(configText))
 			if err != nil {
 				t.Fatal(err)
 			}
 			if tc.code != "" {
-				if enabled, err := repoconfig.RuffMayEnable(applyRulePresets(RulePresets{}, config)); err != nil || !enabled {
+				if enabled, err := repoconfig.RuffMayEnable(repoconfig.ResolveRules(repoconfig.Presets{}, config)); err != nil || !enabled {
 					t.Fatalf("composite checker cannot be provisioned: enabled=%v, error=%v", enabled, err)
 				}
 			}

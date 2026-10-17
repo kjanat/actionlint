@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -52,7 +54,7 @@ jobs:
 			{"[{rule: action, job: a, step: inner}, {rule: action, job: b, step: inner}]", 0},
 			{"[{rule: action, job: a, step: outer}, {rule: action, job: b, step: outer}]", 1},
 		} {
-			config, err := ParseConfig([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
+			config, err := repoconfig.Parse([]byte("tools: {shellcheck: false, ruff: false}\nignores: " + tc.ignores))
 			if err != nil {
 				t.Fatal(err)
 			}

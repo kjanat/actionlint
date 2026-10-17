@@ -24,6 +24,6 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	return run(ctx, request.prepared(), log, level)
 }
 
-func newConcurrentProcess(ctx context.Context, parallel int) *concurrentProcess {
+func newConcurrentProcess(ctx context.Context, parallel int) *analyzerhost.ProcessPool {
 	return analyzerhost.NewProcessPool(ctx, parallel)
 }

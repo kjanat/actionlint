@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/buildinfo"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
@@ -48,7 +50,7 @@ func TestLinterMissingLocalAction(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		l.DefaultConfig = &Config{}
+		l.DefaultConfig = &repoconfig.Config{}
 		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps
 		errs, err := l.Lint("test.yaml", []byte(source), proj)
 		if err != nil || len(errs) != tc.want {
@@ -71,7 +73,7 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 		{"missing-local-action: off", "action"},
 	} {
 		t.Run(tc.rules, func(t *testing.T) {
-			cfg, err := ParseConfig([]byte("lint: {rules: {correctness: {" + tc.rules + "}}}"))
+			cfg, err := repoconfig.Parse([]byte("lint: {rules: {correctness: {" + tc.rules + "}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -126,7 +128,7 @@ func TestLinterLintOK(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			config := Config{}
+			config := repoconfig.Config{}
 			linter.DefaultConfig = &config
 
 			t.Log("Linting workflow file", f)
@@ -251,7 +253,7 @@ func TestLinterLintError(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				l.DefaultConfig = &Config{}
+				l.DefaultConfig = &repoconfig.Config{}
 
 				errs, err := l.Lint("test.yaml", b, proj)
 				if err != nil {
@@ -293,7 +295,7 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l.DefaultConfig = &Config{}
+	l.DefaultConfig = &repoconfig.Config{}
 
 	errs, err := l.LintFiles(files, proj)
 	if err != nil {
@@ -327,7 +329,7 @@ func TestLintFindProjectFromPath(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		l.DefaultConfig = &Config{}
+		l.DefaultConfig = &repoconfig.Config{}
 		errs, err := l.Lint(path, b, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -423,7 +425,7 @@ func TestLinterFormatErrorMessageOK(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			l.DefaultConfig = &Config{}
+			l.DefaultConfig = &repoconfig.Config{}
 			errs, err := l.LintFile(infile, proj)
 			if err != nil {
 				t.Fatal(err)
@@ -473,7 +475,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l.DefaultConfig = &Config{}
+	l.DefaultConfig = &repoconfig.Config{}
 	errs, err := l.LintFile(file, proj)
 	if err != nil {
 		t.Fatal(err)
@@ -598,7 +600,7 @@ func TestLinterOnFilesSelectedHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.DefaultConfig = &Config{}
+	l.DefaultConfig = &repoconfig.Config{}
 
 	if _, err := l.LintFiles(paths, workspace.Identity(".")); err != nil {
 		t.Fatal(err)
@@ -638,7 +640,7 @@ func TestLinterAddCustomRuleOnRulesCreatedHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.DefaultConfig = &Config{}
+	l.DefaultConfig = &repoconfig.Config{}
 
 	{
 		w := `on: push
@@ -701,7 +703,7 @@ func TestLinterRemoveRuleOnRulesCreatedHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.DefaultConfig = &Config{}
+	l.DefaultConfig = &repoconfig.Config{}
 
 	f := filepath.Join("testdata", "err", "invalid_runner_labels.yaml")
 	errs, err := l.LintFile(f, nil)
@@ -869,7 +871,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				l.DefaultConfig = &Config{}
+				l.DefaultConfig = &repoconfig.Config{}
 
 				errs, err := l.LintFiles(bm.files, proj)
 				if err != nil {
@@ -916,7 +918,7 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				l.DefaultConfig = &Config{}
+				l.DefaultConfig = &repoconfig.Config{}
 				errs, err := l.Lint(f, content, proj)
 				if err != nil {
 					b.Fatal(err)
@@ -950,7 +952,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		l.DefaultConfig = &Config{}
+		l.DefaultConfig = &repoconfig.Config{}
 
 		errs, err := l.LintFiles(files, proj)
 		if err != nil {
