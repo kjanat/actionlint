@@ -320,6 +320,7 @@ jobs:
           GIT_COMMITTER_NAME: Action release test
           GIT_COMMITTER_EMAIL: action-release-test@example.invalid
         run: |
+          npm ci --ignore-scripts
           binary="${RUNNER_TEMP}/actionlint-test${BINARY_SUFFIX}"
           go build -o "${binary}" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${binary}" >> "${GITHUB_ENV}"
