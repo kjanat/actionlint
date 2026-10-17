@@ -188,6 +188,21 @@ function workflowFilters(workflow) {
 	return JSON.parse(scalar);
 }
 
+test('plugin sources and Cargo inputs select the plugin checks', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of [
+			'Cargo.toml',
+			'Cargo.lock',
+			'rust-toolchain.toml',
+			'examples/plugins/pipe-to-shell.rs',
+			'testdata/plugins/misbehave/src/lib.rs',
+		]
+	) {
+		assert.equal(selectJobs(ci, [path]).plugins, true, path);
+	}
+});
+
 test('test-only CLI changes keep Go coverage without rebuilding packages or running unrelated suites', () => {
 	const jobs = selectJobs(workflowFilters('ci'), ['internal/integration/cli/usability_test.go']);
 	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['unit', 'race', 'lint']);
@@ -230,6 +245,9 @@ test('action tests, probe results, mixed documentation and source changes select
 	assert.equal(selectJobs(workflowFilters('matcher'), ['internal/cli/check.go']).matcher, true);
 	assert.equal(selectJobs(ci, ['internal/cli/check.go'])['action-tests'], false);
 	assert.equal(selectJobs(ci, ['Dockerfile'])['action-tests'], false);
+	assert.equal(selectJobs(ci, ['tools/action/check-action-outputs.mjs'])['action-tests'], true);
+	assert.equal(selectJobs(ci, ['tools/config/main.go']).unit, true);
+	assert.equal(selectJobs(ci, ['tools/config/main.go']).lint, true);
 	assert.equal(selectJobs(ci, ['.github/workflows/upkeep.yml']).unit, true);
 	assert.ok(Object.values(selectJobs(ci, ['.github/workflows/ci.yml'])).every(Boolean));
 });

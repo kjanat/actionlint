@@ -1232,9 +1232,9 @@ engine. The Ruff engine replaces the native Ruff process while retaining the
 host's workflow expression masking and YAML position mapping.
 
 Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
-provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. Build
-the commitish provider with `cargo build --release --manifest-path
-plugins/commitish/Cargo.toml`. Its executable accepts `--token-env NAME` only when
+provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. The
+commitish provider is maintained separately as `actionlint-plugin-commitish`. Build it
+from that project with `cargo build --locked --release`. Its executable accepts `--token-env NAME` only when
 you explicitly choose a credential variable. It resolves action and reusable
 workflow references using their respective commitish semantics, and proposes
 reviewable commit pins. Provider errors fail analysis instead of implying absence.

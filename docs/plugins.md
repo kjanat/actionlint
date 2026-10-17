@@ -52,19 +52,18 @@ document, so findings in a composite action copy `script.path`.
 
 ### Rust
 
-[`plugins/examples/pipe-to-shell`](../plugins/examples/pipe-to-shell) flags `curl ... | sh` patterns. It depends on
+[`examples/plugins/pipe-to-shell.rs`](../examples/plugins/pipe-to-shell.rs) flags `curl ... | sh` patterns. It depends on
 the `wit-bindgen` crate only and builds with:
 
 ```sh
-rustup target add wasm32-wasip2
-cargo build --release --target wasm32-wasip2
+cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
 ```
 
-The component is `target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm`.
+The component is `target/wasm32-wasip2/wasm/examples/pipe_to_shell.wasm` at the repository root.
 
 ### C
 
-[`plugins/examples/no-sudo`](../plugins/examples/no-sudo) flags `sudo` at the start of a command. `build.sh` generates
+[`examples/plugins/no-sudo`](../examples/plugins/no-sudo) flags `sudo` at the start of a command. `build.sh` generates
 bindings with `wit-bindgen c` and compiles with wasi-sdk:
 
 ```sh
@@ -73,7 +72,7 @@ WASI_SDK_PATH=/opt/wasi-sdk ./build.sh no-sudo.wasm
 
 ### TinyGo
 
-[`plugins/examples/insecure-download`](../plugins/examples/insecure-download) flags `curl -k` and
+[`examples/plugins/insecure-download`](../examples/plugins/insecure-download) flags `curl -k` and
 `wget --no-check-certificate`. It is a Go module that depends on `go.bytecodealliance.org/cm`, with `wit-bindgen-go`
 pinned as a Go tool. TinyGo needs the WASI imports in the compiled world, so `build.sh` composes a world from the
 contract and TinyGo's bundled WASI definitions, then builds with:
@@ -89,11 +88,15 @@ https://github.com/partite-ai/wacogo/pull/12, and actionlint's `go.mod` requires
 
 Any toolchain that emits a component for the `plugin` world works.
 
-### Build outside this repository
+### Build the examples
 
-Copy `plugins/wit` next to your sources and point the binding generator at it. The examples refer to `../../wit`, so
-the layout `wit/` beside `examples/<plugin>/` reproduces their build as is. No other file from this repository is
-needed.
+Run `make plugin-examples` from the repository root to build the Rust, C and TinyGo examples.
+The Rust component is a Cargo `[[example]]` target. The C and TinyGo builds use their language toolchains.
+CI loads all three components through Actionlint's public plugin interface.
+
+For an independent plugin, create a package with its own manifest and lockfile and vendor the public
+[`plugins/wit`](../plugins/wit) contract. Point its binding generator at that copy. The host's fixture
+workspace is not a dependency of external plugins.
 
 ## Test a plugin
 
@@ -107,7 +110,7 @@ From Go, load it with `plugin.Load` and pass it in `analysis.Options.Analyzers`;
 does this for the examples, including a composite action call. When parsing configuration yourself, pass the
 registered analyzer names to `config.Parse` or `config.Load` so suppression names can be validated. File analysis and
 the CLI derive those names from the registered analyzers automatically. The Rust crate under
-`internal/plugins/component/testdata/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
+`testdata/plugins/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
 file access are reported.
 
 ## Script engines

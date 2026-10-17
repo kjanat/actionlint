@@ -28,7 +28,7 @@ const VERSION_PATTERN = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 export const VERSION_FILES = [
 	'.pre-commit-hooks.yaml',
 	'docs/usage.md',
-	'internal/release/bump-version/targets.go',
+	'tools/release/bump-version/targets.go',
 ];
 
 /**

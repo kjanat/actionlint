@@ -23,7 +23,7 @@ func TestRepositoryActionDiscovery(t *testing.T) {
 			}
 			writeFixture(t, root, "generated/action.yml", "invalid: [\n")
 			writeFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['generated/**']}\n")
-			for _, directory := range []string{".git-cache/node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata", "internal/githubaction/tooling/testdata", "nested"} {
+			for _, directory := range []string{".git-cache/node_modules", "vendor", ".venv", "venv", ".cache", ".worktrees", "testdata", "tools/action/testdata", "nested"} {
 				writeFixture(t, root, directory+"/action.yml", "invalid: [\n")
 			}
 			writeFixture(t, root, "nested/.git", "gitdir: elsewhere\n")

@@ -45,7 +45,7 @@ jobs:
           for file in "${files[@]}"; do
             tag="$(basename "${file}" .md)"
             [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-            go run ./internal/release/bump-version -notes "${tag}" > "${RUNNER_TEMP}/${tag}.md"
+            go run ./tools/release/bump-version -notes "${tag}" > "${RUNNER_TEMP}/${tag}.md"
             tags+=("${tag}")
           done
           for tag in "${tags[@]}"; do

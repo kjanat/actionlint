@@ -42,7 +42,7 @@ jobs:
           tag_commit="$(git rev-parse "refs/tags/${TAG}^{commit}")"
           test "${tag_commit}" = "${GITHUB_SHA}"
           gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --dir "${RUNNER_TEMP}/release-assets"
-          node internal/release/release-candidate.mjs verify --directory "${RUNNER_TEMP}/release-assets"
+          node tools/release/release-candidate.mjs verify --directory "${RUNNER_TEMP}/release-assets"
           manifest="${RUNNER_TEMP}/release-assets/release-candidate.json"
           candidate_tag="$(jq -r .tag "${manifest}")"
           test "${candidate_tag}" = "${TAG}"
@@ -54,7 +54,7 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFile } from 'node:fs/promises';
           import { join } from 'node:path';
-          import { parseManifest, verifyRun } from './internal/release/release-candidate.mjs';
+          import { parseManifest, verifyRun } from './tools/release/release-candidate.mjs';
           const read = async (name) => JSON.parse(await readFile(join(process.env.RUNNER_TEMP, name), 'utf8'));
           const manifest = parseManifest(await read('release-assets/release-candidate.json'));
           if (manifest.repository !== process.env.GITHUB_REPOSITORY) throw new Error('Candidate repository differs');
@@ -137,7 +137,7 @@ jobs:
           VERSION: ${{ needs.verify.outputs.version }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
-        run: node internal/release/release-assets.mjs publish .release-assets "${VERSION}"
+        run: node tools/release/release-assets.mjs publish .release-assets "${VERSION}"
       - name: Publish the prepared AUR binary package
         uses: &DeployAUR KSXGitHub/github-actions-deploy-aur@084b0d9b15415bf9cdb65d44dad1efe37a354050 # v4.2.0
         with:
@@ -198,7 +198,7 @@ jobs:
           VERSION: ${{ needs.verify.outputs.version }}
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: node internal/release/release-assets.mjs publish-winget "${RUNNER_TEMP}/winget" "${VERSION}"
+        run: node tools/release/release-assets.mjs publish-winget "${RUNNER_TEMP}/winget" "${VERSION}"
   winget-failure:
     name: Report a failed WinGet job
     needs: [verify, winget]
@@ -215,7 +215,7 @@ jobs:
         env:
           VERSION: ${{ needs.verify.outputs.version }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: node internal/release/release-assets.mjs report-winget-failure "${VERSION}"
+        run: node tools/release/release-assets.mjs report-winget-failure "${VERSION}"
   docker:
     name: Publish tested container bytes
     needs: verify
@@ -317,7 +317,7 @@ jobs:
           mkdir .published-action-test
           sed -e "s|OWNER/REPO@RELEASE_TAG|${GITHUB_REPOSITORY}@v${VERSION}|g" \
             -e "s|OWNER/REPO@COMMIT_SHA|${GITHUB_REPOSITORY}@${CANDIDATE}|g" \
-            internal/githubaction/tooling/testdata/published-action/action.yml > .published-action-test/action.yml
+            tools/action/testdata/published-action/action.yml > .published-action-test/action.yml
       - name: Resolve both published references through the runner
         # The prepared composite contains literal external uses references.
         uses: ./.published-action-test

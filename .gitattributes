@@ -1,7 +1,7 @@
 * text=auto eol=lf
 /actup.schema.json linguist-generated=true -diff
-/internal/release/bump-version/testdata/** -text
-/internal/githubaction/matcher/testdata/** -text
+/tools/release/bump-version/testdata/** -text
+/tools/matcher/testdata/** -text
 /internal/expression/context/generate/testdata/** -text
 /internal/actioncatalog/generate/testdata/** -text
 /packages/github-action/tools/*.json linguist-generated=true

@@ -149,7 +149,7 @@ jobs:
         with: { install: false, env: false, add_shims_to_path: false }
       - name: Test synchronized toolchain updates
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
-        run: run //internal/toolchain:test
+        run: run //tools/toolchain:test
       - name: Check the latest stable Go toolchain
         id: version
         env: { GH_TOKEN: "${{ github.token }}" }
@@ -160,7 +160,7 @@ jobs:
             echo "::error title=Invalid Go version::go.dev returned '${version}'"
             exit 1
           fi
-          node internal/toolchain/update-go-toolchain.mjs "${version}"
+          node tools/toolchain/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
@@ -218,7 +218,7 @@ jobs:
           add-paths: |
             .pre-commit-hooks.yaml
             docs/usage.md
-            internal/release/bump-version/targets.go
+            tools/release/bump-version/targets.go
           commit-message: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-installer-version }}"
           title: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-installer-version }}"
           body: |

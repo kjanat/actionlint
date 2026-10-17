@@ -79,10 +79,10 @@ jobs:
       - name: Validate source and release helpers
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
         run: |
-          go run ./internal/release/bump-version -check
-          go run ./internal/release/bump-version -notes "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
+          go run ./tools/release/bump-version -check
+          go run ./tools/release/bump-version -notes "v${VERSION}" > "${RUNNER_TEMP}/release-notes.md"
           go test ./...
-          runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //internal/release:test //internal/toolchain:test //internal/githubaction/container:test //internal/githubaction/tooling:test
+          runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test
       - name: Build the complete candidate tree
         id: candidate
         env:
@@ -90,7 +90,7 @@ jobs:
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-        run: node internal/release/release-candidate.mjs prepare --version "${VERSION}" --out-dir "${RUNNER_TEMP}/actionlint-action"
+        run: node tools/release/release-candidate.mjs prepare --version "${VERSION}" --out-dir "${RUNNER_TEMP}/actionlint-action"
       - name: Select the candidate for packaging
         env: { CANDIDATE: "${{ steps.candidate.outputs.candidate }}" }
         run: git checkout --detach "${CANDIDATE}"
@@ -106,7 +106,7 @@ jobs:
           COMMIT_EMAIL: ${{ vars.COMMIT_EMAIL }}
       - name: Preserve the exact release assets
         run: |
-          node internal/release/release-assets.mjs collect "${RUNNER_TEMP}/actionlint-action/assets"
+          node tools/release/release-assets.mjs collect "${RUNNER_TEMP}/actionlint-action/assets"
           cp "${RUNNER_TEMP}/release-notes.md" "${RUNNER_TEMP}/actionlint-action/release-notes.md"
       - name: Write the PyPI wheels beside the release archives
         run: |
@@ -166,7 +166,7 @@ jobs:
           fi
           echo "ACTIONLINT_ACTION_BINARY=${binary_dir}/actionlint${BINARY_SUFFIX}" >> "${GITHUB_ENV}"
       - name: Test the packaged entrypoint and CLI compatibility
-        run: node internal/githubaction/tooling/test-action.mjs .actionlint-action-candidate "${ACTIONLINT_ACTION_BINARY}"
+        run: node tools/action/test-action.mjs .actionlint-action-candidate "${ACTIONLINT_ACTION_BINARY}"
       - name: Exercise the candidate through the real runner
         id: smoke
         # ./ loads the candidate tree generated during this job.
@@ -179,7 +179,7 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          node internal/githubaction/tooling/check-action-outputs.mjs
+          node tools/action/check-action-outputs.mjs
           actionlint -version
           shellcheck --version
       - name: Verify Windows command resolution
@@ -249,9 +249,9 @@ jobs:
             skopeo --override-os linux --override-arch "${arch}" copy \
               "oci-archive:${RUNNER_TEMP}/${CONTAINER_ASSET}_${VERSION}.tar" "docker-daemon:${image}"
             if [[ "${CONTAINER_TARGET}" == action ]]; then
-              bash internal/githubaction/container/test-docker-action.bash "${image}" "linux/${arch}"
+              bash distribution/docker/test-docker-action.bash "${image}" "linux/${arch}"
             else
-              bash internal/githubaction/container/test-docker-ruff.bash "${image}" "linux/${arch}"
+              bash distribution/docker/test-docker-ruff.bash "${image}" "linux/${arch}"
               docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
                 "${image}" testdata/ok/minimal.yaml
               status=0
@@ -288,7 +288,7 @@ jobs:
         run: |
           assets="${RUNNER_TEMP}/actionlint-action/assets"
           git fetch --no-tags "${assets}/release-candidate.bundle" "refs/actionlint/candidates/v${VERSION}"
-          node internal/release/release-candidate.mjs manifest --version "${VERSION}" --directory "${assets}" --source "${SOURCE}" --candidate "${CANDIDATE}"
+          node tools/release/release-candidate.mjs manifest --version "${VERSION}" --directory "${assets}" --source "${SOURCE}" --candidate "${CANDIDATE}"
       - name: Preserve the manifest independently of the editable draft
         uses: *Upload
         with:
@@ -310,5 +310,5 @@ jobs:
           gh release upload "v${VERSION}" --repo "${GITHUB_REPOSITORY}" "${RUNNER_TEMP}/actionlint-action/assets/"*
           remote_tag="$(git ls-remote origin "refs/tags/v${VERSION}")"
           test -z "${remote_tag}"
-          printf 'Prepared **v%s**. Promote the validated draft with:\n\n    node internal/release/release-candidate.mjs promote --version %s --run %s\n' \
+          printf 'Prepared **v%s**. Promote the validated draft with:\n\n    node tools/release/release-candidate.mjs promote --version %s --run %s\n' \
             "${VERSION}" "${VERSION}" "${GITHUB_RUN_ID}" >> "${GITHUB_STEP_SUMMARY}"

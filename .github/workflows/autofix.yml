@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
       - name: Test autofix change tracking
-        run: bash internal/ci/test-autofix-step.bash
+        run: bash tools/ci/test-autofix-step.bash
       - name: Select generators affected by this change
         id: inputs
         env:
@@ -58,17 +58,17 @@ jobs:
           else
             base=${BASE_SHA}
           fi
-          bash internal/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
+          bash tools/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
       - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
-        run: bash internal/ci/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+        run: bash tools/ci/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
       - name: Regenerate the configuration schema
         id: schema
-        run: bash internal/ci/autofix-step.bash go generate -run generate-config-schema
+        run: bash tools/ci/autofix-step.bash go generate -run generate-config-schema
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: steps.inputs.outputs.tables == 'true'
         with: { node-version-file: .node-version, package-manager-cache: false }
@@ -78,19 +78,19 @@ jobs:
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'
-        run: bash internal/ci/autofix-step.bash go generate -skip generate-config-schema
+        run: bash tools/ci/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      - uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
         with: { cache: true, auto_update: true }
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'
-        run: bash internal/ci/autofix-step.bash go run ./internal/documentation/check-readme -fix ./README.md
+        run: bash tools/ci/autofix-step.bash go run ./internal/documentation/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: format the code
         id: format
         # autofix-ci will fail if the .github directory is touched
-        run: bash internal/ci/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
+        run: bash tools/ci/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
       - name: Describe applied fixes
         id: fixes
         env:
@@ -112,8 +112,7 @@ jobs:
           fi
       - name: Check fixes for stacked pull requests
         if: github.event.pull_request.stack != null
-        run: |
-          git -c core.fileMode=false add --all
+        run: git -c core.fileMode=false add --all;
           git diff --cached --exit-code
       - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1
         if: github.event.pull_request.stack == null && steps.fixes.outputs.description != ''

@@ -1,6 +1,6 @@
 package actionlint
 
-//go:generate -command generate-config-schema go run ./internal/config/generate
+//go:generate -command generate-config-schema go run ./tools/config
 //go:generate generate-config-schema
 //go:generate go run ./internal/rulecatalog/generate
 //go:generate go run ./internal/expression/context/generate ./internal/expression/context/availability.go

@@ -9,5 +9,5 @@
   )
   (core instance $i (instantiate $m))
   (func (export "f") (param "s" string)
-    (canon lift (core func $i "f") (memory $i "memory") (realloc (func $i "realloc")) string-encoding=utf8))
+    (canon lift (core func $i "f") (memory (core memory $i "memory")) (realloc (core func $i "realloc")) string-encoding=utf8))
 )

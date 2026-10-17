@@ -198,7 +198,7 @@ func TestNewContractsDoNotImportTheirImplementations(t *testing.T) {
 // Configuration schemas are generated from their owning model and catalogue;
 // loading an analysis engine to discover configuration metadata breaks that boundary.
 func TestConfigurationGeneratorDoesNotImportEngine(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/config/generate").Output()
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/tools/config").Output()
 	if err != nil {
 		t.Fatal(err)
 	}

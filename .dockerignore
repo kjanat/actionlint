@@ -8,7 +8,9 @@
 !cmd/**
 !internal
 !internal/**
-!internal/githubaction/container/docker-action.sh
+!distribution
+!distribution/docker
+!distribution/docker/docker-action.sh
 !analysis
 !analysis/**
 !config

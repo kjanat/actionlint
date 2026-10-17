@@ -20,20 +20,20 @@ jobs:
           ],
           "jobs": {
             "unit": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
               "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
-              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "internal/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
+              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
             "race": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
               "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
-              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "internal/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
+              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
             "nix": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
-              "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "internal/release/check-packaged-cli.bash",
+              "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "tools/release/check-packaged-cli.bash",
               ".github/workflows/nix.yml", "!**/testdata/**"
             ],
             "wasm": [
@@ -44,14 +44,14 @@ jobs:
             "javascript": [
               "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", "internal/**/mise.toml"
+              ".github/actions/**/mise.toml", "tools/**/mise.toml", "distribution/**/mise.toml"
             ],
             "release": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
               ".goreleaser.yaml", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
-              "internal/release/build-action-release.mjs", "internal/release/*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
+              "tools/release/build-action-release.mjs", "tools/release/*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
-              "!internal/**/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
+              "!tools/**/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
             ],
             "modules": [
               ".github/actions/**", "distribution/**", "schemas/**", "actionlint.schema.json", "man/**", "README.md", "LICENSE.txt", "go.mod",
@@ -59,29 +59,29 @@ jobs:
             ],
             "lint": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "**/*.go", ".golangci.toml",
-              "docs/checks.md", "internal/**/*.bash", "distribution/**/*.bash", "Makefile", ".github/workflows/**", ".github/actions/**", ".github/actionlint.yaml",
+              "docs/checks.md", "tools/**/*.bash", "distribution/**/*.bash", "Makefile", ".github/workflows/**", ".github/actions/**", ".github/actionlint.yaml",
               "!testdata/**", "!**/testdata/**"
             ],
             "docker": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Dockerfile",
-              ".dockerignore", "internal/githubaction/container/**", "action.yml", "!**/testdata/**"
+              ".dockerignore", "distribution/docker/**", "action.yml", "!**/testdata/**"
             ],
             "action": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "internal/**/*.mjs", ".pre-commit-hooks.yaml",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", "tools/release/*.mjs", ".pre-commit-hooks.yaml",
               ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
             ],
             "action-tests": [
-              "packages/github-action/**", "distribution/npm/facade/types/**", "internal/**/*.mjs", "action.yml", "package.json", "package-lock.json",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
               ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
             ],
             "precommit": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              ".pre-commit-hooks.yaml", "internal/release/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
+              ".pre-commit-hooks.yaml", "tools/release/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
             ],
             "plugins": [
-              "plugins/**", "plugin/**", "internal/plugins/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "diagnostic/**", "go.mod", "go.sum", "Makefile"
+              "plugins/**", "examples/plugins/**", "testdata/plugins/**", "plugin/**", "internal/plugins/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "diagnostic/**", "go.mod", "go.sum", "Makefile", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"
             ]
           }
         }
@@ -212,7 +212,7 @@ jobs:
       - name: Build JavaScript Action release files outside the checkout
         run: npm ci --ignore-scripts;
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
-          node internal/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
+          node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: release --snapshot --clean }
@@ -258,7 +258,7 @@ jobs:
       - run: run -s make:lint make:lint-docs
         env: *SkipGoGen
       - name: Lint bash scripts
-        run: shellcheck internal/ci/*.bash internal/githubaction/container/*.bash internal/release/*.bash distribution/install/*.bash
+        run: shellcheck tools/ci/*.bash distribution/docker/*.bash tools/release/*.bash distribution/install/*.bash
   plugins:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
@@ -275,29 +275,33 @@ jobs:
           - name: Install TinyGo
             uses: *SetupMise
             with: { cache: true, auto_update: true, install_args: tinygo }
-          - name: Install the Rust wasip2 target
-            run: rustup target add wasm32-wasip2 wasm32-unknown-unknown
+          - name: Install the pinned Rust toolchain and targets
+            run: rustup toolchain install
           - name: Install wasi-sdk
             run: |
               curl --silent --show-error --location --output "${RUNNER_TEMP}/wasi-sdk.tar.gz" https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz
               tar -xzf "${RUNNER_TEMP}/wasi-sdk.tar.gz" -C "${RUNNER_TEMP}"
               echo "WASI_SDK_PATH=${RUNNER_TEMP}/wasi-sdk-34.0-x86_64-linux" >> "${GITHUB_ENV}"
+      - name: Cache Cargo dependencies and workspace builds
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            target/
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', '**/Cargo.toml') }}
+          restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
       - name: Check Rust plugins and fixtures on the native target
         run: make plugins-check-native
-      - name: Test the commitish resolution provider
-        run: cargo test --locked --manifest-path plugins/commitish/Cargo.toml
       - name: Build the plugin fixtures from source
-        run: make plugins
-      - name: Build the examples outside the repository
-        run: |
-          stage="${RUNNER_TEMP}/plugin-stage"
-          mkdir -p "${stage}/examples"
-          cp -R plugins/wit "${stage}/wit"
-          cp -R plugins/examples/pipe-to-shell plugins/examples/no-sudo plugins/examples/insecure-download "${stage}/examples/"
-          cargo build --locked --release --target wasm32-wasip2 --manifest-path "${stage}/examples/pipe-to-shell/Cargo.toml"
-          "${stage}/examples/no-sudo/build.sh" "${stage}/no-sudo.wasm"
-          "${stage}/examples/insecure-download/build.sh" "${stage}/insecure-download.wasm"
-          go run ./cmd/actionlint --no-config --shellcheck= --ruff= --plugin "${stage}/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm" --plugin "${stage}/no-sudo.wasm" --plugin "${stage}/insecure-download.wasm" testdata/ok/minimal.yaml
+        run: make -B plugins
+      - name: Load the Rust, C and TinyGo examples
+        run: >-
+          go run ./cmd/actionlint --no-config --shellcheck= --ruff=
+          --plugin internal/plugins/component/testdata/plugins/pipe-to-shell.wasm
+          --plugin internal/plugins/component/testdata/plugins/no-sudo.wasm
+          --plugin internal/plugins/component/testdata/plugins/insecure-download.wasm
+          testdata/ok/minimal.yaml
       - run: go test -count=1 ./internal/plugins/component ./internal/plugins/core ./plugin
       - run: go test -count=1 -run "Plugin|Engine" ./internal/integration/cli
   docker:
@@ -311,7 +315,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with: { load: true, push: false, tags: actionlint:test }
       - name: Check bundled Ruff
-        run: bash internal/githubaction/container/test-docker-ruff.bash actionlint:test
+        run: bash distribution/docker/test-docker-ruff.bash actionlint:test
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
@@ -319,7 +323,7 @@ jobs:
       - name: Build Docker Action compatibility image
         run: docker build --target action -t actionlint:action-test .
       - name: Check Docker Action compatibility
-        run: bash internal/githubaction/container/test-docker-action.bash actionlint:action-test
+        run: bash distribution/docker/test-docker-action.bash actionlint:action-test
       - parallel:
           - name: Lint Dockerfile with hadolint
             run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
@@ -351,7 +355,7 @@ jobs:
       - name: Test the JavaScript runtime and release packaging
         if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
-        run: runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //internal/release:test //internal/toolchain:test //internal/githubaction/container:test //internal/githubaction/tooling:test
+        run: runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
@@ -372,9 +376,9 @@ jobs:
           go build -o "${binary}" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${binary}" >> "${GITHUB_ENV}"
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')"
-          node internal/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
+          node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
           parent="$(git rev-parse HEAD)"
-          candidate="$(node internal/release/build-action-release.mjs --commit --out-dir "${RUNNER_TEMP}/actionlint-action" \
+          candidate="$(node tools/release/build-action-release.mjs --commit --out-dir "${RUNNER_TEMP}/actionlint-action" \
             --version "${tag#v}" --parent "${parent}")"
           mkdir .actionlint-action-test
           git archive "${candidate}" | tar -x -C .actionlint-action-test
@@ -482,12 +486,12 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          node internal/githubaction/tooling/check-action-outputs.mjs
+          node tools/action/check-action-outputs.mjs
           actionlint_path="$(command -v actionlint)"
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
           shellcheck --version
-          node internal/githubaction/tooling/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
+          node tools/action/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
       - name: Check exported tools from PowerShell
         if: runner.os == 'Windows'
         shell: pwsh

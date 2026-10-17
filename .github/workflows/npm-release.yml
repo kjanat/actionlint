@@ -178,7 +178,7 @@ jobs:
             echo "::error::the facade tarball carries no man/actionlint.1"
             exit 1
           fi
-          bash internal/release/check-packaged-cli.bash node "${facade}/bin/actionlint.mjs"
+          bash tools/release/check-packaged-cli.bash node "${facade}/bin/actionlint.mjs"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: npm-tarballs, path: distribution/npm/tarballs, retention-days: 7 }

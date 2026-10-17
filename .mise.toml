@@ -1,5 +1,6 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
+min_version   = { soft = "2026.10.13" }
 monorepo_root = true
 
 [wrappers.actionlint]
@@ -11,14 +12,15 @@ env     = { GOFLAGS = "-buildvcs=true" }
 npm                                      = "12.2.0"
 go                                       = { prefix = "1.27" }
 node                                     = { prefix = "26" }
+shellcheck                               = { prefix = "0.11" }
+rshellcheck                              = { version = "latest" }
+ruff                                     = "0.17.0"
+tinygo                                   = { prefix = "0.43" }
 "github:charmbracelet/markscribe".prefix = "0.8"
 "github:jgm/pandoc".prefix               = "3"
 "github:kjanat/runner".prefix            = "0.28"
-"github:koalaman/shellcheck".prefix      = "0.11"
 "github:microsoft/TypeScript".prefix     = "7"
 "github:tombi-toml/tombi".prefix         = "1.8"
-ruff                                     = "0.17.0"
-tinygo                                   = { prefix = "0.43" }
 
 [tools."golangci-lint"]
 prefix  = "2"
@@ -37,8 +39,9 @@ version = "0.59.0-kjanat"
 depends = ["tombi", "go"]
 
 [tool_alias]
-tombi      = "github:tombi-toml/tombi"
-shellcheck = "github:koalaman/shellcheck"
+tombi       = "github:tombi-toml/tombi"
+shellcheck  = "github:koalaman/shellcheck"
+rshellcheck = "github:kjanat/shellcheck-rs"
 
 [settings]
 experimental                        = true
@@ -71,10 +74,10 @@ config_roots = [
   ".github/actions/comment-cop",
   ".github/actions/shellcheck-versions",
   ".github/ci",
-  "internal/release",
-  "internal/toolchain",
-  "internal/githubaction/container",
-  "internal/githubaction/tooling",
+  "distribution/docker",
   "internal/expression/probe",
-  "internal/githubaction/matcher",
+  "tools/action",
+  "tools/matcher",
+  "tools/release",
+  "tools/toolchain",
 ]
