@@ -20,7 +20,7 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 			errs := lintCredentialsExpressionTest(t, source)
 			counts := map[string]int{}
 			for _, err := range errs {
-				counts[err.Kind]++
+				counts[err.Rule]++
 			}
 			if len(errs) != 3 || counts["matrix"] != 1 || counts["runner-label"] != 2 {
 				t.Fatalf("known row diagnostics lost: %v", errs)
@@ -218,7 +218,7 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 					t.Fatalf("resolved ID or source key lost: %+v", row)
 				}
 				invalid := strings.Replace(source, "ubuntu-latest", "not-a-runner", 1)
-				if errs := lintCredentialsExpressionTest(t, invalid); len(errs) != 1 || errs[0].Kind != "runner-label" {
+				if errs := lintCredentialsExpressionTest(t, invalid); len(errs) != 1 || errs[0].Rule != "runner-label" {
 					t.Fatalf("resolved axis bypassed runner validation: %v", errs)
 				}
 			})
@@ -255,12 +255,12 @@ func TestUnknownScriptInputNames(t *testing.T) {
 }
 
 func TestMatrixSourceKeyExpressions(t *testing.T) {
-	for _, tc := range []struct{ key, want string }{
-		{"${{ missing }}", `undefined variable "missing"`},
-		{"${{ env.NAME }}", `context "env" is not allowed`},
-		{"${{ 1 + }}", "unexpected character"},
-		{"${{ 'axis' }}", ""},
-		{"${{ vars.AXIS }}", ""},
+	for _, tc := range []struct{ key, want, rule string }{
+		{"${{ missing }}", `undefined variable "missing"`, "expression-reference"},
+		{"${{ env.NAME }}", `context "env" is not allowed`, "context-availability"},
+		{"${{ 1 + }}", "unexpected character", "expression-syntax"},
+		{"${{ 'axis' }}", "", ""},
+		{"${{ vars.AXIS }}", "", ""},
 	} {
 		for _, value := range []string{"[one]", `"${{ fromJSON('[\"one\"]') }}"`} {
 			for depth := range 3 {
@@ -277,7 +277,7 @@ func TestMatrixSourceKeyExpressions(t *testing.T) {
 						}
 						return
 					}
-					if len(errs) != 1 || errs[0].Kind != "expression" || !strings.Contains(errs[0].Message, tc.want) || errs[0].Line != 6 {
+					if len(errs) != 1 || errs[0].Rule != tc.rule || !strings.Contains(errs[0].Message, tc.want) || errs[0].Start.Line != 6 {
 						t.Fatalf("want one key diagnostic containing %q at line 6, got %v", tc.want, errs)
 					}
 				})

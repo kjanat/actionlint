@@ -18,8 +18,8 @@ type Diagnostic struct {
 	Related          []Related         `json:"related,omitempty"`
 
 	Rule string `json:"rule"`
-	// Code and Severity retain an external analyzer's identifier and native level.
-	// Empty values mean the rule did not supply this metadata.
+	// Code identifies a diagnostic kind within Rule, for native and external checks.
+	// Severity records its effective level. Empty values mean metadata was not supplied.
 	Code     string   `json:"code,omitempty"`
 	Severity string   `json:"severity,omitempty"`
 	Message  string   `json:"message"`

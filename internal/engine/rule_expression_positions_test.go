@@ -38,7 +38,7 @@ func TestWorkflowExpressionScalarPositions(t *testing.T) {
 					t.Fatalf("got %+v", result.Diagnostics)
 				}
 				d := result.Diagnostics[0]
-				if d.Rule != "expression" || d.Start.Line != line || d.Start.Column != column {
+				if d.Rule != "expression-reference" || d.Start.Line != line || d.Start.Column != column {
 					t.Fatalf("want %d:%d, got %+v", line, column, d)
 				}
 				if d.End.Line != line || d.End.Column != column+len(token) {

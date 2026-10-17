@@ -24,7 +24,7 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			if descriptor.Name == "" {
 				return nil, errors.New("analyzer name must not be empty")
 			}
-			if err := validateOptions(descriptor.OptionsSchema, registration.Options); err != nil {
+			if err := ValidateOptions(descriptor.OptionsSchema, registration.Options); err != nil {
 				return nil, fmt.Errorf("analyzer %q options: %w", descriptor.Name, err)
 			}
 			for _, requirement := range descriptor.Requires {

@@ -259,6 +259,9 @@ func TestConditionSerializationRemainsUnknown(t *testing.T) {
 
 func TestSuspiciousConditionRuleSelection(t *testing.T) {
 	const header = `on:
+  issue_comment:
+  label:
+  deployment:
   workflow_dispatch:
     inputs:
       text: {type: string}
@@ -282,7 +285,7 @@ jobs:
 		{"string-conditions", "inputs.flag", false},
 		{"string-conditions", "inputs.text == 'true'", false},
 		{"string-conditions", "fromJSON(inputs.text)", false},
-		{"string-conditions", "github.event.unknown", false},
+		{"string-conditions", "fromJSON(inputs.text).unknown", false},
 		{"mixed-type-comparisons", "inputs.text == false", true},
 		{"mixed-type-comparisons", "0 >= steps.producer.outputs.flag", true},
 		{"mixed-type-comparisons", "inputs['text'] <= 100", true},
@@ -307,7 +310,7 @@ jobs:
 						"mixed-type-comparisons":      "condition compares a string",
 						"case-insensitive-conditions": "ignores case",
 					}[tc.check]
-					if len(errs) != 1 || errs[0].Kind != tc.check || !strings.Contains(errs[0].Message, want) || strings.Contains(errs[0].Message, "policy") {
+					if len(errs) != 1 || errs[0].Rule != tc.check || !strings.Contains(errs[0].Message, want) || strings.Contains(errs[0].Message, "policy") {
 						t.Fatal(errs)
 					}
 				} else if len(errs) != 0 {

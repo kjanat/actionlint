@@ -1238,3 +1238,30 @@ you explicitly choose a credential variable. It resolves action and reusable
 workflow references using their respective commitish semantics, and proposes
 reviewable commit pins. Provider errors fail analysis instead of implying absence.
 The default local analysis makes no resolution requests.
+
+The language server provides expression property completions, including
+`github.event` payload fields selected by the workflow's triggers and activity
+filters. Dot access, quoted bracket access, array indices and wildcard access
+use the same types as expression diagnostics. Completions use the current editor
+buffer, including unsaved changes. Unknown events and caller-provided payloads
+remain open; conditions do not yet narrow the event type within a branch.
+
+Expression findings have independent rule settings. For example, allowing unknown
+payload properties does not disable script-injection checks:
+
+```yaml
+lint:
+  rules:
+    correctness:
+      event-payload: off
+      expression-reference: error
+    security:
+      script-injection: error
+```
+
+The former `expression` catch-all has been split into `expression-syntax`,
+`expression-reference`, `context-availability`, `expression-type`,
+`expression-call`, `event-payload` and `script-injection`. Update existing
+suppressions and severity settings to the specific check. The `expression` rule
+now covers expression values and interpolation forms required by workflow fields.
+See the [rule reference](rules.md) for each rule's configuration group and help.

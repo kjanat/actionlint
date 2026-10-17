@@ -9,8 +9,8 @@ func TestInlineSuppressionFlowScalarBoundary(t *testing.T) {
 	for _, value := range []string{"\"first\n    body_marker\"", "'first\n    body_marker'", "first\n    body_marker"} {
 		t.Run(value, func(t *testing.T) {
 			source := "# actionlint:ignore-next-line expression\n- {run: " + value + ", shell: bash}\n- run: sibling\n"
-			body := &Error{Line: 3, Kind: "expression"}
-			sibling := &Error{Line: 4, Kind: "expression"}
+			body := &Error{Start: DiagnosticPosition{Line: 3}, Rule: "expression"}
+			sibling := &Error{Start: DiagnosticPosition{Line: 4}, Rule: "expression"}
 			got := filterInlineSuppressions([]byte(source), []*Error{body, sibling}, nil)
 			if len(got) != 1 || got[0] != sibling {
 				t.Fatalf("flow scalar suppression must end before sibling: %+v", got)
@@ -44,7 +44,7 @@ func TestInlineSuppressionMultilineScalarBoundary(t *testing.T) {
 					}
 				}
 				input = strings.ReplaceAll(input, "\n", ending)
-				findings := []*Error{{Line: body, Kind: "expression"}, {Line: sibling, Kind: "expression"}}
+				findings := []*Error{{Start: DiagnosticPosition{Line: body}, Rule: "expression"}, {Start: DiagnosticPosition{Line: sibling}, Rule: "expression"}}
 				got := filterInlineSuppressions([]byte(input), findings, nil)
 				if len(got) != 1 || got[0] != findings[1] {
 					t.Fatalf("scalar body should be ignored without swallowing sibling: %+v", got)

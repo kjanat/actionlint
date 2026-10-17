@@ -9,9 +9,9 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// Options validation is transport-independent. Schemas must bundle their refs;
+// ValidateOptions checks provider options independently of transport. Schemas must bundle their refs;
 // loading a plugin must never grant implicit filesystem or network reads.
-func validateOptions(schemaJSON, optionsJSON json.RawMessage) error {
+func ValidateOptions(schemaJSON, optionsJSON json.RawMessage) error {
 	if len(schemaJSON) == 0 {
 		if len(optionsJSON) != 0 && !json.Valid(optionsJSON) {
 			return errors.New("invalid options JSON")

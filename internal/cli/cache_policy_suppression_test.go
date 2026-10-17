@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -31,10 +32,10 @@ jobs:
 			t.Fatal(err)
 		}
 		if exception == "" {
-			if status != actionlint.ExitStatusSuccessProblemFound || len(diagnostics) != 1 || diagnostics[0].Kind != "cache-write-untrusted" {
+			if status != render.ExitSuccessProblemFound || len(diagnostics) != 1 || diagnostics[0].Kind != "cache-write-untrusted" {
 				t.Fatalf("status=%d diagnostics=%v", status, diagnostics)
 			}
-		} else if status != actionlint.ExitStatusSuccessNoProblem || len(diagnostics) != 0 {
+		} else if status != render.ExitSuccessNoProblem || len(diagnostics) != 0 {
 			t.Fatalf("status=%d diagnostics=%v", status, diagnostics)
 		}
 	}
@@ -50,7 +51,7 @@ jobs:
 	var stdout, stderr strings.Builder
 	cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
 	status := cmd.Main([]string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-output", "sarif", "-"})
-	if status != actionlint.ExitStatusSuccessProblemFound || stderr.Len() != 0 {
+	if status != render.ExitSuccessProblemFound || stderr.Len() != 0 {
 		t.Fatalf("status=%d stderr=%s", status, &stderr)
 	}
 	var report struct {
@@ -118,9 +119,9 @@ jobs:
 				args = append(args, "-ignore", tc.cliIgnore)
 			}
 			status := cmd.Main(append(args, "-"))
-			wantStatus := actionlint.ExitStatusSuccessNoProblem
+			wantStatus := render.ExitSuccessNoProblem
 			if len(tc.kinds) > 0 {
-				wantStatus = actionlint.ExitStatusSuccessProblemFound
+				wantStatus = render.ExitSuccessProblemFound
 			}
 			if status != wantStatus || stderr.Len() != 0 {
 				t.Fatalf("status=%d, want %d; stderr=%s", status, wantStatus, &stderr)

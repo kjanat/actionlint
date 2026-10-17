@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func TestCompletionProtocolWithFilename(t *testing.T) {
@@ -26,7 +26,7 @@ func TestCompletionProtocolWithFilename(t *testing.T) {
 		t.Fatalf("%d: %s %s", code, &out, &stderr)
 	}
 	got := testRunCommand("", "--", "__complete")
-	if got.Status != 1 || !strings.Contains(got.Stdout, "[expression]") {
+	if got.Status != 1 || !strings.Contains(got.Stdout, "[expression-reference]") {
 		t.Fatal(got)
 	}
 }
@@ -129,7 +129,7 @@ run actionlint co
 run actionlint --ignore ''
 `, []string{"-f"}},
 	}
-	want := [][]string{{"--color", "--config"}, {"json", "jsonl"}, {"zsh"}, {"json", "jsonl"}, {"--origin"}, {"zsh"}, {"expression"}, {"completion", "config"}, nil}
+	want := [][]string{{"--color", "--config"}, {"json", "jsonl"}, {"zsh"}, {"json", "jsonl"}, {"--origin"}, {"zsh"}, {"expression", "expression-call", "expression-reference", "expression-syntax", "expression-type"}, {"completion", "config"}, nil}
 	for _, tc := range tests {
 		t.Run(string(tc.shell), func(t *testing.T) {
 			if runtime.GOOS == "windows" && tc.shell != completionShellPowerShell {
@@ -366,7 +366,7 @@ func TestCommandCompletionAuto(t *testing.T) {
 		t.Setenv("SHELL", "/usr/bin/fish")
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		cmd := &Command{Stdin: bytes.NewReader(nil), Stdout: stdout, Stderr: stderr}
-		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != actionlint.ExitStatusSuccessNoProblem {
+		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != render.ExitSuccessNoProblem {
 			t.Fatalf("exit status is %d. stderr:\n%s", status, stderr)
 		}
 		if !strings.Contains(stdout.String(), "# fish completion for actionlint") {
@@ -382,7 +382,7 @@ func TestCommandCompletionAuto(t *testing.T) {
 		}
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		cmd := &Command{Stdin: bytes.NewReader(nil), Stdout: stdout, Stderr: stderr}
-		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != actionlint.ExitStatusInvalidCommandOption {
+		if status := cmd.Main([]string{"actionlint", "-completion", "auto"}); status != render.ExitInvalidCommandOption {
 			t.Fatalf("exit status is %d. stdout:\n%s", status, stdout)
 		}
 		if !strings.Contains(stderr.String(), "cannot detect the current shell") {

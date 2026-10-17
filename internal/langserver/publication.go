@@ -16,9 +16,9 @@ func diagnosticItems(doc Document, findings []diagnostic.Diagnostic, documents m
 		if d.Help != "" {
 			msg += "\n\n" + d.Help
 		}
-		code := d.Code
-		if code == "" {
-			code = d.Rule
+		code := d.Rule
+		if d.Code != "" {
+			code += "/" + d.Code
 		}
 		item := map[string]any{"range": diagnosticRange([]byte(doc.Text), d.Start, d.End), "severity": severity, "code": code, "source": "actionlint", "message": msg}
 		if d.DocumentationURL != "" {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"unicode"
 
-	workflowcontext "actionlint.kjanat.dev/internal/workflowcontext"
+	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 	"github.com/google/go-cmp/cmp"
 )
 

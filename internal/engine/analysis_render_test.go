@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/report"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -23,10 +25,9 @@ func TestStructuredRenderRanges(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := []byte("abcde\nfghij\n")
 			finding := &Error{
-				Filepath: "input.yml", Kind: "expression", Message: "bad range", Line: 1, Column: 2,
-				endPosition: &workflowlang.Pos{Line: tc.end.Line, Col: tc.end.Column},
+				Path: "input.yml", Rule: "expression", Message: "bad range", Start: DiagnosticPosition{Line: 1, Column: 2}, endPosition: &workflowlang.Pos{Line: tc.end.Line, Col: tc.end.Column},
 			}
-			result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, files: []analyzedFile{{
+			result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, Sources: []report.DiagnosticSource{{Content: source}}, files: []analyzedFile{{
 				source: SourceUnit{Path: "input.yml", Content: source}, errors: []*Error{finding},
 			}}}
 			legacy, err := NewAnalysisRenderer("", "{{range .}}{{.Line}}:{{.Column}}-{{.EndColumn}}{{end}}", false)
@@ -83,8 +84,8 @@ func TestStructuredRenderRanges(t *testing.T) {
 
 func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	source := []byte("on: push\n")
-	finding := &Error{Filepath: "input.yml", Kind: "expression", Message: "bad text", Line: 1, Column: 1}
-	result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, files: []analyzedFile{{
+	finding := &Error{Path: "input.yml", Rule: "expression", Message: "bad text", Start: DiagnosticPosition{Line: 1, Column: 1}}
+	result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, Sources: []report.DiagnosticSource{{Content: source}}, files: []analyzedFile{{
 		source: SourceUnit{Path: "input.yml", Content: source}, errors: []*Error{finding},
 	}}}
 

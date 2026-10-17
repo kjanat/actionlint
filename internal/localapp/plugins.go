@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/component"
-	"actionlint.kjanat.dev/internal/corewasm"
-	"actionlint.kjanat.dev/internal/pluginartifact"
+	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/internal/plugins/component"
+	corewasm "actionlint.kjanat.dev/internal/plugins/core"
 )
 
 type loadedPlugins struct {
@@ -33,9 +33,7 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 			}
 			loaded.engines = append(loaded.engines, engine)
-			if engine.Metadata().Engine.Name != "ruff" || len(loaded.engines) > 1 {
-				return nil, &PluginLoadError{errors.Join(fmt.Errorf("unsupported or duplicate script engine in %s: %s", path, engine.Metadata().Engine.Name), loaded.close(context.WithoutCancel(ctx)))}
-			}
+
 			continue
 		}
 		var options component.Options

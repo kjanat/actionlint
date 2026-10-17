@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -46,7 +48,7 @@ jobs:
 						if grant != "" {
 							line++
 						}
-						if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != "caller.yaml" || diagnostics[0].Line != line || !strings.Contains(diagnostics[0].Message, `of "`+prefix+`callee.yaml"`) || !strings.Contains(diagnostics[0].Message, `caller-imposed cache-mode "`+mode+`"`) {
+						if len(diagnostics) != 1 || diagnostics[0].Rule != "cache-operation" || filepath.Base(diagnostics[0].Path) != "caller.yaml" || diagnostics[0].Start.Line != line || !strings.Contains(diagnostics[0].Message, `of "`+prefix+`callee.yaml"`) || !strings.Contains(diagnostics[0].Message, `caller-imposed cache-mode "`+mode+`"`) {
 							t.Fatalf("want exactly one source-spelled call-site diagnostic: %v", diagnostics)
 						}
 					})
@@ -124,12 +126,12 @@ jobs:
 						t.Fatal(diagnostics)
 					}
 					local := lintCachePolicy(t, tc.callee, tc.config)
-					if len(local) != 1 || local[0].Kind != tc.kind || !strings.Contains(local[0].Message, tc.fragment) {
+					if len(local) != 1 || local[0].Rule != tc.kind || !strings.Contains(local[0].Message, tc.fragment) {
 						t.Fatalf("expected only the callee's own cache-operation diagnostic: %v", local)
 					}
 					return
 				}
-				if len(diagnostics) != 1 || diagnostics[0].Kind != tc.kind || filepath.Base(diagnostics[0].Filepath) != tc.file || !strings.Contains(diagnostics[0].Message, tc.fragment) {
+				if len(diagnostics) != 1 || diagnostics[0].Rule != tc.kind || filepath.Base(diagnostics[0].Path) != tc.file || !strings.Contains(diagnostics[0].Message, tc.fragment) {
 					t.Fatalf("want only %s at %s containing %q: %v", tc.kind, tc.file, tc.fragment, diagnostics)
 				}
 			})
@@ -174,7 +176,7 @@ jobs:
 		t.Fatal(err)
 	}
 	for _, order := range [][]string{{"read.yaml", "write.yaml", "callee.yaml"}, {"callee.yaml", "write.yaml", "read.yaml"}} {
-		cache := NewLocalReusableWorkflowCache(project, root, nil)
+		cache := calls.NewCache(project.RootDir(), root, nil)
 		for range 2 {
 			for _, name := range order {
 				diagnostics, err := l.check(name, []byte(files[name]), project, nil, nil, cache)
@@ -182,7 +184,7 @@ jobs:
 					t.Fatal(err)
 				}
 				if name == "read.yaml" {
-					if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" {
+					if len(diagnostics) != 1 || diagnostics[0].Rule != "cache-operation" {
 						t.Fatal(diagnostics)
 					}
 				} else if len(diagnostics) != 0 {
@@ -198,7 +200,7 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != "read.yaml" {
+		if len(diagnostics) != 1 || diagnostics[0].Rule != "cache-operation" || filepath.Base(diagnostics[0].Path) != "read.yaml" {
 			t.Fatal(diagnostics)
 		}
 	}
@@ -275,12 +277,12 @@ jobs:
 						t.Fatal("fixture has no workflow call")
 					}
 					line := strings.Count(before, "\n") + 1
-					if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != tc.owner || diagnostics[0].Line != line || !strings.Contains(diagnostics[0].Message, `of "$/leaf.yaml"`) {
+					if len(diagnostics) != 1 || diagnostics[0].Rule != "cache-operation" || filepath.Base(diagnostics[0].Path) != tc.owner || diagnostics[0].Start.Line != line || !strings.Contains(diagnostics[0].Message, `of "$/leaf.yaml"`) {
 						t.Fatalf("want exactly one diagnostic at the owning call in %s: %v", tc.owner, diagnostics)
 					}
 				}
 				for _, order := range [][]string{{"caller.yaml", "callee.yaml", "leaf.yaml"}, {"leaf.yaml", "callee.yaml", "caller.yaml"}} {
-					cache := NewLocalReusableWorkflowCache(project, root, nil)
+					cache := calls.NewCache(project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
 							diagnostics, err := l.check(name, []byte(files[name]), project, nil, nil, cache)
@@ -335,7 +337,7 @@ jobs:
 							}
 							return
 						}
-						if len(diagnostics) != 1 || diagnostics[0].Kind != "cache-operation" || filepath.Base(diagnostics[0].Filepath) != "caller.yaml" || diagnostics[0].Line != 5 || !strings.Contains(diagnostics[0].Message, action) {
+						if len(diagnostics) != 1 || diagnostics[0].Rule != "cache-operation" || filepath.Base(diagnostics[0].Path) != "caller.yaml" || diagnostics[0].Start.Line != 5 || !strings.Contains(diagnostics[0].Message, action) {
 							t.Fatalf("wanted one call-site cache-operation diagnostic: %v", diagnostics)
 						}
 					})
@@ -367,7 +369,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		}
 	}
 	for _, astFirst := range []bool{false, true} {
-		cache := NewLocalReusableWorkflowCache(project, root, nil)
+		cache := calls.NewCache(project.RootDir(), root, nil)
 		if astFirst {
 			for name, source := range sources {
 				w, errs := Parse([]byte(source))
@@ -379,8 +381,8 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 					continue
 				}
 				cache.WriteWorkflowCallEventFromWorkflow(name, event, w)
-				fromAST, _, _ := cache.readCache("./" + name)
-				fromFile, err := parseReusableWorkflowMetadata([]byte(source))
+				fromAST, _, _ := cache.Lookup("./" + name)
+				fromFile, err := calls.ParseMetadata([]byte(source))
 				if err != nil {
 					t.Fatal(err)
 				}

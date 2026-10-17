@@ -111,7 +111,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 		t.Fatalf("templates=%d findings=%d", len(rule.validation.templates), len(rule.Errs()))
 	}
 	for i, finding := range rule.Errs() {
-		if finding.Line != i+1 || !strings.Contains(finding.Message, "description is required") {
+		if finding.Start.Line != i+1 || !strings.Contains(finding.Message, "description is required") {
 			t.Fatalf("%+v", finding)
 		}
 	}

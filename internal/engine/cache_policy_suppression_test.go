@@ -63,7 +63,7 @@ cache-mode: *mode
 				}
 				var kinds []string
 				for _, err := range lintCachePolicy(t, source, "") {
-					kinds = append(kinds, err.Kind)
+					kinds = append(kinds, err.Rule)
 				}
 				if diff := cmp.Diff(tc.kinds, kinds); diff != "" {
 					t.Fatal(diff)
@@ -94,12 +94,12 @@ jobs:
 	errs := lintCachePolicy(t, source, "config-secrets: []")
 	var got []string
 	for _, err := range errs {
-		got = append(got, err.Kind)
+		got = append(got, err.Rule)
 	}
-	if diff := cmp.Diff([]string{"cache-call-unrestricted", "cache-operation", "expression"}, got); diff != "" {
+	if diff := cmp.Diff([]string{"cache-call-unrestricted", "cache-operation", "expression-reference"}, got); diff != "" {
 		t.Fatal(diff)
 	}
-	if errs[0].Line != 7 || errs[1].Line != 14 || errs[2].Line != 16 {
+	if errs[0].Start.Line != 7 || errs[1].Start.Line != 14 || errs[2].Start.Line != 16 {
 		t.Fatal(errs)
 	}
 }
@@ -107,17 +107,17 @@ jobs:
 func TestCachePolicyInlineSuppressionKeepsOtherDiagnostics(t *testing.T) {
 	source := []byte("name: café # actionlint:ignore cache-operation -- reviewed\n")
 	errs := []*Error{
-		{Line: 1, Kind: "cache-operation"},
-		{Line: 1, Kind: "cache-operation", source: []byte("other file")},
-		{Line: 1, Kind: "syntax-check"},
-		{Line: 2, Kind: "cache-operation"},
+		{Start: DiagnosticPosition{Line: 1}, Rule: "cache-operation"},
+		{Start: DiagnosticPosition{Line: 1}, Rule: "cache-operation", source: []byte("other file")},
+		{Start: DiagnosticPosition{Line: 1}, Rule: "syntax-check"},
+		{Start: DiagnosticPosition{Line: 2}, Rule: "cache-operation"},
 	}
 	if diff := cmp.Diff(errs[1:], filterInlineSuppressions(source, errs, nil), cmp.AllowUnexported(Error{})); diff != "" {
 		t.Fatal(diff)
 	}
 	source = []byte("name: café # actionlint:ignore typo -- reason\n")
 	got := filterInlineSuppressions(source, nil, nil)
-	if len(got) != 1 || got[0].Line != 1 || got[0].Column != 12 {
+	if len(got) != 1 || got[0].Start.Line != 1 || got[0].Start.Column != 12 {
 		t.Fatalf("expected directive error at 1:12, got %v", got)
 	}
 }
@@ -219,7 +219,7 @@ cache-mode: *mode
 			t.Run(tc.name+map[string]string{"\n": "/LF", "\r\n": "/CRLF"}[ending], func(t *testing.T) {
 				var kinds []string
 				for _, err := range lintCachePolicy(t, strings.ReplaceAll(tc.source, "\n", ending), "") {
-					kinds = append(kinds, err.Kind)
+					kinds = append(kinds, err.Rule)
 				}
 				if diff := cmp.Diff(tc.kinds, kinds); diff != "" {
 					t.Fatal(diff)
@@ -265,7 +265,7 @@ cache-mode: write
 				}
 				counts := map[string]int{}
 				for _, err := range errs {
-					counts[err.Kind]++
+					counts[err.Rule]++
 				}
 				if diff := cmp.Diff(map[string]int{"cache-write-untrusted": 1, "inline-suppression": 1}, counts); diff != "" {
 					t.Fatal(diff)
@@ -323,9 +323,9 @@ cache-mode: write
 				errs := lintCachePolicy(t, strings.ReplaceAll(tc.source, "\n", ending), "")
 				counts := map[string]int{}
 				for _, err := range errs {
-					counts[err.Kind]++
-					if err.Kind == "inline-suppression" && err.Line != tc.line {
-						t.Errorf("directive at line %d, want %d", err.Line, tc.line)
+					counts[err.Rule]++
+					if err.Rule == "inline-suppression" && err.Start.Line != tc.line {
+						t.Errorf("directive at line %d, want %d", err.Start.Line, tc.line)
 					}
 				}
 				if diff := cmp.Diff(map[string]int{tc.policy: 1, "inline-suppression": 1}, counts); diff != "" {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/repoconfig"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 

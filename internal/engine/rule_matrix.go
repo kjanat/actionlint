@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/workflow/schema"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -90,12 +92,12 @@ func knownStrategyMatrix(expression *workflowlang.String) *workflowlang.Matrix {
 	if !ok {
 		return nil
 	}
-	return knownLiteralMatrix(workflowObjectProperty(strategy, "matrix"), expression.Pos)
+	return knownLiteralMatrix(schema.Property(strategy, "matrix"), expression.Pos)
 }
 
 func knownLiteralMatrix(value any, position *workflowlang.Pos) *workflowlang.Matrix {
 	matrix, ok := value.(map[string]any)
-	if !ok || len(workflowExpressionLiteralErrors(workflowStrategy.props["matrix"], matrix, "matrix")) != 0 {
+	if !ok || len(schema.LiteralErrors(schema.Matrix, matrix, "matrix")) != 0 {
 		return nil
 	}
 	var node yaml.Node

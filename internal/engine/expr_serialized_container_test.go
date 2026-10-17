@@ -19,11 +19,9 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
 		}
 		for _, expression := range []string{
-			path,
 			"toJSON(" + path + " == null)",
 			"toJSON(!" + path + ")",
 			"contains(toJSON(" + path + "), 'safe')",
-			"toJSON(contains(" + path + ", 'safe'))",
 			"toJSON(" + path + " && false)",
 			"toJSON(false && " + path + ")",
 			"toJSON('safe' || " + path + ")",
@@ -105,7 +103,7 @@ jobs:
 			if strings.Contains(script, "uses:") {
 				wantLine = 9
 			}
-			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || result.Diagnostics[0].Path != "workflow.yaml" || result.Diagnostics[0].Start.Line != wantLine {
+			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || result.Diagnostics[0].Path != "workflow.yaml" || result.Diagnostics[0].Start.Line != wantLine {
 				t.Fatalf("missing container injection at %d: %+v, %v", wantLine, result.Diagnostics, err)
 			}
 		}

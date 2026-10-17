@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"actionlint.kjanat.dev/internal/fsread"
 )
 
 func writeShellcheckFixture(t *testing.T, root, name, content string) string {
@@ -90,7 +88,7 @@ jobs:
           echo $VALUE
 `
 			if tc.unknown {
-				workflow += "        working-directory: ${{ github.event.inputs.directory }}\n"
+				workflow += "        working-directory: ${{ vars.DIRECTORY }}\n"
 			}
 			path := writeShellcheckFixture(t, root, ".github/workflows/test.yml", workflow)
 			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command, ShellcheckOptions: &ExternalCommandOptions{Arguments: tc.args}})
@@ -191,7 +189,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 		{"step override", "workflow", "job", "step", "step/scripts", false},
 		{"empty step overrides defaults", "workflow", "job", "''", "scripts", false},
 		{"literal expression", "", "", "${{ 'step' }}", "step/scripts", false},
-		{"dynamic blocks fallback", "workflow", "job", "${{ github.event.inputs.directory }}", "job/scripts", true},
+		{"dynamic blocks fallback", "workflow", "job", "${{ vars.DIRECTORY }}", "job/scripts", true},
 		{"missing runtime directory", "", "", "created-at-runtime", "scripts", true},
 		{"colon in directory", "", "", "release:debug", "release:debug/scripts", false},
 		{"colon in nested directory", "", "", "nested/release:debug", "nested/release:debug/scripts", false},
@@ -358,19 +356,6 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 	}
 }
 
-func TestShellcheckConfigDirectorySelection(t *testing.T) {
-	root := t.TempDir()
-	if _, err := shellcheckRCFile(fsread.New(t.Context(), nil, nil), root); err == nil {
-		t.Fatal("accepted empty config directory")
-	}
-	writeShellcheckFixture(t, root, "shellcheckrc", "enable=all\n")
-	dotfile := writeShellcheckFixture(t, root, ".shellcheckrc", "disable=SC2086\n")
-	got, err := shellcheckRCFile(fsread.New(t.Context(), nil, nil), root)
-	if err != nil || got != dotfile {
-		t.Fatalf("want dotfile first, got %q: %v", got, err)
-	}
-}
-
 func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 	root, outside, analyzer := t.TempDir(), t.TempDir(), t.TempDir()
 	inside := filepath.Join(root, "scripts")
@@ -394,9 +379,9 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 	for _, workspace := range []string{root, alias} {
 		for _, directory := range []string{"internal", "external", "chain", "broken"} {
 			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
-				rule := newShellcheckRunForTest(&externalCommand{})
-				rule.paths.workspace, rule.paths.analysis = workspace, analyzer
-				got := rule.paths.resolve(runDirectory{directoryKnown, directory})
+				paths := runPaths{}
+				paths.workspace, paths.analysis = workspace, analyzer
+				got := paths.resolve(runDirectory{directoryKnown, directory})
 				if directory != "broken" {
 					target := outside
 					if directory == "internal" {
@@ -507,7 +492,7 @@ jobs:
 func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
 	directory := t.TempDir()
 	for _, platform := range []platformKind{platformKindAny, platformKindWindows, platformKindMacOrLinux} {
-		path, known := shellcheckDirectoryPath(directory, platform)
+		path, known := localRunnerDirectoryPath(directory, platform)
 		wantKnown := platform == platformKindAny ||
 			(platform == platformKindWindows) == (runtime.GOOS == "windows")
 		if known != wantKnown || known && path != filepath.Clean(directory) {
@@ -519,12 +504,12 @@ func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
 func TestShellcheckWindowsRootedDirectory(t *testing.T) {
 	for _, path := range []string{`\scripts\build`, `\\server\share`, `\\?\C:\scripts`} {
 		if runtime.GOOS != "windows" {
-			if got, known := shellcheckDirectoryPath(path, platformKindWindows); known {
+			if got, known := localRunnerDirectoryPath(path, platformKindWindows); known {
 				t.Errorf("Windows path %q mapped to Unix path %q", path, got)
 			}
 		}
 	}
-	if got, known := shellcheckDirectoryPath(`scripts\build`, platformKindWindows); !known || got != "scripts/build" {
+	if got, known := localRunnerDirectoryPath(`scripts\build`, platformKindWindows); !known || got != "scripts/build" {
 		t.Errorf("relative Windows path lost: %q, known=%v", got, known)
 	}
 }

@@ -38,3 +38,10 @@ func physicalSourcePath(path string) string {
 		parent = next
 	}
 }
+
+func projectRoot(p *Project) string {
+	if p == nil {
+		return ""
+	}
+	return p.RootDir()
+}

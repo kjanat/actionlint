@@ -4,7 +4,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/rule"
 )
 
 // diagnosticPolicy applies source-specific suppressions and severity after all analyzers finish.
@@ -18,6 +19,7 @@ type diagnosticPolicy struct {
 	metadata                           *ActionMetadata
 	presets                            RulePresets
 	additionalRules                    []string
+	ruleDescriptors                    []rule.Descriptor
 	ignorePats                         IgnorePatterns
 }
 
@@ -31,8 +33,8 @@ func (p diagnosticPolicy) apply(all []*Error, metadataSources map[string][]byte,
 	if metadata != nil {
 		metadataSources[metadata.Path()] = content
 		for _, finding := range all {
-			if finding.Filepath == "" {
-				finding.Filepath, finding.source = metadata.Path(), content
+			if finding.Path == "" {
+				finding.Path, finding.source = metadata.Path(), content
 			}
 		}
 	} else {
@@ -51,7 +53,7 @@ func (p diagnosticPolicy) apply(all []*Error, metadataSources map[string][]byte,
 		if findingPath == "" {
 			findingPath = path
 		} else if project != nil && filepath.IsAbs(findingPath) {
-			// ShellCheck runs in the resolved working directory. Compare both
+			// Tools run in the resolved working directory. Compare both
 			// paths physically so checkout aliases retain project-relative filters.
 			if resolved, err := filepath.EvalSymlinks(findingPath); err == nil {
 				findingPath = resolved
@@ -63,11 +65,11 @@ func (p diagnosticPolicy) apply(all []*Error, metadataSources map[string][]byte,
 		return findingPath
 	}
 	for _, finding := range all {
-		key := findingKey(finding.Filepath)
+		key := findingKey(finding.Path)
 		if origin := finding.suppressionOrigin; origin != nil && origin.path != "" {
 			key = origin.path
-		} else if _, isMetadata := metadataSources[finding.Filepath]; isMetadata {
-			key = finding.Filepath
+		} else if _, isMetadata := metadataSources[finding.Path]; isMetadata {
+			key = finding.Path
 		}
 		byPath[key] = append(byPath[key], finding)
 	}
@@ -105,7 +107,7 @@ func (p diagnosticPolicy) apply(all []*Error, metadataSources map[string][]byte,
 			if err != nil {
 				return nil, err
 			}
-			findingConfig = applyRulePresets(p.presets, findingConfig)
+			findingConfig = repoconfig.ResolveRules(p.presets, findingConfig, p.ruleDescriptors...)
 			var policy *SuppressionsPolicy
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions
@@ -114,29 +116,29 @@ func (p diagnosticPolicy) apply(all []*Error, metadataSources map[string][]byte,
 			findings = filterConfigIgnores(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
-			switch diagnosticLevel(e.Kind) {
+			switch diagnosticLevel(e.Rule) {
 			case "off":
 				return true
 			case "warn":
-				e.severity = "warning"
+				e.Severity = "warning"
 			case "info":
-				e.severity = "info"
+				e.Severity = "info"
 			case "error":
-				e.severity = "error"
+				e.Severity = "error"
 			}
 			return false
 		})
 		for _, finding := range findings {
-			all = append(all, p.filterErrors([]*Error{finding}, cfg.PathConfigs(findingKey(finding.Filepath)))...)
+			all = append(all, p.filterErrors([]*Error{finding}, cfg.PathConfigs(findingKey(finding.Path)))...)
 		}
 	}
 
 	all = firstVisibleMetadataFindings(all)
 	for _, err := range all {
-		if err.Filepath == "" {
-			err.Filepath = path // Populate filename in the error
+		if err.Path == "" {
+			err.Path = path // Populate filename in the error
 		} else {
-			err.Filepath = relativeAnalysisPath(p.workingDir, err.Filepath)
+			err.Path = relativeAnalysisPath(p.workingDir, err.Path)
 		}
 	}
 

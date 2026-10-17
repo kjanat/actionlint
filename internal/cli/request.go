@@ -3,9 +3,9 @@ package cli
 import (
 	"context"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/localapp"
 	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.

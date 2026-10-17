@@ -3,7 +3,7 @@
 /internal/engine/sarif_template.txt -text
 /internal/release/bump-version/testdata/** -text
 /internal/githubaction/matcher/testdata/** -text
-/internal/workflowcontext/generate/testdata/** -text
+/internal/workflow/context/generate/testdata/** -text
 /internal/actioncatalog/generate/testdata/** -text
 /packages/github-action/tools/*.json linguist-generated=true
 /internal/webhook/generate/testdata/** -text

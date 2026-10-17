@@ -9,14 +9,15 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
+
 	"golang.org/x/sys/execabs"
 )
 
 func TestTerminalJSONKeepsRedirectedBytes(t *testing.T) {
 	data := []byte("{\"unicode\":\"résumé\",\"count\":2}\n")
 	var out bytes.Buffer
-	if err := writePrettyJSON(t.Context(), &out, actionlint.ColorOptionKindAlways, data, false); err != nil {
+	if err := writePrettyJSON(t.Context(), &out, render.ColorAlways, data, false); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(out.Bytes(), data) {
@@ -27,14 +28,14 @@ func TestTerminalJSONKeepsRedirectedBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = file.Close() })
-	if err := writePrettyJSON(t.Context(), file, actionlint.ColorOptionKindAlways, data, false); err != nil {
+	if err := writePrettyJSON(t.Context(), file, render.ColorAlways, data, false); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(file.Name())
 	if err != nil || !bytes.Equal(got, data) {
 		t.Fatalf("file output changed: %q, %v", got, err)
 	}
-	if err := writePrettyJSON(t.Context(), commandFailingIO{}, actionlint.ColorOptionKindAuto, data, false); err == nil {
+	if err := writePrettyJSON(t.Context(), commandFailingIO{}, render.ColorAuto, data, false); err == nil {
 		t.Fatal("lost output error")
 	}
 }

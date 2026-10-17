@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,17 +11,20 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/internal/workflow/calls"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/report"
+	"actionlint.kjanat.dev/internal/workspace"
 
 	"errors"
 
 	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/internal/workflownames"
+	"actionlint.kjanat.dev/internal/tools"
+	workflownames "actionlint.kjanat.dev/internal/workflow/names"
 	"actionlint.kjanat.dev/rule"
 	"golang.org/x/sync/errgroup"
 )
@@ -28,49 +32,26 @@ import (
 // SourceUnit is a workflow or action manifest and its resolved configuration.
 type SourceUnit = workspace.Source
 
-// AnalysisRequest contains resolved sources and analysis settings.
-type AnalysisRequest struct {
-	Sources    []SourceUnit
-	Analyzers  []analyzer.Registration
-	ShellCheck string
-	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	Pyflakes           string
-	ShellcheckOptions  *ExternalCommandOptions
-	ShellcheckSettings *ShellcheckSettings
-	// Deprecated: Pyflakes integration was removed. This field is ignored.
-	PyflakesOptions *ExternalCommandOptions
-	IgnorePatterns  IgnorePatterns
-	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
-	OnRulesCreated func([]Rule) []Rule
-	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
-	WorkingDir string
-	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
-	// Custom readers own path resolution and filesystem boundary enforcement.
-	// It must support concurrent calls and does not restrict external tools.
-	ReadFile          func(string) ([]byte, error)
-	RulePresets       RulePresets
-	Ruff              string
-	RuffOptions       *ExternalCommandOptions
-	RuffBackend       analyzer.ScriptBackend
-	ShellcheckBackend analyzer.ScriptBackend
-	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
-	ShellcheckRunner func([]string, string) ([]byte, error)
-	// LoadScriptEngine loads the core WebAssembly engine a configuration selects
-	// through tools.<name>.backend.wasm. Nil rejects such configurations.
+// Request contains resolved sources and analysis settings.
+type Request struct {
+	Sources          []SourceUnit
+	Analyzers        []analyzer.Registration
+	Tools            []tools.Registration
+	IgnorePatterns   IgnorePatterns
+	OnRulesCreated   func([]Rule) []Rule
+	WorkingDir       string
+	ReadFile         func(string) ([]byte, error)
+	RulePresets      RulePresets
 	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
-	// LogWriter receives analysis logs; nil discards them.
-	LogWriter io.Writer
-	LogLevel  LogLevel
+	LogWriter        io.Writer
+	LogLevel         LogLevel
+	Processes        *analyzerhost.ProcessPool
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.
 type AnalysisResult struct {
-	Configurations []ConfigReport
-	Diagnostics    []Diagnostic
-	Documents      DocumentOutlines
-	// Inputs includes discovery directories so watchers can detect added files.
-	Inputs []string
-	files  []analyzedFile
+	report.Analysis
+	files []analyzedFile
 }
 
 type analyzedFile struct {
@@ -86,17 +67,20 @@ func (f *inputFiles) add(path string)                         { f.Add(path) }
 func (f *inputFiles) list() []string                          { return f.List() }
 func (f *inputFiles) addConfig(cfg *Config, project *Project) { f.AddConfig(cfg, project) }
 
-// Analyze checks resolved workflows and action manifests without rendering diagnostics.
+// Run checks resolved workflows and action manifests without rendering diagnostics.
 // On analysis failure, a non-nil result retains findings collected before the failure.
-func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
+func Run(ctx context.Context, request Request) (*AnalysisResult, error) {
 	log := request.LogWriter
 	if log == nil {
 		log = io.Discard
 	}
-	return analyze(ctx, request, log, request.LogLevel)
+	return run(ctx, request, log, request.LogLevel)
 }
 
-func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level LogLevel) (*AnalysisResult, error) {
+func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*AnalysisResult, error) {
+	if request.Processes == nil {
+		return nil, errors.New("analysis requires an application-owned process pool")
+	}
 	var extensions []rule.Descriptor
 	for _, registration := range request.Analyzers {
 		if registration.Analyzer == nil {
@@ -104,12 +88,34 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		}
 		extensions = append(extensions, registration.Analyzer.Descriptor().Descriptor)
 	}
+	seenTools := map[string]bool{}
+	for _, registration := range request.Tools {
+		name := registration.Descriptor.Name
+		if seenTools[name] {
+			return nil, fmt.Errorf("duplicate script tool %q", name)
+		}
+		seenTools[name] = true
+		behaviour := ruleBehaviours()[name]
+		if behaviour.build != nil || behaviour.buildScripts != nil {
+			return nil, fmt.Errorf("script tool %q conflicts with a built-in analyzer", name)
+		}
+		if _, builtIn := rulecatalog.Find(name); !builtIn {
+			extensions = append(extensions, registration.Descriptor)
+		}
+	}
 	if _, err := rulecatalog.Combine(extensions...); err != nil {
 		return nil, err
 	}
 
-	if err := request.validateBackends(); err != nil {
-		return nil, err
+	for _, registration := range request.Tools {
+		if registration.Build == nil {
+			return nil, fmt.Errorf("tool %q has no adapter", registration.Descriptor.Name)
+		}
+		if registration.Validate != nil {
+			if err := registration.Validate(); err != nil {
+				return nil, err
+			}
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -154,13 +160,13 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	}
 	logger := analysisLogger{log, level}
 	engine := &analysisEngine{
-		analyzers: request.Analyzers, ctx: ctx,
-		buildRules: builtinFactory(request, logger), rulePresets: request.RulePresets,
+		analyzers: request.Analyzers, ctx: ctx, toolDescriptors: extensions,
+		buildRules: registeredFactory(request, logger), rulePresets: request.RulePresets,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
 	}
 
 	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
-	proc := newConcurrentProcess(ctx, runtime.NumCPU())
+	proc := request.Processes
 	actions := NewLocalActionsCacheFactory(engine.debugWriter())
 	cwd := request.WorkingDir
 	if cwd == "" {
@@ -170,11 +176,11 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			return nil, err
 		}
 	}
-	workflows := NewLocalReusableWorkflowCacheFactory(cwd, engine.debugWriter())
+	workflows := calls.NewCacheFactory(cwd, engine.debugWriter())
 	reader := fsread.New(ctx, request.ReadFile, inputs.add)
 	engine.workingDir, engine.reader = absPath(cwd), reader
 	engine.gitModes = &gitModes{}
-	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
+	result := &AnalysisResult{Diagnostics: []Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
 	sourceContents := map[string][]byte{}
 	sourcePaths := make([]string, 0, len(allSources))
 	for _, source := range allSources {
@@ -222,8 +228,9 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		}
 	}
 	for _, source := range request.Sources {
-		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
-		ac.reader, wc.reader = reader, reader
+		ac, wc := actions.GetCache(source.Project), workflows.GetCache(projectRoot(source.Project))
+		ac.reader = reader
+		wc.SetReader(reader)
 		ac.onDocument = documents.add
 		ac.customReader = request.ReadFile != nil
 		ac.explicitSources = actionContents
@@ -236,7 +243,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 			path = source.Path
 		}
 		inputs.add(path)
-		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
+		ac, wc := actions.GetCache(source.Project), workflows.GetCache(projectRoot(source.Project))
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source
@@ -249,11 +256,16 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		})
 	}
 	err = group.Wait()
-	proc.wait()
 	if err == nil {
 		err = ctx.Err()
 	}
 	result.collectDiagnostics()
+	result.Rules = templateRules()
+	for _, file := range result.files {
+		for _, descriptor := range file.rules {
+			result.Rules = append(result.Rules, descriptor.Clone())
+		}
+	}
 	result.Documents = make(DocumentOutlines, 0, len(result.files))
 	explicitActions := make(map[string]bool)
 	for _, file := range result.files {
@@ -303,6 +315,7 @@ func (d *actionDocuments) list() DocumentOutlines {
 }
 
 func (r *AnalysisResult) collectDiagnostics() {
+	r.FileCount = len(r.files)
 	type location struct {
 		project, path, rule string
 		start               DiagnosticPosition
@@ -325,10 +338,10 @@ func (r *AnalysisResult) collectDiagnostics() {
 			project = absPath(file.source.Project.RootDir())
 		}
 		for _, finding := range file.errors {
-			if _, action := file.outline.(ActionOutline); action && finding.Kind == "syntax-check" {
+			if _, action := file.outline.(ActionOutline); action && finding.Rule == "syntax-check" {
 				parseDeclarations[physicalSourcePath(file.source.InputPath)] = true
 			}
-			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Kind == "action" {
+			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Rule == "action" {
 				declarations[declarationLocation{project, identity.key}] = true
 			}
 		}
@@ -341,7 +354,7 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		unique := file.errors[:0]
 		for _, finding := range file.errors {
-			if finding.Kind == "action" && finding.metadataParsePath != "" && parseDeclarations[physicalSourcePath(finding.metadataParsePath)] {
+			if finding.Rule == "action" && finding.metadataParsePath != "" && parseDeclarations[physicalSourcePath(finding.metadataParsePath)] {
 				continue
 			}
 			diagnostic := finding.diagnostic(file.source.Content)
@@ -350,8 +363,8 @@ func (r *AnalysisResult) collectDiagnostics() {
 				identityPath = diagnostic.Path
 			}
 			completeDiagnostic(&diagnostic, finding.sourceFor(file.source.Content), identityPath)
-			if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
-				key := metadataLocation{project, finding.Kind, finding.severity, identity.key}
+			if identity := finding.metadataFinding; identity != nil && finding.Rule == "action" {
+				key := metadataLocation{project, finding.Rule, finding.Severity, identity.key}
 				if !identity.declaration && declarations[declarationLocation{project, identity.key}] {
 					continue
 				}
@@ -368,6 +381,7 @@ func (r *AnalysisResult) collectDiagnostics() {
 			}
 			seen[key] = append(seen[key], diagnostic)
 			r.Diagnostics = append(r.Diagnostics, diagnostic)
+			r.Sources = append(r.Sources, report.DiagnosticSource{Content: finding.sourceFor(file.source.Content), RawScript: finding.rawScriptSource})
 			unique = append(unique, finding)
 		}
 		clear(file.errors[len(unique):])
@@ -384,20 +398,13 @@ type sourceAnalysisError struct {
 func (e *sourceAnalysisError) Error() string { return e.err.Error() }
 func (e *sourceAnalysisError) Unwrap() error { return e.err }
 
-func (r *AnalysisResult) legacyErrors() []*Error {
-	if len(r.files) == 1 {
-		return r.files[0].errors
+// LegacyAnalysisError preserves the root-command single-file and batch error messages.
+func LegacyAnalysisError(err error) error {
+	if source, ok := errors.AsType[*sourceAnalysisError](err); ok {
+		if source.batch {
+			return fmt.Errorf("fatal error while checking %s: %w", source.path, source.err)
+		}
+		return source.err
 	}
-	errors := make([]*Error, 0, len(r.Diagnostics))
-	for _, file := range r.files {
-		errors = append(errors, file.errors...)
-	}
-	return errors
+	return err
 }
-
-func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
-	return repoconfig.CompileIgnorePatterns(patterns)
-}
-
-// FileCount reports the number of explicit inputs analyzed, including clean files.
-func (r *AnalysisResult) FileCount() int { return len(r.files) }

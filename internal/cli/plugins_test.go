@@ -44,7 +44,7 @@ func TestPluginSuppressionsUseInvocationRegistry(t *testing.T) {
 const pluginWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n      - run: wget --no-check-certificate https://example.com/x.sh\n"
 
 var componentTestdata = func() string {
-	dir, err := filepath.Abs(filepath.Join("..", "component", "testdata"))
+	dir, err := filepath.Abs(filepath.Join("..", "plugins", "component", "testdata"))
 	if err != nil {
 		panic(err)
 	}

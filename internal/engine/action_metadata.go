@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/workflow/references"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -534,7 +536,7 @@ type LocalActionsCache struct {
 	checkoutEnvUnknown   bool
 	persistentEnvUnknown bool
 	shellEnvUnknown      bool
-	checkoutShell        shellcheckShell
+	checkoutShell        executionShell
 }
 
 // NewLocalActionsCache creates new LocalActionsCache instance for the given project.
@@ -580,7 +582,7 @@ func (c *LocalActionsCache) writeCache(key string, val *ActionMetadata) {
 // are reported on the first lookup; later lookups return the cached nil result.
 // Calling this method is thread-safe.
 func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, error) {
-	if local, ok := selfRepositoryUsesLocalSpec(spec); ok {
+	if local, ok := references.SelfRepositoryLocal(spec); ok {
 		if c.base != nil {
 			return c.findRepositoryMetadata(local, true)
 		}
@@ -727,4 +729,8 @@ func (f *LocalActionsCacheFactory) GetCache(p *Project) *LocalActionsCache {
 // NewLocalActionsCacheFactory creates a new LocalActionsCacheFactory instance.
 func NewLocalActionsCacheFactory(dbg io.Writer) *LocalActionsCacheFactory {
 	return &LocalActionsCacheFactory{map[string]*LocalActionsCache{}, dbg}
+}
+
+func expectedMapping(where string, n *yaml.Node) error {
+	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowlang.NodeKindName(n.Kind), n.Line, n.Column)
 }

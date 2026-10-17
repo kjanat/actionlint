@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"actionlint.kjanat.dev/internal/fsread"
@@ -343,7 +345,7 @@ jobs:
 `)
 	project := workspace.Identity(root)
 	actions := NewLocalActionsCache(project, nil)
-	workflows := NewLocalReusableWorkflowCache(project, root, nil)
+	workflows := calls.NewCache(project.RootDir(), root, nil)
 	process := newConcurrentProcess(t.Context(), 1)
 	engine := &analysisEngine{ctx: t.Context(), workingDir: root, reader: fsread.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	for _, workflow := range []string{used, unused, used} {
@@ -360,7 +362,7 @@ jobs:
 			if len(findings) != 0 {
 				t.Fatalf("unreferenced metadata leaked into workflow: %+v", findings)
 			}
-		} else if len(findings) != 1 || findings[0].Kind != "inline-suppression" {
+		} else if len(findings) != 1 || findings[0].Rule != "inline-suppression" {
 			t.Fatalf("metadata directive lost on repeated analysis: %+v", findings)
 		}
 	}

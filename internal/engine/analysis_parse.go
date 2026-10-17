@@ -29,7 +29,7 @@ func parseDocument(path, configPath string, content []byte) parsedDocument {
 		if err != nil {
 			all = adaptSyntaxFindings(workflowlang.HandleYAMLUnmarshalError(err))
 			for _, finding := range all {
-				finding.Line, finding.Column = max(1, finding.Line), max(1, finding.Column)
+				finding.Start.Line, finding.Start.Column = max(1, finding.Start.Line), max(1, finding.Start.Column)
 			}
 		} else {
 			w = &workflowlang.Workflow{}

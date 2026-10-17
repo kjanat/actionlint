@@ -3,7 +3,7 @@
 MAKEFLAGS += --no-builtin-rules
 
 GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go rule/*.go source/*.go resolver/*.go cmd/*/*.go internal/*/*.go internal/checks/*/*.go)
-SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/repoconfig/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard internal/*/generate/*.go internal/*/metadata/*.go internal/release/bump-version/*.go internal/*/check-*/*.go)
 TESTDATA := $(wildcard \
@@ -18,7 +18,7 @@ TESTDATA := $(wildcard \
 GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
 				internal/actioncatalog/generate/popular_actions.json \
 				internal/webhook/generate/main.go \
-				internal/workflowcontext/generate/main.go
+				internal/workflow/context/generate/main.go
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
@@ -101,9 +101,9 @@ endif
 lint-docs:
 	go run ./internal/rulecatalog/check-docs -quiet ./docs/checks.md
 
-internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
+internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/workflow/context/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go
+	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/workflow/context/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go
 else
 	go generate
 endif
@@ -154,9 +154,17 @@ internal/githubaction/matcher/testdata/no_escape.txt: $(TARGET)
 internal/githubaction/matcher/testdata/want.json: $(TARGET)
 	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > internal/githubaction/matcher/testdata/want.json || true
 
-PLUGIN_FIXTURES := internal/component/testdata/plugins
-PLUGIN_WAT := $(wildcard internal/component/testdata/wat/*.wat internal/corewasm/testdata/wat/*.wat)
-ENGINE_FIXTURES := internal/corewasm/testdata/engines
+PLUGIN_FIXTURES := internal/plugins/component/testdata/plugins
+PLUGIN_WAT := $(wildcard internal/plugins/component/testdata/wat/*.wat internal/plugins/core/testdata/wat/*.wat)
+ENGINE_FIXTURES := internal/plugins/core/testdata/engines
+RUST_PLUGIN_MANIFESTS := $(wildcard plugins/*/Cargo.toml plugins/examples/*/Cargo.toml internal/plugins/*/testdata/*/Cargo.toml)
+RUST_PLUGIN_NATIVE_CHECKS := $(patsubst %/Cargo.toml,check-native-%,$(RUST_PLUGIN_MANIFESTS))
+
+.PHONY: plugins-check-native $(RUST_PLUGIN_NATIVE_CHECKS)
+plugins-check-native: $(RUST_PLUGIN_NATIVE_CHECKS)
+
+$(RUST_PLUGIN_NATIVE_CHECKS): check-native-%: %/Cargo.toml
+	cargo check --locked --all-targets --manifest-path "$<"
 
 .PHONY: plugins
 plugins: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
@@ -165,9 +173,9 @@ $(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit plugins/examples
 	cargo build --locked --release --target wasm32-wasip2 --manifest-path plugins/examples/pipe-to-shell/Cargo.toml
 	install -m 644 plugins/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm $@
 
-$(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit internal/component/testdata/misbehave/Cargo.toml internal/component/testdata/misbehave/Cargo.lock $(wildcard internal/component/testdata/misbehave/src/*.rs)
-	cargo build --locked --release --target wasm32-wasip2 --manifest-path internal/component/testdata/misbehave/Cargo.toml
-	install -m 644 internal/component/testdata/misbehave/target/wasm32-wasip2/release/actionlint_plugin_misbehave.wasm $@
+$(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit internal/plugins/component/testdata/misbehave/Cargo.toml internal/plugins/component/testdata/misbehave/Cargo.lock $(wildcard internal/plugins/component/testdata/misbehave/src/*.rs)
+	cargo build --locked --release --target wasm32-wasip2 --manifest-path internal/plugins/component/testdata/misbehave/Cargo.toml
+	install -m 644 internal/plugins/component/testdata/misbehave/target/wasm32-wasip2/release/actionlint_plugin_misbehave.wasm $@
 
 $(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit plugins/examples/no-sudo/build.sh $(wildcard plugins/examples/no-sudo/*.c)
 	plugins/examples/no-sudo/build.sh $(abspath $@)
@@ -175,18 +183,18 @@ $(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit plugins/examples/no-su
 $(PLUGIN_FIXTURES)/insecure-download.wasm: plugins/wit/analyzer.wit plugins/examples/insecure-download/build.sh plugins/examples/insecure-download/go.mod $(wildcard plugins/examples/insecure-download/*.go)
 	plugins/examples/insecure-download/build.sh $(abspath $@)
 
-internal/component/testdata/wat/%.wasm: internal/component/testdata/wat/%.wat
+internal/plugins/component/testdata/wat/%.wasm: internal/plugins/component/testdata/wat/%.wat
 	wasm-tools parse $< -o $@
 
-internal/corewasm/testdata/wat/%.wasm: internal/corewasm/testdata/wat/%.wat
+internal/plugins/core/testdata/wat/%.wasm: internal/plugins/core/testdata/wat/%.wat
 	wasm-tools parse $< -o $@
 
-$(ENGINE_FIXTURES)/echo.wasm: internal/corewasm/testdata/echo/Cargo.toml internal/corewasm/testdata/echo/Cargo.lock $(wildcard internal/corewasm/testdata/echo/src/*.rs)
-	cargo build --locked --release --target wasm32-unknown-unknown --manifest-path internal/corewasm/testdata/echo/Cargo.toml
-	install -m 644 internal/corewasm/testdata/echo/target/wasm32-unknown-unknown/release/actionlint_engine_echo.wasm $@
+$(ENGINE_FIXTURES)/echo.wasm: internal/plugins/core/testdata/echo/Cargo.toml internal/plugins/core/testdata/echo/Cargo.lock $(wildcard internal/plugins/core/testdata/echo/src/*.rs)
+	cargo build --locked --release --target wasm32-unknown-unknown --manifest-path internal/plugins/core/testdata/echo/Cargo.toml
+	install -m 644 internal/plugins/core/testdata/echo/target/wasm32-unknown-unknown/release/actionlint_engine_echo.wasm $@
 
-internal/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/component/generate.go
-	go generate ./internal/component
+internal/plugins/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/plugins/component/generate.go
+	go generate ./internal/plugins/component
 
 CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md

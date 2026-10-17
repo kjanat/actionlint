@@ -23,7 +23,7 @@ func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := session.Repository("")
-	if err != nil || result.FileCount() != 1 || len(result.Diagnostics) != 0 {
+	if err != nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 		t.Fatalf("excluded workflow affected analysis: %+v, %v", result, err)
 	}
 	if !slices.Contains(result.Inputs, excluded) || !slices.Contains(result.Inputs, selected) {

@@ -11,7 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/report"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -57,7 +59,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 					var stdout, stderr bytes.Buffer
 					command := Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
 					status := command.Main(append(args, paths...))
-					var result actionlint.CheckResult
+					var result render.CheckResult
 					if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 						t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 					}
@@ -68,7 +70,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 					for _, diagnostic := range result.Diagnostics {
 						findings = append(findings, diagnostic.Path+":"+diagnostic.Rule)
 					}
-					want := []string{"successful.yml:expression", "failing.yml:shellcheck", "failing.yml:expression"}
+					want := []string{"successful.yml:expression-reference", "failing.yml:shellcheck", "failing.yml:expression-reference"}
 					if failingFirst {
 						want = append(want[1:], want[0])
 					}
@@ -118,7 +120,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			command := Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
 			status := command.Main(append(args, "failing.yml"))
-			var result actionlint.CheckResult
+			var result render.CheckResult
 			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 			}
@@ -131,7 +133,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 			if len(result.Documents) != 1 {
 				t.Fatalf("analysis failure discarded parsed outline: %+v", result.Documents)
 			}
-			workflow, ok := result.Documents[0].(actionlint.WorkflowOutline)
+			workflow, ok := result.Documents[0].(report.WorkflowOutline)
 			if !ok || workflow.Path != "failing.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 				t.Fatalf("analysis failure corrupted workflow document: %+v", result.Documents)
 			}
@@ -157,7 +159,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			command := Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
 			status := command.Main(append(args, "ci.yml"))
-			var result actionlint.CheckResult
+			var result render.CheckResult
 			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 			}
@@ -167,7 +169,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			if len(result.Documents) != 1 {
 				t.Fatalf("Ruff failure discarded parsed outline: %+v", result.Documents)
 			}
-			workflow, ok := result.Documents[0].(actionlint.WorkflowOutline)
+			workflow, ok := result.Documents[0].(report.WorkflowOutline)
 			if !ok || workflow.Path != "ci.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 				t.Fatalf("Ruff failure corrupted workflow document: %+v", result.Documents)
 			}

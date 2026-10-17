@@ -82,7 +82,7 @@ jobs:
 				t.Fatalf("wanted %v, got %v", tc.want, errs)
 			}
 			for i, want := range tc.want {
-				if got := errs[i]; got.Kind != "runner-label" || !strings.Contains(got.Message, want) || got.Line != 4 || got.Column != 15 {
+				if got := errs[i]; got.Rule != "runner-label" || !strings.Contains(got.Message, want) || got.Start.Line != 4 || got.Start.Column != 15 {
 					t.Fatalf("wanted %q at strategy expression 4:15, got %v", want, got)
 				}
 			}
@@ -122,10 +122,10 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(errs) != 1 || errs[0].Kind != "runner-label" || !strings.Contains(errs[0].Message, fmt.Sprintf("label %q is unknown", tc.label)) {
+			if len(errs) != 1 || errs[0].Rule != "runner-label" || !strings.Contains(errs[0].Message, fmt.Sprintf("label %q is unknown", tc.label)) {
 				t.Fatalf("wanted one runner-label diagnostic, got %v", errs)
 			}
-			if errs[0].Line != 4 || errs[0].Column != 15 || errs[0].Filepath != "test.yaml" {
+			if errs[0].Start.Line != 4 || errs[0].Start.Column != 15 || errs[0].Path != "test.yaml" {
 				t.Fatalf("incorrect diagnostic source: %v", errs[0])
 			}
 		})
@@ -162,7 +162,7 @@ jobs:
 				t.Fatal(err)
 			}
 			if tc.conflict {
-				if len(errs) != 1 || errs[0].Kind != "runner-label" || !strings.Contains(errs[0].Message, `label "windows" conflicts with label "linux"`) || errs[0].Line != 4 || errs[0].Column != 15 {
+				if len(errs) != 1 || errs[0].Rule != "runner-label" || !strings.Contains(errs[0].Message, `label "windows" conflicts with label "linux"`) || errs[0].Start.Line != 4 || errs[0].Start.Column != 15 {
 					t.Fatalf("wanted one conflict at the strategy expression, got %v", errs)
 				}
 			} else if len(errs) != 0 {
@@ -282,9 +282,9 @@ jobs:
 					for _, want := range tc.want {
 						found := false
 						for _, diagnostic := range errors {
-							if diagnostic.Kind == "runner-label" && strings.Contains(diagnostic.Message, want) {
+							if diagnostic.Rule == "runner-label" && strings.Contains(diagnostic.Message, want) {
 								found = true
-								if expression && (diagnostic.Line != 4 || diagnostic.Column != 15) {
+								if expression && (diagnostic.Start.Line != 4 || diagnostic.Start.Column != 15) {
 									t.Fatalf("incorrect strategy diagnostic source: %v", diagnostic)
 								}
 							}
@@ -441,7 +441,7 @@ jobs:
 				if len(errors) != 0 {
 					t.Fatal(errors)
 				}
-			} else if len(errors) != 1 || errors[0].Kind != "runner-label" || !strings.Contains(errors[0].Message, tc.want) {
+			} else if len(errors) != 1 || errors[0].Rule != "runner-label" || !strings.Contains(errors[0].Message, tc.want) {
 				t.Fatalf("wanted one %q diagnostic, got %v", tc.want, errors)
 			}
 		})
@@ -465,10 +465,10 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(errors) != 1 || errors[0].Kind != "runner-label" || !strings.Contains(errors[0].Message, `label "${{ vars.RUNNER }}" is unknown`) {
+	if len(errors) != 1 || errors[0].Rule != "runner-label" || !strings.Contains(errors[0].Message, `label "${{ vars.RUNNER }}" is unknown`) {
 		t.Fatalf("evaluated label data was reinterpreted: %v", errors)
 	}
-	if errors[0].Line != 4 || errors[0].Column != 15 {
+	if errors[0].Start.Line != 4 || errors[0].Start.Column != 15 {
 		t.Fatalf("incorrect diagnostic source: %v", errors[0])
 	}
 }

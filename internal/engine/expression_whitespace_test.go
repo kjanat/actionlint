@@ -156,7 +156,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(errs) != 1 || errs[0].Kind != "expression" {
+			if len(errs) != 1 || errs[0].Rule != "expression-syntax" {
 				t.Fatalf("want one expression syntax diagnostic, got %v", errs)
 			}
 		})

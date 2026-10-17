@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/workflow/references"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -52,7 +54,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *ActionMetadata, ca
 	shellEnv, checkoutShell := analysis.actions.shellEnvUnknown, analysis.actions.checkoutShell
 	analysis.actions.checkoutEnvUnknown = checkoutEnv || checkoutEnvironmentUnknown(call.Env, analysis.actions.platform)
 	analysis.actions.shellEnvUnknown = shellEnv || analysis.actions.shellEnvironmentUnknown(call.Env)
-	analysis.actions.checkoutShell = shellcheckShell{}
+	analysis.actions.checkoutShell = executionShell{}
 	defer func() {
 		analysis.actions.checkoutEnvUnknown = checkoutEnv
 		analysis.actions.shellEnvUnknown, analysis.actions.checkoutShell = shellEnv, checkoutShell
@@ -166,7 +168,7 @@ func compositeActionOrigin(paths *runPaths, call *workflowlang.Step, actionPath 
 	paths.actionPath = actionPath
 	paths.actionRunnerPath, paths.actionIndependent = "", false
 	if action, ok := call.Exec.(*workflowlang.ExecAction); ok && action.Uses != nil {
-		_, paths.actionIndependent = selfRepositoryUsesLocalSpec(action.Uses.Value)
+		_, paths.actionIndependent = references.SelfRepositoryLocal(action.Uses.Value)
 		if !paths.actionIndependent {
 			paths.actionRunnerPath = strings.TrimPrefix(action.Uses.Value, "./")
 			placement := paths.placements.matching(paths.actionRunnerPath)

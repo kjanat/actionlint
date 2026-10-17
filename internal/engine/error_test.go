@@ -36,17 +36,17 @@ func TestErrorErrorAt(t *testing.T) {
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
-	if err.Filepath != "" {
-		t.Errorf("wanted %q to be empty", err.Filepath)
+	if err.Path != "" {
+		t.Errorf("wanted %q to be empty", err.Path)
 	}
-	if err.Line != 1 {
-		t.Errorf("wanted line 1 but got %d", err.Line)
+	if err.Start.Line != 1 {
+		t.Errorf("wanted line 1 but got %d", err.Start.Line)
 	}
-	if err.Column != 2 {
-		t.Errorf("wanted col 2 but got %d", err.Column)
+	if err.Start.Column != 2 {
+		t.Errorf("wanted col 2 but got %d", err.Start.Column)
 	}
-	if err.Kind != k {
-		t.Errorf("wanted %q but got %q", k, err.Kind)
+	if err.Rule != k {
+		t.Errorf("wanted %q but got %q", k, err.Rule)
 	}
 }
 
@@ -57,17 +57,17 @@ func TestErrorErrorfAt(t *testing.T) {
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
-	if err.Filepath != "" {
-		t.Errorf("wanted %q to be empty", err.Filepath)
+	if err.Path != "" {
+		t.Errorf("wanted %q to be empty", err.Path)
 	}
-	if err.Line != 1 {
-		t.Errorf("wanted line 1 but got %d", err.Line)
+	if err.Start.Line != 1 {
+		t.Errorf("wanted line 1 but got %d", err.Start.Line)
 	}
-	if err.Column != 2 {
-		t.Errorf("wanted col 2 but got %d", err.Column)
+	if err.Start.Column != 2 {
+		t.Errorf("wanted col 2 but got %d", err.Start.Column)
 	}
-	if err.Kind != k {
-		t.Errorf("wanted %q but got %q", k, err.Kind)
+	if err.Rule != k {
+		t.Errorf("wanted %q but got %q", k, err.Rule)
 	}
 }
 
@@ -215,7 +215,7 @@ func TestErrorPrettyPrint(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.message, func(t *testing.T) {
 			err := errorAt(&workflowlang.Pos{Line: tc.line, Col: tc.column}, "kind", tc.message)
-			err.Filepath = "filename.txt"
+			err.Path = "filename.txt"
 
 			var buf bytes.Buffer
 			err.PrettyPrint(&buf, []byte(tc.source))
@@ -259,16 +259,16 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			errs := make([]*Error, 0, len(tc))
 			for _, p := range tc {
-				errs = append(errs, &Error{Line: p.line, Column: p.col})
+				errs = append(errs, &Error{Start: DiagnosticPosition{Line: p.line, Column: p.col}})
 			}
 
 			slices.SortFunc(errs, compareErrors)
 
 			for i := range len(errs) - 1 {
 				l, r := errs[i], errs[i+1]
-				sorted := l.Line <= r.Line
-				if l.Line == r.Line {
-					sorted = l.Column <= r.Column
+				sorted := l.Start.Line <= r.Start.Line
+				if l.Start.Line == r.Start.Line {
+					sorted = l.Start.Column <= r.Start.Column
 				}
 				if !sorted {
 					t.Fatalf("errs[%d] and errs[%d] are not sorted: %s", i, i+1, errs)
@@ -281,19 +281,16 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 func TestErrorSortErrorsByFile(t *testing.T) {
 	errs := []*Error{
 		{
-			Filepath: "path/to/C.txt",
-			Line:     1,
-			Column:   2,
+			Path: "path/to/C.txt", Start: DiagnosticPosition{Line: 1,
+				Column: 2},
 		},
 		{
-			Filepath: "path/to/A.txt",
-			Line:     2,
-			Column:   4,
+			Path: "path/to/A.txt", Start: DiagnosticPosition{Line: 2,
+				Column: 4},
 		},
 		{
-			Filepath: "path/to/B.txt",
-			Line:     3,
-			Column:   6,
+			Path: "path/to/B.txt", Start: DiagnosticPosition{Line: 3,
+				Column: 6},
 		},
 	}
 
@@ -304,7 +301,7 @@ func TestErrorSortErrorsByFile(t *testing.T) {
 		"path/to/B.txt",
 		"path/to/C.txt",
 	} {
-		if have := errs[i].Filepath; have != want {
+		if have := errs[i].Path; have != want {
 			t.Errorf("Errors were not sorted correctly. expected %q for errs[%d] but got %q: %v", want, i, have, errs)
 		}
 	}
@@ -322,10 +319,8 @@ func TestErrorSortErrorsByMessage(t *testing.T) {
 	errs := []*Error{}
 	for _, m := range msgs {
 		errs = append(errs, &Error{
-			Filepath: "path/to/file.yaml",
-			Line:     1,
-			Column:   1,
-			Message:  m,
+			Path: "path/to/file.yaml", Start: DiagnosticPosition{Line: 1,
+				Column: 1}, Message: m,
 		})
 	}
 
@@ -374,22 +369,22 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			err := errorAt(&workflowlang.Pos{Line: 1, Col: tc.column}, "kind", tc.message)
-			err.Filepath = "filename.txt"
+			err.Path = "filename.txt"
 			f := err.GetTemplateFields([]byte(tc.source))
 			if f.Message != tc.message {
 				t.Fatalf("wanted %q but have %q", tc.message, f.Message)
 			}
-			if f.Line != err.Line {
-				t.Fatalf("wanted %d but have %d", err.Line, f.Line)
+			if f.Line != err.Start.Line {
+				t.Fatalf("wanted %d but have %d", err.Start.Line, f.Line)
 			}
 			if f.Column != tc.column {
 				t.Fatalf("wanted %d but have %d", tc.column, f.Column)
 			}
-			if f.Filepath != err.Filepath {
-				t.Fatalf("wanted %q but have %q", err.Filepath, f.Filepath)
+			if f.Filepath != err.Path {
+				t.Fatalf("wanted %q but have %q", err.Path, f.Filepath)
 			}
-			if f.Kind != err.Kind {
-				t.Fatalf("wanted %q but have %q", err.Kind, f.Kind)
+			if f.Kind != err.Rule {
+				t.Fatalf("wanted %q but have %q", err.Rule, f.Kind)
 			}
 			if f.Snippet != tc.snippet {
 				t.Fatalf("wanted %q but have %q", tc.snippet, f.Snippet)
@@ -404,7 +399,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 // Regression test for #128
 func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 	err := errorAt(&workflowlang.Pos{Line: 1, Col: 9999}, "kind", "this is message")
-	err.Filepath = "filename.yaml"
+	err.Path = "filename.yaml"
 	f := err.GetTemplateFields([]byte("this is source"))
 	if strings.Contains(f.Snippet, "\n") {
 		t.Fatalf("snippet should contain indicator but it has: %q", f.Snippet)
@@ -448,10 +443,8 @@ func TestErrorGetTemplateFieldsEndColumnAfterWideRunes(t *testing.T) {
 
 func TestErrorErrorToString(t *testing.T) {
 	err := &Error{
-		Message: "this is message",
-		Line:    1,
-		Column:  2,
-		Kind:    "test",
+		Message: "this is message", Start: DiagnosticPosition{Line: 1,
+			Column: 2}, Rule: "test",
 	}
 	want := err.Error()
 	have := err.String()

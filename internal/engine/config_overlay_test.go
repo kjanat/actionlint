@@ -10,9 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/workspace"
-
-	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
 func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {

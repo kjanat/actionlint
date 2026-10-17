@@ -54,7 +54,7 @@ runs:
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
 			if tc.read && !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-				return d.Rule == "expression" && strings.Contains(d.Message, `property "missing" is not defined`)
+				return d.Rule == "expression-reference" && strings.Contains(d.Message, `property "missing" is not defined`)
 			}) {
 				t.Fatalf("earlier checkout output metadata was lost: %+v", result.Diagnostics)
 			}

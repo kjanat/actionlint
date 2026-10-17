@@ -1,12 +1,17 @@
 package githubaction
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/tools/adapters"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 // ToolPlan validates Action configuration before the launcher installs tools.
@@ -16,25 +21,26 @@ func ToolPlan(env func(string) string, stdout, stderr io.Writer) int {
 		err = json.NewEncoder(stdout).Encode(struct {
 			SchemaVersion int `json:"schema_version"`
 			// Released v1 launchers require this compatibility field.
-			Pyflakes bool `json:"pyflakes"`
-			actionlint.ExternalToolRequirements
-		}{1, false, needed})
+			Pyflakes   bool `json:"pyflakes"`
+			Shellcheck bool `json:"shellcheck"`
+			Ruff       bool `json:"ruff"`
+		}{1, false, needed["shellcheck"], needed["ruff"]})
 	}
 	if err == nil {
-		return actionlint.ExitStatusSuccessNoProblem
+		return render.ExitSuccessNoProblem
 	}
 	_, _ = fmt.Fprintln(stderr, err)
 	if _, ok := errors.AsType[*inputError](err); ok {
-		return actionlint.ExitStatusInvalidCommandOption
+		return render.ExitInvalidCommandOption
 	}
-	if _, ok := errors.AsType[*actionlint.ConfigOverlayError](err); ok {
-		return actionlint.ExitStatusInvalidCommandOption
+	if _, ok := errors.AsType[*repoconfig.OverlayError](err); ok {
+		return render.ExitInvalidCommandOption
 	}
-	return actionlint.ExitStatusFailure
+	return render.ExitFailure
 }
 
-func requiredTools(env func(string) string) (actionlint.ExternalToolRequirements, error) {
-	var none actionlint.ExternalToolRequirements
+func requiredTools(env func(string) string) (application.ToolRequirements, error) {
+	var none application.ToolRequirements
 	in, err := parseInputs(environmentArgs(env))
 	if err != nil {
 		return none, err
@@ -48,13 +54,8 @@ func requiredTools(env func(string) string) (actionlint.ExternalToolRequirements
 	if err != nil {
 		return none, err
 	}
-	session, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
+	return application.RequiredTools(context.Background(), application.Options{
 		WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
-		Shellcheck: req.shellcheck, IgnorePatterns: req.ignore,
-		Ruff: req.ruff, RuffOptions: req.ruffOptions,
-	})
-	if err != nil {
-		return none, err
-	}
-	return session.RequiredTools(req.files)
+		IgnorePatterns: req.ignore, Tools: adapters.Options{ShellCheck: req.shellcheck, Ruff: req.ruff, RuffOptions: req.ruffOptions}.Registrations(),
+	}, req.files)
 }

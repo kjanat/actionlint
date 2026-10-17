@@ -2,25 +2,18 @@ package engine
 
 import (
 	"fmt"
-	"io"
+	"reflect"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-// Error represents an error detected by actionlint rules
+// Error carries a canonical diagnostic and analysis-only provenance. All rule
+// producers and plugins share Diagnostic; policy changes it in place.
 type Error struct {
-	// Message is an error message.
-	Message string
-	// Filepath is a file path where the error occurred.
-	Filepath string
-	// Line is a line number where the error occurred. This value is 1-based.
-	Line int
-	// Column is a column number where the error occurred. This value is 1-based.
-	Column int
-	// Kind is a string to represent kind of the error. Usually rule name which found the error.
-	Kind string
+	Diagnostic
+	// inferredReference is traversal provenance, not a distinct analyzer finding.
+	inferredReference bool
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
 	// infer the range from the source token at Column.
 	endColumn   int
@@ -41,16 +34,11 @@ type Error struct {
 	metadataFinding *actionMetadataFinding
 	// metadataParsePath links caller parse failures to a selected manifest.
 	metadataParsePath string
-	// External analyzer metadata is exposed through Diagnostic, leaving legacy output unchanged.
-	code     string
-	severity string
-	fixes    []DiagnosticFix
-	details  *Diagnostic
 }
 
 // Error returns summary of the error as string.
 func (e *Error) Error() string {
-	return fmt.Sprintf("%s:%d:%d: %s [%s]", e.Filepath, e.Line, e.Column, e.Message, e.Kind)
+	return fmt.Sprintf("%s:%d:%d: %s [%s]", e.Path, e.Start.Line, e.Start.Column, e.Message, e.Rule)
 }
 
 func (e *Error) String() string {
@@ -59,19 +47,15 @@ func (e *Error) String() string {
 
 func errorAt(pos *workflowlang.Pos, kind string, msg string) *Error {
 	return &Error{
-		Message: msg,
-		Line:    pos.Line,
-		Column:  pos.Col,
-		Kind:    kind,
+		Message: msg, Start: DiagnosticPosition{Line: pos.Line,
+			Column: pos.Col}, Rule: kind,
 	}
 }
 
 func errorfAt(pos *workflowlang.Pos, kind string, format string, args ...any) *Error {
 	return &Error{
-		Message: fmt.Sprintf(format, args...),
-		Line:    pos.Line,
-		Column:  pos.Col,
-		Kind:    kind,
+		Message: fmt.Sprintf(format, args...), Start: DiagnosticPosition{Line: pos.Line,
+			Column: pos.Col}, Rule: kind,
 	}
 }
 
@@ -82,36 +66,15 @@ func (e *Error) sourceFor(source []byte) []byte {
 	return source
 }
 
-func (e *Error) finding(source []byte) render.Finding {
-	return render.Finding{
-		Diagnostic: Diagnostic{Rule: e.Kind, Message: e.Message, Path: e.Filepath, Start: DiagnosticPosition{Line: e.Line, Column: e.Column}},
-		Source:     e.sourceFor(source),
-		EndColumn:  e.endColumn,
-		RawScript:  e.rawScriptSource,
-	}
-}
-
-// GetTemplateFields fields for formatting this error with Go template.
-func (e *Error) GetTemplateFields(source []byte) *ErrorTemplateFields {
-	return e.finding(source).TemplateFields()
-}
-
-// PrettyPrint prints the error with user-friendly way. It prints file name, source position, error
-// message with colorful output and source snippet with indicator. When nil is set to source, no
-// source snippet is not printed. To disable colorful output, set true to fatih/color.NoColor.
-func (e *Error) PrettyPrint(w io.Writer, source []byte) {
-	e.finding(source).PrettyPrint(w)
-}
-
 func compareErrors(lhs, rhs *Error) int {
-	if c := strings.Compare(lhs.Filepath, rhs.Filepath); c != 0 {
+	if c := strings.Compare(lhs.Path, rhs.Path); c != 0 {
 		return c
 	}
-	if lhs.Line != rhs.Line {
-		return lhs.Line - rhs.Line
+	if lhs.Start.Line != rhs.Start.Line {
+		return lhs.Start.Line - rhs.Start.Line
 	}
-	if lhs.Column != rhs.Column {
-		return lhs.Column - rhs.Column
+	if lhs.Start.Column != rhs.Start.Column {
+		return lhs.Start.Column - rhs.Start.Column
 	}
 	if c := strings.Compare(lhs.Message, rhs.Message); c != 0 {
 		return c
@@ -119,62 +82,16 @@ func compareErrors(lhs, rhs *Error) int {
 	if lhs.endColumn != rhs.endColumn {
 		return lhs.endColumn - rhs.endColumn
 	}
-	return strings.Compare(lhs.severity, rhs.severity)
+	return strings.Compare(lhs.Severity, rhs.Severity)
 }
 
 func equalsErrors(lhs, rhs *Error) bool {
-	return lhs.Filepath == rhs.Filepath &&
-		lhs.Line == rhs.Line &&
-		lhs.Column == rhs.Column &&
-		lhs.endColumn == rhs.endColumn &&
-		lhs.Message == rhs.Message &&
-		lhs.severity == rhs.severity
-}
-
-// ErrorTemplateFields holds all fields to format one error message.
-type ErrorTemplateFields = render.TemplateFields
-
-// ErrorFormatter formats errors with the template given to the -format option.
-type ErrorFormatter struct {
-	*render.Formatter
-}
-
-// NewErrorFormatter creates new ErrorFormatter instance. Given format must contain at least one
-// {{ }} placeholder. Escaped characters like \n in the format string are unescaped.
-func NewErrorFormatter(format string) (*ErrorFormatter, error) {
-	formatter, err := render.NewFormatter(format, Version, templateRules())
-	if err != nil {
-		return nil, err
+	left, right := lhs.Diagnostic, rhs.Diagnostic
+	// Aliases can reach one declaration through different invocation owners.
+	// Explicit analyzer references remain part of diagnostic identity.
+	if lhs.inferredReference && rhs.inferredReference {
+		left.Reference, right.Reference = nil, nil
 	}
-	return &ErrorFormatter{formatter}, nil
-}
-
-// PrintErrors prints the errors after formatting them with template.
-func (f *ErrorFormatter) PrintErrors(out io.Writer, errs []*Error, src []byte) error {
-	t := make([]*ErrorTemplateFields, 0, len(errs))
-	for _, err := range errs {
-		t = append(t, err.GetTemplateFields(src))
-	}
-	return f.Print(out, t)
-}
-
-// RegisterRule registers the rule. Registered rules are used to get description and index of error
-// kinds when you use `kindDescription` or `kindIndex` functions in an error format template. This
-// method can be called multiple times safely in parallel.
-func (f *ErrorFormatter) RegisterRule(r Rule) {
-	info := render.Rule{Name: r.Name()}
-	if described, ok := r.(describedRule); ok {
-		info.Description = described.Description()
-	}
-	f.Formatter.RegisterRule(info)
-}
-
-func templateRules() []render.Rule {
-	var rules []render.Rule
-	for _, descriptor := range builtinRuleDescriptors() {
-		if descriptor.build == nil && descriptor.buildScripts == nil {
-			rules = append(rules, descriptor.Clone())
-		}
-	}
-	return rules
+	return reflect.DeepEqual(left, right) &&
+		lhs.endColumn == rhs.endColumn && reflect.DeepEqual(lhs.endPosition, rhs.endPosition)
 }

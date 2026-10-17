@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/workflow/schema"
+
 	"actionlint.kjanat.dev/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
@@ -60,7 +62,7 @@ func defaultsWorkingDirectory(defaults *workflowlang.Defaults) runDirectory {
 		return workingDirectoryValue(defaults.Run.WorkingDirectory)
 	}
 	value, known := workflowlang.WorkflowExpressionLiteral(defaults.Run.Expression)
-	if !known || len(workflowExpressionLiteralErrors(workflowDefaultsRun, value, "defaults.run")) != 0 {
+	if !known || len(schema.LiteralErrors(schema.DefaultsRun, value, "defaults.run")) != 0 {
 		return runDirectory{kind: directoryUnknown}
 	}
 	if object, ok := value.(map[string]any); ok {
@@ -84,7 +86,7 @@ func (paths runPaths) effectiveRunDirectory(run *workflowlang.ExecRun, jobDir, w
 			break
 		}
 	}
-	if normalized, known := shellcheckDirectoryPath(directory.path, paths.platform); known {
+	if normalized, known := localRunnerDirectoryPath(directory.path, paths.platform); known {
 		directory.path = normalized
 	} else {
 		directory.kind = directoryUnknown
@@ -190,7 +192,7 @@ func (paths runPaths) local(relativePath string) (string, bool) {
 
 // Local analysis can follow available files outside the indexed repository.
 func (paths runPaths) analysisPath(value string) (string, bool) {
-	relativePath, known := shellcheckDirectoryPath(value, paths.platform)
+	relativePath, known := localRunnerDirectoryPath(value, paths.platform)
 	if !known {
 		return "", false
 	}

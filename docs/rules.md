@@ -74,6 +74,20 @@ Expression string comparisons ignore case; avoid using them as case-sensitive id
 
 Configure this rule with `lint.rules.suspicious.case-insensitive-conditions`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
+## context-availability
+
+Validate contexts and functions available at a workflow field.
+
+Move the expression to a field where its contexts and functions are available, or use an available value.
+
+- Category: `correctness/contexts`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.context-availability`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
 ## credentials
 
 Detect hardcoded passwords in job and service containers.
@@ -184,6 +198,20 @@ jobs:
       - run: echo ok
 ```
 
+## event-payload
+
+Validate properties against the configured event payloads.
+
+Use a property supplied by the declared events and activity types. Unknown events and dynamic payload maps remain open.
+
+- Category: `correctness/events`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.event-payload`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
 ## events
 
 Validate workflow triggers and their options.
@@ -214,9 +242,9 @@ Configure this rule with `lint.rules.correctness.executable-bit`. Use `off`, `on
 
 ## expression
 
-Validate expression syntax, names, types, and context availability.
+Validate expression values assigned to workflow fields.
 
-Check the expression syntax, available contexts and the type of the referenced value.
+Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.
 
 - Category: `correctness/expressions`
 - Provider: `actionlint`
@@ -225,6 +253,62 @@ Check the expression syntax, available contexts and the type of the referenced v
 - Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.expression`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## expression-call
+
+Validate function invocation and constant arguments.
+
+Check parentheses, argument count, format placeholders and literal JSON.
+
+- Category: `correctness/expressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.expression-call`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## expression-reference
+
+Resolve expression variables, properties and functions.
+
+Use a declared context, property or function; check the suggested spelling and available names.
+
+- Category: `correctness/expressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.expression-reference`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## expression-syntax
+
+Parse expression tokens and grammar.
+
+Correct the indicated expression token, literal or delimiter.
+
+- Category: `correctness/expressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.expression-syntax`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## expression-type
+
+Validate expression operand and argument types.
+
+Supply the expected value type; convert serialized values explicitly when needed.
+
+- Category: `correctness/expressions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.expression-type`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 ## glob
 
@@ -551,6 +635,20 @@ Correct the runner label or declare repository-specific labels in self-hosted-ru
 - Fixes: `none`
 
 Configure this rule with `lint.rules.correctness.runner-label`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+## script-injection
+
+Detect untrusted values interpolated into scripts.
+
+Pass untrusted values through environment variables or action inputs and read them as data inside the script.
+
+- Category: `security/scripts`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.security.script-injection`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
 
 ## shell-name
 

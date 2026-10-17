@@ -11,7 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/processconfig"
 )
 
 func TestDoctorRuffCompatibility(t *testing.T) {
@@ -102,8 +103,8 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 	}
 	root := t.TempDir()
 	request := doctorRequest{
-		Config: actionlint.ConfigSelection{Disabled: true}, Ruff: "ignored",
-		RuffOptions: &actionlint.ExternalCommandOptions{
+		Config: repoconfig.Selection{Disabled: true}, Ruff: "ignored",
+		RuffOptions: &processconfig.Options{
 			Executable: &executable, Optional: true, WorkingDir: root,
 			Arguments: []string{"--select", "F"},
 			Environment: []string{

@@ -40,9 +40,9 @@ overrides:
 					WorkingDir: root,
 					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
 					OnRulesCreated: func([]Rule) []Rule {
-						rule := NewRuleBase("expression", "dependency finding")
+						rule := NewRuleBase("expression-reference", "dependency finding")
 						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-						rule.errs[0].Filepath = filepath.Join(root, dependency)
+						rule.errs[0].Path = filepath.Join(root, dependency)
 						rule.errs[0].source = []byte("dependency content")
 						return []Rule{&rule}
 					},
@@ -180,9 +180,9 @@ config-secrets: [SECRET]
 func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 	for _, tc := range []struct{ name, lint, severity string }{
 		{"disabled workflow", "enabled: false", ""},
-		{"disabled rule", "rules: {correctness: {expression: off}}", ""},
-		{"warning rule", "rules: {correctness: {expression: warn}}", "warning"},
-		{"info rule", "rules: {correctness: {expression: info}}", "info"},
+		{"disabled rule", "rules: {correctness: {expression-reference: off}}", ""},
+		{"warning rule", "rules: {correctness: {expression-reference: warn}}", "warning"},
+		{"info rule", "rules: {correctness: {expression-reference: info}}", "info"},
 	} {
 		for _, dependency := range []string{"local/action.yml", "scripts/lib.sh"} {
 			t.Run(tc.name+"/"+dependency, func(t *testing.T) {
@@ -195,9 +195,9 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 					WorkingDir: root,
 					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
 					OnRulesCreated: func([]Rule) []Rule {
-						rule := NewRuleBase("expression", "dependency finding")
+						rule := NewRuleBase("expression-reference", "dependency finding")
 						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-						rule.errs[0].Filepath = filepath.Join(root, dependency)
+						rule.errs[0].Path = filepath.Join(root, dependency)
 						rule.errs[0].source = []byte("dependency content")
 						return []Rule{&rule}
 					},

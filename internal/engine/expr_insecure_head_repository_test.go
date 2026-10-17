@@ -24,7 +24,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || result.Diagnostics[0].Start.Line != 6 || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
+				if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || result.Diagnostics[0].Start.Line != 6 || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 					t.Fatalf("missing script injection finding: %+v", result.Diagnostics)
 				}
 			})
@@ -161,7 +161,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || result.Diagnostics[0].Start.Line != script.line || !strings.Contains(result.Diagnostics[0].Message, "github.event.workflow_run."+path) {
+				if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || result.Diagnostics[0].Start.Line != script.line || !strings.Contains(result.Diagnostics[0].Message, "github.event.workflow_run."+path) {
 					t.Fatalf("missing located injection for %s with %q: %+v", path, ending, result.Diagnostics)
 				}
 			}

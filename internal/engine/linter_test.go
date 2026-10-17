@@ -53,7 +53,7 @@ func TestLinterMissingLocalAction(t *testing.T) {
 			t.Fatalf("got %v, %v; want %d diagnostics", errs, err, tc.want)
 		}
 		for i, diagnostic := range errs {
-			if diagnostic.Kind != "missing-local-action" || diagnostic.Line != 6+i || !strings.Contains(diagnostic.Message, "has no action.yml or action.yaml") {
+			if diagnostic.Rule != "missing-local-action" || diagnostic.Start.Line != 6+i || !strings.Contains(diagnostic.Message, "has no action.yml or action.yaml") {
 				t.Fatalf("unexpected diagnostic: %+v", diagnostic)
 			}
 		}
@@ -80,7 +80,7 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 			l.DefaultConfig = cfg
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\n"
 			findings, err := l.Lint("workflow.yml", []byte(source), workspace.Identity(t.TempDir()))
-			if err != nil || len(findings) != 1 || findings[0].Kind != tc.want {
+			if err != nil || len(findings) != 1 || findings[0].Rule != tc.want {
 				t.Fatalf("got %v, %v; want only %s", findings, err, tc.want)
 			}
 		})
@@ -194,7 +194,7 @@ func checkErrors(t *testing.T, outfile string, errs []*Error) {
 	}
 
 	for i := range errs {
-		errs[i].Filepath = filepath.ToSlash(errs[i].Filepath) // For Windows
+		errs[i].Path = filepath.ToSlash(errs[i].Path) // For Windows
 		want, have := expected[i], errs[i].Error()
 		if strings.HasPrefix(want, "/") && strings.HasSuffix(want, "/") {
 			want := regexp.MustCompile(want[1 : len(want)-1])
@@ -302,7 +302,7 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 CheckFiles:
 	for _, f := range files {
 		for _, e := range errs {
-			if e.Filepath == f {
+			if e.Path == f {
 				continue CheckFiles
 			}
 		}
@@ -533,8 +533,8 @@ jobs:
 		if want == "" {
 			want = "<stdin>"
 		}
-		if errs[0].Filepath != want {
-			t.Fatalf("file path in the error with stdin file name %q should be %q but got %q", f, want, errs[0].Filepath)
+		if errs[0].Path != want {
+			t.Fatalf("file path in the error with stdin file name %q should be %q but got %q", f, want, errs[0].Path)
 		}
 	}
 }

@@ -2844,7 +2844,7 @@ See documentation for more details:
 [`download-actionlint.yaml`]: https://github.com/rhysd/actionlint/blob/main/distribution/install/download-actionlint.bash
 [`exec.LookPath`]: https://pkg.go.dev/os/exec#LookPath
 [`execabs.LookPath`]: https://pkg.go.dev/golang.org/x/sys/execabs#LookPath
-[`generate-availability` script]: https://github.com/rhysd/actionlint/tree/main/internal/workflowcontext/generate
+[`generate-availability` script]: https://github.com/rhysd/actionlint/tree/main/internal/workflow/context/generate
 [`gh` command]: https://cli.github.com/
 [`github` context]: https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
 [`go-yaml/yaml@v3`]: https://github.com/go-yaml/yaml

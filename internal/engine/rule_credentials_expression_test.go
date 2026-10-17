@@ -75,12 +75,12 @@ jobs:
 					}
 					return
 				}
-				if len(errs) != 1 || errs[0].Kind != tc.kind {
+				if len(errs) != 1 || errs[0].Rule != tc.kind {
 					t.Fatalf("want one %s diagnostic, got %v", tc.kind, errs)
 				}
 				if tc.kind == "credentials" {
 					want := `"password" section in ` + scope.where + " should be specified via secrets. do not put password value directly"
-					if got := errs[0]; got.Message != want || got.Line != scope.line || got.Column != scope.column || got.Filepath != "workflow.yml" {
+					if got := errs[0]; got.Message != want || got.Start.Line != scope.line || got.Start.Column != scope.column || got.Path != "workflow.yml" {
 						t.Fatalf("credential diagnostic lost message or source position: %v", got)
 					}
 				}
@@ -101,7 +101,7 @@ func TestCredentialsKnownPasswordExpressions(t *testing.T) {
 		{"computed secret password", "${{ fromJSON(secrets.CREDENTIALS).password }}", ""},
 		{"invalid known type", "${{ fromJSON('{}') }}", "expression"},
 		{"invalid null", "${{ null }}", "expression"},
-		{"malformed expression", "${{ fromJSON( }}", "expression"},
+		{"malformed expression", "${{ fromJSON( }}", "expression-syntax"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := `on: push
@@ -121,7 +121,7 @@ jobs:
 				if len(errs) != 0 {
 					t.Fatalf("unknown secret value rejected: %v", errs)
 				}
-			} else if len(errs) != 1 || errs[0].Kind != tc.kind || errs[0].Line != 9 {
+			} else if len(errs) != 1 || errs[0].Rule != tc.kind || errs[0].Start.Line != 9 {
 				t.Fatalf("want one %s diagnostic at password, got %v", tc.kind, errs)
 			}
 		})
@@ -158,7 +158,7 @@ jobs:
 				}
 				return
 			}
-			if len(errs) != 1 || errs[0].Kind != "expression" || !strings.Contains(errs[0].Message, `requires property "image"`) {
+			if len(errs) != 1 || errs[0].Rule != "expression" || !strings.Contains(errs[0].Message, `requires property "image"`) {
 				t.Fatalf("want one missing-image diagnostic, got %v", errs)
 			}
 		})

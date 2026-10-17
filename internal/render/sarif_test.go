@@ -110,7 +110,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 					ColumnKind string
 					Results    []struct {
 						Level      string
-						Properties struct{ ExternalCode string }
+						Properties struct{ DiagnosticCode string }
 						Fixes      []sarifFix
 						Locations  []struct {
 							PhysicalLocation struct{ ArtifactLocation sarifArtifactLocation }
@@ -123,7 +123,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 			}
 			run := document.Runs[0]
 			result := run.Results[0]
-			if run.ColumnKind != "unicodeCodePoints" || result.Level != tc.level || result.Properties.ExternalCode != finding.Code {
+			if run.ColumnKind != "unicodeCodePoints" || result.Level != tc.level || result.Properties.DiagnosticCode != finding.Code {
 				t.Fatalf("metadata lost: %s", out.String())
 			}
 			if result.Locations[0].PhysicalLocation.ArtifactLocation.URI != "dir/my%20workflow.yml" {

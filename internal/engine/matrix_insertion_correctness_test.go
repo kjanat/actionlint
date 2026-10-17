@@ -57,7 +57,7 @@ jobs:
 				if len(findings) != 0 {
 					t.Fatalf("unexpected diagnostics: %v", findings)
 				}
-			} else if len(findings) != 1 || !strings.Contains(findings[0].Message, tc.want) || findings[0].Line != 6 || findings[0].Column < 16 {
+			} else if len(findings) != 1 || !strings.Contains(findings[0].Message, tc.want) || findings[0].Start.Line != 6 || findings[0].Start.Column < 16 {
 				t.Fatalf("want one %q at matrix source, got %v", tc.want, findings)
 			}
 			var position *workflowlang.Pos
@@ -67,7 +67,7 @@ jobs:
 			case "exclude insertion mismatch", "exclude insertion unknown axis":
 				position = workflow.Jobs["test"].Strategy.Matrix.Exclude.Combinations[0].Expression.Pos
 			}
-			if position != nil && (findings[0].Line != position.Line || findings[0].Column != position.Col) {
+			if position != nil && (findings[0].Start.Line != position.Line || findings[0].Start.Column != position.Col) {
 				t.Fatalf("expanded finding position = %v, want %v", findings[0], position)
 			}
 		})

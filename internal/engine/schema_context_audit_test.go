@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowcontext "actionlint.kjanat.dev/internal/workflowcontext"
+	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 )
 
 // These profiles cover every expression-bearing workflow key in the runner

@@ -101,6 +101,24 @@
               }
             },
             {
+              "id": "context-availability",
+              "name": "ContextAvailability",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate contexts and functions available at a workflow field",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#context-availability"
+              },
+              "fullDescription": {
+                "text": "Validate contexts and functions available at a workflow field."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#context-availability",
+              "help": {
+                "text": "Move the expression to a field where its contexts and functions are available, or use an available value."
+              }
+            },
+            {
               "id": "credentials",
               "name": "Credentials",
               "defaultConfiguration": {
@@ -173,6 +191,24 @@
               }
             },
             {
+              "id": "event-payload",
+              "name": "EventPayload",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate properties against the configured event payloads",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#event-payload"
+              },
+              "fullDescription": {
+                "text": "Validate properties against the configured event payloads."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#event-payload",
+              "help": {
+                "text": "Use a property supplied by the declared events and activity types. Unknown events and dynamic payload maps remain open."
+              }
+            },
+            {
               "id": "events",
               "name": "Events",
               "defaultConfiguration": {
@@ -215,15 +251,87 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Validate expression syntax, names, types, and context availability",
+                "description": "Validate expression values assigned to workflow fields",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression"
               },
               "fullDescription": {
-                "text": "Validate expression syntax, names, types, and context availability."
+                "text": "Validate expression values assigned to workflow fields."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression",
               "help": {
-                "text": "Check the expression syntax, available contexts and the type of the referenced value."
+                "text": "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules."
+              }
+            },
+            {
+              "id": "expression-call",
+              "name": "ExpressionCall",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate function invocation and constant arguments",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-call"
+              },
+              "fullDescription": {
+                "text": "Validate function invocation and constant arguments."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-call",
+              "help": {
+                "text": "Check parentheses, argument count, format placeholders and literal JSON."
+              }
+            },
+            {
+              "id": "expression-reference",
+              "name": "ExpressionReference",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Resolve expression variables, properties and functions",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-reference"
+              },
+              "fullDescription": {
+                "text": "Resolve expression variables, properties and functions."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-reference",
+              "help": {
+                "text": "Use a declared context, property or function; check the suggested spelling and available names."
+              }
+            },
+            {
+              "id": "expression-syntax",
+              "name": "ExpressionSyntax",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Parse expression tokens and grammar",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-syntax"
+              },
+              "fullDescription": {
+                "text": "Parse expression tokens and grammar."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-syntax",
+              "help": {
+                "text": "Correct the indicated expression token, literal or delimiter."
+              }
+            },
+            {
+              "id": "expression-type",
+              "name": "ExpressionType",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate expression operand and argument types",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-type"
+              },
+              "fullDescription": {
+                "text": "Validate expression operand and argument types."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-type",
+              "help": {
+                "text": "Supply the expected value type; convert serialized values explicitly when needed."
               }
             },
             {
@@ -443,6 +551,24 @@
               }
             },
             {
+              "id": "script-injection",
+              "name": "ScriptInjection",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Detect untrusted values interpolated into scripts",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection"
+              },
+              "fullDescription": {
+                "text": "Detect untrusted values interpolated into scripts."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection",
+              "help": {
+                "text": "Pass untrusted values through environment variables or action inputs and read them as data inside the script."
+              }
+            },
+            {
               "id": "shell-name",
               "name": "ShellName",
               "defaultConfiguration": {
@@ -563,11 +689,14 @@
           ]
         },
         {
-          "ruleId": "expression",
+          "ruleId": "expression-reference",
           "message": {
             "text": "property \"msg\" is not defined in object type {}"
           },
           "level": "error",
+          "properties": {
+            "diagnosticCode": "unknown-property"
+          },
           "locations": [
             {
               "physicalLocation": {

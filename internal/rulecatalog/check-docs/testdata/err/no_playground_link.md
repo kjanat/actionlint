@@ -15,7 +15,7 @@ jobs:
 Output:
 
 ```
-test.yaml:6:23: undefined variable "unknown". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression]
+test.yaml:6:23: undefined variable "unknown". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
   |
 6 |       - run: echo ${{ unknown }}
   |                       ^~~~~~~

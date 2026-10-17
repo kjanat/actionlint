@@ -62,16 +62,16 @@ paths     = [
 ]
 
 [[linters.exclusions.rules]]
-path    = '_test\.go$|^(\.github|cmd|fuzz|playground)/|^internal/(cli|githubaction|conformance|fsread)/|^internal/(actioncatalog/(generate|metadata)|repoconfig/generate|workflowcontext/generate|webhook/generate|ruffconfig/generate|rulecatalog/check-docs|documentation/check-readme|release/bump-version)/'
+path    = '_test\.go$|^(\.github|cmd|fuzz|playground)/|^internal/(cli|githubaction|conformance|fsread)/|^internal/(actioncatalog/(generate|metadata)|config/generate|workflow/context/generate|webhook/generate|ruffconfig/generate|rulecatalog/check-docs|documentation/check-readme|release/bump-version)/'
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/(workspace/(project|session)|repoconfig/(config|inspection))\.go$'
+path    = '^internal/(workspace/(project|session)|config/(config|inspection))\.go$'
 text    = "fsread\\.Disk"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/workflownames/index\.go$'
+path    = '^internal/workflow/names/index\.go$'
 text    = "fsread\\.ProbeDir"
 linters = ["forbidigo"]
 

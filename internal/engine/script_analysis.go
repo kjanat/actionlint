@@ -33,7 +33,7 @@ type scriptScope struct {
 }
 
 type scriptExecution struct {
-	shell     shellcheckShell
+	shell     executionShell
 	directory runDirectory
 }
 

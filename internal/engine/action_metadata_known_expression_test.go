@@ -91,7 +91,7 @@ runs:
 			if len(errs) != 1 || errs[0].Message != want {
 				t.Fatalf("wanted one diagnostic %q, got %v", want, errs)
 			}
-			if got := errs[0]; got.Line != 7 || got.Column != len(tc.field)+9 || got.Filepath != "action.yml" {
+			if got := errs[0]; got.Start.Line != 7 || got.Start.Column != len(tc.field)+9 || got.Path != "action.yml" {
 				t.Fatalf("diagnostic lost expression source position: %v", got)
 			}
 		})

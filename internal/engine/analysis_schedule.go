@@ -29,9 +29,9 @@ func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registra
 			}
 		}
 		for _, finding := range findings {
-			legacy := legacyDiagnosticError(finding)
-			if legacy.Filepath != "" && legacy.Filepath != input.Path {
-				if source, ok := metadataSources[legacy.Filepath]; ok {
+			legacy := findingOf(finding)
+			if legacy.Path != "" && legacy.Path != input.Path {
+				if source, ok := metadataSources[legacy.Path]; ok {
 					legacy.source = source
 				}
 			}

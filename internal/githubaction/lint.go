@@ -11,7 +11,17 @@ import (
 	"strings"
 	"time"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/tools/adapters"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/report"
 )
 
 const lintTimeout = 300 * time.Second
@@ -21,14 +31,14 @@ const lintCancellationGrace = time.Second
 
 type lintRequest struct {
 	ruff               string
-	ruffOptions        *actionlint.ExternalCommandOptions
+	ruffOptions        *processconfig.Options
 	ctx                context.Context
-	shellcheckOptions  *actionlint.ExternalCommandOptions
-	shellcheckSettings *actionlint.ShellcheckSettings
+	shellcheckOptions  *processconfig.Options
+	shellcheckSettings *toolconfig.ShellcheckSettings
 	workingDir         string
 	workspaceDir       string
 	configFile         string
-	overlays           []actionlint.ConfigOverlay
+	overlays           []repoconfig.Overlay
 	ignore             []string
 	shellcheck         string
 	format             outputFormat
@@ -45,12 +55,12 @@ type lintOutcome struct {
 
 type lintResult struct {
 	*lintOutcome
-	diagnostics    []actionlint.Diagnostic
-	documents      actionlint.DocumentOutlines
+	diagnostics    []diagnostic.Diagnostic
+	documents      report.DocumentOutlines
 	sarif          string
 	fileCount      int
 	fileCountKnown bool
-	configs        []actionlint.ConfigReport
+	configs        []repoconfig.Report
 	hints          []string
 }
 
@@ -67,18 +77,18 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 		}
 	}
 	if command := env("ACTIONLINT_RUFF_COMMAND"); req.ruff != "" && command != "" {
-		req.ruffOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+		req.ruffOptions = &processconfig.Options{Executable: &command}
 	}
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
-		overlay, err := actionlint.ParseConfigOverlay("config", []byte(value))
+		overlay, err := repoconfig.ParseOverlay("config", []byte(value))
 		if err != nil {
 			return inputErrorf("%s", err)
 		}
 		req.overlays = append(req.overlays, overlay)
 	}
 	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
-		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+		req.shellcheckOptions = &processconfig.Options{Executable: &command}
 	}
 	return nil
 }
@@ -107,36 +117,34 @@ func runLinter(req *lintRequest) *lintResult {
 	if workspace == "" {
 		workspace = req.workingDir
 	}
-	opts := actionlint.AnalysisOptions{
-		Ruff: req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
-		Context:            req.ctx,
-		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
-		ShellcheckSettings: req.shellcheckSettings,
-		Shellcheck:         req.shellcheck,
-		IgnorePatterns:     req.ignore,
-		ConfigFile:         req.configFile,
-		ConfigOverlays:     req.overlays,
-		WorkingDir:         req.workingDir,
-		LogWriter:          &logs,
-		OnConfigLoaded: func(report actionlint.ConfigReport) {
+	opts := application.Options{
+
+		IgnorePatterns: req.ignore,
+		ConfigFile:     req.configFile,
+		ConfigOverlays: req.overlays,
+		WorkingDir:     req.workingDir,
+		LogWriter:      &logs,
+		OnConfigLoaded: func(report repoconfig.Report) {
 			result.configs = append(result.configs, report)
 		},
 		OnFilesSelected: func(files []string) {
 			result.fileCount = len(files)
 			result.fileCountKnown = true
-		},
+		}, Tools: adapters.Options{Ruff: req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
+			ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
+			ShellcheckSettings: req.shellcheckSettings,
+			ShellCheck:         req.shellcheck}.Registrations(),
 	}
 
-	session, err := actionlint.NewAnalysisSession(opts)
-	if err != nil {
-		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
-		return result
+	ctx := req.ctx
+	if ctx == nil {
+		ctx = context.Background()
 	}
-
-	var analysis *actionlint.AnalysisResult
+	var analysis *application.Result
+	var err error
 	inputNames := make(map[string]string, len(req.files))
 	if len(req.files) == 0 {
-		analysis, err = session.Repository(req.workingDir)
+		analysis, err = application.Check(ctx, opts, application.Input{Kind: application.Repository, Directory: req.workingDir})
 	} else {
 		paths := make([]string, len(req.files))
 		for i, path := range req.files {
@@ -146,7 +154,7 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 			paths[i] = path
 		}
-		analysis, err = session.Files(paths, nil)
+		analysis, err = application.Check(ctx, opts, application.Input{Kind: application.Files, Paths: paths})
 	}
 	// Absolute reads must retain the caller's relative spelling in Action output.
 	if analysis != nil {
@@ -156,7 +164,7 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 		}
 		result.documents = analysis.Documents
-		result.fileCount = analysis.FileCount()
+		result.fileCount = analysis.FileCount
 		result.fileCountKnown = true
 		for i := range analysis.Diagnostics {
 			diagnostic := &analysis.Diagnostics[i]
@@ -175,21 +183,21 @@ func runLinter(req *lintRequest) *lintResult {
 		result.diagnostics = analysis.Diagnostics
 	}
 	if err != nil {
-		code := actionlint.ExitStatusFailure
-		if _, ok := errors.AsType[*actionlint.ConfigOverlayError](err); ok {
-			code = actionlint.ExitStatusInvalidCommandOption
+		code := render.ExitFailure
+		if _, ok := errors.AsType[*repoconfig.OverlayError](err); ok {
+			code = render.ExitInvalidCommandOption
 		}
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
 	}
 	if req.format == formatSARIF || req.sarif {
 		var sarif bytes.Buffer
-		sarifRenderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
+		sarifRenderer, err := render.New(render.FormatSARIF, "", false, buildinfo.Version, nil)
 		if err == nil {
-			err = sarifRenderer.Render(&sarif, workspaceReportAnalysis(analysis, req.workingDir, workspace))
+			err = sarifRenderer.Render(&sarif, render.Prepare(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
 		}
 		if err != nil {
-			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
+			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", render.ExitFailure}
 			return result
 		}
 		result.sarif = sarif.String()
@@ -199,24 +207,23 @@ func runLinter(req *lintRequest) *lintResult {
 	} else if req.format != formatJSON && req.format != formatJSONLines {
 		rendered, err := renderAnalysis(req.format, analysis, req.workingDir, workspace)
 		if err != nil {
-			result.lintOutcome = &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}
+			result.lintOutcome = &lintOutcome{"", err.Error() + "\n", render.ExitFailure}
 			return result
 		}
 		out.WriteString(rendered)
 	}
-	session.Completed(analysis)
 	if len(analysis.Diagnostics) > 0 {
 		result.hints = append(result.hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
-		result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessProblemFound}
+		result.lintOutcome = &lintOutcome{out.String(), logs.String(), render.ExitSuccessProblemFound}
 		return result
 	}
-	result.lintOutcome = &lintOutcome{out.String(), logs.String(), actionlint.ExitStatusSuccessNoProblem}
+	result.lintOutcome = &lintOutcome{out.String(), logs.String(), render.ExitSuccessNoProblem}
 	return result
 }
 
 // Rebase SARIF and GitHub reports without changing source metadata or the
 // analysis-relative paths used by persisted diagnostics and other formats.
-func workspaceReportAnalysis(analysis *actionlint.AnalysisResult, workingDir, workspace string) *actionlint.AnalysisResult {
+func workspaceReportAnalysis(analysis *application.Result, workingDir, workspace string) *application.Result {
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {
@@ -244,8 +251,8 @@ func reportPath(workingDir, workspace, path string) string {
 	return filepath.ToSlash(absolute)
 }
 
-func toolOptionsInDirectory(options *actionlint.ExternalCommandOptions, directory string) *actionlint.ExternalCommandOptions {
-	configured := actionlint.ExternalCommandOptions{}
+func toolOptionsInDirectory(options *processconfig.Options, directory string) *processconfig.Options {
+	configured := processconfig.Options{}
 	if options != nil {
 		configured = *options
 	}
@@ -256,11 +263,11 @@ func toolOptionsInDirectory(options *actionlint.ExternalCommandOptions, director
 func (a *action) runLint(req *lintRequest) *lintResult {
 	info, err := os.Stat(req.workingDir)
 	if err != nil {
-		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", actionlint.ExitStatusFailure}}
+		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", render.ExitFailure}}
 	}
 	if !info.IsDir() {
 		msg := fmt.Sprintf("working directory %q is not a directory\n", req.workingDir)
-		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
+		return &lintResult{lintOutcome: &lintOutcome{"", msg, render.ExitFailure}}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
@@ -290,6 +297,6 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 		result = &lintResult{}
 	}
 	msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
-	result.lintOutcome = &lintOutcome{"", msg, actionlint.ExitStatusFailure}
+	result.lintOutcome = &lintOutcome{"", msg, render.ExitFailure}
 	return result
 }

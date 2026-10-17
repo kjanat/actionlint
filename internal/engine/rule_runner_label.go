@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/workflow/schema"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -283,17 +285,17 @@ func knownStrategyRunnerLabels(expr *workflowlang.String, property string) [][]*
 	if !ok {
 		return nil
 	}
-	matrix, ok := workflowObjectProperty(strategy, "matrix").(map[string]any)
+	matrix, ok := schema.Property(strategy, "matrix").(map[string]any)
 	if !ok {
 		return nil
 	}
 	var labels [][]*workflowlang.String
-	if row, ok := workflowObjectProperty(matrix, property).([]any); ok {
+	if row, ok := schema.Property(matrix, property).([]any); ok {
 		for _, value := range row {
 			labels = append(labels, runnerExpressionLabels(value, expr.Pos, true))
 		}
 	}
-	if include, ok := workflowObjectProperty(matrix, "include").([]any); ok {
+	if include, ok := schema.Property(matrix, "include").([]any); ok {
 		for _, value := range include {
 			if assignments, ok := value.(map[string]any); ok {
 				for name, value := range assignments {

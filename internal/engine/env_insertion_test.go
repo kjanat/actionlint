@@ -98,7 +98,7 @@ jobs:
     steps: [{run: echo ok}]
 `
 	errs := lintCredentialsExpressionTest(t, source)
-	if len(errs) != 1 || !strings.Contains(errs[0].Message, `context "env" is not allowed`) || errs[0].Line != 3 || errs[0].Column != 31 {
+	if len(errs) != 1 || !strings.Contains(errs[0].Message, `context "env" is not allowed`) || errs[0].Start.Line != 3 || errs[0].Start.Column != 31 {
 		t.Fatalf("context restriction or source position lost: %v", errs)
 	}
 }

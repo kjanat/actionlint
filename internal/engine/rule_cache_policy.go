@@ -5,7 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
+	"actionlint.kjanat.dev/internal/workflow/calls"
+	"actionlint.kjanat.dev/internal/workflow/references"
+
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
@@ -156,8 +158,8 @@ func (r *RuleCacheCallUnrestricted) VisitJobPre(job *workflowlang.Job) error {
 	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || workflowlang.EffectiveCacheMode(r.workflow, job.CacheMode) != nil {
 		return nil
 	}
-	if _, local := workflowCallUsesLocalSpec(call.Uses.Value); !local {
-		if _, remote := workflowCallUsesRepoRef(call.Uses.Value); !remote {
+	if _, local := references.LocalWorkflow(call.Uses.Value); !local {
+		if _, remote := references.WorkflowRef(call.Uses.Value); !remote {
 			return nil
 		}
 	}
@@ -174,7 +176,7 @@ type RuleCacheOperation struct {
 	RuleBase
 	workflow *workflowlang.CacheMode
 	job      *workflowlang.CacheMode
-	cache    *LocalReusableWorkflowCache
+	cache    *calls.Cache
 }
 
 // NewRuleCacheOperation creates a cache-operation rule.
@@ -182,7 +184,7 @@ func NewRuleCacheOperation() *RuleCacheOperation {
 	return &RuleCacheOperation{RuleBase: builtinRuleBase("cache-operation")}
 }
 
-func newRuleCacheOperation(cache *LocalReusableWorkflowCache) *RuleCacheOperation {
+func newRuleCacheOperation(cache *calls.Cache) *RuleCacheOperation {
 	r := NewRuleCacheOperation()
 	r.cache = cache
 	return r
@@ -207,7 +209,7 @@ func (r *RuleCacheOperation) VisitJobPre(job *workflowlang.Job) error {
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
 func (r *RuleCacheOperation) checkCallOperations(pos *workflowlang.Pos, sourceSpec string, granted *workflowlang.CacheMode, checked map[workflowCacheModeVisit]bool) {
-	spec, local := workflowCallUsesLocalSpec(sourceSpec)
+	spec, local := references.LocalWorkflow(sourceSpec)
 	if !local {
 		return
 	}
@@ -223,7 +225,7 @@ func (r *RuleCacheOperation) checkCallOperations(pos *workflowlang.Pos, sourceSp
 		return
 	}
 	checked[visit] = true
-	m, err := r.cache.findMetadataForCall(sourceSpec)
+	m, err := r.cache.FindMetadataForCall(sourceSpec)
 	if err != nil || m == nil {
 		// workflow-call owns lookup errors; they remain cached for that rule.
 		return
@@ -260,33 +262,14 @@ func (r *RuleCacheOperation) VisitStep(step *workflowlang.Step) error {
 	if !valid {
 		return nil
 	}
-	name := cacheActionName(action.Uses.Value)
+	name := references.CacheAction(action.Uses.Value)
 	if operation := disabledCacheOperation(name, access); operation != "" {
 		r.Errorf(action.Uses.Pos, "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, r.job.Kind.String())
 	}
 	return nil
 }
 
-// cacheActionName recognizes only the official cache action entry points.
-func cacheActionName(uses string) string {
-	name, ref, ok := strings.Cut(uses, "@")
-	if !ok || ref == "" || exprlang.ContainsExpression(uses) {
-		return ""
-	}
-	owner, rest, ok := strings.Cut(name, "/")
-	if !ok || !strings.EqualFold(owner, "actions") {
-		return ""
-	}
-	repo, path, hasPath := strings.Cut(rest, "/")
-	if !strings.EqualFold(repo, "cache") || hasPath && path == "" {
-		return ""
-	}
-	// Repository names are case-insensitive; action subpaths address files in the downloaded repository and retain their case.
-	if path == "" || path == "save" || path == "restore" {
-		return name
-	}
-	return ""
-}
+// references.CacheAction recognizes only the official cache action entry points.
 
 func disabledCacheOperation(name string, access uint8) string {
 	if name == "" {

@@ -8,14 +8,15 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/internal/fix"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/repoconfig"
-	"actionlint.kjanat.dev/internal/resolution"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 
 	"actionlint.kjanat.dev/internal/application"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/fix"
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/localapp"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/resolution"
 )
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
@@ -52,11 +53,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	options := application.Options{
 		WorkingDir: workingDir, ConfigFile: c.Config.Path,
 		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""),
-		ShellCheck:        c.ShellCheck, ShellcheckOptions: c.ShellcheckOptions,
-		Ruff: c.Ruff, RuffOptions: c.RuffOptions,
+
 		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
 		Debug: c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
-		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict},
+		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: adapters.Options{ShellCheck: c.ShellCheck, ShellcheckOptions: c.ShellcheckOptions,
+			Ruff: c.Ruff, RuffOptions: c.RuffOptions}.Registrations(),
 	}
 	if c.ResolverCommand != "" {
 		options.Resolver = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
@@ -134,7 +135,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, err
 		}
 	}
-	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, result.Result); err != nil {
+	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, render.Prepare(*result)); err != nil {
 		return 0, err
 	}
 	if inv.Legacy && options.Verbose && result.FileCount > 1 {

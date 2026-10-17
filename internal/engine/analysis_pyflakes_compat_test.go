@@ -38,7 +38,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				if result == nil || result.FileCount() != 1 || len(result.Diagnostics) != 0 {
+				if result == nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 					t.Fatalf("retired checker changed analysis: %#v", result)
 				}
 			}

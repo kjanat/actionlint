@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -34,7 +34,7 @@ overrides:
 			t.Fatal(err)
 		}
 		got = applyRulePresets(RulePresets{Strict: true}, got)
-		if diagnosticLevel(got, "if-cond") != "warn" || diagnosticLevel(got, "expression") != "off" {
+		if diagnosticLevel(got, "if-cond") != "warn" || diagnosticLevel(got, "expression-reference") != "off" {
 			t.Fatal(got.Lint.Rules)
 		}
 		minimum, _ := got.RequiresJobTimeout().MinMinutes()
@@ -46,7 +46,7 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diagnosticLevel(reset, "expression") != "on" {
+		if diagnosticLevel(reset, "expression-reference") != "on" {
 			t.Fatal(reset.Lint.Rules)
 		}
 		if diagnosticLevel(cfg, "if-cond") != "off" {
@@ -81,7 +81,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 				if programmatic && tc.lint == nil {
 					continue
 				}
-				cfg, err := ParseConfig([]byte("lint: {rules: {disable: [expression]}}\noverrides: [{includes: ['**'], lint: " + tc.yaml + "}]"))
+				cfg, err := ParseConfig([]byte("lint: {rules: {disable: [expression-reference]}}\noverrides: [{includes: ['**'], lint: " + tc.yaml + "}]"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -90,7 +90,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 				}
 				for range 2 {
 					effective, err := repoconfig.ForFile(cfg, "ci.yml", "")
-					if err != nil || diagnosticLevel(effective, "expression") != tc.want {
+					if err != nil || diagnosticLevel(effective, "expression-reference") != tc.want {
 						t.Fatalf("programmatic=%t: want %s, got %+v, %v", programmatic, tc.want, effective, err)
 					}
 					encoded, err := yaml.Marshal(cfg)
@@ -112,15 +112,15 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 		base, overlay string
 		want          RuleLevel
 	}{
-		{"correctness: {expression: error}", "correctness: {expression: false}", "off"},
-		{"correctness: {expression: false}", "correctness: {expression: null}", "on"},
-		{"correctness: false", "correctness: {expression: warn}", "warn"},
-		{"correctness: false", "correctness: {expression: {level: null}}", "off"},
+		{"correctness: {expression-reference: error}", "correctness: {expression-reference: false}", "off"},
+		{"correctness: {expression-reference: false}", "correctness: {expression-reference: null}", "on"},
+		{"correctness: false", "correctness: {expression-reference: warn}", "warn"},
+		{"correctness: false", "correctness: {expression-reference: {level: null}}", "off"},
 		{"correctness: false", "correctness: null", "on"},
 		{"correctness: {level: false}", "correctness: {level: null}", "on"},
-		{"correctness: {expression: off}", "correctness: {expression: default}", "on"},
-		{"correctness: off", "correctness: {expression: {level: default}}", "off"},
-		{"correctness: {expression: off}", "correctness: default", "on"},
+		{"correctness: {expression-reference: off}", "correctness: {expression-reference: default}", "on"},
+		{"correctness: off", "correctness: {expression-reference: {level: default}}", "off"},
+		{"correctness: {expression-reference: off}", "correctness: default", "on"},
 		{"correctness: {level: off}", "correctness: {level: default}", "on"},
 	} {
 		cfg, err := ParseConfig([]byte("lint: {rules: {" + tc.base + "}}\noverrides: [{includes: ['**'], lint: {rules: {" + tc.overlay + "}}}]"))
@@ -132,8 +132,8 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diagnosticLevel(got, "expression") != tc.want {
-				t.Fatalf("%s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression"), tc.want)
+			if diagnosticLevel(got, "expression-reference") != tc.want {
+				t.Fatalf("%s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression-reference"), tc.want)
 			}
 			encoded, err := yaml.Marshal(cfg)
 			if err != nil {
@@ -151,8 +151,8 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diagnosticLevel(got, "expression") != tc.want {
-			t.Fatalf("extends %s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression"), tc.want)
+		if diagnosticLevel(got, "expression-reference") != tc.want {
+			t.Fatalf("extends %s -> %s: got %s, want %s", tc.base, tc.overlay, diagnosticLevel(got, "expression-reference"), tc.want)
 		}
 	}
 }
@@ -160,7 +160,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 func TestFileOverrides(t *testing.T) {
 	const source = `lint:
   rules:
-    disable: [expression]
+    disable: [expression-reference]
     suspicious: on
 overrides:
   - includes: ['.github/workflows/**', '!.github/workflows/release.yml']
@@ -233,7 +233,7 @@ func TestFileOverrideAnalysisIsolation(t *testing.T) {
   - includes: ['.github/workflows/suspicious.yml']
     lint: {rules: {suspicious: on}}
   - includes: ['.github/workflows/suppressed.yml']
-    lint: {rules: {disable: [expression, if-cond]}}
+    lint: {rules: {disable: [expression-reference, if-cond]}}
 `))
 	if err != nil {
 		t.Fatal(err)

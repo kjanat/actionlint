@@ -123,7 +123,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			if err := rule.VisitWorkflowPre(workflow); err != nil {
 				t.Fatal(err)
 			}
-			if got := rule.Errs(); (len(got) != 0) != tc.invalid || len(got) > 1 || len(got) == 1 && (got[0].Line != 3 || !strings.Contains(got[0].Message, "positive")) {
+			if got := rule.Errs(); (len(got) != 0) != tc.invalid || len(got) > 1 || len(got) == 1 && (got[0].Start.Line != 3 || !strings.Contains(got[0].Message, "positive")) {
 				t.Fatalf("positive-pattern validation: %+v", got)
 			}
 		})

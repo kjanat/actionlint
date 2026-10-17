@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -35,7 +35,7 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 		if diff := cmp.Diff(want, result.Inputs); diff != "" {
 			t.Fatalf("excluded selection dependencies (-want +got):\n%s", diff)
 		}
-		if result.FileCount() != 0 || len(result.Configurations) != 1 || result.Configurations[0].File != config {
+		if result.FileCount != 0 || len(result.Configurations) != 1 || result.Configurations[0].File != config {
 			t.Fatalf("excluded selection lost provenance: %+v", result)
 		}
 	}
@@ -45,7 +45,7 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: workflow, Content: []byte(commandGoodWorkflow), Config: cfg}}})
-	if err != nil || result.FileCount() != 0 || !slices.Contains(result.Inputs, base) || !slices.Contains(result.Inputs, config) {
+	if err != nil || result.FileCount != 0 || !slices.Contains(result.Inputs, base) || !slices.Contains(result.Inputs, config) {
 		t.Fatalf("direct analysis lost excluded configuration inputs: %+v, %v", result, err)
 	}
 }
@@ -68,7 +68,7 @@ func TestCallerRelativeSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := session.Files([]string{relative}, nil)
-	if err != nil || result.FileCount() != 1 || len(result.Diagnostics) == 0 || !slices.Contains(result.Inputs, workflow) {
+	if err != nil || result.FileCount != 1 || len(result.Diagnostics) == 0 || !slices.Contains(result.Inputs, workflow) {
 		t.Fatalf("caller-relative workflow was dropped: %+v, %v", result, err)
 	}
 	project, err := session.ProjectAt(workflow)
@@ -76,7 +76,7 @@ func TestCallerRelativeSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: parent, Sources: []SourceUnit{{Path: relative, Content: []byte(commandBadWorkflow), Project: project, Config: project.Config()}}})
-	if err != nil || result.FileCount() != 1 || len(result.Diagnostics) == 0 || !slices.Contains(result.Inputs, workflow) {
+	if err != nil || result.FileCount != 1 || len(result.Diagnostics) == 0 || !slices.Contains(result.Inputs, workflow) {
 		t.Fatalf("direct caller-relative workflow was dropped: %+v, %v", result, err)
 	}
 }
@@ -110,7 +110,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 			path := filepath.Join(roots[1], ".github", "workflows", "ci.yml")
 			check := func(result *AnalysisResult, err error) {
 				t.Helper()
-				if err != nil || result == nil || result.FileCount() != 1 || !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
+				if err != nil || result == nil || result.FileCount != 1 || !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
 					t.Fatalf("filtered=%t: alias selection/override lost: %+v, %v", filtered, result, err)
 				}
 			}
@@ -206,7 +206,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 	}
 	check := func(result *AnalysisResult, err error) {
 		t.Helper()
-		if err != nil || result == nil || result.FileCount() != 1 {
+		if err != nil || result == nil || result.FileCount != 1 {
 			t.Fatalf("relative working directory dropped workflow: %+v, %v", result, err)
 		}
 		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {

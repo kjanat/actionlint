@@ -1,4 +1,4 @@
-package actionlint_fuzz
+package fuzz
 
 import (
 	"io/fs"

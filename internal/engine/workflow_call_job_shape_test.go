@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -69,12 +71,12 @@ jobs:
 						}
 						return
 					}
-					if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 5 || filepath.Base(diagnostics[0].Filepath) != "callee.yaml" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("%q is not available", field.key)) {
+					if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 5 || filepath.Base(diagnostics[0].Path) != "callee.yaml" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("%q is not available", field.key)) {
 						t.Fatalf("expected only the mixed-job syntax error: %v", diagnostics)
 					}
 				}
 				for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-					cache := NewLocalReusableWorkflowCache(project, root, nil)
+					cache := calls.NewCache(project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
 							source := caller
@@ -88,7 +90,7 @@ jobs:
 							check(diagnostics, name == "callee.yaml")
 						}
 					}
-					if _, _, found := cache.readCache("./leaf.yaml"); found {
+					if _, _, found := cache.Lookup("./leaf.yaml"); found {
 						t.Fatal("invalid job populated leaf cache")
 					}
 					diagnostics, err := linter.LintFiles([]string{filepath.Join(root, order[0]), filepath.Join(root, order[1])}, project)
@@ -99,10 +101,10 @@ jobs:
 				}
 				workflow, _ := Parse(callee)
 				event, _ := workflow.FindWorkflowCallEvent()
-				cache := NewLocalReusableWorkflowCache(project, root, nil)
+				cache := calls.NewCache(project.RootDir(), root, nil)
 				cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
-				fromAST, _, _ := cache.readCache("./callee.yaml")
-				fromFile, err := parseReusableWorkflowMetadata(callee)
+				fromAST, _, _ := cache.Lookup("./callee.yaml")
+				fromFile, err := calls.ParseMetadata(callee)
 				if err != nil {
 					t.Fatal(err)
 				}

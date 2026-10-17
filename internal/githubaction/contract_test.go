@@ -8,8 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/render"
+
 	"actionlint.kjanat.dev/internal/cli"
-	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -41,7 +42,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 			t.Errorf("%s differs from Action JSON output", filepath.Base(path))
 		}
 	}
-	var result actionlint.CheckResult
+	var result render.CheckResult
 	if err := json.Unmarshal([]byte(rendered), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +92,7 @@ jobs:
 			if code := command.Main([]string{"actionlint", "check", "--json", "--shellcheck=", "--pyflakes=", "ci.yml"}); code != tc.code {
 				t.Fatalf("CLI status %d: %s", code, &stderr)
 			}
-			var cliResult actionlint.CheckResult
+			var cliResult render.CheckResult
 			if err := json.Unmarshal(stdout.Bytes(), &cliResult); err != nil {
 				t.Fatal(err)
 			}
@@ -103,7 +104,7 @@ jobs:
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
 				t.Fatalf("Action status %d: %s", code, &stdout)
 			}
-			var persisted, rendered actionlint.CheckResult
+			var persisted, rendered render.CheckResult
 			if err := json.Unmarshal([]byte(read(t, resultPath)), &persisted); err != nil {
 				t.Fatal(err)
 			}

@@ -13,7 +13,7 @@ func Parse(source []byte) (*workflowlang.Workflow, []*Error) {
 func adaptSyntaxFindings(findings []*workflowlang.SyntaxError) []*Error {
 	errors := make([]*Error, 0, len(findings))
 	for _, finding := range findings {
-		errors = append(errors, &Error{Message: finding.Message, Line: finding.Line, Column: finding.Column, Kind: finding.Kind})
+		errors = append(errors, &Error{Message: finding.Message, Start: DiagnosticPosition{Line: finding.Line, Column: finding.Column}, Rule: finding.Kind})
 	}
 	return errors
 }

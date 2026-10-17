@@ -2,6 +2,7 @@ package engine
 
 import (
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/schema"
 )
 
 type shellValueKind uint8
@@ -35,14 +36,14 @@ func defaultsShellValue(defaults *workflowlang.Defaults) shellValue {
 		return shellValueFromString(run.Shell)
 	}
 	value, known := workflowlang.WorkflowExpressionLiteral(run.Expression)
-	if !known || len(workflowExpressionLiteralErrors(workflowDefaultsRun, value, "defaults.run")) != 0 {
+	if !known || len(schema.LiteralErrors(schema.DefaultsRun, value, "defaults.run")) != 0 {
 		return shellValue{kind: shellValueUnknown}
 	}
 	object, ok := value.(map[string]any)
 	if !ok {
 		return shellValue{kind: shellValueUnknown}
 	}
-	shell := workflowObjectProperty(object, "shell")
+	shell := schema.Property(object, "shell")
 	if shell == nil {
 		return shellValue{}
 	}

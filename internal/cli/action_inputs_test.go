@@ -5,7 +5,8 @@ import (
 	"os"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
+	reportmodel "actionlint.kjanat.dev/internal/report"
 )
 
 func TestCommandActionInputs(t *testing.T) {
@@ -28,7 +29,7 @@ func TestCommandActionInputs(t *testing.T) {
 				args = append([]string{"check"}, args...)
 			}
 			got := testRunCommand(manifest, args...)
-			var report actionlint.CheckResult
+			var report render.CheckResult
 			if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
 				t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
 			}
@@ -42,7 +43,7 @@ func TestCommandActionInputs(t *testing.T) {
 			if len(report.Documents) != want {
 				t.Fatalf("args=%v: want %d documents, got %#v", args, want, report.Documents)
 			}
-			if _, ok := report.Documents[want-1].(actionlint.ActionOutline); !ok {
+			if _, ok := report.Documents[want-1].(reportmodel.ActionOutline); !ok {
 				t.Fatalf("args=%v: expected action outline, got %#v", args, report.Documents)
 			}
 		}
@@ -62,7 +63,7 @@ func TestCommandDefaultActionDiscovery(t *testing.T) {
 			args = append([]string{"check"}, args...)
 		}
 		got := testRunCommand("", args...)
-		var report actionlint.CheckResult
+		var report render.CheckResult
 		if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
 			t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
 		}

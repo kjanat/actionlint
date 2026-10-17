@@ -63,9 +63,9 @@ func TestUnsoundTernary(t *testing.T) {
 			rule.checkExprsIn("${{ "+tc.expression+" }}", &workflowlang.Pos{Line: 3, Col: 5}, false, false, "env")
 			count := 0
 			for _, finding := range rule.Errs() {
-				if finding.Kind == "unsound-ternary" {
+				if finding.Rule == "unsound-ternary" {
 					count++
-					if finding.Line != 3 || finding.Column < 5 {
+					if finding.Start.Line != 3 || finding.Start.Column < 5 {
 						t.Fatalf("bad location: %+v", finding)
 					}
 				}

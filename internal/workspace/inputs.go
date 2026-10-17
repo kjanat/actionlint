@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 type Inputs struct {

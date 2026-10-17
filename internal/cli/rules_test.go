@@ -7,16 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/rule"
 )
 
 func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 	metadata := testRunCommand("", "rules", "--json")
-	var rules []actionlint.RuleInfo
+	var rules []rule.Descriptor
 	if err := json.Unmarshal([]byte(metadata.Stdout), &rules); err != nil || metadata.Status != 0 || metadata.Stderr != "" || !reflect.DeepEqual(rules, commandRules()) {
 		t.Fatalf("rules JSON contract changed: %+v, %v", metadata, err)
 	}
-	byName := map[string]actionlint.RuleInfo{}
+	byName := map[string]rule.Descriptor{}
 	for i, rule := range rules {
 		if i > 0 && rules[i-1].Name >= rule.Name {
 			t.Fatal("JSON rules are no longer alphabetical")
@@ -58,9 +58,9 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 }
 
 func TestRulesIncludesSelectedPluginMetadata(t *testing.T) {
-	path := "internal/component/testdata/plugins/no-sudo.wasm"
+	path := "internal/plugins/component/testdata/plugins/no-sudo.wasm"
 	got := testRunCommand("", "rules", "no-sudo", "--plugin", path, "--json")
-	var descriptor actionlint.RuleInfo
+	var descriptor rule.Descriptor
 	if err := json.Unmarshal([]byte(got.Stdout), &descriptor); err != nil || got.Status != 0 {
 		t.Fatalf("%+v %v", got, err)
 	}

@@ -3,6 +3,8 @@ package engine
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/references"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -28,7 +30,7 @@ func TestRuleActionSelfRepositoryUsesLocalSpec(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
-			have, ok := selfRepositoryUsesLocalSpec(tc.spec)
+			have, ok := references.SelfRepositoryLocal(tc.spec)
 			if ok != tc.ok {
 				t.Fatalf("wanted ok=%v but have ok=%v for %q", tc.ok, ok, tc.spec)
 			}

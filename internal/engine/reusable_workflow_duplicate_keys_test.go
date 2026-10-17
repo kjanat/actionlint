@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -72,10 +74,10 @@ jobs:
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
-			astCache := NewLocalReusableWorkflowCache(project, root, nil)
+			astCache := calls.NewCache(project.RootDir(), root, nil)
 			astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
-			fromAST, _, _ := astCache.readCache("./callee.yaml")
-			fromFile, err := parseReusableWorkflowMetadata(callee)
+			fromAST, _, _ := astCache.Lookup("./callee.yaml")
+			fromFile, err := calls.ParseMetadata(callee)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -95,13 +97,13 @@ jobs:
 					t.Fatalf("wanted %d duplicate-key diagnostics, got %v", want, errs)
 				}
 				for _, err := range errs {
-					if err.Kind != "syntax-check" || !strings.Contains(err.Message, "is duplicated") || filepath.Base(err.Filepath) != "callee.yaml" {
+					if err.Rule != "syntax-check" || !strings.Contains(err.Message, "is duplicated") || filepath.Base(err.Path) != "callee.yaml" {
 						t.Fatalf("unexpected diagnostic: %v", err)
 					}
 				}
 			}
 			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-				cache := NewLocalReusableWorkflowCache(project, root, nil)
+				cache := calls.NewCache(project.RootDir(), root, nil)
 				for _, name := range order {
 					source, want := caller, 0
 					if name == "callee.yaml" {
@@ -113,7 +115,7 @@ jobs:
 					}
 					check(errs, want)
 				}
-				if _, _, found := cache.readCache("./missing.yaml"); found {
+				if _, _, found := cache.Lookup("./missing.yaml"); found {
 					t.Fatal("discarded duplicate populated missing workflow cache")
 				}
 				errs, err := linter.LintFiles([]string{filepath.Join(root, order[0]), filepath.Join(root, order[1])}, project)

@@ -39,26 +39,10 @@ func FindingOf(d diagnostic.Diagnostic, source []byte) Finding {
 
 // SourceLine returns the physical line at the one-based position.
 func SourceLine(source []byte, line int, rawScript bool) (string, bool) {
-	if !rawScript {
-		return yamlsource.SourceLine(string(source), line)
-	}
-	current := 0
-	for text := range strings.SplitSeq(string(source), "\n") {
-		current++
-		if current == line {
-			return strings.TrimSuffix(text, "\r"), true
-		}
-	}
-	return "", false
+	return yamlsource.DiagnosticLine(source, line, rawScript)
 }
-
-// InclusiveEnd returns the explicit inclusive end column, or the end of the
-// whitespace-delimited token at column.
 func InclusiveEnd(line string, column, explicit int) int {
-	if explicit >= column {
-		return explicit
-	}
-	return yamlsource.TokenEndColumn(line, column) - 1
+	return yamlsource.InclusiveEnd(line, column, explicit)
 }
 
 func (f Finding) line() (string, bool) {

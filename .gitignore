@@ -29,3 +29,4 @@ node_modules/
 docs/releases/vX.Y.Z.md
 blockers.md
 /_*.md
+/cli

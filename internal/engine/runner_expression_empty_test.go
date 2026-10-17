@@ -39,7 +39,7 @@ jobs:
 				t.Fatal(err)
 			}
 			if tc.kind != "" {
-				if len(errs) != 1 || errs[0].Kind != tc.kind {
+				if len(errs) != 1 || errs[0].Rule != tc.kind {
 					t.Fatalf("want one nonempty-labels diagnostic, got %v", errs)
 				}
 				if tc.kind == "expression" && !strings.Contains(errs[0].Message, "must contain at least one") {

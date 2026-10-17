@@ -12,12 +12,12 @@ func TestPluginOptionsSchema(t *testing.T) {
 		options string
 		valid   bool
 	}{{`{"count":2}`, true}, {`{"count":0}`, false}, {`{"count":"two"}`, false}, {`{"count":2,"typo":true}`, false}, {``, false}} {
-		if err := validateOptions(schema, json.RawMessage(test.options)); (err == nil) != test.valid {
+		if err := ValidateOptions(schema, json.RawMessage(test.options)); (err == nil) != test.valid {
 			t.Fatalf("options %s: %v", test.options, err)
 		}
 	}
 	for _, ref := range []string{"file:///tmp/private.json", "https://example.com/schema.json"} {
-		err := validateOptions(json.RawMessage(`{"$ref":"`+ref+`"}`), nil)
+		err := ValidateOptions(json.RawMessage(`{"$ref":"`+ref+`"}`), nil)
 		if err == nil || !strings.Contains(err.Error(), "must be bundled") {
 			t.Fatalf("schema %s: %v", ref, err)
 		}

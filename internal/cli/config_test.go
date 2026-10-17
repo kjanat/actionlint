@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestConfigValidationWarnings(t *testing.T) {
@@ -23,7 +23,7 @@ func TestConfigValidationWarnings(t *testing.T) {
 	encoded := testRunCommand("", "config", "validate", "--json")
 	var result struct {
 		Valid    bool
-		Warnings []actionlint.ConfigWarning
+		Warnings []repoconfig.Warning
 	}
 	if err := json.Unmarshal([]byte(encoded.Stdout), &result); err != nil || !result.Valid || len(result.Warnings) != 1 || encoded.Status != 0 {
 		t.Fatalf("%+v: %v", encoded, err)
@@ -51,7 +51,7 @@ config-variable: [TYPO]
 		t.Fatalf("wrong inherited warning location: %+v", got)
 	}
 	got = testRunCommand("", "config", "validate", "--json")
-	var result struct{ Warnings []actionlint.ConfigWarning }
+	var result struct{ Warnings []repoconfig.Warning }
 	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil || got.Status != 0 || len(result.Warnings) != 1 || result.Warnings[0].File != base {
 		t.Fatalf("inherited warning JSON=%+v, %v", got, err)
 	}
@@ -88,7 +88,7 @@ config-secrets: null
 		t.Fatal(err)
 	}
 	got := testRunCommand("", "config", "show", "--origin", "--json")
-	var inspection actionlint.ConfigInspection
+	var inspection repoconfig.Inspection
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
@@ -113,7 +113,7 @@ policy:
 		t.Fatal(err)
 	}
 	got := testRunCommand("", "config", "show", "--json", "--origin")
-	var inspection actionlint.ConfigInspection
+	var inspection repoconfig.Inspection
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
@@ -226,7 +226,7 @@ policy: ` + replacement + "\n"
 		if err := os.WriteFile("config.yml", []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
-		result, err := actionlint.InspectConfig(actionlint.ConfigSelection{Path: "config.yml"}, true)
+		result, err := repoconfig.Inspect(repoconfig.Selection{Path: "config.yml"}, true)
 		if err != nil {
 			t.Fatal(err)
 		}

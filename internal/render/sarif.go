@@ -63,7 +63,7 @@ type sarifResult struct {
 }
 
 type sarifResultProperties struct {
-	ExternalCode string `json:"externalCode"`
+	DiagnosticCode string `json:"diagnosticCode"`
 }
 
 type sarifLocation struct {
@@ -205,7 +205,7 @@ func WriteSARIF(out io.Writer, version string, rules []*Rule, diagnostics []diag
 			})
 		}
 		if d.Code != "" {
-			result.Properties = &sarifResultProperties{ExternalCode: d.Code}
+			result.Properties = &sarifResultProperties{DiagnosticCode: d.Code}
 		}
 		if len(result.Fixes) == 0 {
 			result.Fixes = nil

@@ -41,7 +41,7 @@ cache-mode: write`, "true", []string{"cache-write-untrusted"}},
 				source := strings.ReplaceAll("on: pull_request_target\n"+tc.declaration+body, "\n", ending)
 				var kinds []string
 				for _, err := range lintCachePolicy(t, source, "policy: {disallow-suppressions: "+tc.config+"}") {
-					kinds = append(kinds, err.Kind)
+					kinds = append(kinds, err.Rule)
 				}
 				if diff := cmp.Diff(kindCounts(tc.kinds), kindCounts(kinds)); diff != "" {
 					t.Fatal(diff)
@@ -61,8 +61,7 @@ func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("expected one directive diagnostic, got %v", got)
 	}
-	want := &Error{
-		Line: 1, Column: 12, Kind: "disallow-suppressions",
+	want := &Error{Start: DiagnosticPosition{Line: 1, Column: 12}, Rule: "disallow-suppressions",
 		Message: "inline suppression of cache-operation is disallowed by policy.disallow-suppressions",
 	}
 	if diff := cmp.Diff(want, got[0], cmp.AllowUnexported(Error{})); diff != "" {

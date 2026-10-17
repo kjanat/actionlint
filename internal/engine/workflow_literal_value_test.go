@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	sourceref "actionlint.kjanat.dev/source"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -124,11 +126,11 @@ jobs:
 		t.Fatal(errs)
 	}
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
+	cache := calls.NewCache(root, root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
-	fromAST, _, _ := cache.readCache("./callee.yaml")
-	fromFile, err := parseReusableWorkflowMetadata(source)
+	fromAST, _, _ := cache.Lookup("./callee.yaml")
+	fromFile, err := calls.ParseMetadata(source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +155,7 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(errs) != 1 || errs[0].Kind != "workflow-call" || !strings.Contains(errs[0].Message, "not following the format") {
+		if len(errs) != 1 || errs[0].Rule != "workflow-call" || !strings.Contains(errs[0].Message, "not following the format") {
 			t.Fatalf("invalid reference %q: %v", uses, errs)
 		}
 	}

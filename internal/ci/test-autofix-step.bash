@@ -92,7 +92,7 @@ check_input docs/unrelated.md false false
 check_input internal/actioncatalog/generate/popular_actions.json true false
 check_input internal/actioncatalog/metadata/main.go true false
 check_input internal/webhook/generate/main.go true false
-check_input internal/workflowcontext/generate/main.go true false
+check_input internal/workflow/context/generate/main.go true false
 check_input popular_actions.go false false
 check_input internal/rulecatalog/catalog.go true false
 check_input docs/rules.md true false

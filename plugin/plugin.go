@@ -6,9 +6,9 @@ package plugin
 import (
 	"context"
 
-	"actionlint.kjanat.dev/internal/component"
-	"actionlint.kjanat.dev/internal/corewasm"
-	"actionlint.kjanat.dev/internal/pluginartifact"
+	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/internal/plugins/component"
+	corewasm "actionlint.kjanat.dev/internal/plugins/core"
 )
 
 // Analyzer is a loaded component. It implements analyzer.Analyzer.

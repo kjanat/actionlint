@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestDoctorToolPresentation(t *testing.T) {
@@ -17,7 +17,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := doctorRequest{Config: actionlint.ConfigSelection{Disabled: true}, ShellCheck: `"` + filepath.ToSlash(executable) + `"`, Hyperlinks: "never"}
+	request := doctorRequest{Config: repoconfig.Selection{Disabled: true}, ShellCheck: `"` + filepath.ToSlash(executable) + `"`, Hyperlinks: "never"}
 	var text, data bytes.Buffer
 	if err := writeDoctor(t.Context(), &text, request); err != nil {
 		t.Fatal(err)

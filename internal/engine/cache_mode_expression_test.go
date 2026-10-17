@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -46,7 +48,7 @@ jobs:
 					t.Fatal(err)
 				}
 				project := workspace.Identity(root)
-				fileCache := NewLocalReusableWorkflowCache(project, root, nil)
+				fileCache := calls.NewCache(project.RootDir(), root, nil)
 				fromFile, err := fileCache.FindMetadata("./callee.yaml")
 				if err != nil {
 					t.Fatal(err)
@@ -55,9 +57,9 @@ jobs:
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
-				astCache := NewLocalReusableWorkflowCache(project, root, nil)
+				astCache := calls.NewCache(project.RootDir(), root, nil)
 				astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
-				fromAST, _, ok := astCache.readCache("./callee.yaml")
+				fromAST, _, ok := astCache.Lookup("./callee.yaml")
 				if !ok || fromAST == nil || fromFile == nil {
 					t.Fatal("missing reusable workflow metadata")
 				}
@@ -105,7 +107,7 @@ jobs:
 					}
 					return
 				}
-				if len(diagnostics) != 1 || diagnostics[0].Kind != "workflow-call" || diagnostics[0].Line != 6 || !strings.Contains(diagnostics[0].Message, `requests cache-mode "write" but the calling job allows "`+kind.String()+`"`) {
+				if len(diagnostics) != 1 || diagnostics[0].Rule != "workflow-call" || diagnostics[0].Start.Line != 6 || !strings.Contains(diagnostics[0].Message, `requests cache-mode "write" but the calling job allows "`+kind.String()+`"`) {
 					t.Fatalf("folded cache-mode did not retain its ceiling: %v", diagnostics)
 				}
 			})

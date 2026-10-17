@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func TestDocumentationRef(t *testing.T) {
@@ -74,7 +74,7 @@ func TestCommandVersionNamesTheModule(t *testing.T) {
 	var output bytes.Buffer
 	cmd := Command{Stdin: os.Stdin, Stdout: &output, Stderr: &output}
 
-	if status := cmd.Main([]string{"actionlint", "-version"}); status != actionlint.ExitStatusSuccessNoProblem {
+	if status := cmd.Main([]string{"actionlint", "-version"}); status != render.ExitSuccessNoProblem {
 		t.Fatal("exit status should be 0 but got", status)
 	}
 

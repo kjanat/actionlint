@@ -79,7 +79,7 @@ jobs:
 			{"off", "off", false, false},
 		} {
 			t.Run(field.name+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
-				cfg, err := ParseConfig([]byte("lint: {rules: {correctness: {expression: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
+				cfg, err := ParseConfig([]byte("lint: {rules: {correctness: {expression-reference: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -108,8 +108,8 @@ jobs:
 							t.Errorf("independent warning level lost: %+v", diagnostic)
 						}
 					}
-					if (found["expression"] != 0) != levels.wantExpression || (found["unsound-ternary"] != 0) != levels.wantTernary ||
-						found["expression"] > 1 || found["unsound-ternary"] > 1 || len(found) > 2 {
+					if (found["expression-reference"] != 0) != levels.wantExpression || (found["unsound-ternary"] != 0) != levels.wantTernary ||
+						found["expression-reference"] > 1 || found["unsound-ternary"] > 1 || len(found) > 2 {
 						t.Fatalf("independent interpolation diagnostics lost: %+v", result.Diagnostics)
 					}
 				}
@@ -133,7 +133,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 			}
 			ternaries := 0
 			for _, finding := range rule.Errs() {
-				if finding.Kind == "unsound-ternary" {
+				if finding.Rule == "unsound-ternary" {
 					ternaries++
 				}
 			}
@@ -160,7 +160,7 @@ func TestInterpolationParseErrorsStillStopScanning(t *testing.T) {
 				t.Fatalf("unparsed interpolation must remain invalid: %v, %+v, %+v", valid, types, rule.Errs())
 			}
 			for _, finding := range rule.Errs() {
-				if finding.Kind != "expression" {
+				if finding.Rule != "expression-syntax" {
 					t.Fatalf("must not resume from an unparsed expression boundary: %+v", finding)
 				}
 			}

@@ -5,11 +5,11 @@ package localapp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
-	"reflect"
 	"slices"
 
-	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/backend"
 
 	"actionlint.kjanat.dev/internal/application"
 )
@@ -34,14 +34,35 @@ func Check(ctx context.Context, options application.Options, input application.I
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
-	if len(plugins.engines) > 0 {
-		if options.RuffBackend != nil || options.RuffOptions != nil && !reflect.DeepEqual(*options.RuffOptions, processconfig.Options{Optional: true}) || (options.Ruff != "" && options.Ruff != "ruff") {
-			return nil, &PluginLoadError{errors.New("ruff plugin conflicts with an explicitly selected Ruff backend or command")}
+	for _, engine := range plugins.engines {
+		metadata := engine.Metadata()
+		found := false
+		options.Tools = slices.Clone(options.Tools)
+		for i, registration := range options.Tools {
+			if registration.Descriptor.Name != metadata.Engine.Name {
+				continue
+			}
+			if registration.WithBackend == nil {
+				return nil, &PluginLoadError{fmt.Errorf("tool %q cannot replace its backend", metadata.Engine.Name)}
+			}
+			replacement, err := registration.WithBackend(engine)
+			if err != nil {
+				return nil, &PluginLoadError{err}
+			}
+			options.Tools[i] = replacement
+			found = true
+			break
 		}
-		options.Ruff = ""
-		options.RuffOptions = nil
-		options.RuffBackend = plugins.engines[0]
+		if !found {
+			descriptor := engineDescriptor(metadata)
+			registration, err := backend.Register(descriptor, metadata.Capabilities.ScriptShells, engine)
+			if err != nil {
+				return nil, &PluginLoadError{err}
+			}
+			options.Tools = append(options.Tools, registration)
+		}
 	}
+
 	options.Analyzers = slices.Concat(options.Analyzers, plugins.registrations())
 	if options.LoadScriptEngine == nil {
 		options.LoadScriptEngine = scriptEngineLoader(log, options.Debug)

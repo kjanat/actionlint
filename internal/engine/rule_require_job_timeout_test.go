@@ -190,7 +190,7 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 				}
 				return
 			}
-			if len(errs) != 1 || errs[0].Line != pos.Line || errs[0].Column != pos.Col || !strings.Contains(errs[0].Message, tc.kind) {
+			if len(errs) != 1 || errs[0].Start.Line != pos.Line || errs[0].Start.Column != pos.Col || !strings.Contains(errs[0].Message, tc.kind) {
 				t.Fatalf("expected %s error at %v, got %v", tc.kind, pos, errs)
 			}
 		})

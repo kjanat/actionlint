@@ -8,7 +8,7 @@ import (
 )
 
 func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
-	const header = " # actionlint:ignore inline-suppression,expression -- reviewed\n"
+	const header = " # actionlint:ignore inline-suppression,expression-reference -- reviewed\n"
 	const outside = "# actionlint:ignore-next-line unknown-rule -- malformed\n"
 	for _, tc := range []struct{ name, source string }{
 		{"compact literal", "- run: |" + header + "    body_marker\n  " + outside + "  uses: sibling\n"},
@@ -57,21 +57,21 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 				}
 				var findings []*Error
 				if bodyLine != 0 {
-					findings = append(findings, &Error{Line: bodyLine, Kind: "expression"})
+					findings = append(findings, &Error{Start: DiagnosticPosition{Line: bodyLine}, Rule: "expression-reference"})
 				}
 				if bodyCommentLine != 0 {
-					findings = append(findings, &Error{Line: bodyCommentLine, Kind: "expression"})
+					findings = append(findings, &Error{Start: DiagnosticPosition{Line: bodyCommentLine}, Rule: "expression-reference"})
 				}
-				sibling := &Error{Line: siblingLine, Kind: "expression"}
+				sibling := &Error{Start: DiagnosticPosition{Line: siblingLine}, Rule: "expression-reference"}
 				findings = append(findings, sibling)
 				got := filterInlineSuppressions(source, findings, nil)
-				if len(got) != 2 || got[0] != sibling || got[1].Kind != "inline-suppression" || got[1].Line != outsideLine {
+				if len(got) != 2 || got[0] != sibling || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
 					t.Fatalf("block suppression crossed its scalar boundary: %+v", got)
 				}
 				// A later parse error must preserve the same comment boundaries.
 				source = append(source, []byte("invalid: [")...)
 				got = filterInlineSuppressions(source, findings, nil)
-				if len(got) != 2 || got[0] != sibling || got[1].Kind != "inline-suppression" || got[1].Line != outsideLine {
+				if len(got) != 2 || got[0] != sibling || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
 					t.Fatalf("recovery crossed its scalar boundary: %+v", got)
 				}
 			})
@@ -81,7 +81,7 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 
 func TestInlineSuppressionDedentedCommentBeforeScalarBody(t *testing.T) {
 	for _, indicator := range []string{"|", "|2-", ">+"} {
-		source := "- run: " + indicator + ` # actionlint:ignore expression -- reviewed
+		source := "- run: " + indicator + ` # actionlint:ignore expression-reference -- reviewed
   # outside scalar
     body_marker
   uses: sibling

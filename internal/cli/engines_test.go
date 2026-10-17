@@ -28,7 +28,7 @@ func runWithDefaultRuff(input string, args ...string) commandTranscript {
 }
 
 func TestCheckRunsConfiguredWasmEngine(t *testing.T) {
-	config := writeEngineConfig(t, filepath.Join(componentTestdata, "..", "..", "corewasm", "testdata", "engines", "echo.wasm"))
+	config := writeEngineConfig(t, filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm"))
 	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "--log-level", "debug", "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "<stdin>:6:20: Ruff reported issue in this script: F821: Undefined name `missing` [ruff]") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", got.Status, got.Stdout, got.Stderr)

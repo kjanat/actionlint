@@ -3,16 +3,20 @@ package engine
 import (
 	"context"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/analyzer"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/repoconfig"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflownames"
+	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	"actionlint.kjanat.dev/rule"
 )
 
 // traversalHost owns rule construction and AST visiting. Scheduling and policy
 // receive its result and cannot change the visitor while it is running.
 type traversalHost struct {
+	toolDescriptors []rule.Descriptor
 	analysisLogger
 	ctx            context.Context
 	buildRules     func(ruleContext, bool) (builtinAnalyzers, error)
@@ -35,7 +39,7 @@ type traversalResult struct {
 	compositeConfigs map[string]*Config
 }
 
-func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, metadata *ActionMetadata, project *Project, cfg, projectConfig *Config, proc *concurrentProcess, localActions *LocalActionsCache, localReusableWorkflows *LocalReusableWorkflowCache) (*traversalResult, error) {
+func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, metadata *ActionMetadata, project *Project, cfg, projectConfig *Config, proc *concurrentProcess, localActions *LocalActionsCache, localReusableWorkflows *calls.Cache) (*traversalResult, error) {
 	compositeConfigs := map[string]*Config{}
 	dbg := l.debugWriter()
 	localActions = &LocalActionsCache{base: localActions, usedSources: make(map[string][]byte), validation: newActionMetadataValidation()}
@@ -52,7 +56,7 @@ func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, met
 	}
 	build := l.buildRules
 	if build == nil {
-		build = builtinFactory(AnalysisRequest{}, l.analysisLogger)
+		build = registeredFactory(Request{}, l.analysisLogger)
 	}
 	builtins, err := build(c, metadata != nil)
 	if err != nil {
@@ -68,7 +72,7 @@ func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, met
 	v.trackIgnores = hasConfiguredIgnores(cfg)
 	for _, rule := range rules {
 		if participant, ok := rule.(resourceParticipant); ok {
-			participant.attachScope(proc.scope)
+			participant.attachScope(proc.Scope)
 		}
 		v.AddPass(rule)
 	}
@@ -83,7 +87,7 @@ func (l traversalHost) traverse(path, root string, w *workflowlang.Workflow, met
 		if err != nil {
 			return nil, err
 		}
-		config = applyRulePresets(l.rulePresets, config)
+		config = repoconfig.ResolveRules(l.rulePresets, config, l.toolDescriptors...)
 		compositeConfigs[path] = config
 		return config, nil
 	}
@@ -130,8 +134,8 @@ func (t *traversalResult) collect(log analysisLogger, usedRules *[]RuleInfo) []*
 				if origin := finding.suppressionOrigin; origin != nil && origin.path == "" {
 					origin.path = composite.meta.Path()
 				}
-				if finding.Filepath == "" {
-					finding.Filepath = composite.meta.Path()
+				if finding.Path == "" {
+					finding.Path = composite.meta.Path()
 					finding.source = composite.meta.src
 				}
 				all = append(all, finding)

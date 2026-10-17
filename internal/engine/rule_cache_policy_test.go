@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/webhook"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -63,14 +65,14 @@ func TestCachePolicyTriggers(t *testing.T) {
 }
 
 func TestCachePolicyEventClassification(t *testing.T) {
-	for event := range AllWebhookTypes {
+	for event := range webhook.AllWebhookTypes {
 		class, exists := cacheEventClasses[event]
 		if !exists || class == cacheEventUnknown {
 			t.Errorf("generated event %q needs an explicit cache trust classification", event)
 		}
 	}
 	for event, class := range cacheEventClasses {
-		if _, exists := AllWebhookTypes[event]; !exists {
+		if _, exists := webhook.AllWebhookTypes[event]; !exists {
 			t.Errorf("cache event %q is absent from the generated inventory", event)
 		}
 		switch class {
@@ -104,7 +106,7 @@ func TestCachePolicyEffectiveWrite(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-			} else if len(errs) != 1 || errs[0].Kind != "cache-write-untrusted" || errs[0].Line != tc.line || !strings.Contains(errs[0].Message, "poison caches") || !strings.Contains(errs[0].Message, `"pull_request_target"`) {
+			} else if len(errs) != 1 || errs[0].Rule != "cache-write-untrusted" || errs[0].Start.Line != tc.line || !strings.Contains(errs[0].Message, "poison caches") || !strings.Contains(errs[0].Message, `"pull_request_target"`) {
 				t.Fatalf("want write policy finding on line %d, got %v", tc.line, errs)
 			}
 		})
@@ -115,7 +117,7 @@ cache-mode: write
 jobs:
   a:
 ` + cachePolicySteps + "  b:\n" + cachePolicySteps
-		if errs := lintCachePolicy(t, src, ""); len(errs) != 1 || errs[0].Line != 2 {
+		if errs := lintCachePolicy(t, src, ""); len(errs) != 1 || errs[0].Start.Line != 2 {
 			t.Fatal(errs)
 		}
 	})
@@ -124,7 +126,7 @@ jobs:
 cache-mode: invalid
 jobs:
   a:
-`+cachePolicySteps, ""); len(errs) != 1 || errs[0].Kind != "syntax-check" {
+`+cachePolicySteps, ""); len(errs) != 1 || errs[0].Rule != "syntax-check" {
 			t.Fatal(errs)
 		}
 	})
@@ -182,13 +184,13 @@ jobs:
 			var lines []int
 			for _, err := range lintCachePolicy(t, source, "") {
 				column := 17
-				if err.Line == 2 {
+				if err.Start.Line == 2 {
 					column = 13
 				}
-				if err.Kind != "cache-write-untrusted" || err.Column != column {
+				if err.Rule != "cache-write-untrusted" || err.Start.Column != column {
 					t.Fatalf("unexpected diagnostic: %v", err)
 				}
-				lines = append(lines, err.Line)
+				lines = append(lines, err.Start.Line)
 			}
 			if !slices.Equal(lines, tc.lines) {
 				t.Fatalf("want grant diagnostics on lines %v, got %v", tc.lines, lines)
@@ -200,7 +202,7 @@ jobs:
 cache-mode: write
 jobs: {}
 `, "")
-		if len(errs) != 1 || errs[0].Kind != "syntax-check" {
+		if len(errs) != 1 || errs[0].Rule != "syntax-check" {
 			t.Fatalf("expected only the empty jobs syntax diagnostic, got %v", errs)
 		}
 	})
@@ -236,7 +238,7 @@ func TestCachePolicyReusableCalls(t *testing.T) {
 						if len(errs) != 0 {
 							t.Fatal(errs)
 						}
-					} else if len(errs) != 1 || errs[0].Kind != want {
+					} else if len(errs) != 1 || errs[0].Rule != want {
 						t.Fatalf("want %s, got %v", want, errs)
 					}
 				})
@@ -279,7 +281,7 @@ jobs:
 ` + tc.before + "    uses: " + tc.uses + "\n"
 			var kinds []string
 			for _, err := range lintCachePolicy(t, source, tc.config) {
-				kinds = append(kinds, err.Kind)
+				kinds = append(kinds, err.Rule)
 			}
 			if !slices.Equal(kinds, tc.kinds) {
 				t.Fatalf("want diagnostic kinds %v, got %v", tc.kinds, kinds)
@@ -324,10 +326,10 @@ func TestCachePolicyOperations(t *testing.T) {
 `
 					errs := lintCachePolicy(t, src, "")
 					if slices.Contains(tc.bad, op) {
-						if len(errs) != 1 || errs[0].Kind != "cache-operation" || !strings.Contains(errs[0].Message, "GitHub skips the operation") {
+						if len(errs) != 1 || errs[0].Rule != "cache-operation" || !strings.Contains(errs[0].Message, "GitHub skips the operation") {
 							t.Fatal(errs)
 						}
-						if !strings.Contains(strings.Split(src, "\n")[errs[0].Line-1], "uses:") {
+						if !strings.Contains(strings.Split(src, "\n")[errs[0].Start.Line-1], "uses:") {
 							t.Fatalf("finding is not on the cache step: %v", errs)
 						}
 					} else if len(errs) != 0 {
@@ -370,7 +372,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tc.warn {
-				if errs := r.Errs(); len(errs) != 1 || errs[0].Kind != "cache-operation" || errs[0].Line != 7 || errs[0].Column != 15 {
+				if errs := r.Errs(); len(errs) != 1 || errs[0].Rule != "cache-operation" || errs[0].Start.Line != 7 || errs[0].Start.Column != 15 {
 					t.Fatalf("expected one cache-operation finding on the action, got %v", errs)
 				}
 			} else if len(r.Errs()) != 0 {
@@ -409,7 +411,7 @@ jobs:
 					if len(errs) != 0 {
 						t.Fatal(errs)
 					}
-				} else if len(errs) != 1 || errs[0].Kind != tc.name {
+				} else if len(errs) != 1 || errs[0].Rule != tc.name {
 					t.Fatal(errs)
 				}
 			})

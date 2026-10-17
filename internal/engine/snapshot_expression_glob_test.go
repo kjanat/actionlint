@@ -66,7 +66,7 @@ jobs:
 				if len(errs) != 0 {
 					t.Fatalf("valid or unknown version rejected: %v", errs)
 				}
-			} else if len(errs) != 1 || errs[0].Kind != tc.kind || errs[0].Line != tc.line || errs[0].Column != tc.column {
+			} else if len(errs) != 1 || errs[0].Rule != tc.kind || errs[0].Start.Line != tc.line || errs[0].Start.Column != tc.column {
 				t.Fatalf("want one %s diagnostic at %d:%d, got %v", tc.kind, tc.line, tc.column, errs)
 			}
 		})

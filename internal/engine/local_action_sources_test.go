@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -131,7 +131,7 @@ runs:
     - uses: actions/checkout
 `)
 	result := compositeAnalysis(t, root, "- uses: ./generated\n  id: generated\n  with:\n    unexpected: value\n- run: echo '${{ steps.generated.outputs.unknown }}'", AnalysisOptions{})
-	for _, want := range []struct{ rule, message string }{{"action", "token"}, {"action", "unexpected"}, {"expression", "unknown"}} {
+	for _, want := range []struct{ rule, message string }{{"action", "token"}, {"action", "unexpected"}, {"expression-reference", "unknown"}} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == want.rule && strings.Contains(d.Message, want.message) }) {
 			t.Fatalf("missing %s/%s: %+v", want.rule, want.message, result.Diagnostics)
 		}

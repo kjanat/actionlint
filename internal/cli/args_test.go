@@ -26,14 +26,14 @@ func TestCommandArgumentCompatibility(t *testing.T) {
 		status   int
 		contains string
 	}{
-		{"long", []string{"--oneline", "-"}, 1, "[expression]"},
-		{"legacy", []string{"-oneline", "-"}, 1, "[expression]"},
-		{"short format", []string{"-f", "{{range .}}{{.Kind}}{{end}}", "-"}, 1, "expression"},
-		{"short output", []string{"-o", "json", "-"}, 1, `"rule":"expression"`},
+		{"long", []string{"--oneline", "-"}, 1, "[expression-reference]"},
+		{"legacy", []string{"-oneline", "-"}, 1, "[expression-reference]"},
+		{"short format", []string{"-f", "{{range .}}{{.Kind}}{{end}}", "-"}, 1, "expression-reference"},
+		{"short output", []string{"-o", "json", "-"}, 1, `"rule":"expression-reference"`},
 		{"option-like value", []string{"--stdin-filename", "-completions", "-"}, 1, "-completions:6:"},
 		{"option-like equal value", []string{"-stdin-filename=-completions", "-"}, 1, "-completions:6:"},
-		{"ignore literal flag", []string{"-ignore", "--json", "-"}, 1, "[expression]"},
-		{"true value", []string{"--oneline=TRUE", "-"}, 1, "[expression]"},
+		{"ignore literal flag", []string{"-ignore", "--json", "-"}, 1, "[expression-reference]"},
+		{"true value", []string{"--oneline=TRUE", "-"}, 1, "[expression-reference]"},
 		{"unknown", []string{"--unknown"}, 2, "flag provided but not defined"},
 		{"missing value", []string{"--output"}, 2, "needs an argument"},
 		{"invalid bool", []string{"--oneline=maybe"}, 2, "invalid boolean value"},

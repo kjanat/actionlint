@@ -10,15 +10,15 @@ The CLI owns terminal behavior, exit status, summaries and report publication.
 flowchart TD
     CLI[internal/cli] --> Local[internal/localapp]
     Local --> App[internal/application]
-    Local --> Runtime[component and corewasm runtimes]
+    Local --> Runtime[plugins/component and plugins/core runtimes]
     Library[analysis.Files and analysis.Repository] --> App
     App --> Workspace[internal/workspace]
-    Workspace --> Config[internal/repoconfig]
+    Workspace --> Config[internal/config]
     App --> Engine[internal/engine]
     App --> Host[internal/analyzerhost]
     Engine --> Host
     CLI --> Render[internal/render]
-    CLI --> Config[internal/repoconfig]
+    CLI --> Config[internal/config]
     CLI --> Process[internal/processconfig]
     CLI --> Build[internal/buildinfo]
 ```
@@ -32,8 +32,9 @@ are session-owned.
 ## Responsibilities
 
 - `application.Check` coordinates input preparation, analysis and backend cleanup,
-  including the empty-repository convention used by pre-commit. It calls
-  `workspace` and `engine.Analyze` separately; it does not use the legacy session.
+  including the empty-repository convention used by pre-commit. It drains the shared
+  process pool before closing loaded backends. It calls
+  `workspace` and `engine.Run` separately; it does not use the legacy session.
 - `workspace` owns repository discovery, configuration loading and overlays,
   file selection, source reads and configuration provenance. Its `Selection`
   carries resolved sources and all consumed paths, including excluded discovery
@@ -49,7 +50,7 @@ are session-owned.
   `check_render.go` handles terminal formatting; `report_destination.go` owns
   confirmation, temporary files and atomic publication.
 - Configuration creation and the embedded default template belong to
-  `repoconfig`. Static rule metadata also comes from its existing catalogue.
+  `internal/config`. Static rule metadata also comes from its existing catalogue.
 - Native command options and executable resolution belong to `processconfig`.
 - Release identity belongs to `buildinfo`. Build recipes stamp
   `internal/buildinfo.ReleaseVersion` and `internal/buildinfo.InstallOrigin`.
@@ -61,15 +62,14 @@ engine import, but its result intentionally omits the source buffers and rule
 metadata required by text and template output. Extending that public contract
 with terminal concerns would move the coupling into the library API.
 
-The application result instead uses the existing internal rendering data contract.
-This retains source fidelity without exposing the legacy engine result publicly.
-It does mean that file-analysis library calls currently prepare rendering data
-that the public result view discards.
+The application returns `report.Analysis`, a value model of diagnostics, source
+snapshots, document outlines, configuration provenance and rule descriptors.
+`render.Prepare` derives presentation values at the output boundary. The public
+library selects its public result view without constructing a renderer.
 
-The legacy engine session and project constructors remain as compatibility
-adapters for existing internal callers. They delegate input preparation to
-`workspace`; the application path bypasses them. Synthetic repository identities
-use `workspace.Identity` without reading configuration.
+Legacy linter/session and rendering compatibility adapters are test-only. Production
+callers use the application boundary, including the GitHub Action, Playground and
+documentation checker. Synthetic repository identities use `workspace.Identity`.
 
 Within analysis, parsing returns a document, syntax findings and an outline.
 `traversalHost` constructs rules and visits the AST, returning script work,
@@ -77,12 +77,13 @@ collectors and referenced metadata. The scheduler consumes that prepared work;
 it does not walk the AST. The coordinator joins traversal resources before
 reading collectors, including on early failures. `diagnosticPolicy` then applies
 source-specific suppressions, severity, path filters and deduplication without
-access to traversal or scheduling. These phases retain the existing private
-source-mapping and diagnostic types inside the engine package.
+access to traversal or scheduling. Internal findings embed the canonical diagnostic contract and retain analysis-only
+provenance. Source identities and mapping/dependency projections belong to
+`workflow/facts`, independently of execution.
 
-This keeps the built-in rule visitor adapter intact. Replacing its mutable rule
-contract is a separate change; the new phase boundaries do not require a new
-plugin protocol or expose the visitor to backend implementations.
+Five declaration checks use a shared visitor adapter over stateless workflow
+projections. Remaining expression, composite and policy adapters still retain
+traversal state; public analyzers and backends never implement that visitor.
 
 ## Enforcement
 

@@ -1,9 +1,9 @@
-package actionlint_fuzz
+package fuzz
 
 import (
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	glob "actionlint.kjanat.dev/internal/checks/glob"
 )
 
 func FuzzGlobGitRef(f *testing.F) {
@@ -12,7 +12,7 @@ func FuzzGlobGitRef(f *testing.F) {
 	f.Add([]byte("v[0-9]+.*"))
 
 	f.Fuzz(func(_ *testing.T, data []byte) {
-		actionlint.ValidateRefGlob(string(data))
+		glob.ValidateRefGlob(string(data))
 	})
 }
 
@@ -22,6 +22,6 @@ func FuzzGlobFilePath(f *testing.F) {
 	f.Add([]byte("src/[abc]/?.ts"))
 
 	f.Fuzz(func(_ *testing.T, data []byte) {
-		actionlint.ValidatePathGlob(string(data))
+		glob.ValidatePathGlob(string(data))
 	})
 }

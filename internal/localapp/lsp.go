@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/langserver"
+	"actionlint.kjanat.dev/internal/workflow/editor"
 )
 
 // LanguageServer shares application selection, configuration and plugin loading
@@ -23,6 +24,16 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ap
 	options.WorkingDir = directory
 	return langserver.Serve(ctx, in, out, func(ctx context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
 		return analyzeDocuments(ctx, options, plugins, documents)
+	}, func(ctx context.Context, doc langserver.Document, offset int) []langserver.Completion {
+		if ctx.Err() != nil {
+			return nil
+		}
+		items := editor.Complete(doc.Text, offset)
+		result := make([]langserver.Completion, 0, len(items))
+		for _, item := range items {
+			result = append(result, langserver.Completion{Label: item.Label, Detail: item.Detail, Start: item.Start, End: item.End})
+		}
+		return result
 	})
 }
 

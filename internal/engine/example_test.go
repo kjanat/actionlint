@@ -47,18 +47,16 @@ func ExampleErrorFormatter() {
 	// Errors returned from Linter methods
 	errs := []*actionlint.Error{
 		{
-			Message:  "error message 1",
-			Filepath: "foo.yaml",
-			Line:     1,
-			Column:   4,
-			Kind:     "rule1",
+			Message: "error message 1",
+			Path:    "foo.yaml",
+			Start:   actionlint.DiagnosticPosition{Line: 1, Column: 4},
+			Rule:    "rule1",
 		},
 		{
-			Message:  "error message 2",
-			Filepath: "foo.yaml",
-			Line:     3,
-			Column:   1,
-			Kind:     "rule2",
+			Message: "error message 2",
+			Path:    "foo.yaml",
+			Start:   actionlint.DiagnosticPosition{Line: 3, Column: 1},
+			Rule:    "rule2",
 		},
 	}
 

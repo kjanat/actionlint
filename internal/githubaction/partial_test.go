@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/report"
 )
 
 func TestPartialResultAnalyzer(t *testing.T) {
@@ -60,13 +62,13 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 		stdout: &output, env: func(name string) string { return env[name] },
 		newID: fixedID("DELIM"), timeout: 2 * time.Second,
 		lint: func(req *lintRequest) *lintResult {
-			req.shellcheckOptions = &actionlint.ExternalCommandOptions{
+			req.shellcheckOptions = &processconfig.Options{
 				Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
 			}
 			return runLinter(req)
 		},
 	}
-	if code := a.run(); code != actionlint.ExitStatusFailure {
+	if code := a.run(); code != render.ExitFailure {
 		t.Fatalf("exit = %d, want failure: %s", code, output.String())
 	}
 	if _, err := os.Stat(ready); err != nil {
@@ -76,7 +78,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 	if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.Completed || result.ExitCode != actionlint.ExitStatusFailure || result.Status != "failure" || result.Error != "actionlint timed out after 2 seconds\n" {
+	if result.Completed || result.ExitCode != render.ExitFailure || result.Status != "failure" || result.Error != "actionlint timed out after 2 seconds\n" {
 		t.Fatalf("lost timeout status: %+v", result)
 	}
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Path != "./timeout.yaml" || result.Diagnostics[0].Rule != "runner-label" {
@@ -88,7 +90,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 	if len(result.Documents) != 1 {
 		t.Fatalf("timeout discarded parsed outline: %+v", result.Documents)
 	}
-	workflow, ok := result.Documents[0].(actionlint.WorkflowOutline)
+	workflow, ok := result.Documents[0].(report.WorkflowOutline)
 	if !ok || workflow.Path != "./timeout.yaml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 		t.Fatalf("timeout corrupted workflow document: %+v", result.Documents)
 	}
@@ -133,20 +135,20 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 				stdout: &output, env: func(name string) string { return env[name] },
 				newID: fixedID("DELIM"), timeout: lintTimeout,
 				lint: func(req *lintRequest) *lintResult {
-					req.shellcheckOptions = &actionlint.ExternalCommandOptions{
+					req.shellcheckOptions = &processconfig.Options{
 						Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
 					}
 					return runLinter(req)
 				},
 			}
-			if code := a.run(); code != actionlint.ExitStatusFailure {
+			if code := a.run(); code != render.ExitFailure {
 				t.Fatalf("exit = %d, want failure: %s", code, output.String())
 			}
 			var result persistedResult
 			if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 				t.Fatal(err)
 			}
-			if result.Completed || result.ExitCode != actionlint.ExitStatusFailure || result.Status != "failure" || !strings.Contains(result.Error, "simulated analyzer failure") {
+			if result.Completed || result.ExitCode != render.ExitFailure || result.Status != "failure" || !strings.Contains(result.Error, "simulated analyzer failure") {
 				t.Fatalf("lost failure status: %+v", result)
 			}
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Path != tc.path || result.Diagnostics[0].Rule != tc.rule {

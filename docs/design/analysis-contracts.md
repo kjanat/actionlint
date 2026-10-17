@@ -15,10 +15,12 @@ inputs and returned results, while the host must own completion even when traver
 ## Decision
 
 Keep one module and separate the public packages by responsibility. Root contains the convenience entry point and
-generation directives. The analysis host and remaining visitor rules live in `internal/engine`.
+generation directives. The remaining semantic coordinator and visitor adapters live in `internal/engine`.
+`internal/application` owns an invocation; `internal/workspace` prepares its inputs;
+`internal/analyzerhost` schedules its execution and drains outstanding callbacks.
 `internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
 parsing, types, constant evaluation and semantic checks. Both implementations can run without the analysis host.
-`internal/repoconfig` owns the configuration document, its validation and the built-in rule catalog; the engine
+`internal/config` owns the configuration document, its validation and the built-in rule catalog; the engine
 attaches execution behaviour to catalog entries by name. `internal/render` presents results as text, Go templates,
 JSON, SARIF and GitHub annotations from diagnostics, source text and rule metadata.
 `internal/analyzerhost` owns generic execution and resource scopes. `internal/report` owns document models and their codecs; the public `document` package exposes those models without
@@ -28,34 +30,31 @@ of mapping resolution, external checker logic, filesystem reads, configuration t
 ```mermaid
 flowchart TD
     Root[Root Analyze] --> API[analysis]
-    API --> Engine[internal/engine]
-    CLI[internal/cli] --> Engine
-    Syntax[syntax] --> Workflow[internal/workflow]
-    Engine --> Workflow
+    API --> App[internal/application]
+    CLI[internal/cli] --> Local[internal/localapp]
+    Local --> App
+    Action[internal/githubaction] --> App
+    Browser[Playground] --> App
+    App --> Workspace[internal/workspace]
+    App --> Engine[internal/engine]
+    App --> Host[internal/analyzerhost]
+    Workspace --> Config[internal/config]
+    Engine --> Config
+    Engine --> Workflow[internal/workflow]
+    Engine --> Facts[internal/workflow/facts]
+    Engine --> Checks[internal/workflow/checks]
+    Checks --> Semantics[internal/checks]
     Engine --> Expressions[internal/expression]
     Workflow --> Expressions
-    Engine --> Contexts[internal/workflowcontext]
-    Workflow --> Scalars[internal/yamlscalar]
-    Expressions --> Scalars
-    Config[config] --> RepoConfig[internal/repoconfig]
-    Engine --> RepoConfig
-    Engine --> Render[internal/render]
-    CLI --> Render
-    Render --> Diagnostic
-    Engine --> Host[internal/analyzerhost]
-    Engine --> Mapping[internal/mapping]
-    Factory[Built-in composition] --> Adapters[Internal visitor adapters]
-    Engine --> Factory
-    Host --> Contract[analyzer]
-    Contract --> Diagnostic[diagnostic]
-    Engine --> Prepared[Prepared scripts and invocation scopes]
-    Prepared --> Checks[Script analyzers]
-    Checks --> Backends[Internal checker backends]
-    Checks --> Host
-    API --> Documents[document]
-    Documents --> Models[internal/report]
-    Engine --> Models
-    Models --> Diagnostic
+    Engine --> Host
+    Engine --> Models[internal/report]
+    App --> Models
+    CLI --> Render[internal/render]
+    Action --> Render
+    Render --> Models
+    Models --> Diagnostic[diagnostic]
+    Syntax[syntax] --> Workflow
+    Documents[document] --> Models
 ```
 
 New analyzers declare required facts and return diagnostics and errors. They have no AST-visit, configuration mutation
@@ -96,8 +95,8 @@ shapes, and must not parse expression-looking text returned as data a second tim
 - Configuration and syntax alias independent implementations. Importing either public package no longer imports
   discovery, rule execution or native tools. The parser retains
   decoded source maps alongside syntax because accurate diagnostics require both.
-- Remaining engine work includes discovery, action metadata and visitor rules.
-  These extractions remove two language subsystems; they do not make the engine a composition-only package yet.
+- Action metadata, composite expansion and remaining visitor rules still live in the engine.
+  Input discovery, configuration selection, process execution and rendering have separate owners.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
   rule has been rewritten as a fact consumer.
@@ -186,7 +185,7 @@ are generated from the WIT with `wacogo-witgen`; guest bindings come from `wit-b
 Exported calls use the runtime's reflective value API, so the host keeps one conversion layer per direction.
 
 The runtime is `wacogo` on `wazero`: pure Go, no cgo, and a component-model implementation that covers the value
-types this contract uses. `internal/component` loads a component, checks that it exports
+types this contract uses. `internal/plugins/component` loads a component, checks that it exports
 `kjanat:actionlint/analyzer@0.1.0` and imports only the host interface and the granted `wasi:cli`, `wasi:io`,
 `wasi:clocks`, `wasi:random` and `wasi:filesystem` interfaces, then calls `describe`. Every `analyze` call instantiates
 the component anew under a per-call deadline and a memory limit, with an empty environment, no preopened directories
@@ -204,11 +203,11 @@ Architecture tests keep the engine free of the runtime and the loader free of th
 `wacogo` before https://github.com/partite-ai/wacogo/pull/12 rejected a null pointer from `cabi_realloc` for a
 zero-size request, which the canonical ABI allows and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11).
 `go.mod` requires the merge commit of that pull request, which limits the trap to non-zero sizes.
-`internal/component/runtime_limit_test.go` checks that an empty string lowers into a component whose realloc returns
+`internal/plugins/component/runtime_limit_test.go` checks that an empty string lowers into a component whose realloc returns
 null for size 0.
 
 Core WebAssembly JSON engines such as `actionlint-plugin-ruff` keep their own transport behind
-`analyzer.ScriptBackend`. `internal/corewasm` runs them on `wazero` directly: it verifies the version 1 exports and
+`analyzer.ScriptBackend`. `internal/plugins/core` runs them on `wazero` directly: it verifies the version 1 exports and
 their signatures, refuses modules with imports, reads the metadata export to negotiate the `check` and
 `validate_config` operation versions and the request size limit, pools instances across concurrent calls and discards
 an instance after a trap or an exceeded limit. `tools.<name>.backend.wasm` selects a module in the configuration. The
@@ -240,3 +239,54 @@ enforce the dependency direction transitively, including public type aliases.
 Keeping type aliases back into `engine` was rejected because it preserves the same dependency graph under a new path.
 A separate Go module per language was also rejected: these internal implementations share a release, and independently
 versioning their implementation types would introduce a compatibility boundary without a current consumer requirement.
+
+## Decision: canonical results and subsystem ownership
+
+`report.Analysis` carries diagnostics, aligned source snapshots, document outlines,
+configuration provenance, consumed paths and rule descriptors. It has no renderer,
+parser-node or process fields. `render.Prepare` constructs presentation values at
+an output boundary. In-memory library calls, file calls, the GitHub Action and the
+Playground all enter through `application`; none constructs a legacy linter.
+
+Internal findings embed `diagnostic.Diagnostic` directly. Analysis provenance is
+kept beside that value rather than translating diagnostics through a second field
+model. Codes, explicit ranges, explanations, related locations and fixes participate
+in duplicate identity. Traversal-inferred references can differ when aliases reach
+one declaration; those references alone do not create a second finding. Explicit
+analyzer references remain significant. Reusable-workflow lookup errors belong to
+`workflow-call` even when expression inference requested the metadata.
+
+The application owns the process pool and closes loaded backends after its callbacks
+finish. Document scopes share capacity and the parent's completion counter; an early
+return cannot leave a child callback outside the final wait. Native execution lives
+in `analyzerhost`, and Git index inspection lives in `workspace`.
+
+`workflow/facts` owns snapshot and step identities plus mapping/dependency projections.
+`workflow/checks` owns checks over complete workflow declarations and projects
+language-independent inputs into `internal/checks`. Environment names, conditions,
+permission declarations, identifiers, job dependencies, credentials, events, globs,
+parallel steps, required actions, commit pinning, timeouts and required permissions
+share one host adapter. Their semantic inputs and results are explicit. Parallel
+step state is local to one job evaluation; required-action collection is local to
+one workflow evaluation and does not require a final visitor callback.
+
+`workflow/schema` validates inferred and constant expression values against workflow
+field shapes. `workflow/references` interprets action and reusable-workflow references.
+`workflow/calls` owns reusable-workflow metadata, permission resolution and dependency
+caching. It receives a repository path and a recording reader, rather than a workspace
+project or repository configuration. The host projects its permission assumption into
+the permission resolver. These packages do not import the engine; architecture tests
+check that separation transitively.
+
+Configuration internals are grouped beneath `internal/config`: `tree` composes
+configuration documents, `rules` holds rule settings, and `tools` interprets checker
+options. WASM implementations are beneath `internal/plugins`: `artifact` resolves
+and inspects bytes, `core` implements the script-engine ABI, and `component` implements
+the WIT analyzer ABI. Workflow commands, contexts and name indexing live beneath
+`internal/workflow`. These child packages retain directional import boundaries;
+the parent does not become a facade that re-exports every implementation.
+
+Legacy linter construction, rendering helpers and implicit process ownership remain
+only in `_test.go` adapters for historical regression fixtures. Production entry points
+cannot link those adapters. Architecture tests enforce the actual transitive import
+boundaries, including the absence of rendering dependencies in semantic execution.

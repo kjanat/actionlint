@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/workflow/references"
+
 	"actionlint.kjanat.dev/internal/checks/identifier"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
@@ -337,15 +339,6 @@ func isImageOnDockerRegistry(image string) bool {
 		strings.HasPrefix(image, "docker.io/")
 }
 
-func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
-	p, ok := strings.CutPrefix(spec, "$/")
-	if !ok || strings.ContainsRune(p, '@') {
-		return "", false
-	}
-	p = strings.TrimLeft(p, "/")
-	return "./" + p, true
-}
-
 // RuleAction is a rule to check running action in steps of jobs.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
@@ -394,7 +387,7 @@ func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
 	if strings.HasPrefix(spec, "$/") {
 		// Relative to the repository and commit that contain the running workflow.
 		// Normalize it to the existing local path form so metadata and output validation still work.
-		local, ok := selfRepositoryUsesLocalSpec(spec)
+		local, ok := references.SelfRepositoryLocal(spec)
 		if !ok {
 			rule.invalidActionFormat(e.Uses.Pos, spec, "self-repository references do not support an '@ref' suffix")
 			return nil
@@ -412,35 +405,8 @@ func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
 	return nil
 }
 
-// splitActionUses splits a `{owner}/{repo}@{ref}` or `{owner}/{repo}/{path}@{ref}` specification into its owner, repository and ref.
-// The problem is empty when the specification has one of those shapes, in which case any of the three parts may still be empty.
-func splitActionUses(spec string) (owner, repo, ref, problem string) {
-	s := spec
-	idx := strings.IndexRune(s, '@')
-	if idx == -1 {
-		return "", "", "", "ref is missing"
-	}
-	ref = s[idx+1:]
-	s = s[:idx] // remove {ref}
-
-	idx = strings.IndexRune(s, '/')
-	if idx == -1 {
-		return "", "", "", "owner is missing"
-	}
-
-	owner = s[:idx]
-	s = s[idx+1:] // eat {owner}
-
-	repo = s
-	if idx := strings.IndexRune(s, '/'); idx >= 0 {
-		repo = s[:idx]
-	}
-
-	return owner, repo, ref, ""
-}
-
 func (rule *RuleAction) checkRepoAction(spec string, exec *workflowlang.ExecAction) {
-	owner, repo, ref, problem := splitActionUses(spec)
+	owner, repo, ref, problem := references.SplitAction(spec)
 	if problem != "" {
 		rule.invalidActionFormat(exec.Uses.Pos, spec, problem)
 		return
@@ -565,7 +531,7 @@ func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompo
 func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, end *workflowlang.Pos, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	err := errorAt(&workflowlang.Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
-	err.Filepath = meta.Path()
+	err.Path = meta.Path()
 	err.source = meta.src
 	err.endPosition = end
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
@@ -593,7 +559,7 @@ func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, c
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
 func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, end *workflowlang.Pos, format string, args ...any) {
 	err := errorfAt(&workflowlang.Pos{Line: line, Col: col}, rule.name, format, args...)
-	err.Filepath = meta.Path()
+	err.Path = meta.Path()
 	err.source = meta.src
 	err.endPosition = end
 	err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}

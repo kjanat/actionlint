@@ -22,8 +22,7 @@ func CheckUnsoundTernaries(expr Node) []*Error {
 		if !known || truthy {
 			return
 		}
-		err := errorAtExpr(and.Right, "falsy middle operand in a && b || c always selects the fallback; this expression cannot select the middle value")
-		err.Rule = "unsound-ternary"
+		err := errorAtExpr(findingKind{"unsound-ternary", "falsy-middle-operand"}, and.Right, "falsy middle operand in a && b || c always selects the fallback; this expression cannot select the middle value")
 		findings = append(findings, err)
 	})
 	return findings

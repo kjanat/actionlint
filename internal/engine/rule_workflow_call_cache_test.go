@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -46,7 +48,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := NewLocalReusableWorkflowCache(proj, root, nil)
+			cache := calls.NewCache(proj.RootDir(), root, nil)
 			errs, err := l.check("caller.yaml", caller, proj, nil, nil, cache)
 			if err != nil || len(errs) != 1 || !strings.Contains(errs[0].Message, "could not validate cache access through job") {
 				t.Fatalf("nested validation did not report the callee failure: errors=%v, err=%v", errs, err)
@@ -62,7 +64,7 @@ jobs:
 						t.Error(err)
 						return
 					}
-					if len(errs) != 1 || errs[0].Kind != "workflow-call" || errs[0].Line != 4 || !strings.Contains(errs[0].Message, "$/leaf.yaml") {
+					if len(errs) != 1 || errs[0].Rule != "workflow-call" || errs[0].Start.Line != 4 || !strings.Contains(errs[0].Message, "$/leaf.yaml") {
 						t.Errorf("direct validation lost the callee error after nested lookup: %v", errs)
 					}
 				})
@@ -79,10 +81,10 @@ jobs:
 				}
 				seen := map[string]int{}
 				for _, diagnostic := range errs {
-					if diagnostic.Kind != "workflow-call" || !strings.Contains(diagnostic.Message, "$/leaf.yaml") {
+					if diagnostic.Rule != "workflow-call" || !strings.Contains(diagnostic.Message, "$/leaf.yaml") {
 						t.Errorf("unexpected diagnostic: %v", diagnostic)
 					}
-					seen[filepath.Base(diagnostic.Filepath)]++
+					seen[filepath.Base(diagnostic.Path)]++
 				}
 				if seen["caller.yaml"] != 1 || seen["middle.yaml"] != 1 {
 					t.Errorf("LintFiles(%v): unexpected diagnostic locations %v", names, seen)
@@ -95,7 +97,7 @@ jobs:
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*Error {
 	t.Helper()
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
+	cache := calls.NewCache(root, root, nil)
 	for name, src := range callees {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {
 			t.Fatal(err)
@@ -169,7 +171,7 @@ jobs:
 						return
 					}
 					want := fmt.Sprintf("nested job %q of %q requests cache-mode %q but the calling job allows %q", "build", "./callee.yaml", calleeMode, callerMode)
-					if len(errs) != 1 || errs[0].Message != want || errs[0].Line != 5 || errs[0].Column != 11 || errs[0].Kind != "workflow-call" {
+					if len(errs) != 1 || errs[0].Message != want || errs[0].Start.Line != 5 || errs[0].Start.Column != 11 || errs[0].Rule != "workflow-call" {
 						t.Fatalf("wanted %q at 5:11, got %v", want, errs)
 					}
 				})
@@ -352,7 +354,7 @@ jobs:
     cache-mode: *mode
     uses: ./next.yaml
 `)
-	fromFile, err := parseReusableWorkflowMetadata(src)
+	fromFile, err := calls.ParseMetadata(src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,10 +363,10 @@ jobs:
 		t.Fatalf("expected the invalid null declaration, got %v", errs)
 	}
 	root := t.TempDir()
-	cache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
+	cache := calls.NewCache(root, root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
-	fromAST, _, ok := cache.readCache("./callee.yaml")
+	fromAST, _, ok := cache.Lookup("./callee.yaml")
 	if !ok {
 		t.Fatal("no metadata was cached")
 	}

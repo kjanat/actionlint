@@ -3,30 +3,13 @@ package engine
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/tools"
 )
 
-// builtinFactory selects visitor adapters and script analyzers. The
+// registeredFactory selects semantic rules and registered script tools. The
 // document runner owns neither executable selection nor initialization policy.
-func builtinFactory(request AnalysisRequest, logger analysisLogger) func(ruleContext, bool) (builtinAnalyzers, error) {
-	compatibility := &ruff.Compatibility{}
+func registeredFactory(request Request, logger analysisLogger) func(ruleContext, bool) (builtinAnalyzers, error) {
 	return func(c ruleContext, action bool) (builtinAnalyzers, error) {
-		c.shellcheckRunner, c.debug = request.ShellcheckRunner, logger.debug
-		c.shellcheck, c.shellcheckOptions, c.shellcheckSettings = request.ShellCheck, request.ShellcheckOptions, request.ShellcheckSettings
-		c.ruff, c.ruffOptions, c.ruffCompatibility = request.Ruff, request.RuffOptions, compatibility
-		c.ruffBackend = request.RuffBackend
-		c.shellcheckBackend = request.ShellcheckBackend
-		if request.LoadScriptEngine != nil {
-			c.scriptEngine = func(path string) (analyzer.ScriptBackend, error) {
-				return request.LoadScriptEngine(c.process.ctx, path)
-			}
-		}
-		c.ruffWarning = func(err error) {
-			if logger.logOut != nil {
-				_, _ = fmt.Fprintln(logger.logOut, "warning: skipping automatically discovered Ruff:", err)
-			}
-		}
 		var result builtinAnalyzers
 		for _, descriptor := range builtinRuleDescriptors() {
 			if (descriptor.build == nil && descriptor.buildScripts == nil) || (action && !descriptor.supportsActions) {
@@ -61,6 +44,28 @@ func builtinFactory(request AnalysisRequest, logger analysisLogger) func(ruleCon
 				result.resolveExecution = result.resolveExecution || descriptor.requiresScriptExecution
 				result.scriptInfo = append(result.scriptInfo, descriptor.Descriptor)
 			}
+		}
+
+		context := tools.Context{Config: c.config, ProjectConfig: c.projectConfig, WorkingDir: c.workingDir, ProjectRoot: c.projectRoot, Processes: c.process, LoadEngine: request.LoadScriptEngine, Debug: logger.debug, Warn: func(err error) {
+			if logger.logOut != nil {
+				_, _ = fmt.Fprintln(logger.logOut, "warning:", err)
+			}
+		}}
+		for _, registration := range request.Tools {
+			if registration.Enabled != nil && !registration.Enabled(context) {
+				continue
+			}
+			adapter, err := registration.Build(context)
+			if err != nil {
+				if registration.Required == nil || registration.Required(context) {
+					return result, err
+				}
+				logger.log(fmt.Sprintf("Tool %q was disabled:", registration.Descriptor.Name), err)
+				continue
+			}
+			result.scripts = append(result.scripts, registeredTool{adapter})
+			result.scriptInfo = append(result.scriptInfo, registration.Descriptor)
+			result.resolveExecution = result.resolveExecution || registration.RequiresExecution
 		}
 		return result, nil
 	}

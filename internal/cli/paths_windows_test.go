@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/processconfig"
 )
 
 func windowsPathSpellings(path string) map[string]string {
@@ -33,7 +33,7 @@ func TestWindowsForwardSlashCheckPaths(t *testing.T) {
 				t.Chdir(root)
 				files := map[string]string{
 					".github/workflows/test.yml": commandBadWorkflow,
-					"base config.yml":            "lint: {rules: {correctness: {expression: off}}}\n",
+					"base config.yml":            "lint: {rules: {correctness: {expression-reference: off}}}\n",
 					"config dir/leaf.yml":        "extends: ['../base config.yml']\nfiles: {includes: ['.github/workflows/*.yml']}\n",
 					"report template.tmpl":       "{{json .}}",
 				}
@@ -95,13 +95,13 @@ func TestWindowsForwardSlashToolPaths(t *testing.T) {
 	}
 	for spelling, path := range windowsPathSpellings(tool) {
 		t.Run(spelling, func(t *testing.T) {
-			resolved, arguments, err := actionlint.ResolveExternalCommand(path)
+			resolved, arguments, err := processconfig.Resolve(path)
 			if err != nil || !sameCommandFile(resolved, tool) || len(arguments) != 0 {
 				t.Fatalf("literal tool: %q, %v, %v", resolved, arguments, err)
 			}
 			// Forward slashes also survive command-line parsing with quoted spaces.
 			command := `"` + filepath.ToSlash(tool) + `" --example`
-			resolved, arguments, err = actionlint.ResolveExternalCommand(command)
+			resolved, arguments, err = processconfig.Resolve(command)
 			if err != nil || !sameCommandFile(resolved, tool) || !slices.Equal(arguments, []string{"--example"}) {
 				t.Fatalf("tool command: %q, %v, %v", resolved, arguments, err)
 			}
@@ -110,12 +110,12 @@ func TestWindowsForwardSlashToolPaths(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, _, err = actionlint.ResolveExternalCommandOptions("", options)
+			resolved, _, err = processconfig.ResolveOptions("", options)
 			if err != nil || !sameCommandFile(resolved, tool) {
 				t.Fatalf("environment tool: %q, %v", resolved, err)
 			}
 			relative := windowsPathSpellings(filepath.Join("tools with spaces", "checker.exe"))[spelling]
-			resolved, _, err = actionlint.ResolveExternalCommandOptions("", &actionlint.ExternalCommandOptions{
+			resolved, _, err = processconfig.ResolveOptions("", &processconfig.Options{
 				Executable: &relative, WorkingDir: filepath.ToSlash(root),
 			})
 			if err != nil || !sameCommandFile(resolved, tool) {

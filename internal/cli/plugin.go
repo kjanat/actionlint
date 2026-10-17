@@ -1,9 +1,10 @@
 package cli
 
 import (
-	"actionlint.kjanat.dev/internal/localapp"
 	"context"
 	"fmt"
+
+	"actionlint.kjanat.dev/internal/localapp"
 )
 
 type pluginInspectRequest struct {

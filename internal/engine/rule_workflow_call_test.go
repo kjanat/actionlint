@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
@@ -29,7 +31,7 @@ func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
 					}
 				}
 				proj := workspace.Identity(root)
-				cache := NewLocalReusableWorkflowCache(proj, root, nil)
+				cache := calls.NewCache(proj.RootDir(), root, nil)
 				l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
 				if err != nil {
 					t.Fatal(err)
@@ -51,7 +53,7 @@ jobs:
 					if err != nil {
 						t.Fatal(err)
 					}
-					if len(errs) != 1 || errs[0].Line != 4 || errs[0].Column != 11 {
+					if len(errs) != 1 || errs[0].Start.Line != 4 || errs[0].Start.Column != 11 {
 						t.Fatalf("%s: want one failure at the uses value, got %v", pass, errs)
 					}
 					if !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
@@ -62,7 +64,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				if len(errs) != 1 || errs[0].Line != 4 || errs[0].Column != 11 || !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
+				if len(errs) != 1 || errs[0].Start.Line != 4 || errs[0].Start.Column != 11 || !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
 					t.Fatalf("Lint: want one failure using the source reference, got %v", errs)
 				}
 				// Rendering a caller's spelling must not alter the cached error.
@@ -124,12 +126,12 @@ jobs:
 					}
 					return
 				}
-				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 4 || diagnostics[0].Column != 5 || filepath.Base(diagnostics[0].Filepath) != "callee.yaml" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("unexpected key %q", tc.key)) {
+				if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 4 || diagnostics[0].Start.Column != 5 || filepath.Base(diagnostics[0].Path) != "callee.yaml" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("unexpected key %q", tc.key)) {
 					t.Fatalf("expected only the invalid key at callee.yaml:4:5, got %v", diagnostics)
 				}
 			}
 			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-				cache := NewLocalReusableWorkflowCache(project, root, nil)
+				cache := calls.NewCache(project.RootDir(), root, nil)
 				for range 2 {
 					for _, name := range order {
 						source := caller
@@ -185,7 +187,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
-			c := NewLocalReusableWorkflowCache(nil, "", nil)
+			c := calls.NewCache("", "", nil)
 			r := NewRuleWorkflowCall("", c)
 			j := &workflowlang.Job{
 				WorkflowCall: &workflowlang.WorkflowCall{
@@ -230,7 +232,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 		},
 	}
 
-	c := NewLocalReusableWorkflowCache(nil, "", nil)
+	c := calls.NewCache("", "", nil)
 	r := NewRuleWorkflowCall("", c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {
@@ -273,7 +275,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 	}
 
 	cwd := filepath.Join("path", "to", "project")
-	c := NewLocalReusableWorkflowCache(workspace.Identity(cwd), cwd, nil)
+	c := calls.NewCache(cwd, cwd, nil)
 	r := NewRuleWorkflowCall("test-workflow.yaml", c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {
@@ -285,20 +287,20 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 		t.Fatal(errs)
 	}
 
-	m, _, ok := c.readCache("./test-workflow.yaml")
+	m, _, ok := c.Lookup("./test-workflow.yaml")
 	if !ok {
 		t.Fatal("no metadata was created")
 	}
 
-	want := &ReusableWorkflowMetadata{
-		Inputs: ReusableWorkflowMetadataInputs{
-			"input1": {"input1", false, exprlang.StringType{}},
+	want := &calls.Metadata{
+		Inputs: calls.Inputs{
+			"input1": {Name: "input1", Required: false, Type: exprlang.StringType{}},
 		},
-		Outputs: ReusableWorkflowMetadataOutputs{
-			"output1": {"output1"},
+		Outputs: calls.Outputs{
+			"output1": {Name: "output1"},
 		},
-		Secrets: ReusableWorkflowMetadataSecrets{
-			"secret1": {"secret1", false},
+		Secrets: calls.Secrets{
+			"secret1": {Name: "secret1", Required: false},
 		},
 	}
 
@@ -309,45 +311,45 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	cwd := filepath.Join("testdata", "reusable_workflow_metadata")
-	cache := NewLocalReusableWorkflowCache(workspace.Identity(cwd), cwd, nil)
+	cache := calls.NewCache(cwd, cwd, nil)
 
-	for i, md := range []*ReusableWorkflowMetadata{
+	for i, md := range []*calls.Metadata{
 		// workflow0.yaml
 		{
-			Inputs: ReusableWorkflowMetadataInputs{
-				"optional_input": {"optional_input", false, exprlang.StringType{}},
-				"required_input": {"required_input", true, exprlang.StringType{}},
+			Inputs: calls.Inputs{
+				"optional_input": {Name: "optional_input", Required: false, Type: exprlang.StringType{}},
+				"required_input": {Name: "required_input", Required: true, Type: exprlang.StringType{}},
 			},
-			Outputs: ReusableWorkflowMetadataOutputs{
-				"output": {"output"},
+			Outputs: calls.Outputs{
+				"output": {Name: "output"},
 			},
-			Secrets: ReusableWorkflowMetadataSecrets{
-				"optional_secret": {"optional_secret", false},
-				"required_secret": {"required_secret", true},
+			Secrets: calls.Secrets{
+				"optional_secret": {Name: "optional_secret", Required: false},
+				"required_secret": {Name: "required_secret", Required: true},
 			},
 		},
 		// workflow1.yaml: Inputs and outputs in upper case (#216)
 		{
-			Inputs: ReusableWorkflowMetadataInputs{
-				"optional_input": {"OPTIONAL_INPUT", false, exprlang.StringType{}},
-				"required_input": {"REQUIRED_INPUT", true, exprlang.StringType{}},
+			Inputs: calls.Inputs{
+				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: exprlang.StringType{}},
+				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: exprlang.StringType{}},
 			},
-			Outputs: ReusableWorkflowMetadataOutputs{
-				"output": {"OUTPUT"},
+			Outputs: calls.Outputs{
+				"output": {Name: "OUTPUT"},
 			},
-			Secrets: ReusableWorkflowMetadataSecrets{
-				"optional_secret": {"OPTIONAL_SECRET", false},
-				"required_secret": {"REQUIRED_SECRET", true},
+			Secrets: calls.Secrets{
+				"optional_secret": {Name: "OPTIONAL_SECRET", Required: false},
+				"required_secret": {Name: "REQUIRED_SECRET", Required: true},
 			},
 		},
 		// workflow2.yaml: No input and secret are defined
 		{
-			Inputs:  ReusableWorkflowMetadataInputs{},
-			Outputs: ReusableWorkflowMetadataOutputs{},
-			Secrets: ReusableWorkflowMetadataSecrets{},
+			Inputs:  calls.Inputs{},
+			Outputs: calls.Outputs{},
+			Secrets: calls.Secrets{},
 		},
 	} {
-		cache.writeCache(fmt.Sprintf("./workflow%d.yaml", i), md, nil)
+		cache.Store(fmt.Sprintf("./workflow%d.yaml", i), md, nil)
 	}
 
 	tests := []struct {
@@ -556,7 +558,7 @@ jobs:
 func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	root := filepath.Join("testdata", "reusable_workflow_metadata")
 
-	run := func(t *testing.T, cache *LocalReusableWorkflowCache) []string {
+	run := func(t *testing.T, cache *calls.Cache) []string {
 		t.Helper()
 		r := NewRuleWorkflowCall("caller.yaml", cache)
 		if err := r.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
@@ -581,7 +583,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 		return msgs
 	}
 
-	fromFile := run(t, NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil))
+	fromFile := run(t, calls.NewCache(root, root, nil))
 
 	src, err := os.ReadFile(filepath.Join(root, "permissions.yaml"))
 	if err != nil {
@@ -600,7 +602,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if event == nil {
 		t.Fatal("callee has no workflow_call event")
 	}
-	astCache := NewLocalReusableWorkflowCache(workspace.Identity(root), root, nil)
+	astCache := calls.NewCache(root, root, nil)
 	astCache.WriteWorkflowCallEventFromWorkflow("permissions.yaml", event, w)
 	fromNode := run(t, astCache)
 
@@ -621,13 +623,13 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 	scopes := make([]string, 0, len(allPermissionScopes))
-	writeAll := PermissionScopeLevels{}
+	writeAll := calls.PermissionScopeLevels{}
 	for s, vs := range allPermissionScopes {
 		scopes = append(scopes, s)
 		if slices.Contains(vs, "write") {
-			writeAll[s] = PermissionLevelWrite
+			writeAll[s] = calls.PermissionLevelWrite
 		} else {
-			writeAll[s] = PermissionLevelRead
+			writeAll[s] = calls.PermissionLevelRead
 		}
 	}
 	slices.Sort(scopes)
@@ -651,19 +653,19 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		jobPerms      string
 		workflowPerms string
 		jobIf         bool
-		callee        map[string]PermissionScopeLevels
+		callee        map[string]calls.PermissionScopeLevels
 		cfg           *Config
 		errs          []string
 	}{
 		{
 			what:     "job grant covers the requirement",
 			jobPerms: "permissions:\n  pull-requests: write",
-			callee:   map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee:   map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 		},
 		{
 			what:     "job grants read but write is required",
 			jobPerms: "permissions:\n  pull-requests: read",
-			callee:   map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee:   map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: read\"",
 			},
@@ -671,12 +673,12 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:     "job grants write where read is required",
 			jobPerms: "permissions:\n  contents: write",
-			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+			callee:   map[string]calls.PermissionScopeLevels{"snapshot": {"contents": calls.PermissionLevelRead}},
 		},
 		{
 			what:     "incorrectly cased scope does not grant permission",
 			jobPerms: "permissions:\n  Contents: write",
-			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelWrite}},
+			callee:   map[string]calls.PermissionScopeLevels{"snapshot": {"contents": calls.PermissionLevelWrite}},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"contents: write\" but the calling job grants \"contents: none\"",
 			},
@@ -684,36 +686,36 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:          "job says nothing so the workflow block is used",
 			workflowPerms: "permissions:\n  pull-requests: write",
-			callee:        map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee:        map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 		},
 		{
 			what:          "job block replaces the workflow block",
 			jobPerms:      "permissions:\n  contents: read",
 			workflowPerms: "permissions:\n  pull-requests: write",
-			callee:        map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee:        map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
 			},
 		},
 		{
 			what:   "restricted default covers contents",
-			callee: map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"contents": calls.PermissionLevelRead}},
 		},
 		{
 			what:   "restricted default does not cover pull-requests",
-			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
 			},
 		},
 		{
 			what:   "permissive default covers pull-requests",
-			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionPermissive},
 		},
 		{
 			what:   "permissive default never covers id-token",
-			callee: map[string]PermissionScopeLevels{"attest": {"id-token": PermissionLevelWrite}},
+			callee: map[string]calls.PermissionScopeLevels{"attest": {"id-token": calls.PermissionLevelWrite}},
 			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionPermissive},
 			errs: []string{
 				"nested job \"attest\" of \"./callee.yaml\" requires \"id-token: write\" but the calling job grants \"id-token: none\"",
@@ -721,7 +723,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		},
 		{
 			what:   "restricted assumption set explicitly",
-			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			cfg:    &Config{AssumeDefaultPermissions: DefaultPermissionsAssumptionRestricted},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
@@ -730,7 +732,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:     "empty caller block grants nothing",
 			jobPerms: "permissions: {}",
-			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+			callee:   map[string]calls.PermissionScopeLevels{"snapshot": {"contents": calls.PermissionLevelRead}},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"contents: read\" but the calling job grants \"contents: none\"",
 			},
@@ -738,7 +740,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:     "caller read-all does not cover id-token",
 			jobPerms: "permissions: read-all",
-			callee:   map[string]PermissionScopeLevels{"attest": {"id-token": PermissionLevelWrite}},
+			callee:   map[string]calls.PermissionScopeLevels{"attest": {"id-token": calls.PermissionLevelWrite}},
 			errs: []string{
 				"nested job \"attest\" of \"./callee.yaml\" requires \"id-token: write\" but the calling job grants \"id-token: none\"",
 			},
@@ -746,22 +748,22 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:     "caller write-all covers everything write is available for",
 			jobPerms: "permissions: write-all",
-			callee: map[string]PermissionScopeLevels{
+			callee: map[string]calls.PermissionScopeLevels{
 				"snapshot": {
-					"contents":      PermissionLevelWrite,
-					"id-token":      PermissionLevelWrite,
-					"pull-requests": PermissionLevelWrite,
+					"contents":      calls.PermissionLevelWrite,
+					"id-token":      calls.PermissionLevelWrite,
+					"pull-requests": calls.PermissionLevelWrite,
 				},
 			},
 		},
 		{
 			what:     "one error lists every missing scope of a job",
 			jobPerms: "permissions:\n  contents: write",
-			callee: map[string]PermissionScopeLevels{
+			callee: map[string]calls.PermissionScopeLevels{
 				"snapshot": {
-					"actions":  PermissionLevelWrite,
-					"contents": PermissionLevelWrite,
-					"issues":   PermissionLevelWrite,
+					"actions":  calls.PermissionLevelWrite,
+					"contents": calls.PermissionLevelWrite,
+					"issues":   calls.PermissionLevelWrite,
 				},
 			},
 			errs: []string{
@@ -771,26 +773,26 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:     "callee requiring every scope produces a single error",
 			jobPerms: "permissions:\n  contents: write",
-			callee:   map[string]PermissionScopeLevels{"j": writeAll},
+			callee:   map[string]calls.PermissionScopeLevels{"j": writeAll},
 			errs:     []string{writeAllMsg},
 		},
 		{
 			what:   "callee declares no permissions",
-			callee: map[string]PermissionScopeLevels{},
+			callee: map[string]calls.PermissionScopeLevels{},
 		},
 		{
 			what:   "callee job requires nothing",
-			callee: map[string]PermissionScopeLevels{"snapshot": {}},
+			callee: map[string]calls.PermissionScopeLevels{"snapshot": {}},
 		},
 		{
 			what:     "invalid caller block is not reported by this rule",
 			jobPerms: "permissions: bogus",
-			callee:   map[string]PermissionScopeLevels{"snapshot": {"contents": PermissionLevelRead}},
+			callee:   map[string]calls.PermissionScopeLevels{"snapshot": {"contents": calls.PermissionLevelRead}},
 		},
 		{
 			what:   "condition on the calling job does not suppress the check",
 			jobIf:  true,
-			callee: map[string]PermissionScopeLevels{"snapshot": {"pull-requests": PermissionLevelWrite}},
+			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
 			},
@@ -798,9 +800,9 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:     "errors are sorted by job ID",
 			jobPerms: "permissions: {}",
-			callee: map[string]PermissionScopeLevels{
-				"zulu":  {"contents": PermissionLevelRead},
-				"alpha": {"issues": PermissionLevelWrite},
+			callee: map[string]calls.PermissionScopeLevels{
+				"zulu":  {"contents": calls.PermissionLevelRead},
+				"alpha": {"issues": calls.PermissionLevelWrite},
 			},
 			errs: []string{
 				"nested job \"alpha\" of \"./callee.yaml\" requires \"issues: write\" but the calling job grants \"issues: none\"",
@@ -812,8 +814,8 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
-			cache := NewLocalReusableWorkflowCache(workspace.Identity(cwd), cwd, nil)
-			cache.writeCache("./callee.yaml", &ReusableWorkflowMetadata{JobPermissions: tc.callee}, nil)
+			cache := calls.NewCache(cwd, cwd, nil)
+			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee}, nil)
 
 			r := NewRuleWorkflowCall("caller.yaml", cache)
 			if tc.cfg != nil {

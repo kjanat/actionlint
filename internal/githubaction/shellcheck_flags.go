@@ -8,12 +8,13 @@ import (
 	"strconv"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+
 	"github.com/spf13/pflag"
 )
 
 type shellcheckFlags struct {
-	settings actionlint.ShellcheckSettings
+	settings toolconfig.ShellcheckSettings
 	order    []string
 	values   map[string][]string
 	hints    []string
@@ -57,14 +58,14 @@ func mergeShellcheckFlags(inherited, explicit []string) (*shellcheckFlags, error
 	flags.SetOutput(io.Discard)
 	flags.StringVarP(&merged.settings.Shell, "shell", "s", "", "")
 	flags.Func("rcfile", "", func(value string) error {
-		merged.settings.Config = actionlint.ShellcheckRCFile(value)
+		merged.settings.Config = toolconfig.ShellcheckRCFile(value)
 		return nil
 	})
 	flags.BoolFunc("norc", "", func(value string) error {
 		if value != "true" {
 			return errors.New("use shellcheck-rc: true to enable discovery")
 		}
-		merged.settings.Config = actionlint.ShellcheckRCDisabled
+		merged.settings.Config = toolconfig.ShellcheckRCDisabled
 		return nil
 	})
 	for _, option := range []struct{ name, short string }{

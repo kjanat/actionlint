@@ -52,7 +52,7 @@ jobs:
 				if len(errs) != 0 {
 					t.Fatalf("unexpected diagnostics: %v", errs)
 				}
-			} else if len(errs) != 1 || errs[0].Kind != "matrix" || !strings.Contains(errs[0].Message, tc.want) || errs[0].Line != 4 || errs[0].Column != 15 || errs[0].Filepath != "test.yaml" {
+			} else if len(errs) != 1 || errs[0].Rule != "matrix" || !strings.Contains(errs[0].Message, tc.want) || errs[0].Start.Line != 4 || errs[0].Start.Column != 15 || errs[0].Path != "test.yaml" {
 				t.Fatalf("wanted one %q matrix diagnostic at test.yaml:4:15, got %v", tc.want, errs)
 			}
 		})

@@ -80,7 +80,7 @@ jobs:
 
 func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool) {
 	t.Helper()
-	workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
+	workflow := `on: {issues: {}, workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
   report:
     runs-on: ubuntu-latest
@@ -96,7 +96,7 @@ jobs:
 		}
 		return
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || result.Diagnostics[0].Start.Line != 6 || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || result.Diagnostics[0].Start.Line != 6 || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 		t.Fatalf("missing injection finding: %+v", result.Diagnostics)
 	}
 }
@@ -106,6 +106,10 @@ func TestUnsoundTernaryIndependentExpressionErrors(t *testing.T) {
 		"secrets.UNKNOWN && '' || 'fallback'",
 		"github.event.issue.title && '' || 'fallback'",
 	} {
+		ruleName := "context-availability"
+		if strings.Contains(expression, "issue.title") {
+			ruleName = "script-injection"
+		}
 		for _, levels := range []struct {
 			expression, ternary         string
 			wantExpression, wantTernary bool
@@ -116,7 +120,8 @@ func TestUnsoundTernaryIndependentExpressionErrors(t *testing.T) {
 			{"off", "off", false, false},
 		} {
 			t.Run(expression+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
-				cfg, err := ParseConfig([]byte("lint: {rules: {correctness: {expression: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
+				configText := "lint: {rules: {correctness: {unsound-ternary: " + levels.ternary + ", context-availability: " + levels.expression + "}, security: {script-injection: " + levels.expression + "}}}"
+				cfg, err := ParseConfig([]byte(configText))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -128,7 +133,7 @@ jobs:
       - run: echo ok
 `
 				if strings.Contains(expression, "issue.title") {
-					workflow = `on: push
+					workflow = `on: issues
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -143,7 +148,7 @@ jobs:
 				for _, diagnostic := range result.Diagnostics {
 					found[diagnostic.Rule]++
 				}
-				if (found["expression"] != 0) != levels.wantExpression || (found["unsound-ternary"] != 0) != levels.wantTernary || len(found) > 2 {
+				if (found[ruleName] != 0) != levels.wantExpression || (found["unsound-ternary"] != 0) != levels.wantTernary || len(found) > 2 {
 					t.Fatalf("independent rule levels lost: %+v", result.Diagnostics)
 				}
 			})

@@ -39,7 +39,7 @@ func (w *analysisRecordingLog) Write(p []byte) (int, error) {
 }
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {
-	base := Error{Filepath: "action.yml", Kind: "shellcheck", Message: "finding", Line: 1, Column: 1, endColumn: 4, source: []byte("echo $VALUE\n")}
+	base := Error{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: DiagnosticPosition{Line: 1, Column: 1}, endColumn: 4, source: []byte("echo $VALUE\n")}
 	result := &AnalysisResult{}
 	for _, change := range []func(*Error){
 		func(*Error) {},
@@ -47,28 +47,28 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 		func(e *Error) { e.endColumn = 5 },
 		func(e *Error) { e.source = []byte("echo $OTHER\n") },
 		func(e *Error) { e.Message = "another finding" },
-		func(e *Error) { e.Filepath = "another/action.yml" },
-		func(e *Error) { e.Kind = "another-rule" },
+		func(e *Error) { e.Path = "another/action.yml" },
+		func(e *Error) { e.Rule = "another-rule" },
 	} {
 		finding := base
 		change(&finding)
 		result.files = append(result.files, analyzedFile{source: SourceUnit{Content: []byte("workflow")}, errors: []*Error{&finding}})
 	}
 	result.collectDiagnostics()
-	if len(result.Diagnostics) != 6 || len(result.legacyErrors()) != 6 || result.FileCount() != 7 {
+	if len(result.Diagnostics) != 6 || len(result.legacyErrors()) != 6 || result.FileCount != 7 {
 		t.Fatalf("only the identical diagnostic should be removed: %+v", result.Diagnostics)
 	}
 }
 
 func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
-	base := Error{Filepath: "action.yml", Kind: "shellcheck", Message: "finding", Line: 1, Column: 1}
+	base := Error{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: DiagnosticPosition{Line: 1, Column: 1}}
 	result := &AnalysisResult{}
 	for _, change := range []func(*Error){
 		func(*Error) {},
-		func(e *Error) { e.code = "SC2086" },
-		func(e *Error) { e.severity = "warning" },
+		func(e *Error) { e.Code = "SC2086" },
+		func(e *Error) { e.Severity = "warning" },
 		func(e *Error) {
-			e.fixes = []DiagnosticFix{{Description: "quote", Edits: []DiagnosticEdit{{Path: "action.yml", Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}, Replacement: "quoted"}}}}
+			e.Fixes = []DiagnosticFix{{Description: "quote", Edits: []DiagnosticEdit{{Path: "action.yml", Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}, Replacement: "quoted"}}}}
 		},
 	} {
 		finding := base
@@ -205,7 +205,7 @@ func TestLinterAnalysisFacades(t *testing.T) {
 			}
 			request := AnalysisRequest{WorkingDir: root}
 			for i, path := range tc.paths {
-				if findings[i].Filepath != path || findings[i].Kind != "expression" {
+				if findings[i].Path != path || findings[i].Rule != "expression-reference" {
 					t.Fatalf("wrong finding order or path: %v", findings)
 				}
 				request.Sources = append(request.Sources, SourceUnit{Path: path, Content: content, Config: &Config{ConfigVariables: []string{}}})

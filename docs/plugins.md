@@ -103,11 +103,11 @@ Run it against a workflow:
 actionlint --no-config --plugin ./plugin.wasm .github/workflows/ci.yml
 ```
 
-From Go, load it with `plugin.Load` and pass it in `analysis.Options.Analyzers`; `internal/component/component_test.go`
+From Go, load it with `plugin.Load` and pass it in `analysis.Options.Analyzers`; `internal/plugins/component/component_test.go`
 does this for the examples, including a composite action call. When parsing configuration yourself, pass the
 registered analyzer names to `config.Parse` or `config.Load` so suppression names can be validated. File analysis and
 the CLI derive those names from the registered analyzers automatically. The Rust crate under
-`internal/component/testdata/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
+`internal/plugins/component/testdata/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
 file access are reported.
 
 ## Script engines
@@ -185,7 +185,7 @@ Plugins live in their own repositories and ship a component. Open an issue in th
 documentation.
 
 Built-in rule metadata lives in `internal/rulecatalog`; configuration projections live in
-`internal/repoconfig`. Stateless checks in `internal/checks` accept explicit inputs and return diagnostics.
+`internal/config`. Stateless checks in `internal/checks` accept explicit inputs and return diagnostics.
 The remaining visitor implementations in `internal/engine` are migration adapters. New document analyzers implement
 `analyzer.Analyzer` as described in the [Go API](api.md#add-an-analyzer). The catalogue generates
 [`docs/rules.md`](rules.md); behavior examples remain in [`docs/checks.md`](checks.md). Changes to the WIT contract keep `kjanat:actionlint/analyzer@0.1.0`
@@ -236,4 +236,22 @@ An explicit `recommended` preset uses the descriptor's recommendation; `all`
 excludes nursery rules. Disabled analyzers are not executed. Options are checked
 against the descriptor's bundled JSON schema before execution; external schema
 references are refused. Go registration options override repository options.
-Core script engines continue to use their host rule and `tools.ruff` configuration.
+Core script engines with a bundled adapter use that adapter's configuration (for example,
+`tools.ruff`). Independent script engines use `lint.rules.plugins.<engine.name>` for
+options and severity. They advertise `capabilities.script_shells`, for example
+`["python", "python3"]`, in their version 1 metadata. The host selects snippets by
+these shell names and registers the engine's rule descriptor in the catalogue.
+Local paths and remote artifact URLs use the same registration path.
+
+The internal tool contract supplies prepared snippets, source maps and execution
+context to a registered runner. A runner returns findings with their originating
+snippet index. Native process providers can use the same JSON request/result
+protocol as core WASM: a `ScriptRequest` on stdin and an object containing `ok`,
+`diagnostics` and `errors` on stdout. A nonzero process exit is an execution failure.
+Native CLIs with their own protocols require an adapter; their argument construction,
+configuration and diagnostic decoding belong to that adapter.
+
+The engine and application accept tool registrations and do not import the bundled
+Ruff/ShellCheck adapters or dispatch on their names. Process scheduling and WASM
+loading remain separate from provider-specific preparation. The bundled adapters
+preserve language-specific expression handling and source mapping.

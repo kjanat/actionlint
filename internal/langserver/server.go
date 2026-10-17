@@ -40,7 +40,7 @@ type incoming struct {
 // Serve uses full or ranged document updates, cancels superseded analyses, and
 // republishes all open dependants after changes. Analyze must honor cancellation.
 // When input is closable, Serve closes it on exit to interrupt a pending read.
-func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze) error {
+func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, completions ...Complete) error {
 	ctx, cancel := context.WithCancel(ctx)
 
 	input := make(chan incoming, 1)
@@ -171,7 +171,11 @@ serve:
 			}
 			if m.Method == "initialize" && !initialized {
 				initialized = true
-				if err := respond(m.ID, map[string]any{"capabilities": map[string]any{"positionEncoding": "utf-16", "textDocumentSync": map[string]any{"openClose": true, "change": 2}, "codeActionProvider": true}, "serverInfo": map[string]string{"name": "actionlint"}}, nil); err != nil {
+				capabilities := map[string]any{"positionEncoding": "utf-16", "textDocumentSync": map[string]any{"openClose": true, "change": 2}, "codeActionProvider": true}
+				if len(completions) > 0 {
+					capabilities["completionProvider"] = map[string]any{"triggerCharacters": []string{".", "[", "'"}}
+				}
+				if err := respond(m.ID, map[string]any{"capabilities": capabilities, "serverInfo": map[string]string{"name": "actionlint"}}, nil); err != nil {
 					return err
 				}
 				continue
@@ -285,6 +289,40 @@ serve:
 					return err
 				}
 				schedule()
+			case "textDocument/completion":
+				var p struct {
+					TextDocument Document `json:"textDocument"`
+					Position     position `json:"position"`
+				}
+				if err := jsonv2.Unmarshal(m.Params, &p); err != nil {
+					if err := reject(err); err != nil {
+						return err
+					}
+					continue serve
+				}
+				path, err := filePath(p.TextDocument.URI)
+				if err != nil {
+					if err := reject(err); err != nil {
+						return err
+					}
+					continue serve
+				}
+				items := []completionItem{}
+				if doc, ok := documents[path]; ok && len(completions) > 0 {
+					offset, err := byteOffset(doc.Text, p.Position)
+					if err != nil {
+						if err := reject(err); err != nil {
+							return err
+						}
+						continue serve
+					}
+					for _, item := range completions[0](ctx, doc, offset) {
+						items = append(items, completionItemFor(doc.Text, item))
+					}
+				}
+				if err := respond(m.ID, map[string]any{"isIncomplete": false, "items": items}, nil); err != nil {
+					return err
+				}
 			case "textDocument/codeAction":
 				var p struct {
 					TextDocument Document    `json:"textDocument"`

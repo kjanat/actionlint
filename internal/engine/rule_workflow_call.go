@@ -5,6 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+	"actionlint.kjanat.dev/internal/workflow/references"
+
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
@@ -18,12 +21,12 @@ type RuleWorkflowCall struct {
 	workflowPath         string
 	workflowPermissions  *workflowlang.Permissions
 	workflowCacheMode    *workflowlang.CacheMode
-	cache                *LocalReusableWorkflowCache
+	cache                *calls.Cache
 }
 
 // NewRuleWorkflowCall creates a new RuleWorkflowCall instance. 'workflowPath' is a file path to
 // the workflow which is relative to a project root directory or an absolute path.
-func NewRuleWorkflowCall(workflowPath string, cache *LocalReusableWorkflowCache) *RuleWorkflowCall {
+func NewRuleWorkflowCall(workflowPath string, cache *calls.Cache) *RuleWorkflowCall {
 	return &RuleWorkflowCall{
 		RuleBase: builtinRuleBase("workflow-call"), tag: "workflow-call",
 		workflowCallEventPos: nil,
@@ -59,12 +62,12 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *workflowlang.Job) error {
 		return nil
 	}
 
-	if local, ok := workflowCallUsesLocalSpec(u.Value); ok {
+	if local, ok := references.LocalWorkflow(u.Value); ok {
 		rule.checkWorkflowCallUsesLocal(n.WorkflowCall, n.Permissions, n.CacheMode, local)
 		return nil
 	}
 
-	if _, ok := workflowCallUsesRepoRef(u.Value); ok {
+	if _, ok := references.WorkflowRef(u.Value); ok {
 		return nil
 	}
 
@@ -72,7 +75,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *workflowlang.Job) error {
 		// When the specification is invalid and it is local reusable workflow call, remember it caused
 		// an error by setting `nil` to cache. This can prevent redundant 'could not read workflow call'
 		// error.
-		rule.cache.writeCache(u.Value, nil, nil)
+		rule.cache.IgnoreInvalid(u.Value)
 	}
 
 	rule.Errorf(
@@ -85,9 +88,9 @@ func (rule *RuleWorkflowCall) VisitJobPre(n *workflowlang.Job) error {
 
 func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *workflowlang.WorkflowCall, jobPerms *workflowlang.Permissions, jobCacheMode *workflowlang.CacheMode, localSpec string) {
 	u := call.Uses
-	m, err := rule.cache.findMetadataForCall(u.Value)
+	m, err := rule.cache.FindMetadataForCall(u.Value)
 	if err != nil {
-		rule.Error(u.Pos, err.Error())
+		rule.errs = append(rule.errs, workflowLookupError(u, err))
 		return
 	}
 	if m == nil {
@@ -159,25 +162,25 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call *workflowlang.Work
 // against the permissions the calling job grants. GitHub validates this when the workflow is loaded,
 // so a shortfall aborts the whole run before any job starts, including any "if: failure()" handler.
 // "if:" on a job of the called workflow does not affect the comparison.
-func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *workflowlang.WorkflowCall, jobPerms *workflowlang.Permissions, m *ReusableWorkflowMetadata) {
+func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *workflowlang.WorkflowCall, jobPerms *workflowlang.Permissions, m *calls.Metadata) {
 	if len(m.JobPermissions) == 0 {
 		return
 	}
 
-	var granted resolvedPermissions
+	var granted calls.ResolvedPermissions
 	switch {
 	case jobPerms != nil:
-		granted = resolvePermissionsAST(jobPerms)
+		granted = calls.ResolvePermissionsAST(jobPerms)
 	case rule.workflowPermissions != nil:
-		granted = resolvePermissionsAST(rule.workflowPermissions)
+		granted = calls.ResolvePermissionsAST(rule.workflowPermissions)
 	default:
 		a := DefaultPermissionsAssumptionUnset
 		if cfg := rule.Config(); cfg != nil {
 			a = cfg.AssumeDefaultPermissions
 		}
-		granted = resolvedPermissions{permissionsDeclared, defaultPermissionLevels(a)}
+		granted = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(a == DefaultPermissionsAssumptionPermissive)}
 	}
-	if granted.kind != permissionsDeclared {
+	if granted.Kind != calls.PermissionsDeclared {
 		return
 	}
 
@@ -197,11 +200,11 @@ func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *workflowlang.Wo
 
 		want, have := []string{}, []string{}
 		for _, s := range ss {
-			if granted.levels[s] >= required[s] {
+			if granted.Levels[s] >= required[s] {
 				continue
 			}
 			want = append(want, s+": "+required[s].String())
-			have = append(have, s+": "+granted.levels[s].String())
+			have = append(have, s+": "+granted.Levels[s].String())
 		}
 		if len(want) == 0 {
 			continue
@@ -218,57 +221,9 @@ func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call *workflowlang.Wo
 	}
 }
 
-// Normalize a local or self-repository reusable workflow reference to the existing local cache key.
-func workflowCallUsesLocalSpec(u string) (string, bool) {
-	if strings.HasPrefix(u, "$/") {
-		s, ok := selfRepositoryUsesLocalSpec(u)
-		if !ok {
-			return "", false
-		}
-		u = s
-	} else if !strings.HasPrefix(u, "./") {
-		return "", false
-	}
-	path := strings.TrimPrefix(u, "./")
-
-	// Cannot contain a ref
-	idx := strings.IndexRune(path, '@')
-	if idx > 0 {
-		return "", false
-	}
-
-	return u, len(path) > 0
-}
-
-// Parse {owner}/{repo}/{path to workflow.yml}@{ref} and return the {ref} part. The second return
-// value is false when the specification has another form.
-// https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#calling-a-reusable-workflow
-func workflowCallUsesRepoRef(u string) (string, bool) {
-	// Repo reference must start with owner
-	if strings.HasPrefix(u, ".") || strings.HasPrefix(u, "$") {
-		return "", false
-	}
-
-	idx := strings.IndexRune(u, '/')
-	if idx <= 0 {
-		return "", false
-	}
-	u = u[idx+1:] // Eat owner
-
-	idx = strings.IndexRune(u, '/')
-	if idx <= 0 {
-		return "", false
-	}
-	u = u[idx+1:] // Eat repo
-
-	idx = strings.IndexRune(u, '@')
-	if idx <= 0 {
-		return "", false
-	}
-	u = u[idx+1:] // Eat workflow path
-
-	if len(u) == 0 {
-		return "", false
-	}
-	return u, true
+// workflowLookupError assigns dependency failures to their owning rule, even
+// when expression inference requested the same metadata. Selection and
+// suppression consequently do not depend on which consumer ran first.
+func workflowLookupError(uses *workflowlang.String, err error) *Error {
+	return errorAt(uses.Pos, "workflow-call", err.Error())
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -123,7 +123,7 @@ jobs:
 			}
 			var found []*Error
 			for _, finding := range findings {
-				if finding.Kind == "shellcheck" {
+				if finding.Rule == "shellcheck" {
 					found = append(found, finding)
 				}
 			}
@@ -131,7 +131,7 @@ jobs:
 				return
 			}
 			line := 7 + strings.Count(tc.script, "\n")
-			if tc.finding == "" || len(found) != 1 || !strings.Contains(found[0].Message, tc.finding) || found[0].Line != line {
+			if tc.finding == "" || len(found) != 1 || !strings.Contains(found[0].Message, tc.finding) || found[0].Start.Line != line {
 				t.Fatalf("want %q on workflow line %d; got %v", tc.finding, line, found)
 			}
 		})

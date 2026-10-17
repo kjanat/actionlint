@@ -1,7 +1,7 @@
 // Package config loads and describes actionlint configuration.
 package config
 
-import "actionlint.kjanat.dev/internal/repoconfig"
+import repoconfig "actionlint.kjanat.dev/internal/config"
 
 type Config = repoconfig.Config
 type Inspection = repoconfig.Inspection

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/processconfig"
 	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/repoconfig"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.

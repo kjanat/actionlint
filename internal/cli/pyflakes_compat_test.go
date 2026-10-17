@@ -10,7 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/diagnostic"
+
 	ruffcheck "actionlint.kjanat.dev/internal/ruff"
 )
 
@@ -91,7 +92,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 					t.Fatalf("status=%d stdout=%s stderr=%s", status, &stdout, &stderr)
 				}
 				var result struct {
-					Diagnostics []actionlint.Diagnostic `json:"diagnostics"`
+					Diagnostics []diagnostic.Diagnostic `json:"diagnostics"`
 				}
 				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 					t.Fatalf("%v: %s", err, &stdout)

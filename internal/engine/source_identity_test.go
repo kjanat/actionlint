@@ -158,12 +158,12 @@ func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 	refs := workflowReferences("workflow.yml", []byte(content), parsed.workflow, false)
 	var result []source.Reference
 	for _, step := range parsed.workflow.Jobs["build"].Steps {
-		result = append(result, refs.steps[step])
+		result = append(result, refs.Steps[step])
 	}
 	for _, step := range parsed.workflow.Jobs["build"].Steps {
 		if parallel, ok := step.Exec.(*workflowlang.ExecParallel); ok {
 			for _, child := range parallel.Steps {
-				result = append(result, refs.steps[child])
+				result = append(result, refs.Steps[child])
 			}
 		}
 	}

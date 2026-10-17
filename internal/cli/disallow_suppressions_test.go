@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -91,9 +92,9 @@ jobs:
 					if diff := cmp.Diff(kindCounts(tc.kinds), kindCounts(kinds)); diff != "" {
 						t.Fatal(diff)
 					}
-					wantStatus := actionlint.ExitStatusSuccessNoProblem
+					wantStatus := render.ExitSuccessNoProblem
 					if len(tc.kinds) != 0 {
-						wantStatus = actionlint.ExitStatusSuccessProblemFound
+						wantStatus = render.ExitSuccessProblemFound
 					}
 					if status != wantStatus || stderr.Len() != 0 {
 						t.Fatalf("status=%d, want=%d; stderr=%s", status, wantStatus, &stderr)
@@ -141,9 +142,9 @@ jobs:
 				args = append(args, "-ignore", tc.cliIgnore)
 			}
 			status := cmd.Main(append(args, "-"))
-			wantStatus := actionlint.ExitStatusSuccessNoProblem
+			wantStatus := render.ExitSuccessNoProblem
 			if len(tc.want) != 0 {
-				wantStatus = actionlint.ExitStatusSuccessProblemFound
+				wantStatus = render.ExitSuccessProblemFound
 			}
 			if status != wantStatus || stderr.Len() != 0 {
 				t.Fatalf("status=%d, want=%d; stderr=%s", status, wantStatus, &stderr)

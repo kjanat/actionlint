@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 type ownedBackend struct {
@@ -60,8 +61,8 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 			}
 			loads := 0
 			result, err := application.Check(ctx, application.Options{
-				WorkingDir: root, ConfigFile: config, SkipProjectConfig: true, ShellCheck: "shellcheck",
-				LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { loads++; return backend, nil },
+				WorkingDir: root, ConfigFile: config, SkipProjectConfig: true,
+				LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { loads++; return backend, nil }, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations(),
 			}, application.Input{Kind: application.Stdin, Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo one\n      - run: echo two\n")})
 			if loads != 1 || backend.closed != 1 || backend.closeContextError != nil {
 				t.Fatalf("loads=%d closes=%d cleanup context=%v", loads, backend.closed, backend.closeContextError)

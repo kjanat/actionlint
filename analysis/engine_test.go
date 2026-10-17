@@ -10,7 +10,7 @@ import (
 )
 
 func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {
-	engine, err := plugin.LoadEngine(t.Context(), filepath.Join("..", "internal", "corewasm", "testdata", "engines", "echo.wasm"), plugin.EngineOptions{})
+	engine, err := plugin.LoadEngine(t.Context(), filepath.Join("..", "internal", "plugins", "core", "testdata", "engines", "echo.wasm"), plugin.EngineOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

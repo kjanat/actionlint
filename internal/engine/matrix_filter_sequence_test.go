@@ -59,7 +59,7 @@ jobs:
 			for _, finding := range rule.Errs() {
 				if strings.Contains(finding.Message, "does not match in matrix") {
 					count++
-					if finding.Line != 8 {
+					if finding.Start.Line != 8 {
 						t.Fatalf("wrong exclusion position: %+v", finding)
 					}
 				}

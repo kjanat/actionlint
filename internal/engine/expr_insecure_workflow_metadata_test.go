@@ -30,7 +30,7 @@ func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
 			} {
 				for _, ending := range []string{"\n", "\r\n"} {
 					findings := lintSiblingWorkflowMetadata(t, strings.ReplaceAll(script.step, "\n", ending), ending)
-					if len(findings) != 1 || findings[0].Kind != "expression" || findings[0].Line != script.line ||
+					if len(findings) != 1 || findings[0].Rule != "script-injection" || findings[0].Start.Line != script.line ||
 						!strings.Contains(findings[0].Message, "potentially untrusted") || !strings.Contains(findings[0].Message, "github.event.workflow") {
 						t.Fatalf("missing located injection finding for %s: %+v", expression, findings)
 					}

@@ -183,6 +183,8 @@ func (ty StringType) DeepCopy() Type {
 
 // ObjectType is Type for objects, which can hold key-values.
 type ObjectType struct {
+	// DisplayName abbreviates large externally supplied structural types in diagnostics.
+	DisplayName string
 	// Props is map from properties name to their Type.
 	Props map[string]Type
 	// Mapped is an element Type of this object. This means all props have the Type. For example,
@@ -197,28 +199,28 @@ type ObjectType struct {
 // NewEmptyObjectType creates new Loose ObjectType instance which allows unknown props. When
 // accessing to unknown props, their values will fall back to any.
 func NewEmptyObjectType() *ObjectType {
-	return &ObjectType{map[string]Type{}, AnyType{}}
+	return &ObjectType{Props: map[string]Type{}, Mapped: AnyType{}}
 }
 
 // NewObjectType creates new Loose ObjectType instance which allows unknown props with given props.
 func NewObjectType(props map[string]Type) *ObjectType {
-	return &ObjectType{props, AnyType{}}
+	return &ObjectType{Props: props, Mapped: AnyType{}}
 }
 
 // NewEmptyStrictObjectType creates new ObjectType instance which does not allow unknown props.
 func NewEmptyStrictObjectType() *ObjectType {
-	return &ObjectType{map[string]Type{}, nil}
+	return &ObjectType{Props: map[string]Type{}}
 }
 
 // NewStrictObjectType creates new ObjectType instance which does not allow unknown props with
 // given prop types.
 func NewStrictObjectType(props map[string]Type) *ObjectType {
-	return &ObjectType{props, nil}
+	return &ObjectType{Props: props}
 }
 
 // NewMapObjectType creates new ObjectType which maps keys to a specific Type value.
 func NewMapObjectType(t Type) *ObjectType {
-	return &ObjectType{nil, t}
+	return &ObjectType{Mapped: t}
 }
 
 // IsStrict returns if the Type is a Strict object, which means no unknown prop is allowed.
@@ -243,6 +245,9 @@ func (ty *ObjectType) Loose() {
 }
 
 func (ty *ObjectType) String() string {
+	if ty.DisplayName != "" {
+		return ty.DisplayName
+	}
 	if !ty.IsStrict() {
 		if ty.IsLoose() {
 			return "object"
@@ -351,8 +356,9 @@ func (ty *ObjectType) Merge(other Type) Type {
 		}
 
 		return &ObjectType{
-			Props:  props,
-			Mapped: mapped,
+			Props:       props,
+			Mapped:      mapped,
+			DisplayName: ty.DisplayName,
 		}
 	default:
 		return AnyType{}
@@ -369,7 +375,7 @@ func (ty *ObjectType) DeepCopy() Type {
 	if m != nil {
 		m = m.DeepCopy()
 	}
-	return &ObjectType{p, m}
+	return &ObjectType{Props: p, Mapped: m, DisplayName: ty.DisplayName}
 }
 
 // ArrayType is Type for arrays.

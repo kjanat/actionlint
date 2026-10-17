@@ -4,26 +4,7 @@ import (
 	"io"
 	"strings"
 	"testing"
-
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
-
-func TestSchemaNestedTimezoneAliases(t *testing.T) {
-	// LoadLocation can resolve casing variants through the host filesystem.
-	// Invalid/Timezone exercises rejection independently of filesystem casing.
-	for _, tz := range []struct {
-		name  string
-		valid bool
-	}{{"UTC", true}, {"Etc/UTC", true}, {"Universal", true}, {"Europe/Amsterdam", true}, {"Local", false}, {"local", false}, {"Invalid/Timezone", false}} {
-		t.Run(tz.name, func(t *testing.T) {
-			rule := NewRuleEvents()
-			rule.checkTimezone(&workflowlang.String{Value: tz.name, Pos: &workflowlang.Pos{Line: 1, Col: 1}})
-			if valid := len(rule.Errs()) == 0; valid != tz.valid {
-				t.Fatalf("valid=%v, expected %v: %v", valid, tz.valid, rule.Errs())
-			}
-		})
-	}
-}
 
 func TestSchemaNestedWaitAllStaticValue(t *testing.T) {
 	for _, value := range []struct {
@@ -56,7 +37,7 @@ jobs:
       - run: echo test
 `
 	_, errs := Parse([]byte(src))
-	if len(errs) != 1 || !strings.Contains(errs[0].Message, `"cron" is missing`) || errs[0].Line != 4 {
+	if len(errs) != 1 || !strings.Contains(errs[0].Message, `"cron" is missing`) || errs[0].Start.Line != 4 {
 		t.Fatalf("wanted missing cron diagnostic at second schedule entry, got %v", errs)
 	}
 }

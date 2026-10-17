@@ -22,7 +22,7 @@ func TestWorkflowRunHeadRepositoryInjection(t *testing.T) {
 		t.Run(expression, func(t *testing.T) {
 			rule := NewRuleExpression(nil, nil)
 			rule.checkScriptString(&workflowlang.String{Value: "echo '${{ " + expression + " }}'", Pos: &workflowlang.Pos{Line: 1, Col: 1}}, "jobs.<job_id>.steps.run")
-			if len(rule.Errs()) != 1 || rule.Errs()[0].Kind != "expression" {
+			if len(rule.Errs()) != 1 || rule.Errs()[0].Rule != "script-injection" {
 				t.Fatalf("got %+v, want one expression injection finding", rule.Errs())
 			}
 		})

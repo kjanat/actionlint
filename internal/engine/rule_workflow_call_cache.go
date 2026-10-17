@@ -4,6 +4,8 @@ import (
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -12,7 +14,7 @@ type workflowCacheModeVisit struct {
 	mode workflowlang.CacheModeKind
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallCacheMode(pos *workflowlang.Pos, spec, sourceSpec string, granted *workflowlang.CacheMode, m *ReusableWorkflowMetadata, checked map[workflowCacheModeVisit]bool) {
+func (rule *RuleWorkflowCall) checkWorkflowCallCacheMode(pos *workflowlang.Pos, spec, sourceSpec string, granted *workflowlang.CacheMode, m *calls.Metadata, checked map[workflowCacheModeVisit]bool) {
 	have, known := granted.Capabilities()
 	if granted != nil && !known {
 		return
@@ -40,7 +42,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallCacheMode(pos *workflowlang.Pos, 
 		if access.Uses == "" {
 			continue
 		}
-		next, err := rule.cache.findMetadataForCall(access.SourceUses)
+		next, err := rule.cache.FindMetadataForCall(access.SourceUses)
 		if err != nil {
 			rule.Errorf(pos, "could not validate cache access through job %q of %q: %s", id, sourceSpec, err)
 			continue

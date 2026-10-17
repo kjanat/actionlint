@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -80,9 +80,9 @@ jobs:
 					var stdout, stderr bytes.Buffer
 					cmd := Command{Stdin: bytes.NewReader(nil), Stdout: &stdout, Stderr: &stderr}
 					status := cmd.Main(args)
-					wantStatus, wantCount := actionlint.ExitStatusSuccessProblemFound, 1
+					wantStatus, wantCount := render.ExitSuccessProblemFound, 1
 					if config.disabled {
-						wantStatus, wantCount = actionlint.ExitStatusSuccessNoProblem, 0
+						wantStatus, wantCount = render.ExitSuccessNoProblem, 0
 					}
 					if status != wantStatus || stderr.Len() != 0 {
 						t.Fatalf("exit=%d, want=%d; stderr=%s", status, wantStatus, stderr.String())

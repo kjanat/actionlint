@@ -64,7 +64,7 @@ func TestConcurrencyExpressionGroups(t *testing.T) {
 					// The workflow schema permits an empty scalar; job concurrency
 					// and both mapping forms require a nonempty group.
 					if tc.emptyGroup || (tc.emptyScalar && (scope == "job" || form == "group")) {
-						if len(errs) != 1 || errs[0].Kind != "expression" || !strings.Contains(errs[0].Message, "must be a non-empty string") {
+						if len(errs) != 1 || errs[0].Rule != "expression" || !strings.Contains(errs[0].Message, "must be a non-empty string") {
 							t.Fatalf("want one nonempty-group diagnostic, got %v", errs)
 						}
 					} else if len(errs) != 0 {

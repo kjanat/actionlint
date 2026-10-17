@@ -10,7 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/buildinfo"
+
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
@@ -100,8 +101,8 @@ jobs:
 			normalize := strings.NewReplacer(runtime.Version(), "GO_VERSION", runtime.GOOS+"/"+runtime.GOARCH, "GO_PLATFORM", root, "REPO_ROOT")
 			got := commandTranscript{status, normalize.Replace(stdout.String()), normalize.Replace(stderr.String())}
 			if strings.Contains(tc.name, "version") {
-				got.Stdout = strings.Replace(got.Stdout, " "+actionlint.Version()+"\n", " 1.16.0\n", 1)
-				got.Stdout = strings.Replace(got.Stdout, "\n"+actionlint.InstalledFrom()+"\n", "\ncompatibility-test\n", 1)
+				got.Stdout = strings.Replace(got.Stdout, " "+buildinfo.Version()+"\n", " 1.16.0\n", 1)
+				got.Stdout = strings.Replace(got.Stdout, "\n"+buildinfo.InstalledFrom()+"\n", "\ncompatibility-test\n", 1)
 			}
 			if tc.name == "color" {
 				// Windows' colorable writer removes ANSI escapes from buffer output.

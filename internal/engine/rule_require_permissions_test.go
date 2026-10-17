@@ -60,7 +60,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 					}
 					return
 				}
-				if len(errs) != 1 || errs[0].Kind != "require-permissions" || errs[0].Line != tc.wantLine || !strings.Contains(errs[0].Message, "permissions: {}") {
+				if len(errs) != 1 || errs[0].Rule != "require-permissions" || errs[0].Start.Line != tc.wantLine || !strings.Contains(errs[0].Message, "permissions: {}") {
 					t.Fatalf("expected one permissions error at line %d, got %v", tc.wantLine, errs)
 				}
 			})
@@ -123,7 +123,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 				if err := rule.VisitWorkflowPre(workflow); err != nil {
 					t.Fatal(err)
 				}
-				if findings := rule.Errs(); len(findings) != 1 || findings[0].Line != tc.line || findings[0].Column != 1 {
+				if findings := rule.Errs(); len(findings) != 1 || findings[0].Start.Line != tc.line || findings[0].Start.Column != 1 {
 					t.Fatalf("permission finding lost declaration position: %+v", findings)
 				}
 			}
@@ -133,7 +133,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 	if err := rule.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
 		t.Fatal(err)
 	}
-	if findings := rule.Errs(); len(findings) != 1 || findings[0].Line != 1 || findings[0].Column != 1 {
+	if findings := rule.Errs(); len(findings) != 1 || findings[0].Start.Line != 1 || findings[0].Start.Column != 1 {
 		t.Fatalf("manual AST fallback changed: %+v", findings)
 	}
 }
@@ -156,7 +156,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			t.Fatalf("permission suppression scope changed: %+v", findings)
 		}
 		for i, kind := range tc.want {
-			if findings[i].Kind != kind {
+			if findings[i].Rule != kind {
 				t.Fatalf("want %v, got %+v", tc.want, findings)
 			}
 		}

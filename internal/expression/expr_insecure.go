@@ -356,7 +356,7 @@ func (u *UntrustedInputChecker) endInput(serialized bool) {
 
 func (u *UntrustedInputChecker) reportInputs(start Node, inputs []string) {
 	if len(inputs) == 1 {
-		err := errorfAtExpr(
+		err := errorfAtExpr(untrustedInterpolation,
 			start,
 			"%q is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
 			inputs[0],
@@ -365,7 +365,7 @@ func (u *UntrustedInputChecker) reportInputs(start Node, inputs []string) {
 	} else if len(inputs) > 1 {
 		// When multiple untrusted inputs are detected, it means the expression extracts multiple properties with object
 		// filter syntax. Show all properties in error message.
-		err := errorfAtExpr(
+		err := errorfAtExpr(untrustedInterpolation,
 			start,
 			"object filter extracts potentially untrusted properties %s. avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
 			stringutil.SortedQuotes(inputs),

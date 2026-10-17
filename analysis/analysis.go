@@ -5,15 +5,14 @@ package analysis
 import (
 	"context"
 
-	"slices"
-
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/document"
 	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/engine"
-	"actionlint.kjanat.dev/internal/resolution"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/resolver"
 )
 
@@ -82,27 +81,12 @@ type Result struct {
 
 // Analyze checks already-loaded sources. It does not perform source discovery.
 func Analyze(ctx context.Context, request Request) (*Result, error) {
-	if request.Options.Resolver != nil {
-		if factory, ok := request.Options.Resolver.(resolver.SessionFactory); ok {
-			request.Options.Resolver = factory.NewSession()
-		}
-		request.Options.Analyzers = append(slices.Clone(request.Options.Analyzers), analyzer.Registration{Analyzer: resolution.Analyzer{Resolver: request.Options.Resolver}})
-	}
-	sources := make([]engine.SourceUnit, len(request.Sources))
+	sources := make([]workspace.Source, len(request.Sources))
 	for i, source := range request.Sources {
-		sources[i] = engine.SourceUnit{Path: source.Path, Content: source.Content, Config: source.Config}
+		sources[i] = workspace.Source{Path: source.Path, Content: source.Content, Config: source.Config}
 	}
-	ignore, err := engine.CompileIgnorePatterns(request.Options.IgnorePatterns)
-	if err != nil {
-		return nil, err
-	}
-	result, err := engine.Analyze(ctx, engine.AnalysisRequest{
-		Analyzers: request.Options.Analyzers, Sources: sources, WorkingDir: request.Options.WorkingDir, ReadFile: request.Options.ReadFile,
-		ShellcheckOptions: backendProcessOptions(request.Options.ShellCheck), RuffOptions: backendProcessOptions(request.Options.Ruff),
-		RuffBackend: request.Options.Ruff.Backend, ShellcheckBackend: request.Options.ShellCheck.Backend,
-		RulePresets: request.Options.Presets, IgnorePatterns: ignore,
-	})
-	return resultView(result), err
+	result, err := application.Analyze(ctx, fileOptions(FileOptions{Options: request.Options}), sources)
+	return applicationResultView(result), err
 }
 
 // Files checks explicit paths with project discovery and configuration loading.
@@ -117,18 +101,20 @@ func Repository(ctx context.Context, directory string, options FileOptions) (*Re
 	return applicationResultView(result), err
 }
 
-func toolOptions(tool Process) *engine.ExternalCommandOptions {
-	return &engine.ExternalCommandOptions{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
+func toolOptions(tool Process) *processconfig.Options {
+	return &processconfig.Options{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
 }
 
 func fileOptions(options FileOptions) application.Options {
 	return application.Options{
 		Resolver: options.Resolver, Analyzers: options.Analyzers, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck),
-		RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend,
-		ShellcheckBackend: options.ShellCheck.Backend, Presets: options.Presets,
-		IgnorePatterns: options.IgnorePatterns,
+		ReadFile: options.ReadFile,
+
+		Presets:        options.Presets,
+		IgnorePatterns: options.IgnorePatterns, Tools: adapters.Options{ShellcheckOptions: backendProcessOptions(options.ShellCheck),
+			RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend,
+			ShellcheckBackend: options.ShellCheck.Backend}.Registrations(),
 	}
 }
 
@@ -139,14 +125,7 @@ func applicationResultView(result *application.Result) *Result {
 	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
 }
 
-func resultView(result *engine.AnalysisResult) *Result {
-	if result == nil {
-		return nil
-	}
-	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount()}
-}
-
-func backendProcessOptions(tool Tool) *engine.ExternalCommandOptions {
+func backendProcessOptions(tool Tool) *processconfig.Options {
 	if tool.Process != nil {
 		return toolOptions(*tool.Process)
 	}

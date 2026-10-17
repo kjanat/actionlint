@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@actions/github-script": "github:actions/github-script",
-    "@octokit/webhooks-types": "^7",
+    "@octokit/openapi-webhooks-types": "latest",
     "@types/node": "^26",
     "@typescript/native": "npm:typescript@^7",
     "biome": "npm:@biomejs/biome@^2.5",
@@ -58,7 +58,7 @@
       {
         "name": "npm",
         "version": ">=12",
-        "onFail": "warn"
+        "onFail": "download"
       }
     ],
     "runtime": [

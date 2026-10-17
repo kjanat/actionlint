@@ -20,10 +20,12 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/conformance"
 	actionlint "actionlint.kjanat.dev/internal/engine"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workspace"
 	ownedyaml "actionlint.kjanat.dev/internal/yaml"
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
@@ -408,15 +410,13 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		return out
 	case "workflow":
-		result, err := actionlint.Analyze(t.Context(), actionlint.AnalysisRequest{
-			Sources: []actionlint.SourceUnit{{Path: "<stdin>", Content: []byte(c.Input), Config: &actionlint.Config{}}},
-		})
+		result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: &actionlint.Config{}}})
 		if err != nil {
 			t.Fatal(err)
 		}
 		errs := make([]*actionlint.Error, 0, len(result.Diagnostics))
 		for _, d := range result.Diagnostics {
-			errs = append(errs, &actionlint.Error{Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column, Kind: d.Rule, Message: d.Message})
+			errs = append(errs, &actionlint.Error{Diagnostic: d})
 		}
 		return upstreamDiagnostics(errs)
 	case "action":
@@ -494,7 +494,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 func upstreamDiagnostics(errs []*actionlint.Error) []string {
 	out := make([]string, 0, len(errs))
 	for _, err := range errs {
-		err.Filepath = filepath.ToSlash(err.Filepath)
+		err.Path = filepath.ToSlash(err.Path)
 		out = append(out, err.Error())
 	}
 	return out

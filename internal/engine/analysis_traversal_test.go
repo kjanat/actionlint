@@ -30,9 +30,9 @@ func TestTraversalDefersScriptExecutionToScheduler(t *testing.T) {
 	scriptFailure := errors.New("script failure")
 	script := &phaseScriptAnalyzer{failure: scriptFailure}
 	proc := newConcurrentProcess(t.Context(), 1)
-	defer proc.wait()
+	defer proc.Wait()
 	defer func() {
-		if err := proc.finish(); err != nil {
+		if err := proc.Finish(); err != nil {
 			t.Error(err)
 		}
 	}()

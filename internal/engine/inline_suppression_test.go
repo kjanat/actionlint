@@ -32,7 +32,7 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
   test:
 ` + cachePolicySteps
 					errs := lintCachePolicy(t, strings.ReplaceAll(source, "\n", ending), tc.config)
-					if len(errs) != 1 || errs[0].Kind != tc.kind || errs[0].Line != 3 {
+					if len(errs) != 1 || errs[0].Rule != tc.kind || errs[0].Start.Line != 3 {
 						t.Fatalf("want one %s on line 3; got %v", tc.kind, errs)
 					}
 				})
@@ -63,11 +63,11 @@ run-name: |
 		t.Fatal(diff)
 	}
 	findings := []*Error{
-		{Line: 1, Kind: "cache-operation"},
-		{Line: 2, Kind: "cache-operation"},
-		{Line: 2, Kind: "cache-operation", source: []byte("callee")},
-		{Line: 2, Kind: "expression"},
-		{Line: 4, Kind: "cache-operation"},
+		{Start: DiagnosticPosition{Line: 1}, Rule: "cache-operation"},
+		{Start: DiagnosticPosition{Line: 2}, Rule: "cache-operation"},
+		{Start: DiagnosticPosition{Line: 2}, Rule: "cache-operation", source: []byte("callee")},
+		{Start: DiagnosticPosition{Line: 2}, Rule: "expression-reference"},
+		{Start: DiagnosticPosition{Line: 4}, Rule: "cache-operation"},
 	}
 	got := applyInlineSuppressions(findings, []inlineSuppressionDirective{directive}, nil)
 	if diff := cmp.Diff([]*Error{findings[0], findings[2], findings[3], findings[4]}, got, cmp.AllowUnexported(Error{})); diff != "" {
@@ -100,7 +100,7 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
   test:
 ` + cachePolicySteps
 				errs := lintCachePolicy(t, strings.ReplaceAll(source, "\n", ending), "")
-				if len(errs) != 1 || errs[0].Kind != "inline-suppression" || errs[0].Line != tc.line {
+				if len(errs) != 1 || errs[0].Rule != "inline-suppression" || errs[0].Start.Line != tc.line {
 					t.Fatalf("want one inline-suppression at %d, got %v", tc.line, errs)
 				}
 			})
@@ -112,7 +112,7 @@ jobs:
   test:
 ` + cachePolicySteps
 	errs := lintCachePolicy(t, source, "policy: {disallow-suppressions: true}")
-	if len(errs) != 2 || errs[0].Kind != "disallow-suppressions" || errs[1].Kind != "disallow-suppressions" || errs[0].Line != 2 || errs[1].Line != 3 {
+	if len(errs) != 2 || errs[0].Rule != "disallow-suppressions" || errs[1].Rule != "disallow-suppressions" || errs[0].Start.Line != 2 || errs[1].Start.Line != 3 {
 		t.Fatalf("want separate prohibited directives on lines 2 and 3, got %v", errs)
 	}
 }
@@ -132,12 +132,12 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 			if parseErr != nil {
 				t.Fatal(parseErr)
 			}
-			finding := &Error{Line: 5, Kind: name}
+			finding := &Error{Start: DiagnosticPosition{Line: 5}, Rule: name}
 			if got := applyInlineSuppressions([]*Error{finding}, []inlineSuppressionDirective{directive}, nil); len(got) != 0 {
 				t.Fatalf("registered rule was not suppressed: %v", got)
 			}
 			got := applyInlineSuppressions([]*Error{finding}, []inlineSuppressionDirective{directive}, cfg.Policy.DisallowSuppressions)
-			if len(got) != 2 || got[0] != finding || got[1].Kind != "disallow-suppressions" || got[1].Line != 4 {
+			if len(got) != 2 || got[0] != finding || got[1].Rule != "disallow-suppressions" || got[1].Start.Line != 4 {
 				t.Fatalf("restriction did not retain finding and report comment: %v", got)
 			}
 		})
@@ -146,29 +146,29 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 
 func TestInlineSuppressionBlockBody(t *testing.T) {
 	for _, header := range []string{
-		"run: | # actionlint:ignore expression,shellcheck -- reviewed",
-		"run: >- # actionlint:ignore expression,shellcheck -- reviewed",
-		"run: |2+ # actionlint:ignore expression,shellcheck -- reviewed",
-		"# actionlint:ignore-next-line expression,shellcheck -- reviewed\nrun: |",
-		"run: &script | # actionlint:ignore expression,shellcheck -- reviewed",
-		"run: !!str\n  | # actionlint:ignore expression,shellcheck -- reviewed",
-		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+		"run: | # actionlint:ignore expression-reference,shellcheck -- reviewed",
+		"run: >- # actionlint:ignore expression-reference,shellcheck -- reviewed",
+		"run: |2+ # actionlint:ignore expression-reference,shellcheck -- reviewed",
+		"# actionlint:ignore-next-line expression-reference,shellcheck -- reviewed\nrun: |",
+		"run: &script | # actionlint:ignore expression-reference,shellcheck -- reviewed",
+		"run: !!str\n  | # actionlint:ignore expression-reference,shellcheck -- reviewed",
+		`# actionlint:ignore-next-line expression-reference,shellcheck -- reviewed
 run: !!str
   |`,
-		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+		`# actionlint:ignore-next-line expression-reference,shellcheck -- reviewed
 run: &script
   |2-`,
-		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+		`# actionlint:ignore-next-line expression-reference,shellcheck -- reviewed
 run: &script !!str
   >-`,
-		`run: # actionlint:ignore expression,shellcheck -- reviewed
+		`run: # actionlint:ignore expression-reference,shellcheck -- reviewed
   !!str
   |`,
 		`run:
   !!str
-  &script # actionlint:ignore expression,shellcheck -- reviewed
+  &script # actionlint:ignore expression-reference,shellcheck -- reviewed
   |`,
-		`# actionlint:ignore-next-line expression,shellcheck -- reviewed
+		`# actionlint:ignore-next-line expression-reference,shellcheck -- reviewed
 run:
   &script
   !!str
@@ -183,10 +183,10 @@ run:
 next: value
 `, "\n", ending)
 				findings := []*Error{
-					{Line: start + 1, Kind: "expression"},
-					{Line: start + 2, Kind: "shellcheck"},
-					{Line: start + 2, Kind: "action"},
-					{Line: start + 3, Kind: "expression"},
+					{Start: DiagnosticPosition{Line: start + 1}, Rule: "expression-reference"},
+					{Start: DiagnosticPosition{Line: start + 2}, Rule: "shellcheck"},
+					{Start: DiagnosticPosition{Line: start + 2}, Rule: "action"},
+					{Start: DiagnosticPosition{Line: start + 3}, Rule: "expression-reference"},
 				}
 				got := filterInlineSuppressions([]byte(source), findings, nil)
 				if diff := cmp.Diff(findings[2:], got, cmp.AllowUnexported(Error{})); diff != "" {
@@ -199,19 +199,19 @@ next: value
 
 func TestInlineSuppressionSplitPrefixIsolation(t *testing.T) {
 	for _, header := range []string{
-		`env: {SAFE: value} # actionlint:ignore expression,shellcheck -- unrelated
+		`env: {SAFE: value} # actionlint:ignore expression-reference,shellcheck -- unrelated
 run:
   !!str
   |`,
 		`run:
   !!str
   |
-    # actionlint:ignore expression,shellcheck -- script text`,
+    # actionlint:ignore expression-reference,shellcheck -- script text`,
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(header+"\n    echo body\n", "\n", ending)
 			line := strings.Count(header, "\n") + 2
-			findings := []*Error{{Line: line, Kind: "expression"}, {Line: line, Kind: "shellcheck"}}
+			findings := []*Error{{Start: DiagnosticPosition{Line: line}, Rule: "expression-reference"}, {Start: DiagnosticPosition{Line: line}, Rule: "shellcheck"}}
 			if got := filterInlineSuppressions([]byte(source), findings, nil); len(got) != 2 {
 				t.Fatalf("unrelated prefix suppressed body: %q: %+v", source, got)
 			}
@@ -242,7 +242,7 @@ run:
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := []byte(strings.ReplaceAll(source, "\n", ending))
 			_, findings := Parse(source)
-			if len(findings) != 1 || findings[0].Kind != "syntax-check" {
+			if len(findings) != 1 || findings[0].Rule != "syntax-check" {
 				t.Fatalf("malformed fixture findings: %+v", findings)
 			}
 			if got := filterInlineSuppressions(source, findings, nil); len(got) != 0 {
@@ -315,7 +315,7 @@ jobs: [`,
 	source := []byte("jobs: [ # actionlint:ignore syntax-check --")
 	_, findings := Parse(source)
 	got := filterInlineSuppressions(source, findings, nil)
-	if len(got) != 2 || got[1].Kind != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
+	if len(got) != 2 || got[1].Rule != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
 		t.Fatalf("explicit empty reason was accepted: %+v", got)
 	}
 	cfg, err := ParseConfig([]byte("policy: {disallow-suppressions: true}"))
@@ -324,7 +324,7 @@ jobs: [`,
 	}
 	source = []byte("jobs: [ # actionlint:ignore syntax-check -- reviewed")
 	_, findings = Parse(source)
-	if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Kind != "disallow-suppressions" {
+	if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != "disallow-suppressions" {
 		t.Fatalf("malformed YAML bypassed suppression policy: %+v", got)
 	}
 	source = []byte("name: test # actionlint:ignore syntax-check -- reviewed\njobs: [")
@@ -337,11 +337,11 @@ jobs: [`,
 func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
 	source := []byte(`run: |
   text = '''
-  # actionlint:ignore-next-line expression -- sample text
+  # actionlint:ignore-next-line expression-reference -- sample text
   ${{ github.event.issue.title }}
   '''
 `)
-	finding := &Error{Line: 4, Kind: "expression"}
+	finding := &Error{Start: DiagnosticPosition{Line: 4}, Rule: "expression-reference"}
 	got := filterInlineSuppressions(source, []*Error{finding}, nil)
 	if len(got) != 1 || got[0] != finding {
 		t.Fatalf("script text changed findings: %+v", got)
@@ -380,7 +380,7 @@ jobs: [`,
 		} {
 			source := []byte(strings.ReplaceAll(prefix, "\n", ending))
 			_, findings := Parse(source)
-			if len(findings) != 1 || findings[0].Kind != "syntax-check" {
+			if len(findings) != 1 || findings[0].Rule != "syntax-check" {
 				t.Fatalf("invalid boundary fixture: %+v", findings)
 			}
 			if got := filterInlineSuppressions(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
@@ -398,7 +398,7 @@ jobs: [`,
 			if reason == " --" {
 				want = "inline-suppression"
 			}
-			if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Kind != want {
+			if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != want {
 				t.Fatalf("recovered prefix bypassed reason or policy: %+v", got)
 			}
 		}
@@ -411,14 +411,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: | # actionlint:ignore expression -- reviewed input
+      - run: | # actionlint:ignore script-injection -- reviewed input
           echo '${{ github.event.issue.title }}'
 `
 	if got := lintCachePolicy(t, source, ""); len(got) != 0 {
 		t.Fatal(got)
 	}
 	got := lintCachePolicy(t, source, "policy: {disallow-suppressions: true}")
-	if len(got) != 2 || got[0].Kind != "disallow-suppressions" || got[1].Kind != "expression" {
+	if len(got) != 2 || got[0].Rule != "disallow-suppressions" || got[1].Rule != "script-injection" {
 		t.Fatalf("prohibited block suppression: %+v", got)
 	}
 }

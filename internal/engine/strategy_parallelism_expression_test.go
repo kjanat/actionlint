@@ -46,7 +46,7 @@ jobs:
 					if len(errs) != 0 {
 						t.Fatalf("valid parallelism rejected: %v", errs)
 					}
-				} else if len(errs) != 1 || errs[0].Kind != "expression" || !strings.Contains(errs[0].Message, tc.message) {
+				} else if len(errs) != 1 || errs[0].Rule != "expression" || !strings.Contains(errs[0].Message, tc.message) {
 					t.Fatalf("want one %q diagnostic, got %v", tc.message, errs)
 				}
 			})

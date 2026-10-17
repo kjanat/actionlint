@@ -7,16 +7,20 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
+	repoconfig "actionlint.kjanat.dev/internal/config"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/workflownames"
+	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	"actionlint.kjanat.dev/rule"
 )
 
 type analysisEngine struct {
-	analyzers     []analyzer.Registration
-	workflowNames *workflownames.Index
+	toolDescriptors []rule.Descriptor
+	analyzers       []analyzer.Registration
+	workflowNames   *workflownames.Index
 	analysisLogger
 	ctx            context.Context
 	buildRules     func(ruleContext, bool) (builtinAnalyzers, error)
@@ -35,14 +39,14 @@ func (l *analysisEngine) check(
 	cfg *Config,
 	proc *concurrentProcess,
 	localActions *LocalActionsCache,
-	localReusableWorkflows *LocalReusableWorkflowCache,
+	localReusableWorkflows *calls.Cache,
 	usedRules *[]RuleInfo,
 ) (findings []*Error, outline DocumentOutline, resultErr error) {
-	proc = proc.fork()
+	proc = proc.Fork()
 	joined := false
 	defer func() {
 		if !joined {
-			resultErr = errors.Join(resultErr, proc.finish())
+			resultErr = errors.Join(resultErr, proc.Finish())
 		}
 	}()
 	// Each call owns its rules; caches and process scheduling are shared across files.
@@ -66,10 +70,13 @@ func (l *analysisEngine) check(
 		return nil, workflowOutline(path, w, len(all) != 0), configErr
 	}
 	additionalRules := registeredRuleNames(l.analyzers)
+	for _, descriptor := range l.toolDescriptors {
+		additionalRules = append(additionalRules, descriptor.Name)
+	}
 	if err := repoconfig.ValidateRuleNames(cfg, additionalRules...); err != nil {
 		return nil, nil, err
 	}
-	cfg = applyRulePresets(l.rulePresets, cfg, l.analyzers...)
+	cfg = repoconfig.ResolveRules(l.rulePresets, cfg, l.toolDescriptors...)
 	registrations, err := configuredAnalyzers(cfg, l.analyzers)
 	if err != nil {
 		return nil, nil, err
@@ -107,7 +114,7 @@ func (l *analysisEngine) check(
 	var facts factAvailability
 
 	if w != nil {
-		host := traversalHost{analysisLogger: l.analysisLogger, ctx: l.ctx, buildRules: l.buildRules, workingDir: l.workingDir, reader: l.reader, gitModes: l.gitModes, workflowNames: l.workflowNames, onRulesCreated: l.onRulesCreated, rulePresets: l.rulePresets, requires: requiredFacts(registrations)}
+		host := traversalHost{analysisLogger: l.analysisLogger, ctx: l.ctx, buildRules: l.buildRules, workingDir: l.workingDir, reader: l.reader, gitModes: l.gitModes, workflowNames: l.workflowNames, onRulesCreated: l.onRulesCreated, rulePresets: l.rulePresets, requires: requiredFacts(registrations), toolDescriptors: l.toolDescriptors}
 		traversal, err := host.traverse(path, root, w, metadata, project, cfg, projectConfig, proc, localActions, localReusableWorkflows)
 		if traversal == nil {
 			return nil, outline, err
@@ -116,7 +123,7 @@ func (l *analysisEngine) check(
 		units, facts = traversal.composites.scripts, factAvailability{scripts: traversal.composites.collectScripts, execution: traversal.composites.resolveScriptExecution}
 		scriptFindings, scriptErr := runScriptAnalyzers(l.ctx, traversal.builtins.scripts, scriptBatch{scopes: traversal.composites.scriptScopes, scripts: units})
 		all = append(all, scriptFindings...)
-		analysisErr = errors.Join(analysisErr, scriptErr, proc.finish())
+		analysisErr = errors.Join(analysisErr, scriptErr, proc.Finish())
 		joined = true
 		all = append(all, traversal.collect(l.analysisLogger, usedRules)...)
 		metadataSources = traversal.metadataSources
@@ -143,19 +150,19 @@ func (l *analysisEngine) check(
 		}
 	}
 	for _, finding := range all {
-		if finding.details != nil && finding.details.Reference != nil {
+		if finding.Reference != nil {
 			continue
 		}
 		filename := configPath
-		if finding.source != nil && finding.Filepath != "" {
-			filename = finding.Filepath
+		if finding.source != nil && finding.Path != "" {
+			filename = finding.Path
 		}
 		refs, ok := references[filename]
 		if !ok {
 			continue
 		}
-		ref := refs.document
-		if at, exists := refs.positions[[2]int{finding.Line, finding.Column}]; exists {
+		ref := refs.Document
+		if at, exists := refs.Positions[[2]int{finding.Start.Line, finding.Start.Column}]; exists {
 			ref = at
 		}
 		owner := finding.owner
@@ -163,22 +170,20 @@ func (l *analysisEngine) check(
 			owner = &diagnosticOwner{Job: finding.ignoreOrigin.job, Step: finding.ignoreOrigin.stepPosition}
 		}
 		if owner != nil && !finding.rawScriptSource {
-			if job, exists := refs.jobs[strings.ToLower(owner.Job)]; exists {
+			if job, exists := refs.Jobs[strings.ToLower(owner.Job)]; exists {
 				ref = job
 			}
 			if owner.Step != nil {
-				if step, exists := refs.positions[[2]int{owner.Step.Line, owner.Step.Col}]; exists {
+				if step, exists := refs.Positions[[2]int{owner.Step.Line, owner.Step.Col}]; exists {
 					ref = step
 				}
 			}
 		}
 
-		if finding.details == nil {
-			finding.details = &Diagnostic{}
-		}
-		finding.details.Reference = &ref
+		finding.Reference = &ref
+		finding.inferredReference = true
 	}
-	policy := diagnosticPolicy{analysisLogger: l.analysisLogger, path: path, configPath: configPath, root: root, workingDir: l.workingDir, content: content, project: project, config: cfg, projectConfig: projectConfig, metadata: metadata, presets: l.rulePresets, additionalRules: additionalRules, ignorePats: l.ignorePats}
+	policy := diagnosticPolicy{ruleDescriptors: l.toolDescriptors, analysisLogger: l.analysisLogger, path: path, configPath: configPath, root: root, workingDir: l.workingDir, content: content, project: project, config: cfg, projectConfig: projectConfig, metadata: metadata, presets: l.rulePresets, additionalRules: additionalRules, ignorePats: l.ignorePats}
 	all, policyErr := policy.apply(all, metadataSources, compositeConfigs)
 	if policyErr != nil {
 		return nil, outline, errors.Join(analysisErr, policyErr)

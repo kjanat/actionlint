@@ -81,7 +81,7 @@ jobs:
               ".pre-commit-hooks.yaml", "internal/release/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
             ],
             "plugins": [
-              "plugins/**", "plugin/**", "internal/component/**", "internal/corewasm/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "diagnostic/**", "go.mod", "go.sum", "Makefile"
+              "plugins/**", "plugin/**", "internal/plugins/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "diagnostic/**", "go.mod", "go.sum", "Makefile"
             ]
           }
         }
@@ -282,6 +282,8 @@ jobs:
               curl --silent --show-error --location --output "${RUNNER_TEMP}/wasi-sdk.tar.gz" https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz
               tar -xzf "${RUNNER_TEMP}/wasi-sdk.tar.gz" -C "${RUNNER_TEMP}"
               echo "WASI_SDK_PATH=${RUNNER_TEMP}/wasi-sdk-34.0-x86_64-linux" >> "${GITHUB_ENV}"
+      - name: Check Rust plugins and fixtures on the native target
+        run: make plugins-check-native
       - name: Test the commitish resolution provider
         run: cargo test --locked --manifest-path plugins/commitish/Cargo.toml
       - name: Build the plugin fixtures from source
@@ -296,7 +298,7 @@ jobs:
           "${stage}/examples/no-sudo/build.sh" "${stage}/no-sudo.wasm"
           "${stage}/examples/insecure-download/build.sh" "${stage}/insecure-download.wasm"
           go run ./cmd/actionlint --no-config --shellcheck= --ruff= --plugin "${stage}/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm" --plugin "${stage}/no-sudo.wasm" --plugin "${stage}/insecure-download.wasm" testdata/ok/minimal.yaml
-      - run: go test -count=1 ./internal/component ./internal/corewasm ./plugin
+      - run: go test -count=1 ./internal/plugins/component ./internal/plugins/core ./plugin
       - run: go test -count=1 -run "Plugin|Engine" ./internal/cli
   docker:
     needs: changes

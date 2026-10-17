@@ -175,3 +175,10 @@ Set `analysis.Options.Resolver` to an implementation of `resolver.Resolver` to o
 network-backed reference resolution. The provider returns immutable repository/ref
 identity and evidence and must honor cancellation. An optional `resolver.SessionFactory`
 creates an analysis-scoped cache, including a fresh cache after an editor invalidation.
+
+Webhook payload types are generated from a pinned OpenAPI-derived catalogue and
+adapted to workflow triggers in `internal/workflow/eventpayload`. The expression
+checker and editor completion service consume that same type projection. The
+LSP transport accepts a completion provider and translates byte edits into
+UTF-16 ranges against the current open document. It does not import the workflow
+engine or fetch schemas while serving requests.

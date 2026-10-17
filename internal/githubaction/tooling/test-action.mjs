@@ -203,8 +203,8 @@ try {
 	assert.ok(quote.fixes && quote.fixes.length > 0);
 	assert.ok(quote.fixes[0].edits.every((edit) => edit.path === 'shell-fix.yaml' && edit.start.line === 9));
 	const sarifQuote = fixable.analysis.sarif.runs[0].results.find(
-		/** @param {{properties?: {externalCode?: string}}} diagnostic */
-		(diagnostic) => diagnostic.properties?.externalCode === 'SC2086',
+		/** @param {{properties?: {diagnosticCode?: string}}} diagnostic */
+		(diagnostic) => diagnostic.properties?.diagnosticCode === 'SC2086',
 	);
 	assert.ok(sarifQuote);
 	assert.equal(sarifQuote.level, 'note');

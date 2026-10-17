@@ -62,7 +62,7 @@ func TestCachePolicyEventGuards(t *testing.T) {
 					}
 					var findings []*Error
 					for _, finding := range lintCachePolicy(t, source, "") {
-						if finding.Kind == kind {
+						if finding.Rule == kind {
 							findings = append(findings, finding)
 						}
 					}
@@ -106,14 +106,14 @@ func TestCachePolicyInheritedEventUnion(t *testing.T) {
 		}
 		var findings []*Error
 		for _, finding := range lintCachePolicy(t, source.String(), "") {
-			if finding.Kind == "cache-write-untrusted" {
+			if finding.Rule == "cache-write-untrusted" {
 				findings = append(findings, finding)
 			}
 		}
 		if len(findings) != 1 {
 			t.Fatalf("conditions %v: want one inherited finding, got %v", conditions, findings)
 		}
-		if findings[0].Line != 2 || !strings.Contains(findings[0].Message, `"issue_comment", "pull_request_target"`) {
+		if findings[0].Start.Line != 2 || !strings.Contains(findings[0].Message, `"issue_comment", "pull_request_target"`) {
 			t.Errorf("conditions %v: want both events on workflow declaration, got %v", conditions, findings[0])
 		}
 	}

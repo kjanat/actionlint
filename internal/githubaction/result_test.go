@@ -11,7 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
@@ -20,17 +23,17 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	}
 	const workspace = `C:\workspace`
 	const file = `D:\shared\workflow.yml`
-	analysis := &actionlint.AnalysisResult{Diagnostics: []actionlint.Diagnostic{{
+	analysis := &application.Result{Diagnostics: []diagnostic.Diagnostic{{
 		Rule: "shellcheck", Path: file, Message: "Quote variable",
-		Start: actionlint.DiagnosticPosition{Line: 1, Column: 6}, End: actionlint.DiagnosticPosition{Line: 1, Column: 8},
-		Fixes: []actionlint.DiagnosticFix{{Description: "Quote", Edits: []actionlint.DiagnosticEdit{{Path: file}}}},
+		Start: diagnostic.Position{Line: 1, Column: 6}, End: diagnostic.Position{Line: 1, Column: 8},
+		Fixes: []diagnostic.Fix{{Description: "Quote", Edits: []diagnostic.Edit{{Path: file}}}},
 	}}}
-	renderer, err := actionlint.NewAnalysisRenderer(actionlint.OutputFormatSARIF, "", false)
+	renderer, err := render.New(render.FormatSARIF, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var sarif bytes.Buffer
-	if err := renderer.Render(&sarif, workspaceReportAnalysis(analysis, workspace, workspace)); err != nil {
+	if err := renderer.Render(&sarif, render.Prepare(*workspaceReportAnalysis(analysis, workspace, workspace))); err != nil {
 		t.Fatal(err)
 	}
 	if got := sarif.String(); strings.Count(got, "file:///D:/shared/workflow.yml") != 2 || strings.Contains(got, "uriBaseId") {
@@ -204,7 +207,7 @@ jobs:
 			ColumnKind string
 			Results    []struct {
 				Level      string
-				Properties struct{ ExternalCode string }
+				Properties struct{ DiagnosticCode string }
 				Fixes      []json.RawMessage
 				Locations  []struct {
 					PhysicalLocation struct {
@@ -223,7 +226,7 @@ jobs:
 	}
 	run := document.Runs[0]
 	finding := run.Results[0]
-	if run.ColumnKind != "unicodeCodePoints" || finding.Level != "note" || finding.Properties.ExternalCode != "SC2086" || len(finding.Fixes) != 1 {
+	if run.ColumnKind != "unicodeCodePoints" || finding.Level != "note" || finding.Properties.DiagnosticCode != "SC2086" || len(finding.Fixes) != 1 {
 		t.Fatalf("ShellCheck metadata or fix lost: %s", selected)
 	}
 	if len(finding.Locations) != 1 {
@@ -350,7 +353,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 				t.Fatalf("code %d: %s", code, &stdout)
 			}
 			data := read(t, resultPath)
-			var result actionlint.CheckResult
+			var result render.CheckResult
 			if err := json.Unmarshal([]byte(data), &result); err != nil {
 				t.Fatal(err)
 			}

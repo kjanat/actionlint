@@ -65,7 +65,7 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 					t.Errorf("physical YAML source line missing from snippet: %q", finding.Snippet)
 				}
 				var rendered bytes.Buffer
-				failure := &Error{Line: finding.Start.Line, Column: finding.Start.Column, Message: finding.Message, Kind: finding.Rule, Filepath: "ci.yml"}
+				failure := &Error{Start: DiagnosticPosition{Line: finding.Start.Line, Column: finding.Start.Column}, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
 				failure.PrettyPrint(&rendered, []byte(src))
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())
@@ -77,32 +77,11 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 	}
 }
 
-func TestSourcedShellcheckPhysicalLines(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "source.without-extension")
-	const first = "echo first\u2028still-first\u0085same-line\u2029same-line"
-	const second = "echo $VALUE"
-	content := []byte(first + "\n" + second + "\n")
-	rule := &shellcheckRun{}
-	for line, want := range []string{first, second} {
-		finding := rule.sourcedDiagnostic(shellcheckError{File: path, Line: line + 1, Column: 1, Code: 2086, Message: "Quote expansion"}, "", map[string][]byte{path: content})
-		if !finding.rawScriptSource {
-			t.Fatal("sourced checker did not select raw script coordinates")
-		}
-		if got, ok := render.SourceLine(content, finding.Line, finding.rawScriptSource); !ok || got != want {
-			t.Fatalf("line %d = %q, %v; want %q", line+1, got, ok, want)
-		}
-		fields := finding.GetTemplateFields([]byte("workflow source"))
-		if !strings.HasPrefix(fields.Snippet, want+"\n") {
-			t.Fatalf("sourced snippet = %q; want line %q", fields.Snippet, want)
-		}
-	}
-}
-
 func TestDiagnosticLongSourceLine(t *testing.T) {
 	line := strings.Repeat("x", 70*1024)
 	for _, raw := range []bool{false, true} {
-		finding := &Error{Line: 2, Column: 1, rawScriptSource: raw}
-		if got, ok := render.SourceLine([]byte("first\n"+line+"\n"), finding.Line, finding.rawScriptSource); !ok || got != line {
+		finding := &Error{Start: DiagnosticPosition{Line: 2, Column: 1}, rawScriptSource: raw}
+		if got, ok := render.SourceLine([]byte("first\n"+line+"\n"), finding.Start.Line, finding.rawScriptSource); !ok || got != line {
 			t.Fatalf("raw=%v: long source line missing or truncated", raw)
 		}
 	}

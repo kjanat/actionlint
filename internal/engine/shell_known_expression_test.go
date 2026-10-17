@@ -55,7 +55,7 @@ jobs:
 			}
 			var found []*Error
 			for _, diagnostic := range errors {
-				if diagnostic.Kind == "shell-name" {
+				if diagnostic.Rule == "shell-name" {
 					found = append(found, diagnostic)
 				}
 			}
@@ -63,7 +63,7 @@ jobs:
 				if len(found) != 0 {
 					t.Fatalf("unexpected shell diagnostics: %v", found)
 				}
-				if tc.name == "default invalid shape owned by expression" && (len(errors) != 1 || errors[0].Kind != "expression") {
+				if tc.name == "default invalid shape owned by expression" && (len(errors) != 1 || errors[0].Rule != "expression") {
 					t.Fatalf("expected exactly one expression diagnostic, got %v", errors)
 				}
 				return
@@ -71,8 +71,8 @@ jobs:
 			if len(found) != 1 || !strings.Contains(found[0].Message, tc.message) {
 				t.Fatalf("expected one %q diagnostic, got %v", tc.message, errors)
 			}
-			if found[0].Line != tc.line || found[0].Column != tc.column {
-				t.Fatalf("diagnostic position %d:%d, want %d:%d", found[0].Line, found[0].Column, tc.line, tc.column)
+			if found[0].Start.Line != tc.line || found[0].Start.Column != tc.column {
+				t.Fatalf("diagnostic position %d:%d, want %d:%d", found[0].Start.Line, found[0].Start.Column, tc.line, tc.column)
 			}
 		})
 	}
@@ -140,8 +140,8 @@ func TestKnownShellExternalLinters(t *testing.T) {
 			errors := result.legacyErrors()
 			var actual []string
 			for _, diagnostic := range errors {
-				if diagnostic.Kind == "shellcheck" || diagnostic.Kind == "pyflakes" {
-					actual = append(actual, diagnostic.Kind)
+				if diagnostic.Rule == "shellcheck" || diagnostic.Rule == "pyflakes" {
+					actual = append(actual, diagnostic.Rule)
 				}
 			}
 			if strings.Join(actual, ",") != tc.want {

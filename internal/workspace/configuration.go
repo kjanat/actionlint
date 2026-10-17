@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 type configState struct {

@@ -171,8 +171,8 @@ jobs:
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || filepath.Join(root, result.Diagnostics[0].Path) != metadata {
 		t.Fatalf("expected one shared-action finding: %+v", result.Diagnostics)
 	}
-	if result.FileCount() != 2 || len(result.legacyErrors()) != 1 {
-		t.Fatalf("file and finding counts: %d, %d", result.FileCount(), len(result.legacyErrors()))
+	if result.FileCount != 2 || len(result.legacyErrors()) != 1 {
+		t.Fatalf("file and finding counts: %d, %d", result.FileCount, len(result.legacyErrors()))
 	}
 	for _, path := range []string{first, second, metadata} {
 		if !slices.Contains(result.Inputs, path) {
@@ -1127,7 +1127,7 @@ runs:
   id: local
 - run: echo '${{ steps.local.outputs.missing }}'`, AnalysisOptions{})
 			if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
-				return d.Rule == "expression" && strings.Contains(d.Message, `property "missing" is not defined`)
+				return d.Rule == "expression-reference" && strings.Contains(d.Message, `property "missing" is not defined`)
 			}) {
 				t.Fatalf("action outputs were not resolved: %+v", result.Diagnostics)
 			}

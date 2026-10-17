@@ -54,7 +54,7 @@ func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
 	if runnerPlatform(job.RunsOn) == platformKindWindows {
 		analysis.scriptRunnerShell = shellValueFromString(&workflowlang.String{Value: "pwsh"})
 	}
-	if container := shellcheckContainerShell(job.Container); container.kind != shellValueUnspecified {
+	if container := containerShell(job.Container); container.kind != shellValueUnspecified {
 		analysis.scriptRunnerShell = container
 	}
 	analysis.jobID = ""
@@ -74,7 +74,7 @@ func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
 	case platformKindMacOrLinux:
 		runnerShell = shellValue{}
 	}
-	if container := shellcheckContainerShell(job.Container); container.kind != shellValueUnspecified {
+	if container := containerShell(job.Container); container.kind != shellValueUnspecified {
 		runnerShell = container
 	}
 	analysis.actions.checkoutShell = resolveRunShell(&workflowlang.ExecRun{}, defaultsShellValue(job.Defaults), analysis.workflowShell, runnerShell)

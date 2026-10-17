@@ -6,7 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func commandEscape(value string) string {
@@ -36,7 +38,7 @@ const actionMarkdown = `{{range .}}### {{.Filepath}}:{{.Line}}:{{.Column}} ({{.K
 const actionGitHub = `{{define "data"}}{{replace . "%" "%25" (printf "%c" 13) "%0D" (printf "%c" 10) "%0A"}}{{end}}{{define "property"}}{{replace . "%" "%25" (printf "%c" 13) "%0D" (printf "%c" 10) "%0A" ":" "%3A" "," "%2C"}}{{end}}{{range .}}::error file={{template "property" .Filepath}},line={{.Line}},col={{.Column}},endColumn={{.EndColumn}},title={{template "property" (printf "actionlint (%s)" .Kind)}}::{{template "data" .Message}}{{if .Snippet}}%0A%0A{{template "data" .Snippet}}{{end}}
 {{end}}`
 
-func renderAnalysis(format outputFormat, analysis *actionlint.AnalysisResult, workingDir, workspaceDir string) (string, error) {
+func renderAnalysis(format outputFormat, analysis *application.Result, workingDir, workspaceDir string) (string, error) {
 	var template string
 	switch format {
 	case formatDefault:
@@ -52,12 +54,12 @@ func renderAnalysis(format outputFormat, analysis *actionlint.AnalysisResult, wo
 	default:
 		return "", fmt.Errorf("format %q has no compatibility renderer", format)
 	}
-	renderer, err := actionlint.NewAnalysisRenderer("", template, false)
+	renderer, err := render.New("", template, false, buildinfo.Version, nil)
 	if err != nil {
 		return "", err
 	}
 	var output bytes.Buffer
-	if err := renderer.Render(&output, analysis); err != nil {
+	if err := renderer.Render(&output, render.Prepare(*analysis)); err != nil {
 		return "", err
 	}
 	return output.String(), nil
@@ -65,7 +67,7 @@ func renderAnalysis(format outputFormat, analysis *actionlint.AnalysisResult, wo
 
 func renderOutcome(result *lintResult) (*lintOutcome, string, string) {
 	o := result.lintOutcome
-	if o.code != actionlint.ExitStatusSuccessNoProblem && o.code != actionlint.ExitStatusSuccessProblemFound {
+	if o.code != render.ExitSuccessNoProblem && o.code != render.ExitSuccessProblemFound {
 		return o, "", o.stderr + o.stdout
 	}
 	return o, strconv.Itoa(len(result.diagnostics)), o.stdout

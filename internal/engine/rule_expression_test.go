@@ -47,7 +47,11 @@ func TestRuleExpressionBareFunctionCondition(t *testing.T) {
 					t.Fatalf("want one diagnostic, got %+v", result.Diagnostics)
 				}
 				d := result.Diagnostics[0]
-				if d.Rule != "expression" || !strings.HasPrefix(d.Message, want) || d.Start.Line != line || d.Start.Column != column {
+				wantRule := "expression-call"
+				if condition == "unrelated" {
+					wantRule = "expression-reference"
+				}
+				if d.Rule != wantRule || !strings.HasPrefix(d.Message, want) || d.Start.Line != line || d.Start.Column != column {
 					t.Fatalf("unexpected diagnostic: %+v", d)
 				}
 			})

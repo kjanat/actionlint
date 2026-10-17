@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	exprlang "actionlint.kjanat.dev/internal/expression"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"actionlint.kjanat.dev/internal/ruff"
@@ -153,8 +155,8 @@ jobs:
 		}
 		finding := result.files[0].errors[0]
 		lines := strings.Split(src, "\n")
-		wantColumn := len([]rune(strings.Split(lines[finding.Line-1], "missing")[0])) + 1
-		if finding.Column != wantColumn || finding.code != "F821" {
+		wantColumn := len([]rune(strings.Split(lines[finding.Start.Line-1], "missing")[0])) + 1
+		if finding.Start.Column != wantColumn || finding.Code != "F821" {
 			t.Fatalf("wrong source mapping: %+v want column %d", finding, wantColumn)
 		}
 	}
@@ -385,7 +387,7 @@ jobs:
 
 func TestSanitizePythonScript(t *testing.T) {
 	for _, source := range []string{"print(${{ github.sha }})", "print('${{ '}}' }}')", "print(${{\n github.sha\n}})", "print(${{ 'é' }}, missing)"} {
-		got, valid, err := ruff.Sanitize(source, ruffExpressionEnd)
+		got, valid, err := ruff.Sanitize(source, testExpressionEnd)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -398,7 +400,7 @@ func TestSanitizePythonScript(t *testing.T) {
 			}
 		}
 	}
-	if _, valid, _ := ruff.Sanitize("print(${{ missing)", ruffExpressionEnd); valid {
+	if _, valid, _ := ruff.Sanitize("print(${{ missing)", testExpressionEnd); valid {
 		t.Fatal("accepted malformed template")
 	}
 }
@@ -550,7 +552,13 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || !strings.HasSuffix(filepath.ToSlash(result.files[0].errors[0].Filepath), "python-action/action.yml") {
+	if len(result.Diagnostics) != 1 || !strings.HasSuffix(filepath.ToSlash(result.files[0].errors[0].Path), "python-action/action.yml") {
 		t.Fatalf("got %+v", result.Diagnostics)
 	}
+}
+
+func testExpressionEnd(src string) (int, bool) {
+	lexer := exprlang.NewLexer(src)
+	_, err := exprlang.NewParser().Parse(lexer)
+	return lexer.Offset(), err == nil
 }

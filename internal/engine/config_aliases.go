@@ -1,6 +1,6 @@
 package engine
 
-import "actionlint.kjanat.dev/internal/repoconfig"
+import repoconfig "actionlint.kjanat.dev/internal/config"
 
 type Config = repoconfig.Config
 type ConfigInspection = repoconfig.Inspection
@@ -24,16 +24,12 @@ type PathConfig = repoconfig.PathConfig
 type PermissionsPolicy = repoconfig.PermissionsPolicy
 type Policy = repoconfig.Policy
 type RequiredActionsOptions = repoconfig.RequiredActionsOptions
-type RuffToolConfig = repoconfig.RuffToolConfig
 type RuleGroupConfig = repoconfig.Group
 type RuleLevel = repoconfig.Level
 type RulePreset = repoconfig.Preset
 type RulePresets = repoconfig.Presets
 type RuleSetting = repoconfig.Setting
 type SelfHostedRunnerConfig = repoconfig.SelfHostedRunnerConfig
-type ShellcheckConfig = repoconfig.ShellcheckConfig
-type ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
-type ShellcheckToolConfig = repoconfig.ShellcheckToolConfig
 type SuppressionsPolicy = repoconfig.SuppressionsPolicy
 type ToolsConfig = repoconfig.ToolsConfig
 

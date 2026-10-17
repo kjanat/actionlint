@@ -26,7 +26,7 @@ jobs:
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
 		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
-		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
+		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 			t.Fatalf("path interpolation %q: error=%v diagnostics=%+v", expression, err, result.Diagnostics)
 		}
 	}
@@ -59,7 +59,7 @@ jobs:
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
 			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
-			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
+			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 				t.Fatalf("name interpolation: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
 			source = `on: {workflow_run: {workflows: ['Build*'], types: [completed]}}
@@ -126,7 +126,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 		}
 		if want {
 			pos := workflow.On[0].(*workflowlang.WebhookEvent).Workflows[0].Pos
-			if rule.Errs()[0].Line != pos.Line || rule.Errs()[0].Column != pos.Col {
+			if rule.Errs()[0].Start.Line != pos.Line || rule.Errs()[0].Start.Column != pos.Col {
 				t.Fatalf("evaluated pattern finding should retain expression position: %v", rule.Errs()[0])
 			}
 		}
@@ -180,7 +180,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "expression" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 				t.Fatalf("missing untrusted head-ref finding: %+v", result.Diagnostics)
 			}
 		})

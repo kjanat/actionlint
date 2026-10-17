@@ -34,16 +34,12 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	}
 	want := []*Error{
 		{
-			Message: "this is test 1",
-			Line:    1,
-			Column:  2,
-			Kind:    "dummy name",
+			Message: "this is test 1", Start: DiagnosticPosition{Line: 1,
+				Column: 2}, Rule: "dummy name",
 		},
 		{
-			Message: "this is test 2",
-			Line:    3,
-			Column:  4,
-			Kind:    "dummy name",
+			Message: "this is test 2", Start: DiagnosticPosition{Line: 3,
+				Column: 4}, Rule: "dummy name",
 		},
 	}
 	if diff := cmp.Diff(errs, want, cmp.AllowUnexported(Error{})); diff != "" {

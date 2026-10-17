@@ -5,10 +5,16 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/workflow/eventpayload"
+	"actionlint.kjanat.dev/internal/workflow/schema"
+
+	"actionlint.kjanat.dev/internal/workflow/calls"
+	"actionlint.kjanat.dev/internal/workflow/references"
+
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowcontext "actionlint.kjanat.dev/internal/workflowcontext"
+	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
 )
 
@@ -34,14 +40,15 @@ type RuleExpression struct {
 	dispatchInputsTy *exprlang.ObjectType
 	jobsTy           *exprlang.ObjectType
 	workflow         *workflowlang.Workflow
+	eventTy          *exprlang.ObjectType
 	localActions     *LocalActionsCache
-	localWorkflows   *LocalReusableWorkflowCache
+	localWorkflows   *calls.Cache
 	expressionSource *workflowlang.ScriptSource
 	expressionOffset int
 }
 
 // NewRuleExpression creates new RuleExpression instance.
-func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReusableWorkflowCache) *RuleExpression {
+func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *calls.Cache) *RuleExpression {
 	return &RuleExpression{
 		RuleBase: builtinRuleBase("expression"), tag: "expression",
 		matrixTy:         nil,
@@ -60,6 +67,7 @@ func NewRuleExpression(actionsCache *LocalActionsCache, workflowCache *LocalReus
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleExpression) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	rule.workflow = n
+	rule.eventTy = eventpayload.Type(n)
 	rule.checkString(n.Name, "")
 	rule.checkString(n.Description, "")
 	hasNonWorkflowCallTrigger := len(n.On) > 1
@@ -219,10 +227,10 @@ func (rule *RuleExpression) VisitJobPre(n *workflowlang.Job) error {
 	//       runs-on: ${{ matrix.os }}
 	if n.Strategy != nil {
 		if n.Strategy.Expression != nil {
-			ty := rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", workflowStrategy)
+			ty := rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", schema.Strategy)
 			rule.matrixTy = exprlang.NewEmptyObjectType()
 			if object, ok := ty.(*exprlang.ObjectType); ok {
-				rule.matrixTy = matrixTypeFromExpression(workflowObjectProperty(object.Props, "matrix"))
+				rule.matrixTy = schema.MatrixType(schema.Property(object.Props, "matrix"))
 			}
 		} else if n.Strategy.Matrix != nil {
 			// Check and guess type of the matrix.
@@ -234,7 +242,7 @@ func (rule *RuleExpression) VisitJobPre(n *workflowlang.Job) error {
 	rule.checkStrings(n.Needs, "")
 
 	if n.RunsOn != nil {
-		rule.checkWorkflowExpression(n.RunsOn.Expression, "runs-on", "jobs.<job_id>.runs-on", workflowRunner)
+		rule.checkWorkflowExpression(n.RunsOn.Expression, "runs-on", "jobs.<job_id>.runs-on", schema.Runner)
 		if n.RunsOn.LabelsExpr != nil {
 			if ty := rule.checkOneExpression(n.RunsOn.LabelsExpr, "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ty != nil {
 				switch ty.(type) {
@@ -275,7 +283,7 @@ func (rule *RuleExpression) VisitJobPre(n *workflowlang.Job) error {
 	rule.checkContainer(n.Container, "jobs.<job_id>.container", "")
 
 	if n.Services != nil {
-		rule.checkWorkflowExpression(n.Services.Expression, "services", "jobs.<job_id>.services", workflowExpressionObject{mapped: workflowContainerShape(true)})
+		rule.checkWorkflowExpression(n.Services.Expression, "services", "jobs.<job_id>.services", schema.Services)
 		for _, s := range n.Services.Value {
 			rule.checkContainer(s.Container, "jobs.<job_id>.services", "<service_id>")
 		}
@@ -294,7 +302,7 @@ func (rule *RuleExpression) VisitJobPost(n *workflowlang.Job) error {
 	rule.checkSnapshot(n.Snapshot)
 	// 'environment' and 'outputs' sections are evaluated after all steps are run
 	if n.Environment != nil {
-		rule.checkWorkflowExpression(n.Environment.Expression, "environment", "jobs.<job_id>.environment", workflowEnvironment)
+		rule.checkWorkflowExpression(n.Environment.Expression, "environment", "jobs.<job_id>.environment", schema.Environment)
 		rule.checkString(n.Environment.Name, "jobs.<job_id>.environment")
 		rule.checkString(n.Environment.URL, "jobs.<job_id>.environment.url")
 		rule.checkBool(n.Environment.Deployment, "jobs.<job_id>.environment")
@@ -366,7 +374,7 @@ func (rule *RuleExpression) getActionOutputsType(spec *workflowlang.String) *exp
 	}
 
 	localSpec := spec.Value
-	if s, ok := selfRepositoryUsesLocalSpec(localSpec); ok {
+	if s, ok := references.SelfRepositoryLocal(localSpec); ok {
 		localSpec = s
 	}
 	if strings.HasPrefix(localSpec, "./") {
@@ -407,9 +415,9 @@ func (rule *RuleExpression) getWorkflowCallOutputsType(call *workflowlang.Workfl
 		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}
 
-	m, err := rule.localWorkflows.findMetadataForCall(call.Uses.Value)
+	m, err := rule.localWorkflows.FindMetadataForCall(call.Uses.Value)
 	if err != nil {
-		rule.Error(call.Uses.Pos, err.Error())
+		rule.errs = append(rule.errs, workflowLookupError(call.Uses, err))
 		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}
 	if m == nil {
@@ -517,7 +525,7 @@ func (rule *RuleExpression) checkActionInputs(inputs *mapping.Inputs[*workflowla
 	}
 	workflowlang.InputResolver.Check(inputs, action, mapping.Checks[*workflowlang.String]{
 		Mapping: func(source *workflowlang.String) {
-			rule.checkWorkflowExpression(source, "with", key, workflowStringMap)
+			rule.checkWorkflowExpression(source, "with", key, schema.StringMap)
 		},
 		String: func(source *workflowlang.String) { rule.checkString(source, key) },
 		Script: func(source *workflowlang.String) { rule.checkScriptString(source, key) },
@@ -531,7 +539,7 @@ func (rule *RuleExpression) checkEnv(env *workflowlang.Env, workflowKey string) 
 
 	workflowlang.InputResolver.Check(workflowlang.EnvMappingView(env), "", mapping.Checks[*workflowlang.String]{
 		Mapping: func(source *workflowlang.String) {
-			rule.checkWorkflowExpression(source, "env", workflowKey, workflowStringMap)
+			rule.checkWorkflowExpression(source, "env", workflowKey, schema.StringMap)
 		},
 		String: func(source *workflowlang.String) { rule.checkString(source, workflowKey) },
 	})
@@ -541,7 +549,7 @@ func (rule *RuleExpression) checkContainer(c *workflowlang.Container, workflowKe
 	if c == nil {
 		return
 	}
-	rule.checkWorkflowExpression(c.Expression, "container", workflowKey, workflowContainerShape(childWorkflowKeyPrefix != ""))
+	rule.checkWorkflowExpression(c.Expression, "container", workflowKey, schema.Container(childWorkflowKeyPrefix != ""))
 	childWorkflowKey := workflowKey
 	if childWorkflowKeyPrefix != "" {
 		childWorkflowKey += "." + childWorkflowKeyPrefix
@@ -550,7 +558,7 @@ func (rule *RuleExpression) checkContainer(c *workflowlang.Container, workflowKe
 	if c.Credentials != nil {
 		k := childWorkflowKey + ".credentials" // e.g. jobs.<job_id>.container.credentials
 		if c.Credentials.Expression != nil {
-			rule.checkWorkflowExpression(c.Credentials.Expression, "credentials", k, workflowCredentials)
+			rule.checkWorkflowExpression(c.Credentials.Expression, "credentials", k, schema.Credentials)
 		} else {
 			rule.checkString(c.Credentials.Username, k)
 			rule.checkString(c.Credentials.Password, k)
@@ -559,8 +567,8 @@ func (rule *RuleExpression) checkContainer(c *workflowlang.Container, workflowKe
 	rule.checkEnv(c.Env, childWorkflowKey+".env.<env_id>") // e.g. jobs.<job_id>.container.env.<env_id>
 	rule.checkStrings(c.Ports, workflowKey)
 	rule.checkStrings(c.Volumes, workflowKey)
-	rule.checkWorkflowExpression(c.PortsExpression, "ports", workflowKey, workflowExpressionArray{elem: workflowNonEmpty})
-	rule.checkWorkflowExpression(c.VolumesExpression, "volumes", workflowKey, workflowExpressionArray{elem: workflowNonEmpty})
+	rule.checkWorkflowExpression(c.PortsExpression, "ports", workflowKey, schema.StringList)
+	rule.checkWorkflowExpression(c.VolumesExpression, "volumes", workflowKey, schema.StringList)
 	rule.checkString(c.Options, workflowKey)
 	rule.checkString(c.Command, workflowKey)
 	rule.checkString(c.Entrypoint, workflowKey)
@@ -570,18 +578,18 @@ func (rule *RuleExpression) checkConcurrency(c *workflowlang.Concurrency, workfl
 	if c == nil {
 		return
 	}
-	shape := workflowConcurrency
+	shape := schema.Concurrency
 	if workflowKey == "jobs.<job_id>.concurrency" {
-		shape = workflowJobConcurrency
+		shape = schema.JobConcurrency
 	}
 	rule.checkWorkflowExpression(c.Expression, "concurrency", workflowKey, shape)
 	if c.Group != nil && c.Group.IsExpressionAssigned() {
-		rule.checkWorkflowExpression(c.Group, "concurrency.group", workflowKey, workflowNonEmpty)
+		rule.checkWorkflowExpression(c.Group, "concurrency.group", workflowKey, schema.NonEmpty)
 	} else {
 		rule.checkString(c.Group, workflowKey)
 	}
 	if c.Queue != nil && c.Queue.IsExpressionAssigned() {
-		rule.checkWorkflowExpression(c.Queue, "concurrency.queue", workflowKey, workflowQueue)
+		rule.checkWorkflowExpression(c.Queue, "concurrency.queue", workflowKey, schema.Queue)
 	} else {
 		rule.checkString(c.Queue, workflowKey)
 	}
@@ -611,7 +619,7 @@ func (rule *RuleExpression) checkDefaults(d *workflowlang.Defaults, workflowKey 
 	if d == nil || d.Run == nil {
 		return
 	}
-	rule.checkWorkflowExpression(d.Run.Expression, "defaults.run", workflowKey, workflowDefaultsRun)
+	rule.checkWorkflowExpression(d.Run.Expression, "defaults.run", workflowKey, schema.DefaultsRun)
 	rule.checkString(d.Run.Shell, workflowKey)
 	rule.checkString(d.Run.WorkingDirectory, workflowKey)
 }
@@ -623,9 +631,9 @@ func (rule *RuleExpression) checkWorkflowCall(c *workflowlang.WorkflowCall) {
 
 	rule.checkString(c.Uses, "")
 
-	m, err := rule.localWorkflows.findMetadataForCall(c.Uses.Value)
+	m, err := rule.localWorkflows.FindMetadataForCall(c.Uses.Value)
 	if err != nil {
-		rule.Error(c.Uses.Pos, err.Error())
+		rule.errs = append(rule.errs, workflowLookupError(c.Uses, err))
 	}
 
 	for n, i := range c.Inputs {
@@ -685,13 +693,13 @@ func (rule *RuleExpression) checkSnapshot(s *workflowlang.Snapshot) {
 	if s == nil {
 		return
 	}
-	rule.checkWorkflowExpression(s.Expression, "snapshot", "jobs.<job_id>.snapshot", workflowSnapshot)
+	rule.checkWorkflowExpression(s.Expression, "snapshot", "jobs.<job_id>.snapshot", schema.Snapshot)
 	for _, field := range []struct {
 		value *workflowlang.String
 		name  string
 	}{{s.ImageName, "image-name"}, {s.Version, "version"}} {
 		if field.value != nil && field.value.IsExpressionAssigned() {
-			rule.checkWorkflowExpression(field.value, "snapshot."+field.name, "jobs.<job_id>.snapshot", workflowNonEmpty)
+			rule.checkWorkflowExpression(field.value, "snapshot."+field.name, "jobs.<job_id>.snapshot", schema.NonEmpty)
 		} else {
 			rule.checkString(field.value, "jobs.<job_id>.snapshot")
 		}
@@ -837,7 +845,7 @@ func (rule *RuleExpression) checkMaxParallel(i *workflowlang.Int, workflowKey st
 		return
 	}
 	if value, known := workflowlang.WorkflowExpressionLiteral(i.Expression); known {
-		for _, message := range workflowExpressionLiteralErrors(workflowPositive, value, "max-parallel") {
+		for _, message := range schema.LiteralErrors(schema.Positive, value, "max-parallel") {
 			rule.Error(i.Expression.Pos, message)
 		}
 	}
@@ -908,12 +916,16 @@ func (rule *RuleExpression) exprError(err *exprlang.Error, lineBase, colBase int
 		kind = rule.Name()
 	}
 	diagnostic := errorAt(pos, kind, err.Message)
+	diagnostic.Code = err.Code
 	diagnostic.endPosition = end
 	rule.errs = append(rule.errs, diagnostic)
 }
 
 func (rule *RuleExpression) checkSemanticsOfExprNode(expr exprlang.Node, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, bool) {
 	c := exprlang.NewChecker(checkUntrusted, expressionOptionsFromConfig(rule.config))
+	if rule.eventTy != nil {
+		c.UpdateEvent(rule.eventTy)
+	}
 	if rule.matrixTy != nil {
 		c.UpdateMatrix(rule.matrixTy)
 	}
@@ -1021,7 +1033,7 @@ func (rule *RuleExpression) populateDependantNeedsTypes(out *exprlang.ObjectType
 
 func (rule *RuleExpression) checkMatrixExpression(expr *workflowlang.String) *exprlang.ObjectType {
 	ty := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
-	return matrixTypeFromExpression(ty)
+	return schema.MatrixType(ty)
 }
 
 func (rule *RuleExpression) checkMatrix(m *workflowlang.Matrix) *exprlang.ObjectType {
@@ -1059,8 +1071,8 @@ func (rule *RuleExpression) checkMatrix(m *workflowlang.Matrix) *exprlang.Object
 	for _, insertion := range m.Insertions {
 		var inserted *exprlang.ObjectType
 		if insertion.Expression != nil {
-			ty := rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", workflowStrategy.props["matrix"])
-			inserted = matrixTypeFromExpression(ty)
+			ty := rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", schema.Matrix)
+			inserted = schema.MatrixType(ty)
 		} else {
 			inserted = rule.checkMatrix(insertion)
 		}
@@ -1325,4 +1337,29 @@ func expressionOptionsFromConfig(config *Config) *exprlang.Options {
 		options.Variables, options.Secrets = config.ConfigVariables, config.ConfigSecrets
 	}
 	return options
+}
+
+func (rule *RuleExpression) checkWorkflowExpression(s *workflowlang.String, what, key string, shape schema.Shape) exprlang.Type {
+	if s == nil {
+		return nil
+	}
+	ty := rule.checkOneExpression(s, what, key)
+	if ty == nil {
+		return nil
+	}
+	errors := shape.ValidateType(ty, what)
+	// Inferred array elements can merge to AnyType. Retain known JSON values for
+	// per-element and literal constraint checks.
+	if len(errors) == 0 {
+		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
+			errors = schema.LiteralErrors(shape, value, what)
+			if len(errors) == 0 {
+				ty = exprlang.TypeOfJSONValue(value)
+			}
+		}
+	}
+	for _, message := range errors {
+		rule.Error(s.Pos, message)
+	}
+	return ty
 }

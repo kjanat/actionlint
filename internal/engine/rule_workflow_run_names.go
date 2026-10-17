@@ -5,7 +5,7 @@ import (
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflownames"
+	workflownames "actionlint.kjanat.dev/internal/workflow/names"
 )
 
 func workflowRunNamesAvailable(c ruleContext) bool {

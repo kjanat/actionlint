@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
@@ -124,8 +124,8 @@ func filterForeignInlineSuppressions(path string, source []byte, findings []*Err
 		if finding.suppressionOrigin == nil {
 			finding.source = source
 		}
-		if finding.Filepath == "" {
-			finding.Filepath = path
+		if finding.Path == "" {
+			finding.Path = path
 		}
 	}
 	return local
@@ -160,11 +160,11 @@ func applyInlineSuppressionsAt(errors []*Error, directives []inlineSuppressionDi
 	}
 	filtered := make([]*Error, 0, len(errors)+len(policyErrors))
 	for _, err := range errors {
-		first, last, applies := err.Line, err.Line, err.source == nil
+		first, last, applies := err.Start.Line, err.Start.Line, err.source == nil
 		if origin := err.suppressionOrigin; origin != nil {
 			first, last, applies = origin.first, origin.last, origin.path == scope
 		}
-		if applies && slices.ContainsFunc(suppressed[err.Kind], func(lines lineRange) bool { return first <= lines.end && last >= lines.start }) {
+		if applies && slices.ContainsFunc(suppressed[err.Rule], func(lines lineRange) bool { return first <= lines.end && last >= lines.start }) {
 			continue
 		}
 		filtered = append(filtered, err)

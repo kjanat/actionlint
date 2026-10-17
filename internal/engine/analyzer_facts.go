@@ -1,17 +1,12 @@
 package engine
 
 import (
-	"maps"
-	"slices"
-
 	"actionlint.kjanat.dev/internal/sourceid"
-	"actionlint.kjanat.dev/internal/yamlsource"
-	"actionlint.kjanat.dev/source"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
 )
 
 type factAvailability struct {
@@ -88,14 +83,14 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 		input.Kind = "action"
 		input.ParseStatus = outline.ParseStatus
 	}
-	input.Reference = refs.document
+	input.Reference = refs.Document
 	referencePath := func(p string) string {
 		if p == path || p == "" {
 			p = pathAbs
 		}
 		return sourceid.Document(p)
 	}
-	byPath := map[string]sourceReferences{refs.document.Document: refs}
+	byPath := map[string]sourceReferences{refs.Document.Document: refs}
 	// Caller actions may contain only uses steps, so they have no script unit.
 	// Index every loaded metadata source before linking invocation identities.
 	for filename, content := range sources {
@@ -136,14 +131,14 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 			if unit.origin != nil && unit.origin.stepPosition != nil {
 				// Aliased scripts share scalar positions, but retain distinct owners.
 				pos := unit.origin.stepPosition
-				script.Reference = byPath[referencePath(unit.path)].positions[[2]int{pos.Line, pos.Col}]
+				script.Reference = byPath[referencePath(unit.path)].Positions[[2]int{pos.Line, pos.Col}]
 			}
 			if script.Invocation != nil {
 				caller := pathAbs
 				if unit.scope != nil && unit.scope.caller != "" {
 					caller = unit.scope.caller
 				}
-				script.Invocation.Reference = byPath[referencePath(caller)].positions[[2]int{script.Invocation.Step.Line, script.Invocation.Step.Column}]
+				script.Invocation.Reference = byPath[referencePath(caller)].Positions[[2]int{script.Invocation.Step.Line, script.Invocation.Step.Column}]
 			}
 
 			if script.Path == "" {
@@ -156,106 +151,11 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 	if facts.execution {
 		input.Available = append(input.Available, analyzer.Execution)
 	}
-	addDependency := func(value *workflowlang.String, kind string, ref source.Reference) {
-		if value == nil || value.ContainsExpression() {
-			return
-		}
-		start := factPosition(value.Pos)
-		end := start
-		if scalar, err := yamlsource.NewDocument(string(content)).Decode(yamlsource.Position{Line: start.Line, Column: start.Column}, yamlsource.Context{Indent: start.Column - 2}); err == nil && scalar.Value == value.Value {
-			end = diagnostic.Position{Line: scalar.End.Line, Column: scalar.End.Column}
-		}
-		input.Dependencies = append(input.Dependencies, analyzer.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
-	}
-	addMapping := func(scope string, owner source.Reference, values *mapping.Inputs[*workflowlang.String]) {
-		if values == nil {
-			return
-		}
-		record := analyzer.Mapping{Scope: scope, Reference: owner}
-		record.Complete = workflowlang.InputResolver.Walk(values, nil, func(entry mapping.Entry[*workflowlang.String]) {
-			item := analyzer.Entry{State: analyzer.UnknownKey, Evaluated: entry.Evaluated}
-			switch entry.State {
-			case mapping.KnownKey:
-				item.State = analyzer.KnownKey
-			case mapping.InvalidKey:
-				item.State = analyzer.InvalidKey
-			}
-			if entry.Name != nil {
-				item.Name = entry.Name.Value
-			}
-			if entry.Source != nil {
-				item.Source = entry.Source.Value
-				item.Start = factPosition(entry.Source.Pos)
-			}
-			record.Entries = append(record.Entries, item)
-		})
-		input.Mappings = append(input.Mappings, record)
-	}
-	addEnv := func(scope string, owner source.Reference, env *workflowlang.Env) {
-		if env != nil {
-			addMapping(scope, owner, workflowlang.EnvMappingView(env))
-		}
-	}
-	addEnv("env", refs.document, workflow.Env)
-	var steps func(string, []*workflowlang.Step)
-	steps = func(scope string, nodes []*workflowlang.Step) {
-		for _, step := range nodes {
-			ref := refs.steps[step]
-			addEnv(ref.Address+".env", ref, step.Env)
-			switch exec := step.Exec.(type) {
-			case *workflowlang.ExecAction:
-				addDependency(exec.Uses, "action", ref)
-				addMapping(ref.Address+".with", ref, workflowlang.InputMapping(exec))
-			case *workflowlang.ExecParallel:
-				steps(scope+".parallel", exec.Steps)
-			}
-		}
-	}
-	for _, id := range slices.Sorted(maps.Keys(workflow.Jobs)) {
-		job := workflow.Jobs[id]
-		scope := refs.jobs[id].Address
-		if job.WorkflowCall != nil {
-			addDependency(job.WorkflowCall.Uses, "workflow", refs.jobs[id])
-		}
-		addEnv(scope+".env", refs.jobs[id], job.Env)
-		if job.Container != nil {
-			addEnv(scope+".container.env", refs.jobs[id], job.Container.Env)
-		}
-		if job.Services != nil {
-			for _, name := range slices.Sorted(maps.Keys(job.Services.Value)) {
-				addEnv(scope+".services."+name+".env", refs.jobs[id], job.Services.Value[name].Container.Env)
-			}
-		}
-		if job.Strategy != nil && job.Strategy.Matrix != nil {
-			addMapping(scope+".strategy.matrix", refs.jobs[id], matrixKeysView(job.Strategy.Matrix))
-		}
-		steps(scope+".steps", job.Steps)
-	}
+	input.Mappings, input.Dependencies = workflowfacts.Declarations(content, workflow, refs)
 	return input
 }
 
-func factPosition(pos *workflowlang.Pos) diagnostic.Position {
-	if pos == nil {
-		return diagnostic.Position{}
-	}
-	return diagnostic.Position{Line: pos.Line, Column: pos.Col}
-}
-
-func matrixKeysView(matrix *workflowlang.Matrix) *mapping.Inputs[*workflowlang.String] {
-	result := &mapping.Inputs[*workflowlang.String]{Expression: matrix.Expression, Values: map[string]mapping.Input[*workflowlang.String]{}}
-	for name, row := range matrix.Rows {
-		result.Values[name] = mapping.Input[*workflowlang.String]{Name: row.Name, Evaluated: row.Evaluated}
-	}
-	for name, filters := range map[string]*workflowlang.MatrixCombinations{"include": matrix.Include, "exclude": matrix.Exclude} {
-		if filters != nil {
-			result.Values[name] = mapping.Input[*workflowlang.String]{Name: filters.Name, Evaluated: filters.Evaluated}
-		}
-	}
-	for _, insertion := range matrix.Insertions {
-		result.Insertions = append(result.Insertions, matrixKeysView(insertion))
-	}
-	return result
-}
+func factPosition(pos *workflowlang.Pos) diagnostic.Position { return workflowfacts.Position(pos) }
 
 func actionFactsWorkflow(metadata *ActionMetadata) *workflowlang.Workflow {
 	parser := workflowlang.NewSourceParser(metadata.src)

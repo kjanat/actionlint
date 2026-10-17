@@ -68,7 +68,7 @@ func TestSuspiciousConditionChecks(t *testing.T) {
 		for _, location := range []string{"job", "step", "snapshot"} {
 			for _, config := range []string{"", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {case-insensitive-conditions: on}}}"} {
 				t.Run(expression+"/"+location+"/"+config, func(t *testing.T) {
-					body := `on: push
+					body := `on: [push, label, deployment]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -93,7 +93,7 @@ jobs:
 					}
 					errs := lintCachePolicy(t, body, config)
 					if strings.Contains(config, ": on") {
-						if len(errs) != 1 || errs[0].Kind != "case-insensitive-conditions" {
+						if len(errs) != 1 || errs[0].Rule != "case-insensitive-conditions" {
 							t.Fatal(errs)
 						}
 					} else if len(errs) != 0 {

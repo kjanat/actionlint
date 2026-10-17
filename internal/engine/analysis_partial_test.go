@@ -30,7 +30,7 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	if !errors.Is(err, context.Canceled) || result == nil {
 		t.Fatalf("cancellation lost partial result or cause: %v, %v", result, err)
 	}
-	for _, rule := range []string{"expression", "shellcheck"} {
+	for _, rule := range []string{"expression-reference", "shellcheck"} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == rule && d.Path == "cancelled.yml" }) {
 			t.Errorf("cancellation lost completed %s finding: %v", rule, result.Diagnostics)
 		}
@@ -104,15 +104,15 @@ jobs:
 				for _, diagnostic := range result.Diagnostics {
 					findings = append(findings, diagnostic.Path+":"+diagnostic.Rule)
 				}
-				want := []string{"successful.yml:expression", "failing.yml:expression", "failing.yml:shellcheck"}
+				want := []string{"successful.yml:expression-reference", "failing.yml:expression-reference", "failing.yml:shellcheck"}
 				if failingFirst {
 					want = append(want[1:], want[0])
 				}
 				if diff := cmp.Diff(want, findings); diff != "" {
 					t.Fatalf("partial findings (-want +got):\n%s", diff)
 				}
-				if result.FileCount() != 2 {
-					t.Fatalf("partial result lost source files: %d", result.FileCount())
+				if result.FileCount != 2 {
+					t.Fatalf("partial result lost source files: %d", result.FileCount)
 				}
 				if adapter == "session" && !slices.Contains(result.Inputs, configPath) {
 					t.Fatalf("partial result lost explicit config input: %v", result.Inputs)

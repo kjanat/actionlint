@@ -1,4 +1,4 @@
-on: push
+on: [push, issues]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,4 +15,4 @@ jobs:
       - run: echo "${{ startsWith('hello, world', github.event) }}"
       # Function overloads can be handled properly. contains() has string version and array version
       - run: echo "${{ contains('hello, world', 'lo,') }}"
-      - run: echo "${{ contains(github.event.labels.*.name, 'enhancement') }}"
+      - run: echo "${{ contains(github.event.issue.labels.*.name, 'enhancement') }}"

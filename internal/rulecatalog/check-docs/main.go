@@ -1,5 +1,7 @@
 package main
 
+import "actionlint.kjanat.dev/internal/tools/adapters"
+
 import (
 	"bufio"
 	"bytes"
@@ -15,44 +17,47 @@ import (
 	"slices"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"context"
+
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/workspace"
+	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
 
 func Actionlint(src []byte) ([]byte, error) {
 	var out bytes.Buffer
 
-	opts := &actionlint.LinterOptions{
-		StdinFileName: "test.yaml",
-		Shellcheck:    "shellcheck",
-
-		Color: actionlint.ColorOptionKindNever,
-	}
-
-	l, err := actionlint.NewLinter(&out, opts)
+	root, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-
-	p, err := actionlint.NewProjects().At(".")
+	project, err := workspace.NewProjects().At(root)
 	if err != nil {
 		return nil, err
 	}
-	if p == nil {
-		root, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-		p, err = actionlint.NewProject(root)
+	if project == nil {
+		project, err = workspace.NewProject(root)
 		if err != nil {
 			return nil, err
 		}
 	}
-	errs, err := l.Lint("test.yaml", src, p)
+	root = project.RootDir()
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err
 	}
-	if len(errs) == 0 {
+	color.NoColor = true
+	renderer, err := render.New(render.FormatText, "", false, buildinfo.Version, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := renderer.Render(&out, render.Prepare(*result)); err != nil {
+		return nil, err
+	}
+	if len(result.Diagnostics) == 0 {
 		var missing []string
 		for _, tool := range []string{"shellcheck"} {
 			if _, err := exec.LookPath(tool); err != nil {
@@ -66,7 +71,7 @@ func Actionlint(src []byte) ([]byte, error) {
 	}
 
 	// Replace checkout-specific paths in diagnostics with a stable example path.
-	return bytes.ReplaceAll(out.Bytes(), []byte(p.RootDir()), []byte("/path/to/repo")), nil
+	return bytes.ReplaceAll(out.Bytes(), []byte(root), []byte("/path/to/repo")), nil
 }
 
 type state int

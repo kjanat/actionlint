@@ -13,8 +13,8 @@ import (
 	"text/tabwriter"
 	"time"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/repoconfig"
 
 	"actionlint.kjanat.dev/internal/ruff"
 )

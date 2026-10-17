@@ -57,9 +57,9 @@ jobs:
 					}
 					count := 0
 					for _, finding := range rule.Errs() {
-						if finding.Kind == "mixed-type-matrix-filters" {
+						if finding.Rule == "mixed-type-matrix-filters" {
 							count++
-							if finding.Line != 8 || finding.Column <= 8 {
+							if finding.Start.Line != 8 || finding.Start.Column <= 8 {
 								t.Fatalf("wrong expression position: %+v", finding)
 							}
 						}
@@ -151,9 +151,9 @@ jobs:
 				}
 				count := 0
 				for _, finding := range rule.Errs() {
-					if finding.Kind == "mixed-type-matrix-filters" {
+					if finding.Rule == "mixed-type-matrix-filters" {
 						count++
-						if finding.Line != 8 {
+						if finding.Start.Line != 8 {
 							t.Fatalf("wrong filter position: %+v", finding)
 						}
 					}
@@ -223,13 +223,13 @@ jobs:
 				}
 				count, siblings := 0, 0
 				for _, finding := range rule.Errs() {
-					if finding.Kind == "mixed-type-matrix-filters" {
-						if finding.Line == 10 {
+					if finding.Rule == "mixed-type-matrix-filters" {
+						if finding.Start.Line == 10 {
 							siblings++
 							continue
 						}
 						count++
-						if finding.Line != 9 || finding.Column != 13 {
+						if finding.Start.Line != 9 || finding.Start.Column != 13 {
 							t.Fatalf("wrong combination position: %+v", finding)
 						}
 					}
@@ -309,9 +309,9 @@ jobs:
 				}
 				count := 0
 				for _, finding := range rule.Errs() {
-					if finding.Kind == "mixed-type-matrix-filters" {
+					if finding.Rule == "mixed-type-matrix-filters" {
 						count++
-						if finding.Line != line || finding.Column != column {
+						if finding.Start.Line != line || finding.Start.Column != column {
 							t.Fatalf("wrong matrix position: %+v", finding)
 						}
 					}

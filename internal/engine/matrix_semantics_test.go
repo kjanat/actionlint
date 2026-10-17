@@ -151,7 +151,7 @@ jobs:
 				count := 0
 				for _, err := range rule.Errs() {
 					if strings.Contains(err.Message, "using Actions loose equality") {
-						if err.Kind != "mixed-type-matrix-filters" || strings.Contains(err.Message, "policy") {
+						if err.Rule != "mixed-type-matrix-filters" || strings.Contains(err.Message, "policy") {
 							t.Fatal(err)
 						}
 						count++

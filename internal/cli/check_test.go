@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,10 +10,15 @@ import (
 	"strings"
 	"testing"
 
+	diagnosticmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/rule"
+
 	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/internal/sourceid"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
@@ -44,7 +48,7 @@ func TestCommandWorkflowPaths(t *testing.T) {
 					args = append([]string{"check"}, args...)
 				}
 				got := testRunCommand("", args...)
-				var report actionlint.CheckResult
+				var report render.CheckResult
 				if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil || got.Status != 1 || got.Stderr != "" || len(report.Diagnostics) != 1 {
 					t.Fatalf("selected workflow was not analyzed: %+v (%v)", got, err)
 				}
@@ -52,7 +56,7 @@ func TestCommandWorkflowPaths(t *testing.T) {
 				if input == "" {
 					want = filepath.Join(".github", "workflows", "ci.yml")
 				}
-				if report.Diagnostics[0].Path != want || report.Diagnostics[0].Rule != "expression" {
+				if report.Diagnostics[0].Path != want || report.Diagnostics[0].Rule != "expression-reference" {
 					t.Fatalf("wrong workflow diagnostic: %+v", report.Diagnostics[0])
 				}
 			})
@@ -61,8 +65,8 @@ func TestCommandWorkflowPaths(t *testing.T) {
 }
 
 func TestLegacyCLITextWriteErrors(t *testing.T) {
-	for _, format := range []actionlint.OutputFormat{actionlint.OutputFormatText, actionlint.OutputFormatOneline, actionlint.OutputFormatJSON, actionlint.OutputFormatJSONL, actionlint.OutputFormatSARIF, actionlint.OutputFormatGitHub} {
-		text := format == actionlint.OutputFormatText || format == actionlint.OutputFormatOneline
+	for _, format := range []render.Format{render.FormatText, render.FormatOneline, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub} {
+		text := format == render.FormatText || format == render.FormatOneline
 		var stderr strings.Builder
 		cmd := Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &stderr}
 		status := cmd.Main([]string{"actionlint", "--summary=false", "--shellcheck=", "--pyflakes=", "--output-format=" + string(format), "-"})
@@ -159,8 +163,8 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 		t.Fatal(got)
 	}
 	rules := commandRules()
-	for _, name := range []string{"syntax-check", "expression", "shellcheck", "require-commit-hash"} {
-		if !slices.ContainsFunc(rules, func(r actionlint.RuleInfo) bool { return r.Name == name && r.Description != "" }) {
+	for _, name := range []string{"syntax-check", "expression-reference", "shellcheck", "require-commit-hash"} {
+		if !slices.ContainsFunc(rules, func(r rule.Descriptor) bool { return r.Name == name && r.Description != "" }) {
 			t.Errorf("missing rule %q", name)
 		}
 	}
@@ -174,17 +178,17 @@ func TestCommandNativeJSON(t *testing.T) {
 			if got.Status != legacy.Status || got.Stderr != "" {
 				t.Fatalf("%q: %+v", args, got)
 			}
-			var want []*actionlint.ErrorTemplateFields
-			var have actionlint.CheckResult
+			var want []*render.TemplateFields
+			var have render.CheckResult
 			if err := json.Unmarshal([]byte(legacy.Stdout), &want); err != nil {
 				t.Fatal(err)
 			}
 			if err := json.Unmarshal([]byte(got.Stdout), &have); err != nil {
 				t.Fatal(err)
 			}
-			expected := []actionlint.Diagnostic{}
+			expected := []diagnosticmodel.Diagnostic{}
 			for _, field := range want {
-				expected = append(expected, actionlint.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: actionlint.DiagnosticPosition{Line: field.Line, Column: field.Column}, End: actionlint.DiagnosticPosition{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+				expected = append(expected, diagnosticmodel.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: diagnosticmodel.Position{Line: field.Line, Column: field.Column}, End: diagnosticmodel.Position{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
 			}
 			for i := range have.Diagnostics {
 				actual := have.Diagnostics[i]
@@ -192,6 +196,9 @@ func TestCommandNativeJSON(t *testing.T) {
 					t.Fatalf("missing diagnostic context: %+v", actual)
 				}
 				expected[i].Reference = actual.Reference
+				if actual.Rule == "expression-reference" {
+					expected[i].Code = "unknown-variable"
+				}
 				descriptor, ok := rulecatalog.Find(actual.Rule)
 				if !ok {
 					t.Fatalf("unknown rule %s", actual.Rule)
@@ -209,7 +216,7 @@ func TestCommandNativeJSON(t *testing.T) {
 		}
 		lines := testRunCommand(input, "--output=jsonl", "-")
 		array := testRunCommand(input, "--json", "-")
-		var result actionlint.CheckResult
+		var result render.CheckResult
 		if err := json.Unmarshal([]byte(array.Stdout), &result); err != nil {
 			t.Fatal(err)
 		}
@@ -217,7 +224,7 @@ func TestCommandNativeJSON(t *testing.T) {
 		for _, diagnostic := range result.Diagnostics {
 			if err := json.NewEncoder(&expected).Encode(struct {
 				SchemaVersion int `json:"schema_version"`
-				actionlint.Diagnostic
+				diagnosticmodel.Diagnostic
 			}{1, diagnostic}); err != nil {
 				t.Fatal(err)
 			}
@@ -236,7 +243,7 @@ func TestCommandMultiFileJSON(t *testing.T) {
 		}
 	}
 	got := testRunCommand("", "--json", "one.yml", "two.yml")
-	var result actionlint.CheckResult
+	var result render.CheckResult
 	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +252,7 @@ func TestCommandMultiFileJSON(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 	for i, path := range []string{"one.yml", "two.yml"} {
-		if fields[i].Path != path || fields[i].Start.Line != 6 || fields[i].Rule != "expression" || !strings.Contains(fields[i].Snippet, "missing.value") {
+		if fields[i].Path != path || fields[i].Start.Line != 6 || fields[i].Rule != "expression-reference" || !strings.Contains(fields[i].Snippet, "missing.value") {
 			t.Errorf("wrong diagnostic: %+v", fields[i])
 		}
 	}
@@ -265,24 +272,30 @@ func TestCommandOutputSelection(t *testing.T) {
 	}
 }
 
-func TestLinterBuiltInOutput(t *testing.T) {
-	for _, format := range []actionlint.OutputFormat{actionlint.OutputFormatText, actionlint.OutputFormatOneline, actionlint.OutputFormatJSON, actionlint.OutputFormatJSONL, actionlint.OutputFormatSARIF} {
+func TestApplicationBuiltInOutput(t *testing.T) {
+	for _, format := range []render.Format{render.FormatText, render.FormatOneline, render.FormatJSON, render.FormatJSONL, render.FormatSARIF} {
 		var out bytes.Buffer
-		linter, err := actionlint.NewLinter(&out, &actionlint.LinterOptions{Color: actionlint.ColorOptionKindNever, OutputFormat: format})
+		result, err := application.Check(t.Context(), application.Options{}, application.Input{Kind: application.Stdin, Reader: strings.NewReader(commandBadWorkflow)})
+		if err != nil || len(result.Diagnostics) != 1 {
+			t.Fatalf("%s: %v, %v", format, result, err)
+		}
+		renderer, err := render.New(format, "", false, buildinfo.Version, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := linter.Lint("<stdin>", []byte(commandBadWorkflow), nil)
-		if err != nil || len(findings) != 1 {
-			t.Fatalf("%s: %v, %v", format, findings, err)
+		if err := renderer.Render(&out, render.Prepare(*result)); err != nil {
+			t.Fatal(err)
 		}
 		cli := testRunCommand(commandBadWorkflow, "--output", string(format), "-")
 		if out.String() != cli.Stdout {
 			t.Fatalf("Go API and CLI differ for %s: %s", format, cmp.Diff(cli.Stdout, out.String()))
 		}
 	}
-	for _, opts := range []actionlint.LinterOptions{{OutputFormat: "csv"}, {OutputFormat: actionlint.OutputFormatJSON, Format: "{{json .}}"}} {
-		if _, err := actionlint.NewLinter(io.Discard, &opts); err == nil {
+	for _, opts := range []struct {
+		format   render.Format
+		template string
+	}{{"csv", ""}, {render.FormatJSON, "{{json .}}"}} {
+		if _, err := render.New(opts.format, opts.template, false, buildinfo.Version, nil); err == nil {
 			t.Fatalf("invalid output options accepted: %+v", opts)
 		}
 	}
@@ -420,7 +433,7 @@ func TestReportPreservesPermissions(t *testing.T) {
 }
 
 func cleanCheckJSON(data string) bool {
-	var result actionlint.CheckResult
+	var result render.CheckResult
 	return json.Unmarshal([]byte(data), &result) == nil && result.SchemaVersion == 1 &&
 		result.Completed && result.Status == "success" && result.ExitCode == 0 &&
 		result.FileCount != nil && *result.FileCount == 1 && result.Diagnostics != nil && len(result.Diagnostics) == 0
@@ -438,7 +451,7 @@ func TestCheckJSONFailureContract(t *testing.T) {
 		{[]string{"--json", "missing.yml"}, 3},
 	} {
 		got := testRunCommand("", tc.args...)
-		var result actionlint.CheckResult
+		var result render.CheckResult
 		if err := json.Unmarshal([]byte(got.Stderr), &result); err != nil {
 			t.Fatal(err)
 		}

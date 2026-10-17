@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -107,7 +109,7 @@ runs:
 				t.Fatal(err)
 			}
 			if tc.code != "" {
-				if enabled, err := ruffConfigMayEnable(applyRulePresets(RulePresets{}, config)); err != nil || !enabled {
+				if enabled, err := repoconfig.RuffMayEnable(applyRulePresets(RulePresets{}, config)); err != nil || !enabled {
 					t.Fatalf("composite checker cannot be provisioned: enabled=%v, error=%v", enabled, err)
 				}
 			}

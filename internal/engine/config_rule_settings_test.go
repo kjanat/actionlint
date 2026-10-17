@@ -252,7 +252,7 @@ jobs:
 				}
 				return
 			}
-			if len(findings) != 1 || findings[0].Kind != "if-cond" {
+			if len(findings) != 1 || findings[0].Rule != "if-cond" {
 				t.Fatal(findings)
 			}
 			want := level
@@ -262,8 +262,8 @@ jobs:
 			if level == "warn" {
 				want = "warning"
 			}
-			if findings[0].severity != want {
-				t.Fatalf("got %q, want %q", findings[0].severity, want)
+			if findings[0].Severity != want {
+				t.Fatalf("got %q, want %q", findings[0].Severity, want)
 			}
 		})
 	}
@@ -271,7 +271,7 @@ jobs:
 		t.Fatal(got)
 	}
 	findings := lintCachePolicy(t, source, "lint: {rules: {correctness: {if-cond: off}, policy: {require-job-timeout: {level: warn, options: {max-minutes: 5}}}}}")
-	if len(findings) != 1 || findings[0].Kind != "require-job-timeout" || findings[0].severity != "warning" {
+	if len(findings) != 1 || findings[0].Rule != "require-job-timeout" || findings[0].Severity != "warning" {
 		t.Fatal(findings)
 	}
 }

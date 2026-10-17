@@ -1,11 +1,11 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/analyzer"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	lintconfig "actionlint.kjanat.dev/internal/config/rules"
 	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/repoconfig"
-	"actionlint.kjanat.dev/internal/ruff"
-	"actionlint.kjanat.dev/internal/workflownames"
+	"actionlint.kjanat.dev/internal/workflow/calls"
+	workflownames "actionlint.kjanat.dev/internal/workflow/names"
 	"actionlint.kjanat.dev/rule"
 )
 
@@ -34,24 +34,12 @@ type ruleDescriptor struct {
 }
 type ruleContext struct {
 	workflowNames           *workflownames.Index
-	ruffBackend             analyzer.ScriptBackend
-	shellcheckBackend       analyzer.ScriptBackend
-	scriptEngine            func(string) (analyzer.ScriptBackend, error)
-	ruff                    string
-	ruffOptions             *ExternalCommandOptions
-	ruffCompatibility       *ruff.Compatibility
-	ruffWarning             func(error)
 	path                    string
 	config                  *Config
 	projectConfig           *Config
 	actions                 *LocalActionsCache
-	workflows               *LocalReusableWorkflowCache
+	workflows               *calls.Cache
 	process                 *concurrentProcess
-	shellcheck              string
-	shellcheckRunner        func([]string, string) ([]byte, error)
-	debug                   func(string, ...any)
-	shellcheckOptions       *ExternalCommandOptions
-	shellcheckSettings      *ShellcheckSettings
 	workingDir, projectRoot string
 	reader                  *fsread.Reader
 	gitModes                *gitModes
@@ -71,13 +59,6 @@ func ruleBehaviours() map[string]ruleBehaviour {
 		"workflow-run-names": {build: func(c ruleContext) (Rule, error) {
 			return &workflowRunNamesRule{RuleBase: builtinRuleBase("workflow-run-names"), root: absPath(c.projectRoot), index: c.workflowNames}, nil
 		}, enabled: workflowRunNamesAvailable},
-		"ruff": {required: func(c ruleContext) bool {
-			options := projectToolOptions("ruff", c.ruff, c.ruffOptions, c.config, c.workingDir)
-			return c.ruffBackend != nil || configuredScriptModule("ruff", c.ruff, c.ruffOptions, c.config) != nil || options == nil || !options.Optional
-		}, buildScripts: newRuffAnalyzer, enabled: func(c ruleContext) bool {
-			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
-			return (c.ruffBackend != nil || externalCommandEnabled(c.ruff, c.ruffOptions)) && (possible || err != nil)
-		}},
 		"disallow-suppressions": {enabled: func(c ruleContext) bool { return c.config != nil && c.config.Policy.DisallowSuppressions.Enabled() }},
 		"matrix":                {build: func(c ruleContext) (Rule, error) { return NewRuleMatrix(), nil }},
 		"credentials":           {build: func(c ruleContext) (Rule, error) { return NewRuleCredentials(), nil }},
@@ -98,22 +79,21 @@ func ruleBehaviours() map[string]ruleBehaviour {
 		"expression":          {build: func(c ruleContext) (Rule, error) { return NewRuleExpression(c.actions, c.workflows), nil }},
 		"deprecated-commands": {buildScripts: func(ruleContext) (scriptAnalyzer, error) { return deprecatedCommandsAnalyzer{}, nil }},
 		"if-cond":             {build: func(c ruleContext) (Rule, error) { return NewRuleIfCond(), nil }},
-		"require-commit-hash": {build: func(c ruleContext) (Rule, error) { return NewRuleRequireCommitHash(), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresCommitHash() }},
+		"require-commit-hash": {build: func(c ruleContext) (Rule, error) {
+			var options *lintconfig.CommitHashOptions
+			if c.config != nil {
+				options, _ = c.config.Lint.Rules.Policy.Rules["require-commit-hash"].Options.(*lintconfig.CommitHashOptions)
+			}
+			return NewRuleRequireCommitHash(options.Excludes), nil
+		}, enabled: func(c ruleContext) bool { return c.config.RequiresCommitHash() }},
 		"require-job-timeout": {build: func(c ruleContext) (Rule, error) { return NewRuleRequireJobTimeout(c.config.RequiresJobTimeout()), nil }, enabled: func(c ruleContext) bool { return c.config.RequiresJobTimeout().Enabled() }},
 		"require-permissions": {build: func(c ruleContext) (Rule, error) {
 			return NewRuleRequirePermissions(c.config.RequiresPermissions()), nil
 		}, enabled: func(c ruleContext) bool { return c.config.RequiresPermissions().Enabled() }},
-		"required-actions":        {build: func(c ruleContext) (Rule, error) { return NewRuleRequiredActions(), nil }, enabled: func(c ruleContext) bool { return len(c.config.RequiredActions()) > 0 }},
+		"required-actions":        {build: func(c ruleContext) (Rule, error) { return NewRuleRequiredActions(c.config.RequiredActions()), nil }, enabled: func(c ruleContext) bool { return len(c.config.RequiredActions()) > 0 }},
 		"cache-write-untrusted":   {build: func(c ruleContext) (Rule, error) { return NewRuleCacheWriteUntrusted(), nil }, enabled: func(c ruleContext) bool { return c.config.CachePolicyEnabled("cache-write-untrusted") }},
 		"cache-call-unrestricted": {build: func(c ruleContext) (Rule, error) { return NewRuleCacheCallUnrestricted(), nil }, enabled: func(c ruleContext) bool { return c.config.CachePolicyEnabled("cache-call-unrestricted") }},
 		"cache-operation":         {build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.CachePolicyEnabled("cache-operation") }},
-		"shellcheck": {required: func(c ruleContext) bool {
-			options := projectToolOptions("shellcheck", c.shellcheck, c.shellcheckOptions, c.config, c.workingDir)
-			return c.shellcheckBackend != nil || configuredScriptModule("shellcheck", c.shellcheck, c.shellcheckOptions, c.config) != nil || options != nil && !options.Optional
-		}, skipWhenDisabled: true, requiresScriptExecution: true, buildScripts: newShellcheckAnalyzer, enabled: func(c ruleContext) bool {
-			return (c.shellcheckBackend != nil || c.shellcheckRunner != nil || externalCommandEnabled(c.shellcheck, c.shellcheckOptions)) &&
-				(c.config == nil || c.config.Tools.Shellcheck.Enabled == nil || *c.config.Tools.Shellcheck.Enabled)
-		}},
 	}
 }
 

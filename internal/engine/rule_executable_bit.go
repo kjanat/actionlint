@@ -698,7 +698,7 @@ func literalShellWord(parts []syntax.WordPart) (string, bool) {
 }
 
 func (rule *RuleExecutableBit) index() *gitModeSnapshot {
-	snapshot := rule.context.gitModes.load(rule.context.process.ctx, rule.paths.workspace)
+	snapshot := rule.context.gitModes.load(rule.context.process.Ctx, rule.paths.workspace)
 	if snapshot.err != nil {
 		rule.Debug("Git index unavailable: %v", snapshot.err)
 	} else {

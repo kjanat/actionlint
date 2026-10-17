@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginartifact"
+	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 )
 
 func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
@@ -36,7 +36,7 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 
 func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 	var requests atomic.Int32
-	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "corewasm", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}

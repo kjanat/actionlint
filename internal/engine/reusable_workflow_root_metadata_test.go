@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -57,7 +59,7 @@ jobs:
 				}
 			}
 			workflow, diagnostics := Parse(callee)
-			if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
+			if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
 				t.Fatalf("expected the duplicate root declaration diagnostic, got %v", diagnostics)
 			}
 			event, ok := workflow.FindWorkflowCallEvent()
@@ -68,10 +70,10 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var previousMetadata *ReusableWorkflowMetadata
+			var previousMetadata *calls.Metadata
 			var previousDiagnostics []*Error
 			for _, fromAST := range []bool{false, true} {
-				cache := NewLocalReusableWorkflowCache(project, root, nil)
+				cache := calls.NewCache(project.RootDir(), root, nil)
 				if fromAST {
 					cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 				}
@@ -93,7 +95,7 @@ jobs:
 					want := 0
 					if tc.wantMismatch {
 						want = 1
-						if len(errs) == 1 && (errs[0].Kind != "workflow-call" || errs[0].Line != 5 || !strings.Contains(errs[0].Message, `requests cache-mode "write" but the calling job allows "read"`)) {
+						if len(errs) == 1 && (errs[0].Rule != "workflow-call" || errs[0].Start.Line != 5 || !strings.Contains(errs[0].Message, `requests cache-mode "write" but the calling job allows "read"`)) {
 							t.Fatalf("unexpected caller diagnostic: %v", errs)
 						}
 					}
@@ -113,7 +115,7 @@ jobs:
 				}
 				duplicates := 0
 				for _, diagnostic := range errs {
-					if diagnostic.Kind == "syntax-check" && strings.Contains(diagnostic.Message, `key "cache-mode" is duplicated`) {
+					if diagnostic.Rule == "syntax-check" && strings.Contains(diagnostic.Message, `key "cache-mode" is duplicated`) {
 						duplicates++
 					}
 				}
@@ -177,7 +179,7 @@ jobs:
 					}
 				}
 				workflow, diagnostics := Parse(callee)
-				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
+				if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
 					t.Fatalf("expected only the invalid root key diagnostic, got %v", diagnostics)
 				}
 				event, ok := workflow.FindWorkflowCallEvent()
@@ -188,10 +190,10 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				var previousMetadata *ReusableWorkflowMetadata
+				var previousMetadata *calls.Metadata
 				var previousDiagnostics []*Error
 				for _, fromAST := range []bool{false, true} {
-					cache := NewLocalReusableWorkflowCache(project, root, nil)
+					cache := calls.NewCache(project.RootDir(), root, nil)
 					if fromAST {
 						cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 					}
@@ -203,7 +205,7 @@ jobs:
 						want := 0
 						if tc.wantMismatch {
 							want = 1
-							if len(errs) == 1 && (errs[0].Kind != "workflow-call" || errs[0].Line != 5 || !strings.Contains(errs[0].Message, `requests cache-mode "write" but the calling job allows "read"`)) {
+							if len(errs) == 1 && (errs[0].Rule != "workflow-call" || errs[0].Start.Line != 5 || !strings.Contains(errs[0].Message, `requests cache-mode "write" but the calling job allows "read"`)) {
 								t.Fatalf("AST=%v pass=%d: unexpected caller diagnostic: %v", fromAST, pass, errs)
 							}
 						}
@@ -233,11 +235,11 @@ jobs:
 					}
 					var syntax []*Error
 					for _, diagnostic := range errs {
-						if diagnostic.Kind == "syntax-check" {
+						if diagnostic.Rule == "syntax-check" {
 							syntax = append(syntax, diagnostic)
 						}
 					}
-					if len(syntax) != 1 || syntax[0].Line != 2 || syntax[0].Message != diagnostics[0].Message {
+					if len(syntax) != 1 || syntax[0].Start.Line != 2 || syntax[0].Message != diagnostics[0].Message {
 						t.Fatalf("AST=%v: invalid key diagnostic changed: %v", fromAST, errs)
 					}
 				}

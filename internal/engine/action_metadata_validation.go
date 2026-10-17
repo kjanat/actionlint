@@ -28,7 +28,7 @@ func metadataFindingKey(meta *ActionMetadata, finding *Error) actionMetadataFind
 	).Replace(finding.Message)
 	key := actionMetadataFindingKey{path: physicalSourcePath(meta.Path()), message: message}
 	if finding.source != nil {
-		key.line, key.column = finding.Line, finding.Column
+		key.line, key.column = finding.Start.Line, finding.Start.Column
 	}
 	return key
 }
@@ -61,7 +61,7 @@ func (rule *RuleAction) replayMetadataFindings(meta *ActionMetadata, action *wor
 		finding := *template
 		key := metadataFindingKey(meta, &finding)
 		if finding.source == nil {
-			finding.Line, finding.Column = action.Uses.Pos.Line, action.Uses.Pos.Col
+			finding.Start.Line, finding.Start.Column = action.Uses.Pos.Line, action.Uses.Pos.Col
 		}
 		if finding.ignoreOrigin != nil {
 			origin := *finding.ignoreOrigin
@@ -86,8 +86,8 @@ func firstVisibleMetadataFindings(findings []*Error) []*Error {
 	}
 	first := make(map[key]*Error)
 	for _, finding := range findings {
-		if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
-			k := key{identity.key, finding.Kind, finding.severity}
+		if identity := finding.metadataFinding; identity != nil && finding.Rule == "action" {
+			k := key{identity.key, finding.Rule, finding.Severity}
 			if previous := first[k]; previous == nil || identity.visit < previous.metadataFinding.visit {
 				first[k] = finding
 			}
@@ -95,7 +95,7 @@ func firstVisibleMetadataFindings(findings []*Error) []*Error {
 	}
 	filtered := findings[:0]
 	for _, finding := range findings {
-		if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" && first[key{identity.key, finding.Kind, finding.severity}] != finding {
+		if identity := finding.metadataFinding; identity != nil && finding.Rule == "action" && first[key{identity.key, finding.Rule, finding.Severity}] != finding {
 			continue
 		}
 		filtered = append(filtered, finding)

@@ -41,11 +41,11 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 		{`uses: './generated', job: other`, false},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
-			cfg, err := ParseConfig([]byte("ignores: [{rule: expression, " + tc.selector + "}]"))
+			cfg, err := ParseConfig([]byte("ignores: [{rule: expression-reference, " + tc.selector + "}]"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &Error{Kind: "expression", Line: 10, Column: 20}
+			finding := &Error{Rule: "expression-reference", Start: DiagnosticPosition{Line: 10, Column: 20}}
 			got := filterConfigIgnores(filepath.Join(root, ".github", "workflows", "ci.yml"), root, []byte(reusableIgnoreSource), []*Error{finding}, cfg, false, diagnosticLevels(cfg))
 			if (len(got) == 0) != tc.suppressed {
 				t.Fatalf("got %#v", got)
@@ -59,29 +59,29 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 		policy string
 		kinds  []string
 	}{
-		{"false", nil}, {"{report: violation}", []string{"expression"}},
+		{"false", nil}, {"{report: violation}", []string{"expression-reference"}},
 		{"{report: suppression}", []string{"disallow-suppressions"}},
-		{"true", []string{"disallow-suppressions", "expression"}},
+		{"true", []string{"disallow-suppressions", "expression-reference"}},
 	} {
-		cfg, err := ParseConfig([]byte("ignores: [{rule: expression, uses: './generated'}]\npolicy: {disallow-suppressions: " + tc.policy + "}"))
+		cfg, err := ParseConfig([]byte("ignores: [{rule: expression-reference, uses: './generated'}]\npolicy: {disallow-suppressions: " + tc.policy + "}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		finding := &Error{Kind: "expression", Line: 10, Column: 20}
+		finding := &Error{Rule: "expression-reference", Start: DiagnosticPosition{Line: 10, Column: 20}}
 		got := filterConfigIgnores("ci.yml", "", []byte(reusableIgnoreSource), []*Error{finding}, cfg, false, diagnosticLevels(cfg))
 		var kinds []string
 		for _, e := range got {
-			kinds = append(kinds, e.Kind)
+			kinds = append(kinds, e.Rule)
 		}
 		if !reflect.DeepEqual(kinds, tc.kinds) {
 			t.Fatalf("policy %s: %#v", tc.policy, got)
 		}
 	}
-	cfg, err := ParseConfig([]byte("ignores: [{rule: expression, uses: './generated'}]"))
+	cfg, err := ParseConfig([]byte("ignores: [{rule: expression-reference, uses: './generated'}]"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreign := &Error{Kind: "expression", Line: 10, Column: 20, Filepath: "action.yml", source: []byte("foreign")}
+	foreign := &Error{Rule: "expression-reference", Start: DiagnosticPosition{Line: 10, Column: 20}, Path: "action.yml", source: []byte("foreign")}
 	if got := filterConfigIgnores("ci.yml", "", []byte(reusableIgnoreSource), []*Error{foreign}, cfg, false, diagnosticLevels(cfg)); len(got) != 1 {
 		t.Fatalf("caller suppressed foreign finding: %#v", got)
 	}
@@ -100,10 +100,10 @@ jobs:
       - id: check
         run: echo '${{ invalid }}'
 `
-	if findings := lintCachePolicy(t, source, "ignores: [{rule: expression, job: build, step: check}]"); len(findings) != 0 {
+	if findings := lintCachePolicy(t, source, "ignores: [{rule: expression-reference, job: build, step: check}]"); len(findings) != 0 {
 		t.Fatal(findings)
 	}
-	if findings := lintCachePolicy(t, source, "ignores: [{rule: expression, job: other}]"); len(findings) != 1 || findings[0].Kind != "expression" {
+	if findings := lintCachePolicy(t, source, "ignores: [{rule: expression-reference, job: other}]"); len(findings) != 1 || findings[0].Rule != "expression-reference" {
 		t.Fatal(findings)
 	}
 }
@@ -116,7 +116,7 @@ func TestReusableIgnoreLiteralSelectors(t *testing.T) {
 	} {
 		t.Run(field.key, func(t *testing.T) {
 			source := strings.Replace(reusableIgnoreSource, field.key+": "+field.value, field.key+": ${{ '"+field.value+"' }}", 1)
-			config := "ignores: [{rule: expression, " + field.selector + ": '" + field.value + "'}]"
+			config := "ignores: [{rule: expression-reference, " + field.selector + ": '" + field.value + "'}]"
 			if findings := lintCachePolicy(t, source, config); len(findings) != 0 {
 				t.Fatalf("literal selector did not suppress finding: %+v", findings)
 			}
@@ -127,7 +127,7 @@ func TestReusableIgnoreLiteralSelectors(t *testing.T) {
 func TestReusableIgnoreDisabledRulePolicy(t *testing.T) {
 	for _, report := range []string{"suppression", "all", "violation"} {
 		t.Run(report, func(t *testing.T) {
-			config := "lint: {rules: {correctness: {expression: off}}}\nignores: [{rule: expression, job: build}]\npolicy: {disallow-suppressions: {report: " + report + "}}"
+			config := "lint: {rules: {correctness: {expression-reference: off}}}\nignores: [{rule: expression-reference, job: build}]\npolicy: {disallow-suppressions: {report: " + report + "}}"
 			if findings := lintCachePolicy(t, reusableIgnoreSource, config); len(findings) != 0 {
 				t.Fatalf("disabled finding triggered suppression policy: %+v", findings)
 			}
@@ -173,7 +173,7 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 	workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", source)
 	for _, pattern := range []string{".github/workflows/**", ".github/workflows/other.yml"} {
 		t.Run(pattern, func(t *testing.T) {
-			config := "ignores: [{rule: expression, file: '" + pattern + "'}]"
+			config := "ignores: [{rule: expression-reference, file: '" + pattern + "'}]"
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
 			cfg, err := ParseConfig([]byte(config))
 			if err != nil {
@@ -189,11 +189,11 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 					t.Fatal(err)
 				}
 				result, err := session.Files([]string{path}, nil)
-				if err != nil || result.FileCount() != 1 || len(result.Diagnostics) != want {
+				if err != nil || result.FileCount != 1 || len(result.Diagnostics) != want {
 					t.Fatalf("session %s: %+v, %v", path, result, err)
 				}
 				result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: parent, Sources: []SourceUnit{{Path: path, Content: []byte(source), Project: workspace.Identity(root), Config: cfg}}})
-				if err != nil || result.FileCount() != 1 || len(result.Diagnostics) != want {
+				if err != nil || result.FileCount != 1 || len(result.Diagnostics) != want {
 					t.Fatalf("direct %s: %+v, %v", path, result, err)
 				}
 			}
@@ -255,7 +255,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &Error{Kind: "shellcheck", Line: 1, Column: 6, Filepath: script, source: []byte("echo $VALUE\n"), suppressionOrigin: &suppressionOrigin{first: 10, last: 10}}
+			finding := &Error{Rule: "shellcheck", Start: DiagnosticPosition{Line: 1, Column: 6}, Path: script, source: []byte("echo $VALUE\n"), suppressionOrigin: &suppressionOrigin{first: 10, last: 10}}
 			got := filterConfigIgnores(workflow, root, []byte(reusableIgnoreSource), []*Error{finding}, cfg, false, diagnosticLevels(cfg))
 			if len(got) != tc.want {
 				t.Fatalf("got %d findings, want %d", len(got), tc.want)

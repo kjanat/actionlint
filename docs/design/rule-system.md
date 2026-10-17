@@ -49,6 +49,20 @@ Generated reference material belongs to the rule catalogue. Generator logic live
 with its owning subsystem; executable entry points remain thin. Release and
 conformance tools retain their own tests and domain directories.
 
+## Script-tool boundary
+
+`internal/tools` defines registration, prepared script batches and findings.
+`internal/tools/backend` adapts the shared snippet protocol to native processes or
+an injected WASM backend. `internal/tools/adapters` owns the bundled native CLI
+protocols, tool configuration, expression preparation and diagnostic conversion.
+The engine and application depend on registrations, not these implementations.
+
+`internal/analyzerhost` owns process capacity and completion. `internal/localapp`
+composes artifact loading and registrations; independent core engines advertise
+shell selectors in metadata. Adding a provider requires no engine-name switch.
+Dependency tests enforce both directions, and integration tests exercise an
+independent process provider and a remote core-WASM artifact.
+
 ## Validation
 
 Verify contracts with native and WASM consumers, final artifacts, source-coordinate
@@ -77,8 +91,13 @@ validated without implicit file or network access. The catalogue generates `docs
 owns configuration or logging. Adapters opt into those capabilities explicitly.
 Environment names, conditions, permission declarations, identifiers and job dependency
 checks have stateless implementations in `internal/checks`; identifiers and dependencies
-receive complete scopes, without accumulating state through callback order. Expression,
-action-metadata, matrix, cache and several policy checks still use visitor implementations.
+receive complete scopes, without accumulating state through callback order.
+`internal/workflow/checks` also owns events, credentials, glob validation, parallel
+steps and the required-actions, commit-pinning, timeout and required-permissions checks.
+Policy options are projected at construction; the check implementations do not load
+repository configuration. Reusable-workflow metadata and permissions live in
+`internal/workflow/calls`, and evaluated field shapes in `internal/workflow/schema`.
+Expression, action-metadata, matrix, cache, runner and shell checks still use visitor implementations.
 They must be migrated with their context/suppression semantics covered; moving their files
 alone does not complete that work. Public analyzers do not implement visitor callbacks.
 
@@ -104,3 +123,41 @@ architecture dependency tests, fix conflicts/revisions, framed LSP exchanges and
 cancellation, component fixtures from Rust/C/TinyGo, and the real Ruff artifact in the CLI,
 Deno, wazero and Wasmi hosts. The commitish provider is compiled and tested offline; live
 GitHub resolution has not been exercised as part of this change.
+
+## Expression findings and webhook observations
+
+The expression checker is a producer of several independently configurable rules.
+Its traversal is not the diagnostic identity. Each production site supplies both
+`Rule` (the configurable check) and `Code` (the diagnostic kind within that rule).
+Messages and source positions do not determine either identity.
+
+| Rule                   | Responsibility                                              | Example code              |
+| ---------------------- | ----------------------------------------------------------- | ------------------------- |
+| `expression-syntax`    | Tokens and expression grammar                               | `invalid-syntax`          |
+| `expression-reference` | Names, properties, functions and declared variables/secrets | `unknown-variable`        |
+| `context-availability` | Contexts and functions allowed at a workflow field          | `unavailable-context`     |
+| `expression-type`      | Operand and argument compatibility                          | `argument-type`           |
+| `expression-call`      | Call syntax, argument counts and constant arguments         | `argument-count`          |
+| `event-payload`        | Known properties of selected event payload variants         | `unknown-property`        |
+| `script-injection`     | Untrusted script interpolation                              | `untrusted-interpolation` |
+| `expression`           | Workflow-field value and interpolation requirements         | —                         |
+
+These rules have separate severity, preset and suppression settings. Disabling
+`expression` no longer disables the independently named checks. `script-injection`
+belongs to the security group; the other rules above belong to correctness.
+JSON carries rule and code separately. LSP qualifies diagnostic codes with their
+rule; SARIF retains `ruleId` and places the code in `properties.diagnosticCode`.
+The latter replaces the old external-only `externalCode` property.
+
+Webhook observations are independent of this taxonomy. `internal/webhook/payload`
+owns the generated graph and its provenance, and returns isolated data through
+`Variants` and `Node`. It has no project-language dependencies. The workflow adapter
+in `internal/workflow/eventpayload` owns trigger/activity selection, Actions aliases,
+projection into expression types and Actions-specific overlays. Both checking and
+editor completion consume that projection. The expression checker does not load
+Octokit data, read configuration or perform network requests.
+
+Unknown event variants remain open and branch guards do not yet refine payload
+variants. Splitting diagnostic identities does not change those analysis limits.
+The workflow visitor still supplies context and source mapping; migrating that
+remaining stateful traversal is separate from the identity and observation boundaries.
