@@ -1,6 +1,6 @@
 # Analysis contracts and library boundaries
 
-Status: implemented, with the internal visitor migration boundary described below.
+Status: implemented.
 
 ## Context
 

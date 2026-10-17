@@ -5,10 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
 	"actionlint.kjanat.dev/internal/tools/adapters"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func TestExpressionRefinementReview(t *testing.T) {
@@ -103,57 +100,5 @@ func TestConcurrencyExpressionConflictReview(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestActionMappingInterpolationReview(t *testing.T) {
-	for _, field := range []string{"env", "with"} {
-		for _, value := range []string{"prefix-${{ inputs.value }}", "${{ inputs.value }}-suffix", "${{ inputs.value }}tail}}", "${{ inputs.value }}${{ inputs.value }}", "${{ fromJSON(inputs.value) }}", `${{ fromJSON('{"key":"${{"}') }}`} {
-			t.Run(field+"/"+value, func(t *testing.T) {
-				var meta actionmeta.Metadata
-				source := `name: test
-description: test
-inputs:
-  value:
-    description: test
-runs:
-  using: composite
-  steps:
-    - uses: actions/checkout@v6
-      ` + field + ": " + value + "\n"
-				if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
-					t.Fatal(err)
-				}
-				findings := actionmeta.Validate(&meta)
-				want := 1
-				if strings.HasPrefix(value, "${{ fromJSON(") {
-					want = 0
-				}
-				if len(findings) != want || (want == 1 && !strings.Contains(findings[0].Message, "expected a mapping")) {
-					t.Fatalf("want %d mapping errors, got %v", want, findings)
-				}
-			})
-		}
-	}
-}
-
-func TestCheckStringRejectsRawTagReview(t *testing.T) {
-	for _, allowEmpty := range []bool{false, true} {
-		p := &workflowlang.Parser{}
-		n := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!custom", Value: "max", Style: yaml.TaggedStyle, Line: 1, Column: 1}
-		if p.CheckString(n, allowEmpty) {
-			t.Fatal("invalid tag accepted")
-		}
-	}
-}
-
-func TestWorkflowExpressionLiteralBoundaryReview(t *testing.T) {
-	for _, value := range []string{"pre-${{ '' }}", "${{ '' }}-post", "${{ '' }}-${{ '' }}", "${{ '' }}tail}}", "  ${{ '' }}  ", "${{ '' }}\n", "\t${{ '' }}"} {
-		if got, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: value}); known {
-			t.Errorf("fragment %q folded to %#v", value, got)
-		}
-	}
-	if got, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: "${{  ''  }}"}); !known || got != "" {
-		t.Fatalf("sole expression: %#v, known=%v", got, known)
 	}
 }

@@ -92,6 +92,10 @@ check_input docs/unrelated.md false false
 check_input internal/actioncatalog/generate/popular_actions.json true false
 check_input internal/actioncatalog/metadata/main.go true false
 check_input internal/webhook/generate/main.go true false
+check_input internal/webhook/payload/generate/main.mts true false
+check_input internal/webhook/payload/catalogue.json true false
+check_input package.json true false
+check_input package-lock.json true false
 check_input internal/expression/context/generate/main.go true false
 check_input internal/expression/context/availability.go true false
 check_input internal/action/availability_generated.go true false

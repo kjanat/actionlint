@@ -47,6 +47,11 @@ jobs:
           elif [[ "${status}" -ne 0 ]]; then
             exit "${status}"
           fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
+      - name: Install catalogue generator dependencies
+        run: npm ci --ignore-scripts
       - name: Refresh upstream action and workflow metadata
         run: go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
@@ -64,6 +69,7 @@ jobs:
           add-paths: |
             internal/actioncatalog/popular_actions.json
             internal/webhook/webhooks.go
+            internal/webhook/payload/catalogue.json
             internal/expression/context/availability.go
             internal/action/availability_generated.go
             internal/action/runtimes_generated.go

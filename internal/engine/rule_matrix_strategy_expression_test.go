@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
 	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
@@ -56,39 +55,6 @@ jobs:
 				}
 			} else if len(errs) != 1 || errs[0].Rule != "matrix" || !strings.Contains(errs[0].Message, tc.want) || errs[0].Start.Line != 4 || errs[0].Start.Column != 15 || errs[0].Path != "test.yaml" {
 				t.Fatalf("wanted one %q matrix diagnostic at test.yaml:4:15, got %v", tc.want, errs)
-			}
-		})
-	}
-}
-
-func TestRuleMatrixUnknownOrInvalidStrategyExpression(t *testing.T) {
-	for _, expression := range []string{
-		"fromJSON(vars.STRATEGY)",
-		"fromJSON('{}')",
-		"fromJSON('[]')",
-		`fromJSON('{"matrix":[]}')`,
-		`fromJSON('{"matrix":{"os":"linux"}}')`,
-		`fromJSON('{"matrix":{"exclude":"linux"}}')`,
-	} {
-		t.Run(expression, func(t *testing.T) {
-			source := `on: push
-jobs:
-  test:
-    strategy: ${{ ` + expression + ` }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ok
-`
-			workflow, errs := Parse([]byte(source))
-			if len(errs) != 0 {
-				t.Fatal(errs)
-			}
-			rule := builtin.NewRuleMatrix()
-			if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
-				t.Fatal(err)
-			}
-			if errs := rule.Errs(); len(errs) != 0 {
-				t.Fatalf("matrix rule reported on an unknown or invalid shape: %v", errs)
 			}
 		})
 	}

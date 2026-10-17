@@ -11,6 +11,7 @@ on:
       - "**/*.toml"
       - "**/*.md"
       - "**/*.ts"
+      - "**/*.mts"
       - "**/*.tsx"
       - "**/*.js"
       - "**/*.mjs"
@@ -68,6 +69,12 @@ jobs:
       - name: Regenerate the configuration schema
         id: schema
         run: bash internal/ci/autofix-step.bash go generate -run generate-config-schema
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.inputs.outputs.tables == 'true'
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - name: Install catalogue generator dependencies
+        if: steps.inputs.outputs.tables == 'true'
+        run: npm ci --ignore-scripts
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'

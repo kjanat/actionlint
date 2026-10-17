@@ -4,7 +4,7 @@ MAKEFLAGS += --no-builtin-rules
 
 GO_DIRS := $(shell go list -f '{{.Dir}}' ./...)
 GO_FILES := $(patsubst $(CURDIR)/%,%,$(wildcard $(addsuffix /*.go,$(GO_DIRS))))
-SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/actioncatalog/popular_actions.json internal/webhook/payload/catalogue.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard internal/*/generate/*.go internal/*/metadata/*.go internal/release/bump-version/*.go internal/*/check-*/*.go)
 TESTDATA := $(wildcard \
