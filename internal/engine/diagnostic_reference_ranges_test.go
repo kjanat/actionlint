@@ -6,34 +6,7 @@ import (
 	"unicode/utf8"
 
 	diagmodel "actionlint.kjanat.dev/diagnostic"
-	exprlang "actionlint.kjanat.dev/internal/expression"
 )
-
-func TestParserOwnedExpressionSpans(t *testing.T) {
-	for _, tc := range []struct{ text, want string }{
-		{`fromJSON('{"win":1}')['mac']`, `fromJSON('{"win":1}')['mac']`},
-		{`steps.foo.outputs['bar']`, `steps.foo.outputs['bar']`},
-		{`matrix.x.y`, `matrix.x.y`},
-		{`env[inputs.name] && true`, `env[inputs.name] && true`},
-		{`fromJSON(format('{0}', '[]'))[0].name`, `fromJSON(format('{0}', '[]'))[0].name`},
-		{`env[format('a]b', inputs.name)]`, `env[format('a]b', inputs.name)]`},
-		{`startWith('hello')`, `startWith('hello')`},
-		{`format('x', 1) && false`, `format('x', 1) && false`},
-		{`(fromJSON('{}'))['mac']`, `(fromJSON('{}'))['mac']`},
-		{`env . NAME [ 'x' ]`, `env . NAME [ 'x' ]`},
-	} {
-		t.Run(tc.text, func(t *testing.T) {
-			node, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.text + "}}"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			span := exprlang.ExpressionSpan(node)
-			if got := tc.text[span.Start:span.End]; got != tc.want {
-				t.Fatalf("range %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
 
 func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 	for _, expression := range []string{
@@ -46,7 +19,7 @@ func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 			">-\n      ${{ " + strings.ReplaceAll(expression, "[", "\n      [") + " }}",
 		} {
 			src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -73,7 +46,7 @@ func TestFunctionDiagnosticRangeIgnoresResultAccess(t *testing.T) {
 	for _, call := range []string{`format('{0}{1}', 1, 2, 3)`, `startWith('a', 'b')`, `startsWith('a')`} {
 		for _, suffix := range []string{"", "[0]", ".x", "[0].x"} {
 			src := "on: push\nenv:\n  VALUE: ${{ " + call + suffix + " }}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -119,7 +92,7 @@ func TestCompositeDeprecatedCommands(t *testing.T) {
 				writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
 				call = "- uses: ./outer"
 			}
-			result := compositeAnalysis(t, root, call, AnalysisOptions{})
+			result := compositeAnalysis(t, root, call, Request{})
 			count := 0
 			for _, d := range result.Diagnostics {
 				if d.Rule != "deprecated-commands" {
@@ -164,7 +137,7 @@ func TestDeprecatedCommandMappedOccurrences(t *testing.T) {
 		"echo ::set-output name=x::1\n          ::set-output name=y::2",
 	} {
 		src := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + scalar + "\n"
-		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+		result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 		if err != nil {
 			t.Fatal(err)
 		}

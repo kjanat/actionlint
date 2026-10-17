@@ -2,37 +2,23 @@ package engine
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
-	"actionlint.kjanat.dev/internal/buildinfo"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 
-	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/execabs"
 )
-
-type testErrorReader struct{}
-
-func (r testErrorReader) Read(p []byte) (int, error) {
-	return 0, errors.New("dummy read error")
-}
 
 func TestLinterMissingLocalAction(t *testing.T) {
 	root := t.TempDir()
@@ -46,13 +32,14 @@ func TestLinterMissingLocalAction(t *testing.T) {
 		{"      - uses: ./missing\n        id: missing\n", 1},
 		{"      - uses: ./missing # actionlint:ignore missing-local-action -- downloaded at runtime\n        id: missing\n", 0},
 	} {
-		l, err := NewLinter(io.Discard, &LinterOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		l.DefaultConfig = &repoconfig.Config{}
+		request := Request{}
+		var lConfig *repoconfig.Config
+		var err error
+
+		lConfig = &repoconfig.Config{}
 		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps
-		errs, err := l.Lint("test.yaml", []byte(source), proj)
+		request.Sources = []SourceUnit{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: proj, Config: lConfig}}
+		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil || len(errs) != tc.want {
 			t.Fatalf("got %v, %v; want %d diagnostics", errs, err, tc.want)
 		}
@@ -77,13 +64,11 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			l, err := NewLinter(io.Discard, &LinterOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			l.DefaultConfig = cfg
+			request := Request{}
+			lConfig := cfg
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\n"
-			findings, err := l.Lint("workflow.yml", []byte(source), workspace.Identity(t.TempDir()))
+			request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(t.TempDir()), Config: lConfig}}
+			findings, err := testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil || len(findings) != 1 || findings[0].Rule != tc.want {
 				t.Fatalf("got %v, %v; want only %s", findings, err, tc.want)
 			}
@@ -91,7 +76,7 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 	}
 }
 
-func TestLinterLintOK(t *testing.T) {
+func TestWorkflowFixturesOK(t *testing.T) {
 	dir := filepath.Join("testdata", "ok")
 
 	es, err := os.ReadDir(dir)
@@ -119,20 +104,8 @@ func TestLinterLintOK(t *testing.T) {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
 
-			opts := LinterOptions{
-				Shellcheck: shellcheck,
-			}
-
-			linter, err := NewLinter(io.Discard, &opts)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			config := repoconfig.Config{}
-			linter.DefaultConfig = &config
-
-			t.Log("Linting workflow file", f)
-			errs, err := linter.LintFile(f, proj)
+			request := Request{Tools: adapters.Options{ShellCheck: shellcheck}.Registrations(), Sources: readFixtureSources(t, []string{f}, proj, &repoconfig.Config{})}
+			errs, err := testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -215,7 +188,7 @@ func checkErrors(t *testing.T, outfile string, errs []*findingmodel.Finding) {
 	}
 }
 
-func TestLinterLintError(t *testing.T) {
+func TestWorkflowFixtureDiagnostics(t *testing.T) {
 	for _, subdir := range []string{"examples", "err"} {
 		dir, infiles, err := testFindAllWorkflowsInDir(subdir)
 		if err != nil {
@@ -239,23 +212,15 @@ func TestLinterLintError(t *testing.T) {
 					panic(err)
 				}
 
-				o := LinterOptions{}
-
+				tool := ""
 				if strings.Contains(testName, "shellcheck") {
 					if shellcheck == "" {
-						t.Skip("skipped because \"shellcheck\" command does not exist in system")
+						t.Skip("ShellCheck required")
 					}
-					o.Shellcheck = shellcheck
+					tool = shellcheck
 				}
-
-				l, err := NewLinter(io.Discard, &o)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				l.DefaultConfig = &repoconfig.Config{}
-
-				errs, err := l.Lint("test.yaml", b, proj)
+				request := Request{Tools: adapters.Options{ShellCheck: tool}.Registrations(), Sources: []SourceUnit{{Path: "test.yaml", Content: b, Project: proj, Config: &repoconfig.Config{}}}}
+				errs, err := testFindings(runTestAnalysis(t.Context(), request))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -266,7 +231,7 @@ func TestLinterLintError(t *testing.T) {
 	}
 }
 
-func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
+func TestWorkflowFixturesBatch(t *testing.T) {
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {
 		t.Skipf("shellcheck is not found: %s", err)
@@ -286,18 +251,8 @@ func TestLinterLintAllErrorWorkflowsAtOnce(t *testing.T) {
 	}
 	files = append(files, fs...)
 
-	o := LinterOptions{
-		Shellcheck: shellcheck,
-	}
-
-	l, err := NewLinter(io.Discard, &o)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	l.DefaultConfig = &repoconfig.Config{}
-
-	errs, err := l.LintFiles(files, proj)
+	request := Request{Tools: adapters.Options{ShellCheck: shellcheck}.Registrations(), Sources: readFixtureSources(t, files, proj, &repoconfig.Config{})}
+	errs, err := testFindings(runTestAnalysis(t.Context(), request))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,44 +271,7 @@ CheckFiles:
 	}
 }
 
-func TestLintFindProjectFromPath(t *testing.T) {
-	d := testProjectDir(t, filepath.Join("testdata", "find_project"))
-	f := filepath.Join(d, ".github", "workflows", "test.yaml")
-	b, err := os.ReadFile(f)
-	if err != nil {
-		panic(err)
-	}
-
-	lint := func(path string) []*findingmodel.Finding {
-		l, err := NewLinter(io.Discard, &LinterOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		l.DefaultConfig = &repoconfig.Config{}
-		errs, err := l.Lint(path, b, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return errs
-	}
-
-	errs := lint(f)
-	if len(errs) == 0 {
-		t.Fatal("no error was detected though the project was found from path parameter")
-	}
-
-	errs = lint("<stdin>")
-	if len(errs) > 0 {
-		t.Fatal("some error was detected though path parameter is stdin", errs)
-	}
-
-	errs = lint(filepath.Join("this-dir-doesnt-exist", "not-found.yaml"))
-	if len(errs) > 0 {
-		t.Fatal("some error was detected though path parameter does not exist", errs)
-	}
-}
-
-func TestLinterLintProject(t *testing.T) {
+func TestProjectWorkflowFixtures(t *testing.T) {
 	root := filepath.Join("testdata", "projects")
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -370,246 +288,30 @@ func TestLinterLintProject(t *testing.T) {
 			repo := filepath.Join(root, name)
 			t.Log("Linting project at", repo)
 
-			opts := LinterOptions{
+			opts := workspace.Options{
 				WorkingDir: repo,
 			}
 			cfg := filepath.Join(repo, "actionlint.yaml")
 			if _, err := os.Stat(cfg); err == nil {
 				opts.ConfigFile = cfg
 			}
-			linter, err := NewLinter(io.Discard, &opts)
+			session, err := workspace.New(opts)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			proj := workspace.Identity(repo)
-			errs, err := linter.LintDir(filepath.Join(repo, "workflows"), proj)
+			selection, err := session.Directory(filepath.Join(repo, "workflows"), proj)
+			if err != nil {
+				t.Fatal(err)
+			}
+			errs, err := testFindings(runTestAnalysis(t.Context(), Request{WorkingDir: session.WorkingDir(), Sources: selection.Sources}))
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			checkErrors(t, repo+".out", errs)
 		})
-	}
-}
-
-func TestLinterFormatErrorMessageOK(t *testing.T) {
-	tests := []struct {
-		file   string
-		format string
-	}{
-		{
-			file:   "test.json",
-			format: "{{json .}}",
-		},
-		{
-			file:   "test.jsonl",
-			format: "{{range $err := .}}{{json $err}}{{end}}",
-		},
-		{
-			file:   "test.md",
-			format: "{{range $ := .}}### Error at line {{$.Line}}, col {{$.Column}} of `{{$.Filepath}}`\\n\\n{{$.Message}}\\n\\n```\\n{{$.Snippet}}\\n```\\n\\n{{end}}",
-		},
-	}
-
-	dir := filepath.Join("testdata", "format")
-	proj := workspace.Identity(dir)
-	infile := filepath.Join(dir, "test.yaml")
-	for _, tc := range tests {
-		t.Run(tc.file, func(t *testing.T) {
-			opts := LinterOptions{Format: tc.format}
-
-			var b strings.Builder
-			l, err := NewLinter(&b, &opts)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			l.DefaultConfig = &repoconfig.Config{}
-			errs, err := l.LintFile(infile, proj)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(errs) == 0 {
-				t.Fatal("no error")
-			}
-
-			buf, err := os.ReadFile(filepath.Join(dir, tc.file))
-			if err != nil {
-				panic(err)
-			}
-			want := string(buf)
-
-			have := b.String()
-			// Fix path separators on Windows
-			if runtime.GOOS == "windows" {
-				slash := filepath.ToSlash(infile)
-				have = strings.ReplaceAll(have, infile, slash)
-				escaped := strings.ReplaceAll(slash, "/", `\\`)
-				have = strings.ReplaceAll(have, escaped, slash)
-			}
-
-			if diff := cmp.Diff(want, have); diff != "" {
-				t.Logf("have: %s", have)
-				t.Fatal(diff)
-			}
-		})
-	}
-}
-
-func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
-	saved := buildinfo.ReleaseVersion
-	t.Cleanup(func() {
-		buildinfo.ReleaseVersion = saved
-	})
-	buildinfo.ReleaseVersion = "(devel)"
-
-	dir := filepath.Join("testdata", "format")
-	proj := workspace.Identity(dir)
-	file := filepath.Join(dir, "test.yaml")
-
-	opts := LinterOptions{OutputFormat: render.FormatSARIF}
-	var b strings.Builder
-	l, err := NewLinter(&b, &opts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	l.DefaultConfig = &repoconfig.Config{}
-	errs, err := l.LintFile(file, proj)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(errs) == 0 {
-		t.Fatal("no error")
-	}
-
-	out := b.String()
-	// Fix path separators on Windows
-	if runtime.GOOS == "windows" {
-		slash := filepath.ToSlash(file)
-		escaped := strings.ReplaceAll(file, `\`, `\\`)
-		out = strings.ReplaceAll(out, escaped, slash)
-	}
-
-	var have any
-	if err := json.Unmarshal([]byte(out), &have); err != nil {
-		t.Fatalf("output is not JSON: %v: %q", err, out)
-	}
-
-	bytes, err := os.ReadFile(filepath.Join(dir, "test.sarif"))
-	if err != nil {
-		panic(err)
-	}
-	var want any
-	if err := json.Unmarshal(bytes, &want); err != nil {
-		panic(err)
-	}
-
-	if diff := cmp.Diff(want, have); diff != "" {
-		t.Logf("have: %s", have)
-		t.Fatal(diff)
-	}
-}
-
-func TestLinterLintStdinOK(t *testing.T) {
-	for _, f := range []string{"", "foo.yaml"} {
-		l, err := NewLinter(io.Discard, &LinterOptions{StdinFileName: f})
-		if err != nil {
-			t.Fatalf("creating Linter object with stdin file name %q caused error: %v", f, err)
-		}
-
-		in := []byte(`on: push
-jobs:
-  job:
-    runs-on: foo
-	steps:
-	  - run: echo`)
-		errs, err := l.LintStdin(bytes.NewReader(in))
-		if err != nil {
-			t.Fatalf("linting input with stdin file name %q caused error: %v", f, err)
-		}
-		if len(errs) != 1 {
-			t.Fatalf("unexpected number of errors with stdin file name %q: %v", f, errs)
-		}
-
-		want := f
-		if want == "" {
-			want = "<stdin>"
-		}
-		if errs[0].Path != want {
-			t.Fatalf("file path in the error with stdin file name %q should be %q but got %q", f, want, errs[0].Path)
-		}
-	}
-}
-
-func TestLinterLintStdinReadError(t *testing.T) {
-	l, err := NewLinter(io.Discard, &LinterOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = l.LintStdin(testErrorReader{})
-	if err == nil {
-		t.Fatal("error did not occur")
-	}
-	want := "could not read stdin: dummy read error"
-	have := err.Error()
-	if want != have {
-		t.Fatalf("wanted error message %q but have %q", want, have)
-	}
-}
-
-func TestLinterPathsNotFound(t *testing.T) {
-	l, err := NewLinter(io.Discard, &LinterOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-
-	paths := []string{
-		filepath.Join("testdata", "this-file-doesnt-exist.yaml"),                   // Relative file path (parent exists)
-		filepath.Join("this-dir-doesnt-exist", "this-file-doesnt-exist.yaml"),      // Relative file path (parent doesn't exist)
-		filepath.Join(cwd, "this-file-doesnt-exist.yaml"),                          // Absolute file path (parent exists)
-		filepath.Join(cwd, "this-dir-doesnt-exist", "this-file-doesnt-exist.yaml"), // Absolute file path (parent doesn't exist)
-	}
-
-	_, err = l.LintFiles(paths, nil)
-	if err == nil {
-		t.Fatal("no error happened")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "could not read") {
-		t.Fatal("unexpected error:", msg)
-	}
-}
-
-func TestLinterOnFilesSelectedHook(t *testing.T) {
-	path := filepath.Join("testdata", "bench", "minimal.yaml")
-	paths := []string{path}
-	var selected []string
-	l, err := NewLinter(io.Discard, &LinterOptions{
-		OnFilesSelected: func(files []string) {
-			selected = slices.Clone(files)
-			files[0] = "modified-by-callback.yaml"
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	l.DefaultConfig = &repoconfig.Config{}
-
-	if _, err := l.LintFiles(paths, workspace.Identity(".")); err != nil {
-		t.Fatal(err)
-	}
-	if !slices.Equal(selected, paths) {
-		t.Fatalf("wanted selected files %#v but got %#v", paths, selected)
-	}
-	if paths[0] != path {
-		t.Fatalf("callback modified the lint file set: %#v", paths)
 	}
 }
 
@@ -626,8 +328,8 @@ func (r *customRuleForTest) VisitStep(n *workflowlang.Step) error {
 	return nil
 }
 
-func TestLinterAddCustomRuleOnRulesCreatedHook(t *testing.T) {
-	o := &LinterOptions{
+func TestTraversalAddsCustomRule(t *testing.T) {
+	request := Request{
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			r := &customRuleForTest{
 				Base: workflowvisit.NewBase("this-is-test", ""),
@@ -635,12 +337,6 @@ func TestLinterAddCustomRuleOnRulesCreatedHook(t *testing.T) {
 			return append(rules, r)
 		},
 	}
-
-	l, err := NewLinter(io.Discard, o)
-	if err != nil {
-		t.Fatal(err)
-	}
-	l.DefaultConfig = &repoconfig.Config{}
 
 	{
 		w := `on: push
@@ -650,7 +346,8 @@ jobs:
     steps:
       - run: echo
 `
-		errs, err := l.Lint("test.yaml", []byte(w), nil)
+		request.Sources = []SourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &repoconfig.Config{}}}
+		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -668,7 +365,8 @@ jobs:
       - run: echo
       - run: echo
 `
-		errs, err := l.Lint("test.yaml", []byte(w), nil)
+		request.Sources = []SourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &repoconfig.Config{}}}
+		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -686,8 +384,8 @@ jobs:
 	}
 }
 
-func TestLinterRemoveRuleOnRulesCreatedHook(t *testing.T) {
-	o := &LinterOptions{
+func TestTraversalRemovesBuiltinRule(t *testing.T) {
+	request := Request{
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			for i, r := range rules {
 				if r.Name() == "runner-label" {
@@ -699,190 +397,14 @@ func TestLinterRemoveRuleOnRulesCreatedHook(t *testing.T) {
 		},
 	}
 
-	l, err := NewLinter(io.Discard, o)
-	if err != nil {
-		t.Fatal(err)
-	}
-	l.DefaultConfig = &repoconfig.Config{}
-
 	f := filepath.Join("testdata", "err", "invalid_runner_labels.yaml")
-	errs, err := l.LintFile(f, nil)
+	request.Sources = readFixtureSources(t, []string{f}, nil, &repoconfig.Config{})
+	errs, err := testFindings(runTestAnalysis(t.Context(), request))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(errs) != 0 {
 		t.Fatal("no error was expected because runner-label rule was removed but got:", errs)
-	}
-}
-
-func TestLinterGenerateDefaultConfigAlreadyExists(t *testing.T) {
-	l, err := NewLinter(io.Discard, &LinterOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, n := range []string{"ok", "yml"} {
-		d := testProjectDir(t, filepath.Join("testdata", "config", "projects", n))
-
-		err := l.GenerateDefaultConfig(d)
-		if err == nil {
-			t.Fatal("error did not occur for project", d)
-		}
-		want := "config file already exists at"
-		msg := err.Error()
-		if !strings.Contains(msg, want) {
-			t.Fatalf("error message %q does not contain expected text %q", msg, want)
-		}
-	}
-}
-
-func BenchmarkLintWorkflowFiles(b *testing.B) {
-	scripts := filepath.Join("testdata", "bench", "many_scripts.yaml")
-	small := filepath.Join("testdata", "bench", "small.yaml")
-	large := filepath.Join("testdata", "bench", "large.yaml")
-	minimal := filepath.Join("testdata", "bench", "minimal.yaml")
-	proj := workspace.Identity(".")
-	shellcheck, err := execabs.LookPath("shellcheck")
-	if err != nil {
-		b.Skipf("shellcheck is not found: %s", err)
-	}
-	format := "{{range $ := .}}### Error at line {{$.Line}}, col {{$.Column}} of `{{$.Filepath}}`\\n\\n{{$.Message}}\\n\\n```\\n{{$.Snippet}}\\n```\\n\\n{{end}}"
-
-	// Workflow files for this repository
-	ours := []string{}
-	{
-		d := filepath.Join(".github", "workflows")
-		es, err := os.ReadDir(d)
-		if err != nil {
-			panic(err)
-		}
-		for _, e := range es {
-			ours = append(ours, filepath.Join(d, e.Name()))
-		}
-	}
-
-	bms := []struct {
-		what       string
-		files      []string
-		shellcheck string
-		format     string
-	}{
-		{
-			what:  "minimal",
-			files: []string{minimal},
-		},
-		{
-			what:  "minimal",
-			files: []string{minimal, minimal, minimal, minimal, minimal},
-		},
-		{
-			what:  "minimal",
-			files: []string{minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal},
-		},
-		{
-			what: "minimal",
-			files: []string{
-				minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal,
-				minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal, minimal,
-			},
-		},
-		{
-			what:  "small",
-			files: []string{small},
-		},
-		{
-			what:  "smalls",
-			files: []string{small, small, small},
-		},
-		{
-			what:  "many-smalls",
-			files: []string{small, small, small, small, small, small, small, small, small, small},
-		},
-		{
-			what:  "large",
-			files: []string{large},
-		},
-		{
-			what:  "larges",
-			files: []string{large, large, large},
-		},
-		{
-			what:  "many-larges",
-			files: []string{large, large, large, large, large, large, large, large, large, large},
-		},
-		{
-			what:       "small",
-			files:      []string{small},
-			shellcheck: shellcheck,
-		},
-		{
-			what:       "smalls",
-			files:      []string{small, small, small},
-			shellcheck: shellcheck,
-		},
-		{
-			what:       "many-smalls",
-			files:      []string{small, small, small, small, small, small, small, small, small, small},
-			shellcheck: shellcheck,
-		},
-		{
-			what:       "script",
-			files:      []string{scripts},
-			shellcheck: shellcheck,
-		},
-		{
-			what:       "scripts",
-			files:      []string{scripts, scripts, scripts},
-			shellcheck: shellcheck,
-		},
-		{
-			what:       "many-scripts",
-			files:      []string{scripts, scripts, scripts, scripts, scripts, scripts, scripts, scripts, scripts, scripts},
-			shellcheck: shellcheck,
-		},
-		{
-			what:   "many-smalls",
-			files:  []string{small, small, small, small, small, small, small, small, small, small},
-			format: format,
-		},
-		{
-			what:  "our workflows",
-			files: ours,
-		},
-	}
-
-	for _, bm := range bms {
-		sc := ""
-		if bm.shellcheck != "" {
-			sc = "-shellcheck"
-		}
-		fm := ""
-		if bm.format != "" {
-			fm = "-format"
-		}
-		b.Run(fmt.Sprintf("%s%s%s-%d", bm.what, sc, fm, len(bm.files)), func(b *testing.B) {
-			for range b.N {
-				opts := LinterOptions{
-					Shellcheck: bm.shellcheck,
-					Format:     bm.format,
-				}
-
-				l, err := NewLinter(io.Discard, &opts)
-				if err != nil {
-					b.Fatal(err)
-				}
-				l.DefaultConfig = &repoconfig.Config{}
-
-				errs, err := l.LintFiles(bm.files, proj)
-				if err != nil {
-					b.Fatal(err)
-				}
-
-				if len(errs) > 0 {
-					b.Fatal("some error occurred:", errs)
-				}
-			}
-		})
 	}
 }
 
@@ -913,71 +435,14 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 
 		b.Run(name, func(b *testing.B) {
 			for range b.N {
-				opts := LinterOptions{}
-				l, err := NewLinter(io.Discard, &opts)
+				result, err := runTestAnalysis(b.Context(), Request{WorkingDir: dir, Sources: []SourceUnit{{Path: f, Content: content, Project: proj, Config: &repoconfig.Config{}}}})
 				if err != nil {
 					b.Fatal(err)
 				}
-				l.DefaultConfig = &repoconfig.Config{}
-				errs, err := l.Lint(f, content, proj)
-				if err != nil {
-					b.Fatal(err)
-				}
-				if len(errs) > 0 {
-					b.Fatal("some error occurred:", errs)
+				if len(result.Diagnostics) > 0 {
+					b.Fatal("some error occurred:", result.Diagnostics)
 				}
 			}
 		})
-	}
-}
-
-func BenchmarkExamplesLintFiles(b *testing.B) {
-	dir, files, err := testFindAllWorkflowsInDir("examples")
-	if err != nil {
-		panic(err)
-	}
-
-	proj := workspace.Identity(dir)
-	shellcheck, err := execabs.LookPath("shellcheck")
-	if err != nil {
-		b.Skipf("shellcheck is not found: %s", err)
-	}
-
-	for b.Loop() {
-		opts := LinterOptions{
-			Shellcheck: shellcheck,
-		}
-
-		l, err := NewLinter(io.Discard, &opts)
-		if err != nil {
-			b.Fatal(err)
-		}
-		l.DefaultConfig = &repoconfig.Config{}
-
-		errs, err := l.LintFiles(files, proj)
-		if err != nil {
-			b.Fatal(err)
-		}
-
-		if len(errs) == 0 {
-			b.Fatal("no error found")
-		}
-	}
-}
-
-func BenchmarkLintRepository(b *testing.B) {
-	for b.Loop() {
-		opts := LinterOptions{}
-		l, err := NewLinter(io.Discard, &opts)
-		if err != nil {
-			b.Fatal(err)
-		}
-		errs, err := l.LintRepository(".")
-		if err != nil {
-			b.Fatal(err)
-		}
-		if len(errs) > 0 {
-			b.Fatal(errs)
-		}
 	}
 }

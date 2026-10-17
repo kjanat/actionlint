@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	actionmeta "actionlint.kjanat.dev/internal/action"
-	"actionlint.kjanat.dev/internal/checks/identifier"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/semantics/identifier"
 	"actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"

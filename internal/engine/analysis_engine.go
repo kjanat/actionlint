@@ -7,20 +7,19 @@ import (
 	"strings"
 	"time"
 
-	analyzerhost "actionlint.kjanat.dev/internal/analyzerhost"
-	report "actionlint.kjanat.dev/internal/report"
-	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
-	workspace "actionlint.kjanat.dev/internal/workspace"
-
 	"actionlint.kjanat.dev/analyzer"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/report"
 	"actionlint.kjanat.dev/internal/workflow/calls"
+	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/rule"
 )
 

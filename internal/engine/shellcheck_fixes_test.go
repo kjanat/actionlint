@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/yamlsource"
 )
 
@@ -41,7 +42,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	command := shellcheckForTest(t)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\n"
-	result, err := Analyze(t.Context(), AnalysisRequest{ShellCheck: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(workflow)}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(workflow)}}, Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if changed != strings.Replace(workflow, "$VALUE", `"$VALUE"`, 1) {
 		t.Fatalf("wrong ShellCheck edit: %q", changed)
 	}
-	rechecked, err := Analyze(t.Context(), AnalysisRequest{ShellCheck: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(changed)}}})
+	rechecked, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(changed)}}, Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if err != nil || len(rechecked.Diagnostics) != 0 {
 		t.Fatalf("fixed workflow findings: %+v, %v", rechecked, err)
 	}
@@ -89,7 +90,7 @@ runs:
         echo $VALUE
 `
 	path := writeShellcheckFixture(t, root, "local/action.yml", input)
-	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
+	result := compositeAnalysis(t, root, "- uses: ./local", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if len(result.Diagnostics) != 1 || len(result.Diagnostics[0].Fixes) != 1 {
 		t.Fatalf("composite fixes missing: %+v", result.Diagnostics)
 	}
@@ -106,7 +107,7 @@ runs:
 	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if checked := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command}); len(checked.Diagnostics) != 0 {
+	if checked := compositeAnalysis(t, root, "- uses: ./local", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()}); len(checked.Diagnostics) != 0 {
 		t.Fatalf("fixed composite findings: %+v", checked.Diagnostics)
 	}
 }

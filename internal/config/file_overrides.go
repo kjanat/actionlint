@@ -8,6 +8,7 @@ import (
 
 	configtree "actionlint.kjanat.dev/internal/config/tree"
 	"actionlint.kjanat.dev/internal/filefilter"
+
 	"go.yaml.in/yaml/v4"
 )
 

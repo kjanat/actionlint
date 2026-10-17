@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
@@ -24,7 +25,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-		result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+		result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,9 +45,9 @@ jobs:
       - shell: python
         run: print(missing)
 `
-	_, err := Analyze(t.Context(), AnalysisRequest{
-		RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}},
-		WorkingDir:  t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+	_, err := runTestAnalysis(t.Context(), Request{
+
+		WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}}}).Registrations(),
 	})
 	if err == nil || !strings.Contains(err.Error(), "statistics output is not supported") {
 		t.Fatalf("statistics mode not rejected before invocation: %v", err)
@@ -74,7 +75,7 @@ jobs:
         run: |
           ` + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n"
 					source = strings.ReplaceAll(source, "\n", ending)
-					result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+					result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -103,9 +104,9 @@ jobs:
       - shell: python
         run: print(missing)
 `
-		_, err := Analyze(t.Context(), AnalysisRequest{
-			RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}},
-			WorkingDir:  t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+		_, err := runTestAnalysis(t.Context(), Request{
+
+			WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}).Registrations(),
 		})
 		if err == nil || !strings.Contains(err.Error(), "silent output is not supported") {
 			t.Fatalf("silent mode not rejected before invocation: %v", err)
@@ -126,7 +127,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +160,7 @@ jobs:
           match 1:
             case 1: pass
 `
-		result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
+		result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -193,9 +194,9 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			_, err := Analyze(t.Context(), AnalysisRequest{
-				RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags},
-				WorkingDir:  root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+			_, err := runTestAnalysis(t.Context(), Request{
+
+				WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}}).Registrations(),
 			})
 			if err == nil || !strings.Contains(err.Error(), "output redirection") {
 				t.Errorf("redirection not rejected: %v", err)

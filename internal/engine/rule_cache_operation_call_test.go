@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -9,8 +8,8 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 	"actionlint.kjanat.dev/internal/workspace"
 
@@ -173,15 +172,13 @@ jobs:
 		}
 	}
 	project := workspace.Identity(root)
-	l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
-	if err != nil {
-		t.Fatal(err)
-	}
+	request := Request{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+
 	for _, order := range [][]string{{"read.yaml", "write.yaml", "callee.yaml"}, {"callee.yaml", "write.yaml", "read.yaml"}} {
 		cache := calls.NewCache(project.RootDir(), root, nil)
 		for range 2 {
 			for _, name := range order {
-				diagnostics, err := l.check(name, []byte(files[name]), project, nil, nil, cache)
+				diagnostics, err := checkWithCaches(t.Context(), request, SourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: (project).Config()}, nil, nil, cache)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -198,7 +195,8 @@ jobs:
 		for _, name := range order {
 			paths = append(paths, filepath.Join(root, name))
 		}
-		diagnostics, err := l.LintFiles(paths, project)
+		request.Sources = readFixtureSources(t, paths, project, nil)
+		diagnostics, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -262,10 +260,8 @@ jobs:
 					}
 				}
 				project := workspace.Identity(root)
-				l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
-				if err != nil {
-					t.Fatal(err)
-				}
+				request := Request{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+
 				check := func(diagnostics []*findingmodel.Finding, want bool) {
 					t.Helper()
 					if !want || suppressed == tc.owner {
@@ -287,7 +283,7 @@ jobs:
 					cache := calls.NewCache(project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
-							diagnostics, err := l.check(name, []byte(files[name]), project, nil, nil, cache)
+							diagnostics, err := checkWithCaches(t.Context(), request, SourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: (project).Config()}, nil, nil, cache)
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -298,7 +294,8 @@ jobs:
 					for _, name := range order {
 						paths = append(paths, filepath.Join(root, name))
 					}
-					diagnostics, err := l.LintFiles(paths, project)
+					request.Sources = readFixtureSources(t, paths, project, nil)
+					diagnostics, err := testFindings(runTestAnalysis(t.Context(), request))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -360,12 +357,12 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		}
 	}
 	project := workspace.Identity(root)
-	l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
-	if err != nil {
-		t.Fatal(err)
-	}
+	request := Request{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	var lConfig *repoconfig.Config
+	var err error
+
 	if config != "" {
-		l.DefaultConfig, err = repoconfig.Parse([]byte(config))
+		lConfig, err = repoconfig.Parse([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -394,7 +391,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 			}
 		}
 		for range 2 {
-			diagnostics, err := l.check("caller.yaml", []byte(sources["caller.yaml"]), project, nil, nil, cache)
+			diagnostics, err := checkWithCaches(t.Context(), request, SourceUnit{Path: "caller.yaml", Content: []byte(sources["caller.yaml"]), Project: project, Config: lConfig}, nil, nil, cache)
 			if err != nil {
 				t.Fatal(err)
 			}

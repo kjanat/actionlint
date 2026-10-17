@@ -4,9 +4,8 @@ import (
 	"cmp"
 	"slices"
 
-	report "actionlint.kjanat.dev/internal/report"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/report"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 

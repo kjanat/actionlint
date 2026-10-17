@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"io"
 	"strings"
 	"testing"
 
@@ -75,17 +74,17 @@ func TestWorkflowRunSiblingWorkflowMetadataSafeControls(t *testing.T) {
 
 func lintSiblingWorkflowMetadata(t *testing.T, step, ending string) []*findingmodel.Finding {
 	t.Helper()
-	linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: t.TempDir()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	request := Request{WorkingDir: t.TempDir()}
+	var err error
+
 	source := strings.ReplaceAll(`on: {workflow_run: {workflows: ['Build*'], types: [completed]}}
 jobs:
   report:
     runs-on: ubuntu-latest
     steps:
 `, "\n", ending) + step
-	findings, err := linter.Lint("consumer.yaml", []byte(source), nil)
+	request.Sources = []SourceUnit{{Path: "consumer.yaml", InputPath: "consumer.yaml", Content: []byte(source), Project: nil}}
+	findings, err := testFindings(runTestAnalysis(t.Context(), request))
 	if err != nil {
 		t.Fatal(err)
 	}

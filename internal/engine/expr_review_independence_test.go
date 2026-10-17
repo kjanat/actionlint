@@ -40,7 +40,7 @@ jobs:
           PATH_VALUE: ${{ github.event.workflow_run.referenced_workflows[0].path }}
         run: printf '%s\n' "$REF" "$PATH_VALUE"
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+	result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("safe environment binding rejected: %v, %+v", err, result)
 	}
@@ -73,7 +73,7 @@ jobs:
           ACTOR_NAME: ${{ github.event.workflow_run.` + actor + `.name }}
         run: printf '%s\n' "$ACTOR_NAME"
 `
-		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+		result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe actor environment binding rejected: %v, %+v", err, result)
 		}
@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+	result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ jobs:
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
 				}
-				result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}}})
+				result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}}})
 				if err != nil {
 					t.Fatal(err)
 				}

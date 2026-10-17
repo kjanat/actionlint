@@ -45,7 +45,7 @@ flowchart TD
     Engine --> Facts[internal/workflow/facts]
     Engine --> Builtin[internal/builtin]
     Builtin --> Checks[internal/workflow/checks]
-    Checks --> Semantics[internal/checks]
+    Checks --> Semantics[internal/semantics]
     Engine --> Expressions[internal/expression]
     Workflow --> Expressions
     Engine --> Host
@@ -89,6 +89,21 @@ and analysis use the same selected-input scope.
 Mapping resolution provides one key contract: canonical value, source provenance, evaluated-data provenance and
 known/unknown/invalid state. Consumers must retain uncertainty instead of turning runtime names into closed object
 shapes, and must not parse expression-looking text returned as data a second time.
+
+## Package names
+
+| Package                 | Responsibility                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `analysis`              | Provides the public API for checking supplied workflow and action sources.                           |
+| `analyzer`              | Defines provider inputs, requested facts and returned diagnostics.                                   |
+| `internal/analyzerhost` | Schedules analyzer work and owns shared execution limits and resource completion.                    |
+| `internal/application`  | Owns one invocation, from input selection through analysis and runtime cleanup.                      |
+| `internal/engine`       | Parses prepared documents, shares analysis state, traverses workflows and schedules their checks.    |
+| `internal/resolution`   | Implements injected dependency resolvers and reports resolved commits through the analyzer contract. |
+| `internal/workspace`    | Discovers repository inputs and selects their configuration without running analyzers.               |
+
+`analyzerhost` handles document analyzers as well as script engines. Its scheduling and resource scopes therefore
+stay separate from `tools/backend`, which adapts the script-engine protocol.
 
 ## Tradeoffs and limits
 
@@ -266,7 +281,8 @@ in `analyzerhost`, and Git index inspection lives in `workspace`.
 
 `workflow/facts` owns snapshot and step identities plus mapping/dependency projections.
 `workflow/checks` owns checks over complete workflow declarations and projects
-language-independent inputs into `internal/checks`. Environment names, conditions,
+language-independent inputs into `internal/semantics`. The dependency direction is
+`workflow/checks -> semantics`; semantic checks never import workflow or YAML code. Environment names, conditions,
 permission declarations, identifiers, job dependencies, credentials, events, globs,
 parallel steps, required actions, commit pinning, timeouts and required permissions
 share one host adapter. Their semantic inputs and results are explicit. Parallel
@@ -285,14 +301,18 @@ Configuration internals are grouped beneath `internal/config`: `tree` composes
 configuration documents, `rules` holds rule settings, and `tools` interprets checker
 options. WASM implementations are beneath `internal/plugins`: `artifact` resolves
 and inspects bytes, `core` implements the script-engine ABI, and `component` implements
-the WIT analyzer ABI. Workflow commands, contexts and name indexing live beneath
-`internal/workflow`. These child packages retain directional import boundaries;
+the WIT analyzer ABI. Workflow commands and name indexing live beneath
+`internal/workflow`. Expression context availability and its generator live under
+`internal/expression/context`; workflow adapters and the editor consume that metadata. These child packages retain directional import boundaries;
 the parent does not become a facade that re-exports every implementation.
 
-Legacy linter construction, rendering helpers and implicit process ownership remain
-only in `_test.go` adapters for historical regression fixtures. Production entry points
-cannot link those adapters. Architecture tests enforce the actual transitive import
-boundaries, including the absence of rendering dependencies in semantic execution.
+The migration facades and their test-only implementations are gone. Configuration
+and selection tests call `workspace`; invocation-lifetime and native-tool integration
+tests call `application`; rendering tests consume completed report values. Engine
+tests supply their own process pool to the actual `Request` and `Run` contract.
+Public examples use `analysis` and the `analyzer.Analyzer` contract. Architecture tests
+reject the old facade declarations and migration files, and enforce the production
+import boundaries, including the absence of rendering dependencies in semantic execution.
 
 ## Extracted action, matrix and suppression domains
 

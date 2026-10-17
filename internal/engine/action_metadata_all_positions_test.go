@@ -21,7 +21,7 @@ func TestMetadataFoldedConditionDiagnostics(t *testing.T) {
 			root, _ := executableFixture(t)
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n      if: "+tc.condition+"\n")
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			if len(result.Diagnostics) != tc.want {
 				t.Fatalf("want %d diagnostics, got %+v", tc.want, result.Diagnostics)
 			}
@@ -59,7 +59,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			metadata := "name: inner\ndescription: test\n" + tc.body
 			writeShellcheckFixture(t, root, "inner/action.yml", metadata)
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			var matched []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if strings.Contains(d.Message, tc.message) {

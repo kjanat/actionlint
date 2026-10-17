@@ -1,13 +1,13 @@
 package engine
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 	"actionlint.kjanat.dev/internal/workspace"
 
@@ -87,10 +87,8 @@ jobs:
 			if diff := cmp.Diff(fromAST.JobPermissions, fromFile.JobPermissions); diff != "" {
 				t.Fatal(diff)
 			}
-			linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
-			if err != nil {
-				t.Fatal(err)
-			}
+			request := Request{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+
 			check := func(errs []*findingmodel.Finding, want int) {
 				t.Helper()
 				if len(errs) != want {
@@ -109,7 +107,7 @@ jobs:
 					if name == "callee.yaml" {
 						source, want = callee, 1
 					}
-					errs, err := linter.check(name, source, project, nil, nil, cache)
+					errs, err := checkWithCaches(t.Context(), request, SourceUnit{Path: name, Content: source, Project: project, Config: (project).Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -118,7 +116,8 @@ jobs:
 				if _, _, found := cache.Lookup("./missing.yaml"); found {
 					t.Fatal("discarded duplicate populated missing workflow cache")
 				}
-				errs, err := linter.LintFiles([]string{filepath.Join(root, order[0]), filepath.Join(root, order[1])}, project)
+				request.Sources = readFixtureSources(t, []string{filepath.Join(root, order[0]), filepath.Join(root, order[1])}, project, nil)
+				errs, err := testFindings(runTestAnalysis(t.Context(), request))
 				if err != nil {
 					t.Fatal(err)
 				}

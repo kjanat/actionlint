@@ -12,12 +12,12 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/invopop/jsonschema"
-
 	actionlint "actionlint.kjanat.dev/internal/config"
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
 	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
 	"actionlint.kjanat.dev/internal/genfile"
+
+	"github.com/invopop/jsonschema"
 )
 
 const shellcheckSchemaVersion = "0.11.0"

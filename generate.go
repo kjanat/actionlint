@@ -3,7 +3,7 @@ package actionlint
 //go:generate -command generate-config-schema go run ./internal/config/generate
 //go:generate generate-config-schema
 //go:generate go run ./internal/rulecatalog/generate
-//go:generate go run ./internal/workflow/context/generate ./internal/workflow/context/availability.go
+//go:generate go run ./internal/expression/context/generate ./internal/expression/context/availability.go
 //go:generate go run ./internal/webhook/generate ./internal/webhook/webhooks.go
 //go:generate node ./internal/webhook/payload/generate/main.mts
 //go:generate go run ./internal/actioncatalog/metadata -runtimes -output internal/action/runtimes_generated.go

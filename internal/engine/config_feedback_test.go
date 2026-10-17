@@ -19,7 +19,7 @@ func TestCommitHashExceptionsPreserveOtherFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := Analyze(context.Background(), AnalysisRequest{
+	result, err := runTestAnalysis(context.Background(), Request{
 		WorkingDir: t.TempDir(),
 		Sources: []SourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
 jobs:
@@ -49,20 +49,5 @@ jobs:
 	}
 	if pins != 2 || !retired {
 		t.Fatalf("pins=%d retired=%v: %+v", pins, retired, result.Diagnostics)
-	}
-}
-
-func TestNativeRuffConfigRoundTrip(t *testing.T) {
-	cfg, err := repoconfig.Parse([]byte(`tools:
-  ruff:
-    config:
-      target-version: py312
-      lint: {extend-select: [B, S], ignore: [F401]}
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Tools.Ruff.Native["target-version"] != "py312" {
-		t.Fatal(cfg.Tools.Ruff.Native)
 	}
 }

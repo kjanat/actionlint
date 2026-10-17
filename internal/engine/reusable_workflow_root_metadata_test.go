@@ -2,13 +2,13 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 	"actionlint.kjanat.dev/internal/workspace"
 
@@ -66,10 +66,8 @@ jobs:
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
-			linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
-			if err != nil {
-				t.Fatal(err)
-			}
+			request := Request{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+
 			var previousMetadata *calls.Metadata
 			var previousDiagnostics []*findingmodel.Finding
 			for _, fromAST := range []bool{false, true} {
@@ -88,7 +86,7 @@ jobs:
 				}
 				previousMetadata = metadata
 				for pass := range 2 {
-					errs, err := linter.check("caller.yaml", caller, project, nil, nil, cache)
+					errs, err := checkWithCaches(t.Context(), request, SourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: (project).Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -109,7 +107,7 @@ jobs:
 					}
 					previousDiagnostics = errs
 				}
-				errs, err := linter.check("callee.yaml", callee, project, nil, nil, cache)
+				errs, err := checkWithCaches(t.Context(), request, SourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: (project).Config()}, nil, nil, cache)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -186,10 +184,8 @@ jobs:
 				if !ok {
 					t.Fatal("workflow_call event missing")
 				}
-				linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
-				if err != nil {
-					t.Fatal(err)
-				}
+				request := Request{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+
 				var previousMetadata *calls.Metadata
 				var previousDiagnostics []*findingmodel.Finding
 				for _, fromAST := range []bool{false, true} {
@@ -198,7 +194,7 @@ jobs:
 						cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 					}
 					for pass := range 2 {
-						errs, err := linter.check("caller.yaml", caller, project, nil, nil, cache)
+						errs, err := checkWithCaches(t.Context(), request, SourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: (project).Config()}, nil, nil, cache)
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -229,7 +225,7 @@ jobs:
 						}
 					}
 					previousMetadata = metadata
-					errs, err := linter.check("callee.yaml", callee, project, nil, nil, cache)
+					errs, err := checkWithCaches(t.Context(), request, SourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: (project).Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}

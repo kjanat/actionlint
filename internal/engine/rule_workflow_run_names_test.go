@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -47,7 +46,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(src), Project: workspace.Identity(root), Config: config}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(src), Project: workspace.Identity(root), Config: config}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,7 +99,7 @@ jobs:
 				} else {
 					writeShellcheckFixture(t, root, ".github/workflows/build.yml", producer)
 				}
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: sources})
 				if err != nil || len(result.Diagnostics) != tc.want {
 					t.Fatalf("got %+v, %v; want %d findings", result, err, tc.want)
 				}
@@ -129,7 +128,7 @@ jobs:
     steps:
       - run: echo ok
 `
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
 					if strings.EqualFold(path, producer) {
 						t.Errorf("read stale on-disk producer %q", path)
 						return nil, os.ErrPermission
@@ -171,7 +170,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(src), Project: project}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(src), Project: project}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -213,7 +212,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{
 				{Path: ".github/workflows/build.yml", Content: []byte("name: '" + tc.name + "'\n" + commandGoodWorkflow), Project: project},
 				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project},
 			}})
@@ -256,7 +255,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: ".", Sources: []SourceUnit{
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: ".", Sources: []SourceUnit{
 				{Path: ".github/workflows/build.yml", Content: []byte(producerContent), Project: project, Config: cfg},
 				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project, Config: cfg},
 			}})
@@ -283,7 +282,7 @@ jobs:
       - run: echo ok
 `
 			read := false
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
 				if path == producer {
 					read = true
 					return nil, readErr
@@ -316,19 +315,19 @@ jobs:
 `
 	project := workspace.Identity(root)
 	sources := []SourceUnit{{Path: producer, Content: []byte("name: New\n" + commandGoodWorkflow), Project: project}, {Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project}}
-	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: sources})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
 	}
 	// An unreadable name in another workflow prevents claiming a name is missing.
 	writeShellcheckFixture(t, root, ".github/workflows/broken.yml", "name: [\n")
-	result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources[1:]})
+	result, err = runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: sources[1:]})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
 	}
 	// Without project context (including playground use), no repository scan.
 	sources[1].Project = nil
-	result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources[1:]})
+	result, err = runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: sources[1:]})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
 	}

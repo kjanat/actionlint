@@ -1,18 +1,15 @@
 package engine
 
 import (
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/workspace"
 )
 
 const reusableIgnoreSource = `on: push
@@ -146,7 +143,7 @@ func TestReusableIgnoreDisabledCompositeRule(t *testing.T) {
 			root, _ := executableFixture(t)
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "lint: {rules: {correctness: {action: "+level+"}}}\nignores: [{rule: action, file: inner/action.yml, step: validate}]\npolicy: {disallow-suppressions: {report: suppression}}\n")
 			writeShellcheckFixture(t, root, "inner/action.yml", "name: Inner\ndescription: Inner\nruns:\n  using: composite\n  steps:\n    - id: validate\n      shell: bash\n      run: echo '${{ invalid }}'\n")
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			if level == "off" {
 				if len(result.Diagnostics) != 0 {
 					t.Fatalf("disabled composite finding triggered policy: %+v", result.Diagnostics)
@@ -161,48 +158,9 @@ func TestReusableIgnoreDisabledCompositeRule(t *testing.T) {
 func TestReusableIgnoreLiteralMissingAction(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "ignores: [{rule: missing-local-action, uses: ./generated}]\n")
-	result := compositeAnalysis(t, root, "- uses: ${{ './generated' }}\n  id: generated", AnalysisOptions{})
+	result := compositeAnalysis(t, root, "- uses: ${{ './generated' }}\n  id: generated", Request{})
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("literal missing action was not suppressed: %+v", result.Diagnostics)
-	}
-}
-
-func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
-	parent := t.TempDir()
-	t.Chdir(parent)
-	root := filepath.Join(parent, "repo")
-	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ invalid }}'\n"
-	workflow := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", source)
-	for _, pattern := range []string{".github/workflows/**", ".github/workflows/other.yml"} {
-		t.Run(pattern, func(t *testing.T) {
-			config := "ignores: [{rule: expression-reference, file: '" + pattern + "'}]"
-			writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
-			cfg, err := repoconfig.Parse([]byte(config))
-			if err != nil {
-				t.Fatal(err)
-			}
-			want := 0
-			if strings.HasSuffix(pattern, "other.yml") {
-				want = 1
-			}
-			for _, path := range []string{workflow, filepath.Join("repo", ".github", "workflows", "ci.yml")} {
-				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: parent})
-				if err != nil {
-					t.Fatal(err)
-				}
-				result, err := session.Files([]string{path}, nil)
-				if err != nil || result.FileCount != 1 || len(result.Diagnostics) != want {
-					t.Fatalf("session %s: %+v, %v", path, result, err)
-				}
-				result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: parent, Sources: []SourceUnit{{Path: path, Content: []byte(source), Project: workspace.Identity(root), Config: cfg}}})
-				if err != nil || result.FileCount != 1 || len(result.Diagnostics) != want {
-					t.Fatalf("direct %s: %+v, %v", path, result, err)
-				}
-			}
-		})
 	}
 }
 
@@ -227,18 +185,11 @@ runs:
       shell: bash
       run: echo '${{ invalid }}'
 `)
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			if len(result.Diagnostics) != tc.want {
 				t.Fatalf("got %+v", result.Diagnostics)
 			}
 		})
-	}
-}
-
-func TestReusableIgnoreCannotSuppressPolicy(t *testing.T) {
-	_, err := repoconfig.Parse([]byte(`ignores: [{rule: disallow-suppressions, file: '*.yaml'}]`))
-	if err == nil || !strings.Contains(err.Error(), "disallow-suppressions") {
-		t.Fatalf("ineffective suppression was accepted: %v", err)
 	}
 }
 

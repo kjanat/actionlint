@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
-				result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+				result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("safe expression rejected: %v, %+v", err, result)
 			}
@@ -65,7 +65,7 @@ jobs:
           HOMEPAGE: ${{ github.event.workflow_run.head_repository.homepage }}
         run: printf '%s\n' "$DESCRIPTION" "$HOMEPAGE"
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+	result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("environment binding rejected: %v, %+v", err, result)
 	}
@@ -102,7 +102,7 @@ jobs:
           PROFILE: ${{ github.event.workflow_run.` + path + ` }}
         run: printf '%s\n' "$PROFILE"
 `
-		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
+		result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow)}}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe condition and environment binding for %s rejected: %v, %+v", path, err, result)
 		}
@@ -157,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 ` + script.step
-				result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(workflow, "\n", ending))}}})
+				result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(strings.ReplaceAll(workflow, "\n", ending))}}})
 				if err != nil {
 					t.Fatal(err)
 				}

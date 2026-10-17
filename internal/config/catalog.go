@@ -7,6 +7,7 @@ import (
 	lintconfig "actionlint.kjanat.dev/internal/config/rules"
 	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/rule"
+
 	"go.yaml.in/yaml/v4"
 )
 

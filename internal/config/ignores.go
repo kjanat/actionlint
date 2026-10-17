@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/internal/filefilter"
+
 	"go.yaml.in/yaml/v4"
 )
 

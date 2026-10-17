@@ -4,9 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	report "actionlint.kjanat.dev/internal/report"
-
 	actionmeta "actionlint.kjanat.dev/internal/action"
+	"actionlint.kjanat.dev/internal/report"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )

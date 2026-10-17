@@ -2,7 +2,8 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go rule/*.go source/*.go resolver/*.go cmd/*/*.go internal/*/*.go internal/checks/*/*.go)
+GO_DIRS := $(shell go list -f '{{.Dir}}' ./...)
+GO_FILES := $(patsubst $(CURDIR)/%,%,$(wildcard $(addsuffix /*.go,$(GO_DIRS))))
 SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard internal/*/generate/*.go internal/*/metadata/*.go internal/release/bump-version/*.go internal/*/check-*/*.go)
@@ -18,7 +19,7 @@ TESTDATA := $(wildcard \
 GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
 				internal/actioncatalog/generate/popular_actions.json \
 				internal/webhook/generate/main.go \
-				internal/workflow/context/generate/main.go
+				internal/expression/context/generate/main.go
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
@@ -101,9 +102,9 @@ endif
 lint-docs:
 	go run ./internal/rulecatalog/check-docs -quiet ./docs/checks.md
 
-internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/workflow/context/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
+internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/workflow/context/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go
+	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go
 else
 	go generate
 endif
@@ -142,7 +143,7 @@ man/actionlint.1.html: man/actionlint.1.md man/manual.css
 man: man/actionlint.1 man/actionlint.1.html
 
 bench:
-	go test -bench Lint -benchmem ./internal/engine
+	go test -run '^$$' -bench Lint -benchmem ./internal/engine ./internal/application
 
 .github/actionlint-matcher.json: internal/githubaction/matcher/main.mjs internal/githubaction/matcher/object.mjs
 	node ./internal/githubaction/matcher/main.mjs .github/actionlint-matcher.json

@@ -11,11 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	report "actionlint.kjanat.dev/internal/report"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/report"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -34,7 +35,7 @@ jobs:
     needs: ZBuild
     uses: ./.github/workflows/deploy.yml
 `
-	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{
+	analysis, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{
 		{Path: "clean.yml", Content: []byte(source)},
 		{Path: "partial.yml", Content: []byte(strings.Replace(source, "run: echo hi", "unexpected: value", 1))},
 		{Path: "broken.yml", Content: []byte("jobs: [")},
@@ -76,12 +77,12 @@ jobs:
 	if broken.Path != "broken.yml" || broken.ParseStatus != "failed" || broken.Jobs == nil || len(broken.Jobs) != 0 {
 		t.Fatalf("failed parse missing: %+v", broken)
 	}
-	renderer, err := NewAnalysisRenderer(render.FormatJSON, "", false)
+	renderer, err := render.New(render.FormatJSON, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := renderer.Render(&output, analysis); err != nil {
+	if err := renderer.Render(&output, render.Prepare(analysis.Analysis)); err != nil {
 		t.Fatal(err)
 	}
 	var report render.CheckResult
@@ -167,7 +168,7 @@ jobs:
       - uses: $/broken
       - uses: $/missing
 `
-	analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}}, WorkingDir: dir})
+	analysis, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}}, WorkingDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +183,7 @@ jobs:
 	if !ok || broken.ParseStatus != "failed" {
 		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
 	}
-	data, err := json.Marshal(analysis.CheckResult())
+	data, err := json.Marshal(render.Prepare(analysis.Analysis).CheckResult())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +226,7 @@ jobs:
     steps:
       - uses: $/
 `
-			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}}, WorkingDir: dir})
+			analysis, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Project: workspace.Identity(dir)}}, WorkingDir: dir})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -262,11 +263,11 @@ func requireWorkflowOutline(t *testing.T, document report.DocumentOutline) repor
 }
 
 func TestAnalysisEmptyDocuments(t *testing.T) {
-	result, err := Analyze(t.Context(), AnalysisRequest{})
+	result, err := runTestAnalysis(t.Context(), Request{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, result := range []render.CheckResult{result.CheckResult(), (&AnalysisResult{}).CheckResult(), render.NewCheckResult(3)} {
+	for _, result := range []render.CheckResult{render.Prepare(result.Analysis).CheckResult(), render.Prepare((&AnalysisResult{}).Analysis).CheckResult(), render.NewCheckResult(3)} {
 		data, err := json.Marshal(result)
 		if err != nil {
 			t.Fatal(err)
@@ -403,7 +404,7 @@ jobs:
 			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
 				sources = append(sources, SourceUnit{Path: path, Content: []byte(tc.sources[path]), Project: workspace.Identity(root), Config: tc.config})
 			}
-			analysis, err := Analyze(t.Context(), AnalysisRequest{Sources: sources, WorkingDir: root, Ruff: tc.ruff})
+			analysis, err := runTestAnalysis(t.Context(), Request{Sources: sources, WorkingDir: root, Tools: (adapters.Options{Ruff: tc.ruff}).Registrations()})
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("fixture must fail with %q: %v", tc.wantErr, err)
 			}

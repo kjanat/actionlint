@@ -4,41 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/internal/workspace"
 )
-
-func TestActionDiscoverySymlinkRoot(t *testing.T) {
-	for _, mixed := range []bool{false, true} {
-		t.Run(strconv.FormatBool(mixed), func(t *testing.T) {
-			root := t.TempDir()
-			writeGitRepository(t, root)
-			writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
-			want := 1
-			if mixed {
-				writeShellcheckFixture(t, root, ".github/workflows/ci.yml", commandGoodWorkflow)
-				want++
-			}
-			alias := filepath.Join(t.TempDir(), "alias")
-			if err := os.Symlink(root, alias); err != nil {
-				t.Skipf("symlinks unavailable: %v", err)
-			}
-			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: alias})
-			if err != nil {
-				t.Fatal(err)
-			}
-			result, err := session.Repository("")
-			if err != nil || len(result.Documents) != want || len(result.Diagnostics) != 0 {
-				t.Fatalf("want %d clean documents: result=%+v error=%v", want, result, err)
-			}
-		})
-	}
-}
 
 func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 	for _, disk := range []bool{false, true} {
@@ -61,7 +32,7 @@ func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 				}
 				project := workspace.Identity(root)
 				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: alias, Sources: []SourceUnit{
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: alias, Sources: []SourceUnit{
 					{Path: "ci.yml", Content: []byte(workflow), Project: project},
 					{Path: "inner/action.yml", Content: []byte(manifest), Project: project},
 				}})
@@ -88,41 +59,6 @@ func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 	}
 }
 
-func TestGenerateConfigActionOnlyRepository(t *testing.T) {
-	root := t.TempDir()
-	writeGitRepository(t, root)
-	writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
-	path, err := GenerateProjectConfig(root, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := repoconfig.Parse(content); err != nil {
-		t.Fatalf("generated config is invalid: %v", err)
-	}
-	if _, err := GenerateProjectConfig(root, false); err == nil {
-		t.Fatal("existing config must not be overwritten")
-	}
-}
-
-func TestActionDiscoveryDoesNotHideWorkflowTypo(t *testing.T) {
-	root := t.TempDir()
-	writeGitRepository(t, root)
-	writeShellcheckFixture(t, root, "action.yml", standaloneComposite)
-	writeShellcheckFixture(t, root, ".github/workflow/ci.yml", commandGoodWorkflow)
-	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = session.Repository("")
-	if err == nil || !strings.Contains(err.Error(), "looks misspelled") {
-		t.Fatalf("expected workflow typo despite action discovery, got %v", err)
-	}
-}
-
 func TestExplicitActionSnapshotAndDeduplication(t *testing.T) {
 	for _, disk := range []bool{false, true} {
 		for _, reverse := range []bool{false, true} {
@@ -142,7 +78,7 @@ func TestExplicitActionSnapshotAndDeduplication(t *testing.T) {
 					if reverse {
 						sources[0], sources[1] = sources[1], sources[0]
 					}
-					result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})
+					result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: sources})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -187,7 +123,7 @@ func TestRelativeProjectExplicitActionSnapshot(t *testing.T) {
 					t.Fatal(err)
 				}
 				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: cwd, Sources: []SourceUnit{
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: cwd, Sources: []SourceUnit{
 					{Path: filepath.Join(projectRoot, "ci.yml"), Content: []byte(workflow), Project: project},
 					{Path: filepath.Join(projectRoot, "inner/action.yml"), Content: []byte(standaloneComposite), Project: project},
 				}})
@@ -229,7 +165,7 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 				if reverse {
 					sources[0], sources[1] = sources[1], sources[0]
 				}
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: sources})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: sources})
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/analyzerhost"
-	config "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/config/rules"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/processconfig"

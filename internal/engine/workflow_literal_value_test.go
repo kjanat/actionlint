@@ -1,15 +1,13 @@
 package engine
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/calls"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
 	sourceref "actionlint.kjanat.dev/source"
 
@@ -66,11 +64,11 @@ jobs:
     steps:
       - id: action
         uses: ` + uses + tc.extra + "\n"
-				linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root, Shellcheck: "", Pyflakes: ""})
-				if err != nil {
-					t.Fatal(err)
-				}
-				diagnostics, err := linter.Lint("workflow.yml", []byte(source), workspace.Identity(root))
+				request := Request{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				var err error
+
+				request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(root), Config: (workspace.Identity(root)).Config()}}
+				diagnostics, err := testFindings(runTestAnalysis(t.Context(), request))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -87,69 +85,16 @@ jobs:
 	}
 }
 
-func TestWorkflowLiteralStaticValues(t *testing.T) {
-	source := []byte(`on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - id: ${{ 'build' }}
-        run: echo ok
-        shell: ${{ 'bash' }}
-      - uses: ${{ 'docker://alpine:3' }}
-        with: {entrypoint: sh, args: -c}
-`)
-	w, errs := Parse(source)
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
-	steps := w.Jobs["test"].Steps
-	if steps[0].ID.Value != "build" || steps[0].ID.Pos.Line != 6 || steps[0].Exec.(*workflowlang.ExecRun).Shell.Value != "bash" {
-		t.Fatal("static values or positions changed")
-	}
-	action := steps[1].Exec.(*workflowlang.ExecAction)
-	if action.Uses.Value != "docker://alpine:3" || action.Entrypoint == nil || action.Args == nil || len(action.Inputs) != 0 {
-		t.Fatalf("Docker input dispatch lost: %#v", action)
-	}
-}
-
-func TestWorkflowLiteralCallMetadata(t *testing.T) {
-	source := []byte(`on: workflow_call
-jobs:
-  call:
-    uses: ${{ '$/leaf.yaml' }}
-`)
-	w, errs := Parse(source)
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
-	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
-	event, _ := w.FindWorkflowCallEvent()
-	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
-	fromAST, _, _ := cache.Lookup("./callee.yaml")
-	fromFile, err := calls.ParseMetadata(source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(fromAST.JobCacheAccess, fromFile.JobCacheAccess); diff != "" {
-		t.Fatal(diff)
-	}
-	if access := fromFile.JobCacheAccess["call"]; access.Uses != "./leaf.yaml" || access.SourceUses != "$/leaf.yaml" {
-		t.Fatalf("literal call lost: %#v", access)
-	}
-}
-
 func TestWorkflowLiteralCallInvalidSpec(t *testing.T) {
 	for _, uses := range []string{"oooops", "${{ 'oooops' }}"} {
-		linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-		if err != nil {
-			t.Fatal(err)
-		}
-		errs, err := linter.Lint("workflow.yml", []byte(`on: push
+		request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+		var err error
+
+		request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(`on: push
 jobs:
   call:
-    uses: `+uses+"\n"), nil)
+    uses: ` + uses + "\n"), Project: nil}}
+		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -15,9 +15,9 @@ import (
 	"time"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
-
 	exprlang "actionlint.kjanat.dev/internal/expression"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/tools/ruff"
 	"actionlint.kjanat.dev/internal/workspace"
 )
@@ -119,7 +119,7 @@ func TestRuffPythonScripts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src), Config: config}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src), Config: config}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -147,7 +147,7 @@ jobs:
     steps:
       - shell: python
         run: ` + script + "\n"
-		result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+		result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -261,7 +261,7 @@ jobs:
         run: print('ok')
 `
 	start := time.Now()
-	_, err = Analyze(ctx, AnalysisRequest{RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+	_, err = runTestAnalysis(ctx, Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}, Tools: (adapters.Options{RuffOptions: options}).Registrations()})
 	if err == nil || time.Since(start) > 3*time.Second {
 		t.Fatalf("cancellation did not stop Ruff promptly: %v", err)
 	}
@@ -285,9 +285,9 @@ func TestRuffMissingExecutable(t *testing.T) {
 				t.Fatal(err)
 			}
 			missing := filepath.Join(t.TempDir(), "missing-ruff")
-			_, err = Analyze(t.Context(), AnalysisRequest{
-				RuffOptions: &processconfig.Options{Executable: &missing, Optional: tc.optional},
-				WorkingDir:  t.TempDir(),
+			_, err = runTestAnalysis(t.Context(), Request{
+
+				WorkingDir: t.TempDir(),
 				Sources: []SourceUnit{{Path: "ci.yml", Config: config, Content: []byte(`on: push
 jobs:
   test:
@@ -295,7 +295,7 @@ jobs:
     steps:
       - run: print(missing)
         shell: python
-`)}},
+`)}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &missing, Optional: tc.optional}}).Registrations(),
 			})
 			if (err != nil) != tc.wantError {
 				t.Fatalf("error = %v, wantError %v", err, tc.wantError)
@@ -314,7 +314,7 @@ jobs:
       - shell: python
         run: print(missing) # actionlint:ignore ruff -- intentional undefined-name fixture
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
 	}
@@ -323,7 +323,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src), Config: cfg}}})
+	result, err = runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src), Config: cfg}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 	if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Severity != "warning" {
 		t.Fatalf("%+v %v", result, err)
 	}
@@ -343,9 +343,9 @@ jobs:
         run: print(missing)
 `
 			source = strings.Replace(source, "value = ${{ github.run_number }}.0", script, 1)
-			result, err := Analyze(t.Context(), AnalysisRequest{
-				Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
-				Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+			result, err := runTestAnalysis(t.Context(), Request{
+				WorkingDir: t.TempDir(),
+				Sources:    []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{Ruff: ruffForTest(t)}).Registrations(),
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -372,9 +372,9 @@ jobs:
         run: print(missing)
 `
 			source = strings.ReplaceAll(source, "\n", ending)
-			result, err := Analyze(t.Context(), AnalysisRequest{
-				Ruff: ruffForTest(t), WorkingDir: t.TempDir(),
-				Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+			result, err := runTestAnalysis(t.Context(), Request{
+				WorkingDir: t.TempDir(),
+				Sources:    []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{Ruff: ruffForTest(t)}).Registrations(),
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -433,7 +433,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+			_, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}, Tools: (adapters.Options{RuffOptions: options}).Registrations()})
 			if (err != nil) != tc.failed {
 				t.Fatalf("error=%v, want failed=%v", err, tc.failed)
 			}
@@ -467,7 +467,7 @@ jobs:
       - shell: python
         run: print('ok')
 `
-			_, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, RuffOptions: options, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+			_, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{Ruff: command, RuffOptions: options}).Registrations()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -488,9 +488,9 @@ jobs:
       - shell: python
         run: 'if:'
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{
-		RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--preview"}},
-		WorkingDir:  root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}},
+	result, err := runTestAnalysis(t.Context(), Request{
+
+		WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--preview"}}}).Registrations(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -520,7 +520,7 @@ jobs:
 `
 	for _, language := range []string{"ipynb", "pyi"} {
 		options := &processconfig.Options{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
-		result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+		result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{RuffOptions: options}).Registrations()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -549,7 +549,7 @@ jobs:
     steps:
       - uses: $/python-action
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: workspace.Identity(root)}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: workspace.Identity(root)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 	if err != nil {
 		t.Fatal(err)
 	}

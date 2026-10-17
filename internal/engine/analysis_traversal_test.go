@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
 )
@@ -30,7 +31,7 @@ func TestTraversalDefersScriptExecutionToScheduler(t *testing.T) {
 	}
 	scriptFailure := errors.New("script failure")
 	script := &phaseScriptAnalyzer{failure: scriptFailure}
-	proc := newConcurrentProcess(t.Context(), 1)
+	proc := analyzerhost.NewProcessPool(t.Context(), 1)
 	defer proc.Wait()
 	defer func() {
 		if err := proc.Finish(); err != nil {

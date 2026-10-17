@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/internal/analyzerhost"
-	config "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/config"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 

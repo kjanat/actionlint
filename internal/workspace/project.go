@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/internal/fsread"
 )
 

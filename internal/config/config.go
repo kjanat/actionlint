@@ -12,13 +12,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bmatcuk/doublestar/v4"
-	"go.yaml.in/yaml/v4"
-
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
 	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
 	configtree "actionlint.kjanat.dev/internal/config/tree"
 	"actionlint.kjanat.dev/internal/fsread"
+
+	"github.com/bmatcuk/doublestar/v4"
+	"go.yaml.in/yaml/v4"
 )
 
 // IgnorePatterns is a list of regular expressions. These patterns are used for filtering errors by

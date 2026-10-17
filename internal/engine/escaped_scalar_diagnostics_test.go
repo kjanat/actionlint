@@ -21,10 +21,10 @@ func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
 					var result *AnalysisResult
 					if metadata {
 						writeShellcheckFixture(t, root, "inner/action.yml", src)
-						result = compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+						result = compositeAnalysis(t, root, "- uses: ./inner", Request{})
 					} else {
 						var err error
-						result, err = Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+						result, err = runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 						if err != nil {
 							t.Fatal(err)
 						}

@@ -10,7 +10,8 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestRuffLauncherArguments(t *testing.T) {
@@ -77,7 +78,7 @@ jobs:
 						t.Fatal(err)
 					}
 				}
-				_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: options, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(input), Config: config}}})
+				_, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(input), Config: config}}, Tools: (adapters.Options{RuffOptions: options}).Registrations()})
 				if (err != nil) != (disabled == "") {
 					t.Fatalf("invalid launcher result: optional=%v disabled=%s error=%v", optional, disabled, err)
 				}
@@ -106,7 +107,7 @@ jobs:
 						options.Arguments = flags
 					}
 					options.Optional = true
-					_, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, RuffOptions: options, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+					_, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{Ruff: command, RuffOptions: options}).Registrations()})
 					content, readErr := os.ReadFile(calls)
 					if flags[0] != "--preview" {
 						if err == nil || !os.IsNotExist(readErr) {

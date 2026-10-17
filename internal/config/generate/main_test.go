@@ -14,14 +14,14 @@ import (
 	"testing"
 	"time"
 
+	actionlint "actionlint.kjanat.dev/internal/config"
+	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
+	"actionlint.kjanat.dev/internal/genfile"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v4"
-
-	actionlint "actionlint.kjanat.dev/internal/config"
-	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
-	"actionlint.kjanat.dev/internal/genfile"
 )
 
 func generatedSchema(t *testing.T) []byte {

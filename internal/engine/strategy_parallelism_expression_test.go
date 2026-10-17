@@ -2,9 +2,10 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestStrategyExpressionParallelism(t *testing.T) {
@@ -26,10 +27,9 @@ func TestStrategyExpressionParallelism(t *testing.T) {
 				case "JSON field":
 					field = "strategy:\n      max-parallel: ${{ fromJSON('" + tc.value + "') }}"
 				}
-				lint, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-				if err != nil {
-					t.Fatal(err)
-				}
+				request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				var err error
+
 				source := `on: push
 jobs:
   build:
@@ -38,7 +38,8 @@ jobs:
     steps:
       - run: echo ok
 `
-				errs, err := lint.Lint("workflow.yml", []byte(source), nil)
+				request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+				errs, err := testFindings(runTestAnalysis(t.Context(), request))
 				if err != nil {
 					t.Fatal(err)
 				}

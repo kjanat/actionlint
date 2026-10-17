@@ -1,9 +1,10 @@
 package render_test
 
 import (
+	"os"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/render"
-	"os"
 )
 
 func ExampleFormatter() {

@@ -23,7 +23,7 @@ func TestWorkflowExpressionScalarPositions(t *testing.T) {
 				if field == "run" {
 					src = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + strings.ReplaceAll(scalar, "\n", "\n    ") + "\n"
 				}
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -59,7 +59,7 @@ func TestWorkflowConditionScalarPositions(t *testing.T) {
 	} {
 		t.Run(scalar, func(t *testing.T) {
 			src := "on: push\njobs:\n  test:\n    if: " + scalar + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +84,7 @@ func TestWorkflowExpressionEOFPosition(t *testing.T) {
 		"    if: \"github.actor &&\"\n",
 	} {
 		src := "on: push\njobs:\n  test:\n" + field + "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+		result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -118,7 +118,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestWorkflowExpressionDottedReferenceRanges(t *testing.T) {
 	} {
 		t.Run(scalar, func(t *testing.T) {
 			src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 			if err != nil {
 				t.Fatal(err)
 			}

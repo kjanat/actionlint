@@ -4,8 +4,8 @@ package calls
 import (
 	"path/filepath"
 
-	"actionlint.kjanat.dev/internal/checks/permission"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/semantics/permission"
 )
 
 var allPermissionScopes = permission.Scopes()

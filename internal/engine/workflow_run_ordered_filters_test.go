@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -55,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `)
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(strings.ReplaceAll(source.String(), "\n", ending)), Project: workspace.Identity(root), Config: config}}})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(strings.ReplaceAll(source.String(), "\n", ending)), Project: workspace.Identity(root), Config: config}}})
 				if err != nil {
 					t.Fatal(err)
 				}

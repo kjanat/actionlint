@@ -35,7 +35,7 @@ func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(separatedExpressionWorkflow), Config: cfg}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(separatedExpressionWorkflow), Config: cfg}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +53,7 @@ func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
 
 func TestPayloadSuppressionDoesNotSuppressInjection(t *testing.T) {
 	content := strings.ReplaceAll(separatedExpressionWorkflow, "PAYLOAD: ${{ github.event.issue.titel }}", "PAYLOAD: ${{ github.event.issue.titel }} # actionlint:ignore event-payload -- test independent rules")
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(content)}}})
+	result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(content)}}})
 	if err != nil {
 		t.Fatal(err)
 	}

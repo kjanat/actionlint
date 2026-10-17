@@ -4,9 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
 func TestInterpolationChecksContinueAfterSemanticErrors(t *testing.T) {
@@ -87,7 +86,7 @@ jobs:
 				}
 				for _, ending := range []string{"\n", "\r\n"} {
 					workflow := strings.ReplaceAll(field.workflow, "\n", ending)
-					result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}}})
+					result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}}})
 					if err != nil {
 						t.Fatal(err)
 					}

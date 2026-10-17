@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"

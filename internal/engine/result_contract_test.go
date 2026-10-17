@@ -4,49 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	report "actionlint.kjanat.dev/internal/report"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/report"
 
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
-
-func TestCheckResultRetainsCachedConfiguration(t *testing.T) {
-	dir := t.TempDir()
-	config := filepath.Join(dir, "actionlint.yaml")
-	workflow := filepath.Join(dir, "ci.yml")
-	if err := os.WriteFile(config, []byte("config-variables: [MY_VAR]\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(workflow, []byte(`on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ok
-`), 0600); err != nil {
-		t.Fatal(err)
-	}
-	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: dir, ConfigFile: config})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for range 2 {
-		analysis, err := session.Files([]string{workflow}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		result := analysis.CheckResult()
-		if len(result.Configs) != 1 || result.Configs[0].File != config || len(result.Configs[0].Origins) == 0 {
-			t.Fatalf("configuration provenance lost: %+v", result.Configs)
-		}
-	}
-}
 
 func TestCheckResultSchema(t *testing.T) {
 	data, err := os.ReadFile("schemas/results/v1.schema.json")

@@ -10,8 +10,10 @@ import (
 	"testing"
 
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/buildinfo"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -22,12 +24,13 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 	if err := os.WriteFile(path, []byte("echo first\u2028still-first\u0085same-line\u2029same-line\necho $VALUE\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := Analyze(t.Context(), AnalysisRequest{
-		WorkingDir: dir, ShellCheck: "shellcheck",
-		Sources: []SourceUnit{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")}},
-		ShellcheckRunner: func([]string, string) ([]byte, error) {
-			return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
-		},
+	result, err := runTestAnalysis(t.Context(), Request{
+		WorkingDir: dir,
+		Sources:    []SourceUnit{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")}}, Tools: (adapters.Options{ShellCheck: "shellcheck",
+
+			ShellcheckRunner: func([]string, string) ([]byte, error) {
+				return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
+			}}).Registrations(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -36,12 +39,12 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 		t.Fatalf("diagnostics: %+v", result.Diagnostics)
 	}
 	for _, template := range []string{"", "{{range .}}{{.Snippet}}{{end}}"} {
-		renderer, err := NewAnalysisRenderer("", template, false)
+		renderer, err := render.New("", template, false, buildinfo.Version, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		if err := renderer.Render(&out, result); err != nil {
+		if err := renderer.Render(&out, render.Prepare(result.Analysis)); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), "echo $VALUE") || strings.Contains(out.String(), "still-first") {
@@ -54,7 +57,7 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 	for _, ending := range []string{"\n", "\r\n", "\r", "\u0085", "\u2028", "\u2029"} {
 		t.Run(fmt.Sprintf("%q", ending), func(t *testing.T) {
 			src := strings.ReplaceAll("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"first\n        ${{ unknown }}\"\n", "\n", ending)
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(src)}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -76,16 +79,6 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 			}
 			t.Fatal("missing finding")
 		})
-	}
-}
-
-func TestDiagnosticLongSourceLine(t *testing.T) {
-	line := strings.Repeat("x", 70*1024)
-	for _, raw := range []bool{false, true} {
-		finding := &findingmodel.Finding{Start: diagmodel.Position{Line: 2, Column: 1}, RawScriptSource: raw}
-		if got, ok := render.SourceLine([]byte("first\n"+line+"\n"), finding.Start.Line, finding.RawScriptSource); !ok || got != line {
-			t.Fatalf("raw=%v: long source line missing or truncated", raw)
-		}
 	}
 }
 

@@ -8,8 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	builtin "actionlint.kjanat.dev/internal/builtin"
-
+	"actionlint.kjanat.dev/internal/builtin"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 )
@@ -40,7 +39,7 @@ runs:
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			outerReads, innerReads := 0, 0
-			result, err := Analyze(ctx, AnalysisRequest{
+			result, err := runTestAnalysis(ctx, Request{
 				WorkingDir: root,
 				Sources: []SourceUnit{{
 					Path: "workflow.yml", Project: workspace.Identity(root),

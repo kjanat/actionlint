@@ -38,7 +38,7 @@ runs:
 - uses: actions/checkout@v6
 - shell: bash
   working-directory: .
-  run: ./bad.sh`, AnalysisOptions{})
+  run: ./bad.sh`, Request{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)

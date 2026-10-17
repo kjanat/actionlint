@@ -1,6 +1,8 @@
 package ruff
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestDecode(t *testing.T) {
 	for _, data := range []string{`[]`, `[{"code":"F821","message":"Undefined name","location":{"row":2,"column":3}}]`} {

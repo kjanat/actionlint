@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: roots[0], Sources: []SourceUnit{
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: roots[0], Sources: []SourceUnit{
 					{Path: ".github/workflows/build.yml", Content: []byte("name: New\n" + commandGoodWorkflow), Project: project},
 					{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project},
 				}})
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: workspace.Identity(root)}}})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: workspace.Identity(root)}}})
 				if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "glob" || result.Diagnostics[0].Start.Line != 3 {
 					t.Fatalf("expected glob finding on line 3: %+v, %v", result.Diagnostics, err)
 				}
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{
 					{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: project},
 					{Path: ".github/workflows/build.yml", Content: []byte("name: Build CI\n" + commandGoodWorkflow), Project: project},
 					{Path: ".github/workflows/backslash.yml", Content: []byte("name: 'Build\\nCI'\n" + commandGoodWorkflow), Project: project},

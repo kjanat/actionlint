@@ -14,7 +14,7 @@ func TestCatalogueWorkflowExamples(t *testing.T) {
 					content string
 					before  bool
 				}{{example.Before, true}, {example.After, false}} {
-					result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "example.yml", Content: []byte(sample.content)}}})
+					result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "example.yml", Content: []byte(sample.content)}}})
 					if err != nil {
 						t.Fatal(err)
 					}

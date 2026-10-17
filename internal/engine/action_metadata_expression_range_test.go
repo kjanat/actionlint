@@ -26,7 +26,7 @@ func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			metadata := "name: inner\ndescription: test\n" + tc.body
 			writeShellcheckFixture(t, root, "inner/action.yml", metadata)
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			if len(result.Diagnostics) != 2 {
 				t.Fatalf("expected both occurrences: %+v", result.Diagnostics)
 			}
@@ -65,7 +65,7 @@ func TestMetadataExpressionSyntaxRanges(t *testing.T) {
 			root, _ := executableFixture(t)
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ${{ github.ref "+token+" }}\n")
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			if len(result.Diagnostics) != 1 {
 				t.Fatalf("want one syntax diagnostic: %+v", result.Diagnostics)
 			}

@@ -29,7 +29,7 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 			root, _ := executableFixture(t)
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			for _, finding := range result.Diagnostics {
 				if strings.Contains(finding.Message, "expected a scalar string at \""+tc.path+"\" in action metadata") {
 					return
@@ -62,7 +62,7 @@ func TestActionSchemaExpressionPaths(t *testing.T) {
 			root, _ := executableFixture(t)
 			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			for _, finding := range result.Diagnostics {
 				if strings.Contains(finding.Message, tc.message) {
 					return

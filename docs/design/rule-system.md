@@ -93,7 +93,7 @@ validated without implicit file or network access. The catalogue generates `docs
 `RuleBase` remains an internal visitor adapter and finding accumulator. It no longer
 owns configuration or logging. Adapters opt into those capabilities explicitly.
 Environment names, conditions, permission declarations, identifiers and job dependency
-checks have stateless implementations in `internal/checks`; identifiers and dependencies
+checks have stateless implementations in `internal/semantics`; identifiers and dependencies
 receive complete scopes, without accumulating state through callback order.
 `internal/workflow/checks` also owns events, credentials, glob validation, parallel
 steps and the required-actions, commit-pinning, timeout and required-permissions checks.

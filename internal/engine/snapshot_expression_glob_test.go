@@ -1,8 +1,9 @@
 package engine
 
 import (
-	"io"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestSnapshotExpressionVersionGlobs(t *testing.T) {
@@ -46,10 +47,9 @@ func TestSnapshotExpressionVersionGlobs(t *testing.T) {
 		{"null image name", "snapshot:\n      image-name: ${{ null }}", "expression", 6, 19},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-			if err != nil {
-				t.Fatal(err)
-			}
+			request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			var err error
+
 			source := `on: push
 jobs:
   build:
@@ -58,7 +58,8 @@ jobs:
     steps:
       - run: echo ok
 `
-			errs, err := linter.Lint("workflow.yml", []byte(source), nil)
+			request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+			errs, err := testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil {
 				t.Fatal(err)
 			}

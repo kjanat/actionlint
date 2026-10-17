@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	report "actionlint.kjanat.dev/internal/report"
+	"actionlint.kjanat.dev/internal/report"
 )
 
 func TestDocumentOutlinesRoundTrip(t *testing.T) {
@@ -43,21 +43,6 @@ runs: {using: docker, image: 'docker://alpine:3'}
 		moved := document.WithPath("new/" + previous)
 		if moved.DocumentPath() != "new/"+previous || document.DocumentPath() != previous {
 			t.Fatalf("WithPath mutated original or lost path: %#v", document)
-		}
-	}
-}
-
-func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {
-	for _, input := range []string{
-		`[null]`,
-		`[{"kind":"unexpected"}]`,
-		`[{"kind":"action","runs":{"kind":"unexpected"}}]`,
-		`[{"kind":"action","runs":null}]`,
-		`[{"kind":"action"}]`,
-	} {
-		var documents report.DocumentOutlines
-		if err := json.Unmarshal([]byte(input), &documents); err == nil {
-			t.Fatalf("accepted unsupported document/runtime: %s", input)
 		}
 	}
 }

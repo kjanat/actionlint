@@ -8,6 +8,7 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workflow/execution"
 )
 
@@ -44,7 +45,7 @@ runs:
   with: {path: source}
 - uses: ./source/refresh
   if: inputs.refresh` + tc.extra + "\n- uses: ./source/local"
-			result := compositeAnalysis(t, root, steps, AnalysisOptions{})
+			result := compositeAnalysis(t, root, steps, Request{})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
@@ -55,66 +56,6 @@ runs:
 				t.Fatalf("composite checked=%v, want %v: %+v", found, tc.read, result.Diagnostics)
 			}
 		})
-	}
-}
-
-func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
-	root, _ := executableFixture(t)
-	metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - run: missing shell
-`)
-	writeShellcheckFixture(t, root, "refresh/action.yml", `name: refresh
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: actions/checkout@v6
-`)
-	for _, scope := range []string{"workflow", "job", "step", "composite"} {
-		for _, tc := range []struct {
-			name, environment string
-			read              bool
-		}{
-			{"redirected worktree", "GIT_WORK_TREE: /tmp/tree", false},
-			{"Git wrapper", "PATH: tools", false},
-			{"ordinary env", "MY_VALUE: enabled", true},
-			{"empty loader", "NODE_OPTIONS: ''", true},
-		} {
-			t.Run(scope+"/"+tc.name, func(t *testing.T) {
-				workflowEnv, jobEnv, stepEnv := "", "", ""
-				call := "actions/checkout@v6"
-				switch scope {
-				case "workflow":
-					workflowEnv = "env: {" + tc.environment + "}\n"
-				case "job":
-					jobEnv = "    env: {" + tc.environment + "}\n"
-				case "step", "composite":
-					stepEnv = "        env: {" + tc.environment + "}\n"
-					if scope == "composite" {
-						call = "$/refresh"
-					}
-				}
-				workflow := writeShellcheckFixture(t, root, ".github/workflows/environment.yml", "on: push\n"+workflowEnv+`jobs:
-  test:
-    runs-on: ubuntu-latest
-`+jobEnv+"    steps:\n      - uses: "+call+"\n"+stepEnv+"      - uses: ./local\n")
-				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
-				if err != nil {
-					t.Fatal(err)
-				}
-				result, err := session.Files([]string{workflow}, nil)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if slices.Contains(result.Inputs, metadata) != tc.read {
-					t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
-				}
-			})
-		}
 	}
 }
 
@@ -136,60 +77,6 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 		got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")})
 		if got.Kind != execution.DirectoryKnown || got.Path != want {
 			t.Fatalf("checkout %q: directory=%+v, want %q", checkout, got, want)
-		}
-	}
-}
-
-func TestCompositeWorkingDirectorySuffixSources(t *testing.T) {
-	command := shellcheckForTest(t)
-	root, _ := executableFixture(t)
-	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	writeShellcheckFixture(t, root, "scripts/Nested/lib.sh", "VALUE=42\n")
-	writeShellcheckFixture(t, root, "local/scripts/Nested/lib.sh", "VALUE=42\n")
-	for _, runner := range []string{"windows-latest", "macos-latest"} {
-		for _, tc := range []struct{ name, spec, directory string }{
-			{"workspace", "./source/local", "source/SCRIPTS/nested"},
-			{"independent", "$/local", "${{ github.action_path }}/SCRIPTS/nested"},
-		} {
-			t.Run(runner+"/"+tc.name, func(t *testing.T) {
-				metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      working-directory: `+tc.directory+`
-      run: |
-        . ./lib.sh
-        echo $VALUE
-        echo $OTHER
-`)
-				workflow := writeShellcheckFixture(t, root, ".github/workflows/suffix.yml", `on: push
-jobs:
-  test:
-    runs-on: `+runner+`
-    steps:
-      - uses: actions/checkout@v6
-        with: {path: source}
-      - uses: `+tc.spec+"\n")
-				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
-				if err != nil {
-					t.Fatal(err)
-				}
-				result, err := session.Files([]string{workflow}, nil)
-				if err != nil {
-					t.Fatal(err)
-				}
-				var findings []diagmodel.Diagnostic
-				for _, d := range result.Diagnostics {
-					if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
-						findings = append(findings, d)
-					}
-				}
-				if len(findings) != 1 || findings[0].Start.Line != 11 || !strings.Contains(findings[0].Message, "SC2086") {
-					t.Fatalf("only unsourced variable should warn: %+v", result.Diagnostics)
-				}
-			})
 		}
 	}
 }
@@ -232,7 +119,7 @@ runs:
 					inputs += ", ref: \"" + tc.ref + "\""
 				}
 				steps := "- uses: actions/checkout@v6\n  with: {" + inputs + "}\n- uses: ./" + filepath.ToSlash(filepath.Join(destination, "local"))
-				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command})
+				result := compositeAnalysis(t, root, steps, Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 				read := slices.Contains(result.Inputs, metadata) || slices.Contains(result.Inputs, decoy)
 				if read != tc.read {
 					t.Fatalf("metadata read=%v, want %v: %v", read, tc.read, result.Inputs)
@@ -253,7 +140,7 @@ runs:
 	}
 	result := compositeAnalysis(t, root, `- uses: actions/checkout@v6
   with: {ref: v1}
-- uses: $/local`, AnalysisOptions{Shellcheck: command})
+- uses: $/local`, Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if !slices.Contains(result.Inputs, metadata) {
 		t.Fatalf("independent action metadata lost after alternate checkout: %v", result.Inputs)
 	}

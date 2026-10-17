@@ -185,7 +185,7 @@ Plugins live in their own repositories and ship a component. Open an issue in th
 documentation.
 
 Built-in rule metadata lives in `internal/rulecatalog`; configuration projections live in
-`internal/config`. Stateless checks in `internal/checks` accept explicit inputs and return diagnostics.
+`internal/config`. Stateless checks in `internal/semantics` accept explicit inputs and return diagnostics.
 The remaining visitor implementations in `internal/engine` are migration adapters. New document analyzers implement
 `analyzer.Analyzer` as described in the [Go API](api.md#add-an-analyzer). The catalogue generates
 [`docs/rules.md`](rules.md); behavior examples remain in [`docs/checks.md`](checks.md). Changes to the WIT contract keep `kjanat:actionlint/analyzer@0.1.0`

@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/yamlsource"
+
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )

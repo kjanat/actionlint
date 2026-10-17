@@ -2,6 +2,7 @@ package config
 
 import (
 	configtree "actionlint.kjanat.dev/internal/config/tree"
+
 	"go.yaml.in/yaml/v4"
 )
 

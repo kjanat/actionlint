@@ -8,11 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/diagnosticpolicy"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
@@ -69,7 +67,7 @@ runs:
     `+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 						steps = "- uses: ./local"
 					}
-					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
+					result := compositeAnalysis(t, root, steps, Request{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
 					counts := map[string]int{}
 					for _, diagnostic := range result.Diagnostics {
 						counts[diagnostic.Rule]++
@@ -100,18 +98,6 @@ runs:
 				})
 			}
 		}
-	}
-}
-
-func TestForeignSuppressionPreservesDiagnosticPath(t *testing.T) {
-	source := []byte("name: test # actionlint:ignore action --\n")
-	finding := &findingmodel.Finding{Path: "./local/action.yml", Start: diagmodel.Position{Line: 2}, Rule: "expression", Source: source}
-	got := diagnosticpolicy.FilterForeignInline("/repo/local/action.yml", source, []*findingmodel.Finding{finding}, nil)
-	if len(got) != 2 || got[0].Path != finding.Path || got[1].Path != "/repo/local/action.yml" || got[1].Rule != "inline-suppression" {
-		t.Fatalf("foreign filtering changed diagnostic identity: %+v", got)
-	}
-	if got[0] == finding || string(got[0].Source) != string(source) || finding.Path != "./local/action.yml" {
-		t.Fatalf("foreign filtering mutated the original finding: %+v", finding)
 	}
 }
 
@@ -147,7 +133,7 @@ runs:
 `)
 					steps = "- uses: ./outer"
 				}
-				result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
+				result := compositeAnalysis(t, root, steps, Request{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
 				want := 1
 				if both {
 					want = 0
@@ -173,7 +159,7 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
 - shell: bash
   working-directory: .
   run: *script`
-	result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
+	result := compositeAnalysis(t, root, steps, Request{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SC2086" {
 		t.Fatalf("alias origin crossed intervening declarations: %+v", result.Diagnostics)
 	}
@@ -212,7 +198,7 @@ runs:
 			if err := os.Symlink(filepath.Join(root, "local"), filepath.Join(root, "alias")); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			result := compositeAnalysis(t, root, "- uses: ./local\n- uses: ./alias", AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
+			result := compositeAnalysis(t, root, "- uses: ./local\n- uses: ./alias", Request{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
 			var sourced, policy int
 			for _, diagnostic := range result.Diagnostics {
 				switch diagnostic.Rule {
@@ -269,7 +255,7 @@ runs:
       run: . ./`+name+"\n")
 						steps = "- uses: ./local"
 					}
-					result := compositeAnalysis(t, root, steps, AnalysisOptions{Shellcheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
+					result := compositeAnalysis(t, root, steps, Request{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
 					if len(result.Diagnostics) != 1 {
 						t.Fatalf("sourced script comment changed diagnostics: %+v", result.Diagnostics)
 					}

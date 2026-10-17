@@ -5,9 +5,8 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/processconfig"
-
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+	"actionlint.kjanat.dev/internal/processconfig"
 )
 
 // ProcessOptions applies repository backend settings unless the caller made an explicit choice.

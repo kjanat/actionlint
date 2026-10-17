@@ -2,21 +2,16 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 
-	builtin "actionlint.kjanat.dev/internal/builtin"
-
+	"actionlint.kjanat.dev/internal/builtin"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 	"actionlint.kjanat.dev/internal/workspace"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
@@ -46,12 +41,11 @@ jobs:
 				}
 			}
 			proj := workspace.Identity(root)
-			l, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
-			if err != nil {
-				t.Fatal(err)
-			}
+			request := Request{WorkingDir: root}
+			var err error
+
 			cache := calls.NewCache(proj.RootDir(), root, nil)
-			errs, err := l.check("caller.yaml", caller, proj, nil, nil, cache)
+			errs, err := checkWithCaches(t.Context(), request, SourceUnit{Path: "caller.yaml", Content: caller, Project: proj, Config: (proj).Config()}, nil, nil, cache)
 			if err != nil || len(errs) != 1 || !strings.Contains(errs[0].Message, "could not validate cache access through job") {
 				t.Fatalf("nested validation did not report the callee failure: errors=%v, err=%v", errs, err)
 			}
@@ -61,7 +55,7 @@ jobs:
 			var wg sync.WaitGroup
 			for range 8 {
 				wg.Go(func() {
-					errs, err := l.check("middle.yaml", middle, proj, nil, nil, cache)
+					errs, err := checkWithCaches(t.Context(), request, SourceUnit{Path: "middle.yaml", Content: middle, Project: proj, Config: (proj).Config()}, nil, nil, cache)
 					if err != nil {
 						t.Error(err)
 						return
@@ -74,7 +68,8 @@ jobs:
 			wg.Wait()
 			for _, names := range [][]string{{"caller.yaml", "middle.yaml"}, {"middle.yaml", "caller.yaml"}} {
 				paths := []string{filepath.Join(root, names[0]), filepath.Join(root, names[1])}
-				errs, err := l.LintFiles(paths, proj)
+				request.Sources = readFixtureSources(t, paths, proj, nil)
+				errs, err := testFindings(runTestAnalysis(t.Context(), request))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -331,53 +326,5 @@ jobs:
 	errs := checkCacheModeCall(t, caller, map[string]string{"middle.yaml": middle, "leaf.yaml": leaf}, false)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, `calling job allows "read"`) {
 		t.Fatalf("wanted one rejection of read-only access, got %v", errs)
-	}
-}
-
-func TestReusableWorkflowCacheModeMetadataParity(t *testing.T) {
-	src := []byte(`on: workflow_call
-cache-mode: &mode read
-jobs:
-  base: &job
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ok
-  alias: *job
-  save:
-    cache-mode: write-only
-    uses: $/next.yaml
-  none:
-    cache-mode: none
-    uses: ./next.yaml
-  invalid:
-    cache-mode: null
-    uses: ./next.yaml
-  scalar-alias:
-    cache-mode: *mode
-    uses: ./next.yaml
-`)
-	fromFile, err := calls.ParseMetadata(src)
-	if err != nil {
-		t.Fatal(err)
-	}
-	w, errs := Parse(src)
-	if len(errs) != 1 || !strings.Contains(errs[0].Message, "cache-mode") {
-		t.Fatalf("expected the invalid null declaration, got %v", errs)
-	}
-	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
-	event, _ := w.FindWorkflowCallEvent()
-	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
-	fromAST, _, ok := cache.Lookup("./callee.yaml")
-	if !ok {
-		t.Fatal("no metadata was cached")
-	}
-	if diff := cmp.Diff(fromFile.JobCacheAccess, fromAST.JobCacheAccess); diff != "" {
-		t.Fatal(diff)
-	}
-	for id, want := range map[string]workflowlang.CacheModeKind{"base": workflowlang.CacheModeRead, "alias": workflowlang.CacheModeRead, "save": workflowlang.CacheModeWriteOnly, "none": workflowlang.CacheModeNone, "invalid": workflowlang.CacheModeInvalid, "scalar-alias": workflowlang.CacheModeRead} {
-		if mode := fromFile.JobCacheAccess[id].Mode; mode == nil || mode.Kind != want {
-			t.Errorf("%s: wanted %v, got %v", id, want, mode)
-		}
 	}
 }

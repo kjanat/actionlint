@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	report "actionlint.kjanat.dev/internal/report"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/report"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 
@@ -34,7 +34,7 @@ func TestStandaloneActionVirtualSourceThroughSymlink(t *testing.T) {
 		if onDisk {
 			writeShellcheckFixture(t, physical, "action.yml", source)
 		}
-		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: alias, Sources: []SourceUnit{{Path: "action.yml", Content: []byte(source)}}})
+		result, err := runTestAnalysis(t.Context(), Request{WorkingDir: alias, Sources: []SourceUnit{{Path: "action.yml", Content: []byte(source)}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			writeShellcheckFixture(t, root, "main.js", "")
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: "action.yml", Content: []byte(tc.source)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: "action.yml", Content: []byte(tc.source)}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,7 +92,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 }
 
 func TestStandaloneActionMixedInputs(t *testing.T) {
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{
+	result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{
 		{Path: "ci.yml", Content: []byte(commandGoodWorkflow)},
 		{Path: "a/action.yml", Content: []byte(standaloneComposite)},
 		{Path: "b/action.yaml", Content: []byte("runs: [")},
@@ -120,7 +120,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: workingDir, Sources: []SourceUnit{{Path: path, Content: []byte(commandGoodWorkflow)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: workingDir, Sources: []SourceUnit{{Path: path, Content: []byte(commandGoodWorkflow)}}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("cwd=%s path=%s: workflow failed: result=%+v err=%v", cwd, path, result, err)
 			}
@@ -136,7 +136,7 @@ func TestStandaloneActionCustomRules(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			calls := 0
 			custom := workflowvisit.NewBase(name, "custom rule")
-			request := AnalysisRequest{
+			request := Request{
 				WorkingDir: t.TempDir(),
 				Sources: []SourceUnit{
 					{Path: "action.yml", Content: []byte(standaloneComposite)},
@@ -147,7 +147,7 @@ func TestStandaloneActionCustomRules(t *testing.T) {
 					return []workflowvisit.Rule{&custom}
 				},
 			}
-			result, err := Analyze(t.Context(), request)
+			result, err := runTestAnalysis(t.Context(), request)
 			if err != nil || len(result.Diagnostics) != 0 || calls != 1 {
 				t.Fatalf("expected hook once for workflow only; calls=%d result=%+v error=%v", calls, result, err)
 			}
@@ -162,7 +162,7 @@ func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\n"
 	for _, source := range []SourceUnit{{Path: "action.yml", Content: []byte(manifest)}, {Path: "ci.yml", Content: []byte(workflow)}} {
 		source.Project = workspace.Identity(root)
-		result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{source}})
+		result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{source}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -183,7 +183,7 @@ func TestStandaloneActionNestedAndReferenced(t *testing.T) {
 	writeShellcheckFixture(t, root, "outer/action.yml", outer)
 	writeShellcheckFixture(t, root, "inner/action.yml", inner)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\n"
-	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{
 		{Path: "outer/action.yml", Content: []byte(outer), Project: workspace.Identity(root)},
 		{Path: "ci.yml", Content: []byte(workflow), Project: workspace.Identity(root)},
 	}})
@@ -212,7 +212,7 @@ func TestStandaloneActionSuppression(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "action.yml", Content: []byte(tc.source), Config: config}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "action.yml", Content: []byte(tc.source), Config: config}}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("suppression failed: result=%+v err=%v", result, err)
 			}
@@ -227,17 +227,17 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 			if err != nil {
 				t.Skipf("%s unavailable: %v", tool, err)
 			}
-			request := AnalysisRequest{WorkingDir: t.TempDir()}
+			request := Request{WorkingDir: t.TempDir()}
 			source := strings.Replace(standaloneComposite, "echo ok", "echo $UNQUOTED", 1)
 			if tool == "shellcheck" {
-				request.ShellCheck = executable
+				request.Tools = (adapters.Options{ShellCheck: executable}).Registrations()
 			} else {
-				request.Ruff = executable
+				request.Tools = (adapters.Options{Ruff: executable}).Registrations()
 				source = strings.Replace(standaloneComposite, "echo ok", "print(UNDEFINED)", 1)
 				source = strings.Replace(source, "shell: bash", "shell: python", 1)
 			}
 			request.Sources = []SourceUnit{{Path: filepath.Join(request.WorkingDir, "action.yml"), Content: []byte(source)}}
-			result, err := Analyze(t.Context(), request)
+			result, err := runTestAnalysis(t.Context(), request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -265,10 +265,11 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 			project := workspace.Identity(root)
 			manifest := strings.Replace(standaloneComposite, "echo ok", "echo $UNQUOTED", 1)
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, ShellCheck: executable, Sources: []SourceUnit{
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{
 				{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
 				{Path: "inner/action.yml", Content: []byte(manifest), Project: project, Config: cfg},
-			}})
+			}, Tools: (adapters.Options{ShellCheck: executable}).Registrations(),
+			})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -8,9 +8,10 @@ import (
 
 	"actionlint.kjanat.dev/internal/webhook"
 
+	"github.com/robfig/cron/v3"
+
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"github.com/robfig/cron/v3"
 )
 
 type eventsCheck struct{ findingCollector }

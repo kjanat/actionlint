@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 

@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestRuffTemplateParenthesisFindings(t *testing.T) {
@@ -41,7 +42,7 @@ jobs:
       - shell: python
         run: |
           ` + strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", "\n          ") + "\n"
-				result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -107,7 +108,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, WorkingDir: working}, WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, WorkingDir: working}}).Registrations()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -130,7 +131,7 @@ jobs:
 `
 	for _, flags := range [][]string{{"--no-cache"}, {"--isolated"}, {"--ignore-noqa"}, {"--no-fix"}, {"--target-version", "py314"}, {"--target-version=py314"}, {"--stdin-filename", "actionlint.py"}, {"--stdin-filename=actionlint.py"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+			_, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}}).Registrations()})
 			if err == nil || !strings.Contains(err.Error(), "integration-owned option") {
 				t.Fatalf("integration flag not rejected: %v", err)
 			}
@@ -154,7 +155,7 @@ jobs:
 `
 	for _, flags := range [][]string{{"--select", "F"}, {"--ignore", "F401"}, {"--select=F", "--ignore=F401"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
-			result, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}}).Registrations()})
 			if err != nil {
 				t.Fatal(err)
 			}

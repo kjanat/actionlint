@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/internal/localaction"
+
 	"go.yaml.in/yaml/v4"
 )
 

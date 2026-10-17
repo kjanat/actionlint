@@ -4,9 +4,9 @@ import (
 	"strings"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
+	contextspec "actionlint.kjanat.dev/internal/expression/context"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 )
 
 func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
@@ -99,7 +99,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 		c.UpdateJobs(rule.jobsTy)
 	}
 	if workflowKey != "" {
-		ctx, _ := workflowcontext.WorkflowKeyAvailability(workflowKey)
+		ctx, _ := contextspec.WorkflowKeyAvailability(workflowKey)
 		if len(ctx) == 0 {
 			rule.debug("No context availability was found for workflow key %q", workflowKey)
 		}

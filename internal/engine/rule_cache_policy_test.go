@@ -2,13 +2,12 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"slices"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -18,17 +17,18 @@ const cachePolicySteps = `    runs-on: ubuntu-latest
 
 func lintCachePolicy(t *testing.T, source, config string) []*findingmodel.Finding {
 	t.Helper()
-	l, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-	if err != nil {
-		t.Fatal(err)
-	}
+	request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	var lConfig *repoconfig.Config
+	var err error
+
 	if config != "" {
-		l.DefaultConfig, err = repoconfig.Parse([]byte(config))
+		lConfig, err = repoconfig.Parse([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	errs, err := l.Lint("test.yaml", []byte(source), nil)
+	request.Sources = []SourceUnit{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil, Config: lConfig}}
+	errs, err := testFindings(runTestAnalysis(t.Context(), request))
 	if err != nil {
 		t.Fatal(err)
 	}

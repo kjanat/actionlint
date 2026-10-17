@@ -3,11 +3,10 @@ package engine
 import (
 	"context"
 
-	analyzerhost "actionlint.kjanat.dev/internal/analyzerhost"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	"actionlint.kjanat.dev/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 	"actionlint.kjanat.dev/internal/workflow/execution"

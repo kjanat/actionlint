@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
-
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -43,7 +43,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 					fmt.Fprintf(&source, "  %c:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n", job, uses)
 				}
 				path := writeShellcheckFixture(t, root, ".github/workflows/ci.yml", source.String())
-				result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}}, ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}}, Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
 				if err != nil {
 					t.Fatal(err)
 				}

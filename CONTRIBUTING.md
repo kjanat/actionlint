@@ -347,7 +347,7 @@ run playground:preview
 
 ## Maintain auto-generated sources
 
-Generators live with their owning subsystems under `internal/`: configuration schemas in `config/generate`, rule documentation in `rulecatalog/generate`, action data in `actioncatalog`, and expression context data in `workflow/context/generate`. Release tools live in `internal/release`, installers in `distribution/install`, and conformance tools in `internal/conformance`. CI invokes these same entry points.
+Generators live with their owning subsystems under `internal/`: configuration schemas in `config/generate`, rule documentation in `rulecatalog/generate`, action data in `actioncatalog`, and expression context data in `expression/context/generate`. Release tools live in `internal/release`, installers in `distribution/install`, and conformance tools in `internal/conformance`. CI invokes these same entry points.
 
 ### Action metadata availability
 
@@ -435,7 +435,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [`availability_generated.go`]: ./internal/action/availability_generated.go
 [`actionlint-matcher.json`]: .github/actionlint-matcher.json
 [`webhooks.go`]: ./internal/webhook/webhooks.go
-[`availability.go`]: ./internal/workflow/context/availability.go
+[`availability.go`]: ./internal/expression/context/availability.go
 [`check-checks`]: ./internal/rulecatalog/check-docs
 [`ci.yml`]: .github/workflows/ci.yml
 [`events-that-trigger-workflows.md`]: https://raw.githubusercontent.com/github/docs/refs/heads/main/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md
@@ -457,7 +457,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [changelog-from-release]: https://github.com/rhysd/changelog-from-release
 [flake]: flake.nix
 [fork repository]: https://github.com/kjanat/winget-pkgs
-[generate-availability]: ./internal/workflow/context/generate
+[generate-availability]: ./internal/expression/context/generate
 [golang]: https://hub.docker.com/_/golang
 [golangci-lint]: https://golangci-lint.run/
 [govulncheck]: https://go.dev/doc/security/vuln/
@@ -476,7 +476,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [the document]: docs/usage.md#problem-matchers
 [the maintenance script]: #about-checks-doc
 [the readme of the script-2]: ./internal/rulecatalog/check-docs/README.md
-[the readme of the script]: ./internal/workflow/context/generate/README.md
+[the readme of the script]: ./internal/expression/context/generate/README.md
 [the script README]: ./internal/release/bump-version/README.md
 [the upstream project]: https://github.com/rhysd/actionlint
 [the usage document]: docs/usage.md

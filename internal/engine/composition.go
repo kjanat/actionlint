@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/internal/builtin"
-
 	"actionlint.kjanat.dev/internal/tools"
 )
 

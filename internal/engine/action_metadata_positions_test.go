@@ -36,7 +36,7 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 				writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				metadata := "name: inner\ndescription: test\ninputs:\n  custom_name:\n    description: custom\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      " + tc.declaration + "\n"
 				writeShellcheckFixture(t, root, "inner/action.yml", strings.ReplaceAll(metadata, "\n", ending))
-				result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+				result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 				count := 1
 				if tc.name == "repeated" {
 					count = 2

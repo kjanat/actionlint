@@ -2,11 +2,11 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/internal/action"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -24,10 +24,9 @@ func TestExpressionRefinementReview(t *testing.T) {
 		{"environment unknown", "environment: ${{ vars.ENVIRONMENT }}", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			lint, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-			if err != nil {
-				t.Fatal(err)
-			}
+			request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			var err error
+
 			source := `on: push
 jobs:
   test:
@@ -36,7 +35,8 @@ jobs:
     steps:
       - run: echo ok
 `
-			errs, err := lint.Lint("test.yaml", []byte(source), nil)
+			request.Sources = []SourceUnit{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
+			errs, err := testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -86,11 +86,11 @@ func TestConcurrencyExpressionConflictReview(t *testing.T) {
 				source += `    steps:
       - run: echo ok
 `
-				lint, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-				if err != nil {
-					t.Fatal(err)
-				}
-				errs, err := lint.Lint("test.yaml", []byte(source), nil)
+				request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				var err error
+
+				request.Sources = []SourceUnit{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
+				errs, err := testFindings(runTestAnalysis(t.Context(), request))
 				if err != nil {
 					t.Fatal(err)
 				}

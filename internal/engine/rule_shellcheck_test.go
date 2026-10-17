@@ -1,76 +1,11 @@
 package engine
 
 import (
-	"bytes"
-	"context"
-	"fmt"
-	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-
-	"golang.org/x/sys/execabs"
 )
-
-func TestRuleShellcheckLargeRunBlock(t *testing.T) {
-	shellcheck, err := execabs.LookPath("shellcheck")
-	if err != nil {
-		t.Skipf("shellcheck is necessary to run this test: %s", err)
-	}
-	// @kjanat's rhysd/actionlint#651 reproducer uses a single 128 KiB comment.
-	// The second case proves ShellCheck still checks code following that comment.
-	comment := "#" + strings.Repeat("x", 128*1024-2) + "\n"
-	for _, findings := range []bool{false, true} {
-		t.Run(fmt.Sprintf("findings=%t", findings), func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-			defer cancel()
-			var output bytes.Buffer
-			dir := t.TempDir()
-			l, err := NewLinter(&output, &LinterOptions{Shellcheck: shellcheck, WorkingDir: dir, Context: ctx, Color: ColorOptionKindNever})
-			if err != nil {
-				t.Fatal(err)
-			}
-			workflow := `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          ` + comment
-			if findings {
-				workflow += "          echo $ACTIONLINT_STDIN_REGRESSION\n"
-			}
-			var errs []*findingmodel.Finding
-			done := make(chan error, 1)
-			go func() {
-				var err error
-				errs, err = l.Lint(filepath.Join(dir, "workflow.yml"), []byte(workflow), nil)
-				done <- err
-			}()
-			select {
-			case err := <-done:
-				if err != nil {
-					t.Fatal(err)
-				}
-			case <-ctx.Done():
-				t.Fatal("ShellCheck did not finish checking the large run block")
-			}
-			if !findings {
-				if len(errs) != 0 {
-					t.Fatalf("unexpected diagnostics: %s", output.String())
-				}
-				return
-			}
-			if len(errs) != 1 || errs[0].Rule != "shellcheck" || !strings.Contains(errs[0].Message, "SC2086") || errs[0].Start.Line != 8 {
-				t.Fatalf("expected SC2086 on line 8 after the large comment: %s", output.String())
-			}
-		})
-	}
-}
 
 // Regression for #409
 func TestRuleShellcheckDetectShell(t *testing.T) {

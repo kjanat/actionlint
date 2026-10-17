@@ -54,7 +54,7 @@ func TestCompositeCheckoutModeIsolation(t *testing.T) {
 			steps := strings.ReplaceAll(tc.steps, "- run:", `- shell: bash
   working-directory: .
   run:`)
-			result := compositeAnalysis(t, root, steps, AnalysisOptions{})
+			result := compositeAnalysis(t, root, steps, Request{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "executable-bit" && strings.Contains(d.Message, `"bad.sh"`)
 			})
@@ -91,7 +91,7 @@ runs:
   with: {path: source}
 - uses: actions/checkout@v6
   if: ` + tc.condition + tc.extra + "\n  with: {" + tc.inputs + "}\n- uses: ./source/local"
-			result := compositeAnalysis(t, root, steps, AnalysisOptions{})
+			result := compositeAnalysis(t, root, steps, Request{})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}

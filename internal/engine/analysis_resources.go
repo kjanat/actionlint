@@ -1,6 +1,8 @@
 package engine
 
-import "actionlint.kjanat.dev/internal/analyzerhost"
+import (
+	"actionlint.kjanat.dev/internal/analyzerhost"
+)
 
 // resourceParticipant is separate from the traversal and diagnostic contracts.
 // Adapters register resources before the first visit so early exits still join.

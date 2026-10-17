@@ -7,8 +7,9 @@ import (
 	"testing"
 	"unicode"
 
-	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 	"github.com/google/go-cmp/cmp"
+
+	contextspec "actionlint.kjanat.dev/internal/expression/context"
 )
 
 func TestExprContextPropertySuggestions(t *testing.T) {
@@ -1041,7 +1042,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 	}
 
 	allSPFuncs := []string{}
-	for f := range workflowcontext.SpecialFunctionNames {
+	for f := range contextspec.SpecialFunctionNames {
 		allSPFuncs = append(allSPFuncs, f)
 	}
 
@@ -1646,7 +1647,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 	}
 
 	allSP := []string{}
-	for f := range workflowcontext.SpecialFunctionNames {
+	for f := range contextspec.SpecialFunctionNames {
 		allSP = append(allSP, f)
 	}
 

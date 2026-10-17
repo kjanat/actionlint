@@ -48,7 +48,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 			a := &settingsAnalyzer{}
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}, Analyzers: []analyzer.Registration{{Analyzer: a}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}, Analyzers: []analyzer.Registration{{Analyzer: a}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -68,29 +68,12 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := &settingsAnalyzer{}
-	request := AnalysisRequest{Sources: []SourceUnit{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}, Analyzers: []analyzer.Registration{{Analyzer: a}}}
-	if _, err := Analyze(t.Context(), request); err == nil || !strings.Contains(err.Error(), "options") || a.calls != 0 {
+	request := Request{Sources: []SourceUnit{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}, Analyzers: []analyzer.Registration{{Analyzer: a}}}
+	if _, err := runTestAnalysis(t.Context(), request); err == nil || !strings.Contains(err.Error(), "options") || a.calls != 0 {
 		t.Fatalf("invalid options were executed: calls=%d err=%v", a.calls, err)
 	}
 	request.Analyzers[0].Options = json.RawMessage(`{"count":3}`)
-	if _, err := Analyze(t.Context(), request); err != nil || a.calls != 1 || string(a.options) != `{"count":3}` {
+	if _, err := runTestAnalysis(t.Context(), request); err != nil || a.calls != 1 || string(a.options) != `{"count":3}` {
 		t.Fatalf("explicit options lost precedence: calls=%d options=%s err=%v", a.calls, a.options, err)
-	}
-}
-
-func TestRegisteredNurseryPresetSelection(t *testing.T) {
-	descriptor := repoconfig.Rule{Name: "experimental-plugin", Maturity: "nursery", Group: "plugins"}
-	for _, test := range []struct {
-		root, group repoconfig.Preset
-		want        repoconfig.Level
-	}{
-		{"", "", "on"}, {"all", "", "off"}, {"", "all", "off"}, {"recommended", "", "off"}, {"none", "", "off"},
-	} {
-		cfg := &repoconfig.Config{}
-		cfg.Lint.Rules.Preset = test.root
-		cfg.Lint.Rules.Plugins.Preset = test.group
-		if got := repoconfig.SettingFor(cfg, descriptor, repoconfig.Presets{}, true).Level; got != test.want {
-			t.Errorf("root=%s group=%s: %s want %s", test.root, test.group, got, test.want)
-		}
 	}
 }

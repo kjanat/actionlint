@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/internal/workflow/schema"
 
-	"actionlint.kjanat.dev/internal/checks/glob"
+	"actionlint.kjanat.dev/internal/semantics/glob"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"

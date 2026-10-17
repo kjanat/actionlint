@@ -1,12 +1,12 @@
 package engine
 
 import (
-	"io"
 	"strings"
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actioncheck "actionlint.kjanat.dev/internal/action/validation"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -28,10 +28,9 @@ func TestExpressionWhitespaceWorkflowBoundaries(t *testing.T) {
 		{"interpolated if", `if: "  ${{ false }}  "`, "always evaluated to true because extra characters"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-			if err != nil {
-				t.Fatal(err)
-			}
+			request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			var err error
+
 			source := `on: push
 jobs:
   check:
@@ -40,7 +39,8 @@ jobs:
     steps:
       - run: echo ok
 `
-			errs, err := linter.Lint("workflow.yml", []byte(source), nil)
+			request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+			errs, err := testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -80,11 +80,11 @@ jobs:
 			if uses.Value != tc.parsed {
 				t.Fatalf("decoded uses changed: got %q, want %q", uses.Value, tc.parsed)
 			}
-			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-			if err != nil {
-				t.Fatal(err)
-			}
-			errs, err = linter.Lint("workflow.yml", source, nil)
+			request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			var err error
+
+			request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: source, Project: nil}}
+			errs, err = testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -141,10 +141,9 @@ runs:
 func TestExpressionWhitespacePreservesExpressionErrors(t *testing.T) {
 	for _, value := range []string{"${{ ... }}", "${{ fromJSON( }}", "${{ 'unfinished }}"} {
 		t.Run(value, func(t *testing.T) {
-			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-			if err != nil {
-				t.Fatal(err)
-			}
+			request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			var err error
+
 			source := `on: push
 jobs:
   check:
@@ -153,7 +152,8 @@ jobs:
     steps:
       - run: echo ok
 `
-			errs, err := linter.Lint("workflow.yml", []byte(source), nil)
+			request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+			errs, err := testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil {
 				t.Fatal(err)
 			}

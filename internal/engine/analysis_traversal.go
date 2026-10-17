@@ -3,12 +3,10 @@ package engine
 import (
 	"context"
 
-	analyzerhost "actionlint.kjanat.dev/internal/analyzerhost"
-	workspace "actionlint.kjanat.dev/internal/workspace"
-
 	"actionlint.kjanat.dev/analyzer"
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
@@ -17,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/internal/workflow/execution"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/rule"
 )
 

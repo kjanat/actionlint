@@ -18,7 +18,7 @@ func TestWorkflowEventPayloadChecks(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			content := "on: " + tc.trigger + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ " + tc.value + " }}\n    steps:\n      - run: echo ok\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(content)}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(content)}}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -4,9 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	builtin "actionlint.kjanat.dev/internal/builtin"
-
 	actionmeta "actionlint.kjanat.dev/internal/action"
+	"actionlint.kjanat.dev/internal/builtin"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )

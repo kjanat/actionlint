@@ -9,10 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
+	toolconfig "actionlint.kjanat.dev/internal/config/tools"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 

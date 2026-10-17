@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -45,7 +46,7 @@ jobs:
       - uses: $/python-action
       - uses: $/python-alias
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +120,7 @@ jobs:
     steps:
       - uses: $/python-action
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 			if err != nil {
 				t.Fatal(err)
 			}

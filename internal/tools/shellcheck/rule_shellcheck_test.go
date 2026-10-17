@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/internal/analyzerhost"
-
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 

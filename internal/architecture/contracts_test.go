@@ -24,7 +24,7 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/plugin",
 		"actionlint.kjanat.dev/internal/expression",
 		"actionlint.kjanat.dev/internal/workflow",
-		"actionlint.kjanat.dev/internal/workflow/context",
+		"actionlint.kjanat.dev/internal/expression/context",
 		"actionlint.kjanat.dev/internal/yamlscalar",
 		"actionlint.kjanat.dev/internal/stringutil",
 	}
@@ -57,9 +57,14 @@ func TestExpressionDependencyDirection(t *testing.T) {
 		t.Fatal(err)
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
-		switch dependency {
-		case "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/analyzerhost", "actionlint.kjanat.dev/analyzer", "actionlint.kjanat.dev/internal/tools/ruff", "actionlint.kjanat.dev/internal/config/tree":
-			t.Errorf("expression semantics imports host domain %s", dependency)
+		for _, domain := range []string{"workflow", "analyzerhost", "tools", "config", "engine", "application", "workspace", "render"} {
+			prefix := "actionlint.kjanat.dev/internal/" + domain
+			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
+				t.Errorf("expression semantics imports host domain %s", dependency)
+			}
+		}
+		if dependency == "actionlint.kjanat.dev/analyzer" {
+			t.Errorf("expression semantics imports analyzer execution %s", dependency)
 		}
 	}
 }
@@ -133,15 +138,15 @@ func TestAnalyzerHostDoesNotImportTraversal(t *testing.T) {
 }
 
 func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/internal/checks/...", "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/mapping").Output()
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/internal/semantics/...", "actionlint.kjanat.dev/internal/engine", "actionlint.kjanat.dev/internal/workflow", "actionlint.kjanat.dev/internal/mapping").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
 	decoder := json.NewDecoder(strings.NewReader(string(output)))
 	for decoder.More() {
 		var pkg struct {
-			ImportPath    string
-			Imports, Deps []string
+			ImportPath                               string
+			Imports, Deps, TestImports, XTestImports []string
 		}
 		if err := decoder.Decode(&pkg); err != nil {
 			t.Fatal(err)
@@ -151,10 +156,16 @@ func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
 				t.Errorf("semantic package %s imports parser types", pkg.ImportPath)
 			}
 		}
-		if strings.Contains(pkg.ImportPath, "/internal/checks/") {
-			for _, dependency := range pkg.Deps {
-				if dependency == "actionlint.kjanat.dev/internal/engine" || dependency == "actionlint.kjanat.dev/internal/config" || dependency == "actionlint.kjanat.dev/internal/workflow" {
-					t.Errorf("check %s depends on traversal/configuration %s", pkg.ImportPath, dependency)
+		if strings.HasPrefix(pkg.ImportPath, "actionlint.kjanat.dev/internal/semantics") {
+			for _, dependency := range append(append(pkg.Deps, pkg.TestImports...), pkg.XTestImports...) {
+				if strings.HasPrefix(dependency, "go.yaml.in/") || strings.HasPrefix(dependency, "gopkg.in/yaml.") {
+					t.Errorf("semantic check %s depends on YAML decoding %s", pkg.ImportPath, dependency)
+				}
+				for _, domain := range []string{"workflow", "action", "builtin", "engine", "config", "workspace", "analyzerhost", "tools", "render"} {
+					prefix := "actionlint.kjanat.dev/internal/" + domain
+					if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
+						t.Errorf("semantic check %s depends on adapter or host %s", pkg.ImportPath, dependency)
+					}
 				}
 			}
 		}
@@ -387,7 +398,7 @@ func TestEngineUsesBuiltinComposition(t *testing.T) {
 		t.Fatal(err)
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
-		for _, domain := range []string{"checks", "action/validation", "workflow/checks", "workflow/expressions", "workflow/cachepolicy", "workflow/matrix", "workflow/commands"} {
+		for _, domain := range []string{"semantics", "action/validation", "workflow/checks", "workflow/expressions", "workflow/cachepolicy", "workflow/matrix", "workflow/commands"} {
 			prefix := "actionlint.kjanat.dev/internal/" + domain
 			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
 				t.Errorf("engine constructs semantic checks through %s", dependency)

@@ -12,15 +12,13 @@ import (
 	"slices"
 	"sync"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
-	"actionlint.kjanat.dev/internal/builtin"
-
 	"actionlint.kjanat.dev/analyzer"
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	"actionlint.kjanat.dev/internal/analyzerhost"
+	"actionlint.kjanat.dev/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	findingmodel "actionlint.kjanat.dev/internal/finding"

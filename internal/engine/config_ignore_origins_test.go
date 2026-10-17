@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
-
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -93,10 +93,11 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		result, err := Analyze(t.Context(), AnalysisRequest{
-			WorkingDir: root, ShellCheck: command,
-			ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}},
-			Sources:           []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}},
+		result, err := runTestAnalysis(t.Context(), Request{
+			WorkingDir: root,
+
+			Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}}, Tools: (adapters.Options{ShellCheck: command,
+				ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations(),
 		})
 		if err != nil {
 			t.Fatal(err)

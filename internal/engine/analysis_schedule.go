@@ -5,10 +5,9 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
 

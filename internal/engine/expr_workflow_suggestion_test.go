@@ -26,7 +26,7 @@ jobs:
     steps:
       - run: echo '${{ ` + expression + ` }}'
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{
+			result, err := runTestAnalysis(t.Context(), Request{
 				WorkingDir: t.TempDir(),
 				Sources:    []SourceUnit{{Path: "ci.yml", Content: []byte(source), Config: config}},
 			})

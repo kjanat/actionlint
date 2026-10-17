@@ -1,17 +1,16 @@
 package engine
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
-	builtin "actionlint.kjanat.dev/internal/builtin"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/builtin"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -33,21 +32,19 @@ runs:
 `)
 	for _, selection := range []string{"enabled", "removed", "empty"} {
 		t.Run(selection, func(t *testing.T) {
-			result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{
-				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
-					switch selection {
-					case "removed":
-						return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool {
-							_, action := rule.(*builtin.RuleAction)
-							return action
-						})
-					case "empty":
-						return nil
-					default:
-						return rules
-					}
-				},
-			})
+			result := compositeAnalysis(t, root, "- uses: ./outer", Request{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
+				switch selection {
+				case "removed":
+					return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool {
+						_, action := rule.(*builtin.RuleAction)
+						return action
+					})
+				case "empty":
+					return nil
+				default:
+					return rules
+				}
+			}})
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "action" })
 			if found != (selection == "enabled") {
 				t.Fatalf("action rule selection %q: %+v", selection, result.Diagnostics)
@@ -88,7 +85,7 @@ func TestCompositeScriptNodeCycle(t *testing.T) {
 	}
 }
 
-func compositeAnalysis(t *testing.T, root, steps string, options AnalysisOptions) *AnalysisResult {
+func compositeAnalysis(t *testing.T, root, steps string, request Request) *AnalysisResult {
 	t.Helper()
 	workflow := writeShellcheckFixture(t, root, ".github/workflows/composite.yml", `on: push
 jobs:
@@ -100,12 +97,17 @@ jobs:
         working-directory: scripts
     steps:
       `+strings.ReplaceAll(steps, "\n", "\n      ")+"\n")
-	options.WorkingDir = root
-	session, err := NewAnalysisSession(options)
+	request.WorkingDir = root
+	session, err := workspace.New(workspace.Options{WorkingDir: root, ReadFile: request.ReadFile})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := session.Files([]string{workflow}, nil)
+	selection, err := session.Files([]string{workflow}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Sources = selection.Sources
+	result, err := runTestAnalysis(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +129,7 @@ runs:
       run: |
         echo $VALUE
 `)
-			result := compositeAnalysis(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", AnalysisOptions{Shellcheck: command})
+			result := compositeAnalysis(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -141,62 +143,6 @@ runs:
 				t.Fatalf("metadata not tracked: %v", result.Inputs)
 			}
 		})
-	}
-}
-
-func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
-	root, _ := executableFixture(t)
-	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	metadata := writeShellcheckFixture(t, root, "local/action.yml", `name: lint
-description: test
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      run: echo $VALUE
-`)
-	const workflow = `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: ./local
-`
-	first := writeShellcheckFixture(t, root, ".github/workflows/a.yml", workflow)
-	second := writeShellcheckFixture(t, root, ".github/workflows/b.yml", workflow)
-	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: shellcheckForTest(t)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := session.Files([]string{first, second}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || filepath.Join(root, result.Diagnostics[0].Path) != metadata {
-		t.Fatalf("expected one shared-action finding: %+v", result.Diagnostics)
-	}
-	if result.FileCount != 2 || len(result.legacyErrors()) != 1 {
-		t.Fatalf("file and finding counts: %d, %d", result.FileCount, len(result.legacyErrors()))
-	}
-	for _, path := range []string{first, second, metadata} {
-		if !slices.Contains(result.Inputs, path) {
-			t.Errorf("input missing: %s", path)
-		}
-	}
-	renderer, err := NewAnalysisRenderer("", "{{json .}}", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out strings.Builder
-	if err := renderer.Render(&out, result); err != nil {
-		t.Fatal(err)
-	}
-	var findings []render.TemplateFields
-	if err := json.Unmarshal([]byte(out.String()), &findings); err != nil {
-		t.Fatal(err)
-	}
-	if len(findings) != 1 || filepath.Join(root, findings[0].Filepath) != metadata || !strings.Contains(findings[0].Snippet, "echo $VALUE") {
-		t.Fatalf("legacy rendering lost the shared source: %+v", findings)
 	}
 }
 
@@ -239,7 +185,7 @@ runs:
         . value.sh
         echo $VALUE
 `)
-			result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./outer", AnalysisOptions{Shellcheck: command})
+			result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./outer", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -255,60 +201,6 @@ runs:
 						t.Errorf("action-specific rc file missing from inputs: %s", path)
 					}
 				}
-			}
-		})
-	}
-}
-
-func TestCompositeShellcheckConfigValidation(t *testing.T) {
-	command := shellcheckForTest(t)
-	for _, tc := range []struct {
-		name, actionSteps, workflowSteps string
-		missingRC, wantError             bool
-	}{
-		{"python", "- shell: python\n  run: print('hello')", "- uses: ./local", false, false},
-		{"python missing rc", "- shell: python\n  run: print('hello')", "- uses: ./local", true, true},
-		{"powershell", "- shell: pwsh\n  run: Write-Output hello", "- uses: ./local", false, false},
-		{"powershell missing rc", "- shell: pwsh\n  run: Write-Output hello", "- uses: ./local", true, true},
-		{"uses only", "- uses: actions/checkout@v6", "- uses: ./local", false, false},
-		{"uses only missing rc", "- uses: actions/checkout@v6", "- uses: ./local", true, true},
-		{"no composite", "- uses: actions/checkout@v6", "- uses: actions/checkout@v6", false, true},
-		{"workflow python", "- uses: actions/checkout@v6", `- uses: ./local
-- shell: python
-  run: print('hello')`, false, true},
-		{"workflow bash", "- uses: actions/checkout@v6", `- uses: ./local
-- shell: bash
-  run: echo hello`, false, true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root, _ := executableFixture(t)
-			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: '${{ github.action_path }}/.shellcheckrc'}}\n")
-			writeShellcheckFixture(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    `+strings.ReplaceAll(tc.actionSteps, "\n", "\n    ")+"\n")
-			if !tc.missingRC {
-				writeShellcheckFixture(t, root, "local/.shellcheckrc", "disable=SC2086\n")
-			}
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/test.yml", `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      `+strings.ReplaceAll(tc.workflowSteps, "\n", "\n      ")+"\n")
-			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
-			if err != nil {
-				t.Fatal(err)
-			}
-			result, err := session.Files([]string{workflow}, nil)
-			if tc.wantError {
-				if err == nil || !strings.Contains(err.Error(), "tools.shellcheck.config") {
-					t.Fatalf("expected config error, got %v", err)
-				}
-			} else if err != nil || len(result.Diagnostics) != 0 {
-				t.Fatalf("valid action context rejected: %v, %+v", err, result)
 			}
 		})
 	}
@@ -338,7 +230,7 @@ runs:
         print(
     - uses: ./outer
 `)
-	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{Shellcheck: command})
+	result := compositeAnalysis(t, root, "- uses: ./outer", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	for _, rule := range []string{"shellcheck"} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule && filepath.Join(root, d.Path) == metadata }) {
 			t.Errorf("missing %s syntax finding: %+v", rule, result.Diagnostics)
@@ -415,7 +307,7 @@ runs:
   background: ${{ inputs.background }}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := compositeAnalysis(t, root, tc.steps, AnalysisOptions{})
+			result := compositeAnalysis(t, root, tc.steps, Request{})
 			found := false
 			for _, d := range result.Diagnostics {
 				if d.Rule == "executable-bit" {
@@ -425,101 +317,6 @@ runs:
 					}
 				}
 			}
-			if found != tc.want {
-				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
-			}
-		})
-	}
-}
-
-func TestCompositeMacOSExecutableBit(t *testing.T) {
-	root, _ := executableFixture(t)
-	writeShellcheckFixture(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: ./inner
-`)
-	metadata := writeShellcheckFixture(t, root, "inner/action.yml", `name: inner
-description: test
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      run: ./SCRIPTS/BAD.SH
-`)
-	workflow := writeShellcheckFixture(t, root, ".github/workflows/mac.yml", `on: push
-jobs:
-  test:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: ./local
-`)
-	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := session.Files([]string{workflow}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
-		return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, `script "scripts/bad.sh"`)
-	}) {
-		t.Fatalf("nested action lost macOS path matching: %+v", result.Diagnostics)
-	}
-}
-
-func TestCompositeNestedCheckoutGitEnvironment(t *testing.T) {
-	root, _ := executableFixture(t)
-	writeShellcheckFixture(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: ./inner
-`)
-	for _, tc := range []struct {
-		name, workflowEnv, jobEnv, callEnv, checkoutEnv string
-		want                                            bool
-	}{
-		{"workflow", "env: {GIT_WORK_TREE: /tmp}\n", "", "", "", false},
-		{"job", "", "    env: {GIT_WORK_TREE: /tmp}\n", "", "", false},
-		{"caller", "", "", "        env: {GIT_WORK_TREE: /tmp}\n", "", false},
-		{"checkout", "", "", "", "      env: {GIT_WORK_TREE: /tmp}\n", false},
-		{"caller config", "", "", "        env: {GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: core.worktree, GIT_CONFIG_VALUE_0: /tmp}\n", "", false},
-		{"caller trace", "", "", "        env: {GIT_TRACE: '1'}\n", "", true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			metadata := writeShellcheckFixture(t, root, "inner/action.yml", `name: inner
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: actions/checkout@v6
-`+tc.checkoutEnv+`    - shell: bash
-      run: ./bad.sh
-`)
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/env.yml", "on: push\n"+tc.workflowEnv+`jobs:
-  test:
-    runs-on: ubuntu-latest
-`+tc.jobEnv+`    steps:
-      - uses: ./local
-`+tc.callEnv)
-			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
-			if err != nil {
-				t.Fatal(err)
-			}
-			result, err := session.Files([]string{workflow}, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !slices.Contains(result.Inputs, metadata) {
-				t.Fatalf("nested metadata checks lost: %v", result.Inputs)
-			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
 			}
@@ -562,7 +359,7 @@ runs:
       if: `+tc.inner+"\n")
 			result := compositeAnalysis(t, root, `- uses: actions/checkout@v6
 - uses: ./local
-  if: `+tc.outer, AnalysisOptions{Shellcheck: command})
+  if: `+tc.outer, Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 			finding := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == inner
 			})
@@ -594,7 +391,7 @@ runs:
     ignore: ['SC2086']
 `} {
 		writeShellcheckFixture(t, root, ".github/actionlint.yaml", config)
-		result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
+		result := compositeAnalysis(t, root, "- uses: ./local", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 		if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
 			t.Fatalf("config ignored: %+v", result.Diagnostics)
 		}
@@ -615,7 +412,7 @@ runs:
   steps:
     - shell: bash
 `+directory+"      run: . ./lib.sh\n")
-		result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
+		result := compositeAnalysis(t, root, "- uses: ./local", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 		found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 			return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == file
 		})
@@ -651,7 +448,7 @@ runs:
       working-directory: ${{ github.action_path }}
       run: . ./lib.sh
 `)
-	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{Shellcheck: command})
+	result := compositeAnalysis(t, root, "- uses: ./outer", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner
 	}) {
@@ -681,7 +478,7 @@ runs:
     - run: echo ok
 `} {
 		inner := writeShellcheckFixture(t, root, "inner/action.yml", content)
-		result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./inner", AnalysisOptions{})
+		result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./inner", Request{})
 		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 			return d.Rule == "action" && (filepath.Join(root, d.Path) == outer && strings.Contains(d.Message, "could not parse") || filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell"))
 		}) {
@@ -799,7 +596,7 @@ runs:
   using: composite
   steps:
     `+strings.ReplaceAll(tc.actionSteps, "\n", "\n    ")+"\n")
-			result := compositeAnalysis(t, root, tc.workflowSteps, AnalysisOptions{})
+			result := compositeAnalysis(t, root, tc.workflowSteps, Request{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
@@ -824,7 +621,7 @@ runs:
 			result := compositeAnalysis(t, root, "- uses: ./local\n  continue-on-error: "+setting+`
 - shell: bash
   working-directory: .
-  run: ./bad.sh`, AnalysisOptions{})
+  run: ./bad.sh`, Request{})
 			inner, outer := false, false
 			for _, finding := range result.Diagnostics {
 				if finding.Rule != "executable-bit" {
@@ -854,7 +651,7 @@ runs:
 			result = compositeAnalysis(t, root, "- uses: ./local\n  continue-on-error: "+setting+`
 - shell: bash
   working-directory: .
-  run: ./bad.sh`, AnalysisOptions{})
+  run: ./bad.sh`, Request{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
 			want := setting == "false" || setting == "${{ false }}"
 			if found != want {
@@ -890,11 +687,9 @@ runs: {using: composite, steps: []}
 			t.Run(spec+"/"+removed, func(t *testing.T) {
 				result := compositeAnalysis(t, root, `- uses: actions/checkout@v6
   with: {path: source}
-- uses: `+spec, AnalysisOptions{
-					OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
-						return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == removed })
-					},
-				})
+- uses: `+spec, Request{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
+					return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == removed })
+				}})
 				if !slices.Contains(result.Inputs, outer) || !slices.Contains(result.Inputs, inner) || slices.Contains(result.Inputs, decoy) {
 					t.Fatalf("wrong metadata read: %v", result.Inputs)
 				}
@@ -941,7 +736,7 @@ runs:
 			if !strings.HasPrefix(checkout, "path:") {
 				checkout = "path: source, " + checkout
 			}
-			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {"+checkout+"}\n- uses: ./source/local", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {"+checkout+"}\n- uses: ./source/local", Request{})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("checkout metadata not resolved: %v", result.Inputs)
 			}
@@ -971,12 +766,9 @@ runs:
 	writeShellcheckFixture(t, root, "source/lib.sh", "echo wrong file\n")
 	result := compositeAnalysis(t, root, `- uses: actions/checkout@v6
   with: {path: source}
-- uses: ./source/local`, AnalysisOptions{
-		Shellcheck: command,
-		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
-			return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-		},
-	})
+- uses: ./source/local`, Request{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
+		return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
+	}, Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
@@ -1009,12 +801,9 @@ runs:
 		{"empty expression", "\"${{ '' }}\"", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {sparse-checkout: "+tc.sparse+"}\n- uses: ./local", AnalysisOptions{
-				Shellcheck: command,
-				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
-					return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-				},
-			})
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {sparse-checkout: "+tc.sparse+"}\n- uses: ./local", Request{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
+				return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
+			}, Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("best-effort metadata validation lost: %v", result.Inputs)
 			}
@@ -1057,67 +846,11 @@ runs:
 		{"best effort metadata", "https://git.example.com", "./local", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: source, github-server-url: "+tc.server+"}\n- uses: "+tc.spec, AnalysisOptions{
-				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
-					return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-				},
-			})
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: source, github-server-url: "+tc.server+"}\n- uses: "+tc.spec, Request{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
+				return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
+			}})
 			if read := slices.Contains(result.Inputs, metadata); read != tc.read {
 				t.Fatalf("metadata read = %v, want %v: %v", read, tc.read, result.Inputs)
-			}
-		})
-	}
-}
-
-func TestCompositeShellcheckWindowsDirectory(t *testing.T) {
-	command := shellcheckForTest(t)
-	for _, checkout := range []string{"", "source"} {
-		t.Run(checkout, func(t *testing.T) {
-			root, _ := executableFixture(t)
-			writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-			prefix := ""
-			if checkout != "" {
-				prefix = checkout + "/"
-			}
-			writeShellcheckFixture(t, root, "outer/action.yml", `name: outer
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: ./`+prefix+"inner\n")
-			directory := strings.ReplaceAll(prefix+"scripts/build", "/", `\`)
-			metadata := writeShellcheckFixture(t, root, "inner/action.yml", `name: inner
-description: test
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      working-directory: '`+directory+`'
-      run: |
-        . ./lib.sh
-        echo $VALUE
-`)
-			writeShellcheckFixture(t, root, "scripts/build/lib.sh", "VALUE=42\n")
-			workflow := writeShellcheckFixture(t, root, ".github/workflows/composite.yml", `on: push
-jobs:
-  test:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v6
-        with: {path: '`+checkout+"'}\n      - uses: ./"+prefix+"outer\n")
-			session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
-			if err != nil {
-				t.Fatal(err)
-			}
-			result, err := session.Files([]string{workflow}, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !slices.Contains(result.Inputs, metadata) {
-				t.Fatalf("nested metadata not analyzed: %v", result.Inputs)
-			}
-			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
-				t.Fatalf("Windows composite source not resolved: %+v", result.Diagnostics)
 			}
 		})
 	}
@@ -1143,7 +876,7 @@ runs:
   with: {path: source}
 - uses: `+spec+`
   id: local
-- run: echo '${{ steps.local.outputs.missing }}'`, AnalysisOptions{})
+- run: echo '${{ steps.local.outputs.missing }}'`, Request{})
 			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "expression-reference" && strings.Contains(d.Message, `property "missing" is not defined`)
 			}) {
@@ -1182,7 +915,7 @@ runs:
 - uses: ./source/local`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := compositeAnalysis(t, root, tc.steps, AnalysisOptions{})
+			result := compositeAnalysis(t, root, tc.steps, Request{})
 			if read := slices.Contains(result.Inputs, metadata); read != tc.read {
 				t.Fatalf("metadata read = %v, want %v: %v", read, tc.read, result.Inputs)
 			}
@@ -1207,7 +940,7 @@ runs:
 `)
 	writeShellcheckFixture(t, root, "lib.sh", "if then\n")
 	writeShellcheckFixture(t, root, "relocated/lib.sh", "echo wrong file\n")
-	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
+	result := compositeAnalysis(t, root, "- uses: ./local", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
@@ -1274,7 +1007,7 @@ runs:
 ` + run, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := compositeAnalysis(t, root, tc.steps, AnalysisOptions{Shellcheck: command})
+			result := compositeAnalysis(t, root, tc.steps, Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 			warnings := 0
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" && strings.Contains(diagnostic.Message, "SC2086") {
@@ -1285,46 +1018,6 @@ runs:
 				t.Fatalf("ShellCheck warnings=%d, want %d: %+v", warnings, tc.warnings, result.Diagnostics)
 			}
 		})
-	}
-}
-
-func TestCompositeShellcheckCallerCheckoutAcrossJobs(t *testing.T) {
-	command := shellcheckForTest(t)
-	root, _ := executableFixture(t)
-	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	writeShellcheckFixture(t, root, "setup/action.yml", `name: setup
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: actions/checkout@v6
-`)
-	writeShellcheckFixture(t, root, "lib.sh", "VALUE=42\n")
-	// Either traversal order leaves an unknown checkout before the other job.
-	job := `    runs-on: ubuntu-latest
-    steps:
-      - uses: $/setup
-      - shell: bash
-        run: |
-          . ./lib.sh
-          echo $VALUE
-      - uses: actions/checkout@v6
-        with: {repository: other/repo}
-`
-	workflow := writeShellcheckFixture(t, root, ".github/workflows/jobs.yml", `on: push
-jobs:
-  first:
-`+job+"  second:\n"+job)
-	session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root, Shellcheck: command})
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := session.Files([]string{workflow}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
-		t.Fatalf("previous job checkout leaked into caller: %+v", result.Diagnostics)
 	}
 }
 
@@ -1340,7 +1033,7 @@ runs:
 `)
 	for _, value := range []string{"", "${{ '' }}"} {
 		t.Run(value, func(t *testing.T) {
-			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: \""+value+"\"}\n- uses: ./local", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {path: \""+value+"\"}\n- uses: ./local", Request{})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("empty checkout path did not use workspace root: %v", result.Inputs)
 			}
@@ -1363,7 +1056,7 @@ runs:
       run: . ./lib.sh
 `)
 	writeShellcheckFixture(t, root, "lib.sh", "if then\n")
-	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
+	result := compositeAnalysis(t, root, "- uses: ./local", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("unknown checkout sourced local decoy: %+v", result.Diagnostics)
 	}

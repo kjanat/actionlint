@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	builtin "actionlint.kjanat.dev/internal/builtin"
-
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workspace"
 )
@@ -26,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
-		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+		result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 			t.Fatalf("path interpolation %q: error=%v diagnostics=%+v", expression, err, result.Diagnostics)
 		}
@@ -39,7 +37,7 @@ jobs:
       - env: {WORKFLOW_PATH: '${{ github.event.workflow_run.path }}'}
         run: printf '%s\n' "$WORKFLOW_PATH"
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+	result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("path environment binding: error=%v result=%+v", err, result)
 	}
@@ -59,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 				t.Fatalf("name interpolation: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
@@ -71,7 +69,7 @@ jobs:
       - env: {WORKFLOW_NAME: ` + strconv.Quote("${{ "+expression+" }}") + `}
         run: printf '%s\n' "$WORKFLOW_NAME"
 `
-			result, err = Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+			result, err = runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("name environment binding: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
@@ -94,7 +92,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			if reference == "" {
 				wantRule, wantMessage = "syntax-check", "string should not be empty"
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != wantRule || !strings.Contains(result.Diagnostics[0].Message, wantMessage) {
 				t.Fatalf("empty pattern: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
@@ -102,35 +100,6 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 				t.Fatalf("empty pattern position: got %+v, want %+v", result.Diagnostics[0].Start, pos)
 			}
 		})
-	}
-}
-
-func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
-	for _, pattern := range []string{"Build [", "?Build", "Build*", "!Build*", "Build's CI", "${{ vars.WORKFLOW }}"} {
-		reference := "${{ '" + strings.ReplaceAll(pattern, "'", "''") + "' }}"
-		if strings.HasPrefix(pattern, "${{") {
-			reference = pattern
-		}
-		workflow, errs := Parse([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
-jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
-`))
-		if workflow == nil || len(errs) != 0 {
-			t.Fatalf("parse %q: %v", reference, errs)
-		}
-		rule := builtin.NewRuleGlob()
-		if err := rule.VisitWorkflowPre(workflow); err != nil {
-			t.Fatal(err)
-		}
-		want := pattern == "Build [" || pattern == "?Build" || pattern == "!Build*"
-		if (len(rule.Errs()) != 0) != want {
-			t.Fatalf("literal pattern %q: %v", pattern, rule.Errs())
-		}
-		if want {
-			pos := workflow.On[0].(*workflowlang.WebhookEvent).Workflows[0].Pos
-			if rule.Errs()[0].Start.Line != pos.Line || rule.Errs()[0].Start.Column != pos.Col {
-				t.Fatalf("evaluated pattern finding should retain expression position: %v", rule.Errs()[0])
-			}
-		}
 	}
 }
 
@@ -144,12 +113,12 @@ jobs:
     steps:
       - run: echo ok
 `
-	request := AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}}
+	request := Request{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}}
 	for _, present := range []bool{false, true} {
 		if present {
 			writeShellcheckFixture(t, root, ".github/workflows/build.yml", "name: Build\n"+commandGoodWorkflow)
 		}
-		result, err := Analyze(t.Context(), request)
+		result, err := runTestAnalysis(t.Context(), request)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
-			result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+			result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -198,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
-		result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+		result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe expression %q: %v, %+v", expression, err, result)
 		}
@@ -212,7 +181,7 @@ jobs:
           HEAD_REF: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
         run: printf '%s\n' "$HEAD_REF"
 `
-	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
+	result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("environment binding rejected: %v, %+v", err, result)
 	}
@@ -245,7 +214,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: root, Sources: []SourceUnit{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}})
 			if err != nil {
 				t.Fatal(err)
 			}

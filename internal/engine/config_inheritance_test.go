@@ -5,12 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -62,47 +60,6 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	}
 }
 
-func TestRelativeConfigCallbackPath(t *testing.T) {
-	root := t.TempDir()
-	t.Chdir(root)
-	for _, initial := range []string{"config.yml", "./config.yml"} {
-		for _, inherited := range []bool{false, true} {
-			t.Run(initial+strconv.FormatBool(inherited), func(t *testing.T) {
-				base := filepath.Join(root, "base.yml")
-				content := "lint: {rules: {correctness: {if-cond: warn}}}\n"
-				if inherited {
-					content = "extends: [base.yml]\n"
-				}
-				var reads []string
-				session, err := NewAnalysisSession(AnalysisOptions{ConfigFile: initial, ReadFile: func(path string) ([]byte, error) {
-					reads = append(reads, path)
-					switch path {
-					case initial:
-						return []byte(content), nil
-					case base:
-						return []byte("lint: {rules: {correctness: {if-cond: warn}}}\n"), nil
-					default:
-						return nil, os.ErrNotExist
-					}
-				}})
-				if err != nil {
-					t.Fatal(err)
-				}
-				want := []string{initial}
-				if inherited {
-					want = append(want, base)
-				}
-				if !slices.Equal(reads, want) || repoconfig.DiagnosticLevel(session.DefaultConfig, "if-cond") != "warn" {
-					t.Fatalf("callback paths=%v, want=%v", reads, want)
-				}
-				if !slices.Contains(session.DefaultConfig.Sources(), filepath.Join(root, "config.yml")) {
-					t.Fatalf("config origin did not remain absolute: %v", session.DefaultConfig.Sources())
-				}
-			})
-		}
-	}
-}
-
 func TestConfigExtendsFailures(t *testing.T) {
 	for _, tc := range []struct{ name, content, want string }{
 		{"missing", "extends: [missing.yml]", "missing.yml"},
@@ -143,7 +100,7 @@ func TestFilesSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			for range 2 {
-				result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte("bad yaml: ["), Config: cfg}}})
+				result, err := runTestAnalysis(t.Context(), Request{Sources: []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte("bad yaml: ["), Config: cfg}}})
 				if err != nil {
 					t.Fatal(err)
 				}

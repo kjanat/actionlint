@@ -3,11 +3,10 @@ package builtin
 import (
 	"errors"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	"actionlint.kjanat.dev/internal/actioncatalog"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workflow/calls"

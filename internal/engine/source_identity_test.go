@@ -5,11 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
-
 	"actionlint.kjanat.dev/analyzer"
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
 	"actionlint.kjanat.dev/source"
 )
 
@@ -26,7 +25,7 @@ func (c *identityCapture) Analyze(_ context.Context, input analyzer.Input) ([]di
 func TestFactsShareOwningStepIdentity(t *testing.T) {
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {ONE: x}\n        run: echo first\n      - id: two\n        env: {TWO: y}\n        run: echo second\n      - uses: owner/action@main\n        with: {value: x}\n")
-	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: content}}, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: content}}, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +55,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {'BAD NAME': x}\n        run: echo first\n      - id: two\n        env: {'OTHER BAD': y}\n        run: echo second\n")
-	result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: content}}, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
+	result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "workflow.yml", Content: content}}, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +84,7 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 			steps := "- id: one\n  env: {ONE: x}\n  shell: bash\n  run: &command echo hello\n- id: two\n  env: {TWO: y}\n  shell: bash\n  run: *command\n"
 			content := []byte(prefix + indent + strings.ReplaceAll(strings.TrimSuffix(steps, "\n"), "\n", "\n"+indent) + "\n")
 			capture := &identityCapture{}
-			result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: path, Content: content}}, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: path, Content: content}}, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("analyze: %v, %+v", err, result)
 			}

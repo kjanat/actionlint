@@ -2,11 +2,11 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestCredentialsKnownMappingExpressions(t *testing.T) {
@@ -169,11 +169,11 @@ jobs:
 
 func lintCredentialsExpressionTest(t *testing.T, source string) []*findingmodel.Finding {
 	t.Helper()
-	linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-	if err != nil {
-		t.Fatal(err)
-	}
-	errs, err := linter.Lint("workflow.yml", []byte(source), nil)
+	request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	var err error
+
+	request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+	errs, err := testFindings(runTestAnalysis(t.Context(), request))
 	if err != nil {
 		t.Fatal(err)
 	}

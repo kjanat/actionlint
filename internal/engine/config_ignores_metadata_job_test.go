@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -58,7 +57,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := Analyze(t.Context(), AnalysisRequest{
+			result, err := runTestAnalysis(t.Context(), Request{
 				WorkingDir: root,
 				Sources:    []SourceUnit{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}},
 			})

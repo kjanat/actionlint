@@ -9,7 +9,7 @@ import (
 func TestCompositeDiagnosticStepPaths(t *testing.T) {
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo first\n    - run: echo second\n")
-	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{})
+	result := compositeAnalysis(t, root, "- uses: ./local", Request{})
 	if len(result.Diagnostics) != 2 {
 		t.Fatalf("expected two missing-shell findings: %+v", result.Diagnostics)
 	}

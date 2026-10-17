@@ -24,7 +24,7 @@ runs:
   - includes: ['alias/**']
     lint: {rules: {correctness: {inline-suppression: info}}}
 `)
-	result := compositeAnalysis(t, root, "- uses: ./inner\n- uses: ./alias", AnalysisOptions{})
+	result := compositeAnalysis(t, root, "- uses: ./inner\n- uses: ./alias", Request{})
 	counts := map[string]int{}
 	for _, diagnostic := range result.Diagnostics {
 		if diagnostic.Rule != "inline-suppression" {
@@ -64,7 +64,7 @@ overrides:
 description: test
 runs:
   `+runtime+"\n")
-				result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+				result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 				count := 0
 				for _, diagnostic := range result.Diagnostics {
 					if diagnostic.Rule == "inline-suppression" || diagnostic.Rule == "disallow-suppressions" {

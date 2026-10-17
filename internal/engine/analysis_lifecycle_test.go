@@ -21,7 +21,7 @@ func (r *failAfterScheduling) VisitStep(*workflowlang.Step) error { return r.fai
 func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	failure := errors.New("stop traversal")
 	var completed atomic.Bool
-	result, err := Analyze(t.Context(), AnalysisRequest{
+	result, err := runTestAnalysis(t.Context(), Request{
 		Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			checker := &scheduledResourceRule{Base: workflowvisit.NewBase("resource", ""), completed: &completed}

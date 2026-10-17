@@ -22,7 +22,7 @@ func TestRuleExpressionBareFunctionCondition(t *testing.T) {
 					column += 4
 				}
 				src := fmt.Sprintf("on: push\njobs:\n  test:\n%s    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n%s", job, step)
-				result, err := Analyze(t.Context(), AnalysisRequest{
+				result, err := runTestAnalysis(t.Context(), Request{
 					WorkingDir: t.TempDir(),
 					Sources:    []SourceUnit{{Path: "ci.yml", Content: []byte(src)}},
 				})

@@ -1,7 +1,7 @@
 package engine
 
 import (
-	builtin "actionlint.kjanat.dev/internal/builtin"
+	"actionlint.kjanat.dev/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"

@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	"actionlint.kjanat.dev/internal/analyzerhost"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 	"actionlint.kjanat.dev/internal/workspace"
 )
@@ -51,7 +53,7 @@ runs:
 `)
 						steps = "- uses: ./outer\n- uses: ./outer"
 					}
-					result := compositeAnalysis(t, root, steps, AnalysisOptions{})
+					result := compositeAnalysis(t, root, steps, Request{})
 					var syntaxCount, directiveCount int
 					for _, diagnostic := range result.Diagnostics {
 						switch {
@@ -109,7 +111,7 @@ overrides:
 description: test
 runs:
   `+runtime.runs+"\n")
-				result := compositeAnalysis(t, root, "- uses: ./inner "+tc.directive, AnalysisOptions{})
+				result := compositeAnalysis(t, root, "- uses: ./inner "+tc.directive, Request{})
 				want := make(map[string]string)
 				if tc.wantCaller != "" {
 					want[filepath.Join(".github", "workflows", "composite.yml")] = tc.wantCaller
@@ -156,7 +158,7 @@ func TestLocalActionSuppressionsRespectCallerLintSwitch(t *testing.T) {
 description: test
 runs:
   `+runtime.runs+"\n")
-					result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+					result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 					if !enabled {
 						if len(result.Diagnostics) != 0 {
 							t.Fatalf("disabled caller emitted diagnostics: %+v", result.Diagnostics)
@@ -201,7 +203,7 @@ runs:
     - shell: bash
       run: echo ok
 `)
-			result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./outer", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./outer\n- uses: ./outer", Request{})
 			if tc.want == "" {
 				if len(result.Diagnostics) != 0 {
 					t.Fatal(result.Diagnostics)
@@ -227,7 +229,7 @@ runs:
       run: | # actionlint:ignore shellcheck -- reviewed expansion
         echo $VALUE
 `)
-	result := compositeAnalysis(t, root, "- uses: ./local", AnalysisOptions{Shellcheck: command})
+	result := compositeAnalysis(t, root, "- uses: ./local", Request{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
 	if len(result.Diagnostics) != 0 {
 		t.Fatal(result.Diagnostics)
 	}
@@ -271,7 +273,7 @@ runs:
 `)
 						steps = "- uses: ./outer\n- uses: ./outer"
 					}
-					result := compositeAnalysis(t, root, steps, AnalysisOptions{})
+					result := compositeAnalysis(t, root, steps, Request{})
 					if tc.want == "" {
 						if len(result.Diagnostics) != 0 {
 							t.Fatal(result.Diagnostics)
@@ -313,7 +315,7 @@ jobs:
 	project := workspace.Identity(root)
 	actions := actionlocal.NewCache(projectRoot(project), nil)
 	workflows := calls.NewCache(project.RootDir(), root, nil)
-	process := newConcurrentProcess(t.Context(), 1)
+	process := analyzerhost.NewProcessPool(t.Context(), 1)
 	engine := &analysisEngine{ctx: t.Context(), workingDir: root, reader: fsread.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	for _, workflow := range []string{used, unused, used} {
 		source, err := os.ReadFile(workflow)

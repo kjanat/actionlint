@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 )
 
 func TestEnvironmentMappingInsertions(t *testing.T) {
@@ -103,51 +100,6 @@ jobs:
 	errs := lintCredentialsExpressionTest(t, source)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, `context "env" is not allowed`) || errs[0].Start.Line != 3 || errs[0].Start.Column != 31 {
 		t.Fatalf("context restriction or source position lost: %v", errs)
-	}
-}
-
-func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
-	for _, tc := range []struct {
-		name, value           string
-		checkout, shell, path bool
-	}{
-		{"unknown", "${{ fromJSON(vars.ENV) }}", true, true, true},
-		{"safe literals", "{VALUE: text}", false, false, false},
-		{"constant object", `${{ fromJSON('{"VALUE":"text"}') }}`, false, false, false},
-		{"empty object", `${{ fromJSON('{}') }}`, false, false, false},
-		{"constant path", `${{ fromJSON('{"PATH":"custom"}') }}`, true, false, true},
-		{"constant startup", `${{ fromJSON('{"BASH_ENV":"startup.sh"}') }}`, false, true, false},
-		{"constant empty startup", `${{ fromJSON('{"BASH_ENV":""}') }}`, false, false, false},
-		{"constant loader", `${{ fromJSON('{"LD_PRELOAD":"custom.so"}') }}`, true, true, false},
-		{"constant empty loader", `${{ fromJSON('{"LD_PRELOAD":""}') }}`, false, false, false},
-		{"constant checkout wrapper", `${{ fromJSON('{"GIT_EXEC_PATH":"custom"}') }}`, true, false, false},
-		{"evaluated value remains data", `${{ fromJSON('{"BASH_ENV":"${{ '''' }}"}') }}`, false, true, false},
-		{"evaluated name remains data", `${{ fromJSON('{"${{ ''PATH'' }}":"custom"}') }}`, false, false, false},
-		{"invalid object", `${{ fromJSON('[]') }}`, true, true, true},
-		{"nested path", "{'${{ insert }}': {PATH: custom}}", true, false, true},
-		{"shell startup", "{BASH_ENV: startup.sh}", false, true, false},
-		{"checkout wrapper", "{GIT_EXEC_PATH: custom}", true, false, false},
-		{"loader", "{LD_PRELOAD: custom.so}", true, true, false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			workflow, errs := Parse([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
-			if len(errs) != 0 {
-				t.Fatal(errs)
-			}
-			env := workflow.Env
-			if len(env.Vars) != 0 || len(env.Insertions) != 1 {
-				t.Fatalf("directive parsed as an environment variable: %+v", env)
-			}
-			if got := execution.CheckoutEnvironmentUnknown(env, runnerlang.MacOrLinux); got != tc.checkout {
-				t.Errorf("checkout environment unknown: %v, want %v", got, tc.checkout)
-			}
-			if got := execution.ShellEnvironmentUnknown(env); got != tc.shell {
-				t.Errorf("shell environment unknown: %v, want %v", got, tc.shell)
-			}
-			if got := execution.ShellPathUnknown(env); got != tc.path {
-				t.Errorf("shell path unknown: %v, want %v", got, tc.path)
-			}
-		})
 	}
 }
 

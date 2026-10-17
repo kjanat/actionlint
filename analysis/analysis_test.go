@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/analysis"
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/syntax"
+
+	actionlint "actionlint.kjanat.dev"
 )
 
 const workflow = `on: push

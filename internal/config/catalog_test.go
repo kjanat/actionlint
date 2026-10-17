@@ -1,6 +1,8 @@
 package config
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
 	groups := (&LintRulesConfig{}).Groups()

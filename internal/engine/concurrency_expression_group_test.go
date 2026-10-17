@@ -2,9 +2,10 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestConcurrencyExpressionGroups(t *testing.T) {
@@ -53,11 +54,11 @@ func TestConcurrencyExpressionGroups(t *testing.T) {
 					source += `    steps:
       - run: echo ok
 `
-					lint, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
-					if err != nil {
-						t.Fatal(err)
-					}
-					errs, err := lint.Lint("test.yaml", []byte(source), nil)
+					request := Request{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+					var err error
+
+					request.Sources = []SourceUnit{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
+					errs, err := testFindings(runTestAnalysis(t.Context(), request))
 					if err != nil {
 						t.Fatal(err)
 					}

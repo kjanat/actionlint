@@ -1,5 +1,3 @@
-// Package checks projects workflow declarations into stateless semantic checks.
-// It has no analyzer runtime, repository configuration, or mutable visitor state.
 package checks
 
 import (
@@ -8,12 +6,12 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/checks/condition"
-	"actionlint.kjanat.dev/internal/checks/envname"
-	"actionlint.kjanat.dev/internal/checks/identifier"
-	"actionlint.kjanat.dev/internal/checks/jobneeds"
-	"actionlint.kjanat.dev/internal/checks/permission"
 	"actionlint.kjanat.dev/internal/mapping"
+	"actionlint.kjanat.dev/internal/semantics/condition"
+	"actionlint.kjanat.dev/internal/semantics/envname"
+	"actionlint.kjanat.dev/internal/semantics/identifier"
+	"actionlint.kjanat.dev/internal/semantics/jobneeds"
+	"actionlint.kjanat.dev/internal/semantics/permission"
 	"actionlint.kjanat.dev/internal/workflow"
 )
 

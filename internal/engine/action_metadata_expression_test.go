@@ -32,7 +32,7 @@ runs:
 	root, _ := executableFixture(t)
 	writeShellcheckFixture(t, root, "inner/action.yml", source)
 	writeShellcheckFixture(t, root, "outer/action.yml", "name: outer\ndescription: outer\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
-	result := compositeAnalysis(t, root, "- uses: ./outer", AnalysisOptions{})
+	result := compositeAnalysis(t, root, "- uses: ./outer", Request{})
 	if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, `did you mean "github.repository"?`) || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" || result.Diagnostics[0].Start.Line != 6 {
 		t.Fatalf("nested composite suggestion: %+v", result.Diagnostics)
 	}
@@ -48,7 +48,7 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 		t.Run(tc.expression, func(t *testing.T) {
 			root, _ := executableFixture(t)
 			writeShellcheckFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\ninputs:\n  github_repository:\n    description: repository\nruns:\n  using: composite\n  steps:\n    - run: echo '"+tc.expression+"'\n      shell: bash\n")
-			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
+			result := compositeAnalysis(t, root, "- uses: ./inner", Request{})
 			if tc.want == "" {
 				if len(result.Diagnostics) != 0 {
 					t.Fatalf("qualified input reported: %+v", result.Diagnostics)

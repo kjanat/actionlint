@@ -3,11 +3,9 @@ package engine
 import (
 	"context"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
-	builtin "actionlint.kjanat.dev/internal/builtin"
-
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	"actionlint.kjanat.dev/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/execution"

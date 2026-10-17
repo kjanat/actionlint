@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	contextspec "actionlint.kjanat.dev/internal/expression/context"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
-	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 )
 
 func ordinal(i int) string {
@@ -638,7 +638,7 @@ func (sema *Checker) SetSpecialFunctionAvailability(avail []string) {
 // and failure; step and snapshot conditions require zero arguments.
 func (sema *Checker) SetWorkflowKeyAvailability(key string) {
 	sema.condition = strings.HasSuffix(key, ".if")
-	contexts, functions := workflowcontext.WorkflowKeyAvailability(key)
+	contexts, functions := contextspec.WorkflowKeyAvailability(key)
 	sema.SetContextAvailability(contexts)
 	sema.SetSpecialFunctionAvailability(functions)
 	sema.jobCondition = key == "jobs.<job_id>.if"
@@ -647,7 +647,7 @@ func (sema *Checker) SetWorkflowKeyAvailability(key string) {
 func (sema *Checker) checkSpecialFunctionAvailability(n *FuncCallNode) {
 	f := strings.ToLower(n.Callee)
 
-	allowed, ok := workflowcontext.SpecialFunctionNames[f]
+	allowed, ok := contextspec.SpecialFunctionNames[f]
 	if !ok {
 		return // This function is not special
 	}

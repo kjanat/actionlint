@@ -1,12 +1,12 @@
 package engine
 
 import (
-	"io"
 	"os/exec"
 	"strings"
 	"testing"
 
 	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestShellcheckResolvedDiagnostics(t *testing.T) {
@@ -56,11 +56,11 @@ jobs:
     steps:
       - run: '[[ -n "$HOME" ]]'
 `
-			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: command, WorkingDir: t.TempDir()})
-			if err != nil {
-				t.Fatal(err)
-			}
-			findings, err := linter.Lint("workflow.yml", []byte(source), nil)
+			request := Request{WorkingDir: t.TempDir(), Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			var err error
+
+			request.Sources = []SourceUnit{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+			findings, err := testFindings(runTestAnalysis(t.Context(), request))
 			if err != nil {
 				t.Fatal(err)
 			}

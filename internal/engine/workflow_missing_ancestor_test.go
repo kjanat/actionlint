@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo ok}]
 `
-						result, err := Analyze(t.Context(), AnalysisRequest{WorkingDir: roots[0], Sources: []SourceUnit{
+						result, err := runTestAnalysis(t.Context(), Request{WorkingDir: roots[0], Sources: []SourceUnit{
 							{Path: filepath.Join(roots[1], ".github/workflows/build.yml"), Content: []byte("name: Old\n" + commandGoodWorkflow), Project: project},
 							{Path: producer, Content: []byte("name: New\n" + commandGoodWorkflow), Project: project},
 							{Path: filepath.Join(base, "outside/.github/workflows/build.yml"), Content: []byte("name: Outside\n" + commandGoodWorkflow), Project: project},

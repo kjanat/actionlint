@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
-	report "actionlint.kjanat.dev/internal/report"
+	"actionlint.kjanat.dev/internal/report"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 

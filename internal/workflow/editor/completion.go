@@ -6,8 +6,8 @@ import (
 	"unicode/utf8"
 
 	expr "actionlint.kjanat.dev/internal/expression"
+	contextspec "actionlint.kjanat.dev/internal/expression/context"
 	workflow "actionlint.kjanat.dev/internal/workflow"
-	workflowcontext "actionlint.kjanat.dev/internal/workflow/context"
 	"actionlint.kjanat.dev/internal/workflow/eventpayload"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -111,7 +111,7 @@ func keyAt(root *yaml.Node, content string, offset int) string {
 	}
 	walk(root, nil)
 	for key != "" {
-		if contexts, _ := workflowcontext.WorkflowKeyAvailability(key); len(contexts) > 0 {
+		if contexts, _ := contextspec.WorkflowKeyAvailability(key); len(contexts) > 0 {
 			return key
 		}
 		at := strings.LastIndexByte(key, '.')

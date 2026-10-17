@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	processconfig "actionlint.kjanat.dev/internal/processconfig"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
@@ -44,7 +44,7 @@ jobs:
         run: print(second_missing)
 `
 				}
-				result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
+				result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -106,7 +106,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			result, err := Analyze(t.Context(), AnalysisRequest{Ruff: command, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}})
+			result, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}}, Tools: (adapters.Options{Ruff: command}).Registrations()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -128,7 +128,7 @@ jobs:
         run: print(missing)
 `
 	for _, flag := range []string{"--help", "-h", "--watch", "-w", "--add-noqa", "--add-noqa=reviewed", "--add-ignore", "--add-ignore=reviewed"} {
-		_, err := Analyze(t.Context(), AnalysisRequest{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}}, WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}})
+		_, err := runTestAnalysis(t.Context(), Request{WorkingDir: t.TempDir(), Sources: []SourceUnit{{Path: "ci.yml", Content: []byte(source)}}, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}).Registrations()})
 		if err == nil || !strings.Contains(err.Error(), "non-diagnostic mode") {
 			t.Fatalf("mode not rejected: flag=%s error=%v", flag, err)
 		}

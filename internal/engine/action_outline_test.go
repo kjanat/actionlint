@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	report "actionlint.kjanat.dev/internal/report"
-
 	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/report"
 )
 
 func TestParseActionOutlineDeclarations(t *testing.T) {
