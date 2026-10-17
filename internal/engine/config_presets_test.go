@@ -5,6 +5,8 @@ import (
 	"io"
 	"path/filepath"
 	"testing"
+
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 func TestRulePresetsPreserveAbsentConfiguration(t *testing.T) {
@@ -29,15 +31,15 @@ jobs:
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rule := struct {
-				RuleBase
+				workflowvisit.Base
 				ruleConfiguration
-			}{RuleBase: NewRuleBase("custom-config", "")}
+			}{Base: workflowvisit.NewBase("custom-config", "")}
 			called := false
 			_, err := Analyze(context.Background(), AnalysisRequest{
 				Sources:     []SourceUnit{{Path: "test.yml", Content: content, Config: tc.config}},
 				WorkingDir:  t.TempDir(),
 				RulePresets: tc.presets,
-				OnRulesCreated: func(rules []Rule) []Rule {
+				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 					called = true
 					return append(rules, &rule)
 				},
@@ -56,13 +58,13 @@ jobs:
 	t.Run("legacy linter", func(t *testing.T) {
 		root := t.TempDir()
 		rule := struct {
-			RuleBase
+			workflowvisit.Base
 			ruleConfiguration
-		}{RuleBase: NewRuleBase("custom-config", "")}
+		}{Base: workflowvisit.NewBase("custom-config", "")}
 		called := false
 		linter, err := NewLinter(io.Discard, &LinterOptions{
 			WorkingDir: root,
-			OnRulesCreated: func(rules []Rule) []Rule {
+			OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 				called = true
 				return append(rules, &rule)
 			},

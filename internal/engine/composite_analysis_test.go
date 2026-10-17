@@ -8,6 +8,7 @@ import (
 	"slices"
 	"testing"
 
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -49,11 +50,11 @@ jobs:
       - uses: $/outer
 `),
 				}},
-				OnRulesCreated: func(rules []Rule) []Rule {
+				OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 					if actionRule {
 						for _, rule := range rules {
 							if _, ok := rule.(*RuleAction); ok {
-								return []Rule{rule}
+								return []workflowvisit.Rule{rule}
 							}
 						}
 					}

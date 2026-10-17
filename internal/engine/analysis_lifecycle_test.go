@@ -8,10 +8,11 @@ import (
 
 	"actionlint.kjanat.dev/internal/analyzerhost"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 type failAfterScheduling struct {
-	RuleBase
+	workflowvisit.Base
 	failure error
 }
 
@@ -22,9 +23,9 @@ func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	var completed atomic.Bool
 	result, err := Analyze(t.Context(), AnalysisRequest{
 		Sources: []SourceUnit{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
-		OnRulesCreated: func([]Rule) []Rule {
-			checker := &scheduledResourceRule{RuleBase: NewRuleBase("resource", ""), completed: &completed}
-			return []Rule{checker, &failAfterScheduling{RuleBase: NewRuleBase("fail", ""), failure: failure}}
+		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
+			checker := &scheduledResourceRule{Base: workflowvisit.NewBase("resource", ""), completed: &completed}
+			return []workflowvisit.Rule{checker, &failAfterScheduling{Base: workflowvisit.NewBase("fail", ""), failure: failure}}
 		},
 	})
 	if !errors.Is(err, failure) {
@@ -36,7 +37,7 @@ func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 }
 
 type scheduledResourceRule struct {
-	RuleBase
+	workflowvisit.Base
 	workers   sync.WaitGroup
 	completed *atomic.Bool
 }

@@ -2,9 +2,9 @@ package engine
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -13,27 +13,25 @@ import (
 // or running analyzers. Decoder errors accompany any recovered declarations.
 // Complete means decoding succeeded. Validity and executability need separate checks.
 func ParseActionOutline(path string, content []byte) (ActionOutline, error) {
-	metadata := ActionMetadata{positions: &metadataPositionCache{}}
-	err := yaml.Unmarshal(content, &metadata)
-	metadata.dir, metadata.file, metadata.src = filepath.Dir(path), filepath.Base(path), content
-	return parsedActionOutline(path, &metadata, err)
+	metadata, err := actionmeta.Parse(path, content)
+	return parsedActionOutline(path, metadata, err)
 }
 
 // actionOutline projects metadata already decoded by the local-action cache.
-func actionOutline(path string, metadata *ActionMetadata, parseErr error) ActionOutline {
+func actionOutline(path string, metadata *actionmeta.Metadata, parseErr error) ActionOutline {
 	outline, _ := parsedActionOutline(path, metadata, parseErr)
 	return outline
 }
 
-func parsedActionOutline(path string, metadata *ActionMetadata, parseErr error) (ActionOutline, error) {
+func parsedActionOutline(path string, metadata *actionmeta.Metadata, parseErr error) (ActionOutline, error) {
 	outline := ActionOutline{Path: path, ParseStatus: "failed", Inputs: []ActionInputOutline{}, Outputs: []ActionOutputOutline{}, Runs: UnknownRuns{}}
-	if metadata == nil || metadata.schemaRoot == nil {
+	if metadata == nil || metadata.Root == nil {
 		if parseErr == nil {
 			parseErr = errors.New("action metadata is empty")
 		}
 		return outline, parseErr
 	}
-	fields := actionOutlineFields(metadata.schemaRoot)
+	fields := actionOutlineFields(metadata.Root)
 	outline.Name, outline.Description = actionOutlineString(fields["name"]), actionOutlineString(fields["description"])
 	outline.Inputs = actionInputOutlines(fields["inputs"])
 	outline.Outputs = actionOutputOutlines(fields["outputs"])
@@ -48,17 +46,17 @@ func parsedActionOutline(path string, metadata *ActionMetadata, parseErr error) 
 
 func actionOutlineFields(node *yaml.Node) map[string]*yaml.Node {
 	fields := map[string]*yaml.Node{}
-	node = actionSchemaNode(node)
+	node = actionmeta.Node(node)
 	if node != nil && node.Kind == yaml.MappingNode {
 		for i := 0; i+1 < len(node.Content); i += 2 {
-			fields[strings.ToLower(actionMetadataKey(node.Content[i]))] = node.Content[i+1]
+			fields[strings.ToLower(actionmeta.Key(node.Content[i]))] = node.Content[i+1]
 		}
 	}
 	return fields
 }
 
 func actionOutlineString(node *yaml.Node) string {
-	if value := actionSchemaScalar(node); value != nil {
+	if value := actionmeta.Scalar(node); value != nil {
 		return *value
 	}
 	return ""
@@ -66,7 +64,7 @@ func actionOutlineString(node *yaml.Node) string {
 
 func actionInputOutlines(node *yaml.Node) []ActionInputOutline {
 	inputs := []ActionInputOutline{}
-	node = actionSchemaNode(node)
+	node = actionmeta.Node(node)
 	if node == nil || node.Kind != yaml.MappingNode {
 		return inputs
 	}
@@ -74,8 +72,8 @@ func actionInputOutlines(node *yaml.Node) []ActionInputOutline {
 		key := node.Content[i]
 		fields := actionOutlineFields(node.Content[i+1])
 		input := ActionInputOutline{
-			ID: actionMetadataKey(key), Description: actionOutlineString(fields["description"]),
-			Default: actionSchemaScalar(fields["default"]), Start: outlinePosition(workflowlang.PosAt(key)),
+			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
+			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		}
 		if required := fields["required"]; required != nil {
 			var value *bool
@@ -90,7 +88,7 @@ func actionInputOutlines(node *yaml.Node) []ActionInputOutline {
 
 func actionOutputOutlines(node *yaml.Node) []ActionOutputOutline {
 	outputs := []ActionOutputOutline{}
-	node = actionSchemaNode(node)
+	node = actionmeta.Node(node)
 	if node == nil || node.Kind != yaml.MappingNode {
 		return outputs
 	}
@@ -98,8 +96,8 @@ func actionOutputOutlines(node *yaml.Node) []ActionOutputOutline {
 		key := node.Content[i]
 		fields := actionOutlineFields(node.Content[i+1])
 		outputs = append(outputs, ActionOutputOutline{
-			ID: actionMetadataKey(key), Description: actionOutlineString(fields["description"]),
-			Value: actionSchemaScalar(fields["value"]), Start: outlinePosition(workflowlang.PosAt(key)),
+			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
+			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		})
 	}
 	return outputs
@@ -113,9 +111,9 @@ func actionRunsOutline(node *yaml.Node) ActionRuns {
 		return CompositeRuns{Steps: actionStepOutlines(fields["steps"])}
 	case "docker":
 		args := []string{}
-		if sequence := actionSchemaNode(fields["args"]); sequence != nil && sequence.Kind == yaml.SequenceNode {
+		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == yaml.SequenceNode {
 			for _, arg := range sequence.Content {
-				if value := actionSchemaScalar(arg); value != nil {
+				if value := actionmeta.Scalar(arg); value != nil {
 					args = append(args, *value)
 				}
 			}
@@ -129,7 +127,7 @@ func actionRunsOutline(node *yaml.Node) ActionRuns {
 			return PluginRuns{Plugin: plugin}
 		}
 	}
-	if _, known := ActionRuntimes[strings.ToLower(using)]; known && strings.HasPrefix(strings.ToLower(using), "node") {
+	if _, known := actionmeta.Runtimes[strings.ToLower(using)]; known && strings.HasPrefix(strings.ToLower(using), "node") {
 		return JavaScriptRuns{
 			Using: using, Main: actionOutlineString(fields["main"]), Pre: actionOutlineString(fields["pre"]), Post: actionOutlineString(fields["post"]),
 			PreIf: actionOutlineString(fields["pre-if"]), PostIf: actionOutlineString(fields["post-if"]),
@@ -140,7 +138,7 @@ func actionRunsOutline(node *yaml.Node) ActionRuns {
 
 func actionStepOutlines(node *yaml.Node) []StepOutline {
 	steps := []StepOutline{}
-	node = actionSchemaNode(node)
+	node = actionmeta.Node(node)
 	if node == nil || node.Kind != yaml.SequenceNode {
 		return steps
 	}

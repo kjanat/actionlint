@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -76,7 +77,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				write(".github/workflows/callee.yml", "on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
 				write(".github/workflows/ci.yml", "on: push\njobs:\n  build:\n    uses: ./.github/workflows/callee.yml\n")
 			}
-			run := func() []Diagnostic {
+			run := func() []diagmodel.Diagnostic {
 				t.Helper()
 				session, err := NewAnalysisSession(AnalysisOptions{WorkingDir: root})
 				if err != nil {
@@ -110,7 +111,7 @@ func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
 				wantPath = actionPath
 			}
 			diagnostics := run()
-			if !slices.ContainsFunc(diagnostics, func(d Diagnostic) bool {
+			if !slices.ContainsFunc(diagnostics, func(d diagmodel.Diagnostic) bool {
 				return strings.Contains(d.Message, want) && filepath.ToSlash(d.Path) == wantPath
 			}) {
 				t.Fatalf("expected a %s diagnostic containing %q after changing a dependency: %+v", wantPath, want, diagnostics)

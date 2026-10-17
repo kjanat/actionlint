@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -50,13 +52,13 @@ jobs:
 		t.Fatalf("job casing/source order lost: %+v", clean.Jobs)
 	}
 	build, deploy := clean.Jobs[0], clean.Jobs[1]
-	if build.Name != "${{ github.ref }}" || build.Start == nil || *build.Start != (DiagnosticPosition{Line: 4, Column: 3}) {
+	if build.Name != "${{ github.ref }}" || build.Start == nil || *build.Start != (diagmodel.Position{Line: 4, Column: 3}) {
 		t.Fatalf("declared expression/location lost: %+v", build)
 	}
 	if len(build.Steps) != 2 || build.Steps[0].Kind != "uses" || build.Steps[0].Uses != "actions/checkout@v7" || build.Steps[1].Kind != "run" || build.Steps[1].ID != "script" {
 		t.Fatalf("wrong steps: %+v", build.Steps)
 	}
-	if build.Steps[0].Start == nil || *build.Steps[0].Start != (DiagnosticPosition{Line: 8, Column: 9}) {
+	if build.Steps[0].Start == nil || *build.Steps[0].Start != (diagmodel.Position{Line: 8, Column: 9}) {
 		t.Fatalf("step location lost: %+v", build.Steps[0])
 	}
 	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
@@ -71,7 +73,7 @@ jobs:
 	if broken.Path != "broken.yml" || broken.ParseStatus != "failed" || broken.Jobs == nil || len(broken.Jobs) != 0 {
 		t.Fatalf("failed parse missing: %+v", broken)
 	}
-	renderer, err := NewAnalysisRenderer(OutputFormatJSON, "", false)
+	renderer, err := NewAnalysisRenderer(render.FormatJSON, "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +81,7 @@ jobs:
 	if err := renderer.Render(&output, analysis); err != nil {
 		t.Fatal(err)
 	}
-	var report CheckResult
+	var report render.CheckResult
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +183,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result CheckResult
+	var result render.CheckResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +263,7 @@ func TestAnalysisEmptyDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, result := range []CheckResult{result.CheckResult(), (&AnalysisResult{}).CheckResult(), NewCheckResult(3)} {
+	for _, result := range []render.CheckResult{result.CheckResult(), (&AnalysisResult{}).CheckResult(), render.NewCheckResult(3)} {
 		data, err := json.Marshal(result)
 		if err != nil {
 			t.Fatal(err)

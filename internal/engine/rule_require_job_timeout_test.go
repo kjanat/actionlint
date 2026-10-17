@@ -140,7 +140,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 				t.Fatalf("wanted %d errors but have %d: %v", len(tc.want), len(errs), errs)
 			}
 			for i, want := range tc.want {
-				if have := errs[i].Error(); have != want {
+				if have := errs[i].String(); have != want {
 					t.Fatalf("wanted error %q but have %q", want, have)
 				}
 			}

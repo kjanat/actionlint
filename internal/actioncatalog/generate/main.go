@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	actionmeta "actionlint.kjanat.dev/internal/action"
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -32,9 +32,9 @@ var outdatedActions = []string{
 }
 
 type actionOutput struct {
-	Spec     string                     `json:"spec"`
-	Meta     *actionlint.ActionMetadata `json:"metadata"`
-	Outdated bool                       `json:"outdated"`
+	Spec     string               `json:"spec"`
+	Meta     *actionmeta.Metadata `json:"metadata"`
+	Outdated bool                 `json:"outdated"`
 }
 
 type registry struct {
@@ -78,7 +78,7 @@ func isOutdated(spec, runs string) bool {
 	if slices.Contains(outdatedActions, spec) {
 		return true
 	}
-	return actionlint.ActionRuntimes[strings.ToLower(runs)].Removed
+	return actionmeta.Runtimes[strings.ToLower(runs)].Removed
 }
 
 type gen struct {
@@ -110,7 +110,7 @@ func (g *gen) registry() ([]*registry, error) {
 	return a, nil
 }
 
-func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
+func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 	type request struct {
 		action *registry
 		tag    string
@@ -118,7 +118,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 
 	type fetched struct {
 		spec string
-		meta *actionlint.ActionMetadata
+		meta *actionmeta.Metadata
 		err  error
 	}
 
@@ -152,7 +152,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 			return &fetched{err: fmt.Errorf("could not read body for %s: %w", url, err)}
 		}
 		spec := req.action.spec(req.tag)
-		var meta actionlint.ActionMetadata
+		var meta actionmeta.Metadata
 		if err := yaml.Unmarshal(body, &meta); err != nil && !onlyUnknownInputFields(err) {
 			return &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
 		}
@@ -199,7 +199,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 		}
 	}(reqs, done)
 
-	ret := make(map[string]*actionlint.ActionMetadata, n)
+	ret := make(map[string]*actionmeta.Metadata, n)
 	for range n {
 		f := <-results
 		if f.err != nil {
@@ -211,7 +211,7 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 		// Once this PR is merged, remove this `if` statement and regenerate popular_actions.go.
 		// https://github.com/dorny/paths-filter/pull/236
 		if f.spec == "dorny/paths-filter@v3" {
-			f.meta.Inputs["predicate-quantifier"] = &actionlint.ActionMetadataInput{
+			f.meta.Inputs["predicate-quantifier"] = &actionmeta.Input{
 				Name:     "predicate-quantifier",
 				Required: false,
 			}
@@ -221,9 +221,9 @@ func (g *gen) fetchRemote() (map[string]*actionlint.ActionMetadata, error) {
 		// https://github.com/actions/download-artifact/issues/355
 		if f.spec == "actions/download-artifact@v3-node20" {
 			if f.meta.Outputs == nil {
-				f.meta.Outputs = actionlint.ActionMetadataOutputs{}
+				f.meta.Outputs = actionmeta.Outputs{}
 			}
-			f.meta.Outputs["download-path"] = &actionlint.ActionMetadataOutput{
+			f.meta.Outputs["download-path"] = &actionmeta.Output{
 				Name: "download-path",
 			}
 		}
@@ -250,7 +250,7 @@ func onlyUnknownInputFields(err error) bool {
 	return true
 }
 
-func (g *gen) writeJSONL(out io.Writer, actions map[string]*actionlint.ActionMetadata) error {
+func (g *gen) writeJSONL(out io.Writer, actions map[string]*actionmeta.Metadata) error {
 	enc := json.NewEncoder(out)
 	for spec, meta := range actions {
 		j := actionOutput{spec, meta, isOutdated(spec, meta.Runs.Using)}
@@ -262,7 +262,7 @@ func (g *gen) writeJSONL(out io.Writer, actions map[string]*actionlint.ActionMet
 	return nil
 }
 
-func (g *gen) writeGo(out io.Writer, actions map[string]*actionlint.ActionMetadata) error {
+func (g *gen) writeGo(out io.Writer, actions map[string]*actionmeta.Metadata) error {
 	// Bound each initializer so large catalogues remain compilable for WASM.
 	const chunkSize = 50
 	active := 0
@@ -280,18 +280,19 @@ package engine
 	if chunked {
 		fmt.Fprintln(b, "import \"maps\"")
 	}
+	fmt.Fprintln(b, `import actionmeta "actionlint.kjanat.dev/internal/action"`)
 	fmt.Fprint(b, `
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
 `)
 	if chunked {
-		fmt.Fprintf(b, "var PopularActions = func() map[string]*ActionMetadata {\nactions := make(map[string]*ActionMetadata, %d)\n", active)
+		fmt.Fprintf(b, "var PopularActions = func() map[string]*actionmeta.Metadata {\nactions := make(map[string]*actionmeta.Metadata, %d)\n", active)
 		for i := range (active + chunkSize - 1) / chunkSize {
 			fmt.Fprintf(b, "maps.Copy(actions, popularActionsChunk%d())\n", i)
 		}
 		fmt.Fprintln(b, "return actions\n}()")
 	} else {
-		fmt.Fprintln(b, "var PopularActions = map[string]*ActionMetadata{")
+		fmt.Fprintln(b, "var PopularActions = map[string]*actionmeta.Metadata{")
 	}
 
 	specs := make([]string, 0, len(actions))
@@ -313,13 +314,13 @@ package engine
 			if written != 0 {
 				fmt.Fprintln(b, "}\n}")
 			}
-			fmt.Fprintf(b, "func popularActionsChunk%d() map[string]*ActionMetadata {\nreturn map[string]*ActionMetadata{\n", written/chunkSize)
+			fmt.Fprintf(b, "func popularActionsChunk%d() map[string]*actionmeta.Metadata {\nreturn map[string]*actionmeta.Metadata{\n", written/chunkSize)
 		}
 		written++
 		fmt.Fprintf(b, "%q: {\n", spec)
 		fmt.Fprintf(b, "Name: %q,\n", meta.Name)
 		if strings.HasPrefix(strings.ToLower(meta.Runs.Using), "node") {
-			fmt.Fprintf(b, "Runs: ActionMetadataRuns{Using: %q},\n", meta.Runs.Using)
+			fmt.Fprintf(b, "Runs: actionmeta.Runs{Using: %q},\n", meta.Runs.Using)
 		}
 
 		if meta.SkipInputs {
@@ -333,10 +334,10 @@ package engine
 			}
 			sort.Strings(ids)
 
-			fmt.Fprintf(b, "Inputs: ActionMetadataInputs{\n")
+			fmt.Fprintf(b, "Inputs: actionmeta.Inputs{\n")
 			for _, id := range ids {
 				i := meta.Inputs[id]
-				fmt.Fprintf(b, "%q: {%q, %v, %v, %q},\n", id, i.Name, i.Required, i.Deprecated, i.DeprecationMessage)
+				fmt.Fprintf(b, "%q: {Name: %q, Required: %v, Deprecated: %v, DeprecationMessage: %q},\n", id, i.Name, i.Required, i.Deprecated, i.DeprecationMessage)
 			}
 			fmt.Fprintf(b, "},\n")
 		}
@@ -352,10 +353,10 @@ package engine
 			}
 			sort.Strings(ids)
 
-			fmt.Fprintf(b, "Outputs: ActionMetadataOutputs{\n")
+			fmt.Fprintf(b, "Outputs: actionmeta.Outputs{\n")
 			for _, id := range ids {
 				o := meta.Outputs[id]
-				fmt.Fprintf(b, "%q: {%q},\n", id, o.Name)
+				fmt.Fprintf(b, "%q: {Name: %q},\n", id, o.Name)
 			}
 			fmt.Fprintf(b, "},\n")
 		}
@@ -391,7 +392,7 @@ var OutdatedPopularActionSpecs = map[string]struct{}{`)
 	return nil
 }
 
-func (g *gen) readJSONL(file string) (map[string]*actionlint.ActionMetadata, error) {
+func (g *gen) readJSONL(file string) (map[string]*actionmeta.Metadata, error) {
 	if !strings.HasSuffix(file, ".jsonl") {
 		return nil, fmt.Errorf("JSONL file name must end with \".jsonl\": %s", file)
 	}
@@ -403,7 +404,7 @@ func (g *gen) readJSONL(file string) (map[string]*actionlint.ActionMetadata, err
 	defer func() { _ = f.Close() }()
 
 	r := bufio.NewReader(f)
-	ret := map[string]*actionlint.ActionMetadata{}
+	ret := map[string]*actionmeta.Metadata{}
 	for {
 		l, err := r.ReadBytes('\n')
 		if err == io.EOF {
@@ -602,7 +603,7 @@ Flags:`)
 		return 1
 	}
 
-	var actions map[string]*actionlint.ActionMetadata
+	var actions map[string]*actionmeta.Metadata
 	if source == "" {
 		g.log.Println("Fetching data from https://github.com")
 		m, err := g.fetchRemote()

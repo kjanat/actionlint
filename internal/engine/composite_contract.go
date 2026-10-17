@@ -1,7 +1,11 @@
 package engine
 
 import (
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // compositeInvocation supplies the already-resolved caller and action scope.
@@ -9,26 +13,26 @@ import (
 type compositeInvocation struct {
 	call       *workflowlang.Step
 	actionPath string
-	actions    *LocalActionsCache
+	actions    *actionlocal.Resolver
 }
 
 type compositeParticipant interface {
-	Rule
-	forComposite(compositeInvocation) (Rule, error)
+	workflowvisit.Rule
+	forComposite(compositeInvocation) (workflowvisit.Rule, error)
 }
 
 type (
-	checkoutParticipant interface{ checkoutPaths() *runPaths }
+	checkoutParticipant interface{ checkoutPaths() *execution.Paths }
 	compositeJoiner     interface {
-		joinCompositeResult(*workflowlang.Step, Rule)
+		joinCompositeResult(*workflowlang.Step, workflowvisit.Rule)
 	}
 )
 type (
 	invocationParticipant interface{ deferActionInvocation() bool }
 	metadataParticipant   interface {
-		Rule
-		checkStandaloneMetadata(*ActionMetadata)
-		forMetadata(*LocalActionsCache) Rule
+		workflowvisit.Rule
+		checkStandaloneMetadata(*actionmeta.Metadata)
+		forMetadata(*actionlocal.Resolver) workflowvisit.Rule
 	}
 )
 

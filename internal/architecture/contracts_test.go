@@ -298,3 +298,63 @@ func TestWebhookObservationsHaveNoSemanticDependencies(t *testing.T) {
 		}
 	}
 }
+
+// Extracted language and suppression domains return values to the host; neither
+// direct imports nor aliases may pull orchestration, policy loading or tools back in.
+func TestExtractedDomainsDoNotImportHost(t *testing.T) {
+	packages := []string{
+		"actionlint.kjanat.dev/internal/action",
+		"actionlint.kjanat.dev/internal/action/validation",
+		"actionlint.kjanat.dev/internal/action/local",
+		"actionlint.kjanat.dev/internal/fsread",
+		"actionlint.kjanat.dev/internal/suppression",
+		"actionlint.kjanat.dev/internal/workflow/matrix",
+		"actionlint.kjanat.dev/internal/workflow/cachepolicy",
+		"actionlint.kjanat.dev/internal/workflow/names",
+		"actionlint.kjanat.dev/internal/actioncatalog",
+		"actionlint.kjanat.dev/internal/workflow/runner",
+		"actionlint.kjanat.dev/internal/workflow/execution",
+		"actionlint.kjanat.dev/internal/workflow/expressions",
+		"actionlint.kjanat.dev/internal/workflow/visit",
+		"actionlint.kjanat.dev/internal/finding",
+		"actionlint.kjanat.dev/internal/actioncatalog/metadata",
+		"actionlint.kjanat.dev/internal/actioncatalog/generate",
+	}
+	output, err := exec.CommandContext(t.Context(), "go", append([]string{"list", "-json"}, packages...)...).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath                      string
+			Deps, TestImports, XTestImports []string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		for _, dependency := range append(append(pkg.Deps, pkg.TestImports...), pkg.XTestImports...) {
+			for _, forbidden := range []string{"internal/engine", "internal/application", "internal/cli", "internal/workspace", "internal/config", "internal/analyzerhost", "internal/tools", "internal/render"} {
+				prefix := "actionlint.kjanat.dev/" + forbidden
+				if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
+					t.Errorf("domain %s imports host implementation %s", pkg.ImportPath, dependency)
+				}
+			}
+		}
+	}
+}
+
+func TestDiagnosticPolicyDoesNotImportHost(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/diagnosticpolicy").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dependency := range strings.SplitSeq(string(output), "\n") {
+		for _, forbidden := range []string{"engine", "application", "cli", "workspace", "analyzerhost", "tools", "render"} {
+			prefix := "actionlint.kjanat.dev/internal/" + forbidden
+			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
+				t.Errorf("diagnostic policy imports host %s", dependency)
+			}
+		}
+	}
+}

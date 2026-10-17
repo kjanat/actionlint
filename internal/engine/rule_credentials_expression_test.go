@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
 
 func TestCredentialsKnownMappingExpressions(t *testing.T) {
@@ -165,7 +167,7 @@ jobs:
 	}
 }
 
-func lintCredentialsExpressionTest(t *testing.T, source string) []*Error {
+func lintCredentialsExpressionTest(t *testing.T, source string) []*findingmodel.Finding {
 	t.Helper()
 	linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
 	if err != nil {

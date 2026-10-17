@@ -3,7 +3,12 @@ package engine
 import (
 	"context"
 
+	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,
@@ -13,19 +18,19 @@ type compositeAnalyzer struct {
 	scripts                           []scriptUnit
 	scriptScopes                      []*scriptScope
 	scriptScope                       *scriptScope
-	scriptPaths                       runPaths
-	scriptJobShell, scriptRunnerShell shellValue
-	scriptWorkflowDir, scriptJobDir   runDirectory
+	scriptPaths                       execution.Paths
+	scriptJobShell, scriptRunnerShell execution.ShellValue
+	scriptWorkflowDir, scriptJobDir   execution.Directory
 	scriptConfig                      *Config
 	collectScripts                    bool
 	workflowScriptShell               *string
 	jobScriptShell                    *string
 	ctx                               context.Context
-	actions                           *LocalActionsCache
-	passes                            []Pass
+	actions                           *actionlocal.Resolver
+	passes                            []workflowvisit.Pass
 	rules                             []compositeScriptRules
 	workflowEnv                       *workflowlang.Env
-	workflowShell                     shellValue
+	workflowShell                     execution.ShellValue
 	configForFile                     func(string) (*Config, error)
 	jobID                             string
 }
@@ -40,56 +45,40 @@ func (analysis *compositeAnalyzer) cancelled() error {
 func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) {
 	analysis.scriptScope = &scriptScope{paths: analysis.scriptPaths, config: analysis.scriptConfig}
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
-	analysis.scriptWorkflowDir = defaultsWorkingDirectory(workflow.Defaults)
+	analysis.scriptWorkflowDir = execution.DefaultDirectory(workflow.Defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(workflow.Defaults)
 	analysis.workflowEnv = workflow.Env
-	analysis.workflowShell = defaultsShellValue(workflow.Defaults)
+	analysis.workflowShell = execution.DefaultShell(workflow.Defaults)
 }
 
 func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
 	analysis.jobScriptShell = scriptDefaultShell(job.Defaults)
-	analysis.scriptJobShell = defaultsShellValue(job.Defaults)
-	analysis.scriptJobDir = defaultsWorkingDirectory(job.Defaults)
-	analysis.scriptRunnerShell = shellValue{}
-	if runnerPlatform(job.RunsOn) == platformKindWindows {
-		analysis.scriptRunnerShell = shellValueFromString(&workflowlang.String{Value: "pwsh"})
+	analysis.scriptJobShell = execution.DefaultShell(job.Defaults)
+	analysis.scriptJobDir = execution.DefaultDirectory(job.Defaults)
+	analysis.scriptRunnerShell = execution.ShellValue{}
+	if runnerlang.PlatformOf(job.RunsOn) == runnerlang.Windows {
+		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: "pwsh"})
 	}
-	if container := containerShell(job.Container); container.kind != shellValueUnspecified {
+	if container := execution.ContainerShell(job.Container); container.Kind != execution.ShellUnspecified {
 		analysis.scriptRunnerShell = container
 	}
 	analysis.jobID = ""
 	if job.ID != nil {
 		analysis.jobID = job.ID.Value
 	}
-	analysis.actions.setCheckout(runDirectory{})
-	analysis.actions.platform = runnerPlatform(job.RunsOn)
-	analysis.actions.caseInsensitive = analysis.actions.platform == platformKindWindows || macOSRunner(job.RunsOn)
-	analysis.actions.checkoutEnvUnknown = checkoutEnvironmentUnknown(analysis.workflowEnv, analysis.actions.platform) || checkoutEnvironmentUnknown(job.Env, analysis.actions.platform)
-	analysis.actions.persistentEnvUnknown = false
-	analysis.actions.shellEnvUnknown = analysis.actions.shellEnvironmentUnknown(analysis.workflowEnv) || analysis.actions.shellEnvironmentUnknown(job.Env)
-	runnerShell := shellValue{kind: shellValueUnknown}
-	switch analysis.actions.platform {
-	case platformKindWindows:
-		runnerShell = shellValueFromString(&workflowlang.String{Value: "pwsh"})
-	case platformKindMacOrLinux:
-		runnerShell = shellValue{}
-	}
-	if container := containerShell(job.Container); container.kind != shellValueUnspecified {
-		runnerShell = container
-	}
-	analysis.actions.checkoutShell = resolveRunShell(&workflowlang.ExecRun{}, defaultsShellValue(job.Defaults), analysis.workflowShell, runnerShell)
+	analysis.actions.BeginJob(analysis.workflowEnv, analysis.workflowShell, job)
 }
 
 func (analysis *compositeAnalyzer) invalidateCheckout() {
-	analysis.actions.setCheckout(runDirectory{kind: directoryUnknown})
+	analysis.actions.InvalidateCheckout()
 }
 
 func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	analysis.actions.observeExecution(step)
-	analysis.actions.observeCheckout(step)
+	analysis.actions.ObserveExecution(step)
+	analysis.actions.ObserveCheckout(step)
 	analysis.collectScript(step, analysis.scriptConfig, "", nil, analysis.jobScriptShell, analysis.workflowScriptShell)
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
@@ -98,14 +87,14 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 				continue // Preserve checkout state while entering a local composite.
 			}
 		}
-		if err := visitWithIgnoreOrigin(pass, newDiagnosticIgnoreOrigin(analysis.jobID, step), hasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
+		if err := visitWithIgnoreOrigin(pass, findingmodel.StepOrigin(analysis.jobID, step), hasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
 			return err
 		}
 	}
 	if _, action := step.Exec.(*workflowlang.ExecAction); !action {
 		return nil
 	}
-	var scripts []Rule
+	var scripts []workflowvisit.Rule
 	for _, pass := range analysis.passes {
 		if participant, ok := pass.(compositeParticipant); ok {
 			scripts = append(scripts, participant)

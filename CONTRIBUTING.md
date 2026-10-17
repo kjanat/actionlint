@@ -351,7 +351,7 @@ Generators live with their owning subsystems under `internal/`: configuration sc
 
 ### Action metadata availability
 
-[`action_metadata_availability.go`] contains composite step keys, expression contexts, and special-function argument limits derived from the runner's `action_yaml.json` template schema. `go generate` runs [`generate-action-metadata`], resolves the latest commit that changed the schema on `actions/runner`'s default branch, and fetches that revision from jsDelivr. The generated file records the source URL and commit. No schema copy or manually maintained revision file is stored in this repository.
+[`availability_generated.go`] contains composite step keys, expression contexts, and special-function argument limits derived from the runner's `action_yaml.json` template schema. `go generate` runs [`generate-action-metadata`], resolves the latest commit that changed the schema on `actions/runner`'s default branch, and fetches that revision from jsDelivr. The generated file records the source URL and commit. No schema copy or manually maintained revision file is stored in this repository.
 
 The weekly `Upkeep` job includes this file in its usual generation PR. Review schema changes there before merging; incompatible schema changes fail generation without replacing the existing output. `Generated content` checks that regeneration matches the checked-in file. Both workflows provide `GH_TOKEN` for the GitHub API; local generation also accepts `GITHUB_TOKEN`, or uses the public API unauthenticated when neither is set.
 
@@ -359,7 +359,7 @@ To refresh only these tables, run `go run ./internal/actioncatalog/metadata`. No
 
 ### JavaScript action runtime lifecycle
 
-`go run ./internal/actioncatalog/metadata -runtimes` refreshes `internal/engine/action_runtimes.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
+`go run ./internal/actioncatalog/metadata -runtimes` refreshes `internal/action/runtimes_generated.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
 
 The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that revision. The generated header links that revision; `runtimeSourcePaths` in the generator lists the files. Parser disagreement, missing packaging data, or an unrecognized migration declaration fails generation before replacing the output. Review upstream source changes when that happens. No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
 
@@ -432,7 +432,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [`.golangci.toml`]: ./.golangci.toml
 [`Dockerfile`]: ./Dockerfile
 [`Upkeep`]: .github/workflows/upkeep.yml
-[`action_metadata_availability.go`]: ./internal/engine/action_metadata_availability.go
+[`availability_generated.go`]: ./internal/action/availability_generated.go
 [`actionlint-matcher.json`]: .github/actionlint-matcher.json
 [`webhooks.go`]: ./internal/webhook/webhooks.go
 [`availability.go`]: ./internal/workflow/context/availability.go

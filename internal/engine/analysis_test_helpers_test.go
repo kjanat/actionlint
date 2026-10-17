@@ -3,9 +3,12 @@ package engine
 import (
 	"errors"
 
+	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/workflow/calls"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"github.com/fatih/color"
 )
 
 const commandGoodWorkflow = `on: push
@@ -30,7 +33,7 @@ func (commandFailingIO) Read([]byte) (int, error)  { return 0, errors.New("read 
 func (commandFailingIO) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 
 // check lets cache-order regressions share one cache across explicitly ordered analyses.
-func (l *Linter) check(path string, content []byte, project *Project, proc *concurrentProcess, actions *LocalActionsCache, workflows *calls.Cache) ([]*Error, error) {
+func (l *Linter) check(path string, content []byte, project *Project, proc *concurrentProcess, actions *actionlocal.Cache, workflows *calls.Cache) ([]*findingmodel.Finding, error) {
 	engine := analysisEngine{
 		analysisLogger: l.analysisLogger, ctx: l.ctx, reader: fsread.New(l.ctx, l.request.ReadFile, nil),
 		buildRules: builtinFactory(l.request, l.analysisLogger),
@@ -47,3 +50,5 @@ func (l *Linter) check(path string, content []byte, project *Project, proc *conc
 	errs, _, err := engine.check(path, content, project, cfg, proc, actions, workflows, &rules)
 	return errs, err
 }
+
+func init() { color.NoColor = true }

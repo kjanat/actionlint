@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
 
 func TestShellcheckResolvedDiagnostics(t *testing.T) {
@@ -62,7 +64,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var shellFindings []*Error
+			var shellFindings []*findingmodel.Finding
 			for _, finding := range findings {
 				if finding.Rule == "shellcheck" {
 					shellFindings = append(shellFindings, finding)

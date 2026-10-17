@@ -4,11 +4,12 @@ import (
 	"maps"
 	"path/filepath"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/internal/sourceid"
 )
 
-func completeDiagnostic(d *Diagnostic, content []byte, path string) {
+func completeDiagnostic(d *diagmodel.Diagnostic, content []byte, path string) {
 	if descriptor, ok := rulecatalog.Find(d.Rule); ok {
 		if d.Help == "" {
 			d.Help = descriptor.Help

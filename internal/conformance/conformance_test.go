@@ -20,13 +20,17 @@ import (
 	"strings"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	actioncheck "actionlint.kjanat.dev/internal/action/validation"
 	"actionlint.kjanat.dev/internal/application"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/conformance"
-	actionlint "actionlint.kjanat.dev/internal/engine"
 	exprlang "actionlint.kjanat.dev/internal/expression"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workspace"
 	ownedyaml "actionlint.kjanat.dev/internal/yaml"
+
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
 )
@@ -410,17 +414,17 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		return out
 	case "workflow":
-		result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: &actionlint.Config{}}})
+		result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: &repoconfig.Config{}}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		errs := make([]*actionlint.Error, 0, len(result.Diagnostics))
+		errs := make([]*findingmodel.Finding, 0, len(result.Diagnostics))
 		for _, d := range result.Diagnostics {
-			errs = append(errs, &actionlint.Error{Diagnostic: d})
+			errs = append(errs, &findingmodel.Finding{Diagnostic: d})
 		}
 		return upstreamDiagnostics(errs)
 	case "action":
-		var meta actionlint.ActionMetadata
+		var meta actionmeta.Metadata
 		if err := ownedyaml.Unmarshal([]byte(c.Input), &meta); err != nil {
 			return []string{err.Error()}
 		}
@@ -452,20 +456,12 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				t.Fatal(err)
 			}
 		}
-		project, err := actionlint.NewProject(root)
+		metadata, err := actionmeta.Parse(filepath.Join(dir, "action.yml"), []byte(c.Input))
 		if err != nil {
 			t.Fatal(err)
 		}
-		rule := actionlint.NewRuleAction(actionlint.NewLocalActionsCache(project, nil))
-		// Input binding is outside the manifest-parser contract.
-		err = rule.VisitStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{
-			Uses:             &workflowlang.String{Value: "./action", Pos: &workflowlang.Pos{Line: 1, Col: 1}},
-			InputsExpression: &workflowlang.String{Value: "${{ inputs }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}},
-		}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		out := upstreamDiagnostics(rule.Errs())
+		// Input binding belongs to invocation checking; these fixtures test the manifest contract.
+		out := upstreamDiagnostics(actioncheck.Check(metadata, &workflowlang.Pos{Line: 1, Col: 1}))
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(dir), "<action>")
@@ -491,11 +487,11 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	}
 }
 
-func upstreamDiagnostics(errs []*actionlint.Error) []string {
+func upstreamDiagnostics(errs []*findingmodel.Finding) []string {
 	out := make([]string, 0, len(errs))
 	for _, err := range errs {
 		err.Path = filepath.ToSlash(err.Path)
-		out = append(out, err.Error())
+		out = append(out, err.String())
 	}
 	return out
 }

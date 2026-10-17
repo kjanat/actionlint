@@ -6,6 +6,8 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/analyzer"
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -36,7 +38,7 @@ type AnalysisOptions struct {
 	Debug           bool
 	LogWriter       io.Writer
 	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
-	OnRulesCreated  func([]Rule) []Rule
+	OnRulesCreated  func([]workflowvisit.Rule) []workflowvisit.Rule
 	OnFilesSelected func([]string)
 	// ReadFile reads workflows, local action metadata, reusable workflows, and config.
 	// It must support concurrent calls. Nil uses os.ReadFile.
@@ -134,7 +136,7 @@ func (a *AnalysisSession) run(selection *workspace.Selection, err error) (*Analy
 		return nil, err
 	}
 	if len(selection.Sources) == 0 {
-		return &AnalysisResult{Diagnostics: []Diagnostic{}, Inputs: selection.Inputs, Configurations: selection.Configurations}, nil
+		return &AnalysisResult{Diagnostics: []diagmodel.Diagnostic{}, Inputs: selection.Inputs, Configurations: selection.Configurations}, nil
 	}
 	request := a.request
 	request.Sources = selection.Sources

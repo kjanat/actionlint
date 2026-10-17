@@ -3,9 +3,10 @@ package engine
 import (
 	"path/filepath"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 func workflowRunNamesAvailable(c ruleContext) bool {
@@ -20,7 +21,7 @@ func workflowRunNamesAvailable(c ruleContext) bool {
 }
 
 type workflowRunNamesRule struct {
-	RuleBase
+	workflowvisit.Base
 	ruleConfiguration
 	root  string
 	index *workflownames.Index
@@ -30,12 +31,7 @@ func (r *workflowRunNamesRule) VisitWorkflowPre(w *workflowlang.Workflow) error 
 	if diagnosticLevel(r.config, r.Name()) == "off" {
 		return nil
 	}
-	var references []*workflowlang.String
-	for _, event := range w.On {
-		if hook, ok := event.(*workflowlang.WebhookEvent); ok && hook.Hook.Value == "workflow_run" {
-			references = append(references, hook.Workflows...)
-		}
-	}
+	references := workflownames.WorkflowRunFilters(w)
 	if len(references) == 0 {
 		return nil
 	}
@@ -43,31 +39,8 @@ func (r *workflowRunNamesRule) VisitWorkflowPre(w *workflowlang.Workflow) error 
 	if err != nil {
 		return err
 	}
-	if !names.Complete {
-		return nil
-	}
-	var patterns []string
-	allKnown, missing := true, false
-	for _, ref := range references {
-		if ref == nil {
-			allKnown = false
-			continue
-		}
-		value := ref.Value
-		if literal := exprlang.LiteralExpressionValue(value); literal != nil {
-			value = *literal
-		} else if ref.ContainsExpression() {
-			allKnown = false
-			continue
-		}
-		patterns = append(patterns, value)
-		if names.Missing(value) {
-			missing = true
-			r.Errorf(ref.Pos, "workflow_run references workflow pattern %q, but no workflow name matches it in this repository", value)
-		}
-	}
-	if allKnown && !missing && names.ExcludesAll(patterns) {
-		r.Error(references[0].Pos, "workflow_run workflow-name filters exclude every matching workflow in this repository")
+	for _, d := range names.CheckWorkflowRun(references) {
+		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }

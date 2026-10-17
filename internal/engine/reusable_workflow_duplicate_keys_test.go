@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workflow/calls"
-
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -91,7 +91,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			check := func(errs []*Error, want int) {
+			check := func(errs []*findingmodel.Finding, want int) {
 				t.Helper()
 				if len(errs) != want {
 					t.Fatalf("wanted %d duplicate-key diagnostics, got %v", want, errs)

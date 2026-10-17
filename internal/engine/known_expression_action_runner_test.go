@@ -4,11 +4,13 @@ import (
 	"strings"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	actioncheck "actionlint.kjanat.dev/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestKnownExpressionActionInputs(t *testing.T) {
-	meta := &ActionMetadata{Inputs: ActionMetadataInputs{
+	meta := &actionmeta.Metadata{Inputs: actionmeta.Inputs{
 		"token": {Name: "token", Required: true},
 		"old":   {Name: "old", Deprecated: true},
 	}}
@@ -36,9 +38,7 @@ jobs:
 				t.Fatal(errs)
 			}
 			exec := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-			rule := NewRuleAction(nil)
-			rule.checkAction(meta, exec, func(*ActionMetadata) string { return "example/action@v1" })
-			errs = rule.Errs()
+			errs = actioncheck.Inputs(meta, exec, func(*actionmeta.Metadata) string { return "example/action@v1" })
 			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want)) {
 				t.Fatalf("wanted %q, got %v", tc.want, errs)
 			}

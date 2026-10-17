@@ -9,6 +9,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 )
 
 func writeShellcheckFixture(t *testing.T, root, name, content string) string {
@@ -253,7 +257,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []Diagnostic
+			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
 					findings = append(findings, diagnostic)
@@ -339,7 +343,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []Diagnostic
+			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
 					findings = append(findings, diagnostic)
@@ -379,9 +383,9 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 	for _, workspace := range []string{root, alias} {
 		for _, directory := range []string{"internal", "external", "chain", "broken"} {
 			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
-				paths := runPaths{}
-				paths.workspace, paths.analysis = workspace, analyzer
-				got := paths.resolve(runDirectory{directoryKnown, directory})
+				paths := execution.Paths{}
+				paths.Workspace, paths.Analysis = workspace, analyzer
+				got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: directory})
 				if directory != "broken" {
 					target := outside
 					if directory == "internal" {
@@ -391,10 +395,10 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if got.kind != directoryKnown || got.path != canonical {
+					if got.Kind != execution.DirectoryKnown || got.Path != canonical {
 						t.Fatalf("available linked directory should resolve: %+v", got)
 					}
-				} else if got.kind != directoryUnknown || got.path != analyzer {
+				} else if got.Kind != execution.DirectoryUnknown || got.Path != analyzer {
 					t.Fatalf("unavailable local directory should use analysis fallback: %+v", got)
 				}
 			})
@@ -439,7 +443,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "shellcheck" && strings.Contains(d.Message, "SC2086")
 			})
 			if found != tc.wantFinding {
@@ -491,10 +495,10 @@ jobs:
 
 func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
 	directory := t.TempDir()
-	for _, platform := range []platformKind{platformKindAny, platformKindWindows, platformKindMacOrLinux} {
-		path, known := localRunnerDirectoryPath(directory, platform)
-		wantKnown := platform == platformKindAny ||
-			(platform == platformKindWindows) == (runtime.GOOS == "windows")
+	for _, platform := range []runnerlang.Platform{runnerlang.Any, runnerlang.Windows, runnerlang.MacOrLinux} {
+		path, known := execution.LocalDirectoryPath(directory, platform)
+		wantKnown := platform == runnerlang.Any ||
+			(platform == runnerlang.Windows) == (runtime.GOOS == "windows")
 		if known != wantKnown || known && path != filepath.Clean(directory) {
 			t.Fatalf("platform %v: got %q, known=%v; want known=%v", platform, path, known, wantKnown)
 		}
@@ -504,12 +508,12 @@ func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
 func TestShellcheckWindowsRootedDirectory(t *testing.T) {
 	for _, path := range []string{`\scripts\build`, `\\server\share`, `\\?\C:\scripts`} {
 		if runtime.GOOS != "windows" {
-			if got, known := localRunnerDirectoryPath(path, platformKindWindows); known {
+			if got, known := execution.LocalDirectoryPath(path, runnerlang.Windows); known {
 				t.Errorf("Windows path %q mapped to Unix path %q", path, got)
 			}
 		}
 	}
-	if got, known := localRunnerDirectoryPath(`scripts\build`, platformKindWindows); !known || got != "scripts/build" {
+	if got, known := execution.LocalDirectoryPath(`scripts\build`, runnerlang.Windows); !known || got != "scripts/build" {
 		t.Errorf("relative Windows path lost: %q, known=%v", got, known)
 	}
 }

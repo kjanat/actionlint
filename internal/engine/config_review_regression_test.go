@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workspace"
-
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestDependencyPathsDoNotResolveWorkflowOverrides(t *testing.T) {
@@ -39,12 +39,12 @@ overrides:
 				result, err := Analyze(t.Context(), AnalysisRequest{
 					WorkingDir: root,
 					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
-					OnRulesCreated: func([]Rule) []Rule {
-						rule := NewRuleBase("expression-reference", "dependency finding")
+					OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
+						rule := workflowvisit.NewBase("expression-reference", "dependency finding")
 						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-						rule.errs[0].Path = filepath.Join(root, dependency)
-						rule.errs[0].source = []byte("dependency content")
-						return []Rule{&rule}
+						rule.Findings[0].Path = filepath.Join(root, dependency)
+						rule.Findings[0].Source = []byte("dependency content")
+						return []workflowvisit.Rule{&rule}
 					},
 				})
 				if err != nil {
@@ -194,12 +194,12 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 				result, err := Analyze(t.Context(), AnalysisRequest{
 					WorkingDir: root,
 					Sources:    []SourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
-					OnRulesCreated: func([]Rule) []Rule {
-						rule := NewRuleBase("expression-reference", "dependency finding")
+					OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
+						rule := workflowvisit.NewBase("expression-reference", "dependency finding")
 						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-						rule.errs[0].Path = filepath.Join(root, dependency)
-						rule.errs[0].source = []byte("dependency content")
-						return []Rule{&rule}
+						rule.Findings[0].Path = filepath.Join(root, dependency)
+						rule.Findings[0].Source = []byte("dependency content")
+						return []workflowvisit.Rule{&rule}
 					},
 				})
 				if err != nil {

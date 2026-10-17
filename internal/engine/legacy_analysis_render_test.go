@@ -4,7 +4,7 @@ import (
 	"io"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
-
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
 )
 
@@ -14,7 +14,7 @@ type AnalysisRenderer struct {
 }
 
 // NewAnalysisRenderer validates a built-in format or custom Go template before rendering.
-func NewAnalysisRenderer(format OutputFormat, template string, oneline bool) (*AnalysisRenderer, error) {
+func NewAnalysisRenderer(format render.Format, template string, oneline bool) (*AnalysisRenderer, error) {
 	renderer, err := render.New(format, template, oneline, Version, templateRules())
 	if err != nil {
 		return nil, err
@@ -33,15 +33,15 @@ func (r *AnalysisResult) RenderResult() render.Result {
 }
 
 // CheckResult exports a completed analysis using the shared public result contract.
-func (r *AnalysisResult) CheckResult() CheckResult {
+func (r *AnalysisResult) CheckResult() render.CheckResult {
 	return r.RenderResult().CheckResult()
 }
 
-func (r *AnalysisResult) legacyErrors() []*Error {
+func (r *AnalysisResult) legacyErrors() []*findingmodel.Finding {
 	if len(r.files) == 1 {
 		return r.files[0].errors
 	}
-	errors := make([]*Error, 0, len(r.Diagnostics))
+	errors := make([]*findingmodel.Finding, 0, len(r.Diagnostics))
 	for _, file := range r.files {
 		errors = append(errors, file.errors...)
 	}

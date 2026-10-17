@@ -15,11 +15,13 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/buildinfo"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/render"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
-
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/execabs"
 )
@@ -161,11 +163,11 @@ func testFindAllWorkflowsInDir(subdir string) (string, []string, error) {
 	return dir, fs, nil
 }
 
-func checkErrors(t *testing.T, outfile string, errs []*Error) {
+func checkErrors(t *testing.T, outfile string, errs []*findingmodel.Finding) {
 	t.Helper()
 	t.Logf("Checking %d errors with %q", len(errs), outfile)
 	for i, err := range errs {
-		t.Logf("  Error[%d]: %s", i, err.Error())
+		t.Logf("  Error[%d]: %s", i, err.String())
 	}
 
 	expected := []string{}
@@ -183,19 +185,19 @@ func checkErrors(t *testing.T, outfile string, errs []*Error) {
 		}
 	}
 
-	slices.SortFunc(errs, compareErrors)
+	slices.SortFunc(errs, findingmodel.Compare)
 
 	if len(errs) != len(expected) {
 		ms := make([]string, 0, len(errs))
 		for _, err := range errs {
-			ms = append(ms, err.Error())
+			ms = append(ms, err.String())
 		}
 		t.Fatalf("%d errors are expected but actually got %d errors:\n%v", len(expected), len(errs), strings.Join(ms, "\n"))
 	}
 
 	for i := range errs {
 		errs[i].Path = filepath.ToSlash(errs[i].Path) // For Windows
-		want, have := expected[i], errs[i].Error()
+		want, have := expected[i], errs[i].String()
 		if strings.HasPrefix(want, "/") && strings.HasSuffix(want, "/") {
 			want := regexp.MustCompile(want[1 : len(want)-1])
 			if !want.MatchString(have) {
@@ -320,7 +322,7 @@ func TestLintFindProjectFromPath(t *testing.T) {
 		panic(err)
 	}
 
-	lint := func(path string) []*Error {
+	lint := func(path string) []*findingmodel.Finding {
 		l, err := NewLinter(io.Discard, &LinterOptions{})
 		if err != nil {
 			t.Fatal(err)
@@ -464,7 +466,7 @@ func TestLinterFormatErrorMessageInSARIF(t *testing.T) {
 	proj := workspace.Identity(dir)
 	file := filepath.Join(dir, "test.yaml")
 
-	opts := LinterOptions{OutputFormat: OutputFormatSARIF}
+	opts := LinterOptions{OutputFormat: render.FormatSARIF}
 	var b strings.Builder
 	l, err := NewLinter(&b, &opts)
 	if err != nil {
@@ -610,7 +612,7 @@ func TestLinterOnFilesSelectedHook(t *testing.T) {
 }
 
 type customRuleForTest struct {
-	RuleBase
+	workflowvisit.Base
 	count int
 }
 
@@ -624,9 +626,9 @@ func (r *customRuleForTest) VisitStep(n *workflowlang.Step) error {
 
 func TestLinterAddCustomRuleOnRulesCreatedHook(t *testing.T) {
 	o := &LinterOptions{
-		OnRulesCreated: func(rules []Rule) []Rule {
+		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			r := &customRuleForTest{
-				RuleBase: NewRuleBase("this-is-test", ""),
+				Base: workflowvisit.NewBase("this-is-test", ""),
 			}
 			return append(rules, r)
 		},
@@ -673,7 +675,7 @@ jobs:
 		}
 
 		var b strings.Builder
-		errs[0].PrettyPrint(&b, nil)
+		render.FindingOf(errs[0].Diagnostic, nil).PrettyPrint(&b)
 		have := b.String()
 		want := "test.yaml:7:9: only single step is allowed but got 2 steps [this-is-test]\n"
 		if have != want {
@@ -684,7 +686,7 @@ jobs:
 
 func TestLinterRemoveRuleOnRulesCreatedHook(t *testing.T) {
 	o := &LinterOptions{
-		OnRulesCreated: func(rules []Rule) []Rule {
+		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			for i, r := range rules {
 				if r.Name() == "runner-label" {
 					rules = append(rules[:i], rules[i+1:]...)

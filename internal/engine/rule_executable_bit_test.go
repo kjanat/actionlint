@@ -7,6 +7,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func executableFixture(t *testing.T) (string, func(...string)) {
@@ -18,7 +21,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 	root := t.TempDir()
 	command := func(args ...string) {
 		t.Helper()
-		if out, err := repositoryGit(t.Context(), git, root, args...).CombinedOutput(); err != nil {
+		if out, err := workspace.GitCommand(t.Context(), git, root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 	}
@@ -43,7 +46,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 func TestExecutableBitWorkflows(t *testing.T) {
 	root, git := executableFixture(t)
 	link := writeShellcheckFixture(t, root, "link", "bad.sh")
-	object, err := repositoryGit(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
+	object, err := workspace.GitCommand(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +565,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []Diagnostic
+			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "executable-bit" {
 					findings = append(findings, diagnostic)
@@ -580,10 +583,10 @@ jobs:
 				if !strings.Contains(strings.ToLower(line), strings.ToLower(filepath.Base(tc.want))) {
 					t.Fatalf("diagnostic mapped to wrong line: %+v", findings[0])
 				}
-				if tc.name == "direct" && findings[0].Start != (DiagnosticPosition{Line: 7, Column: 14}) {
+				if tc.name == "direct" && findings[0].Start != (diagmodel.Position{Line: 7, Column: 14}) {
 					t.Fatalf("direct call location: %+v", findings[0].Start)
 				}
-				if tc.name == "Unicode before invocation" && findings[0].Start != (DiagnosticPosition{Line: 7, Column: 22}) {
+				if tc.name == "Unicode before invocation" && findings[0].Start != (diagmodel.Position{Line: 7, Column: 22}) {
 					t.Fatalf("Unicode call location: %+v", findings[0].Start)
 				}
 				if !slices.ContainsFunc(result.Inputs, func(path string) bool {
@@ -626,7 +629,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("checkout repository assumption for %s: %+v", tc.event, result.Diagnostics)
 			}
@@ -671,36 +674,10 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }); found != tc.want {
+			if found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }); found != tc.want {
 				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 			}
 		})
-	}
-}
-
-func TestExecutableBitIndexTraversal(t *testing.T) {
-	snapshot := &gitModeSnapshot{modes: map[string]string{"link": "120000", "submodule": "160000", "bad.sh": "100644", "scripts/bad.sh": "100644"}}
-	for _, tc := range []struct {
-		path, checkout string
-		want           bool
-	}{
-		{"./bad.sh", "", true},
-		{"scripts/../bad.sh", "", true},
-		{"missing/../bad.sh", "", false},
-		{"scripts/", "", true},
-		{"missing/", "", false},
-		{"bad.sh/", "", false},
-		{"missing/../source/bad.sh", "source", false},
-		{"link/../bad.sh", "", false},
-		{"submodule/../bad.sh", "", false},
-		{"source/link/../bad.sh", "source", false},
-		{".source/link/../bad.sh", ".source", false},
-		{"scripts/bad.sh/../bad.sh", "", false},
-		{"../bad.sh", "", false},
-	} {
-		if got := snapshot.ordinaryTraversal(tc.path, tc.checkout); got != tc.want {
-			t.Errorf("traversal %q under %q: got %v", tc.path, tc.checkout, got)
-		}
 	}
 }
 
@@ -724,7 +701,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("workspace invocation of checkout-prefixed script missed: %+v", result.Diagnostics)
 	}
 }
@@ -783,7 +760,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
 			}
@@ -794,13 +771,13 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }) {
 		t.Fatalf("session retained stale Git index: %+v", result.Diagnostics)
 	}
 }
 
 func TestGitIndexModes(t *testing.T) {
-	modes, err := parseGitModes("100644 abc 0\tspace name.sh\x00100755 def 0\tok.sh\x00120000 abc 0\tlink\x00100644 abc 1\tconflict.sh\x00100755 def 2\tconflict.sh\x00")
+	modes, err := workspace.ParseIndexModes("100644 abc 0\tspace name.sh\x00100755 def 0\tok.sh\x00120000 abc 0\tlink\x00100644 abc 1\tconflict.sh\x00100755 def 2\tconflict.sh\x00")
 	if err != nil || modes["space name.sh"] != "100644" || modes["ok.sh"] != "100755" || modes["link"] != "120000" || modes["conflict.sh"] != "unmerged" {
 		t.Fatalf("incorrect index modes: %v, %v", modes, err)
 	}

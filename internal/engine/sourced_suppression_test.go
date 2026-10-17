@@ -7,6 +7,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
 
 func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
@@ -68,7 +72,7 @@ runs:
 					for _, diagnostic := range result.Diagnostics {
 						counts[diagnostic.Rule]++
 						if diagnostic.Rule == "shellcheck" {
-							if filepath.ToSlash(diagnostic.Path) != "scripts/check.sh" || diagnostic.Code != "SC2086" || diagnostic.Severity != "info" || diagnostic.Start != (DiagnosticPosition{Line: 1, Column: 6}) || diagnostic.End != (DiagnosticPosition{Line: 1, Column: 12}) || diagnostic.Snippet != "echo $VALUE" {
+							if filepath.ToSlash(diagnostic.Path) != "scripts/check.sh" || diagnostic.Code != "SC2086" || diagnostic.Severity != "info" || diagnostic.Start != (diagmodel.Position{Line: 1, Column: 6}) || diagnostic.End != (diagmodel.Position{Line: 1, Column: 12}) || diagnostic.Snippet != "echo $VALUE" {
 								t.Fatalf("source diagnostic was changed: %+v", diagnostic)
 							}
 						} else if diagnostic.Rule != tc.directive || filepath.ToSlash(diagnostic.Path) != origin {
@@ -99,12 +103,12 @@ runs:
 
 func TestForeignSuppressionPreservesDiagnosticPath(t *testing.T) {
 	source := []byte("name: test # actionlint:ignore action --\n")
-	finding := &Error{Path: "./local/action.yml", Start: DiagnosticPosition{Line: 2}, Rule: "expression", source: source}
-	got := filterForeignInlineSuppressions("/repo/local/action.yml", source, []*Error{finding}, nil)
+	finding := &findingmodel.Finding{Path: "./local/action.yml", Start: diagmodel.Position{Line: 2}, Rule: "expression", Source: source}
+	got := diagnosticpolicy.FilterForeignInline("/repo/local/action.yml", source, []*findingmodel.Finding{finding}, nil)
 	if len(got) != 2 || got[0].Path != finding.Path || got[1].Path != "/repo/local/action.yml" || got[1].Rule != "inline-suppression" {
 		t.Fatalf("foreign filtering changed diagnostic identity: %+v", got)
 	}
-	if got[0] == finding || string(got[0].source) != string(source) || finding.Path != "./local/action.yml" {
+	if got[0] == finding || string(got[0].Source) != string(source) || finding.Path != "./local/action.yml" {
 		t.Fatalf("foreign filtering mutated the original finding: %+v", finding)
 	}
 }
@@ -268,7 +272,7 @@ runs:
 						t.Fatalf("sourced script comment changed diagnostics: %+v", result.Diagnostics)
 					}
 					finding := result.Diagnostics[0]
-					if finding.Rule != "shellcheck" || finding.Code != "SC2086" || filepath.ToSlash(finding.Path) != name || finding.Start != (DiagnosticPosition{Line: 1, Column: 6}) {
+					if finding.Rule != "shellcheck" || finding.Code != "SC2086" || filepath.ToSlash(finding.Path) != name || finding.Start != (diagmodel.Position{Line: 1, Column: 6}) {
 						t.Fatalf("sourced finding lost or replaced: %+v", finding)
 					}
 				})

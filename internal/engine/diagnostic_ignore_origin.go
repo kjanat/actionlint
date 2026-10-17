@@ -1,75 +1,22 @@
 package engine
 
 import (
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
-
-type diagnosticOwner struct {
-	Job  string
-	Step *workflowlang.Pos
-}
-
-// diagnosticIgnoreOrigin distinguishes executions of shared YAML anchors.
-// It never changes displayed locations or the scope of inline comments.
-type diagnosticIgnoreOrigin struct {
-	stepPosition                *workflowlang.Pos
-	job, stepID, stepName, uses string
-	// metadata uses the owning action's YAML location for inner selectors.
-	metadata bool
-}
-
-func newDiagnosticIgnoreOrigin(job string, step *workflowlang.Step) *diagnosticIgnoreOrigin {
-	origin := &diagnosticIgnoreOrigin{job: job}
-	value := func(s *workflowlang.String) string {
-		if s == nil {
-			return ""
-		}
-		if literal := exprlang.LiteralExpressionValue(s.Value); literal != nil {
-			return *literal
-		}
-		return s.Value
-	}
-	if step != nil {
-		origin.stepPosition = step.Pos
-		origin.stepID, origin.stepName = value(step.ID), value(step.Name)
-		if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
-			origin.uses = value(action.Uses)
-		}
-	}
-	return origin
-}
-
-func (origin *diagnosticIgnoreOrigin) matches(job, step, uses string) bool {
-	return (job == "" || job == origin.job) && (step == "" || step == origin.stepID || step == origin.stepName) && (uses == "" || uses == origin.uses)
-}
-
-func jobDiagnosticIgnoreOrigin(job *workflowlang.Job) *diagnosticIgnoreOrigin {
-	origin := newDiagnosticIgnoreOrigin("", nil)
-	if job.ID != nil {
-		origin.job = job.ID.Value
-	}
-	if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
-		origin.uses = job.WorkflowCall.Uses.Value
-		if literal := exprlang.LiteralExpressionValue(origin.uses); literal != nil {
-			origin.uses = *literal
-		}
-	}
-	return origin
-}
 
 // Asynchronous analyzers snapshot the origin before scheduling their work.
 // Synchronous passes can safely annotate only the findings produced by this visit.
-func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, hasIgnores bool, visit func() error) error {
-	rule, ok := pass.(Rule)
+func visitWithIgnoreOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin, hasIgnores bool, visit func() error) error {
+	rule, ok := pass.(workflowvisit.Rule)
 	if !ok {
 		return visit()
 	}
 	before := len(rule.Errs())
 	defer func() {
 		for _, finding := range rule.Errs()[before:] {
-			if finding.owner == nil && finding.source == nil {
-				finding.owner = &diagnosticOwner{Job: origin.job, Step: origin.stepPosition}
+			if finding.Owner == nil && finding.Source == nil {
+				finding.Owner = &findingmodel.Owner{Job: origin.Job, Step: origin.StepPosition}
 			}
 		}
 	}()
@@ -86,22 +33,24 @@ func visitWithIgnoreOrigin(pass Pass, origin *diagnosticIgnoreOrigin, hasIgnores
 	start := len(rule.Errs())
 	err := visit()
 	for _, finding := range rule.Errs()[start:] {
-		if !hasIgnores && (finding.metadataFinding == nil || finding.source == nil) {
+		if !hasIgnores && (finding.MetadataIdentity == nil || finding.Source == nil) {
 			continue
 		}
-		if finding.source == nil && finding.ignoreOrigin == nil {
-			finding.ignoreOrigin = origin
-		} else if finding.source != nil && finding.ignoreOrigin != nil {
+		if finding.Source == nil && finding.IgnoreOrigin == nil {
+			finding.IgnoreOrigin = origin
+		} else if finding.Source != nil && finding.IgnoreOrigin != nil {
 			// Each invocation owns its origin; shared metadata never stores caller state.
-			inner := *finding.ignoreOrigin
-			inner.job = origin.job
-			finding.ignoreOrigin = &inner
+			inner := *finding.IgnoreOrigin
+			inner.Job = origin.Job
+			finding.IgnoreOrigin = &inner
 		}
 	}
 	return err
 }
 
 // originParticipant snapshots context for asynchronous diagnostic producers.
-type originParticipant interface{ setIgnoreOrigin(*diagnosticIgnoreOrigin) }
+type originParticipant interface {
+	setIgnoreOrigin(*findingmodel.IgnoreOrigin)
+}
 
 func hasConfiguredIgnores(cfg *Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }

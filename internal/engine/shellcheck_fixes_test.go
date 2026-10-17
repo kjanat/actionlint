@@ -8,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/yamlsource"
 )
 
-func applyDiagnosticFix(t *testing.T, input string, fix DiagnosticFix) string {
+func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 	t.Helper()
-	offset := func(pos DiagnosticPosition) int {
+	offset := func(pos diagmodel.Position) int {
 		start := 0
 		for line := 1; line < pos.Line; line++ {
 			i := strings.IndexByte(input[start:], '\n')
@@ -68,7 +69,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var decoded Diagnostic
+	var decoded diagmodel.Diagnostic
 	if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Code != diagnostic.Code || len(decoded.Fixes) != 1 {
 		t.Fatalf("structured JSON: %s, %v", encoded, err)
 	}

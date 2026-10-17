@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 )
 
@@ -142,7 +143,7 @@ func TestCompositeDeprecatedCommands(t *testing.T) {
 	}
 }
 
-func assertDiagnosticOffsetRange(t *testing.T, src string, d Diagnostic, start, end int) {
+func assertDiagnosticOffsetRange(t *testing.T, src string, d diagmodel.Diagnostic, start, end int) {
 	t.Helper()
 	position := func(offset int) (int, int) {
 		return strings.Count(src[:offset], "\n") + 1, utf8.RuneCountInString(src[strings.LastIndexByte(src[:offset], '\n')+1:offset]) + 1
@@ -167,7 +168,7 @@ func TestDeprecatedCommandMappedOccurrences(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var findings []Diagnostic
+		var findings []diagmodel.Diagnostic
 		for _, d := range result.Diagnostics {
 			if d.Rule == "deprecated-commands" {
 				findings = append(findings, d)

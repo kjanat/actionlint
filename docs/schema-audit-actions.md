@@ -13,7 +13,7 @@ the complete schema from the audited runner revision.
 
 Every definition is represented in the generated structural table. The table
 and expression availability table now come from the same generator invocation.
-`checkActionMetadataSchema` traverses raw YAML retained alongside the metadata
+`internal/action.Validate` traverses raw YAML retained alongside the metadata
 used for checking workflow callers. Existing precise runtime and composite-step
 diagnostics handle execution requirements.
 

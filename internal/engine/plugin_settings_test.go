@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
@@ -19,10 +19,10 @@ type settingsAnalyzer struct {
 func (*settingsAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "custom-check", Category: "security", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
 }
-func (a *settingsAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+func (a *settingsAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagmodel.Diagnostic, error) {
 	a.calls++
 	a.options = input.Options
-	return []diagnostic.Diagnostic{{Message: "custom finding", Start: diagnostic.Position{Line: 1, Column: 1}}}, nil
+	return []diagmodel.Diagnostic{{Message: "custom finding", Start: diagmodel.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestRegisteredAnalyzerSettings(t *testing.T) {

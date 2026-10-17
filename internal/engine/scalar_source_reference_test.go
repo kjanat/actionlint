@@ -11,6 +11,7 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
+
 	"github.com/google/go-cmp/cmp"
 )
 

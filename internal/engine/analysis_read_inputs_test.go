@@ -7,9 +7,9 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workspace"
-
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestWorkflowDiscoveryRecordsListedDirectories(t *testing.T) {
@@ -75,7 +75,7 @@ func TestCaseInsensitiveRepositoryPathRecordsListings(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, "scripts/Nested/lib.sh", "VALUE=42\n")
 	var listed []string
-	local, err := caseInsensitiveRepositoryPathChecked(root, "./SCRIPTS/nested", fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) }))
+	local, err := execution.CaseInsensitiveRepositoryPath(root, "./SCRIPTS/nested", fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) }))
 	if err != nil || local != "./scripts/Nested" {
 		t.Fatalf("resolved %q, %v", local, err)
 	}
@@ -83,11 +83,11 @@ func TestCaseInsensitiveRepositoryPathRecordsListings(t *testing.T) {
 		t.Fatalf("listed %q, want %q", listed, want)
 	}
 	listed = nil
-	if _, err := caseInsensitiveRepositoryPathChecked(filepath.Join(root, "absent"), "./x", fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })); err == nil || listed != nil {
+	if _, err := execution.CaseInsensitiveRepositoryPath(filepath.Join(root, "absent"), "./x", fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })); err == nil || listed != nil {
 		t.Fatalf("absent root resolved with %v, listed %q", err, listed)
 	}
-	paths := runPaths{workspace: root, analysis: root, caseInsensitive: true, reader: fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })}
-	if mapped, known := paths.analysisPath("SCRIPTS/nested"); !known || mapped != filepath.Join(root, "scripts", "Nested") {
+	paths := execution.Paths{Workspace: root, Analysis: root, CaseInsensitive: true, Reader: fsread.New(t.Context(), nil, func(dir string) { listed = append(listed, dir) })}
+	if mapped, known := paths.AnalysisPath("SCRIPTS/nested"); !known || mapped != filepath.Join(root, "scripts", "Nested") {
 		t.Fatalf("analysisPath = %q, %v", mapped, known)
 	}
 	if want := []string{root, filepath.Join(root, "scripts")}; !slices.Equal(listed, want) {

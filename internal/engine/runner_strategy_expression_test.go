@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 )
 
 func TestKnownStrategyRunnerLabels(t *testing.T) {
@@ -349,7 +350,7 @@ jobs:
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				combinations, known := knownRunnerMatrixCombinations(workflow.Jobs["test"].Strategy)
+				combinations, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy)
 				if !known || len(combinations) != len(tc.want) {
 					t.Fatalf("known=%v, wanted %v, got %v", known, tc.want, combinations)
 				}
@@ -393,7 +394,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			combinations, known := knownRunnerMatrixCombinations(workflow.Jobs["test"].Strategy)
+			combinations, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy)
 			if !known || (len(combinations) == 0) != tc.matches {
 				t.Fatalf("known=%v, expected exclusion=%v, got %v", known, tc.matches, combinations)
 			}

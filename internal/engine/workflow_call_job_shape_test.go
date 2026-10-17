@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workflow/calls"
-
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -63,7 +63,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				check := func(diagnostics []*Error, includeCallee bool) {
+				check := func(diagnostics []*findingmodel.Finding, includeCallee bool) {
 					t.Helper()
 					if !includeCallee {
 						if len(diagnostics) != 0 {

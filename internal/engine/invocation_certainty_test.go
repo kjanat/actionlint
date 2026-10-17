@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/workflow/execution"
+
 	"mvdan.cc/sh/v3/syntax"
 )
 
@@ -33,7 +36,7 @@ func TestLiteralShellWordQuotes(t *testing.T) {
 			if !ok {
 				t.Fatalf("not a call: %T", file.Stmts[0].Cmd)
 			}
-			got, known := literalShellWord(call.Args[0].Parts)
+			got, known := execution.LiteralShellWord(call.Args[0].Parts)
 			if got != tc.want || known != tc.known {
 				t.Fatalf("got %q, %v; want %q, %v", got, known, tc.want, tc.known)
 			}
@@ -75,7 +78,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []Diagnostic
+			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "executable-bit" {
 					findings = append(findings, diagnostic)

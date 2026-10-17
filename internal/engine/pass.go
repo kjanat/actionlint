@@ -8,26 +8,14 @@ import (
 	"slices"
 	"time"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
-
-// Pass is an interface to traverse a workflow syntax tree
-type Pass interface {
-	// VisitStep is callback when visiting Step node. It returns internal error when it cannot continue the process
-	VisitStep(node *workflowlang.Step) error
-	// VisitJobPre is callback when visiting Job node before visiting its children. It returns internal error when it cannot continue the process
-	VisitJobPre(node *workflowlang.Job) error
-	// VisitJobPost is callback when visiting Job node after visiting its children. It returns internal error when it cannot continue the process
-	VisitJobPost(node *workflowlang.Job) error
-	// VisitWorkflowPre is callback when visiting Workflow node before visiting its children. It returns internal error when it cannot continue the process
-	VisitWorkflowPre(node *workflowlang.Workflow) error
-	// VisitWorkflowPost is callback when visiting Workflow node after visiting its children. It returns internal error when it cannot continue the process
-	VisitWorkflowPost(node *workflowlang.Workflow) error
-}
 
 // Visitor visits syntax tree from root in depth-first order
 type Visitor struct {
-	passes       []Pass
+	passes       []workflowvisit.Pass
 	trackIgnores bool
 	dbg          io.Writer
 	composites   *compositeAnalyzer
@@ -40,7 +28,7 @@ func NewVisitor() *Visitor {
 }
 
 // AddPass adds new pass which is called on traversing a syntax tree
-func (v *Visitor) AddPass(p Pass) {
+func (v *Visitor) AddPass(p workflowvisit.Pass) {
 	v.passes = append(v.passes, p)
 }
 
@@ -132,7 +120,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), v.trackIgnores, func() error { return p.VisitJobPre(n) }); err != nil {
+		if err := visitWithIgnoreOrigin(p, findingmodel.JobOrigin(n), v.trackIgnores, func() error { return p.VisitJobPre(n) }); err != nil {
 			return err
 		}
 	}
@@ -154,7 +142,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), v.trackIgnores, func() error { return p.VisitJobPost(n) }); err != nil {
+		if err := visitWithIgnoreOrigin(p, findingmodel.JobOrigin(n), v.trackIgnores, func() error { return p.VisitJobPost(n) }); err != nil {
 			return err
 		}
 	}
@@ -178,7 +166,7 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 		}
 	} else {
 		for _, p := range v.passes {
-			if err := visitWithIgnoreOrigin(p, newDiagnosticIgnoreOrigin(v.jobID, n), v.trackIgnores, func() error { return p.VisitStep(n) }); err != nil {
+			if err := visitWithIgnoreOrigin(p, findingmodel.StepOrigin(v.jobID, n), v.trackIgnores, func() error { return p.VisitStep(n) }); err != nil {
 				return err
 			}
 		}

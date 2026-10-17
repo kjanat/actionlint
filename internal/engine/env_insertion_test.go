@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 )
 
 func TestEnvironmentMappingInsertions(t *testing.T) {
@@ -135,13 +138,13 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 			if len(env.Vars) != 0 || len(env.Insertions) != 1 {
 				t.Fatalf("directive parsed as an environment variable: %+v", env)
 			}
-			if got := checkoutEnvironmentUnknown(env, platformKindMacOrLinux); got != tc.checkout {
+			if got := execution.CheckoutEnvironmentUnknown(env, runnerlang.MacOrLinux); got != tc.checkout {
 				t.Errorf("checkout environment unknown: %v, want %v", got, tc.checkout)
 			}
-			if got := shellEnvironmentUnknown(env); got != tc.shell {
+			if got := execution.ShellEnvironmentUnknown(env); got != tc.shell {
 				t.Errorf("shell environment unknown: %v, want %v", got, tc.shell)
 			}
-			if got := shellPathUnknown(env); got != tc.path {
+			if got := execution.ShellPathUnknown(env); got != tc.path {
 				t.Errorf("shell path unknown: %v, want %v", got, tc.path)
 			}
 		})

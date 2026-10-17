@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"slices"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -87,9 +88,9 @@ func outlineString(value *workflowlang.String) string {
 	return value.Value
 }
 
-func outlinePosition(pos *workflowlang.Pos) *DiagnosticPosition {
+func outlinePosition(pos *workflowlang.Pos) *diagmodel.Position {
 	if pos == nil {
 		return nil
 	}
-	return &DiagnosticPosition{Line: pos.Line, Column: pos.Col}
+	return &diagmodel.Position{Line: pos.Line, Column: pos.Col}
 }

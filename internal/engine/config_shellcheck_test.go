@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -121,7 +122,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var found []*Error
+			var found []*findingmodel.Finding
 			for _, finding := range findings {
 				if finding.Rule == "shellcheck" {
 					found = append(found, finding)

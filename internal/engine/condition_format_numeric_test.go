@@ -6,6 +6,7 @@ import (
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/execution"
 )
 
 func TestConstantFormatNumericArguments(t *testing.T) {
@@ -33,7 +34,7 @@ func TestConstantFormatNumericArguments(t *testing.T) {
 				t.Fatalf("value=%v known=%v, want %q", value, known, tc.want)
 			}
 			for _, condition := range []string{tc.expression, "${{ " + tc.expression + " }}"} {
-				if enabled, known := invocationCondition(&workflowlang.String{Value: condition}); !known || enabled != (tc.want != "") {
+				if enabled, known := execution.Condition(&workflowlang.String{Value: condition}); !known || enabled != (tc.want != "") {
 					t.Fatalf("invocation=%v known=%v, want %v", enabled, known, tc.want != "")
 				}
 			}
@@ -70,7 +71,7 @@ func TestConstantFormatUncertainArguments(t *testing.T) {
 			if known {
 				t.Fatalf("unexpected constant value %v", value)
 			}
-			if _, known := invocationCondition(&workflowlang.String{Value: "${{ " + expression + " }}"}); known {
+			if _, known := execution.Condition(&workflowlang.String{Value: "${{ " + expression + " }}"}); known {
 				t.Fatal("uncertain format argument made invocation known")
 			}
 		})

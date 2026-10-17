@@ -4,6 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -57,14 +61,14 @@ func TestDisallowSuppressionsDiagnostic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := filterInlineSuppressions([]byte(source), nil, cfg.Policy.DisallowSuppressions)
+	got := diagnosticpolicy.FilterInline([]byte(source), nil, cfg.Policy.DisallowSuppressions)
 	if len(got) != 1 {
 		t.Fatalf("expected one directive diagnostic, got %v", got)
 	}
-	want := &Error{Start: DiagnosticPosition{Line: 1, Column: 12}, Rule: "disallow-suppressions",
+	want := &findingmodel.Finding{Start: diagmodel.Position{Line: 1, Column: 12}, Rule: "disallow-suppressions",
 		Message: "inline suppression of cache-operation is disallowed by policy.disallow-suppressions",
 	}
-	if diff := cmp.Diff(want, got[0], cmp.AllowUnexported(Error{})); diff != "" {
+	if diff := cmp.Diff(want, got[0], cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
 		t.Fatal(diff)
 	}
 }

@@ -4,14 +4,15 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowcommands "actionlint.kjanat.dev/internal/workflow/commands"
 )
 
 type deprecatedCommandsAnalyzer struct{}
 
-func (deprecatedCommandsAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([]*Error, error) {
-	var findings []*Error
+func (deprecatedCommandsAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([]*findingmodel.Finding, error) {
+	var findings []*findingmodel.Finding
 	for _, unit := range batch.scripts {
 		if err := ctx.Err(); err != nil {
 			return findings, err
@@ -19,11 +20,11 @@ func (deprecatedCommandsAnalyzer) AnalyzeScripts(ctx context.Context, batch scri
 		input := analyzer.Input{Scripts: []analyzer.Script{scriptFact(unit, unit.path, unit.path, false)}}
 		diagnostics, err := workflowcommands.Analyzer{}.Analyze(ctx, input)
 		for _, d := range diagnostics {
-			finding := findingOf(d)
-			if d.End == (diagnostic.Position{}) {
-				finding.endPosition = nil
+			finding := findingmodel.FromDiagnostic(d)
+			if d.End == (diagmodel.Position{}) {
+				finding.EndPosition = nil
 			}
-			finding.Path, finding.source, finding.ignoreOrigin = unit.path, unit.content, unit.origin
+			finding.Path, finding.Source, finding.IgnoreOrigin = unit.path, unit.content, unit.origin
 			findings = append(findings, finding)
 		}
 		if err != nil {

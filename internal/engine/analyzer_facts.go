@@ -1,11 +1,12 @@
 package engine
 
 import (
-	"actionlint.kjanat.dev/internal/sourceid"
-
 	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	"actionlint.kjanat.dev/internal/sourceid"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/execution"
 	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
 )
 
@@ -37,11 +38,11 @@ func requiredFacts(registrations []analyzer.Registration) map[analyzer.Fact]bool
 	return facts
 }
 
-func scriptFact(unit scriptUnit, document, documentAbs string, execution bool) analyzer.Script {
+func scriptFact(unit scriptUnit, document, documentAbs string, includeExecution bool) analyzer.Script {
 	run := unit.run
 	script := analyzer.Script{Text: run.Run.Value, Shell: outlineString(run.Shell), Start: factPosition(run.Run.Pos)}
 	if unit.origin != nil {
-		script.JobID, script.StepID = unit.origin.job, unit.origin.stepID
+		script.JobID, script.StepID = unit.origin.Job, unit.origin.StepID
 	}
 	if unit.path != "" && unit.path != document && unit.path != documentAbs {
 		script.Path = unit.path
@@ -49,8 +50,8 @@ func scriptFact(unit scriptUnit, document, documentAbs string, execution bool) a
 	for _, span := range run.Source.LineSpans() {
 		script.Spans = append(script.Spans, analyzer.Span{
 			Line: span.Line, Start: span.Start, End: span.End,
-			Document:    diagnostic.Position{Line: span.YamlLine, Column: span.YamlColumn},
-			DocumentEnd: diagnostic.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
+			Document:    diagmodel.Position{Line: span.YamlLine, Column: span.YamlColumn},
+			DocumentEnd: diagmodel.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
 		})
 	}
 	if scope := unit.scope; scope != nil && script.Path != "" && scope.call != nil {
@@ -63,10 +64,10 @@ func scriptFact(unit scriptUnit, document, documentAbs string, execution bool) a
 		}
 		script.Invocation = invocation
 	}
-	if execution {
+	if includeExecution {
 		script.Runtime = &analyzer.Runtime{
-			Shell: unit.execution.shell.name, ShellKnown: unit.execution.shell.name != "", ShellImplicit: unit.execution.shell.implicit,
-			Directory: unit.execution.directory.path, DirectoryKnown: unit.execution.directory.kind == directoryKnown,
+			Shell: unit.execution.shell.Name, ShellKnown: unit.execution.shell.Name != "", ShellImplicit: unit.execution.shell.Implicit,
+			Directory: unit.execution.directory.Path, DirectoryKnown: unit.execution.directory.Kind == execution.DirectoryKnown,
 		}
 	}
 	return script
@@ -128,9 +129,9 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 		input.Available = append(input.Available, analyzer.Scripts, analyzer.Invocations)
 		for _, unit := range units {
 			script := scriptFact(unit, path, pathAbs, facts.execution)
-			if unit.origin != nil && unit.origin.stepPosition != nil {
+			if unit.origin != nil && unit.origin.StepPosition != nil {
 				// Aliased scripts share scalar positions, but retain distinct owners.
-				pos := unit.origin.stepPosition
+				pos := unit.origin.StepPosition
 				script.Reference = byPath[referencePath(unit.path)].Positions[[2]int{pos.Line, pos.Col}]
 			}
 			if script.Invocation != nil {
@@ -155,11 +156,11 @@ func documentAnalyzerInput(path, pathAbs string, content []byte, workflow *workf
 	return input
 }
 
-func factPosition(pos *workflowlang.Pos) diagnostic.Position { return workflowfacts.Position(pos) }
+func factPosition(pos *workflowlang.Pos) diagmodel.Position { return workflowfacts.Position(pos) }
 
-func actionFactsWorkflow(metadata *ActionMetadata) *workflowlang.Workflow {
-	parser := workflowlang.NewSourceParser(metadata.src)
-	parser.IndexScalarSources(metadata.schemaRoot)
+func actionFactsWorkflow(metadata *actionmeta.Metadata) *workflowlang.Workflow {
+	parser := workflowlang.NewSourceParser(metadata.Source)
+	parser.IndexScalarSources(metadata.Root)
 	job := &workflowlang.Job{}
 	for _, step := range metadata.Runs.Steps {
 		job.Steps = append(job.Steps, compositeScriptStep(step, parser))

@@ -5,30 +5,32 @@ import (
 	"encoding/json"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/report"
-
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
 func TestStructuredRenderRanges(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
-		end        DiagnosticPosition
+		end        diagmodel.Position
 		github     string
 		legacySpan string
 	}{
-		{"single line", DiagnosticPosition{Line: 1, Column: 4}, "line=1,endLine=1,col=2,endColumn=3", "1:2-3"},
-		{"multiple lines", DiagnosticPosition{Line: 2, Column: 4}, "line=1,endLine=2", "1:2-5"},
-		{"next line boundary", DiagnosticPosition{Line: 2, Column: 1}, "line=1,endLine=1", "1:2-5"},
-		{"later line boundary", DiagnosticPosition{Line: 3, Column: 1}, "line=1,endLine=2", "1:2-5"},
+		{"single line", diagmodel.Position{Line: 1, Column: 4}, "line=1,endLine=1,col=2,endColumn=3", "1:2-3"},
+		{"multiple lines", diagmodel.Position{Line: 2, Column: 4}, "line=1,endLine=2", "1:2-5"},
+		{"next line boundary", diagmodel.Position{Line: 2, Column: 1}, "line=1,endLine=1", "1:2-5"},
+		{"later line boundary", diagmodel.Position{Line: 3, Column: 1}, "line=1,endLine=2", "1:2-5"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := []byte("abcde\nfghij\n")
-			finding := &Error{
-				Path: "input.yml", Rule: "expression", Message: "bad range", Start: DiagnosticPosition{Line: 1, Column: 2}, endPosition: &workflowlang.Pos{Line: tc.end.Line, Col: tc.end.Column},
+			finding := &findingmodel.Finding{
+				Path: "input.yml", Rule: "expression", Message: "bad range", Start: diagmodel.Position{Line: 1, Column: 2}, EndPosition: &workflowlang.Pos{Line: tc.end.Line, Col: tc.end.Column},
 			}
-			result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, Sources: []report.DiagnosticSource{{Content: source}}, files: []analyzedFile{{
-				source: SourceUnit{Path: "input.yml", Content: source}, errors: []*Error{finding},
+			result := &AnalysisResult{Diagnostics: []diagmodel.Diagnostic{finding.Canonical(source)}, Sources: []report.DiagnosticSource{{Content: source}}, files: []analyzedFile{{
+				source: SourceUnit{Path: "input.yml", Content: source}, errors: []*findingmodel.Finding{finding},
 			}}}
 			legacy, err := NewAnalysisRenderer("", "{{range .}}{{.Line}}:{{.Column}}-{{.EndColumn}}{{end}}", false)
 			if err != nil {
@@ -41,7 +43,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 			if legacyOut.String() != tc.legacySpan {
 				t.Fatalf("custom-template range changed: want %s, got %s", tc.legacySpan, legacyOut.String())
 			}
-			for _, format := range []OutputFormat{OutputFormatSARIF, OutputFormatGitHub} {
+			for _, format := range []render.Format{render.FormatSARIF, render.FormatGitHub} {
 				t.Run(string(format), func(t *testing.T) {
 					renderer, err := NewAnalysisRenderer(format, "", false)
 					if err != nil {
@@ -51,7 +53,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 					if err := renderer.Render(&out, result); err != nil {
 						t.Fatal(err)
 					}
-					if format == OutputFormatGitHub {
+					if format == render.FormatGitHub {
 						want := "::error file=input.yml," + tc.github + ",title=expression::bad range\n"
 						if out.String() != want {
 							t.Fatalf("want %s, got %s", want, out.String())
@@ -84,12 +86,12 @@ func TestStructuredRenderRanges(t *testing.T) {
 
 func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	source := []byte("on: push\n")
-	finding := &Error{Path: "input.yml", Rule: "expression", Message: "bad text", Start: DiagnosticPosition{Line: 1, Column: 1}}
-	result := &AnalysisResult{Diagnostics: []Diagnostic{finding.diagnostic(source)}, Sources: []report.DiagnosticSource{{Content: source}}, files: []analyzedFile{{
-		source: SourceUnit{Path: "input.yml", Content: source}, errors: []*Error{finding},
+	finding := &findingmodel.Finding{Path: "input.yml", Rule: "expression", Message: "bad text", Start: diagmodel.Position{Line: 1, Column: 1}}
+	result := &AnalysisResult{Diagnostics: []diagmodel.Diagnostic{finding.Canonical(source)}, Sources: []report.DiagnosticSource{{Content: source}}, files: []analyzedFile{{
+		source: SourceUnit{Path: "input.yml", Content: source}, errors: []*findingmodel.Finding{finding},
 	}}}
 
-	textRenderer, err := NewAnalysisRenderer(OutputFormatText, "", true)
+	textRenderer, err := NewAnalysisRenderer(render.FormatText, "", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +103,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 		t.Fatalf("explicit text format omitted source snippet: %q", text.String())
 	}
 
-	onelineRenderer, err := NewAnalysisRenderer(OutputFormatOneline, "", false)
+	onelineRenderer, err := NewAnalysisRenderer(render.FormatOneline, "", false)
 	if err != nil {
 		t.Fatal(err)
 	}

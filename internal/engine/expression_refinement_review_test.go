@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -109,7 +110,7 @@ func TestActionMappingInterpolationReview(t *testing.T) {
 	for _, field := range []string{"env", "with"} {
 		for _, value := range []string{"prefix-${{ inputs.value }}", "${{ inputs.value }}-suffix", "${{ inputs.value }}tail}}", "${{ inputs.value }}${{ inputs.value }}", "${{ fromJSON(inputs.value) }}", `${{ fromJSON('{"key":"${{"}') }}`} {
 			t.Run(field+"/"+value, func(t *testing.T) {
-				var meta ActionMetadata
+				var meta actionmeta.Metadata
 				source := `name: test
 description: test
 inputs:
@@ -123,14 +124,13 @@ runs:
 				if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
 					t.Fatal(err)
 				}
-				rule := NewRuleAction(nil)
-				rule.checkActionMetadataSchema(&meta)
+				findings := actionmeta.Validate(&meta)
 				want := 1
 				if strings.HasPrefix(value, "${{ fromJSON(") {
 					want = 0
 				}
-				if len(rule.Errs()) != want || (want == 1 && !strings.Contains(rule.Errs()[0].Message, "expected a mapping")) {
-					t.Fatalf("want %d mapping errors, got %v", want, rule.Errs())
+				if len(findings) != want || (want == 1 && !strings.Contains(findings[0].Message, "expected a mapping")) {
+					t.Fatalf("want %d mapping errors, got %v", want, findings)
 				}
 			})
 		}

@@ -9,7 +9,10 @@ import (
 	"testing"
 	"time"
 
+	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+
 	"golang.org/x/sys/execabs"
 )
 
@@ -41,7 +44,7 @@ jobs:
 			if findings {
 				workflow += "          echo $ACTIONLINT_STDIN_REGRESSION\n"
 			}
-			var errs []*Error
+			var errs []*findingmodel.Finding
 			done := make(chan error, 1)
 			go func() {
 				var err error
@@ -153,7 +156,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: &LocalActionsCache{}}
+			collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
 
 			w := &workflowlang.Workflow{}
 			if tc.workflow != "" {
@@ -188,7 +191,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			}
 			e.Run = &workflowlang.String{Value: "echo ok"}
 			collector.collectScript(&workflowlang.Step{Exec: e}, nil, "", nil, nil, nil)
-			if s := collector.scripts[0].execution.shell.name; s != tc.want {
+			if s := collector.scripts[0].execution.shell.Name; s != tc.want {
 				t.Fatalf("detected shell %q but wanted %q", s, tc.want)
 			}
 		})

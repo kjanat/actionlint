@@ -7,11 +7,11 @@ import (
 	"slices"
 	"strings"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
 	"actionlint.kjanat.dev/internal/actioncatalog"
-	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
-func (g *gen) writeCatalog(out io.Writer, actions map[string]*actionlint.ActionMetadata) error {
+func (g *gen) writeCatalog(out io.Writer, actions map[string]*actionmeta.Metadata) error {
 	c := actioncatalog.Catalog{Schema: "popular_actions.schema.json", Version: 1, References: map[string]string{}, Definitions: map[string]actioncatalog.Definition{}, Retired: []string{}}
 	identities := map[string]string{}
 	for _, spec := range slices.Sorted(maps.Keys(actions)) {

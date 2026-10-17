@@ -2,15 +2,17 @@ package engine
 
 import (
 	"actionlint.kjanat.dev/internal/checks/permission"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/checks"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // declarationRule is the traversal adapter for stateless declaration checks.
 // Check implementations own their inputs and results; only this adapter collects
 // findings for the remaining visitor pipeline.
 type declarationRule struct {
-	RuleBase
+	workflowvisit.Base
 	check         checks.Declaration
 	workflowCheck func(*workflow.Workflow) []checks.Finding
 	jobCheck      func(*workflow.Job) []checks.Finding
@@ -18,16 +20,16 @@ type declarationRule struct {
 }
 
 func newDeclarationRule(name string) *declarationRule {
-	return &declarationRule{RuleBase: builtinRuleBase(name), check: checks.Declaration(name)}
+	return &declarationRule{Base: builtinRuleBase(name), check: checks.Declaration(name)}
 }
 func (r *declarationRule) collect(input []checks.Finding, job string) {
 	for _, d := range input {
-		finding := findingOf(d.Diagnostic)
+		finding := findingmodel.FromDiagnostic(d.Diagnostic)
 		if d.Step != nil {
-			finding.owner = &diagnosticOwner{Job: job, Step: d.Step.Pos}
-			finding.ignoreOrigin = newDiagnosticIgnoreOrigin(job, d.Step)
+			finding.Owner = &findingmodel.Owner{Job: job, Step: d.Step.Pos}
+			finding.IgnoreOrigin = findingmodel.StepOrigin(job, d.Step)
 		}
-		r.errs = append(r.errs, finding)
+		r.Findings = append(r.Findings, finding)
 	}
 }
 func (r *declarationRule) VisitWorkflowPre(w *workflow.Workflow) error {

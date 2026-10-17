@@ -1,33 +1,25 @@
 package engine
 
 import (
-	"slices"
-	"strings"
-
-	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-)
-
-type platformKind int
-
-const (
-	platformKindAny platformKind = iota
-	platformKindMacOrLinux
-	platformKindWindows
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // RuleShellName is a rule to check 'shell' field. For more details, see
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
 type RuleShellName struct {
-	RuleBase
-	platform platformKind
+	workflowvisit.Base
+	platform runnerlang.Platform
 }
 
 // NewRuleShellName creates new RuleShellName instance.
 func NewRuleShellName() *RuleShellName {
 	return &RuleShellName{
-		RuleBase: builtinRuleBase("shell-name"),
-		platform: platformKindAny,
+		Base:     builtinRuleBase("shell-name"),
+		platform: runnerlang.Any,
 	}
 }
 
@@ -44,133 +36,29 @@ func (rule *RuleShellName) VisitJobPre(n *workflowlang.Job) error {
 	if n.RunsOn == nil {
 		return nil
 	}
-	rule.platform = runnerPlatform(n.RunsOn)
-	rule.checkShellValue(defaultsShellValue(n.Defaults))
+	rule.platform = runnerlang.PlatformOf(n.RunsOn)
+	rule.checkShellValue(execution.DefaultShell(n.Defaults))
 	return nil
 }
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
 func (rule *RuleShellName) VisitJobPost(n *workflowlang.Job) error {
-	rule.platform = platformKindAny // Clear
+	rule.platform = runnerlang.Any // Clear
 	return nil
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
 func (rule *RuleShellName) VisitWorkflowPre(n *workflowlang.Workflow) error {
-	rule.checkShellValue(defaultsShellValue(n.Defaults))
+	rule.checkShellValue(execution.DefaultShell(n.Defaults))
 	return nil
 }
 
 func (rule *RuleShellName) checkShellName(node *workflowlang.String) {
-	rule.checkShellValue(shellValueFromString(node))
+	rule.checkShellValue(execution.ShellValueOf(node))
 }
 
-func (rule *RuleShellName) checkShellValue(shell shellValue) {
-	if shell.kind != shellValueSource && shell.kind != shellValueEvaluated {
-		return
+func (rule *RuleShellName) checkShellValue(shell execution.ShellValue) {
+	for _, d := range execution.CheckShell(shell, rule.platform) {
+		rule.Findings = append(rule.Findings, findingmodel.FromDiagnostic(d))
 	}
-	node := shell.value
-	if shell.kind == shellValueSource && node.ContainsExpression() {
-		return
-	}
-
-	// Ignore custom shell
-	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#custom-shell
-	if strings.Contains(node.Value, "{0}") {
-		return
-	}
-
-	name := strings.ToLower(node.Value)
-	available := getAvailableShellNames(rule.platform)
-
-	if slices.Contains(available, name) {
-		return // ok
-	}
-
-	onPlatform := ""
-	switch rule.platform {
-	case platformKindWindows:
-		for _, p := range getAvailableShellNames(platformKindAny) {
-			if name == p {
-				onPlatform = " on Windows" // only when the shell is unavailable on Windows
-			}
-		}
-	case platformKindMacOrLinux:
-		for _, p := range getAvailableShellNames(platformKindAny) {
-			if name == p {
-				onPlatform = " on macOS or Linux" // only when the shell is unavailable on macOS or Linux
-			}
-		}
-	}
-
-	rule.Errorf(
-		node.Pos,
-		"shell name %q is invalid%s. available names are %s",
-		node.Value,
-		onPlatform,
-		stringutil.SortedQuotes(available),
-	)
-}
-
-func getAvailableShellNames(kind platformKind) []string {
-	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
-	switch kind {
-	case platformKindAny:
-		return []string{
-			"bash",
-			"pwsh",
-			"python",
-			"sh",
-			"cmd",
-			"powershell",
-		}
-	case platformKindWindows:
-		return []string{
-			"bash",
-			"pwsh",
-			"python",
-			"cmd",
-			"powershell",
-		}
-	case platformKindMacOrLinux:
-		return []string{
-			"bash",
-			"pwsh",
-			"python",
-			"sh",
-		}
-	default:
-		panic("unreachable")
-	}
-}
-
-func runnerPlatform(runner *workflowlang.Runner) platformKind {
-	if runner == nil {
-		return platformKindAny
-	}
-
-	// Note: Labels for self-hosted runners:
-	// https://docs.github.com/en/actions/hosting-your-own-runners/using-labels-with-self-hosted-runners
-
-	ret := platformKindAny
-	for _, label := range runnerPlatformLabels(runner) {
-		k := platformKindAny
-		l := strings.ToLower(label.Value)
-		if strings.HasPrefix(l, "windows-") || l == "windows" {
-			k = platformKindWindows
-		} else if strings.HasPrefix(l, "macos-") || strings.HasPrefix(l, "ubuntu-") || strings.HasPrefix(l, "xcode-") || l == "macos" || l == "linux" {
-			k = platformKindMacOrLinux
-		}
-
-		if k == platformKindAny {
-			continue
-		}
-		if ret != platformKindAny && ret != k {
-			// Conflicts are reported by runner-label rule so simply ignore here
-			return platformKindAny
-		}
-		ret = k
-	}
-
-	return ret
 }

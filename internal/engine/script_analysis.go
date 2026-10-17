@@ -3,7 +3,10 @@ package engine
 import (
 	"context"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // scriptUnit snapshots invocation context before analyzers run. Source mapping
@@ -14,7 +17,7 @@ type scriptUnit struct {
 	config    *Config
 	path      string
 	content   []byte
-	origin    *diagnosticIgnoreOrigin
+	origin    *findingmodel.IgnoreOrigin
 	scope     *scriptScope
 	execution scriptExecution
 }
@@ -22,7 +25,7 @@ type scriptUnit struct {
 // scriptScope identifies a workflow or composite invocation independently of
 // whether it contains scripts, so configuration failures are still observable.
 type scriptScope struct {
-	paths      runPaths
+	paths      execution.Paths
 	config     *Config
 	actionPath string
 	composite  bool
@@ -33,8 +36,8 @@ type scriptScope struct {
 }
 
 type scriptExecution struct {
-	shell     executionShell
-	directory runDirectory
+	shell     execution.Shell
+	directory execution.Directory
 }
 
 type scriptBatch struct {
@@ -43,13 +46,13 @@ type scriptBatch struct {
 }
 
 type scriptAnalyzer interface {
-	AnalyzeScripts(context.Context, scriptBatch) ([]*Error, error)
+	AnalyzeScripts(context.Context, scriptBatch) ([]*findingmodel.Finding, error)
 }
 
 type builtinAnalyzers struct {
 	resolveExecution bool
 	scriptInfo       []RuleInfo
-	rules            []Rule
+	rules            []workflowvisit.Rule
 	scripts          []scriptAnalyzer
 }
 
@@ -75,24 +78,22 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *C
 	if run.Shell != nil {
 		shell = &run.Shell.Value
 	}
-	unit := scriptUnit{run: run, shell: shell, config: cfg, path: path, content: content, origin: newDiagnosticIgnoreOrigin(analysis.jobID, step), scope: analysis.scriptScope}
+	unit := scriptUnit{run: run, shell: shell, config: cfg, path: path, content: content, origin: findingmodel.StepOrigin(analysis.jobID, step), scope: analysis.scriptScope}
 	if unit.scope != nil && analysis.resolveScriptExecution {
 		paths := unit.scope.paths
 		if analysis.actions != nil {
-			checkout := analysis.actions.currentCheckout()
-			paths.checkout, paths.checkoutUnknown = checkout.path, checkout.kind == directoryUnknown
-			paths.placements, paths.caseInsensitive = analysis.actions.checkoutState(), analysis.actions.caseInsensitive
-			paths.platform = analysis.actions.platform
+			paths = analysis.actions.ApplyCheckout(paths)
+			paths.Platform = analysis.actions.Platform()
 		}
 		jobShell, workflowShell, runnerShell := analysis.scriptJobShell, analysis.workflowShell, analysis.scriptRunnerShell
 		jobDir, workflowDir := analysis.scriptJobDir, analysis.scriptWorkflowDir
 		if unit.scope.composite {
-			jobShell, workflowShell, runnerShell = shellValue{}, shellValue{}, shellValue{}
-			jobDir, workflowDir = runDirectory{}, runDirectory{}
+			jobShell, workflowShell, runnerShell = execution.ShellValue{}, execution.ShellValue{}, execution.ShellValue{}
+			jobDir, workflowDir = execution.Directory{}, execution.Directory{}
 		}
 		unit.execution = scriptExecution{
-			shell:     resolveRunShell(run, jobShell, workflowShell, runnerShell),
-			directory: paths.resolve(paths.effectiveRunDirectory(run, jobDir, workflowDir)),
+			shell:     execution.ResolveShell(run, jobShell, workflowShell, runnerShell),
+			directory: paths.Resolve(paths.EffectiveDirectory(run, jobDir, workflowDir)),
 		}
 	}
 	analysis.scripts = append(analysis.scripts, unit)

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestCompositeSuggestionPositions(t *testing.T) {
@@ -42,7 +44,7 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 				if len(result.Diagnostics) != count || !strings.Contains(result.Diagnostics[0].Message, "did you mean") {
 					t.Fatalf("expected %d suggestions: %+v", count, result.Diagnostics)
 				}
-				var want DiagnosticPosition
+				var want diagmodel.Position
 				for i, line := range strings.Split(metadata, "\n") {
 					if tc.fallback {
 						key := "run: "
@@ -50,11 +52,11 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 							key = "if: "
 						}
 						if col := strings.Index(line, key); col >= 0 {
-							want = DiagnosticPosition{Line: i + 1, Column: col + len(key) + 1}
+							want = diagmodel.Position{Line: i + 1, Column: col + len(key) + 1}
 							break
 						}
 					} else if col := strings.Index(line, tc.token); col >= 0 && !strings.Contains(line, tc.token+":") {
-						want = DiagnosticPosition{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
+						want = diagmodel.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
 						break
 					}
 				}

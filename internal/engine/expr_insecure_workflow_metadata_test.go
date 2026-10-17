@@ -4,6 +4,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
 
 func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
@@ -71,7 +73,7 @@ func TestWorkflowRunSiblingWorkflowMetadataSafeControls(t *testing.T) {
 	}
 }
 
-func lintSiblingWorkflowMetadata(t *testing.T, step, ending string) []*Error {
+func lintSiblingWorkflowMetadata(t *testing.T, step, ending string) []*findingmodel.Finding {
 	t.Helper()
 	linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: t.TempDir()})
 	if err != nil {

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	actioncheck "actionlint.kjanat.dev/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -117,14 +119,13 @@ runs:
   steps:
     - uses: actions/checkout@v6
       ` + field + ": " + tc.value + "\n")
-				var meta ActionMetadata
+				var meta actionmeta.Metadata
 				if err := yaml.Unmarshal(source, &meta); err != nil {
 					t.Fatal(err)
 				}
-				meta.file, meta.src = "action.yml", source
-				rule := NewRuleAction(nil)
-				rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./action", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
-				errs := rule.Errs()
+				meta.Filename, meta.Source = "action.yml", source
+				findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})
+				errs := findings
 				if tc.invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "expected a mapping") {
 						t.Fatalf("want one mapping diagnostic, got %v", errs)

@@ -2,30 +2,32 @@
 
 package engine
 
+import actionmeta "actionlint.kjanat.dev/internal/action"
+
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
-var PopularActions = map[string]*ActionMetadata{
+var PopularActions = map[string]*actionmeta.Metadata{
 	"kjanat/actions-shells@v0.1.0": {
 		Name: "Actions Shells",
-		Runs: ActionMetadataRuns{Using: "node24"},
-		Inputs: ActionMetadataInputs{
-			"doctor":   {"doctor", false, false, ""},
-			"runtimes": {"runtimes", false, false, ""},
+		Runs: actionmeta.Runs{Using: "node24"},
+		Inputs: actionmeta.Inputs{
+			"doctor":   {Name: "doctor", Required: false, Deprecated: false, DeprecationMessage: ""},
+			"runtimes": {Name: "runtimes", Required: false, Deprecated: false, DeprecationMessage: ""},
 		},
-		Outputs: ActionMetadataOutputs{
-			"bin-dir": {"bin-dir"},
-			"cli":     {"cli"},
-			"version": {"version"},
+		Outputs: actionmeta.Outputs{
+			"bin-dir": {Name: "bin-dir"},
+			"cli":     {Name: "cli"},
+			"version": {Name: "version"},
 		},
 	},
 	"rhysd/changelog-from-release/action@v2.2.2": {
 		Name: "Run changelog-from-release",
-		Inputs: ActionMetadataInputs{
-			"commit":       {"commit", false, false, ""},
-			"file":         {"file", true, false, ""},
-			"github_token": {"github_token", true, false, ""},
-			"push":         {"push", false, false, ""},
-			"version":      {"version", false, false, ""},
+		Inputs: actionmeta.Inputs{
+			"commit":       {Name: "commit", Required: false, Deprecated: false, DeprecationMessage: ""},
+			"file":         {Name: "file", Required: true, Deprecated: false, DeprecationMessage: ""},
+			"github_token": {Name: "github_token", Required: true, Deprecated: false, DeprecationMessage: ""},
+			"push":         {Name: "push", Required: false, Deprecated: false, DeprecationMessage: ""},
+			"version":      {Name: "version", Required: false, Deprecated: false, DeprecationMessage: ""},
 		},
 	},
 }

@@ -3,10 +3,11 @@ package engine
 import (
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func testValidateEnvVarName(t *testing.T, name string) []*Error {
+func testValidateEnvVarName(t *testing.T, name string) []*findingmodel.Finding {
 	t.Helper()
 	n := &workflowlang.String{Value: name, Pos: &workflowlang.Pos{}}
 	e := &workflowlang.Env{

@@ -15,10 +15,8 @@ import (
 	"time"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
-
-	"actionlint.kjanat.dev/internal/workspace"
-
 	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func ruffForTest(t *testing.T) string {

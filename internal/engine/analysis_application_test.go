@@ -15,7 +15,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -39,20 +44,20 @@ func (w *analysisRecordingLog) Write(p []byte) (int, error) {
 }
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {
-	base := Error{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: DiagnosticPosition{Line: 1, Column: 1}, endColumn: 4, source: []byte("echo $VALUE\n")}
+	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: diagmodel.Position{Line: 1, Column: 1}, EndColumn: 4, Source: []byte("echo $VALUE\n")}
 	result := &AnalysisResult{}
-	for _, change := range []func(*Error){
-		func(*Error) {},
-		func(*Error) {},
-		func(e *Error) { e.endColumn = 5 },
-		func(e *Error) { e.source = []byte("echo $OTHER\n") },
-		func(e *Error) { e.Message = "another finding" },
-		func(e *Error) { e.Path = "another/action.yml" },
-		func(e *Error) { e.Rule = "another-rule" },
+	for _, change := range []func(*findingmodel.Finding){
+		func(*findingmodel.Finding) {},
+		func(*findingmodel.Finding) {},
+		func(e *findingmodel.Finding) { e.EndColumn = 5 },
+		func(e *findingmodel.Finding) { e.Source = []byte("echo $OTHER\n") },
+		func(e *findingmodel.Finding) { e.Message = "another finding" },
+		func(e *findingmodel.Finding) { e.Path = "another/action.yml" },
+		func(e *findingmodel.Finding) { e.Rule = "another-rule" },
 	} {
 		finding := base
 		change(&finding)
-		result.files = append(result.files, analyzedFile{source: SourceUnit{Content: []byte("workflow")}, errors: []*Error{&finding}})
+		result.files = append(result.files, analyzedFile{source: SourceUnit{Content: []byte("workflow")}, errors: []*findingmodel.Finding{&finding}})
 	}
 	result.collectDiagnostics()
 	if len(result.Diagnostics) != 6 || len(result.legacyErrors()) != 6 || result.FileCount != 7 {
@@ -61,21 +66,21 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 }
 
 func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
-	base := Error{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: DiagnosticPosition{Line: 1, Column: 1}}
+	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: diagmodel.Position{Line: 1, Column: 1}}
 	result := &AnalysisResult{}
-	for _, change := range []func(*Error){
-		func(*Error) {},
-		func(e *Error) { e.Code = "SC2086" },
-		func(e *Error) { e.Severity = "warning" },
-		func(e *Error) {
-			e.Fixes = []DiagnosticFix{{Description: "quote", Edits: []DiagnosticEdit{{Path: "action.yml", Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}, Replacement: "quoted"}}}}
+	for _, change := range []func(*findingmodel.Finding){
+		func(*findingmodel.Finding) {},
+		func(e *findingmodel.Finding) { e.Code = "SC2086" },
+		func(e *findingmodel.Finding) { e.Severity = "warning" },
+		func(e *findingmodel.Finding) {
+			e.Fixes = []diagmodel.Fix{{Description: "quote", Edits: []diagmodel.Edit{{Path: "action.yml", Start: diagmodel.Position{Line: 1, Column: 1}, End: diagmodel.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
 		},
 	} {
 		finding := base
 		change(&finding)
 		result.files = append(result.files,
-			analyzedFile{errors: []*Error{&finding}},
-			analyzedFile{errors: []*Error{&finding}},
+			analyzedFile{errors: []*findingmodel.Finding{&finding}},
+			analyzedFile{errors: []*findingmodel.Finding{&finding}},
 		)
 	}
 	result.collectDiagnostics()
@@ -170,23 +175,25 @@ func TestLinterAnalysisFacades(t *testing.T) {
 	relSecond, _ := filepath.Rel(root, second)
 	for _, tc := range []struct {
 		name     string
-		call     func(*Linter) ([]*Error, error)
+		call     func(*Linter) ([]*findingmodel.Finding, error)
 		paths    []string
 		selected []string
 	}{
-		{"repository", func(l *Linter) ([]*Error, error) { return l.LintRepository("") }, []string{relFirst, relSecond}, []string{first, second}},
-		{"directory", func(l *Linter) ([]*Error, error) { return l.LintDir(dir, nil) }, []string{relFirst, relSecond}, []string{first, second}},
-		{"files", func(l *Linter) ([]*Error, error) { return l.LintFiles([]string{second, first}, nil) }, []string{relSecond, relFirst}, []string{second, first}},
-		{"file", func(l *Linter) ([]*Error, error) { return l.LintFile(first, nil) }, []string{relFirst}, nil},
-		{"stdin", func(l *Linter) ([]*Error, error) { return l.LintStdin(strings.NewReader(string(content))) }, []string{first}, nil},
-		{"content", func(l *Linter) ([]*Error, error) { return l.Lint(first, content, nil) }, []string{first}, nil},
+		{"repository", func(l *Linter) ([]*findingmodel.Finding, error) { return l.LintRepository("") }, []string{relFirst, relSecond}, []string{first, second}},
+		{"directory", func(l *Linter) ([]*findingmodel.Finding, error) { return l.LintDir(dir, nil) }, []string{relFirst, relSecond}, []string{first, second}},
+		{"files", func(l *Linter) ([]*findingmodel.Finding, error) { return l.LintFiles([]string{second, first}, nil) }, []string{relSecond, relFirst}, []string{second, first}},
+		{"file", func(l *Linter) ([]*findingmodel.Finding, error) { return l.LintFile(first, nil) }, []string{relFirst}, nil},
+		{"stdin", func(l *Linter) ([]*findingmodel.Finding, error) {
+			return l.LintStdin(strings.NewReader(string(content)))
+		}, []string{first}, nil},
+		{"content", func(l *Linter) ([]*findingmodel.Finding, error) { return l.Lint(first, content, nil) }, []string{first}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out strings.Builder
 			var selected []string
 			calls := 0
 			l, err := NewLinter(&out, &LinterOptions{
-				WorkingDir: root, StdinFileName: first, OutputFormat: OutputFormatJSON,
+				WorkingDir: root, StdinFileName: first, OutputFormat: render.FormatJSON,
 				OnFilesSelected: func(paths []string) {
 					calls++
 					selected = slices.Clone(paths)
@@ -214,7 +221,7 @@ func TestLinterAnalysisFacades(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var report CheckResult
+			var report render.CheckResult
 			if err := json.Unmarshal([]byte(out.String()), &report); err != nil {
 				t.Fatal(err)
 			}
@@ -428,14 +435,14 @@ func TestLinterEmptySelection(t *testing.T) {
 	var out strings.Builder
 	selections, rules := 0, 0
 	l, err := NewLinter(&out, &LinterOptions{
-		Context: ctx, OutputFormat: OutputFormatJSON,
+		Context: ctx, OutputFormat: render.FormatJSON,
 		OnFilesSelected: func(paths []string) {
 			selections++
 			if len(paths) != 0 {
 				t.Fatal(paths)
 			}
 		},
-		OnRulesCreated: func(r []Rule) []Rule { rules++; return r },
+		OnRulesCreated: func(r []workflowvisit.Rule) []workflowvisit.Rule { rules++; return r },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -451,10 +458,10 @@ func TestLinterTemplateRulesAcrossCalls(t *testing.T) {
 	count := 0
 	l, err := NewLinter(&out, &LinterOptions{
 		Format: "{{range allKinds}}{{.Name}}:{{.Description}}\n{{end}}",
-		OnRulesCreated: func([]Rule) []Rule {
+		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			count++
-			rule := NewRuleBase(fmt.Sprintf("custom-%d", count), "custom description")
-			return []Rule{&rule}
+			rule := workflowvisit.NewBase(fmt.Sprintf("custom-%d", count), "custom description")
+			return []workflowvisit.Rule{&rule}
 		},
 	})
 	if err != nil {
@@ -474,7 +481,7 @@ func TestLinterTemplateRulesAcrossCalls(t *testing.T) {
 }
 
 type analysisFailingRule struct {
-	RuleBase
+	workflowvisit.Base
 	err error
 }
 
@@ -491,9 +498,9 @@ func TestLinterAnalysisFailure(t *testing.T) {
 	for _, paths := range [][]string{{"a.yml"}, {"a.yml", "b.yml"}} {
 		var out strings.Builder
 		l, err := NewLinter(&out, &LinterOptions{
-			OutputFormat: OutputFormatJSON,
-			OnRulesCreated: func([]Rule) []Rule {
-				return []Rule{&analysisFailingRule{NewRuleBase("failing", ""), cause}}
+			OutputFormat: render.FormatJSON,
+			OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
+				return []workflowvisit.Rule{&analysisFailingRule{workflowvisit.NewBase("failing", ""), cause}}
 			},
 		})
 		if err != nil {
@@ -510,13 +517,13 @@ func TestLinterAnalysisFailure(t *testing.T) {
 }
 
 func TestLegacyTextWriteErrors(t *testing.T) {
-	for _, format := range []OutputFormat{OutputFormatText, OutputFormatOneline, OutputFormatJSON, OutputFormatJSONL, OutputFormatSARIF, OutputFormatGitHub} {
+	for _, format := range []render.Format{render.FormatText, render.FormatOneline, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub} {
 		l, err := NewLinter(commandFailingIO{}, &LinterOptions{OutputFormat: format})
 		if err != nil {
 			t.Fatal(err)
 		}
 		_, err = l.Lint("input.yml", []byte(commandBadWorkflow), nil)
-		text := format == OutputFormatText || format == OutputFormatOneline
+		text := format == render.FormatText || format == render.FormatOneline
 		if (err == nil) != text {
 			t.Fatalf("%s changed its write-error contract: %v", format, err)
 		}

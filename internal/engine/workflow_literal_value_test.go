@@ -7,16 +7,14 @@ import (
 	"strings"
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/calls"
-
+	"actionlint.kjanat.dev/internal/workspace"
 	sourceref "actionlint.kjanat.dev/source"
 
-	"github.com/google/go-cmp/cmp/cmpopts"
-
-	"actionlint.kjanat.dev/internal/workspace"
-
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
@@ -59,7 +57,7 @@ runs:
 		{"known outputs", "actions/checkout@v6", "\n      - run: echo ${{ steps.action.outputs.missing }}", `property "missing"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var plain []*Error
+			var plain []*findingmodel.Finding
 			for _, uses := range []string{tc.uses, "${{ '" + tc.uses + "' }}"} {
 				source := `on: push
 jobs:
@@ -81,7 +79,7 @@ jobs:
 				}
 				if uses == tc.uses {
 					plain = diagnostics
-				} else if diff := cmp.Diff(plain, diagnostics, cmpopts.IgnoreFields(sourceref.Reference{}, "Revision"), cmp.AllowUnexported(Error{}, actionMetadataFinding{}, actionMetadataFindingKey{})); diff != "" {
+				} else if diff := cmp.Diff(plain, diagnostics, cmpopts.IgnoreFields(sourceref.Reference{}, "Revision"), cmp.AllowUnexported(findingmodel.Finding{}, findingmodel.MetadataIdentity{}, findingmodel.MetadataKey{})); diff != "" {
 					t.Fatal(diff)
 				}
 			}

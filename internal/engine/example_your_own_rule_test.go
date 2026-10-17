@@ -6,20 +6,21 @@ import (
 	"path/filepath"
 
 	actionlint "actionlint.kjanat.dev/internal/engine"
-	workflow "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // A rule type to check every steps have their names.
 type RuleStepName struct {
-	// Embedding RuleBase struct implements the minimal Rule interface.
-	actionlint.RuleBase
+	// Embedding visit.Base struct implements the minimal Rule interface.
+	workflowvisit.Base
 }
 
-// Reimplement methods in RuleBase. Visit* methods are called on checking workflows.
+// Reimplement methods in visit.Base. Visit* methods are called on checking workflows.
 func (r *RuleStepName) VisitStep(n *workflow.Step) error {
 	// Implement your own check
 	if n.Name == nil {
-		// RuleBase provides methods to report errors. See RuleBase.Error and RuleBase.Errorf.
+		// visit.Base provides methods to report errors. See visit.Base.Error and visit.Base.Errorf.
 		r.Error(n.Pos, "every step must have its name")
 	}
 	return nil
@@ -27,7 +28,7 @@ func (r *RuleStepName) VisitStep(n *workflow.Step) error {
 
 func NewRuleStepName() *RuleStepName {
 	return &RuleStepName{
-		RuleBase: actionlint.NewRuleBase("step-name", "Checks every step has their own name"),
+		Base: workflowvisit.NewBase("step-name", "Checks every step has their own name"),
 	}
 }
 
@@ -36,7 +37,7 @@ func ExampleLinter_yourOwnRule() {
 	// add/remove some rules and return the modified slice. This function is called on linting
 	// each workflow files.
 	o := &actionlint.LinterOptions{
-		OnRulesCreated: func(rules []actionlint.Rule) []actionlint.Rule {
+		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			rules = append(rules, NewRuleStepName())
 			return rules
 		},

@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	actioncheck "actionlint.kjanat.dev/internal/action/validation"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
 )
@@ -18,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ` + spec + "\n"
-			check := func(errs []*Error) {
+			check := func(errs []*findingmodel.Finding) {
 				if invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "do not support an '@ref' suffix") {
 						t.Fatal(errs)
@@ -28,7 +31,7 @@ jobs:
 				}
 			}
 			check(lintCachePolicy(t, workflow, ""))
-			var meta ActionMetadata
+			var meta actionmeta.Metadata
 			source := `name: test
 description: test
 runs:
@@ -38,16 +41,15 @@ runs:
 			if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
 				t.Fatal(err)
 			}
-			rule := NewRuleAction(nil)
-			rule.checkLocalActionMetadata(&meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./test", Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
-			check(rule.Errs())
+			findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})
+			check(findings)
 		})
 	}
 }
 
 func TestCompositeOutputCaseCollisions(t *testing.T) {
 	for _, second := range []string{"APPROVED", "denied"} {
-		var meta ActionMetadata
+		var meta actionmeta.Metadata
 		source := `name: test
 description: test
 outputs:

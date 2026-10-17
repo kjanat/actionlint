@@ -7,13 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/internal/workflow/calls"
-
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/analyzer"
+	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/workflow/calls"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/rule"
 )
 
@@ -28,7 +30,7 @@ type analysisEngine struct {
 	reader         *fsread.Reader
 	gitModes       *gitModes
 	ignorePats     IgnorePatterns
-	onRulesCreated func([]Rule) []Rule
+	onRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
 	rulePresets    RulePresets
 }
 
@@ -38,10 +40,10 @@ func (l *analysisEngine) check(
 	project *Project,
 	cfg *Config,
 	proc *concurrentProcess,
-	localActions *LocalActionsCache,
+	localActions *actionlocal.Cache,
 	localReusableWorkflows *calls.Cache,
 	usedRules *[]RuleInfo,
-) (findings []*Error, outline DocumentOutline, resultErr error) {
+) (findings []*findingmodel.Finding, outline DocumentOutline, resultErr error) {
 	proc = proc.Fork()
 	joined := false
 	defer func() {
@@ -154,7 +156,7 @@ func (l *analysisEngine) check(
 			continue
 		}
 		filename := configPath
-		if finding.source != nil && finding.Path != "" {
+		if finding.Source != nil && finding.Path != "" {
 			filename = finding.Path
 		}
 		refs, ok := references[filename]
@@ -165,11 +167,11 @@ func (l *analysisEngine) check(
 		if at, exists := refs.Positions[[2]int{finding.Start.Line, finding.Start.Column}]; exists {
 			ref = at
 		}
-		owner := finding.owner
-		if owner == nil && finding.ignoreOrigin != nil {
-			owner = &diagnosticOwner{Job: finding.ignoreOrigin.job, Step: finding.ignoreOrigin.stepPosition}
+		owner := finding.Owner
+		if owner == nil && finding.IgnoreOrigin != nil {
+			owner = &findingmodel.Owner{Job: finding.IgnoreOrigin.Job, Step: finding.IgnoreOrigin.StepPosition}
 		}
-		if owner != nil && !finding.rawScriptSource {
+		if owner != nil && !finding.RawScriptSource {
 			if job, exists := refs.Jobs[strings.ToLower(owner.Job)]; exists {
 				ref = job
 			}
@@ -181,10 +183,10 @@ func (l *analysisEngine) check(
 		}
 
 		finding.Reference = &ref
-		finding.inferredReference = true
+		finding.InferredReference = true
 	}
-	policy := diagnosticPolicy{ruleDescriptors: l.toolDescriptors, analysisLogger: l.analysisLogger, path: path, configPath: configPath, root: root, workingDir: l.workingDir, content: content, project: project, config: cfg, projectConfig: projectConfig, metadata: metadata, presets: l.rulePresets, additionalRules: additionalRules, ignorePats: l.ignorePats}
-	all, policyErr := policy.apply(all, metadataSources, compositeConfigs)
+	filter := diagnosticpolicy.Policy{RuleDescriptors: l.toolDescriptors, Log: l.log, Debug: l.debug, Path: path, ConfigPath: configPath, Root: root, WorkingDir: l.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: metadata, Presets: l.rulePresets, AdditionalRules: additionalRules, IgnorePatterns: l.ignorePats}
+	all, policyErr := filter.Apply(all, metadataSources, compositeConfigs)
 	if policyErr != nil {
 		return nil, outline, errors.Join(analysisErr, policyErr)
 	}
@@ -194,21 +196,4 @@ func (l *analysisEngine) check(
 	}
 
 	return all, outline, analysisErr
-}
-
-func relativeAnalysisPath(directory, source string) string {
-	if !filepath.IsAbs(source) {
-		return source
-	}
-	// In-memory sources need not exist on disk. Use physical paths only when
-	// both resolve; otherwise retain both original spellings.
-	if resolvedDirectory, err := filepath.EvalSymlinks(directory); err == nil {
-		if resolvedSource, err := filepath.EvalSymlinks(source); err == nil {
-			directory, source = resolvedDirectory, resolvedSource
-		}
-	}
-	if relative, err := filepath.Rel(directory, source); err == nil {
-		return relative
-	}
-	return source
 }

@@ -3,6 +3,8 @@ package engine
 import (
 	"slices"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestCompositeStatusConditionCheckout(t *testing.T) {
@@ -37,7 +39,7 @@ runs:
 - shell: bash
   working-directory: .
   run: ./bad.sh`, AnalysisOptions{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
 			}

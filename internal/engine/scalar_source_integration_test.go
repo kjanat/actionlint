@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/yaml"
@@ -65,8 +67,8 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 					t.Errorf("physical YAML source line missing from snippet: %q", finding.Snippet)
 				}
 				var rendered bytes.Buffer
-				failure := &Error{Start: DiagnosticPosition{Line: finding.Start.Line, Column: finding.Start.Column}, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
-				failure.PrettyPrint(&rendered, []byte(src))
+				failure := &findingmodel.Finding{Start: diagmodel.Position{Line: finding.Start.Line, Column: finding.Start.Column}, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
+				render.FindingOf(failure.Diagnostic, []byte(src)).PrettyPrint(&rendered)
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())
 				}
@@ -80,8 +82,8 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 func TestDiagnosticLongSourceLine(t *testing.T) {
 	line := strings.Repeat("x", 70*1024)
 	for _, raw := range []bool{false, true} {
-		finding := &Error{Start: DiagnosticPosition{Line: 2, Column: 1}, rawScriptSource: raw}
-		if got, ok := render.SourceLine([]byte("first\n"+line+"\n"), finding.Start.Line, finding.rawScriptSource); !ok || got != line {
+		finding := &findingmodel.Finding{Start: diagmodel.Position{Line: 2, Column: 1}, RawScriptSource: raw}
+		if got, ok := render.SourceLine([]byte("first\n"+line+"\n"), finding.Start.Line, finding.RawScriptSource); !ok || got != line {
 			t.Fatalf("raw=%v: long source line missing or truncated", raw)
 		}
 	}

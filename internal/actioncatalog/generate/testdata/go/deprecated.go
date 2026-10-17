@@ -2,20 +2,22 @@
 
 package engine
 
+import actionmeta "actionlint.kjanat.dev/internal/action"
+
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.
-var PopularActions = map[string]*ActionMetadata{
+var PopularActions = map[string]*actionmeta.Metadata{
 	"rhysd/action-setup-vim@v1": {
 		Name: "Setup Vim",
-		Runs: ActionMetadataRuns{Using: "node20"},
-		Inputs: ActionMetadataInputs{
-			"configure-args": {"configure-args", false, true, "test"},
-			"neovim":         {"neovim", false, true, "test"},
-			"token":          {"token", false, true, "test"},
-			"version":        {"version", false, true, "test"},
+		Runs: actionmeta.Runs{Using: "node20"},
+		Inputs: actionmeta.Inputs{
+			"configure-args": {Name: "configure-args", Required: false, Deprecated: true, DeprecationMessage: "test"},
+			"neovim":         {Name: "neovim", Required: false, Deprecated: true, DeprecationMessage: "test"},
+			"token":          {Name: "token", Required: false, Deprecated: true, DeprecationMessage: "test"},
+			"version":        {Name: "version", Required: false, Deprecated: true, DeprecationMessage: "test"},
 		},
-		Outputs: ActionMetadataOutputs{
-			"executable": {"executable"},
+		Outputs: actionmeta.Outputs{
+			"executable": {Name: "executable"},
 		},
 	},
 }

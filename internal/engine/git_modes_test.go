@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestGitIndexLocationCompatibility(t *testing.T) {
@@ -58,14 +60,14 @@ exec "$ACTIONLINT_TEST_REAL_GIT" "$@"
 			t.Setenv("ACTIONLINT_TEST_INDEX_OUTPUT", tc.output)
 			snapshot := (&gitModes{}).load(t.Context(), root)
 			if tc.invalid {
-				if snapshot.err == nil || snapshot.index != "" {
-					t.Fatalf("invalid index location accepted: %q, %v", snapshot.index, snapshot.err)
+				if snapshot.Err == nil || snapshot.Path != "" {
+					t.Fatalf("invalid index location accepted: %q, %v", snapshot.Path, snapshot.Err)
 				}
 				return
 			}
 			want := filepath.Join(root, ".git", "index")
-			if snapshot.err != nil || snapshot.index != want || snapshot.modes["bad.sh"] != "100644" {
-				t.Fatalf("index location = %q, %v; want %q with parsed modes", snapshot.index, snapshot.err, want)
+			if snapshot.Err != nil || snapshot.Path != want || snapshot.Modes["bad.sh"] != "100644" {
+				t.Fatalf("index location = %q, %v; want %q with parsed modes", snapshot.Path, snapshot.Err, want)
 			}
 		})
 	}
@@ -78,13 +80,13 @@ func TestRepositoryGitDisablesFSMonitor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	output, err := repositoryGit(t.Context(), git, root, "config", "--type=bool", "--get", "core.fsmonitor").CombinedOutput()
+	output, err := workspace.GitCommand(t.Context(), git, root, "config", "--type=bool", "--get", "core.fsmonitor").CombinedOutput()
 	if err != nil || strings.TrimSpace(string(output)) != "false" {
 		t.Fatalf("index queries must disable repository fsmonitor: %q, %v", output, err)
 	}
 	snapshot := (&gitModes{}).load(t.Context(), root)
-	if snapshot.err != nil || snapshot.modes["bad.sh"] != "100644" {
-		t.Fatalf("index mode query failed: %v, %v", snapshot.modes, snapshot.err)
+	if snapshot.Err != nil || snapshot.Modes["bad.sh"] != "100644" {
+		t.Fatalf("index mode query failed: %v, %v", snapshot.Modes, snapshot.Err)
 	}
 }
 
@@ -95,18 +97,18 @@ func TestGitIndexSeparateDirectory(t *testing.T) {
 	if err != nil {
 		t.Skip("Git required")
 	}
-	if output, err := repositoryGit(t.Context(), git, root, "init", "--quiet", "--separate-git-dir", metadata).CombinedOutput(); err != nil {
+	if output, err := workspace.GitCommand(t.Context(), git, root, "init", "--quiet", "--separate-git-dir", metadata).CombinedOutput(); err != nil {
 		t.Fatalf("initialize repository: %v: %s", err, output)
 	}
 	writeShellcheckFixture(t, root, "file.sh", "echo hello\n")
-	if output, err := repositoryGit(t.Context(), git, root, "add", "file.sh").CombinedOutput(); err != nil {
+	if output, err := workspace.GitCommand(t.Context(), git, root, "add", "file.sh").CombinedOutput(); err != nil {
 		t.Fatalf("index file: %v: %s", err, output)
 	}
 	snapshot := (&gitModes{}).load(t.Context(), root)
-	if snapshot.err != nil {
-		t.Fatal(snapshot.err)
+	if snapshot.Err != nil {
+		t.Fatal(snapshot.Err)
 	}
-	actual, err := os.Stat(snapshot.index)
+	actual, err := os.Stat(snapshot.Path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +118,7 @@ func TestGitIndexSeparateDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !os.SameFile(actual, expected) {
-		t.Fatalf("separate index location %q does not identify %q", snapshot.index, want)
+		t.Fatalf("separate index location %q does not identify %q", snapshot.Path, want)
 	}
 }
 
@@ -136,20 +138,20 @@ func TestGitModesIntentToAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 	snapshot := (&gitModes{}).load(t.Context(), root)
-	if snapshot.err != nil {
-		t.Fatal(snapshot.err)
+	if snapshot.Err != nil {
+		t.Fatal(snapshot.Err)
 	}
 	for _, name := range []string{"intent.sh", "intent with spaces.sh", "deleted-intent.sh"} {
-		if mode := snapshot.modes[name]; mode != "" {
+		if mode := snapshot.Modes[name]; mode != "" {
 			t.Errorf("intent-to-add %q retained mode %s", name, mode)
 		}
 	}
 	for _, name := range []string{"bad.sh", "staged-empty.sh"} {
-		if mode := snapshot.modes[name]; mode != "100644" {
+		if mode := snapshot.Modes[name]; mode != "100644" {
 			t.Errorf("staged file %q lost mode: %q", name, mode)
 		}
 	}
-	after, err := os.ReadFile(snapshot.index)
+	after, err := os.ReadFile(snapshot.Path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,15 +171,15 @@ func TestGitModesIntentToAddAfterRemoval(t *testing.T) {
 	git("rm", "--cached", "bad.sh", "empty.sh")
 	git("add", "-N", "bad.sh", "empty.sh")
 	snapshot := (&gitModes{}).load(t.Context(), root)
-	if snapshot.err != nil {
-		t.Fatal(snapshot.err)
+	if snapshot.Err != nil {
+		t.Fatal(snapshot.Err)
 	}
 	for _, name := range []string{"bad.sh", "empty.sh"} {
-		if mode := snapshot.modes[name]; mode != "" {
+		if mode := snapshot.Modes[name]; mode != "" {
 			t.Errorf("removed HEAD path %q re-added with intent retained mode %s", name, mode)
 		}
 	}
-	if mode := snapshot.modes["good.sh"]; mode != "100755" {
+	if mode := snapshot.Modes["good.sh"]; mode != "100755" {
 		t.Errorf("unchanged committed file lost mode: %q", mode)
 	}
 }

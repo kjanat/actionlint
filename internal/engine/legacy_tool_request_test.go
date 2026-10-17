@@ -4,12 +4,12 @@ import (
 	"context"
 	"io"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
 	"actionlint.kjanat.dev/internal/tools/adapters"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 type AnalysisRequest struct {
@@ -24,7 +24,7 @@ type AnalysisRequest struct {
 	PyflakesOptions *ExternalCommandOptions
 	IgnorePatterns  IgnorePatterns
 	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
-	OnRulesCreated func([]Rule) []Rule
+	OnRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
 	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
 	WorkingDir string
 	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.

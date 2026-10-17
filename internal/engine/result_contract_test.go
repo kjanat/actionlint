@@ -8,6 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/render"
+
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -78,7 +81,7 @@ func TestCheckResultSchema(t *testing.T) {
 description: Test action
 runs:
   `+runtime+"\n"))
-		result := NewCheckResult(0)
+		result := render.NewCheckResult(0)
 		result.Documents = DocumentOutlines{action}
 		data, err := json.Marshal(result)
 		if err != nil {
@@ -97,7 +100,7 @@ runs:
 		`{"kind":"action","path":"action.yml","parse_status":"complete","inputs":[],"outputs":[],"jobs":[],"runs":{"kind":"composite","steps":[]}}`,
 		`{"kind":"action","path":"action.yml","parse_status":"complete","inputs":[],"outputs":[],"runs":{"kind":"javascript","using":"node24","steps":[]}}`,
 	} {
-		data, err := json.Marshal(NewCheckResult(0))
+		data, err := json.Marshal(render.NewCheckResult(0))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -114,11 +117,11 @@ runs:
 			t.Fatalf("schema accepted mixed document/runtime: %s", invalid)
 		}
 	}
-	diagnostic := Diagnostic{Rule: "shellcheck", Code: "SC2086", Severity: "warning", Message: "Quote variable", Path: "ci.yml",
-		Start: DiagnosticPosition{Line: 2, Column: 3}, End: DiagnosticPosition{Line: 3, Column: 4}, Snippet: "echo $value",
-		Fixes: []DiagnosticFix{{Description: "Quote", Edits: []DiagnosticEdit{{Path: "ci.yml", Start: DiagnosticPosition{Line: 2, Column: 3}, End: DiagnosticPosition{Line: 3, Column: 4}, Replacement: "\"$value\""}}}}}
+	diagnostic := diagmodel.Diagnostic{Rule: "shellcheck", Code: "SC2086", Severity: "warning", Message: "Quote variable", Path: "ci.yml",
+		Start: diagmodel.Position{Line: 2, Column: 3}, End: diagmodel.Position{Line: 3, Column: 4}, Snippet: "echo $value",
+		Fixes: []diagmodel.Fix{{Description: "Quote", Edits: []diagmodel.Edit{{Path: "ci.yml", Start: diagmodel.Position{Line: 2, Column: 3}, End: diagmodel.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}}}
 	for _, code := range []int{0, 1, 2, 3, 99} {
-		result := NewCheckResult(code)
+		result := render.NewCheckResult(code)
 		workflow, parseErrors := Parse([]byte(`on: push
 jobs:
   test:
@@ -131,7 +134,7 @@ jobs:
 		}
 		result.Documents = DocumentOutlines{workflowOutline("ci.yml", workflow, false)}
 		if code == 1 || code == 3 {
-			result.Diagnostics = []Diagnostic{diagnostic}
+			result.Diagnostics = []diagmodel.Diagnostic{diagnostic}
 		}
 		if code < 2 {
 			count := 1
@@ -182,8 +185,8 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := NewCheckResult(1)
-	result.Diagnostics = []Diagnostic{diagnostic, diagnostic}
+	result := render.NewCheckResult(1)
+	result.Diagnostics = []diagmodel.Diagnostic{diagnostic, diagnostic}
 	var lines bytes.Buffer
 	if err := result.WriteJSON(&lines, true); err != nil {
 		t.Fatal(err)
@@ -198,7 +201,7 @@ jobs:
 		}
 		var record struct {
 			SchemaVersion int `json:"schema_version"`
-			Diagnostic
+			diagmodel.Diagnostic
 		}
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			t.Fatal(err)

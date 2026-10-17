@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestMetadataFoldedConditionDiagnostics(t *testing.T) {
@@ -58,7 +60,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			metadata := "name: inner\ndescription: test\n" + tc.body
 			writeShellcheckFixture(t, root, "inner/action.yml", metadata)
 			result := compositeAnalysis(t, root, "- uses: ./inner", AnalysisOptions{})
-			var matched []Diagnostic
+			var matched []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if strings.Contains(d.Message, tc.message) {
 					matched = append(matched, d)
@@ -73,10 +75,10 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 					t.Fatalf("syntax message includes raw coordinates or lacks detail: %s", matched[0].Message)
 				}
 			}
-			var want DiagnosticPosition
+			var want diagmodel.Position
 			for i, line := range strings.Split(metadata, "\n") {
 				if col := strings.Index(line, tc.token); col >= 0 {
-					want = DiagnosticPosition{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
+					want = diagmodel.Position{Line: i + 1, Column: utf8.RuneCountInString(line[:col]) + 1}
 					if strings.HasPrefix(tc.name, "syntax-eof") {
 						want.Column = utf8.RuneCountInString(line) + 1
 					}
@@ -86,7 +88,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			if matched[0].Start != want {
 				t.Fatalf("want %+v got %+v: %s", want, matched[0].Start, matched[0].Message)
 			}
-			if tc.name == "syntax-delimiter" && matched[0].End != (DiagnosticPosition{Line: want.Line, Column: want.Column + 2}) {
+			if tc.name == "syntax-delimiter" && matched[0].End != (diagmodel.Position{Line: want.Line, Column: want.Column + 2}) {
 				t.Fatalf("closing delimiter must retain its two-character range: %+v", matched[0])
 			}
 			if strings.HasPrefix(tc.name, "syntax-eof") && matched[0].End != want {

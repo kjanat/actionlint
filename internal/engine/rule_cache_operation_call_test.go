@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workflow/calls"
-
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -37,7 +37,7 @@ jobs:
         with: {key: test, path: cache}
 `
 					want := mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore"
-					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*Error) {
+					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*findingmodel.Finding) {
 						if !want {
 							if len(diagnostics) != 0 {
 								t.Fatal(diagnostics)
@@ -112,7 +112,7 @@ jobs:
 			if tc.leaf != "" {
 				files["leaf.yaml"] = tc.leaf
 			}
-			checkCacheOperationCalls(t, files, tc.config, func(t *testing.T, diagnostics []*Error) {
+			checkCacheOperationCalls(t, files, tc.config, func(t *testing.T, diagnostics []*findingmodel.Finding) {
 				if tc.kind == "" {
 					if len(diagnostics) != 0 {
 						t.Fatal(diagnostics)
@@ -264,7 +264,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				check := func(diagnostics []*Error, want bool) {
+				check := func(diagnostics []*findingmodel.Finding, want bool) {
 					t.Helper()
 					if !want || suppressed == tc.owner {
 						if len(diagnostics) != 0 {
@@ -330,7 +330,7 @@ jobs:
             with: {key: test, path: cache}
 `
 					want := !suppressed && (mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore")
-					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*Error) {
+					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*findingmodel.Finding) {
 						if !want {
 							if len(diagnostics) != 0 {
 								t.Fatal(diagnostics)
@@ -349,7 +349,7 @@ jobs:
 
 // Force both ways of filling the shared cache before linting the caller. The
 // metadata itself must be identical, and per-caller policy results stay uncached.
-func checkCacheOperationCalls(t *testing.T, sources map[string]string, config string, check func(*testing.T, []*Error)) {
+func checkCacheOperationCalls(t *testing.T, sources map[string]string, config string, check func(*testing.T, []*findingmodel.Finding)) {
 	t.Helper()
 	root := t.TempDir()
 	for name, source := range sources {

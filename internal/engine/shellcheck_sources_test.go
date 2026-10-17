@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func TestShellcheckSourcedDiagnostics(t *testing.T) {
@@ -65,7 +68,7 @@ jobs:
 				t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
 			}
 			assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
-			if finding.Start != (DiagnosticPosition{Line: tc.line, Column: 6}) || finding.End != (DiagnosticPosition{Line: tc.line, Column: 12}) {
+			if finding.Start != (diagmodel.Position{Line: tc.line, Column: 6}) || finding.End != (diagmodel.Position{Line: tc.line, Column: 12}) {
 				t.Fatalf("wrong sourced location: %+v", finding)
 			}
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
@@ -86,7 +89,7 @@ jobs:
 			if !tracked {
 				t.Fatalf("sourced diagnostic file missing from inputs: %v", result.Inputs)
 			}
-			legacy := result.legacyErrors()[0].GetTemplateFields([]byte("workflow text"))
+			legacy := render.Prepare(result.Analysis).Findings[0].TemplateFields()
 			if !strings.Contains(legacy.Snippet, "echo $VALUE") {
 				t.Fatalf("legacy snippet uses workflow text: %+v", legacy)
 			}
@@ -119,7 +122,7 @@ runs:
 		t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
 	}
 	assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
-	if finding.Start != (DiagnosticPosition{Line: 1, Column: 6}) || finding.Snippet != "echo $VALUE" {
+	if finding.Start != (diagmodel.Position{Line: 1, Column: 6}) || finding.Snippet != "echo $VALUE" {
 		t.Fatalf("sourced finding attributed to composite: %+v", finding)
 	}
 }

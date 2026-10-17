@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
@@ -53,14 +55,14 @@ jobs:
 						t.Fatalf("opaque statement affected other steps: %+v", result.Diagnostics)
 					}
 					finding := result.Diagnostics[0]
-					if finding.Start != (DiagnosticPosition{Line: 12 + offset, Column: 20}) || finding.End != (DiagnosticPosition{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
+					if finding.Start != (diagmodel.Position{Line: 12 + offset, Column: 20}) || finding.End != (diagmodel.Position{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
 						t.Fatalf("independent step finding moved: %+v", finding)
 					}
 					return
 				}
 				if !slices.Equal(codes, []string{"B018", "F821"}) ||
-					result.Diagnostics[0].Start != (DiagnosticPosition{Line: 9 + offset, Column: 11}) || result.Diagnostics[0].End != (DiagnosticPosition{Line: 9 + offset, Column: 13}) ||
-					result.Diagnostics[1].Start != (DiagnosticPosition{Line: 10 + offset, Column: 17}) || result.Diagnostics[1].End != (DiagnosticPosition{Line: 10 + offset, Column: 24}) {
+					result.Diagnostics[0].Start != (diagmodel.Position{Line: 9 + offset, Column: 11}) || result.Diagnostics[0].End != (diagmodel.Position{Line: 9 + offset, Column: 13}) ||
+					result.Diagnostics[1].Start != (diagmodel.Position{Line: 10 + offset, Column: 17}) || result.Diagnostics[1].End != (diagmodel.Position{Line: 10 + offset, Column: 24}) {
 					t.Fatalf("statement template changed independent findings: %+v", result.Diagnostics)
 				}
 			})

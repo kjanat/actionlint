@@ -7,9 +7,11 @@ import (
 	"os"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/render"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 
-	"actionlint.kjanat.dev/internal/render"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )
@@ -59,7 +61,7 @@ type LinterOptions struct {
 	Format string
 	// OutputFormat selects a built-in renderer and cannot be combined with Format.
 	// JSON emits CheckResult; JSONL emits individual Diagnostic records.
-	OutputFormat OutputFormat
+	OutputFormat render.Format
 	// StdinFileName is a file name when reading input from stdin. When this value is empty, "<stdin>"
 	// is used as the default value.
 	StdinFileName string
@@ -70,7 +72,7 @@ type LinterOptions struct {
 	// the built-in rules and returns the rules to run. Standalone action metadata
 	// uses built-in metadata and script checks and does not call this hook.
 	// Note that syntax errors may be reported even if this function returns nil or an empty slice.
-	OnRulesCreated func([]Rule) []Rule
+	OnRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
 	// OnFilesSelected is called with the exact file set passed to LintFiles. The callback receives
 	// a copy so modifying it does not affect linting.
 	OnFilesSelected func([]string)
@@ -157,36 +159,36 @@ func generateProjectConfig(projects *Projects, dir string) (string, error) {
 
 // LintRepository finds workflows and actions in the nearest project and prints their findings.
 // An empty directory starts discovery at LinterOptions.WorkingDir.
-func (l *Linter) LintRepository(dir string) ([]*Error, error) {
+func (l *Linter) LintRepository(dir string) ([]*findingmodel.Finding, error) {
 	return l.report(l.Repository(dir))
 }
 
 // LintDir checks YAML workflows recursively in dir, in sorted path order.
-func (l *Linter) LintDir(dir string, project *Project) ([]*Error, error) {
+func (l *Linter) LintDir(dir string, project *Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.directory(dir, project))
 }
 
 // LintFiles checks paths in the supplied order. A nil project enables per-file discovery.
-func (l *Linter) LintFiles(paths []string, project *Project) ([]*Error, error) {
+func (l *Linter) LintFiles(paths []string, project *Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.Files(paths, project))
 }
 
 // LintFile reads and checks one workflow. A nil project enables discovery from path.
-func (l *Linter) LintFile(path string, project *Project) ([]*Error, error) {
+func (l *Linter) LintFile(path string, project *Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.readFiles([]string{path}, project))
 }
 
 // LintStdin checks the reader using LinterOptions.StdinFileName, or <stdin> by default.
-func (l *Linter) LintStdin(stdin io.Reader) ([]*Error, error) {
+func (l *Linter) LintStdin(stdin io.Reader) ([]*findingmodel.Finding, error) {
 	return l.report(l.ReadStdin(stdin, false))
 }
 
 // Lint checks content without reading path. An existing path can identify its project.
-func (l *Linter) Lint(path string, content []byte, project *Project) ([]*Error, error) {
+func (l *Linter) Lint(path string, content []byte, project *Project) ([]*findingmodel.Finding, error) {
 	return l.report(l.content(path, content, project, false))
 }
 
-func (l *Linter) report(result *AnalysisResult, err error) ([]*Error, error) {
+func (l *Linter) report(result *AnalysisResult, err error) ([]*findingmodel.Finding, error) {
 	if err != nil {
 		return nil, LegacyAnalysisError(err)
 	}

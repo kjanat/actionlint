@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
 )
 
@@ -15,7 +16,7 @@ type phaseScriptAnalyzer struct {
 	failure error
 }
 
-func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scriptBatch) ([]*Error, error) {
+func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scriptBatch) ([]*findingmodel.Finding, error) {
 	a.calls++
 	a.scripts = len(batch.scripts)
 	return nil, a.failure

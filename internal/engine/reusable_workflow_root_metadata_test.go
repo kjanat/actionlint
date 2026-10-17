@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workflow/calls"
-
 	"actionlint.kjanat.dev/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
@@ -71,7 +71,7 @@ jobs:
 				t.Fatal(err)
 			}
 			var previousMetadata *calls.Metadata
-			var previousDiagnostics []*Error
+			var previousDiagnostics []*findingmodel.Finding
 			for _, fromAST := range []bool{false, true} {
 				cache := calls.NewCache(project.RootDir(), root, nil)
 				if fromAST {
@@ -103,7 +103,7 @@ jobs:
 						t.Fatalf("AST=%v pass=%d: wanted %d caller diagnostics, got %v", fromAST, pass, want, errs)
 					}
 					if fromAST {
-						if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(Error{})); diff != "" {
+						if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
 							t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 						}
 					}
@@ -191,7 +191,7 @@ jobs:
 					t.Fatal(err)
 				}
 				var previousMetadata *calls.Metadata
-				var previousDiagnostics []*Error
+				var previousDiagnostics []*findingmodel.Finding
 				for _, fromAST := range []bool{false, true} {
 					cache := calls.NewCache(project.RootDir(), root, nil)
 					if fromAST {
@@ -213,7 +213,7 @@ jobs:
 							t.Fatalf("AST=%v pass=%d: wanted %d caller diagnostics, got %v", fromAST, pass, want, errs)
 						}
 						if fromAST {
-							if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(Error{})); diff != "" {
+							if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
 								t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 							}
 						}
@@ -233,7 +233,7 @@ jobs:
 					if err != nil {
 						t.Fatal(err)
 					}
-					var syntax []*Error
+					var syntax []*findingmodel.Finding
 					for _, diagnostic := range errs {
 						if diagnostic.Rule == "syntax-check" {
 							syntax = append(syntax, diagnostic)

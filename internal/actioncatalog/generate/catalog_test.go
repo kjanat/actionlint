@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/internal/action"
 	"actionlint.kjanat.dev/internal/actioncatalog"
-	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func TestBundledCatalogRoundTrip(t *testing.T) {
@@ -21,9 +21,9 @@ func TestBundledCatalogRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	actions := maps.Clone(actionlint.PopularActions)
-	for ref := range actionlint.OutdatedPopularActionSpecs {
-		actions[ref] = &actionlint.ActionMetadata{Runs: actionlint.ActionMetadataRuns{Using: "node12"}}
+	actions := maps.Clone(actioncatalog.PopularActions)
+	for ref := range actioncatalog.OutdatedPopularActionSpecs {
+		actions[ref] = &actionmeta.Metadata{Runs: actionmeta.Runs{Using: "node12"}}
 	}
 	var output bytes.Buffer
 	if err := newGen(io.Discard, io.Discard, io.Discard).writeCatalog(&output, actions); err != nil {
@@ -39,10 +39,10 @@ func TestBundledCatalogRoundTrip(t *testing.T) {
 }
 
 func TestWriteCatalog(t *testing.T) {
-	meta := &actionlint.ActionMetadata{Name: "Example", Inputs: actionlint.ActionMetadataInputs{
+	meta := &actionmeta.Metadata{Name: "Example", Inputs: actionmeta.Inputs{
 		"token": {Name: "Token", Required: true}, "old": {Name: "old", Deprecated: true},
-	}, Outputs: actionlint.ActionMetadataOutputs{"result": {Name: "Result"}}}
-	actions := map[string]*actionlint.ActionMetadata{"a/b@v1": meta, "a/b@v2": meta, "a/b@v0": {Runs: actionlint.ActionMetadataRuns{Using: "node12"}}}
+	}, Outputs: actionmeta.Outputs{"result": {Name: "Result"}}}
+	actions := map[string]*actionmeta.Metadata{"a/b@v1": meta, "a/b@v2": meta, "a/b@v0": {Runs: actionmeta.Runs{Using: "node12"}}}
 	g := newGen(io.Discard, io.Discard, io.Discard)
 	var out, again bytes.Buffer
 	if err := g.writeCatalog(&out, actions); err != nil {

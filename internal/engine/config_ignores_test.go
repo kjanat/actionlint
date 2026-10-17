@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/workspace"
 )
 
@@ -45,8 +48,8 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &Error{Rule: "expression-reference", Start: DiagnosticPosition{Line: 10, Column: 20}}
-			got := filterConfigIgnores(filepath.Join(root, ".github", "workflows", "ci.yml"), root, []byte(reusableIgnoreSource), []*Error{finding}, cfg, false, diagnosticLevels(cfg))
+			finding := &findingmodel.Finding{Rule: "expression-reference", Start: diagmodel.Position{Line: 10, Column: 20}}
+			got := diagnosticpolicy.FilterConfigured(filepath.Join(root, ".github", "workflows", "ci.yml"), root, []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg, false, diagnosticpolicy.Levels(cfg))
 			if (len(got) == 0) != tc.suppressed {
 				t.Fatalf("got %#v", got)
 			}
@@ -67,8 +70,8 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		finding := &Error{Rule: "expression-reference", Start: DiagnosticPosition{Line: 10, Column: 20}}
-		got := filterConfigIgnores("ci.yml", "", []byte(reusableIgnoreSource), []*Error{finding}, cfg, false, diagnosticLevels(cfg))
+		finding := &findingmodel.Finding{Rule: "expression-reference", Start: diagmodel.Position{Line: 10, Column: 20}}
+		got := diagnosticpolicy.FilterConfigured("ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg, false, diagnosticpolicy.Levels(cfg))
 		var kinds []string
 		for _, e := range got {
 			kinds = append(kinds, e.Rule)
@@ -81,12 +84,12 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreign := &Error{Rule: "expression-reference", Start: DiagnosticPosition{Line: 10, Column: 20}, Path: "action.yml", source: []byte("foreign")}
-	if got := filterConfigIgnores("ci.yml", "", []byte(reusableIgnoreSource), []*Error{foreign}, cfg, false, diagnosticLevels(cfg)); len(got) != 1 {
+	foreign := &findingmodel.Finding{Rule: "expression-reference", Start: diagmodel.Position{Line: 10, Column: 20}, Path: "action.yml", Source: []byte("foreign")}
+	if got := diagnosticpolicy.FilterConfigured("ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{foreign}, cfg, false, diagnosticpolicy.Levels(cfg)); len(got) != 1 {
 		t.Fatalf("caller suppressed foreign finding: %#v", got)
 	}
-	foreign.suppressionOrigin = &suppressionOrigin{path: "other.yml", first: 10, last: 10}
-	if got := filterConfigIgnores("ci.yml", "", []byte(reusableIgnoreSource), []*Error{foreign}, cfg, false, diagnosticLevels(cfg)); len(got) != 1 {
+	foreign.SuppressionOrigin = &findingmodel.SuppressionOrigin{Path: "other.yml", First: 10, Last: 10}
+	if got := diagnosticpolicy.FilterConfigured("ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{foreign}, cfg, false, diagnosticpolicy.Levels(cfg)); len(got) != 1 {
 		t.Fatalf("caller suppressed foreign origin: %#v", got)
 	}
 }
@@ -255,8 +258,8 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &Error{Rule: "shellcheck", Start: DiagnosticPosition{Line: 1, Column: 6}, Path: script, source: []byte("echo $VALUE\n"), suppressionOrigin: &suppressionOrigin{first: 10, last: 10}}
-			got := filterConfigIgnores(workflow, root, []byte(reusableIgnoreSource), []*Error{finding}, cfg, false, diagnosticLevels(cfg))
+			finding := &findingmodel.Finding{Rule: "shellcheck", Start: diagmodel.Position{Line: 1, Column: 6}, Path: script, Source: []byte("echo $VALUE\n"), SuppressionOrigin: &findingmodel.SuppressionOrigin{First: 10, Last: 10}}
+			got := diagnosticpolicy.FilterConfigured(workflow, root, []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg, false, diagnosticpolicy.Levels(cfg))
 			if len(got) != tc.want {
 				t.Fatalf("got %d findings, want %d", len(got), tc.want)
 			}

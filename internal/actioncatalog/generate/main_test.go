@@ -12,7 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	actionmeta "actionlint.kjanat.dev/internal/action"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -96,11 +97,11 @@ func newTestGen(stdout, stderr, debug io.Writer) *gen {
 func TestWriteGoChunksLargeCatalogues(t *testing.T) {
 	for _, count := range []int{0, 50, 51, 100, 101} {
 		t.Run(strconv.Itoa(count), func(t *testing.T) {
-			actions := make(map[string]*actionlint.ActionMetadata)
+			actions := make(map[string]*actionmeta.Metadata)
 			for i := range count {
-				actions[fmt.Sprintf("example/action-%03d@v1", i)] = &actionlint.ActionMetadata{Name: fmt.Sprintf("Action %d", i)}
+				actions[fmt.Sprintf("example/action-%03d@v1", i)] = &actionmeta.Metadata{Name: fmt.Sprintf("Action %d", i)}
 			}
-			actions["example/retired@v1"] = &actionlint.ActionMetadata{Name: "Retired", Runs: actionlint.ActionMetadataRuns{Using: "node12"}}
+			actions["example/retired@v1"] = &actionmeta.Metadata{Name: "Retired", Runs: actionmeta.Runs{Using: "node12"}}
 			var output bytes.Buffer
 			g := newGen(io.Discard, io.Discard, io.Discard)
 			if err := g.writeGo(&output, actions); err != nil {

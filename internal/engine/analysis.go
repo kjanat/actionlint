@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,21 +12,24 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/workflow/calls"
-
-	"actionlint.kjanat.dev/internal/report"
-	"actionlint.kjanat.dev/internal/workspace"
-
-	"errors"
-
 	"actionlint.kjanat.dev/analyzer"
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	actionlocal "actionlint.kjanat.dev/internal/action/local"
 	"actionlint.kjanat.dev/internal/analyzerhost"
+	"actionlint.kjanat.dev/internal/diagnosticpolicy"
 	exprlang "actionlint.kjanat.dev/internal/expression"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/report"
 	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/internal/tools"
+	"actionlint.kjanat.dev/internal/workflow/calls"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/rule"
+
 	"golang.org/x/sync/errgroup"
 )
 
@@ -38,7 +42,7 @@ type Request struct {
 	Analyzers        []analyzer.Registration
 	Tools            []tools.Registration
 	IgnorePatterns   IgnorePatterns
-	OnRulesCreated   func([]Rule) []Rule
+	OnRulesCreated   func([]workflowvisit.Rule) []workflowvisit.Rule
 	WorkingDir       string
 	ReadFile         func(string) ([]byte, error)
 	RulePresets      RulePresets
@@ -56,7 +60,7 @@ type AnalysisResult struct {
 
 type analyzedFile struct {
 	source  SourceUnit
-	errors  []*Error
+	errors  []*findingmodel.Finding
 	rules   []RuleInfo
 	outline DocumentOutline
 }
@@ -167,7 +171,7 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 
 	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
 	proc := request.Processes
-	actions := NewLocalActionsCacheFactory(engine.debugWriter())
+	actions := actionlocal.NewFactory(engine.debugWriter())
 	cwd := request.WorkingDir
 	if cwd == "" {
 		var err error
@@ -180,7 +184,7 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 	reader := fsread.New(ctx, request.ReadFile, inputs.add)
 	engine.workingDir, engine.reader = absPath(cwd), reader
 	engine.gitModes = &gitModes{}
-	result := &AnalysisResult{Diagnostics: []Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
+	result := &AnalysisResult{Diagnostics: []diagmodel.Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
 	sourceContents := map[string][]byte{}
 	sourcePaths := make([]string, 0, len(allSources))
 	for _, source := range allSources {
@@ -224,16 +228,17 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 	actionContents := make(map[string][]byte)
 	for path, content := range sourceContents {
 		if isActionInput(path) {
-			actionContents[physicalSourcePath(path)] = content
+			actionContents[fsread.PhysicalPath(path)] = content
 		}
 	}
 	for _, source := range request.Sources {
-		ac, wc := actions.GetCache(source.Project), workflows.GetCache(projectRoot(source.Project))
-		ac.reader = reader
+		ac, wc := actions.GetCache(projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
+		ac.Configure(actionlocal.Options{Reader: reader, CustomReader: request.ReadFile != nil, Sources: actionContents,
+			OnDocument: func(path string, meta *actionmeta.Metadata, parseErr error) {
+				documents.add(actionOutline(path, meta, parseErr))
+			},
+		})
 		wc.SetReader(reader)
-		ac.onDocument = documents.add
-		ac.customReader = request.ReadFile != nil
-		ac.explicitSources = actionContents
 	}
 	group := errgroup.Group{}
 	group.SetLimit(runtime.NumCPU())
@@ -243,7 +248,7 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 			path = source.Path
 		}
 		inputs.add(path)
-		ac, wc := actions.GetCache(source.Project), workflows.GetCache(projectRoot(source.Project))
+		ac, wc := actions.GetCache(projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source
@@ -271,12 +276,12 @@ func run(ctx context.Context, request Request, log io.Writer, level LogLevel) (*
 	for _, file := range result.files {
 		result.Documents = append(result.Documents, file.outline)
 		if _, action := file.outline.(ActionOutline); action {
-			explicitActions[physicalSourcePath(file.source.InputPath)] = true
+			explicitActions[fsread.PhysicalPath(file.source.InputPath)] = true
 		}
 	}
 	for _, document := range documents.list() {
-		path := relativeAnalysisPath(engine.workingDir, document.DocumentPath())
-		if !explicitActions[physicalSourcePath(document.DocumentPath())] {
+		path := diagnosticpolicy.RelativePath(engine.workingDir, document.DocumentPath())
+		if !explicitActions[fsread.PhysicalPath(document.DocumentPath())] {
 			result.Documents = append(result.Documents, document.WithPath(path))
 		}
 	}
@@ -318,17 +323,17 @@ func (r *AnalysisResult) collectDiagnostics() {
 	r.FileCount = len(r.files)
 	type location struct {
 		project, path, rule string
-		start               DiagnosticPosition
+		start               diagmodel.Position
 	}
-	seen := make(map[location][]Diagnostic)
+	seen := make(map[location][]diagmodel.Diagnostic)
 	type metadataLocation struct {
 		project, kind, severity string
-		finding                 actionMetadataFindingKey
+		finding                 findingmodel.MetadataKey
 	}
 	seenMetadata := make(map[metadataLocation]bool)
 	type declarationLocation struct {
 		project string
-		finding actionMetadataFindingKey
+		finding findingmodel.MetadataKey
 	}
 	declarations := make(map[declarationLocation]bool)
 	parseDeclarations := make(map[string]bool)
@@ -339,10 +344,10 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		for _, finding := range file.errors {
 			if _, action := file.outline.(ActionOutline); action && finding.Rule == "syntax-check" {
-				parseDeclarations[physicalSourcePath(file.source.InputPath)] = true
+				parseDeclarations[fsread.PhysicalPath(file.source.InputPath)] = true
 			}
-			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Rule == "action" {
-				declarations[declarationLocation{project, identity.key}] = true
+			if identity := finding.MetadataIdentity; identity != nil && identity.Declaration && finding.Rule == "action" {
+				declarations[declarationLocation{project, identity.Key}] = true
 			}
 		}
 	}
@@ -354,18 +359,18 @@ func (r *AnalysisResult) collectDiagnostics() {
 		}
 		unique := file.errors[:0]
 		for _, finding := range file.errors {
-			if finding.Rule == "action" && finding.metadataParsePath != "" && parseDeclarations[physicalSourcePath(finding.metadataParsePath)] {
+			if finding.Rule == "action" && finding.MetadataParsePath != "" && parseDeclarations[fsread.PhysicalPath(finding.MetadataParsePath)] {
 				continue
 			}
-			diagnostic := finding.diagnostic(file.source.Content)
+			diagnostic := finding.Canonical(file.source.Content)
 			identityPath := file.source.InputPath
-			if finding.source != nil {
+			if finding.Source != nil {
 				identityPath = diagnostic.Path
 			}
-			completeDiagnostic(&diagnostic, finding.sourceFor(file.source.Content), identityPath)
-			if identity := finding.metadataFinding; identity != nil && finding.Rule == "action" {
-				key := metadataLocation{project, finding.Rule, finding.Severity, identity.key}
-				if !identity.declaration && declarations[declarationLocation{project, identity.key}] {
+			completeDiagnostic(&diagnostic, finding.SourceFor(file.source.Content), identityPath)
+			if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
+				key := metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
+				if !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
 					continue
 				}
 				if seenMetadata[key] {
@@ -374,14 +379,14 @@ func (r *AnalysisResult) collectDiagnostics() {
 				seenMetadata[key] = true
 			}
 			key := location{project, diagnostic.Path, diagnostic.Rule, diagnostic.Start}
-			if slices.ContainsFunc(seen[key], func(previous Diagnostic) bool {
+			if slices.ContainsFunc(seen[key], func(previous diagmodel.Diagnostic) bool {
 				return reflect.DeepEqual(previous, diagnostic)
 			}) {
 				continue
 			}
 			seen[key] = append(seen[key], diagnostic)
 			r.Diagnostics = append(r.Diagnostics, diagnostic)
-			r.Sources = append(r.Sources, report.DiagnosticSource{Content: finding.sourceFor(file.source.Content), RawScript: finding.rawScriptSource})
+			r.Sources = append(r.Sources, report.DiagnosticSource{Content: finding.SourceFor(file.source.Content), RawScript: finding.RawScriptSource})
 			unique = append(unique, finding)
 		}
 		clear(file.errors[len(unique):])

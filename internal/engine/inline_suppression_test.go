@@ -5,7 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/internal/suppression"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -38,40 +42,6 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
 				})
 			}
 		}
-	}
-}
-
-func TestInlineSuppressionStages(t *testing.T) {
-	const source = `name: one
-  two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused
-run-name: |
-  two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused
-`
-	comments := collectInlineSuppressionComments([]byte(source))
-	if len(comments) != 1 || comments[0].pos != (workflowlang.Pos{Line: 2, Col: 7}) || comments[0].standalone {
-		t.Fatalf("want only the real closing comment at 2:7, got %+v", comments)
-	}
-	directive, err := parseInlineSuppression(comments[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := inlineSuppressionDirective{
-		pos: workflowlang.Pos{Line: 2, Col: 7}, targetLine: 2,
-		rules: []string{"cache-operation"}, reason: "reviewed -- intentionally unused",
-	}
-	if diff := cmp.Diff(want, directive, cmp.AllowUnexported(inlineSuppressionDirective{})); diff != "" {
-		t.Fatal(diff)
-	}
-	findings := []*Error{
-		{Start: DiagnosticPosition{Line: 1}, Rule: "cache-operation"},
-		{Start: DiagnosticPosition{Line: 2}, Rule: "cache-operation"},
-		{Start: DiagnosticPosition{Line: 2}, Rule: "cache-operation", source: []byte("callee")},
-		{Start: DiagnosticPosition{Line: 2}, Rule: "expression-reference"},
-		{Start: DiagnosticPosition{Line: 4}, Rule: "cache-operation"},
-	}
-	got := applyInlineSuppressions(findings, []inlineSuppressionDirective{directive}, nil)
-	if diff := cmp.Diff([]*Error{findings[0], findings[2], findings[3], findings[4]}, got, cmp.AllowUnexported(Error{})); diff != "" {
-		t.Fatal(diff)
 	}
 }
 
@@ -118,25 +88,18 @@ jobs:
 }
 
 func TestInlineSuppressionRegistry(t *testing.T) {
-	for _, name := range InlineSuppressibleRules() {
+	for _, name := range diagnosticpolicy.SuppressionRules() {
 		t.Run(name, func(t *testing.T) {
 			cfg, err := ParseConfig(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
 			if err != nil {
 				t.Fatal(err)
 			}
-			comment := inlineSuppressionComment{
-				pos: workflowlang.Pos{Line: 4, Col: 3}, standalone: true,
-				text: "actionlint:ignore-next-line " + name + " -- reviewed",
-			}
-			directive, parseErr := parseInlineSuppression(comment)
-			if parseErr != nil {
-				t.Fatal(parseErr)
-			}
-			finding := &Error{Start: DiagnosticPosition{Line: 5}, Rule: name}
-			if got := applyInlineSuppressions([]*Error{finding}, []inlineSuppressionDirective{directive}, nil); len(got) != 0 {
+			source := []byte("first: value\nsecond: value\nthird: value\n# actionlint:ignore-next-line " + name + " -- reviewed\nfifth: value\n")
+			finding := &findingmodel.Finding{Start: diagmodel.Position{Line: 5}, Rule: name}
+			if got := diagnosticpolicy.FilterInline(source, []*findingmodel.Finding{finding}, nil); len(got) != 0 {
 				t.Fatalf("registered rule was not suppressed: %v", got)
 			}
-			got := applyInlineSuppressions([]*Error{finding}, []inlineSuppressionDirective{directive}, cfg.Policy.DisallowSuppressions)
+			got := diagnosticpolicy.FilterInline(source, []*findingmodel.Finding{finding}, cfg.Policy.DisallowSuppressions)
 			if len(got) != 2 || got[0] != finding || got[1].Rule != "disallow-suppressions" || got[1].Start.Line != 4 {
 				t.Fatalf("restriction did not retain finding and report comment: %v", got)
 			}
@@ -182,14 +145,14 @@ run:
     echo second
 next: value
 `, "\n", ending)
-				findings := []*Error{
-					{Start: DiagnosticPosition{Line: start + 1}, Rule: "expression-reference"},
-					{Start: DiagnosticPosition{Line: start + 2}, Rule: "shellcheck"},
-					{Start: DiagnosticPosition{Line: start + 2}, Rule: "action"},
-					{Start: DiagnosticPosition{Line: start + 3}, Rule: "expression-reference"},
+				findings := []*findingmodel.Finding{
+					{Start: diagmodel.Position{Line: start + 1}, Rule: "expression-reference"},
+					{Start: diagmodel.Position{Line: start + 2}, Rule: "shellcheck"},
+					{Start: diagmodel.Position{Line: start + 2}, Rule: "action"},
+					{Start: diagmodel.Position{Line: start + 3}, Rule: "expression-reference"},
 				}
-				got := filterInlineSuppressions([]byte(source), findings, nil)
-				if diff := cmp.Diff(findings[2:], got, cmp.AllowUnexported(Error{})); diff != "" {
+				got := diagnosticpolicy.FilterInline([]byte(source), findings, nil)
+				if diff := cmp.Diff(findings[2:], got, cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
 					t.Fatal(diff)
 				}
 			})
@@ -211,8 +174,8 @@ run:
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(header+"\n    echo body\n", "\n", ending)
 			line := strings.Count(header, "\n") + 2
-			findings := []*Error{{Start: DiagnosticPosition{Line: line}, Rule: "expression-reference"}, {Start: DiagnosticPosition{Line: line}, Rule: "shellcheck"}}
-			if got := filterInlineSuppressions([]byte(source), findings, nil); len(got) != 2 {
+			findings := []*findingmodel.Finding{{Start: diagmodel.Position{Line: line}, Rule: "expression-reference"}, {Start: diagmodel.Position{Line: line}, Rule: "shellcheck"}}
+			if got := diagnosticpolicy.FilterInline([]byte(source), findings, nil); len(got) != 2 {
 				t.Fatalf("unrelated prefix suppressed body: %q: %+v", source, got)
 			}
 		}
@@ -245,7 +208,7 @@ run:
 			if len(findings) != 1 || findings[0].Rule != "syntax-check" {
 				t.Fatalf("malformed fixture findings: %+v", findings)
 			}
-			if got := filterInlineSuppressions(source, findings, nil); len(got) != 0 {
+			if got := diagnosticpolicy.FilterInline(source, findings, nil); len(got) != 0 {
 				t.Fatalf("syntax finding was not suppressed: %+v", got)
 			}
 		}
@@ -308,13 +271,13 @@ jobs: [`,
 # another comment
   value`,
 	} {
-		if got := collectInlineSuppressionComments([]byte(source)); len(got) != 0 {
+		if got, invalid := suppression.Parse([]byte(source), diagnosticpolicy.SuppressionRules()); len(got) != 0 || len(invalid) != 0 {
 			t.Fatalf("scalar content became a directive in %q: %+v", source, got)
 		}
 	}
 	source := []byte("jobs: [ # actionlint:ignore syntax-check --")
 	_, findings := Parse(source)
-	got := filterInlineSuppressions(source, findings, nil)
+	got := diagnosticpolicy.FilterInline(source, findings, nil)
 	if len(got) != 2 || got[1].Rule != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
 		t.Fatalf("explicit empty reason was accepted: %+v", got)
 	}
@@ -324,12 +287,12 @@ jobs: [`,
 	}
 	source = []byte("jobs: [ # actionlint:ignore syntax-check -- reviewed")
 	_, findings = Parse(source)
-	if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != "disallow-suppressions" {
+	if got := diagnosticpolicy.FilterInline(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != "disallow-suppressions" {
 		t.Fatalf("malformed YAML bypassed suppression policy: %+v", got)
 	}
 	source = []byte("name: test # actionlint:ignore syntax-check -- reviewed\njobs: [")
 	_, findings = Parse(source)
-	if got := filterInlineSuppressions(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
+	if got := diagnosticpolicy.FilterInline(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
 		t.Fatalf("unrelated declaration suppressed syntax error: %+v", got)
 	}
 }
@@ -341,8 +304,8 @@ func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
   ${{ github.event.issue.title }}
   '''
 `)
-	finding := &Error{Start: DiagnosticPosition{Line: 4}, Rule: "expression-reference"}
-	got := filterInlineSuppressions(source, []*Error{finding}, nil)
+	finding := &findingmodel.Finding{Start: diagmodel.Position{Line: 4}, Rule: "expression-reference"}
+	got := diagnosticpolicy.FilterInline(source, []*findingmodel.Finding{finding}, nil)
 	if len(got) != 1 || got[0] != finding {
 		t.Fatalf("script text changed findings: %+v", got)
 	}
@@ -383,7 +346,7 @@ jobs: [`,
 			if len(findings) != 1 || findings[0].Rule != "syntax-check" {
 				t.Fatalf("invalid boundary fixture: %+v", findings)
 			}
-			if got := filterInlineSuppressions(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
+			if got := diagnosticpolicy.FilterInline(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
 				t.Fatalf("unrelated comment suppressed malformed header: %+v", got)
 			}
 		}
@@ -398,7 +361,7 @@ jobs: [`,
 			if reason == " --" {
 				want = "inline-suppression"
 			}
-			if got := filterInlineSuppressions(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != want {
+			if got := diagnosticpolicy.FilterInline(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != want {
 				t.Fatalf("recovered prefix bypassed reason or policy: %+v", got)
 			}
 		}

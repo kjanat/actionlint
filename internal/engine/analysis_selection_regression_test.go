@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/workspace"
 
@@ -110,7 +111,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 			path := filepath.Join(roots[1], ".github", "workflows", "ci.yml")
 			check := func(result *AnalysisResult, err error) {
 				t.Helper()
-				if err != nil || result == nil || result.FileCount != 1 || !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
+				if err != nil || result == nil || result.FileCount != 1 || !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
 					t.Fatalf("filtered=%t: alias selection/override lost: %+v, %v", filtered, result, err)
 				}
 			}
@@ -209,7 +210,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 		if err != nil || result == nil || result.FileCount != 1 {
 			t.Fatalf("relative working directory dropped workflow: %+v, %v", result, err)
 		}
-		if !slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
+		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
 			t.Fatalf("relative working directory missed override: %+v", result.Diagnostics)
 		}
 		if !slices.Contains(result.Inputs, workflow) {
@@ -313,7 +314,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ShellCheck execution failed, plan=%+v, error=%v", needed, err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool { return d.Rule == "shellcheck" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" })
 			if found != tc.enabled {
 				t.Fatalf("ShellCheck execution disagrees with plan: %+v", result.Diagnostics)
 			}

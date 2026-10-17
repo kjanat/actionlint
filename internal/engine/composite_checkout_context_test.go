@@ -6,7 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/workflow/execution"
 )
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
@@ -46,7 +48,7 @@ runs:
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 			})
 			if found != tc.read {
@@ -124,15 +126,15 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, checkout := range []string{"", "source"} {
-		paths := runPaths{workspace: root, analysis: root, reader: fsread.New(t.Context(), nil, nil), placements: &checkoutPlacement{
-			directory: runDirectory{directoryKnown, checkout}, caseInsensitive: true,
+		paths := execution.Paths{Workspace: root, Analysis: root, Reader: fsread.New(t.Context(), nil, nil), Placements: &execution.CheckoutPlacement{
+			Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: checkout}, CaseInsensitive: true,
 		}}
-		mapped, known := paths.analysisPath(joinRunnerPath(checkout, "SCRIPTS/nested"))
+		mapped, known := paths.AnalysisPath(execution.JoinPath(checkout, "SCRIPTS/nested"))
 		if !known || mapped != filepath.Join(root, "scripts", "Nested") {
 			t.Fatalf("checkout %q: mapped=%q, known=%v", checkout, mapped, known)
 		}
-		got := paths.resolve(runDirectory{directoryKnown, joinRunnerPath(checkout, "SCRIPTS/nested")})
-		if got.kind != directoryKnown || got.path != want {
+		got := paths.Resolve(execution.Directory{Kind: execution.DirectoryKnown, Path: execution.JoinPath(checkout, "SCRIPTS/nested")})
+		if got.Kind != execution.DirectoryKnown || got.Path != want {
 			t.Fatalf("checkout %q: directory=%+v, want %q", checkout, got, want)
 		}
 	}
@@ -178,7 +180,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				var findings []Diagnostic
+				var findings []diagmodel.Diagnostic
 				for _, d := range result.Diagnostics {
 					if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
 						findings = append(findings, d)
@@ -240,7 +242,7 @@ runs:
 					// Unknown refs intentionally retain literal, untranslated fallback.
 					wantMetadata = decoy
 				}
-				found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == wantMetadata && strings.Contains(d.Message, "SC2086")
 				})
 				if found != tc.read {

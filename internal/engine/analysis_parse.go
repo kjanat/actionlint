@@ -1,30 +1,28 @@
 package engine
 
 import (
-	"path/filepath"
-
 	"actionlint.kjanat.dev/analyzer"
+	actionmeta "actionlint.kjanat.dev/internal/action"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
 )
 
 // parsedDocument preserves an outline and syntax findings even when traversal is impossible.
 type parsedDocument struct {
 	workflow *workflowlang.Workflow
-	metadata *ActionMetadata
+	metadata *actionmeta.Metadata
 	outline  DocumentOutline
-	findings []*Error
+	findings []*findingmodel.Finding
 }
 
 func parseDocument(path, configPath string, content []byte) parsedDocument {
 	var w *workflowlang.Workflow
 	var outline DocumentOutline
-	var all []*Error
-	var metadata *ActionMetadata
+	var all []*findingmodel.Finding
+	var metadata *actionmeta.Metadata
 	if isActionInput(configPath) {
-		metadata = &ActionMetadata{}
-		err := yaml.Unmarshal(content, metadata)
-		metadata.dir, metadata.file, metadata.src = filepath.Dir(configPath), filepath.Base(configPath), content
+		var err error
+		metadata, err = actionmeta.Parse(configPath, content)
 		outline = actionOutline(path, metadata, err)
 		if err != nil {
 			all = adaptSyntaxFindings(workflowlang.HandleYAMLUnmarshalError(err))

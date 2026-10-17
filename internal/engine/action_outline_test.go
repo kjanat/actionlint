@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestParseActionOutlineDeclarations(t *testing.T) {
@@ -41,7 +43,7 @@ runs:
 		t.Fatalf("input order/casing lost: %+v", outline.Inputs)
 	}
 	input := outline.Inputs[0]
-	if input.Required == nil || !*input.Required || input.Default == nil || *input.Default != "" || input.Start == nil || *input.Start != (DiagnosticPosition{Line: 4, Column: 3}) {
+	if input.Required == nil || !*input.Required || input.Default == nil || *input.Default != "" || input.Start == nil || *input.Start != (diagmodel.Position{Line: 4, Column: 3}) {
 		t.Fatalf("declared input metadata lost: %+v", input)
 	}
 	if second := outline.Inputs[1]; second.Required == nil || *second.Required || second.Default != nil {

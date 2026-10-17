@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/internal/tools"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // registeredFactory selects semantic rules and registered script tools. The
@@ -21,7 +22,7 @@ func registeredFactory(request Request, logger analysisLogger) func(ruleContext,
 			if descriptor.enabled != nil && !descriptor.enabled(c) {
 				continue
 			}
-			var rule Rule
+			var rule workflowvisit.Rule
 			var script scriptAnalyzer
 			var err error
 			if descriptor.buildScripts != nil {

@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
 
 func TestKnownShellExpressions(t *testing.T) {
@@ -53,7 +56,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var found []*Error
+			var found []*findingmodel.Finding
 			for _, diagnostic := range errors {
 				if diagnostic.Rule == "shell-name" {
 					found = append(found, diagnostic)
@@ -191,13 +194,13 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: &LocalActionsCache{}}
+	collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
 	collector.beginWorkflow(workflow)
 	for _, id := range []string{"python", "bash"} {
 		job := workflow.Jobs[id]
 		collector.beginJob(job)
 		collector.collectScript(job.Steps[0], nil, "", nil, nil, nil)
-		if got := collector.scripts[len(collector.scripts)-1].execution.shell.name; got != id {
+		if got := collector.scripts[len(collector.scripts)-1].execution.shell.Name; got != id {
 			t.Fatalf("job %s resolved shell %q", id, got)
 		}
 	}

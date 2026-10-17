@@ -6,6 +6,6 @@ package actionlint
 //go:generate go run ./internal/workflow/context/generate ./internal/workflow/context/availability.go
 //go:generate go run ./internal/webhook/generate ./internal/webhook/webhooks.go
 //go:generate node ./internal/webhook/payload/generate/main.mts
-//go:generate go run ./internal/actioncatalog/metadata -runtimes -output internal/engine/action_runtimes.go
+//go:generate go run ./internal/actioncatalog/metadata -runtimes -output internal/action/runtimes_generated.go
 //go:generate go run ./internal/actioncatalog/generate -f json ./internal/actioncatalog/popular_actions.json
-//go:generate go run ./internal/actioncatalog/metadata -output internal/engine/action_metadata_availability.go
+//go:generate go run ./internal/actioncatalog/metadata -output internal/action/availability_generated.go

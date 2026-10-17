@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/yaml"
 )
 
@@ -55,22 +58,22 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 				if err := yaml.Unmarshal(source, &document); err != nil {
 					t.Fatalf("invalid YAML fixture: %v", err)
 				}
-				var findings []*Error
+				var findings []*findingmodel.Finding
 				if bodyLine != 0 {
-					findings = append(findings, &Error{Start: DiagnosticPosition{Line: bodyLine}, Rule: "expression-reference"})
+					findings = append(findings, &findingmodel.Finding{Start: diagmodel.Position{Line: bodyLine}, Rule: "expression-reference"})
 				}
 				if bodyCommentLine != 0 {
-					findings = append(findings, &Error{Start: DiagnosticPosition{Line: bodyCommentLine}, Rule: "expression-reference"})
+					findings = append(findings, &findingmodel.Finding{Start: diagmodel.Position{Line: bodyCommentLine}, Rule: "expression-reference"})
 				}
-				sibling := &Error{Start: DiagnosticPosition{Line: siblingLine}, Rule: "expression-reference"}
+				sibling := &findingmodel.Finding{Start: diagmodel.Position{Line: siblingLine}, Rule: "expression-reference"}
 				findings = append(findings, sibling)
-				got := filterInlineSuppressions(source, findings, nil)
+				got := diagnosticpolicy.FilterInline(source, findings, nil)
 				if len(got) != 2 || got[0] != sibling || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
 					t.Fatalf("block suppression crossed its scalar boundary: %+v", got)
 				}
 				// A later parse error must preserve the same comment boundaries.
 				source = append(source, []byte("invalid: [")...)
-				got = filterInlineSuppressions(source, findings, nil)
+				got = diagnosticpolicy.FilterInline(source, findings, nil)
 				if len(got) != 2 || got[0] != sibling || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
 					t.Fatalf("recovery crossed its scalar boundary: %+v", got)
 				}

@@ -7,18 +7,19 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
+	findingmodel "actionlint.kjanat.dev/internal/finding"
 )
 
 // runScriptAnalyzers schedules prepared work without knowing how scripts were discovered.
-func runScriptAnalyzers(ctx context.Context, analyzers []scriptAnalyzer, batch scriptBatch) ([]*Error, error) {
-	tasks := make([]analyzerhost.Task[*Error], len(analyzers))
+func runScriptAnalyzers(ctx context.Context, analyzers []scriptAnalyzer, batch scriptBatch) ([]*findingmodel.Finding, error) {
+	tasks := make([]analyzerhost.Task[*findingmodel.Finding], len(analyzers))
 	for i, builtin := range analyzers {
-		tasks[i] = func(ctx context.Context) ([]*Error, error) { return builtin.AnalyzeScripts(ctx, batch) }
+		tasks[i] = func(ctx context.Context) ([]*findingmodel.Finding, error) { return builtin.AnalyzeScripts(ctx, batch) }
 	}
 	return analyzerhost.RunTasks(ctx, tasks)
 }
-func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registration, input analyzer.Input, metadataSources map[string][]byte, usedRules *[]RuleInfo) ([]*Error, error) {
-	var all []*Error
+func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registration, input analyzer.Input, metadataSources map[string][]byte, usedRules *[]RuleInfo) ([]*findingmodel.Finding, error) {
+	var all []*findingmodel.Finding
 	var analysisErr error
 	if len(registrations) != 0 {
 		findings, err := analyzerhost.Run(ctx, input, registrations)
@@ -29,10 +30,10 @@ func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registra
 			}
 		}
 		for _, finding := range findings {
-			legacy := findingOf(finding)
+			legacy := findingmodel.FromDiagnostic(finding)
 			if legacy.Path != "" && legacy.Path != input.Path {
 				if source, ok := metadataSources[legacy.Path]; ok {
-					legacy.source = source
+					legacy.Source = source
 				}
 			}
 			all = append(all, legacy)

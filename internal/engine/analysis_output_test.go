@@ -6,19 +6,21 @@ import (
 	"strings"
 	"testing"
 
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/render"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 func TestAnalysisSourceRanges(t *testing.T) {
-	rule := NewRuleBase("test", "")
-	rule.errorfRange(&workflowlang.Pos{Line: 1, Col: 2}, &workflowlang.Pos{Line: 2, Col: 4}, "multi-line")
-	diagnostic := rule.Errs()[0].diagnostic([]byte("abc\ndefgh"))
-	if diagnostic.Start != (DiagnosticPosition{Line: 1, Column: 2}) || diagnostic.End != (DiagnosticPosition{Line: 2, Column: 4}) {
+	rule := workflowvisit.NewBase("test", "")
+	rule.ErrorfRange(&workflowlang.Pos{Line: 1, Col: 2}, &workflowlang.Pos{Line: 2, Col: 4}, "multi-line")
+	diagnostic := rule.Errs()[0].Canonical([]byte("abc\ndefgh"))
+	if diagnostic.Start != (diagmodel.Position{Line: 1, Column: 2}) || diagnostic.End != (diagmodel.Position{Line: 2, Column: 4}) {
 		t.Fatal(diagnostic)
 	}
-	if rule.Errs()[0].GetTemplateFields([]byte("abc\ndefgh")).EndColumn != 3 {
+	if render.FindingOf(rule.Errs()[0].Diagnostic, []byte("abc\ndefgh")).TemplateFields().EndColumn != 3 {
 		t.Fatal("legacy range changed")
 	}
 	result, err := Analyze(t.Context(), AnalysisRequest{Sources: []SourceUnit{{Path: "input.yml", Content: []byte(commandBadWorkflow)}}})
@@ -69,7 +71,7 @@ func TestEffectiveConfigFieldCoverage(t *testing.T) {
 
 func TestGitHubAnnotationEscaping(t *testing.T) {
 	var out bytes.Buffer
-	diagnostics := []Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: DiagnosticPosition{Line: 2, Column: 3}, End: DiagnosticPosition{Line: 2, Column: 5}}}
+	diagnostics := []diagmodel.Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: diagmodel.Position{Line: 2, Column: 3}, End: diagmodel.Position{Line: 2, Column: 5}}}
 	if err := render.WriteGitHub(&out, diagnostics); err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +84,7 @@ func TestGitHubAnnotationEscaping(t *testing.T) {
 func TestGitHubAnnotationLevels(t *testing.T) {
 	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}, {"style", "notice"}} {
 		var out bytes.Buffer
-		if err := render.WriteGitHub(&out, []Diagnostic{{Severity: tc.severity, Start: DiagnosticPosition{Line: 1, Column: 1}, End: DiagnosticPosition{Line: 1, Column: 2}}}); err != nil {
+		if err := render.WriteGitHub(&out, []diagmodel.Diagnostic{{Severity: tc.severity, Start: diagmodel.Position{Line: 1, Column: 1}, End: diagmodel.Position{Line: 1, Column: 2}}}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.HasPrefix(out.String(), "::"+tc.annotation+" ") {

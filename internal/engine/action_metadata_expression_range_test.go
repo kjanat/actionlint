@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
@@ -49,7 +51,7 @@ func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var decoded []Diagnostic
+			var decoded []diagmodel.Diagnostic
 			if err := json.Unmarshal(encoded, &decoded); err != nil || len(decoded) != 2 || decoded[1].End != result.Diagnostics[1].End {
 				t.Fatalf("JSON lost ranges: %s, %v", encoded, err)
 			}

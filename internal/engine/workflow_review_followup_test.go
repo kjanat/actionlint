@@ -7,9 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workspace"
-
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestWorkflowRunPathsUntrusted(t *testing.T) {

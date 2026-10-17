@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestCompositeCheckoutModeIsolation(t *testing.T) {
@@ -53,7 +55,7 @@ func TestCompositeCheckoutModeIsolation(t *testing.T) {
   working-directory: .
   run:`)
 			result := compositeAnalysis(t, root, steps, AnalysisOptions{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "executable-bit" && strings.Contains(d.Message, `"bad.sh"`)
 			})
 			if found != tc.finding {
@@ -93,7 +95,7 @@ runs:
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d Diagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 			})
 			if found != tc.read {

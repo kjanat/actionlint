@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	diagmodel "actionlint.kjanat.dev/diagnostic"
 )
 
 func TestInterpolationChecksContinueAfterSemanticErrors(t *testing.T) {
@@ -101,7 +101,7 @@ jobs:
 						}
 						line := strings.Count(before, "\n") + 1
 						column := len(before) - strings.LastIndex(before, "\n")
-						if diagnostic.Start != (DiagnosticPosition{Line: line, Column: column}) {
+						if diagnostic.Start != (diagmodel.Position{Line: line, Column: column}) {
 							t.Errorf("later interpolation location: got %+v, want %d:%d", diagnostic.Start, line, column)
 						}
 						if levels.ternary == "warn" && diagnostic.Severity != "warning" {
@@ -114,56 +114,6 @@ jobs:
 					}
 				}
 			})
-		}
-	}
-}
-
-func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
-	for _, script := range []bool{false, true} {
-		for _, source := range []string{
-			"${{ unknown.value }} ${{ github.ref && '' || 'fallback' }}",
-			"${{ github.ref && '' || 'fallback' }} ${{ unknown.value }}",
-			"${{ unknown.first }} ${{ unknown.second }} ${{ github.ref && '' || 'fallback' }}",
-			"${{ missingFunction('}}') }} ${{ github.ref && '' || 'fallback' }}",
-		} {
-			rule := NewRuleExpression(nil, nil)
-			types, valid := rule.checkExprsIn(source, &workflowlang.Pos{Line: 1, Col: 1}, false, script, "env")
-			if valid || len(types) != strings.Count(source, "${{") {
-				t.Fatalf("must scan all parsed interpolations without treating their types as valid: %v, %+v", valid, types)
-			}
-			ternaries := 0
-			for _, finding := range rule.Errs() {
-				if finding.Rule == "unsound-ternary" {
-					ternaries++
-				}
-			}
-			if ternaries != 1 {
-				t.Fatalf("later diagnostic missing: %+v", rule.Errs())
-			}
-			if ty := rule.checkOneExpression(&workflowlang.String{Value: source, Pos: &workflowlang.Pos{Line: 1, Col: 1}}, "value", "env"); ty != nil {
-				t.Fatalf("invalid interpolation types escaped into type checking: %v", ty)
-			}
-		}
-	}
-}
-
-func TestInterpolationParseErrorsStillStopScanning(t *testing.T) {
-	for _, script := range []bool{false, true} {
-		for _, source := range []string{
-			"${{ github.ref + }} ${{ github.ref && '' || 'fallback' }}",
-			"${{ 'unterminated }} ${{ github.ref && '' || 'fallback' }}",
-			"${{ unknown.value",
-		} {
-			rule := NewRuleExpression(nil, nil)
-			types, valid := rule.checkExprsIn(source, &workflowlang.Pos{Line: 1, Col: 1}, false, script, "env")
-			if valid || types != nil || len(rule.Errs()) == 0 {
-				t.Fatalf("unparsed interpolation must remain invalid: %v, %+v, %+v", valid, types, rule.Errs())
-			}
-			for _, finding := range rule.Errs() {
-				if finding.Rule != "expression-syntax" {
-					t.Fatalf("must not resume from an unparsed expression boundary: %+v", finding)
-				}
-			}
 		}
 	}
 }

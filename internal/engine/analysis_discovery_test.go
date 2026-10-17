@@ -6,9 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workspace"
-
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 func TestRepositoryActionDiscovery(t *testing.T) {

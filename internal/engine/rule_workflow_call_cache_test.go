@@ -9,11 +9,11 @@ import (
 	"sync"
 	"testing"
 
+	findingmodel "actionlint.kjanat.dev/internal/finding"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/calls"
-
 	"actionlint.kjanat.dev/internal/workspace"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -94,7 +94,7 @@ jobs:
 	}
 }
 
-func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*Error {
+func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*findingmodel.Finding {
 	t.Helper()
 	root := t.TempDir()
 	cache := calls.NewCache(root, root, nil)

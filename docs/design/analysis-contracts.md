@@ -95,7 +95,7 @@ shapes, and must not parse expression-looking text returned as data a second tim
 - Configuration and syntax alias independent implementations. Importing either public package no longer imports
   discovery, rule execution or native tools. The parser retains
   decoded source maps alongside syntax because accurate diagnostics require both.
-- Action metadata, composite expansion and remaining visitor rules still live in the engine.
+- Composite expansion, local dependency resolution and remaining visitor adapters still live in the engine.
   Input discovery, configuration selection, process execution and rendering have separate owners.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
@@ -290,3 +290,95 @@ Legacy linter construction, rendering helpers and implicit process ownership rem
 only in `_test.go` adapters for historical regression fixtures. Production entry points
 cannot link those adapters. Architecture tests enforce the actual transitive import
 boundaries, including the absence of rendering dependencies in semantic execution.
+
+## Extracted action, matrix and suppression domains
+
+`internal/action` owns action-manifest decoding, structural schema validation,
+expression availability, decoded-scalar source mappings and runtime lifecycle
+metadata. `internal/action/validation` checks runtime declarations, required fields,
+branding, composite-step contracts and supplied inputs. It returns findings with
+source provenance. Local-action caches,
+caller-specific validation replay and suppression provenance remain host concerns.
+Consumers import the action model directly; engine does not re-export its types.
+The action-catalogue generators also consume this model without loading engine.
+
+`internal/workflow/matrix` owns matrix expansion, sequence/mapping insertions,
+filter comparisons and mixed-type checks. Its check function accepts a job and an
+explicit mixed-type-check setting. Runner-label and expression adapters consume
+its expansion results; the matrix package never imports those adapters or engine.
+
+`internal/suppression` owns YAML comment attachment and malformed-source recovery,
+directive grammar, declaration extents, and evaluation of permitted exceptions.
+The caller supplies the ordered rule catalogue and a per-rule decision about
+suppression/reporting. Engine supplies finding origins and translates resolved
+configuration into those decisions. A suppression parser cannot read repository
+configuration or construct a rule host.
+
+Architecture contracts check these boundaries transitively, including generator
+imports, so a compatibility alias cannot reintroduce an engine dependency.
+
+`internal/workflow/runner` owns runner-label inventories, label compatibility,
+correlated matrix expansion and platform inference. Custom runner labels are
+explicit inputs. `internal/workflow/execution` owns shell selection, shell-name
+checks, condition/status reasoning, environment uncertainty and runner path
+syntax. These packages do not import repository configuration or engine state.
+
+`internal/finding` carries public diagnostics plus source, invocation and
+suppression provenance. It owns range/fix finalization and duplicate identity;
+it has no configuration, traversal or rendering dependency. Producers and policy
+share this value model directly instead of depending on `engine.Error`.
+
+`internal/diagnosticpolicy` applies inline and configured exceptions, source-scoped
+severity, path filters and duplicate selection after analysis completes. Its inputs
+are findings, resolved configuration, source snapshots and project paths. Engine
+supplies those inputs and logging callbacks; policy cannot construct or import an
+engine, workspace session, analyzer host or tool implementation.
+
+`internal/workflow/cachepolicy` owns event trust, condition reachability, cache grants,
+disabled cache operations and ceilings propagated through reusable workflows. It
+consumes workflow declarations and an explicit metadata lookup. Its diagnostics
+are evaluated at each caller; dependency caches never retain caller-specific
+policy results. The host retains the workflow/job context needed to invoke checks
+and attach invocation origins. Configured and inline exceptions remain in
+`diagnosticpolicy` and `suppression`.
+
+`internal/workflow/expressions` owns workflow context construction, dependency
+output types, matrix type inference, field-shape checks and expression source
+ranges. It receives semantic options and action/workflow metadata lookup functions.
+The host projects configuration into those options and retains ownership of lookup
+error classification. The package cannot import engine, configuration or tool
+execution. Direct expression adapter tests live beside this implementation;
+selection, suppression and full traversal tests remain integration tests.
+
+`internal/workflow/execution` also owns runner-to-analysis path translation,
+checkout placement, indexed path traversal and executable-bit state, including
+conditional composite calls and independent action copies. Its checker receives
+resolved paths, a recording reader and an index-snapshot lookup. The host reads
+Git through `workspace` and shares each immutable snapshot across invocations;
+the execution package cannot launch Git or import the workspace/session layer.
+`workflow/calls` checks supplied inputs/secrets and compares resolved caller
+permissions with callee requirements; repository configuration is projected by
+the host before invoking these checks.
+
+`internal/action/local` separates repository metadata caches from per-document
+reference resolution. `Cache` stores parsed manifests and raw source snapshots;
+`Resolver` owns source mappings, checkout placement and persistent environment
+uncertainty. Repository roots, readers and syntax observers are explicit inputs.
+The host converts metadata observations into document outlines and keeps validation
+templates and invocation identities outside the cache. Composite scopes share
+metadata while their conditional checkout/environment state is joined explicitly.
+Physical source identity belongs to `fsread`, shared by snapshots and analysis.
+
+The action catalogue materializes runtime metadata and resolves exact references
+inside `internal/actioncatalog`. Loading a browser catalogue and regenerating its
+bundled data no longer loads the engine, including in catalogue round-trip tests.
+
+Workflow name inventories own producer-name filter checking as well as pattern
+matching. Action validation owns remote reference syntax, Docker URI checks and
+runtime/input checks against caller-supplied catalogue lookup. Engine adapters
+select dependencies and attach results to the active traversal scope.
+
+`internal/workflow/visit` defines the synchronous pass/rule contract and finding
+accumulator independently of orchestration. Engine and rule adapters import this
+contract directly. It has no configuration, registration, process or lifecycle
+capabilities; those remain explicit capabilities at the host boundary.
