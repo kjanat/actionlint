@@ -93,13 +93,13 @@ test('PR comparison uses the merge-base and latest head message, not the merge c
 	const repo = repository(t);
 	repo.git(['checkout', '--quiet', '-b', 'pr']);
 	repo.commit('internal/cli/check.go', 'First PR change\n\nCI-Skip: conformance');
-	const head = repo.commit('internal/cli/check_test.go', 'Latest PR change\n\nCI-Skip: nix');
+	const head = repo.commit('internal/integration/cli/check_test.go', 'Latest PR change\n\nCI-Skip: nix');
 	repo.git(['checkout', '--quiet', 'base']);
 	const base = repo.commit('unrelated.go', 'Base advanced');
 	repo.git(['merge', '--quiet', '--no-ff', 'pr', '-m', 'Synthetic merge\n\nCI: full']);
 	repo.event({ pull_request: { base: { sha: base }, head: { sha: head } } });
 	assert.deepEqual(changedInputs(repo.environment, repo.cwd), {
-		paths: ['internal/cli/check.go', 'internal/cli/check_test.go'],
+		paths: ['internal/cli/check.go', 'internal/integration/cli/check_test.go'],
 		trailers: { full: false, skip: ['nix'] },
 	});
 });
@@ -189,11 +189,13 @@ function workflowFilters(workflow) {
 }
 
 test('test-only CLI changes keep Go coverage without rebuilding packages or running unrelated suites', () => {
-	const jobs = selectJobs(workflowFilters('ci'), ['internal/cli/usability_test.go']);
+	const jobs = selectJobs(workflowFilters('ci'), ['internal/integration/cli/usability_test.go']);
 	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['unit', 'race', 'lint']);
 	for (const workflow of ['codeql', 'conformance', 'expression-probe-tests', 'matcher']) {
 		assert.ok(
-			Object.values(selectJobs(workflowFilters(workflow), ['internal/cli/usability_test.go'])).every(run => !run),
+			Object.values(selectJobs(workflowFilters(workflow), ['internal/integration/cli/usability_test.go'])).every(run =>
+				!run
+			),
 		);
 	}
 });

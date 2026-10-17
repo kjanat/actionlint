@@ -1,7 +1,9 @@
+// Package report carries completed analysis values for application consumers.
 package report
 
 import (
 	"actionlint.kjanat.dev/diagnostic"
+	documentmodel "actionlint.kjanat.dev/document"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/rule"
 )
@@ -14,7 +16,7 @@ type Analysis struct {
 	FileCount      int
 	Diagnostics    []diagnostic.Diagnostic
 	Sources        []DiagnosticSource
-	Documents      DocumentOutlines
+	Documents      documentmodel.Outlines
 	Configurations []repoconfig.Report
 	Inputs         []string
 	Rules          []rule.Descriptor

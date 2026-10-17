@@ -15,8 +15,9 @@ inputs and returned results, while the host must own completion even when traver
 ## Decision
 
 Keep one module and separate the public packages by responsibility. Root contains the convenience entry point and
-generation directives. `internal/engine` coordinates traversal and shared analysis state; `internal/builtin`
-constructs the concrete visitor adapters.
+generation directives. `internal/engine` traverses workflow syntax with supplied passes. `internal/checks`
+selects concrete adapters from `internal/builtin`; `internal/workflow/composition`
+owns nested invocation analysis and its complete script lifecycle.
 `internal/application` owns an invocation; `internal/workspace` prepares its inputs;
 `internal/analyzerhost` schedules its execution and drains outstanding callbacks.
 `internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
@@ -24,8 +25,8 @@ parsing, types, constant evaluation and semantic checks. Both implementations ca
 `internal/config` owns the configuration document, its validation and the built-in rule catalog;
 `internal/builtin` attaches execution behaviour to catalog entries by name. `internal/render` presents results as text, Go templates,
 JSON, SARIF and GitHub annotations from diagnostics, source text and rule metadata.
-`internal/analyzerhost` owns generic execution and resource scopes. `internal/report` owns document models and their codecs; the public `document` package exposes those models without
-importing the engine. Existing focused internal packages retain ownership
+`internal/analyzerhost` owns generic execution and resource scopes. The public `document`
+package owns document models and their codecs; `internal/report` aggregates completed analysis values. Existing focused internal packages retain ownership
 of mapping resolution, external checker logic, filesystem reads, configuration trees and suppressions.
 
 ```mermaid
@@ -37,26 +38,29 @@ flowchart TD
     Action[internal/githubaction] --> App
     Browser[Playground] --> App
     App --> Workspace[internal/workspace]
-    App --> Engine[internal/engine]
+    App --> Composition[internal/workflow/composition]
+    App --> Registry[internal/checks]
+    App --> Policy[internal/diagnosticpolicy]
+    App --> Decode[internal/documentparse]
     App --> Host[internal/analyzerhost]
+    Composition --> Engine[internal/engine]
+    Composition --> Scripts[internal/tools/execution]
+    Scripts --> Host
     Workspace --> Config[internal/config]
-    Engine --> Config
     Engine --> Workflow[internal/workflow]
-    Engine --> Facts[internal/workflow/facts]
-    Engine --> Builtin[internal/builtin]
+    Composition --> Facts[internal/workflow/facts]
+    Registry --> Builtin[internal/builtin]
     Builtin --> Checks[internal/workflow/checks]
     Checks --> Semantics[internal/semantics]
-    Engine --> Expressions[internal/expression]
     Workflow --> Expressions
-    Engine --> Host
-    Engine --> Models[internal/report]
-    App --> Models
+    App --> Models[internal/report]
+    Decode --> Documents[document]
+    Models --> Documents
     CLI --> Render[internal/render]
     Action --> Render
     Render --> Models
     Models --> Diagnostic[diagnostic]
     Syntax[syntax] --> Workflow
-    Documents[document] --> Models
 ```
 
 New analyzers declare required facts and return diagnostics and errors. They have no AST-visit, configuration mutation
@@ -69,7 +73,7 @@ early exit, including injected checkers with their own runners. Concurrent compl
 ownership is a separate capability from internal traversal rules. Configuration and debug configuration are separate
 capabilities too. The document runner does not identify external tool types to wait for them.
 
-Tool selection and initialization policy belong to built-in composition. Ruff, ShellCheck and deprecated-command checks
+Tool selection and initialization policy belong to application composition. Ruff, ShellCheck and deprecated-command checks
 consume a prepared script batch and return findings and an error. They do not implement visitors. Each invocation records
 its shell selection, configuration, source location and suppression origin. ShellCheck additionally requires effective
 execution facts: runner defaults, working directories and checkout/action placement. The collector resolves these facts
@@ -98,7 +102,7 @@ shapes, and must not parse expression-looking text returned as data a second tim
 | `analyzer`              | Defines provider inputs, requested facts and returned diagnostics.                                   |
 | `internal/analyzerhost` | Schedules analyzer work and owns shared execution limits and resource completion.                    |
 | `internal/application`  | Owns one invocation, from input selection through analysis and runtime cleanup.                      |
-| `internal/engine`       | Parses prepared documents, shares analysis state, traverses workflows and schedules their checks.    |
+| `internal/engine`       | Traverses workflow syntax with caller-supplied passes and hooks.                                     |
 | `internal/resolution`   | Implements injected dependency resolvers and reports resolved commits through the analyzer contract. |
 | `internal/workspace`    | Discovers repository inputs and selects their configuration without running analyzers.               |
 
@@ -112,9 +116,9 @@ stay separate from `tools/backend`, which adapts the script-engine protocol.
 - Configuration and syntax alias independent implementations. Importing either public package no longer imports
   discovery, rule execution or native tools. The parser retains
   decoded source maps alongside syntax because accurate diagnostics require both.
-- Composite expansion and traversal remain in the engine. Built-in composition owns visitor adapters;
-  `internal/action/local` owns local action resolution. Input discovery, configuration selection, process execution
-  and rendering have separate owners.
+- Composite expansion and script completion belong to `internal/workflow/composition`;
+  workflow traversal belongs to `internal/engine`. `internal/action/local` owns local action resolution.
+  [Analysis ownership](analysis-ownership.md) records the execution and policy boundaries.
 - Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
   rule has been rewritten as a fact consumer.
@@ -127,7 +131,7 @@ stay separate from `tools/backend`, which adapts the script-engine protocol.
 
 External-package tests exercise the public root entry point, config and syntax packages, file analysis, custom analyzer
 partial results and composite-action scripts. Host tests cover input isolation, unavailable facts, cancellation and
-joining all resources once. Engine regressions cover traversal failure, cancellation with retained findings, independent script scopes and fallback
+joining all resources once. Application and composition regressions cover traversal failure, cancellation with retained findings, independent script scopes and fallback
 when either ShellCheck range endpoint cannot be mapped. Import-boundary tests check that the public analyzer, diagnostic,
 document, syntax and config contracts, together with the standalone language, configuration and rendering implementations,
 have no transitive dependency on the engine, CLI or process execution. A separate guard prevents expression semantics from importing
@@ -189,8 +193,8 @@ script text to document positions, including decoded escapes and folded whitespa
 place a finding without parsing YAML. The `execution` fact adds the shell and working directory the runner would use,
 with explicit known flags, and the host resolves it only when an analyzer asks.
 
-The built-in deprecated-commands check consumes these facts through the same contract; the engine adapts its findings
-to host state such as ignore origins and foreign sources. Public findings that name a composite action path are
+The built-in deprecated-commands check consumes these facts through the same contract;
+`tools/execution` adapts its findings with captured ownership, ignore origins and foreign sources. Public findings that name a composite action path are
 filtered with that file's inline suppressions and configuration. Other built-in rules still run as visitors.
 
 ## Decision: run external analyzers as WebAssembly components
@@ -309,12 +313,13 @@ the parent does not become a facade that re-exports every implementation.
 The migration facades and their test-only implementations are gone. Configuration
 and selection tests call `workspace`; invocation-lifetime and native-tool integration
 tests call `application`; rendering tests consume completed report values. Engine
-tests supply their own process pool to the actual `Request` and `Run` contract.
+tests supply synchronous passes without process pools, caches or configuration.
 End-to-end regression tests live under `internal/integration`, split into actions,
 expressions, workflow, configuration, suppression, tools and result contracts. They
 call `application` and assert report values. Unit tests live beside the domain they
-exercise; engine tests cover its private traversal, scheduling, cache sharing,
-provenance and projection state. `internal/testutil` supplies fixture files and
+exercise: traversal in `engine`, scheduling in `analyzerhost` and `tools/execution`,
+repository snapshots in `workspace`, invocation facts in `workflow/composition`,
+diagnostic processing in `diagnosticpolicy`, and decoding in `documentparse`. `internal/testutil` supplies fixture files and
 source inputs without exposing engine state.
 
 Public examples use `analysis` and the `analyzer.Analyzer` contract. Architecture tests
@@ -340,8 +345,8 @@ its expansion results; the matrix package never imports those adapters or engine
 `internal/suppression` owns YAML comment attachment and malformed-source recovery,
 directive grammar, declaration extents, and evaluation of permitted exceptions.
 The caller supplies the ordered rule catalogue and a per-rule decision about
-suppression/reporting. Engine supplies finding origins and translates resolved
-configuration into those decisions. A suppression parser cannot read repository
+suppression/reporting. Producers capture finding origins; `diagnosticpolicy` translates
+resolved configuration into those decisions. A suppression parser cannot read repository
 configuration or construct a rule host.
 
 Architecture contracts check these boundaries transitively, including generator
@@ -360,8 +365,8 @@ share this value model directly instead of depending on `engine.Error`.
 
 `internal/diagnosticpolicy` applies inline and configured exceptions, source-scoped
 severity, path filters and duplicate selection after analysis completes. Its inputs
-are findings, resolved configuration, source snapshots and project paths. Engine
-supplies those inputs and logging callbacks; policy cannot construct or import an
+are findings, resolved configuration, source indexes, source snapshots and project paths.
+Application supplies those inputs and logging callbacks; policy cannot construct or import an
 engine, workspace session, analyzer host or tool implementation.
 
 `internal/workflow/cachepolicy` owns event trust, condition reachability, cache grants,
@@ -405,8 +410,8 @@ bundled data no longer loads the engine, including in catalogue round-trip tests
 
 Workflow name inventories own producer-name filter checking as well as pattern
 matching. Action validation owns remote reference syntax, Docker URI checks and
-runtime/input checks against caller-supplied catalogue lookup. Engine adapters
-select dependencies and attach results to the active traversal scope.
+runtime/input checks against caller-supplied catalogue lookup. Builtin adapters
+use application-supplied dependencies and attach results to the active invocation.
 
 `internal/workflow/visit` defines the synchronous pass/rule contract and finding
 accumulator independently of orchestration. Engine and rule adapters import this
@@ -419,10 +424,11 @@ they cannot import engine, workspace sessions, process execution or presentation
 Configuration metadata remains owned by `config`, independently of executable
 registrations. `workflow/visit` supplies the common visitor/result contract.
 
-Engine composes visitor rules and script fact analyzers from these registrations,
-then schedules traversal and joins resources. Deprecated-command checking uses the
-same generic script-fact adapter as any registered fact analyzer; engine does not
-import its implementation. Optional metadata and composite invocation capabilities
+`checks` selects visitor rules and script fact analyzers from these registrations.
+Application composes them with registered tools. `workflow/composition` owns traversal,
+script completion and collection; the engine receives only synchronous passes and hooks.
+Deprecated-command checking uses the same `tools/execution` fact adapter as any registered
+script fact analyzer. Optional metadata and composite invocation capabilities
 are explicit interfaces on the composition boundary, rather than private engine
 methods that force implementations back into the host package.
 

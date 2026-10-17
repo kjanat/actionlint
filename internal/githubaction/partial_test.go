@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
+	documentmodel "actionlint.kjanat.dev/document"
+
 	"actionlint.kjanat.dev/internal/processconfig"
 	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/report"
 )
 
 func TestPartialResultAnalyzer(t *testing.T) {
@@ -90,7 +91,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 	if len(result.Documents) != 1 {
 		t.Fatalf("timeout discarded parsed outline: %+v", result.Documents)
 	}
-	workflow, ok := result.Documents[0].(report.WorkflowOutline)
+	workflow, ok := result.Documents[0].(documentmodel.Workflow)
 	if !ok || workflow.Path != "./timeout.yaml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 		t.Fatalf("timeout corrupted workflow document: %+v", result.Documents)
 	}

@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/projectpath"
 	"actionlint.kjanat.dev/internal/report"
@@ -89,15 +88,15 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	processes := analyzerhost.NewProcessPool(ctx, runtime.NumCPU())
 	engines := analyzerhost.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
-	request := engine.Request{Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log}
+	request := analysisRequest{Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log}
 
 	if options.LoadScriptEngine != nil {
 		request.LoadScriptEngine = engines.Load
 	}
 	if options.Verbose {
-		request.LogLevel = engine.LogLevelVerbose
+		request.LogLevel = LogLevelVerbose
 	} else if options.Debug {
-		request.LogLevel = engine.LogLevelDebug
+		request.LogLevel = LogLevelDebug
 	}
 	request.IgnorePatterns, err = repoconfig.CompileIgnorePatterns(options.IgnorePatterns)
 	if err != nil {
@@ -117,7 +116,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		names = append(names, registration.Descriptor.Name)
 	}
 	selectionLog := func(args ...any) {
-		if options.LogSelection && request.LogLevel >= engine.LogLevelVerbose {
+		if options.LogSelection && request.LogLevel >= LogLevelVerbose {
 			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
 		}
 	}
@@ -169,7 +168,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		}
 	}
 	if options.LegacyErrors && err != nil {
-		err = engine.LegacyAnalysisError(err)
+		err = LegacyAnalysisError(err)
 	}
 	return result, err
 }
@@ -194,8 +193,8 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 func Analyze(ctx context.Context, options Options, sources []workspace.Source) (*Result, error) {
 	return Check(ctx, options, Input{Kind: prepared, sources: sources})
 }
-func analyzePrepared(ctx context.Context, request engine.Request) (*Result, error) {
-	analyzed, err := engine.Run(ctx, request)
+func analyzePrepared(ctx context.Context, request analysisRequest) (*Result, error) {
+	analyzed, err := runAnalysis(ctx, request)
 	if analyzed == nil {
 		return nil, err
 	}

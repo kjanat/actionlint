@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 
+	documentmodel "actionlint.kjanat.dev/document"
+
 	"actionlint.kjanat.dev/diagnostic"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/report"
@@ -17,7 +19,7 @@ type Result struct {
 	FileCount      int
 	Diagnostics    []diagnostic.Diagnostic
 	Findings       []Finding
-	Documents      report.DocumentOutlines
+	Documents      documentmodel.Outlines
 	Configurations []repoconfig.Report
 	Rules          []Rule
 }
@@ -49,7 +51,7 @@ type CheckResult struct {
 	ExitCode      int                     `json:"exit_code"`
 	FileCount     *int                    `json:"file_count"`
 	Diagnostics   []diagnostic.Diagnostic `json:"diagnostics"`
-	Documents     report.DocumentOutlines `json:"documents"`
+	Documents     documentmodel.Outlines  `json:"documents"`
 	Configs       []ResultConfig          `json:"configurations"`
 	Hints         []string                `json:"hints"`
 	SARIF         json.RawMessage         `json:"sarif,omitempty"`

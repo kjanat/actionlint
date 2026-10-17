@@ -143,7 +143,7 @@ man/actionlint.1.html: man/actionlint.1.md man/manual.css
 man: man/actionlint.1 man/actionlint.1.html
 
 bench:
-	go test -run '^$$' -bench Lint -benchmem ./internal/engine ./internal/application
+	go test -run '^$$' -bench Lint -benchmem ./internal/application
 
 .github/actionlint-matcher.json: internal/githubaction/matcher/main.mjs internal/githubaction/matcher/object.mjs
 	node ./internal/githubaction/matcher/main.mjs .github/actionlint-matcher.json

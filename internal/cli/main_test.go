@@ -5,14 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/testutil"
 )
 
 func TestMain(m *testing.M) {
 	if os.Getenv("ACTIONLINT_TEST_RUFF_DISCOVERY") == "1" {
-		os.Exit(ruffDiscoveryHelper())
-	}
-	if os.Getenv("ACTIONLINT_TEST_TOOL_PROCESS") == "1" {
-		os.Exit(environmentToolHelper())
+		os.Exit(testutil.RuffDiscoveryHelper())
 	}
 	if err := os.Chdir("../.."); err != nil {
 		fmt.Fprintln(os.Stderr, err)

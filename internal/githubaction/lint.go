@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	documentmodel "actionlint.kjanat.dev/document"
+
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/tools/adapters"
 
@@ -21,7 +23,6 @@ import (
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
 	"actionlint.kjanat.dev/internal/processconfig"
 	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/report"
 )
 
 const lintTimeout = 300 * time.Second
@@ -56,7 +57,7 @@ type lintOutcome struct {
 type lintResult struct {
 	*lintOutcome
 	diagnostics    []diagnostic.Diagnostic
-	documents      report.DocumentOutlines
+	documents      documentmodel.Outlines
 	sarif          string
 	fileCount      int
 	fileCountKnown bool

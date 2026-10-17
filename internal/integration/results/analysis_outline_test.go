@@ -11,12 +11,13 @@ import (
 	"strings"
 	"testing"
 
+	documentmodel "actionlint.kjanat.dev/document"
+
 	diagmodel "actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/buildinfo"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/report"
 	"actionlint.kjanat.dev/internal/testutil"
 	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
@@ -70,7 +71,7 @@ jobs:
 	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
 		t.Fatalf("reusable call lost: %+v", deploy)
 	}
-	if !reflect.DeepEqual(deploy.Reference, report.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+	if !reflect.DeepEqual(deploy.Reference, documentmodel.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
 		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference)
 	}
 	if partial.Path != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {
@@ -140,11 +141,11 @@ jobs:
 	if len(analysis.Documents) != 3 {
 		t.Fatalf("wanted workflow and two read manifests: %+v", analysis.Documents)
 	}
-	action, ok := analysis.Documents[1].(report.ActionOutline)
+	action, ok := analysis.Documents[1].(documentmodel.Action)
 	if !ok || action.Path != "action.yml" || action.ParseStatus != "complete" {
 		t.Fatalf("wrong action document: %+v", analysis.Documents[1])
 	}
-	broken, ok := analysis.Documents[2].(report.ActionOutline)
+	broken, ok := analysis.Documents[2].(documentmodel.Action)
 	if !ok || broken.ParseStatus != "failed" {
 		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
 	}
@@ -198,7 +199,7 @@ jobs:
 			if len(analysis.Documents) != 2 {
 				t.Fatalf("missing action inventory: %+v", analysis.Documents)
 			}
-			action, ok := analysis.Documents[1].(report.ActionOutline)
+			action, ok := analysis.Documents[1].(documentmodel.Action)
 			if !ok || action.ParseStatus != "complete" {
 				t.Fatalf("analysis validation changed decoding status: %+v", analysis.Documents[1])
 			}
@@ -218,9 +219,9 @@ jobs:
 	}
 }
 
-func requireWorkflowOutline(t *testing.T, document report.DocumentOutline) report.WorkflowOutline {
+func requireWorkflowOutline(t *testing.T, document documentmodel.Outline) documentmodel.Workflow {
 	t.Helper()
-	workflow, ok := document.(report.WorkflowOutline)
+	workflow, ok := document.(documentmodel.Workflow)
 	if !ok {
 		t.Fatalf("expected workflow, got %T", document)
 	}
@@ -278,9 +279,9 @@ jobs:
 			got := make([]string, 0, len(analysis.Documents))
 			for _, document := range analysis.Documents {
 				switch document := document.(type) {
-				case report.WorkflowOutline:
+				case documentmodel.Workflow:
 					got = append(got, document.Path+":"+document.ParseStatus)
-				case report.ActionOutline:
+				case documentmodel.Action:
 					got = append(got, document.Path+":"+document.ParseStatus)
 				default:
 					t.Fatalf("unexpected document %T", document)

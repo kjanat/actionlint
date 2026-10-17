@@ -299,7 +299,7 @@ jobs:
           "${stage}/examples/insecure-download/build.sh" "${stage}/insecure-download.wasm"
           go run ./cmd/actionlint --no-config --shellcheck= --ruff= --plugin "${stage}/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm" --plugin "${stage}/no-sudo.wasm" --plugin "${stage}/insecure-download.wasm" testdata/ok/minimal.yaml
       - run: go test -count=1 ./internal/plugins/component ./internal/plugins/core ./plugin
-      - run: go test -count=1 -run "Plugin|Engine" ./internal/cli
+      - run: go test -count=1 -run "Plugin|Engine" ./internal/integration/cli
   docker:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
@@ -613,4 +613,4 @@ jobs:
           grep -Eq '^attestation verify .* --repo kjanat/shellcheck-rs( |$)' "${RUNNER_TEMP}/gh-calls.txt"
       - name: Run the deletion-only pre-commit integration test
         env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
-        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' ./internal/cli
+        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' ./internal/integration/cli

@@ -8,18 +8,24 @@ import (
 	"slices"
 	"time"
 
-	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // Visitor visits syntax tree from root in depth-first order
 type Visitor struct {
-	passes       []workflowvisit.Pass
-	trackIgnores bool
-	dbg          io.Writer
-	composites   *compositeAnalyzer
-	jobID        string
+	passes []workflowvisit.Pass
+	dbg    io.Writer
+	Hooks  Hooks
+}
+
+// Hooks lets a caller observe document/job entry and own step expansion.
+// ParallelBoundary invalidates caller-owned assumptions between parallel branches.
+type Hooks struct {
+	Workflow         func(*workflowlang.Workflow)
+	Job              func(*workflowlang.Job)
+	Step             func(*workflowlang.Step) error
+	ParallelBoundary func()
 }
 
 // NewVisitor creates Visitor instance
@@ -49,8 +55,8 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 		t = time.Now()
 	}
 
-	if v.composites != nil {
-		v.composites.beginWorkflow(n)
+	if v.Hooks.Workflow != nil {
+		v.Hooks.Workflow(n)
 	}
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {
@@ -107,12 +113,8 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 }
 
 func (v *Visitor) visitJob(n *workflowlang.Job) error {
-	v.jobID = ""
-	if n.ID != nil {
-		v.jobID = n.ID.Value
-	}
-	if v.composites != nil {
-		v.composites.beginJob(n)
+	if v.Hooks.Job != nil {
+		v.Hooks.Job(n)
 	}
 	var t time.Time
 	if v.dbg != nil {
@@ -120,7 +122,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, findingmodel.JobOrigin(n), v.trackIgnores, func() error { return p.VisitJobPre(n) }); err != nil {
+		if err := p.VisitJobPre(n); err != nil {
 			return err
 		}
 	}
@@ -142,7 +144,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, findingmodel.JobOrigin(n), v.trackIgnores, func() error { return p.VisitJobPost(n) }); err != nil {
+		if err := p.VisitJobPost(n); err != nil {
 			return err
 		}
 	}
@@ -160,13 +162,13 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 		t = time.Now()
 	}
 
-	if v.composites != nil {
-		if err := v.composites.visitStep(n); err != nil {
+	if v.Hooks.Step != nil {
+		if err := v.Hooks.Step(n); err != nil {
 			return err
 		}
 	} else {
 		for _, p := range v.passes {
-			if err := visitWithIgnoreOrigin(p, findingmodel.StepOrigin(v.jobID, n), v.trackIgnores, func() error { return p.VisitStep(n) }); err != nil {
+			if err := p.VisitStep(n); err != nil {
 				return err
 			}
 		}
@@ -176,15 +178,15 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	if e, ok := n.Exec.(*workflowlang.ExecParallel); ok {
 		for _, s := range e.Steps {
-			if v.composites != nil {
-				v.composites.invalidateCheckout()
+			if v.Hooks.ParallelBoundary != nil {
+				v.Hooks.ParallelBoundary()
 			}
 			if err := v.visitStep(s); err != nil {
 				return err
 			}
 		}
-		if v.composites != nil {
-			v.composites.invalidateCheckout()
+		if v.Hooks.ParallelBoundary != nil {
+			v.Hooks.ParallelBoundary()
 		}
 	}
 

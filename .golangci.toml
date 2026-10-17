@@ -76,7 +76,7 @@ text    = "fsread\\.ProbeDir"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/genfile/write_new\.go$'
+path    = '^internal/(genfile/write_new|testutil/ruff)\.go$'
 text    = 'use of `os\.OpenFile`'
 linters = ["forbidigo"]
 

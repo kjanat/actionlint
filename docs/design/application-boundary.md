@@ -14,9 +14,14 @@ flowchart TD
     Library[analysis.Files and analysis.Repository] --> App
     App --> Workspace[internal/workspace]
     Workspace --> Config[internal/config]
-    App --> Engine[internal/engine]
+    App --> Decode[internal/documentparse]
+    App --> Registry[internal/checks]
+    App --> Composition[internal/workflow/composition]
+    App --> Policy[internal/diagnosticpolicy]
+    Composition --> Engine[internal/engine]
+    Composition --> Scripts[internal/tools/execution]
     App --> Host[internal/analyzerhost]
-    Engine --> Host
+    Scripts --> Host
     CLI --> Render[internal/render]
     CLI --> Config[internal/config]
     CLI --> Process[internal/processconfig]
@@ -33,8 +38,8 @@ are session-owned.
 
 - `application.Check` coordinates input preparation, analysis and backend cleanup,
   including the empty-repository convention used by pre-commit. It drains the shared
-  process pool before closing loaded backends. It calls
-  `workspace` and `engine.Run` separately; it does not use the legacy session.
+  process pool before closing loaded backends. It assembles the document context,
+  configured check registry, tool services and diagnostic policy.
 - `workspace` owns repository discovery, configuration loading and overlays,
   file selection, source reads and configuration provenance. Its `Selection`
   carries resolved sources and all consumed paths, including excluded discovery
@@ -71,15 +76,14 @@ Legacy linter/session and rendering compatibility adapters are test-only. Produc
 callers use the application boundary, including the GitHub Action, Playground and
 documentation checker. Synthetic repository identities use `workspace.Identity`.
 
-Within analysis, parsing returns a document, syntax findings and an outline.
-`traversalHost` constructs rules and visits the AST, returning script work,
-collectors and referenced metadata. The scheduler consumes that prepared work;
-it does not walk the AST. The coordinator joins traversal resources before
-reading collectors, including on early failures. `diagnosticPolicy` then applies
-source-specific suppressions, severity, path filters and deduplication without
-access to traversal or scheduling. Internal findings embed the canonical diagnostic contract and retain analysis-only
-provenance. Source identities and mapping/dependency projections belong to
-`workflow/facts`, independently of execution.
+`documentparse` decodes workflows and action manifests through separate entrypoints.
+`checks` constructs the configured semantic passes. `workflow/composition` receives
+those passes and a script service, owns nested invocation analysis, and joins work
+before returning findings, script facts and source provenance. The engine only
+traverses workflow syntax. `diagnosticpolicy` enriches references and applies
+source-specific suppressions, severity, path filters and deduplication after all
+analyzers finish. See [Analysis ownership](analysis-ownership.md) for the decision
+and dependency constraints.
 
 Five declaration checks use a shared visitor adapter over stateless workflow
 projections. Remaining expression, composite and policy adapters still retain
@@ -92,7 +96,7 @@ implementations, application dependencies on the CLI or command framework, and
 concrete WASM runtime dependencies in the engine, application and public analysis
 API. Additional dependency checks keep input preparation independent of analysis
 and scheduling independent of traversal/configuration. Tests exercise preparation
-of malformed source without parsing, per-batch provenance, and traversal that
-collects scripts without executing them. Lifecycle tests cover successful checks, analysis failures, cleanup failures,
+of malformed source without parsing, per-batch provenance, and script execution
+that follows traversal and completes before findings are collected. Lifecycle tests cover successful checks, analysis failures, cleanup failures,
 combined failures and cancellation. Existing CLI tests cover report publication,
 format equivalence, pre-commit discovery and terminal behavior.
