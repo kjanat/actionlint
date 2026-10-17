@@ -1,6 +1,10 @@
 package actionlint
 
-import "strings"
+import (
+	"strings"
+
+	"actionlint.kjanat.dev/internal/mapping"
+)
 
 // RuleEnvVar is a rule checker to check environment variables setup.
 type RuleEnvVar struct {
@@ -41,19 +45,18 @@ func (rule *RuleEnvVar) VisitWorkflowPre(n *Workflow) error {
 }
 
 func (rule *RuleEnvVar) checkEnv(env *Env) {
-	if env == nil || env.Expression != nil {
+	if env == nil {
 		return
 	}
-	for _, v := range env.Vars {
-		if v.Name.ContainsExpression() {
-			continue // Key name can contain expressions (#312)
+	inputResolver.Walk(envMappingView(env), nil, func(entry mapping.Entry[*String]) {
+		if entry.Name != nil {
+			rule.checkName(entry.Name.Value, entry.Name.Pos)
 		}
-		if strings.ContainsAny(v.Name.Value, "&= 	") {
-			rule.Errorf(
-				v.Name.Pos,
-				"environment variable name %q is invalid. '&', '=' and spaces should not be contained",
-				v.Name.Value,
-			)
-		}
+	})
+}
+
+func (rule *RuleEnvVar) checkName(name string, pos *Pos) {
+	if strings.ContainsAny(name, "&= \t") {
+		rule.Errorf(pos, "environment variable name %q is invalid. '&', '=' and spaces should not be contained", name)
 	}
 }

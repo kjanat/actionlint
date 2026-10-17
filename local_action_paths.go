@@ -284,10 +284,6 @@ func (c *LocalActionsCache) observeCheckout(step *Step) {
 		c.restoreCheckout(&checkoutPlacement{directory: runDirectory{kind: directoryUnknown}, redirected: true})
 		return
 	}
-	if action.InputsExpression != nil {
-		c.setCheckout(runDirectory{kind: directoryUnknown})
-		return
-	}
 	checkoutPath, pathKnown := checkoutInput(action, "path")
 	checkoutPath, representable := runnerRelativePath(checkoutPath, c.platform)
 	if !pathKnown || !representable {

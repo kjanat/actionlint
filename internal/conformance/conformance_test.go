@@ -1,9 +1,10 @@
 //go:build conformance
 
-package actionlint
+package conformance_test
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,10 +20,21 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/conformance"
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
 )
+
+var conformanceLog string
+
+func TestMain(m *testing.M) {
+	status := m.Run()
+	if conformanceLog != "" {
+		fmt.Print("\n" + conformanceLog)
+	}
+	os.Exit(status)
+}
 
 type upstreamCase struct {
 	ID             string
@@ -33,26 +45,41 @@ type upstreamCase struct {
 	Kind           string
 	Filter         []string
 	CompletionOnly bool
+	ReferenceSkips []string
 }
 
 type upstreamResult struct {
-	ID              string   `json:"id"`
-	ExpectedReject  bool     `json:"expected_reject"`
-	ExpectedErrors  []string `json:"expected_errors,omitempty"`
-	Actual          []string `json:"actual"`
-	Difference      bool     `json:"difference"`
-	Contract        string   `json:"contract"`
-	KnownDifference string   `json:"known_difference,omitempty"`
+	ID             string   `json:"id"`
+	InputSHA256    string   `json:"input_sha256"`
+	ExpectedReject bool     `json:"expected_reject"`
+	ExpectedErrors []string `json:"expected_errors,omitempty"`
+	Actual         []string `json:"actual"`
+	Difference     bool     `json:"difference"`
+	Contract       string   `json:"contract"`
+	ReferenceSkips []string `json:"reference_skips,omitempty"`
+	Fingerprint    string   `json:"fingerprint,omitempty"`
 }
 
-type upstreamDifference struct {
-	Reason string   `json:"reason"`
-	Actual []string `json:"actual"`
+type upstreamBaseline struct {
+	Cases map[string][]string `json:"cases"`
 }
 
-type upstreamDifferenceGroup struct {
-	Reason string              `json:"reason"`
-	Cases  map[string][]string `json:"cases"`
+type upstreamObservationReport struct {
+	Sources      []conformance.Source `json:"sources"`
+	Observations []upstreamResult     `json:"observations"`
+}
+
+// Bind a review to the pinned source, fixture input, and observed behavior.
+func upstreamFingerprint(source conformance.Source, result upstreamResult) string {
+	result.Fingerprint = ""
+	data, err := json.Marshal(struct {
+		Source      conformance.Source `json:"source"`
+		Observation upstreamResult     `json:"observation"`
+	}{source, result})
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 func TestUpstreamConformance(t *testing.T) {
@@ -60,29 +87,15 @@ func TestUpstreamConformance(t *testing.T) {
 	if dir == "" {
 		dir = ".cache/conformance"
 	}
+	dir = repositoryPath(t, dir)
 	sources, err := conformance.Sources()
 	if err != nil {
 		t.Fatal(err)
 	}
-	baseline := map[string]upstreamDifference{}
-	data, err := os.ReadFile("testdata/conformance/differences.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var groups []upstreamDifferenceGroup
-	if err := json.Unmarshal(data, &groups); err != nil {
-		t.Fatal(err)
-	}
-	for _, group := range groups {
-		if strings.TrimSpace(group.Reason) == "" || len(group.Cases) == 0 {
-			t.Fatal("difference group must have a reason and at least one case")
-		}
-		for id, actual := range group.Cases {
-			if _, ok := baseline[id]; ok {
-				t.Fatalf("duplicate known difference %q", id)
-			}
-			baseline[id] = upstreamDifference{group.Reason, actual}
-		}
+	var baseline upstreamBaseline
+	readConformanceJSON(t, "testdata/differences.json", &baseline)
+	if len(baseline.Cases) == 0 {
+		t.Fatal("diagnostic baseline has no cases")
 	}
 	seen := map[string]bool{}
 	var results []upstreamResult
@@ -120,8 +133,14 @@ func TestUpstreamConformance(t *testing.T) {
 					if c.CompletionOnly {
 						contract = "completes without panic or hang"
 					}
-					known, ok := baseline[c.ID]
-					result := upstreamResult{c.ID, c.Reject, c.ExpectedErrors, actual, !c.CompletionOnly && c.Reject != (len(actual) > 0), contract, known.Reason}
+					known, ok := baseline.Cases[c.ID]
+					result := upstreamResult{
+						ID: c.ID, ExpectedReject: c.Reject, ExpectedErrors: c.ExpectedErrors, Actual: actual,
+						Difference: !c.CompletionOnly && c.Reject != (len(actual) > 0), Contract: contract,
+						InputSHA256:    fmt.Sprintf("%x", sha256.Sum256([]byte(c.Input))),
+						ReferenceSkips: c.ReferenceSkips,
+					}
+					result.Fingerprint = upstreamFingerprint(source, result)
 					results = append(results, result)
 					if !result.Difference {
 						if ok {
@@ -134,82 +153,68 @@ func TestUpstreamConformance(t *testing.T) {
 						return
 					}
 					if os.Getenv("ACTIONLINT_CONFORMANCE_STRICT") == "1" {
-						t.Errorf("upstream difference: %s", known.Reason)
+						t.Error("reference acceptance differs from actionlint")
 					}
-					if diff := cmp.Diff(known.Actual, actual); diff != "" {
-						t.Errorf("known difference changed (-want +got):\n%s", diff)
+					if diff := cmp.Diff(known, actual); diff != "" {
+						t.Errorf("recorded actionlint diagnostics changed; review whether behavior improved or regressed (-recorded +current):\n%s", diff)
 					}
-					t.Logf("UPSTREAM DIFFERENCE: %s", known.Reason)
 				})
 			}
 		})
 	}
-	for id := range baseline {
+	for id := range baseline.Cases {
 		if !seen[id] {
 			t.Errorf("known difference refers to a missing case: %s", id)
 		}
 	}
-	counts := map[string]int{}
-	for _, result := range results {
-		if result.Difference {
-			counts["differences"]++
-		} else {
-			counts["agreements"]++
-		}
+	observations := upstreamObservationReport{Sources: sources, Observations: results}
+	reportPath := os.Getenv("ACTIONLINT_CONFORMANCE_REPORT")
+	if reportPath != "" {
+		reportPath = repositoryPath(t, reportPath)
 	}
-	t.Logf("Upstream comparison: %d cases, %d agreements, %d differences", len(results), counts["agreements"], counts["differences"])
-	if summary := os.Getenv("GITHUB_STEP_SUMMARY"); summary != "" {
-		writeUpstreamSummary(t, summary, sources, results)
+	if reportPath != "" {
+		writeConformanceJSON(t, reportPath, observations)
 	}
-	if report := os.Getenv("ACTIONLINT_CONFORMANCE_REPORT"); report != "" {
-		data, err := json.MarshalIndent(struct {
-			Sources []conformance.Source `json:"sources"`
-			Results []upstreamResult     `json:"results"`
-		}{sources, results}, "", "  ")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(report, append(data, '\n'), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-func writeUpstreamSummary(t *testing.T, filename string, sources []conformance.Source, results []upstreamResult) {
-	t.Helper()
-	var text strings.Builder
-	text.WriteString("## Upstream conformance\n\nAgreement means matching acceptance for the stated contract, not full runtime compatibility. Known differences are executed and checked against their recorded diagnostics.\n\n")
-	text.WriteString("| Source | Cases | Agreements | Known differences | New differences |\n| --- | ---: | ---: | ---: | ---: |\n")
-	for _, source := range sources {
-		var total, agree, known, unknown int
-		for _, result := range results {
-			if !strings.HasPrefix(result.ID, source.Name+"/") {
-				continue
-			}
-			total++
-			switch {
-			case !result.Difference:
-				agree++
-			case result.KnownDifference != "":
-				known++
-			default:
-				unknown++
-			}
-		}
-		fmt.Fprintf(&text, "| [%s](https://github.com/%s/tree/%s) | %d | %d | %d | %d |\n", source.Name, source.Repository, source.Revision, total, agree, known, unknown)
-	}
-	text.WriteString("\nThe JSON artifact includes each case ID, upstream expectation, actionlint diagnostics, and explanation for known differences. A changed or resolved known difference also fails the test.\n")
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	// Regression assertions above depend only on observations and the baseline.
+	var assessments []upstreamAssessmentGroup
+	readConformanceJSON(t, "testdata/assessments.json", &assessments)
+	review, err := assessUpstreamResults(results, baseline.Cases, assessments)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, writeErr := f.WriteString(text.String())
-	closeErr := f.Close()
-	if writeErr != nil {
-		t.Fatal(writeErr)
+	conformanceLog = upstreamAssessmentInventory(assessments, review) + fmt.Sprintf("\nReference comparison: %d cases, %d agreements, %d differences; assessments: %d current, %d stale, %d missing\n", review.Score.Cases, review.Score.Agreements, review.Score.Differences, review.Score.Current, review.Score.Stale, review.Score.Missing)
+	if reportPath != "" {
+		writeConformanceJSON(t, reportPath+".assessments.json", review)
 	}
-	if closeErr != nil {
-		t.Fatal(closeErr)
+	if summary := os.Getenv("GITHUB_STEP_SUMMARY"); summary != "" {
+		writeUpstreamSummary(t, repositoryPath(t, summary), sources, results, baseline.Cases, assessments)
+	}
+}
+
+func readConformanceJSON(t *testing.T, filename string, value any) {
+	t.Helper()
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(value); err != nil {
+		t.Fatalf("%s: %v", filename, err)
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		t.Fatalf("%s: trailing JSON content", filename)
+	}
+}
+
+func writeConformanceJSON(t *testing.T, filename string, value any) {
+	t.Helper()
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filename, append(data, '\n'), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -325,11 +330,17 @@ func loadUpstreamWorkflows(t *testing.T, root fs.FS) []upstreamCase {
 		if len(docs) < 3 {
 			t.Fatalf("%s has fewer than three fixture documents", file)
 		}
+		var metadata struct {
+			Skip []string `yaml:"skip"`
+		}
+		if err := yaml.Unmarshal([]byte(docs[0]), &metadata); err != nil {
+			t.Fatalf("%s: invalid fixture metadata: %v", file, err)
+		}
 		var expected struct{ Errors []struct{ Message string } }
 		if err := json.Unmarshal([]byte(docs[len(docs)-1]), &expected); err != nil {
 			t.Fatalf("%s: %v", file, err)
 		}
-		c := upstreamCase{ID: file, Input: docs[1], Kind: "workflow", Reject: len(expected.Errors) > 0}
+		c := upstreamCase{ID: file, Input: docs[1], Kind: "workflow", Reject: len(expected.Errors) > 0, ReferenceSkips: metadata.Skip}
 		for _, e := range expected.Errors {
 			c.ExpectedErrors = append(c.ExpectedErrors, e.Message)
 		}
@@ -342,8 +353,8 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	t.Helper()
 	switch c.Kind {
 	case "expression":
-		parser := ExprParser{}
-		lexer := NewExprLexer(c.Input + "}}")
+		parser := actionlint.ExprParser{}
+		lexer := actionlint.NewExprLexer(c.Input + "}}")
 		node, err := parser.Parse(lexer)
 		if err != nil {
 			return []string{err.Error()}
@@ -351,56 +362,73 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		if lexer.Offset() != len(c.Input)+2 {
 			return []string{fmt.Sprintf("unexpected expression terminator at byte %d in standalone expression", lexer.Offset()-2)}
 		}
-		checker := NewExprSemanticsChecker(false, nil)
-		checker.vars = map[string]ExprType{}
+		checker := actionlint.NewExprSemanticsChecker(false, nil)
+		contexts := map[string]actionlint.ExprType{}
 		for name := range c.Contexts {
-			checker.vars[strings.ToLower(name)] = AnyType{}
+			contexts[strings.ToLower(name)] = actionlint.AnyType{}
 		}
-		checker.SetContextAvailability(slices.Sorted(maps.Keys(checker.vars)))
+		checker.SetContextTypes(contexts)
+		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
+		var diagnostics []*actionlint.ExprError
 		// GitHub's parser checks symbols and arity, but leaves coercion and evaluation to its evaluator.
-		VisitExprNode(node, func(n, _ ExprNode, entering bool) {
+		actionlint.VisitExprNode(node, func(n, _ actionlint.ExprNode, entering bool) {
 			if !entering {
 				return
 			}
 			switch n := n.(type) {
-			case *VariableNode:
-				checker.checkVariable(n)
-			case *FuncCallNode:
-				callChecker := NewExprSemanticsChecker(false, nil)
-				callChecker.vars = map[string]ExprType{"argument": AnyType{}}
+			case *actionlint.VariableNode:
+				_, errs := checker.Check(n)
+				diagnostics = append(diagnostics, errs...)
+			case *actionlint.FuncCallNode:
+				callChecker := actionlint.NewExprSemanticsChecker(false, nil)
+				callChecker.SetContextTypes(map[string]actionlint.ExprType{"argument": actionlint.AnyType{}})
 				callChecker.SetContextAvailability([]string{"argument"})
 				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})
-				args := make([]ExprNode, len(n.Args))
+				args := make([]actionlint.ExprNode, len(n.Args))
 				for i := range args {
-					args[i] = &VariableNode{Name: "argument", tok: n.Args[i].Token()}
+					argument, err := parser.Parse(actionlint.NewExprLexer("argument}}"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					*argument.Token() = *n.Args[i].Token()
+					args[i] = argument
 				}
-				_, errs := callChecker.Check(&FuncCallNode{Callee: n.Callee, Args: args, tok: n.tok})
-				checker.errs = append(checker.errs, errs...)
+				call := *n
+				call.Args = args
+				_, errs := callChecker.Check(&call)
+				diagnostics = append(diagnostics, errs...)
 			}
 		})
 		out := []string{}
-		for _, err := range checker.errs {
+		for _, err := range diagnostics {
 			out = append(out, err.Error())
 		}
 		return out
 	case "workflow":
-		linter, err := NewLinter(io.Discard, &LinterOptions{})
+		result, err := actionlint.Analyze(t.Context(), actionlint.AnalysisRequest{
+			Sources: []actionlint.SourceUnit{{Path: "<stdin>", Content: []byte(c.Input), Config: &actionlint.Config{}}},
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		linter.defaultConfig = &Config{}
-		errs, err := linter.Lint("<stdin>", []byte(c.Input), nil)
-		if err != nil {
-			t.Fatal(err)
+		errs := make([]*actionlint.Error, 0, len(result.Diagnostics))
+		for _, d := range result.Diagnostics {
+			errs = append(errs, &actionlint.Error{Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column, Kind: d.Rule, Message: d.Message})
 		}
 		return upstreamDiagnostics(errs)
 	case "action":
-		var meta ActionMetadata
+		var meta actionlint.ActionMetadata
 		if err := yaml.Unmarshal([]byte(c.Input), &meta); err != nil {
 			return []string{err.Error()}
 		}
-		meta.file, meta.src = "action.yml", []byte(c.Input)
-		meta.dir = t.TempDir()
+		root := t.TempDir()
+		dir := filepath.Join(root, "action")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "action.yml"), []byte(c.Input), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		// Manifest-parser fixtures assume companion files exist; their contents are never executed.
 		files := []string{meta.Runs.Main, meta.Runs.Pre, meta.Runs.Post, meta.Runs.PreEntrypoint, meta.Runs.Entrypoint, meta.Runs.PostEntrypoint}
 		if !strings.HasPrefix(meta.Runs.Image, "docker://") {
@@ -413,7 +441,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			if !filepath.IsLocal(file) {
 				t.Fatalf("fixture references non-local companion file %q", file)
 			}
-			file = filepath.Join(meta.dir, filepath.FromSlash(file))
+			file = filepath.Join(dir, filepath.FromSlash(file))
 			if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
 				t.Fatal(err)
 			}
@@ -421,12 +449,23 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				t.Fatal(err)
 			}
 		}
-		rule := NewRuleAction(nil)
-		rule.checkLocalActionMetadata(&meta, &ExecAction{Uses: &String{Value: "./action", Pos: &Pos{Line: 1, Col: 1}}})
+		project, err := actionlint.NewProject(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rule := actionlint.NewRuleAction(actionlint.NewLocalActionsCache(project, nil))
+		// Input binding is outside the manifest-parser contract.
+		err = rule.VisitStep(&actionlint.Step{Exec: &actionlint.ExecAction{
+			Uses:             &actionlint.String{Value: "./action", Pos: &actionlint.Pos{Line: 1, Col: 1}},
+			InputsExpression: &actionlint.String{Value: "${{ inputs }}", Pos: &actionlint.Pos{Line: 1, Col: 1}},
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
 		out := upstreamDiagnostics(rule.Errs())
-		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(meta.dir), `"`), `"`)
+		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {
-			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(meta.dir), "<action>")
+			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(dir), "<action>")
 			out[i] = strings.ReplaceAll(out[i], quotedDir, "<action>")
 			out[i] = strings.ReplaceAll(out[i], `<action>\\action.yml`, "<action>/action.yml")
 		}
@@ -449,11 +488,23 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	}
 }
 
-func upstreamDiagnostics(errs []*Error) []string {
+func upstreamDiagnostics(errs []*actionlint.Error) []string {
 	out := make([]string, 0, len(errs))
 	for _, err := range errs {
 		err.Filepath = filepath.ToSlash(err.Filepath)
 		out = append(out, err.Error())
 	}
 	return out
+}
+
+func repositoryPath(t *testing.T, name string) string {
+	t.Helper()
+	if filepath.IsAbs(name) {
+		return name
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Join(root, name)
 }

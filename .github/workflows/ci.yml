@@ -51,7 +51,7 @@ jobs:
               ".goreleaser.yaml", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
               "scripts/build-action-release.mjs", "scripts/release-*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
-              "!scripts/*.test.mjs", "!**/testdata/**"
+              "!scripts/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
             ],
             "modules": [
               ".github/actions/**", "distribution/**", "schemas/**", "actionlint.schema.json", "man/**", "README.md", "LICENSE.txt", "go.mod",
@@ -157,7 +157,7 @@ jobs:
     steps:
       - *ActCheckNocred
       - name: Install project tools
-        uses: &SetupMise jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        uses: &SetupMise jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
         with:
           cache: true
           auto_update: true
@@ -207,7 +207,7 @@ jobs:
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
           node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: release --snapshot --clean }
       - name: Smoke-test the linux/amd64 snapshot binary
         run: ./dist/linux_linux_amd64_v1/actionlint -version
@@ -306,7 +306,7 @@ jobs:
         run: runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //scripts:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'

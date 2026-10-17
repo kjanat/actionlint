@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"actionlint.kjanat.dev/internal/mapping"
 )
 
 //go:generate go run ./scripts/generate-availability ./availability.go
@@ -324,16 +326,16 @@ func (rule *RuleExpression) VisitStep(n *Step) error {
 		rule.checkString(e.WorkingDirectory, "jobs.<job_id>.steps.working-directory")
 	case *ExecAction:
 		rule.checkString(e.Uses, "")
-		rule.checkWorkflowExpression(e.InputsExpression, "with", "jobs.<job_id>.steps.with", workflowStringMap)
-		for n, i := range e.Inputs {
-			if e.Uses != nil && strings.HasPrefix(e.Uses.Value, "actions/github-script@") && n == "script" {
-				rule.checkScriptString(i.Value, "jobs.<job_id>.steps.with")
-			} else {
-				rule.checkString(i.Value, "jobs.<job_id>.steps.with")
-			}
+		for _, name := range e.inputNameExpressions {
+			rule.checkString(name, "jobs.<job_id>.steps.with")
 		}
-		rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
-		rule.checkString(e.Args, "jobs.<job_id>.steps.with")
+		rule.checkActionInputs(actionInputMapping(e), e.Uses)
+		if !e.entrypointEvaluated {
+			rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
+		}
+		if !e.argsEvaluated {
+			rule.checkString(e.Args, "jobs.<job_id>.steps.with")
+		}
 		spec = e.Uses
 	}
 
@@ -441,6 +443,9 @@ func (rule *RuleExpression) checkOneExpression(s *String, what, workflowKey stri
 		return nil
 	}
 
+	if value, known := workflowExpressionLiteral(s); known {
+		return typeOfJSONValue(value)
+	}
 	return ts[0].ty
 }
 
@@ -507,21 +512,37 @@ func (rule *RuleExpression) checkNumberExpression(s *String, what, workflowKey s
 	rule.checkNumberTy(ty, s.Pos, what)
 }
 
+func (rule *RuleExpression) checkActionInputs(inputs *mapping.Inputs[*String], uses *String) {
+	const key = "jobs.<job_id>.steps.with"
+	var action string
+	if uses != nil {
+		action = uses.Value
+	}
+	inputResolver.Check(inputs, action, mapping.Checks[*String]{
+		Mapping: func(source *String) { rule.checkWorkflowExpression(source, "with", key, workflowStringMap) },
+		String:  func(source *String) { rule.checkString(source, key) },
+		Script:  func(source *String) { rule.checkScriptString(source, key) },
+	})
+}
+
 func (rule *RuleExpression) checkEnv(env *Env, workflowKey string) {
 	if env == nil {
 		return
 	}
 
-	if env.Vars != nil {
-		for _, e := range env.Vars {
-			rule.checkString(e.Name, workflowKey)
-			rule.checkString(e.Value, workflowKey)
-		}
+	if env.Expression != nil {
+		// When form of "env: ${{...}}"
+		rule.checkWorkflowExpression(env.Expression, "env", workflowKey, workflowStringMap)
 		return
 	}
 
-	// When form of "env: ${{...}}"
-	rule.checkWorkflowExpression(env.Expression, "env", workflowKey, workflowStringMap)
+	for _, e := range env.Vars {
+		rule.checkString(e.Name, workflowKey)
+		rule.checkString(e.Value, workflowKey)
+	}
+	for _, insertion := range env.Insertions {
+		rule.checkEnv(insertion, workflowKey)
+	}
 }
 
 func (rule *RuleExpression) checkContainer(c *Container, workflowKey, childWorkflowKeyPrefix string) {
@@ -1034,7 +1055,20 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 	}
 
 	o := NewEmptyStrictObjectType()
-
+	for _, insertion := range m.Insertions {
+		var inserted *ObjectType
+		if insertion.Expression != nil {
+			ty := rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", workflowStrategy.props["matrix"])
+			inserted = matrixTypeFromExpression(ty)
+		} else {
+			inserted = rule.checkMatrix(insertion)
+		}
+		if merged, ok := o.Merge(inserted).(*ObjectType); ok {
+			o = merged
+		} else {
+			o.Loose()
+		}
+	}
 	for n, r := range m.Rows {
 		o.Props[n] = rule.checkMatrixRow(r)
 	}
@@ -1080,6 +1114,9 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 }
 
 func (rule *RuleExpression) checkMatrixRow(r *MatrixRow) ExprType {
+	mapping.CheckSourceKey(r.Name, r.evaluated, func(source *String) {
+		rule.checkString(source, "jobs.<job_id>.strategy")
+	})
 	if r.Expression != nil {
 		if a, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*ArrayType); ok {
 			return a.Elem
@@ -1218,6 +1255,9 @@ func (rule *RuleExpression) checkRawYAMLString(y *RawYAMLString) ExprType {
 	if isExprAssigned(y.Value) {
 		if !ok || len(ts) != 1 {
 			return AnyType{}
+		}
+		if value, known := workflowExpressionLiteral(&String{Value: y.Value}); known {
+			return typeOfJSONValue(value)
 		}
 		return ts[0].ty
 	}

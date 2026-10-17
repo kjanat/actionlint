@@ -202,7 +202,8 @@ test('action tests, probe results, mixed documentation and source changes select
 	const ci = workflowFilters('ci');
 	const action = selectJobs(ci, ['packages/github-action/tests/reporters.test.ts']);
 	assert.deepEqual(Object.keys(action).filter(job => action[job]), ['javascript', 'action', 'action-tests']);
-	assert.ok(Object.values(selectJobs(ci, ['docs/usage.md'])).every(run => !run));
+	const documentation = selectJobs(ci, ['docs/usage.md']);
+	assert.deepEqual(Object.keys(documentation).filter(job => documentation[job]), ['release']);
 	assert.equal(selectJobs(ci, ['docs/usage.md', 'config.go']).unit, true);
 	assert.equal(
 		selectJobs(workflowFilters('expression-probe-tests'), [
@@ -212,6 +213,18 @@ test('action tests, probe results, mixed documentation and source changes select
 	);
 	assert.equal(selectJobs(workflowFilters('conformance'), ['internal/cli/check.go']).conformance, false);
 	assert.equal(selectJobs(workflowFilters('conformance'), ['rule_expression.go']).conformance, true);
+	for (
+		const file of [
+			'internal/conformance/conformance_test.go',
+			'internal/conformance/conformance_adapters_test.go',
+			'internal/conformance/conformance_score_test.go',
+			'internal/conformance/conformance_assessments_test.go',
+			'internal/conformance/testdata/assessments.json',
+			'internal/conformance/testdata/differences.json',
+		]
+	) {
+		assert.equal(selectJobs(workflowFilters('conformance'), [file]).conformance, true, file);
+	}
 	assert.equal(selectJobs(workflowFilters('matcher'), ['internal/cli/check.go']).matcher, true);
 	assert.equal(selectJobs(ci, ['internal/cli/check.go'])['action-tests'], false);
 	assert.equal(selectJobs(ci, ['Dockerfile'])['action-tests'], false);
@@ -225,4 +238,14 @@ test('Action smoke fixtures are re-included after the general testdata exclusion
 		assert.equal(selectJobs(ci, [path]).action, true, path);
 	}
 	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
+});
+
+test('release snapshots cover every archived documentation input', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of ['README.md', 'LICENSE.txt', 'docs/usage.md', 'docs/releases/v1.18.0.md', 'docs/testdata/example.md']
+	) {
+		assert.equal(selectJobs(ci, [path]).release, true, path);
+	}
+	assert.equal(selectJobs(ci, ['CONTRIBUTING.md']).release, false);
 });

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/genfile"
 	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
@@ -315,6 +316,31 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 	}
 	if diff := cmp.Diff(wantDocument, gotDocument); diff != "" {
 		t.Fatalf("actionlint.schema.json is stale; run go generate -run generate-config-schema (-want +got):\n%s", diff)
+	}
+}
+
+func TestGeneratedSchemaFormatting(t *testing.T) {
+	content := generatedSchema(t)
+	if _, err := exec.LookPath("dprint"); err != nil {
+		t.Skip("dprint is not installed")
+	}
+	want, err := os.ReadFile("actionlint.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "actionlint.schema.json")
+	for _, exclusive := range []bool{true, false} {
+		if err := genfile.Write(t.Context(), path, content, exclusive); err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(string(want), string(got)); diff != "" {
+			t.Fatalf("generated formatting differs (-want +got):\n%s", diff)
+		}
+		content = got
 	}
 }
 

@@ -5,6 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { yamlExampleLines } from '#internal/commentcop/yaml-examples.mjs';
+
 /** @typedef {'go' | 'js' | 'hash' | 'md'} Lang */
 /** @typedef {{path: string, start: number, end: number, text: string, reasons: string[]}} Group */
 /** @typedef {{start: number, end: number, lang: Lang, topLevel: boolean, doc: boolean, lines: string[]}} PendingGroup */
@@ -91,12 +93,16 @@ function isCommentLine(line, lang) {
 		|| text.startsWith('* ');
 }
 
-/** @param {string} line */
-function isYamlExampleLine(line) {
-	const text = line.trimStart().replace(/^#\s?/, '');
-	return /^\s*(?:-\s+)?(?:[\w./*{}$-]+|"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:(?:\s|$)/.test(text)
-		|| /^(?:\s+-\s+\S|-\s+["'[{])/.test(text)
-		|| /^\s*[[\]{}][\s,]*$/.test(text);
+/** @param {string} patch */
+function linesFromPatch(patch) {
+	/** @type {string[]} */
+	const lines = [];
+	let line = 0;
+	for (const raw of patch.split('\n')) {
+		if (raw.startsWith('@@')) line = Number(/\+(\d+)/.exec(raw)?.[1] ?? 1);
+		else if (line > 0 && (raw.startsWith('+') || raw.startsWith(' '))) lines[line++ - 1] = raw.slice(1);
+	}
+	return lines;
 }
 
 /** @param {string} line */
@@ -175,6 +181,7 @@ export function groupsFromPatch(path, patch, source) {
 	const markdown = lang === 'md';
 	const yaml = /\.ya?ml$/.test(path);
 	const sourceLines = source?.split('\n');
+	const yamlExamples = yaml ? yamlExampleLines(sourceLines ?? linesFromPatch(patch)) : new Set();
 	/** @type {Group[]} */
 	const groups = [];
 	/** @type {PendingGroup | null} */
@@ -202,7 +209,7 @@ export function groupsFromPatch(path, patch, source) {
 
 	/** @param {string} content */
 	const startsBlock = content => {
-		if (!markdown) return isCommentLine(content, lang) && !(yaml && isYamlExampleLine(content));
+		if (!markdown) return isCommentLine(content, lang) && !yamlExamples.has(newLine);
 		const nextFence = updateFence(fence, content);
 		if (nextFence !== fence) {
 			fence = nextFence;
@@ -335,7 +342,7 @@ export default async function run({ github, context, core }) {
 		}
 
 		let source;
-		if (file.filename.endsWith('.go') || langFor(file.filename) === 'md') {
+		if (/\.(?:go|ya?ml)$/.test(file.filename) || langFor(file.filename) === 'md') {
 			try {
 				const contentsUrl = requiredString(file.contents_url, `contents URL for ${file.filename}`);
 				const response = await github.request(contentsUrl, {

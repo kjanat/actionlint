@@ -71,7 +71,11 @@ func conditionConstantValue(expr ExprNode) (any, bool) {
 				if !known {
 					return nil, false
 				}
-				if expressionTruthy(value) {
+				predicate, boolean := value.(bool)
+				if !boolean {
+					return nil, false
+				}
+				if predicate {
 					return conditionConstantValue(n.Args[i+1])
 				}
 			}

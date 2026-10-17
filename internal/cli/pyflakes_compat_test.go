@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev"
+	ruffcheck "actionlint.kjanat.dev/internal/ruff"
 )
 
 func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
@@ -18,12 +19,22 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	t.Chdir(t.TempDir())
+	// Keep tool-manager shims in the repository's version context. Both the
+	// native command and actionlint disable configuration discovery below.
 	for _, key := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatal(err)
 		}
+	}
+	var probeErr error
+	if err := ruffcheck.CheckCompatibility(t.Context(), func(args []string, stdin string, callback func([]byte, error) error) {
+		cmd := exec.CommandContext(t.Context(), ruff, args...)
+		cmd.Stdin = strings.NewReader(stdin)
+		output, err := cmd.Output()
+		probeErr = callback(output, err)
+	}, func() error { return probeErr }); err != nil {
+		t.Skipf("Ruff integration requires a compatible executable (%s): %v", ruff, err)
 	}
 	script := "x = 1\nimport os\nif x == None:\n    print(missing)\n"
 	nativeCodes := func(selection ...string) []string {
@@ -91,7 +102,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 				}
 				slices.Sort(got)
 				if !slices.Equal(got, tc.want) {
-					t.Fatalf("codes=%v, want %v: %s", got, tc.want, &stdout)
+					t.Fatalf("codes=%v, want %v: stdout=%s stderr=%s", got, tc.want, &stdout, &stderr)
 				}
 			})
 		}
