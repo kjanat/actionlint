@@ -67,7 +67,8 @@ for the full reference.
 ### Commands and compatibility
 
 The root invocation and the explicit `check` command accept options before or
-after filenames. On the root, `-format` and `--format` are equivalent and boolean
+after filenames. Legacy single-dash names such as `-format` are accepted at the
+root and after subcommands, alongside `--format`. Boolean
 options accept `=false`. Both routes use the same analysis engine. Use `--` to
 treat every remaining argument as a filename, including names beginning with `-`.
 
@@ -407,7 +408,7 @@ An empty value disables ShellCheck.
 
 ```sh
 actionlint -shellcheck=
-actionlint -shellcheck 'shellcheck -e SC2086'
+actionlint --shellcheck='shellcheck -e SC2086'
 ```
 
 Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. A bare
@@ -416,8 +417,8 @@ command line, and `--no-ruff` to disable it. ShellCheck follows the same pattern
 `--shellcheck`, `--shellcheck=COMMAND`, and `--no-shellcheck`.
 Optional command values require `=` so the next argument remains a workflow path.
 A disable flag wins if both forms are supplied and skips the tool's environment
-settings. Legacy `-ruff COMMAND` and `-shellcheck COMMAND` still accept separate
-values on the root. The older `=false` and empty values also remain supported.
+settings. Legacy single-dash spellings follow the same rules at the root and after
+subcommands. The older `=false` and empty values also remain supported.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
 The deprecated `-pyflakes COMMAND` option selects Ruff's Pyflakes (`F`) rules

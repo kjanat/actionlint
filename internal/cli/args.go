@@ -9,6 +9,57 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// Accept the root's legacy single-dash names on subcommands too. Consume option
+// values before looking for commands or aliases, and preserve literal filenames.
+func normalizeSubcommandArgs(root *cobra.Command, args []string) []string {
+	ret := slices.Clone(args)
+	command := root
+	positional := false
+	for i := 0; i < len(ret); i++ {
+		arg := ret[i]
+		if arg == "--" {
+			break
+		}
+		if arg == "-" || !strings.HasPrefix(arg, "-") {
+			found := false
+			if !positional {
+				for _, child := range command.Commands() {
+					if arg == child.Name() || slices.Contains(child.Aliases, arg) {
+						command, found = child, true
+						break
+					}
+				}
+			}
+			positional = positional || !found
+			continue
+		}
+		name, _, equals := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+		flag := command.Flags().Lookup(name)
+		if flag == nil {
+			flag = command.PersistentFlags().Lookup(name)
+		}
+		if flag == nil {
+			flag = command.InheritedFlags().Lookup(name)
+		}
+		if flag != nil && !strings.HasPrefix(arg, "--") && len(name) > 1 {
+			ret[i] = "-" + arg
+		}
+		if flag == nil && !strings.HasPrefix(arg, "--") && len(name) == 1 {
+			flag = command.Flags().ShorthandLookup(name)
+			if flag == nil {
+				flag = command.PersistentFlags().ShorthandLookup(name)
+			}
+			if flag == nil {
+				flag = command.InheritedFlags().ShorthandLookup(name)
+			}
+		}
+		if flag != nil && flag.NoOptDefVal == "" && !equals {
+			i++
+		}
+	}
+	return ret
+}
+
 // Normalize root option tokens, including those between filenames. Stop at a
 // command or --, and leave option values untouched.
 func normalizeCommandArgs(flags *pflag.FlagSet, args []string) []string {
@@ -103,9 +154,6 @@ func scanJSONOptions(flags *pflag.FlagSet, args []string, interspersed bool) req
 		}
 		if !equal {
 			value = flag.NoOptDefVal
-			if !interspersed && !strings.HasPrefix(arg, "--") && flag.Value.Type() != "bool" {
-				value = ""
-			}
 			if value == "" && i+1 < len(args) {
 				i++
 				value = args[i]

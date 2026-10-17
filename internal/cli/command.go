@@ -66,6 +66,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		if rest[0] == "pre-commit" {
 			app.inv.Operation = operationCheck
 		}
+		rest = normalizeSubcommandArgs(app.root, rest)
 		app.root.SetArgs(rest)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
 		if err := app.root.ExecuteContext(ctx); err != nil {

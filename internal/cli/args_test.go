@@ -89,8 +89,9 @@ func TestRootFlagsBetweenFilenames(t *testing.T) {
 		{name: "after stdin", args: []string{"-", "--json"}, want: []string{"-"}, json: true},
 		{name: "single dash option", args: []string{"first.yml", "-json"}, want: []string{"first.yml"}, json: true},
 		{name: "optional linter", args: []string{"first.yml", "--ruff", "second.yml", "--json"}, want: []string{"first.yml", "second.yml"}, json: true},
+		{name: "linter command", args: []string{"first.yml", "--ruff=uvx ruff", "second.yml", "--json"}, want: []string{"first.yml", "second.yml"}, json: true},
 		{name: "option-like value", args: []string{"first.yml", "--stdin-filename", "--json", "-"}, want: []string{"first.yml", "-"}},
-		{name: "legacy linter value", args: []string{"first.yml", "-ruff", "--json"}, want: []string{"first.yml"}},
+		{name: "legacy bare linter", args: []string{"first.yml", "-ruff", "--json"}, want: []string{"first.yml"}, json: true},
 		{name: "delimiter value", args: []string{"first.yml", "--stdin-filename", "--", "--json"}, want: []string{"first.yml"}, json: true},
 		{name: "delimiter", args: []string{"first.yml", "--", "--json", "-h"}, want: []string{"first.yml", "--json", "-h"}, terminated: true},
 		{name: "delimiter after flag", args: []string{"first.yml", "--json", "--", "--help"}, want: []string{"first.yml", "--help"}, terminated: true, json: true},
@@ -129,5 +130,29 @@ func TestRootUsesCommandFlagDefinitions(t *testing.T) {
 	rest, _, _, err := app.parseRoot([]string{"-t", "input.yml"})
 	if err != nil || !enabled || !app.set["t"] || len(rest) != 1 || rest[0] != "input.yml" {
 		t.Fatalf("root did not use the shared flag definition: enabled=%v rest=%v err=%v", enabled, rest, err)
+	}
+}
+
+func TestSubcommandLegacyFlagBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		args, want []string
+	}{
+		{"after file", []string{"check", "input.yml", "-shellcheck=tool -x"}, []string{"check", "input.yml", "--shellcheck=tool -x"}},
+		{"option-like value", []string{"check", "-stdin-filename", "-shellcheck", "-"}, []string{"check", "--stdin-filename", "-shellcheck", "-"}},
+		{"delimiter value", []string{"check", "-stdin-filename", "--", "-no-ruff"}, []string{"check", "--stdin-filename", "--", "--no-ruff"}},
+		{"literal filename", []string{"check", "--", "-shellcheck"}, []string{"check", "--", "-shellcheck"}},
+		{"nested command", []string{"config", "show", "-origin"}, []string{"config", "show", "--origin"}},
+		{"parent flag", []string{"config", "-no-config", "show", "-origin"}, []string{"config", "--no-config", "show", "--origin"}},
+		{"command-like value", []string{"config", "-config", "show", "show", "-origin"}, []string{"config", "--config", "show", "show", "--origin"}},
+		{"short value", []string{"check", "-f", "-shellcheck", "-"}, []string{"check", "-f", "-shellcheck", "-"}},
+		{"short flags", []string{"check", "-q", "-ojson", "-"}, []string{"check", "-q", "-ojson", "-"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := newCommandApp(&Command{})
+			if got := normalizeSubcommandArgs(app.root, tc.args); !slices.Equal(got, tc.want) {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

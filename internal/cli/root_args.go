@@ -56,7 +56,7 @@ func (a *commandApp) parseRoot(args []string) (rest []string, forced string, ter
 		}
 		if !equals {
 			option := a.root.Flags().Lookup(name)
-			if strings.HasPrefix(arg, "--") && option != nil && option.Value.Type() != "bool" && option.NoOptDefVal != "" {
+			if option != nil && option.Value.Type() != "bool" && option.NoOptDefVal != "" {
 				parsedArgs[len(parsedArgs)-1] += "=" + option.NoOptDefVal
 				continue
 			}

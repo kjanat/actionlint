@@ -18,7 +18,7 @@ func TestRootOptionalLinterCommands(t *testing.T) {
 			{"bare", name, []string{"--" + name, "input.yml"}},
 			{"custom", "/path with spaces/tool --flag", []string{"--" + name + "=/path with spaces/tool --flag", "input.yml"}},
 			{"empty", "", []string{"--" + name + "=", "input.yml"}},
-			{"legacy value", "--json", []string{"-" + name, "--json", "input.yml"}},
+			{"single dash bare", name, []string{"-" + name, "input.yml"}},
 			{"end of flags", name, []string{"--" + name, "--", "input.yml"}},
 		} {
 			t.Run(name+"/"+tc.label, func(t *testing.T) {
@@ -76,18 +76,63 @@ func TestLinterSwitches(t *testing.T) {
 	}
 }
 
+func TestLinterCommandSpellings(t *testing.T) {
+	t.Setenv("PATH", "")
+	const toolCommand = `"/missing path/tool" -x -o all`
+	for _, dash := range []string{"-", "--"} {
+		for _, custom := range []bool{false, true} {
+			for _, beforeCommand := range []bool{false, true} {
+				args := []string{"actionlint", "--no-config", "--json"}
+				if !beforeCommand {
+					args = append(args, "doctor")
+				}
+				for _, name := range []string{"ruff", "shellcheck"} {
+					if custom {
+						args = append(args, dash+name+"="+toolCommand)
+					} else {
+						args = append(args, dash+name)
+					}
+				}
+				if beforeCommand {
+					args = append(args, "doctor")
+				}
+				var out, stderr bytes.Buffer
+				cmd := Command{Stdout: &out, Stderr: &stderr}
+				status := cmd.Main(args)
+				var report struct {
+					Tools []doctorTool `json:"tools"`
+				}
+				if err := json.Unmarshal(out.Bytes(), &report); err != nil || status != 0 || stderr.Len() != 0 || len(report.Tools) != 2 {
+					t.Fatalf("%v: exit=%d stdout=%s stderr=%s err=%v", args, status, &out, &stderr, err)
+				}
+				for _, tool := range report.Tools {
+					want := tool.Name
+					if custom {
+						want = toolCommand
+					}
+					if tool.Command != want || tool.Status != "unavailable" {
+						t.Fatalf("%v: command was not preserved: %+v", args, tool)
+					}
+				}
+			}
+		}
+	}
+}
+
 func TestBareLinterFlagsLeaveWorkflowArguments(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("input.yml", []byte(commandGoodWorkflow), 0600); err != nil {
 		t.Fatal(err)
 	}
 	for _, prefix := range [][]string{nil, {"check"}} {
-		var out, stderr bytes.Buffer
-		cmd := Command{Stdout: &out, Stderr: &stderr}
-		args := append([]string{"actionlint"}, prefix...)
-		args = append(args, "--ruff", "--shellcheck", "--no-ruff", "--no-shellcheck", "--no-config", "--json", "--summary=false", "input.yml")
-		if status := cmd.Main(args); status != 0 || stderr.Len() != 0 || !cleanCheckJSON(out.String()) {
-			t.Fatalf("bare linter flag consumed a workflow argument: exit=%d stdout=%s stderr=%s", status, &out, &stderr)
+		for _, dash := range []string{"-", "--"} {
+			var out, stderr bytes.Buffer
+			cmd := Command{Stdout: &out, Stderr: &stderr}
+			args := append([]string{"actionlint"}, prefix...)
+			args = append(args, dash+"ruff", dash+"shellcheck", "--no-ruff", "--no-shellcheck", "--no-config", "--json", "--summary=false", "input.yml")
+			if status := cmd.Main(args); status != 0 || stderr.Len() != 0 || !cleanCheckJSON(out.String()) {
+				t.Fatalf("%v: exit=%d stdout=%s stderr=%s", args, status, &out, &stderr)
+			}
 		}
 	}
 }
