@@ -29,7 +29,7 @@ func TestReferencedWorkflowInjectionSources(t *testing.T) {
 		"startsWith(github.event.workflow_run.referenced_workflows[0].path, 'owner/')",
 	} {
 		t.Run(expression, func(t *testing.T) {
-			checkReferencedWorkflowExpression(t, expression, false)
+			checkReferencedWorkflowExpression(t, expression, false, strings.HasSuffix(expression, ".sha") || strings.HasPrefix(expression, "join("))
 		})
 	}
 	workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
@@ -62,8 +62,8 @@ func TestWorkflowRunActorDisplayNameInjection(t *testing.T) {
 			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
 		}
 		for _, field := range []string{"login", "id", "type"} {
-			checkReferencedWorkflowExpression(t, "github.event.workflow_run."+actor+"."+field, false)
-			checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(actor)+"']['"+strings.ToUpper(field)+"']", false)
+			checkReferencedWorkflowExpression(t, "github.event.workflow_run."+actor+"."+field, false, field != "id")
+			checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(actor)+"']['"+strings.ToUpper(field)+"']", false, field != "id")
 		}
 		checkReferencedWorkflowExpression(t, "contains(github.event.workflow_run."+actor+".name, 'trusted')", false)
 		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
@@ -82,7 +82,7 @@ jobs:
 	}
 }
 
-func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool) {
+func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool, syntaxSensitive ...bool) {
 	t.Helper()
 	workflow := `on: {issues: {}, workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
@@ -95,6 +95,12 @@ jobs:
 		t.Fatal(err)
 	}
 	if !untrusted {
+		if len(syntaxSensitive) != 0 && syntaxSensitive[0] {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].Start.Line != 6 {
+				t.Fatalf("expected interpolation warning without an untrusted-input claim: %+v", result.Diagnostics)
+			}
+			return
+		}
 		if len(result.Diagnostics) != 0 {
 			t.Fatalf("safe expression rejected: %+v", result.Diagnostics)
 		}

@@ -38,11 +38,9 @@ jobs:
 
 func TestSchemaNestedImageVersionFilters(t *testing.T) {
 	for _, filters := range []string{
-		`types: ready
-    names: build-image
+		`names: build-image
     versions: '1.*'`,
-		`types: [created, ready, deleted]
-    names: [build-image]
+		`names: [build-image]
     versions: ['1.*']`,
 	} {
 		src := `on:
@@ -63,15 +61,15 @@ jobs:
 			t.Fatal(err)
 		}
 		if errs := rule.Errs(); len(errs) != 0 {
-			t.Fatalf("schema-supported activity types rejected: %v", errs)
+			t.Fatalf("documented image filters rejected: %v", errs)
 		}
 	}
 }
 
-func TestSchemaNestedImageVersionRejectsUnknownActivity(t *testing.T) {
+func TestSchemaNestedImageVersionRejectsActivities(t *testing.T) {
 	src := `on:
   image_version:
-    types: unavailable
+    types: ready
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -86,12 +84,12 @@ jobs:
 	if err := rule.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
 	}
-	if errs := rule.Errs(); len(errs) != 1 || !strings.Contains(errs[0].Message, `invalid activity type "unavailable"`) {
+	if errs := rule.Errs(); len(errs) != 1 || !strings.Contains(errs[0].Message, `"types" cannot be specified for "image_version"`) {
 		t.Fatalf("wanted invalid image activity diagnostic, got %v", errs)
 	}
 }
 
-func TestSchemaNestedStackedPullRequests(t *testing.T) {
+func TestSchemaNestedUndocumentedStackedPullRequests(t *testing.T) {
 	w, errs := workflowlang.ParseDocument([]byte(`on:
   pull_request:
     types: stacked
@@ -110,8 +108,8 @@ jobs:
 	if err := rule.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
 	}
-	if errs := rule.Errs(); len(errs) != 0 {
-		t.Fatal(errs)
+	if errs := rule.Errs(); len(errs) != 2 || !strings.Contains(errs[0].Message, `invalid activity type "stacked"`) || !strings.Contains(errs[1].Message, `invalid activity type "stacked"`) {
+		t.Fatalf("wanted documented-trigger diagnostics, got %v", errs)
 	}
 }
 

@@ -26,6 +26,10 @@ type Shape struct {
 	Mapped       *int                `json:"mapped"`
 	Alternatives []int               `json:"alternatives"`
 	Literal      string              `json:"literal"`
+	Required     []string            `json:"required"`
+	// AdditionalProperties records the explicit source policy; empty means the
+	// schema default (allowed), independently of the Actions lookup projection.
+	AdditionalProperties string `json:"additionalProperties"`
 }
 
 // Provenance records the input actually used to generate these observations.
@@ -63,6 +67,7 @@ func Node(id int) Shape {
 	n := data().Nodes[id]
 	n.Properties = maps.Clone(n.Properties)
 	n.Alternatives = slices.Clone(n.Alternatives)
+	n.Required = slices.Clone(n.Required)
 	if n.Mapped != nil {
 		n.Mapped = new(*n.Mapped)
 	}

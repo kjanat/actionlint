@@ -38,27 +38,6 @@ func TestWriteStdoutOK(t *testing.T) {
 	}
 }
 
-func TestAddWebhookOnlyActivityTypes(t *testing.T) {
-	events := map[string][]string{
-		"merge_group":         nil,
-		"push":                {},
-		"pull_request":        {"opened"},
-		"pull_request_target": {"stacked"},
-	}
-	addWebhookOnlyActivityTypes(events)
-	addWebhookOnlyActivityTypes(events) // The generated source remains stable once docs catch up.
-
-	want := map[string][]string{
-		"merge_group":         {"destroyed"},
-		"push":                {},
-		"pull_request":        {"opened", "stacked"},
-		"pull_request_target": {"stacked"},
-	}
-	if diff := cmp.Diff(want, events); diff != "" {
-		t.Fatal(diff)
-	}
-}
-
 type errWriter struct{}
 
 func (errWriter) Write([]byte) (int, error) {

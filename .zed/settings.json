@@ -4,7 +4,6 @@
 {
   "formatter": [
     { "language_server": { "name": "dprint" } },
-    // { "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }
   ],
   "prettier": {
     "allowed": false
@@ -42,7 +41,7 @@
     "actup-lsp": {
       "binary": { // currently private project.
         "path": "mise",
-        "arguments": ["exec", "actup-lsp", "--", "actup-lsp"],
+        "arguments": ["exec", "--silent", "actup-lsp", "--", "actup-lsp"],
         "env": {},
       },
     },
@@ -54,7 +53,8 @@
         "command": [
           "mise",
           "exec",
-          "golangci-lint",
+          "--silent",
+          "golangci-lint@latest",
           "--",
           "golangci-lint",
           "run",
@@ -69,7 +69,7 @@
     "biome": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "--", "biome", "lsp-proxy"],
+        "arguments": ["exec", "--silent", "--", "biome", "lsp-proxy"],
         "env": {},
       },
       "settings": {
@@ -97,7 +97,7 @@
     "tombi": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "github:tombi-toml/tombi", "--", "tombi", "lsp", "-vv"],
+        "arguments": ["exec", "--silent", "github:tombi-toml/tombi@latest", "--", "tombi", "lsp", "-vv"],
         "env": { "NO_COLOR": "true" },
       }
     },
@@ -116,7 +116,7 @@
     "yaml-language-server": {
       "binary": {
         "path": "npx",
-        "arguments": ["yaml-language-server", "--stdio"],
+        "arguments": ["yaml-language-server@latest", "--stdio"],
         "env": {},
       },
       "settings": {
@@ -136,7 +136,7 @@
     "dprint": {
       "binary": {
         "path": "mise",
-        "arguments": ["exec", "github:kjanat/dprint", "--", "dprint", "lsp"],
+        "arguments": ["exec", "--silent", "github:kjanat/dprint@latest", "--", "dprint", "lsp"],
         "env": {},
       }
     }

@@ -13,7 +13,7 @@ func TestInsertedUnknownMatrixAxisKeepsKnownProperties(t *testing.T) {
 		`{'${{ vars.AXIS }}': [ubuntu-latest], known: [one]}`,
 		`{'${{ insert }}': {'${{ vars.AXIS }}': [ubuntu-latest]}, known: [one]}`,
 	} {
-		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        '${{ insert }}': " + insertion + "\n    steps:\n      - run: echo '${{ matrix.os }} ${{ matrix.known }}'\n"
+		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        '${{ insert }}': " + insertion + "\n    steps:\n      - env:\n          OS: ${{ matrix.os }}\n          KNOWN: ${{ matrix.known }}\n        run: printf '%s %s' \"$OS\" \"$KNOWN\"\n"
 		if findings := lintCredentialsExpressionTest(t, source); len(findings) != 0 {
 			t.Fatalf("dynamic insertion rejected: %v", findings)
 		}

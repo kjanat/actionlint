@@ -327,7 +327,7 @@ func TestMatrixReservedKeyProvenance(t *testing.T) {
 }
 
 func TestDynamicMatrixKeyDoesNotInventClosedShape(t *testing.T) {
-	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        '${{ vars.AXIS }}': [one]\n    steps: [{run: 'echo ${{ matrix.runtime_axis }}'}]\n"
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        '${{ vars.AXIS }}': [one]\n    steps:\n      - env:\n          VALUE: ${{ matrix.runtime_axis }}\n        run: printf '%s' \"$VALUE\"\n"
 	findings := lintCredentialsExpressionTest(t, source)
 	if len(findings) != 0 {
 		t.Fatal(findings)

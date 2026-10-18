@@ -62,7 +62,7 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 					t.Fatal(err)
 				}
 				_, errs := checker.Check(expr)
-				want := fmt.Sprintf("property %q is not defined in object type {declared: bool}", property)
+				want := fmt.Sprintf("property %q is not defined in %s", property, receiver)
 				if len(errs) != 1 || errs[0].Message != want {
 					t.Fatalf("got %v, want %q", errs, want)
 				}
@@ -1133,14 +1133,14 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "strict prop check",
 			input: "github.foo",
 			expected: []string{
-				"property \"foo\" is not defined in object type",
+				"property \"foo\" is not defined in github",
 			},
 		},
 		{
 			what:  "strict prop check at object property filter for array dereference",
 			input: "test().*.bar",
 			expected: []string{
-				"property \"bar\" is not defined in object type",
+				"property \"bar\" is not defined in this object",
 			},
 			funcs: map[string][]*FuncSignature{
 				"test": {
@@ -1252,7 +1252,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "strict prop check with string literal index access to object",
 			input: "github['fooooo']",
 			expected: []string{
-				"property \"fooooo\" is not defined in object type",
+				"property \"fooooo\" is not defined in github",
 			},
 		},
 		{
@@ -1367,7 +1367,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "undefined matrix value",
 			input: "matrix.bar",
 			expected: []string{
-				"property \"bar\" is not defined in object type {foo: any}",
+				"property \"bar\" is not defined in matrix",
 			},
 			matrix: NewStrictObjectType(map[string]Type{
 				"foo": AnyType{},
@@ -1387,14 +1387,14 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "matrix value with untyped matrix values",
 			input: "matrix.foooo",
 			expected: []string{
-				"property \"foooo\" is not defined in object type {}",
+				"property \"foooo\" is not defined in matrix",
 			},
 		},
 		{
 			what:  "undefined step id",
 			input: "steps.foo",
 			expected: []string{
-				"property \"foo\" is not defined in object type {bar: ", // order of prop types in object type changes randomly so we cannot check it easily
+				"property \"foo\" is not defined in steps",
 			},
 			steps: NewStrictObjectType(map[string]Type{
 				"bar": NewStrictObjectType(map[string]Type{
@@ -1408,7 +1408,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "invalid property in step object",
 			input: "steps.bar.foo",
 			expected: []string{
-				"property \"foo\" is not defined in object type {", // order of prop types in object type changes randomly so we cannot check it easily
+				"property \"foo\" is not defined in steps.bar",
 			},
 			steps: NewStrictObjectType(map[string]Type{
 				"bar": NewStrictObjectType(map[string]Type{
@@ -1422,14 +1422,14 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "step output value without typed steps outputs",
 			input: "steps.foo.outputs",
 			expected: []string{
-				"property \"foo\" is not defined in object type {}",
+				"property \"foo\" is not defined in steps",
 			},
 		},
 		{
 			what:  "undefined job id in needs context",
 			input: "needs.bar",
 			expected: []string{
-				"property \"bar\" is not defined in object type ",
+				"property \"bar\" is not defined in needs",
 			},
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
@@ -1445,7 +1445,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "undefined output in needs context",
 			input: "needs.foo.outputs.out3",
 			expected: []string{
-				"property \"out3\" is not defined in object type ",
+				"property \"out3\" is not defined in needs.foo.outputs",
 			},
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
@@ -1461,7 +1461,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "undefined prop in needs context",
 			input: "needs.foo.bar",
 			expected: []string{
-				"property \"bar\" is not defined in object type ",
+				"property \"bar\" is not defined in needs.foo",
 			},
 			needs: NewStrictObjectType(map[string]Type{
 				"foo": NewStrictObjectType(map[string]Type{
@@ -1477,7 +1477,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "undefined prop in untyped needs context",
 			input: "needs.foo",
 			expected: []string{
-				"property \"foo\" is not defined in object type ",
+				"property \"foo\" is not defined in needs",
 			},
 		},
 		{
@@ -1498,7 +1498,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "inputs context accepts nothing by default",
 			input: "inputs.hello",
 			expected: []string{
-				"property \"hello\" is not defined in object type {}",
+				"property \"hello\" is not defined in inputs",
 			},
 		},
 		{
@@ -1601,7 +1601,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			what:  "declared secrets stay strict for a workflow_call-only workflow",
 			input: "secrets.BAR",
 			expected: []string{
-				"property \"bar\" is not defined in object type",
+				"property \"BAR\" is not defined in secrets",
 			},
 			secrets:       NewStrictObjectType(map[string]Type{"foo": StringType{}}),
 			configSecrets: []string{"BAR"},

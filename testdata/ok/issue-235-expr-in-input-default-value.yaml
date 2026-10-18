@@ -13,5 +13,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo '${{ inputs.input1 }}'
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.input1 }}
       - run: echo '${{ inputs.input2 }}'

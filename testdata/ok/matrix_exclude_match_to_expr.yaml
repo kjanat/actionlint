@@ -10,7 +10,9 @@ jobs:
         exclude:
           - foo: bar
     steps:
-      - run: echo ${{ matrix.foo.bar }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ matrix.foo.bar }}
   nested-object-1:
     runs-on: ubuntu-latest
     strategy:
@@ -21,7 +23,9 @@ jobs:
           - foo:
               bar: ...
     steps:
-      - run: echo ${{ matrix.foo.bar }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ matrix.foo.bar }}
   nested-array-1:
     runs-on: ubuntu-latest
     strategy:
@@ -31,4 +35,6 @@ jobs:
         exclude:
           - foo: ['...']
     steps:
-      - run: echo ${{ matrix.foo[0] }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ matrix.foo[0] }}

@@ -53,8 +53,15 @@ jobs:
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
 			result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
-			if err != nil || len(result.Diagnostics) != 0 {
-				t.Fatalf("safe expression rejected: %v, %+v", err, result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.HasSuffix(expression, ".id") || strings.HasSuffix(expression, ".private") || strings.HasPrefix(expression, "contains(") {
+				if len(result.Diagnostics) != 0 {
+					t.Fatal(result.Diagnostics)
+				}
+			} else if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-interpolation" {
+				t.Fatalf("expected syntax warning for unproved string, not untrusted-input finding: %+v", result.Diagnostics)
 			}
 		})
 	}
@@ -114,8 +121,8 @@ jobs:
 		for _, field := range []string{"login", "id", "node_id", "type", "site_admin", "url", "html_url", "avatar_url"} {
 			path := owner + "." + field
 			t.Run(path, func(t *testing.T) {
-				checkReferencedWorkflowExpression(t, "github.event.workflow_run."+path, false)
-				checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(strings.ReplaceAll(path, ".", "']['"))+"']", false)
+				checkReferencedWorkflowExpression(t, "github.event.workflow_run."+path, false, field != "id" && field != "site_admin")
+				checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(strings.ReplaceAll(path, ".", "']['"))+"']", false, field != "id" && field != "site_admin")
 			})
 		}
 	}
@@ -137,7 +144,7 @@ func TestWorkflowRunUserProfileObjectFilters(t *testing.T) {
 		"join(github.event.workflow_run.head_repository.*.login, ',')",
 		"join(github.event.workflow_run.*.login, ',')",
 	} {
-		t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false) })
+		t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false, true) })
 	}
 }
 

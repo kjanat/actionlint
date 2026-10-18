@@ -1,8 +1,6 @@
 package expressions
 
 import (
-	"strings"
-
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/eventpayload"
@@ -52,7 +50,11 @@ func (rule *Checker) VisitWorkflowPre(n *workflowlang.Workflow) error {
 				default:
 					ty = exprlang.AnyType{}
 				}
-				ity.Props[id] = ty
+				name := id
+				if i.Name != nil {
+					name = i.Name.Value
+				}
+				ity.SetProperty(name, ty)
 			}
 			rule.dispatchInputsTy = ity
 		case *workflowlang.RepositoryDispatchEvent:
@@ -105,7 +107,7 @@ func (rule *Checker) VisitWorkflowPre(n *workflowlang.Workflow) error {
 				default:
 					ty = exprlang.AnyType{}
 				}
-				ity.Props[i.ID] = ty
+				ity.SetProperty(i.Name.Value, ty)
 			}
 
 			// When no secret is passed, secrets may be inherited from a caller of the workflow.
@@ -114,8 +116,12 @@ func (rule *Checker) VisitWorkflowPre(n *workflowlang.Workflow) error {
 			// trigger can also access repository secrets on that trigger path, so its secrets type must remain open.
 			if e.Secrets != nil {
 				sty := exprlang.NewEmptyStrictObjectType()
-				for id := range e.Secrets {
-					sty.Props[id] = exprlang.StringType{}
+				for id, secret := range e.Secrets {
+					name := id
+					if secret.Name != nil {
+						name = secret.Name.Value
+					}
+					sty.SetProperty(name, exprlang.StringType{})
 				}
 				if hasNonWorkflowCallTrigger {
 					sty.Mapped = exprlang.StringType{}
@@ -158,6 +164,7 @@ func (rule *Checker) VisitWorkflowPost(n *workflowlang.Workflow) error {
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
 func (rule *Checker) VisitJobPre(n *workflowlang.Job) error {
+	rule.matrixScriptSafe = nil
 	// Type of needs must be resolved before resolving type of matrix because `needs` context can
 	// be used in matrix configuration.
 	rule.needsTy = rule.calcNeedsType(n)
@@ -180,6 +187,7 @@ func (rule *Checker) VisitJobPre(n *workflowlang.Job) error {
 		} else if n.Strategy.Matrix != nil {
 			// Check and guess type of the matrix.
 			rule.matrixTy = rule.checkMatrix(n.Strategy.Matrix)
+			rule.matrixScriptSafe = safeMatrixScriptReferences(n.Strategy.Matrix)
 		}
 	}
 
@@ -257,6 +265,7 @@ func (rule *Checker) VisitJobPost(n *workflowlang.Job) error {
 	}
 
 	rule.matrixTy = nil
+	rule.matrixScriptSafe = nil
 	rule.stepsTy = nil
 	rule.needsTy = nil
 
@@ -265,6 +274,8 @@ func (rule *Checker) VisitJobPost(n *workflowlang.Job) error {
 
 // VisitStep is callback when visiting Step node.
 func (rule *Checker) VisitStep(n *workflowlang.Step) error {
+	rule.scriptEnv = n.Env
+	defer func() { rule.scriptEnv = nil }()
 	rule.checkString(n.Name, "jobs.<job_id>.steps.name")
 	rule.checkIfCondition(n.If, "jobs.<job_id>.steps.if")
 
@@ -301,12 +312,11 @@ func (rule *Checker) VisitStep(n *workflowlang.Step) error {
 			rule.stepsTy.Loose()
 		}
 		// Step ID is case insensitive
-		id := strings.ToLower(n.ID.Value)
-		rule.stepsTy.Props[id] = exprlang.NewStrictObjectType(map[string]exprlang.Type{
+		rule.stepsTy.SetProperty(n.ID.Value, exprlang.NewStrictObjectType(map[string]exprlang.Type{
 			"outputs":    rule.getActionOutputsType(spec),
 			"conclusion": exprlang.StringType{},
 			"outcome":    exprlang.StringType{},
-		})
+		}))
 	}
 
 	return nil

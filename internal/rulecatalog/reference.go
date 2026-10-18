@@ -20,6 +20,9 @@ func Reference() []byte {
 		for _, e := range r.Examples {
 			fmt.Fprintf(&b, "%s\n\n```yaml\n%s\n```\n\n```yaml\n%s\n```\n\n", e.Description, e.Before, e.After)
 		}
+		if e, ok := exampleFollowups[r.Name]; ok {
+			fmt.Fprintf(&b, "%s\n\n```yaml\n%s\n```\n\n", e.Description, e.After)
+		}
 	}
 	return []byte(b.String())
 }

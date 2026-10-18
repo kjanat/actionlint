@@ -176,7 +176,10 @@ jobs:
       matrix:
         base: [one]
         ${{ insert }}: ${{ fromJSON(vars.EXTRA) }}
-    steps: [{run: "echo ${{ matrix.extra }}"}]
+    steps:
+      - env:
+          VALUE: ${{ matrix.extra }}
+        run: printf '%s' "$VALUE"
 `, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

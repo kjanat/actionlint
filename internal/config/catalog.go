@@ -91,6 +91,7 @@ func Rules() []Rule {
 		{Name: "expression-call", SupportsActions: true},
 		{Name: "event-payload", SupportsActions: true},
 		{Name: "script-injection", SupportsActions: true},
+		{Name: "script-interpolation", SupportsActions: true},
 
 		{Name: "deprecated-commands", SupportsActions: true, Scope: SourceScope},
 		{Name: "if-cond"},

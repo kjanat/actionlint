@@ -1,2 +1,3 @@
-test.yaml:8:23: property "cache" is not defined in object type {} [expression-reference]
-test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: string} [expression-reference]
+test.yaml:8:23: property "cache" is not defined in steps [expression-reference]
+test.yaml:16:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:18:23: property "cache_hit" is not defined in steps.cache.outputs; did you mean "cache-hit"? [expression-reference]

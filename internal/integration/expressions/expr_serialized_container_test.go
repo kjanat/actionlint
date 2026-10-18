@@ -25,16 +25,22 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 			"toJSON(" + path + " == null)",
 			"toJSON(!" + path + ")",
 			"contains(toJSON(" + path + "), 'safe')",
-			"toJSON(" + path + " && false)",
 			"toJSON(false && " + path + ")",
-			"toJSON('safe' || " + path + ")",
-			"toJSON(case(false, " + path + ", 'safe'))",
 			"toJSON(" + path + ") == '{}'",
 			"!toJSON(" + path + ")",
 			"toJSON(" + path + ") && 'safe'",
 			"case(toJSON(" + path + ") != '', 'safe', 'fallback')",
 		} {
 			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false) })
+		}
+		// Without a non-string scalar proof, JSON may introduce quote delimiters
+		// even without attacker control; pass it through the environment.
+		for _, expression := range []string{
+			"toJSON(" + path + " && false)",
+			"toJSON('safe' || " + path + ")",
+			"toJSON(case(false, " + path + ", 'safe'))",
+		} {
+			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false, true) })
 		}
 		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
@@ -68,7 +74,8 @@ func TestExprSerializedContainerSelections(t *testing.T) {
 		"head_commit.id", "referenced_workflows.*.sha", "referenced_workflows[0].sha",
 	} {
 		t.Run(path, func(t *testing.T) {
-			checkReferencedWorkflowExpression(t, "toJSON(github.event.workflow_run."+path+")", false)
+			syntax := path != "head_repository.id" && path != "head_repository.owner.id" && path != "actor.id" && path != "actor.site_admin"
+			checkReferencedWorkflowExpression(t, "toJSON(github.event.workflow_run."+path+")", false, syntax)
 		})
 	}
 }

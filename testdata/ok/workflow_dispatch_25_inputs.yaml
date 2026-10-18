@@ -57,28 +57,54 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo ${{ inputs.input1 }} \
-               ${{ inputs.input2 }} \
-               ${{ inputs.input3 }} \
-               ${{ inputs.input4 }} \
-               ${{ inputs.input5 }} \
-               ${{ inputs.input6 }} \
-               ${{ inputs.input7 }} \
-               ${{ inputs.input8 }} \
-               ${{ inputs.input9 }} \
-               ${{ inputs.input10 }} \
-               ${{ inputs.input11 }} \
-               ${{ inputs.input12 }} \
-               ${{ inputs.input13 }} \
-               ${{ inputs.input14 }} \
-               ${{ inputs.input15 }} \
-               ${{ inputs.input16 }} \
-               ${{ inputs.input17 }} \
-               ${{ inputs.input18 }} \
-               ${{ inputs.input19 }} \
-               ${{ inputs.input20 }} \
-               ${{ inputs.input21 }} \
-               ${{ inputs.input22 }} \
-               ${{ inputs.input23 }} \
-               ${{ inputs.input24 }} \
-               ${{ inputs.input25 }}
+          echo "$INPUT1" \
+               "$INPUT2" \
+               "$INPUT3" \
+               "$INPUT4" \
+               "$INPUT5" \
+               "$INPUT6" \
+               "$INPUT7" \
+               "$INPUT8" \
+               "$INPUT9" \
+               "$INPUT10" \
+               "$INPUT11" \
+               "$INPUT12" \
+               "$INPUT13" \
+               "$INPUT14" \
+               "$INPUT15" \
+               "$INPUT16" \
+               "$INPUT17" \
+               "$INPUT18" \
+               "$INPUT19" \
+               "$INPUT20" \
+               "$INPUT21" \
+               "$INPUT22" \
+               "$INPUT23" \
+               "$INPUT24" \
+               "$INPUT25"
+        env:
+          INPUT1: ${{ inputs.input1 }}
+          INPUT2: ${{ inputs.input2 }}
+          INPUT3: ${{ inputs.input3 }}
+          INPUT4: ${{ inputs.input4 }}
+          INPUT5: ${{ inputs.input5 }}
+          INPUT6: ${{ inputs.input6 }}
+          INPUT7: ${{ inputs.input7 }}
+          INPUT8: ${{ inputs.input8 }}
+          INPUT9: ${{ inputs.input9 }}
+          INPUT10: ${{ inputs.input10 }}
+          INPUT11: ${{ inputs.input11 }}
+          INPUT12: ${{ inputs.input12 }}
+          INPUT13: ${{ inputs.input13 }}
+          INPUT14: ${{ inputs.input14 }}
+          INPUT15: ${{ inputs.input15 }}
+          INPUT16: ${{ inputs.input16 }}
+          INPUT17: ${{ inputs.input17 }}
+          INPUT18: ${{ inputs.input18 }}
+          INPUT19: ${{ inputs.input19 }}
+          INPUT20: ${{ inputs.input20 }}
+          INPUT21: ${{ inputs.input21 }}
+          INPUT22: ${{ inputs.input22 }}
+          INPUT23: ${{ inputs.input23 }}
+          INPUT24: ${{ inputs.input24 }}
+          INPUT25: ${{ inputs.input25 }}

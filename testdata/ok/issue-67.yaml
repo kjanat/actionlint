@@ -5,4 +5,6 @@ jobs:
     steps:
       # https://github.com/rhysd/actionlint/pull/67
       - run: echo '${{ runner.os }}'
-      - run: echo '${{ runner.name }}'
+      - run: echo "$RUNNER_LABEL"
+        env:
+          RUNNER_LABEL: ${{ runner.name }}

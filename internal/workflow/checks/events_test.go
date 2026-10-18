@@ -3,6 +3,7 @@ package checks
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/internal/webhook"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
@@ -18,6 +19,27 @@ func TestSchemaNestedTimezoneAliases(t *testing.T) {
 			rule.checkTimezone(&workflowlang.String{Value: tz.name, Pos: &workflowlang.Pos{Line: 1, Col: 1}})
 			if valid := len(rule.out) == 0; valid != tz.valid {
 				t.Fatalf("valid=%v, expected %v: %v", valid, tz.valid, rule.out)
+			}
+		})
+	}
+}
+
+func TestWebhookOnlyActivitiesRejected(t *testing.T) {
+	for _, tc := range []struct {
+		event, activity string
+		valid           bool
+	}{
+		{"merge_group", "checks_requested", true},
+		{"merge_group", "destroyed", false},
+		{"check_suite", "requested", false},
+		{"issue_comment", "pinned", false},
+	} {
+		t.Run(tc.event+"/"+tc.activity, func(t *testing.T) {
+			rule := &eventsCheck{name: "events"}
+			pos := &workflowlang.Pos{Line: 1, Col: 1}
+			rule.checkTypes(&workflowlang.String{Value: tc.event, Pos: pos}, []*workflowlang.String{{Value: tc.activity, Pos: pos}}, webhook.AllWebhookTypes[tc.event])
+			if valid := len(rule.out) == 0; valid != tc.valid {
+				t.Fatalf("valid=%v, want %v: %v", valid, tc.valid, rule.out)
 			}
 		})
 	}

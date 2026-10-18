@@ -1,0 +1,1 @@
+workflows/test.yaml:9:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]

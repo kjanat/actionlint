@@ -23,10 +23,23 @@ func TestPayloadExpressions(t *testing.T) {
 		{"union push", []Trigger{{Name: "push"}, {Name: "pull_request"}}, "github.event.commits[0].message", ""},
 		{"target", []Trigger{{Name: "pull_request_target"}}, "github.event.pull_request.title", ""},
 		{"free payload", []Trigger{{Name: "repository_dispatch"}}, "github.event.client_payload.whatever.nested", ""},
+		{"custom dispatch known fields", []Trigger{{Name: "repository_dispatch", Actions: []string{"custom"}}}, "github.event.repository.full_name", ""},
+		{"custom dispatch known typo", []Trigger{{Name: "repository_dispatch", Actions: []string{"custom"}}}, "github.event.repository.full_nam", `did you mean "full_name"`},
+		{"actionless deployment", []Trigger{{Name: "deployment"}}, "github.event.deployment.environment", ""},
+		{"actionless deployment typo", []Trigger{{Name: "deployment"}}, "github.event.deployment.environmen", `did you mean "environment"`},
 		{"unknown", []Trigger{{Name: "new_event"}}, "github.event.future.field", ""},
 		{"unknown action", []Trigger{{Name: "issues", Actions: []string{"future"}}}, "github.event.future.field", ""},
 		{"caller", []Trigger{{Name: "workflow_call"}}, "github.event.future.field", ""},
 		{"action subset", []Trigger{{Name: "issues", Actions: []string{"labeled"}}}, "github.event.label.name", ""},
+		{"default PR excludes labels", []Trigger{{Name: "pull_request"}}, "github.event.label.name", `property "label"`},
+		{"explicit PR labels", []Trigger{{Name: "pull_request", Actions: []string{"labeled"}}}, "github.event.label.name", ""},
+		{"default target excludes labels", []Trigger{{Name: "pull_request_target"}}, "github.event.label.name", `property "label"`},
+		{"action guard narrows", []Trigger{{Name: "issues", Actions: []string{"opened", "labeled"}}}, "github.event.action == 'opened' && github.event.label.name", `property "label"`},
+		{"label guard retains", []Trigger{{Name: "issues", Actions: []string{"opened", "labeled"}}}, "github.event.action == 'labeled' && github.event.label.name", ""},
+		{"event guard narrows", []Trigger{{Name: "push"}, {Name: "pull_request"}}, "github.event_name == 'push' && github.event.pull_request.title", `property "pull_request"`},
+		{"event guard retains", []Trigger{{Name: "push"}, {Name: "pull_request"}}, "github.event_name == 'pull_request' && github.event.pull_request.title", ""},
+		{"narrowed workflow run overlay", []Trigger{{Name: "push"}, {Name: "workflow_run"}}, "github.event_name == 'workflow_run' && github.event.workflow_run.head_repository.homepage", ""},
+		{"caller remains open under guard", []Trigger{{Name: "workflow_call"}, {Name: "push"}}, "github.event_name == 'issues' && github.event.issue.title", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := expr.NewChecker(false, nil)
@@ -45,5 +58,24 @@ func TestPayloadExpressions(t *testing.T) {
 				t.Fatalf("want %q, got %v", tc.want, errors)
 			}
 		})
+	}
+}
+
+func TestDefaultVariants(t *testing.T) {
+	for _, event := range []string{"pull_request", "pull_request_target"} {
+		projected := FromTriggers([]Trigger{{Name: event}})
+		if len(projected.EventVariants) != 3 {
+			t.Fatalf("%s: want three default actions, got %d", event, len(projected.EventVariants))
+		}
+		for _, variant := range projected.EventVariants {
+			if variant.Event != event {
+				t.Errorf("lost trigger identity: %#v", variant)
+			}
+			switch variant.Action {
+			case "opened", "synchronize", "reopened":
+			default:
+				t.Errorf("unexpected default activity %q", variant.Action)
+			}
+		}
 	}
 }

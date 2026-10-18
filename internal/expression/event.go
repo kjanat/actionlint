@@ -14,16 +14,22 @@ func (sema *Checker) UpdateEvent(event *ObjectType) {
 	}
 }
 
-// missingEventProperty gives a bounded diagnostic instead of printing an entire
-// webhook schema. Dot and literal bracket accesses use the same field lookup.
-func (sema *Checker) missingEventProperty(node, receiver Node, name string, object *ObjectType) bool {
+// missingProperty gives a bounded diagnostic for dot, literal bracket and filtered access.
+func (sema *Checker) missingProperty(node, receiver Node, name string, object *ObjectType) {
 	path := eventReference(receiver)
-	if path != "github.event" && !strings.HasPrefix(path, "github.event.") {
-		return false
+	kind := unknownProperty
+	suffix := ""
+	key := strings.ToLower(path)
+	if key == "github.event" || strings.HasPrefix(key, "github.event.") || strings.HasPrefix(key, "github.event[") {
+		kind = unknownEventProperty
+		suffix = " for the configured workflow events"
+	}
+	if path == "" {
+		path = "this object"
 	}
 	suggestion := ""
 	for candidate := range object.Props {
-		if adjacentTypo(name, candidate) {
+		if adjacentTypo(strings.ToLower(name), candidate) {
 			if suggestion != "" {
 				suggestion = ""
 				break
@@ -32,11 +38,10 @@ func (sema *Checker) missingEventProperty(node, receiver Node, name string, obje
 		}
 	}
 	if suggestion != "" {
-		sema.errorf(unknownEventProperty, node, "property %q is not defined in %s; did you mean %q?", name, path, suggestion)
+		sema.errorf(kind, node, "property %q is not defined in %s; did you mean %q?", name, path, object.PropertyName(suggestion))
 	} else {
-		sema.errorf(unknownEventProperty, node, "property %q is not defined in %s for the configured workflow events", name, path)
+		sema.errorf(kind, node, "property %q is not defined in %s%s", name, path, suffix)
 	}
-	return true
 }
 
 func adjacentTypo(a, b string) bool {
@@ -67,22 +72,32 @@ func adjacentTypo(a, b string) bool {
 
 // copyEventObject isolates dispatch-input updates from shared payload shapes.
 func copyEventObject(event *ObjectType) *ObjectType {
-	return &ObjectType{Props: maps.Clone(event.Props), Mapped: event.Mapped, DisplayName: event.DisplayName}
+	return &ObjectType{Props: maps.Clone(event.Props), Mapped: event.Mapped, DisplayName: event.DisplayName, PropertyNames: maps.Clone(event.PropertyNames), EventVariants: event.EventVariants}
 }
 
 // eventReference retains numeric and wildcard paths for payload diagnostics.
 func eventReference(n Node) string {
 	switch n := n.(type) {
+	case *VariableNode:
+		if n.tok != nil {
+			return n.tok.Value
+		}
+		return n.Name
 	case *ArrayDerefNode:
-		return eventReference(n.Receiver) + ".*"
+		if base := eventReference(n.Receiver); base != "" {
+			return base + ".*"
+		}
 	case *IndexAccessNode:
-		if _, ok := n.Index.(*StringNode); !ok {
-			return eventReference(n.Operand) + "[]"
+		if base := eventReference(n.Operand); base != "" {
+			if lit, ok := n.Index.(*StringNode); ok {
+				return base + "." + lit.Value
+			}
+			return base + "[]"
 		}
 	case *ObjectDerefNode:
 		if base := eventReference(n.Receiver); base != "" {
-			return base + "." + n.Property
+			return base + "." + n.PropertyName()
 		}
 	}
-	return conditionReference(n)
+	return ""
 }

@@ -9,7 +9,7 @@ unexpected key "branch" for "push" section. expected one of "branches", "branche
 
 ### Error at line 9, col 23 of `testdata/format/test.yaml`
 
-property "msg" is not defined in object type {}
+property "msg" is not defined in matrix
 
 ```
       - run: echo ${{ matrix.msg }}

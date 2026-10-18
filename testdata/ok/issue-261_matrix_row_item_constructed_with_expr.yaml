@@ -17,4 +17,6 @@ jobs:
           - build-type: release
     runs-on: ubuntu-latest
     steps:
-      - run: echo ${{ matrix.build-type }}
+      - run: echo "$BUILD_TYPE"
+        env:
+          BUILD_TYPE: ${{ matrix.build-type }}

@@ -13,4 +13,6 @@ jobs:
             host-labels: ["self-hosted", "linux"]
     runs-on: ${{ matrix.host-labels }}
     steps:
-      - run: echo "${{ matrix.msg }}"
+      - run: echo "$MESSAGE"
+        env:
+          MESSAGE: ${{ matrix.msg }}

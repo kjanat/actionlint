@@ -21,6 +21,7 @@ plugins     = [
 ]
 excludes    = [
   "**/testdata/**",
+  "internal/webhook/generate/sources/**",
   "man/actionlint.1.md",
   ".claude/**",
   ".worktrees/**",

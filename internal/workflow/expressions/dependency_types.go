@@ -146,9 +146,9 @@ func typeOfActionOutputs(meta *actionmeta.Metadata) *exprlang.ObjectType {
 	if meta.SkipOutputs {
 		return exprlang.NewEmptyObjectType()
 	}
-	props := make(map[string]exprlang.Type, len(meta.Outputs))
+	object := exprlang.NewEmptyStrictObjectType()
 	for n := range meta.Outputs {
-		props[strings.ToLower(n)] = exprlang.StringType{}
+		object.SetProperty(n, exprlang.StringType{})
 	}
-	return exprlang.NewStrictObjectType(props)
+	return object
 }
