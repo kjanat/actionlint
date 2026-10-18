@@ -100,6 +100,17 @@ func TestGzipModuleLoads(t *testing.T) {
 	}
 }
 
+func TestFailedResponsePreservesDiagnostics(t *testing.T) {
+	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
+	findings, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "missing # partial", Filename: "step.py"})
+	if err == nil || !strings.Contains(err.Error(), "analysis incomplete") {
+		t.Fatalf("missing completion failure: %v", err)
+	}
+	if len(findings) != 1 || findings[0].Code != "F821" || findings[0].Location.Column != 1 || findings[0].EndLocation.Column != 8 {
+		t.Fatalf("partial findings lost: %+v", findings)
+	}
+}
+
 func TestFailuresDiscardTheInstance(t *testing.T) {
 	engine := loadEngine(t, enginePath("echo"), corewasm.Options{Timeout: 300 * time.Millisecond, MemoryPages: 64})
 	if engine.Limits().String() != "memory 4 MiB, time 300ms" {

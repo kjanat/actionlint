@@ -166,13 +166,17 @@ plugins-check-native:
 	cargo check --workspace --locked --all-targets
 
 .PHONY: plugin-examples plugins
-plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm
+plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm
 
 plugins: plugin-examples $(PLUGIN_FIXTURES)/misbehave.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
 $(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
 	install -m 644 target/wasm32-wasip2/wasm/examples/pipe_to_shell.wasm $@
+
+$(PLUGIN_FIXTURES)/pinned-actions.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pinned-actions.rs
+	cargo build --locked --profile wasm --target wasm32-wasip2 --example pinned-actions
+	install -m 644 target/wasm32-wasip2/wasm/examples/pinned_actions.wasm $@
 
 $(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/misbehave/src/*.rs)
 	cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-plugin-misbehave
@@ -196,6 +200,9 @@ $(ENGINE_FIXTURES)/echo.wasm: $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/e
 
 internal/plugins/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/plugins/component/generate.go
 	go generate ./internal/plugins/component
+
+internal/plugins/component/contract_generated.go: plugins/wit/analyzer.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
+	go run -C tools/plugin-contract .
 
 CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md

@@ -1,9 +1,41 @@
 package component
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
+
+func TestHostLogSharesOutputBudget(t *testing.T) {
+	var lines []string
+	w := &lineWriter{log: func(line string) { lines = append(lines, line) }}
+	h := hostImplementation{output: w}
+	if _, err := w.Write([]byte(strings.Repeat("x", maxPluginOutput-4))); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Log(context.Background(), "last"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Log(context.Background(), "overflow"); err == nil {
+		t.Fatal("host log bypassed shared budget")
+	}
+	if _, err := w.Write([]byte("x")); err == nil {
+		t.Fatal("stdio ignored host log overflow")
+	}
+	for _, line := range lines {
+		if len(line) > maxPluginLine {
+			t.Fatal("unbounded host log line")
+		}
+	}
+	w.reset()
+	lines = nil
+	if err := h.Log(context.Background(), "fresh"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(lines, "|") != "fresh" {
+		t.Fatalf("cross-call log: %q", lines)
+	}
+}
 
 func TestOutputBoundsAndCallBoundary(t *testing.T) {
 	var lines []string

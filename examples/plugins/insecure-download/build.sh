@@ -9,7 +9,7 @@ output="${1:-insecure-download.wasm}"
 contract="${ACTIONLINT_WIT:-../../../plugins/wit}"
 tinygo_root="$(tinygo env TINYGOROOT)"
 
-go tool wit-bindgen-go generate --world plugin --out gen "${contract}"
+wasm-tools component wit "${contract}" --json | go tool wit-bindgen-go generate --world plugin --out gen
 
 compose="$(mktemp -d)"
 trap 'rm -rf "${compose}"' EXIT

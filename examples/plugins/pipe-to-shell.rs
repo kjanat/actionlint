@@ -4,7 +4,7 @@ wit_bindgen::generate!({
 });
 
 use exports::kjanat::actionlint::analyzer::{
-    Descriptor, Diagnostic, Example, Fact, Guest, Input, Position, Script,
+    Descriptor, Diagnostic, Example, Fact, Guest, Input, Outcome, Position, Script,
 };
 
 const DOWNLOADERS: &[&str] = &["curl", "wget"];
@@ -36,12 +36,15 @@ impl Guest for Plugin {
         }
     }
 
-    fn analyze(input: Input) -> Result<Vec<Diagnostic>, String> {
+    fn analyze(input: Input) -> Outcome {
         let mut findings = Vec::new();
         for script in input.scripts.iter().chain(input.invoked.iter()) {
             check_script(script, &mut findings);
         }
-        Ok(findings)
+        Outcome {
+            diagnostics: findings,
+            error: None,
+        }
     }
 }
 

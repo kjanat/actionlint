@@ -22,7 +22,7 @@ func describe() analyzer.Descriptor {
 	}
 }
 
-func analyze(input analyzer.Input) cm.Result[cm.List[analyzer.Diagnostic], cm.List[analyzer.Diagnostic], string] {
+func analyze(input analyzer.Input) analyzer.Outcome {
 	var findings []analyzer.Diagnostic
 	for _, script := range input.Scripts.Slice() {
 		findings = append(findings, checkScript(script)...)
@@ -30,7 +30,7 @@ func analyze(input analyzer.Input) cm.Result[cm.List[analyzer.Diagnostic], cm.Li
 	for _, script := range input.Invoked.Slice() {
 		findings = append(findings, checkScript(script)...)
 	}
-	return cm.OK[cm.Result[cm.List[analyzer.Diagnostic], cm.List[analyzer.Diagnostic], string]](cm.ToList(findings))
+	return analyzer.Outcome{Diagnostics: cm.ToList(findings)}
 }
 
 type token struct {

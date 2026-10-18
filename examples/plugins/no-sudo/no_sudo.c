@@ -136,10 +136,9 @@ void exports_kjanat_actionlint_analyzer_describe(exports_kjanat_actionlint_analy
     ret->requires_.len = 2;
 }
 
-bool exports_kjanat_actionlint_analyzer_analyze(exports_kjanat_actionlint_analyzer_input_t *input,
-                                                exports_kjanat_actionlint_analyzer_list_diagnostic_t *ret,
-                                                plugin_string_t *err) {
-    (void)err;
+void exports_kjanat_actionlint_analyzer_analyze(exports_kjanat_actionlint_analyzer_input_t *input,
+                                                exports_kjanat_actionlint_analyzer_outcome_t *ret) {
+    memset(ret, 0, sizeof(*ret));
     findings_t findings = {0};
     for (size_t i = 0; i < input->scripts.len; i++) {
         check_script(&input->scripts.ptr[i], &findings);
@@ -148,7 +147,6 @@ bool exports_kjanat_actionlint_analyzer_analyze(exports_kjanat_actionlint_analyz
         check_script(&input->invoked.ptr[i], &findings);
     }
     exports_kjanat_actionlint_analyzer_input_free(input);
-    ret->ptr = findings.ptr;
-    ret->len = findings.len;
-    return true;
+    ret->diagnostics.ptr = findings.ptr;
+    ret->diagnostics.len = findings.len;
 }

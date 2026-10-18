@@ -34,7 +34,18 @@ func Check(ctx context.Context, options application.Options, input application.I
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
-	for _, engine := range plugins.engines {
+	options, err = plugins.configure(options)
+	if err != nil {
+		return nil, err
+	}
+	if options.LoadScriptEngine == nil {
+		options.LoadScriptEngine = scriptEngineLoader(log, options.Debug)
+	}
+	return application.Check(ctx, options, input)
+}
+
+func (l *loadedPlugins) configure(options application.Options) (application.Options, error) {
+	for _, engine := range l.engines {
 		metadata := engine.Metadata()
 		found := false
 		options.Tools = slices.Clone(options.Tools)
@@ -43,11 +54,11 @@ func Check(ctx context.Context, options application.Options, input application.I
 				continue
 			}
 			if registration.WithBackend == nil {
-				return nil, &PluginLoadError{fmt.Errorf("tool %q cannot replace its backend", metadata.Engine.Name)}
+				return options, &PluginLoadError{fmt.Errorf("tool %q cannot replace its backend", metadata.Engine.Name)}
 			}
 			replacement, err := registration.WithBackend(engine)
 			if err != nil {
-				return nil, &PluginLoadError{err}
+				return options, &PluginLoadError{err}
 			}
 			options.Tools[i] = replacement
 			found = true
@@ -57,15 +68,12 @@ func Check(ctx context.Context, options application.Options, input application.I
 			descriptor := engineDescriptor(metadata)
 			registration, err := backend.Register(descriptor, metadata.Capabilities.ScriptShells, engine)
 			if err != nil {
-				return nil, &PluginLoadError{err}
+				return options, &PluginLoadError{err}
 			}
 			options.Tools = append(options.Tools, registration)
 		}
 	}
 
-	options.Analyzers = slices.Concat(options.Analyzers, plugins.registrations())
-	if options.LoadScriptEngine == nil {
-		options.LoadScriptEngine = scriptEngineLoader(log, options.Debug)
-	}
-	return application.Check(ctx, options, input)
+	options.Analyzers = slices.Concat(options.Analyzers, l.registrations())
+	return options, nil
 }

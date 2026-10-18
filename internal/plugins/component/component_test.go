@@ -290,8 +290,10 @@ func TestOutputLimitAndPartialLines(t *testing.T) {
 			options.Log = func(line string) { logged = append(logged, line) }
 		}
 		plugin := loadPlugin(t, "misbehave", options)
-		if _, err := misbehave(t, plugin, "output"); err == nil || !strings.Contains(err.Error(), "plugin output exceeds") {
-			t.Fatalf("debug=%v: swallowed output failure: %v", debug, err)
+		for _, mode := range []string{"output", "direct-log-output"} {
+			if _, err := misbehave(t, plugin, mode); err == nil || !strings.Contains(err.Error(), "plugin output exceeds") {
+				t.Fatalf("debug=%v mode=%s: swallowed output failure: %v", debug, mode, err)
+			}
 		}
 		logged = nil
 		for range 2 {
@@ -302,5 +304,40 @@ func TestOutputLimitAndPartialLines(t *testing.T) {
 		if debug && strings.Join(logged, "|") != "partial stdout|partial stdout" {
 			t.Fatalf("partial lines: %q", logged)
 		}
+	}
+}
+
+func TestPartialOutcomePreservesFindings(t *testing.T) {
+	plugin := loadPlugin(t, "misbehave", component.Options{})
+	findings, err := misbehave(t, plugin, "partial")
+	if err == nil || !strings.Contains(err.Error(), "analysis incomplete on purpose") {
+		t.Fatalf("error=%v", err)
+	}
+	if len(findings) != 1 || findings[0].Code != "MB001" {
+		t.Fatalf("partial findings=%+v", findings)
+	}
+	result, err := analysis.Analyze(t.Context(), analysis.Request{
+		Sources: []analysis.Source{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
+		Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: plugin, Options: json.RawMessage(`"partial"`)}}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "analysis incomplete on purpose") {
+		t.Fatalf("application error=%v", err)
+	}
+	if result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "MB001" {
+		t.Fatalf("application partial result=%+v", result)
+	}
+}
+
+func TestLoadRejectsShapeBeforeDescribe(t *testing.T) {
+	for _, name := range []string{"wrong-signature", "wrong-record", "wrong-enum"} {
+		t.Run(name, func(t *testing.T) {
+			plugin, err := component.Load(t.Context(), filepath.Join("testdata", "contracts", name+".wasm"), component.Options{})
+			if plugin != nil {
+				_ = plugin.Close(t.Context())
+			}
+			if err == nil || !strings.Contains(err.Error(), "incompatible analyzer contract") {
+				t.Fatalf("expected rejection before trapping describe: %v", err)
+			}
+		})
 	}
 }

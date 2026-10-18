@@ -2,6 +2,7 @@ package localapp
 
 import (
 	"context"
+	"errors"
 	"io"
 	"maps"
 	"path/filepath"
@@ -16,14 +17,19 @@ import (
 
 // LanguageServer shares application selection, configuration and plugin loading
 // with ordinary checks. Unsaved open buffers overlay dependency reads.
-func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options application.Options, plugins []string) error {
+func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options application.Options, plugins []string) (err error) {
 	directory, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
 		return err
 	}
 	options.WorkingDir = directory
+	session, err := newEditorSession(ctx, options, plugins)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, session.close(context.WithoutCancel(ctx))) }()
 	return langserver.Serve(ctx, in, out, func(ctx context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
-		return analyzeDocuments(ctx, options, plugins, documents)
+		return analyzeDocuments(ctx, session.options, documents)
 	}, func(ctx context.Context, doc langserver.Document, offset int) []langserver.Completion {
 		if ctx.Err() != nil {
 			return nil
@@ -37,7 +43,7 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ap
 	})
 }
 
-func analyzeDocuments(ctx context.Context, options application.Options, plugins []string, documents map[string]langserver.Document) (langserver.Analysis, error) {
+func analyzeDocuments(ctx context.Context, options application.Options, documents map[string]langserver.Document) (langserver.Analysis, error) {
 	directory := options.WorkingDir
 	if len(documents) == 0 {
 		return langserver.Analysis{}, nil
@@ -65,7 +71,7 @@ func analyzeDocuments(ctx context.Context, options application.Options, plugins 
 		}
 		return content, err
 	}
-	result, err := Check(ctx, opts, application.Input{Kind: application.Files, Paths: slices.Sorted(maps.Keys(documents))}, plugins)
+	result, err := application.Check(ctx, opts, application.Input{Kind: application.Files, Paths: slices.Sorted(maps.Keys(documents))})
 	if result == nil {
 		return langserver.Analysis{Sources: sources}, err
 	}

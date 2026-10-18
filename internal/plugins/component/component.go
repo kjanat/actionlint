@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"actionlint.kjanat.dev/analyzer"
@@ -24,16 +23,17 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental"
+	"golang.org/x/sync/semaphore"
 )
 
 // AnalyzerInterface is the exported interface every plugin must implement.
-const AnalyzerInterface = "kjanat:actionlint/analyzer@0.1.0"
+const AnalyzerInterface = canonicalAnalyzerInterface
 
 // HostInterface is the interface the host implements for plugins.
 const HostInterface = hostbind.InterfaceName
 
 const (
-	// DefaultTimeout bounds one analyze call.
+	// DefaultTimeout bounds one call, including waiting for execution admission.
 	DefaultTimeout = 10 * time.Second
 	// DefaultMemoryPages bounds a plugin instance's linear memory in 64 KiB pages.
 	DefaultMemoryPages uint32 = 1024
@@ -73,7 +73,7 @@ type Plugin struct {
 	component *wacogo.Component
 	factory   *hostbind.Factory
 
-	mu     sync.Mutex
+	gate   *semaphore.Weighted
 	host   *host.ComponentInstance
 	world  *wasi.World
 	output *lineWriter
@@ -114,10 +114,9 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 		WithCloseOnContextDone(true).
 		WithMemoryLimitPages(limits.MemoryPages)
 	engine := wacogo.NewEngine(ctx, wacogo.WithRuntimeConfig(config))
-	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine}
+	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1)}
 	if err := p.load(ctx, data); err != nil {
-		_ = p.Close(ctx)
-		return nil, fmt.Errorf("plugin %s: %w", path, err)
+		return nil, fmt.Errorf("plugin %s: %w", path, errors.Join(err, p.Close(context.WithoutCancel(ctx))))
 	}
 	return p, nil
 }
@@ -131,6 +130,9 @@ func (p *Plugin) load(ctx context.Context, data []byte) error {
 		return err
 	}
 	if err := checkImports(component.Imports()); err != nil {
+		return err
+	}
+	if err := checkContract(data); err != nil {
 		return err
 	}
 	p.component = component
@@ -206,7 +208,7 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 	}
 	diagnostics, err := liftAnalysis(results[0])
 	if err != nil {
-		return nil, p.failure(ctx, err)
+		return diagnostics, p.failure(ctx, err)
 	}
 	return diagnostics, nil
 }
@@ -224,13 +226,15 @@ func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
 }
 
 func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, p.limits.Timeout)
+	defer cancel()
+	if err := p.gate.Acquire(ctx, 1); err != nil {
+		return nil, p.failure(ctx, err)
+	}
+	defer p.gate.Release(1)
 	if p.engine == nil {
 		return nil, fmt.Errorf("plugin %s is closed", p.path)
 	}
-	ctx, cancel := context.WithTimeout(ctx, p.limits.Timeout)
-	defer cancel()
 	if err := p.prepareImports(ctx); err != nil {
 		return nil, p.failure(ctx, err)
 	}
@@ -286,11 +290,11 @@ func (p *Plugin) prepareImports(ctx context.Context) error {
 		return nil
 	}
 	p.discardImports(ctx)
-	hostInstance, err := p.factory.NewInstance(ctx, hostImplementation{log: p.log}, nil)
+	output := &lineWriter{log: p.log}
+	hostInstance, err := p.factory.NewInstance(ctx, hostImplementation{output: output}, nil)
 	if err != nil {
 		return err
 	}
-	output := &lineWriter{log: p.log}
 	world, err := wasi.NewWorld(ctx, p.engine, &wasi.Config{Args: []string{filepath.Base(p.path)}, Stdout: output, Stderr: output})
 	if err != nil {
 		_ = hostInstance.Close(ctx)
@@ -329,8 +333,10 @@ func (p *Plugin) failure(ctx context.Context, err error) error {
 
 // Close releases the runtime. The plugin cannot be used afterwards.
 func (p *Plugin) Close(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	if err := p.gate.Acquire(ctx, 1); err != nil {
+		return err
+	}
+	defer p.gate.Release(1)
 	p.discardImports(ctx)
 	var errs []error
 	if p.factory != nil {
@@ -345,12 +351,15 @@ func (p *Plugin) Close(ctx context.Context) error {
 }
 
 type hostImplementation struct {
-	log func(string)
+	output *lineWriter
 }
 
 func (h hostImplementation) Log(_ context.Context, message string) error {
-	h.log(message)
-	return nil
+	// Preserve log-call boundaries without joining a partial stdio line.
+	h.output.flush()
+	_, err := h.output.Write([]byte(message))
+	h.output.flush()
+	return err
 }
 
 type lineWriter struct {

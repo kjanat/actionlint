@@ -27,7 +27,7 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 		workflow: {URI: langserver.FileURI(workflow), Version: 1, Text: "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./local\n"},
 	}
 	options := application.Options{WorkingDir: root, SkipProjectConfig: true}
-	result, err := analyzeDocuments(t.Context(), options, nil, documents)
+	result, err := analyzeDocuments(t.Context(), options, documents)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 	}
 	// Opening an unsaved, fixed action must override the disk dependency.
 	documents[actionPath] = langserver.Document{URI: langserver.FileURI(actionPath), Version: 2, Text: "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo fixed\n      shell: bash\n"}
-	result, err = analyzeDocuments(t.Context(), options, nil, documents)
+	result, err = analyzeDocuments(t.Context(), options, documents)
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("open buffer did not override disk: %+v, %v", result.Diagnostics, err)
 	}

@@ -219,10 +219,16 @@ interface analyzer {
 
     describe: func() -> descriptor;
 
-    /// Returns findings, or a message when analysis could not complete.
+    /// Findings remain valid even when analysis could not complete.
+    record outcome {
+        diagnostics: list<diagnostic>,
+        error: option<string>,
+    }
+
+    /// Returns findings and an optional explanation of incomplete analysis.
     ///
     /// A trap, an exit or an exceeded limit is reported by the host as a failed analysis.
-    analyze: func(input: input) -> result<list<diagnostic>, string>;
+    analyze: func(input: input) -> outcome;
 }
 
 /// Capabilities granted to every plugin.

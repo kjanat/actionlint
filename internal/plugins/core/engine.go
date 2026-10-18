@@ -329,7 +329,7 @@ func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 		return nil, err
 	}
 	if !result.OK {
-		return nil, e.engineError(result.Errors)
+		return result.Diagnostics, e.engineError(result.Errors)
 	}
 	return result.Diagnostics, nil
 }

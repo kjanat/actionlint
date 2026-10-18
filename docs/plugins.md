@@ -14,16 +14,24 @@ Each `--plugin` loads one component or a supported core script engine. Findings 
 suppressions and configured ignores apply to them like built-in rules. `--log-level debug` prints the plugin's limits
 when it loads and forwards its log lines, stdout and stderr.
 
+The language server retains loaded plugins until shutdown. Explicit `--plugin` selections and remote engine URLs
+use a fixed snapshot for that session; restart to refresh them. Configured local engine files reload when their
+content changes, and selecting a different engine URI loads that identity separately. Earlier engines remain
+available to active analyses until shutdown. Every analysis still receives fresh document buffers and invocation state.
+
 The host refuses a component at load when it exports another version of the analyzer interface, imports an interface
-the host does not grant, or does not export the analyzer at all.
+the host does not grant, or does not export the analyzer at all. Before guest startup it checks the complete analyzer
+type graph against the canonical WIT, including function signatures, record fields and enum ordering. The expected
+graph and enum discriminants are generated with `go generate ./internal/plugins/component`; a test detects stale output.
 
 ## Limits and capabilities
 
-Every analysis call runs in a fresh instance with 64 MiB of memory and 10 seconds of time. A trap, a panic, an exit, an
+Every analysis call runs in a fresh instance with 64 MiB of memory and 10 seconds of time, including waiting for
+another invocation to finish. Queue admission honors cancellation. A trap, a panic, an exit, an
 exhausted limit or a cancelled run fails the analysis of that document with an error that names the plugin and its
 limits. The run then continues with the next document and actionlint exits with status 3.
 
-Stdout and stderr share a 1 MiB output budget per call, including when debug logging is disabled. Exceeding it fails
+Stdout, stderr and the direct `host.log` capability share a 1 MiB output budget per call, including when debug logging is disabled. Exceeding it fails
 the analysis even if the plugin handles the write error. Log lines are emitted in chunks of at most 64 KiB, and an
 unfinished line is flushed at the end of its call.
 
@@ -44,7 +52,8 @@ The public `plugin` package exposes the loader and its resource limits through `
 
 The world is `plugin`: it imports `host` and exports `analyzer`. `describe` returns the plugin name and the facts it
 needs. `analyze` receives the document path and content, declared scripts, scripts invoked through composite actions,
-mapping names and the JSON options the host registered, and returns a list of diagnostics or an error message.
+mapping names and the JSON options the host registered, and returns an `outcome` containing diagnostics and an optional
+error message. Diagnostics remain available when the error marks analysis incomplete. A trap cannot return findings.
 
 Script text comes with spans that map each line and column back to the declaring document. The WIT comment on `span`
 gives the lookup. A diagnostic with an empty `rule` takes the plugin name, and an empty `path` means the analyzed
@@ -60,6 +69,24 @@ cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-she
 ```
 
 The component is `target/wasm32-wasip2/wasm/examples/pipe_to_shell.wasm` at the repository root.
+
+### Shared declaration facts
+
+[`examples/plugins/pinned-actions.rs`](../examples/plugins/pinned-actions.rs) and its
+[`native Go counterpart`](../examples/plugins/pinnedactions/pinned_actions.go) request only `dependencies`.
+Both flag remote action and reusable-workflow references that do not use a full commit hash, while excluding
+local references and Docker images. They use the host's parsed `uses` values, dependency kinds, source identities
+and scalar ranges; neither reparses the workflow or reads `input.content`.
+
+```sh
+cargo build --locked --profile wasm --target wasm32-wasip2 --example pinned-actions
+```
+
+The component is `target/wasm32-wasip2/wasm/examples/pinned_actions.wasm`.
+`TestDependencyAnalyzerNativeComponentParity` checks identical findings from both implementations with empty,
+invalid and unrelated source content. `TestDependencyAnalyzerSharedDeclarationFacts` checks the complete path
+from workflow parsing to diagnostics, including quoted scalar ranges and revision-bound node references.
+The example validates declaration facts already present in the contract; other checks may require additional facts.
 
 ### C
 
@@ -91,8 +118,8 @@ Any toolchain that emits a component for the `plugin` world works.
 ### Build the examples
 
 Run `make plugin-examples` from the repository root to build the Rust, C and TinyGo examples.
-The Rust component is a Cargo `[[example]]` target. The C and TinyGo builds use their language toolchains.
-CI loads all three components through Actionlint's public plugin interface.
+The Rust components are Cargo `[[example]]` targets. The C and TinyGo builds use their language toolchains.
+Tests load the components through the plugin interface.
 
 For an independent plugin, create a package with its own manifest and lockfile and vendor the public
 [`plugins/wit`](../plugins/wit) contract. Point its binding generator at that copy. The host's fixture

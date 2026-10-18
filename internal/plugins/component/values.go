@@ -10,13 +10,30 @@ import (
 	"github.com/partite-ai/wacogo"
 )
 
-var factDiscriminants = map[analyzer.Fact]uint32{
-	analyzer.Source: 0, analyzer.Scripts: 1, analyzer.Mappings: 2, analyzer.Invocations: 3, analyzer.Execution: 4, analyzer.Dependencies: 5,
-}
+// WIT enum order comes from the generated canonical contract, not a second table.
+var factNames = func() []analyzer.Fact {
+	facts := make([]analyzer.Fact, len(canonical_fact))
+	for i, name := range canonical_fact {
+		facts[i] = analyzer.Fact(name)
+	}
+	return facts
+}()
 
-var factNames = []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution, analyzer.Dependencies}
+var factDiscriminants = func() map[analyzer.Fact]uint32 {
+	values := make(map[analyzer.Fact]uint32, len(factNames))
+	for i, fact := range factNames {
+		values[fact] = uint32(i)
+	}
+	return values
+}()
 
-var keyStateDiscriminants = map[analyzer.KeyState]uint32{analyzer.UnknownKey: 0, analyzer.KnownKey: 1, analyzer.InvalidKey: 2}
+var keyStateDiscriminants = func() map[analyzer.KeyState]uint32 {
+	values := make(map[analyzer.KeyState]uint32, len(canonical_key_state))
+	for i, name := range canonical_key_state {
+		values[analyzer.KeyState(name)] = uint32(i)
+	}
+	return values
+}()
 
 func field(name string, value wacogo.Val) wacogo.Field {
 	return wacogo.Field{Name: name, Val: value}
@@ -26,7 +43,7 @@ func lowerU32(n int) wacogo.ValU32 {
 	if n < 0 {
 		return 0
 	}
-	if n > math.MaxUint32 {
+	if uint64(n) > math.MaxUint32 {
 		return math.MaxUint32
 	}
 	return wacogo.ValU32(uint32(n))
@@ -340,18 +357,23 @@ func liftDiagnostic(v wacogo.Val) (diagnostic.Diagnostic, error) {
 }
 
 func liftAnalysis(v wacogo.Val) ([]diagnostic.Diagnostic, error) {
-	result, ok := v.(*wacogo.ValResult)
+	result, err := liftRecord(v, "analysis outcome")
+	if err != nil {
+		return nil, err
+	}
+	completion, ok := result.Field("error").(*wacogo.ValOption)
 	if !ok {
-		return nil, liftError{"analysis result", v}
+		return nil, liftError{"optional analysis error", result.Field("error")}
 	}
-	if !result.IsOk() {
-		message, ok := result.Err().(wacogo.ValString)
+	var analysisErr error
+	if !completion.IsNone() {
+		message, ok := completion.Val().(wacogo.ValString)
 		if !ok {
-			return nil, liftError{"error message", result.Err()}
+			return nil, liftError{"analysis error message", completion.Val()}
 		}
-		return nil, fmt.Errorf("%s", string(message))
+		analysisErr = fmt.Errorf("%s", string(message))
 	}
-	list, err := liftList(result.Ok(), "diagnostics")
+	list, err := liftList(result.Field("diagnostics"), "diagnostics")
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +385,7 @@ func liftAnalysis(v wacogo.Val) ([]diagnostic.Diagnostic, error) {
 		}
 		diagnostics = append(diagnostics, d)
 	}
-	return diagnostics, nil
+	return diagnostics, analysisErr
 }
 
 func lowerDependencies(deps []analyzer.Dependency) *wacogo.ValList {

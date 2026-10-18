@@ -65,7 +65,16 @@ fn run_check(request: &str) -> String {
             escape(filename)
         ));
     }
-    format!(r#"{{"ok":true,"diagnostics":[{}]}}"#, diagnostics.join(","))
+    let complete = !source.contains("partial");
+    let errors = if complete {
+        "[]"
+    } else {
+        r#"["analysis incomplete"]"#
+    };
+    format!(
+        r#"{{"ok":{complete},"diagnostics":[{}],"errors":{errors}}}"#,
+        diagnostics.join(",")
+    )
 }
 
 fn run_validate(request: &str) -> String {

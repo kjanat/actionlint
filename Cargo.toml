@@ -21,6 +21,12 @@ name       = "pipe-to-shell"
 path       = "examples/plugins/pipe-to-shell.rs"
 test       = false
 
+[[example]]
+crate-type = ["cdylib"]
+name       = "pinned-actions"
+path       = "examples/plugins/pinned-actions.rs"
+test       = false
+
 [dev-dependencies]
 wit-bindgen.workspace = true
 
