@@ -1,0 +1,45 @@
+<svg viewBox="0 0 256 256"
+     fill="none"
+     aria-labelledby="title desc" role="img"
+     xmlns="http://www.w3.org/2000/svg">
+  <metadata>
+    <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/"
+             xmlns:dcterms="http://purl.org/dc/terms/"
+             xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+      <rdf:Description rdf:about="">
+        <dc:title>
+          actionlint monogram
+        </dc:title>
+        <dc:creator>
+          Kaj Kowalski
+        </dc:creator>
+        <dc:date>
+          2026-10-18
+        </dc:date>
+        <dc:format>
+          image/svg+xml
+        </dc:format>
+        <dc:source rdf:resource="https://github.com/kjanat/actionlint" />
+        <dc:rights>
+          Copyright (c) 2026 Kaj Kowalski
+        </dc:rights>
+        <dcterms:license rdf:resource="https://creativecommons.org/licenses/by/4.0/" />
+      </rdf:Description>
+    </rdf:RDF>
+  </metadata>
+  <title id="title">
+    actionlint
+  </title>
+  <desc id="desc">
+    An ink-cut lowercase a and ascending l share a sweeping, forward-leaning silhouette.
+  </desc>
+  <g fill="#D5412E">
+    <path d="M167 73 C153 54 127 51 103 60 C57 77 28 126 34 163 C40 201 77 215 112 194
+             C132 182 149 160 161 132 L180 79 L167 73 Z M144 89 C128 76 109 84 93 103
+             C76 123 66 151 71 168 C77 187 94 185 111 169 C130 150 145 117 149 98
+             C150 94 148 91 144 89 Z"
+          fill-rule="evenodd" />
+    <path d="M197 38 L234 24 L187 164 C181 181 181 190 188 190 C197 190 209 178 219 164 L226 170
+             C213 192 191 215 171 215 C149 215 142 199 150 175 L197 38 Z" />
+  </g>
+</svg>

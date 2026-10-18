@@ -229,7 +229,8 @@ See the [contribution guide] for more details.
 
 ## License
 
-actionlint is distributed under [the MIT license].
+actionlint's code is distributed under [the MIT license].
+Its [branding artwork](docs/assets/brand/README.md) is separately licensed under [CC BY 4.0](docs/assets/brand/LICENSE.md).
 
 [AI usage and policy]: CONTRIBUTING.md#ai-usage-and-policy
 [AUR]: docs/install.md#arch-linux
