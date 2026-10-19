@@ -194,9 +194,28 @@ add patterns. **--ignore** is the
 supported legacy name.
 
 **--plugin** *PATH*
-: Load a WebAssembly component plugin that implements `kjanat:actionlint/analyzer@0.1.0`.
+: Load a WebAssembly component plugin that implements `kjanat:actionlint/analyzer@0.1.0`
+or `kjanat:actionlint/runner-provider@0.1.0`.
 Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of memory and
 10 seconds; a trap, an exit or an exceeded limit fails that document's analysis.
+
+**--runner-target** *TARGET*
+: Select the runner execution target. Defaults to `github`; installing a provider
+does not change the target. Also available on **lsp**.
+
+**--runner-provider** *NAME*
+: Select the authoritative runner provider for the target. Ambiguous providers
+require an explicit selection. Also available on **lsp**.
+
+**--runner-snapshot** *FILE*
+: Read a fixed JSON evidence envelope containing `content`, `scope`, `obtained_at`,
+`freshness` (`fresh`, `stale`, or `missing`) and `complete`. Maximum 8 MiB. The
+content is provider-specific. Restart the language server to refresh evidence.
+Also available on **lsp**.
+
+**--runner-scope** *SCOPE*
+: Set the organization/repository evidence scope. Defaults to the project root.
+The snapshot and provider answers must match this scope. Also available on **lsp**.
 
 **--stdin-filename** *PATH*
 : Set the path used for stdin diagnostics and project detection. The default is

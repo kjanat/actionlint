@@ -333,6 +333,13 @@ func documentedReflector() (*jsonschema.Reflector, error) {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
 	}
+	// AddGoComments constructs package keys from filesystem paths, whereas
+	// reflection uses slash-separated import paths on every platform.
+	comments := make(map[string]string, len(r.CommentMap))
+	for key, comment := range r.CommentMap {
+		comments[filepath.ToSlash(key)] = comment
+	}
+	r.CommentMap = comments
 	r.LookupComment = func(t reflect.Type, field string) string {
 		key := t.PkgPath() + "." + t.Name()
 		name := t.Name()

@@ -30,7 +30,12 @@ func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
 				_, err := plugin.Analyze(t.Context(), analyzer.Input{Options: json.RawMessage("log")})
 				first <- err
 			}()
-			defer func() { close(release); <-first }()
+			defer func() {
+				close(release)
+				if err := <-first; err != nil && !errors.Is(err, context.Canceled) && !strings.Contains(err.Error(), "exceeded its time limit") {
+					t.Errorf("active invocation: %v", err)
+				}
+			}()
 			select {
 			case <-entered:
 			case <-time.After(5 * time.Second):

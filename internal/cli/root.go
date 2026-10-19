@@ -174,6 +174,7 @@ func newCommandApp(streams *Command) *commandApp {
 	lsp := &cobra.Command{Use: "lsp", Short: "Serve the language server over stdin/stdout", Args: cobra.NoArgs, RunE: a.capture("lsp")}
 	a.configFlags(lsp.Flags())
 	a.toolFlags(lsp.Flags())
+	a.runnerFlags(lsp.Flags())
 	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or URI")
 	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
 	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init)
@@ -246,6 +247,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	annotateFlag(f, "experimental", "Rule selection")
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use `FILE` as the stdin filename")
 	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or `URI` (repeatable)")
+	a.runnerFlags(f)
 	annotateFlag(f, "plugin", "Rule selection")
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")

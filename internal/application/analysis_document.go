@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	documentmodel "actionlint.kjanat.dev/document"
@@ -24,14 +25,19 @@ import (
 	"actionlint.kjanat.dev/internal/workflow/composition"
 	"actionlint.kjanat.dev/internal/workflow/execution"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/runner"
 )
 
 // analysisSession holds invocation resources assembled by the application.
 // The workflow engine receives only prepared passes from the composition service.
 type analysisSession struct {
+	runnerReportsMu  sync.Mutex
+	runnerReports    []runner.Report
+	runners          runner.Options
 	toolDescriptors  []rule.Descriptor
 	tools            []tools.Registration
 	analyzers        []analyzer.Registration
@@ -145,7 +151,22 @@ func (s *analysisSession) composeDocument(path, root string, document documentpa
 		mappings = cfg.LocalActions
 	}
 	resolvedActions := actionlocal.NewResolver(actions, mappings)
+	var customLabels []string
+	if cfg != nil {
+		customLabels = cfg.SelfHostedRunner.Labels
+	}
+	runners, runnerErr := runnerlang.Prepare(s.ctx, document.Workflow, customLabels, s.runners, root)
+	if runners.Report.Identity != "" {
+		report := runners.Report
+		report.Path = path
+		s.runnerReportsMu.Lock()
+		s.runnerReports = append(s.runnerReports, report)
+		s.runnerReportsMu.Unlock()
+	}
+	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
+	resolvedActions.Runners = runners
 	context := builtin.Context{Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
+	context.Runners = runners
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
@@ -165,7 +186,8 @@ func (s *analysisSession) composeDocument(path, root string, document documentpa
 	}
 	requires := checks.RequiredFacts(registrations)
 	service := composition.New(composition.Options{Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
-		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir, Reader: s.reader}, Config: cfg,
+		Runners: runners,
+		Paths:   execution.Paths{Workspace: root, Analysis: s.workingDir, Reader: s.reader}, Config: cfg,
 		ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {

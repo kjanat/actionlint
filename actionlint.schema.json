@@ -200,6 +200,7 @@
                   "expression-call",
                   "event-payload",
                   "script-injection",
+                  "script-interpolation",
                   "deprecated-commands",
                   "if-cond",
                   "require-commit-hash",
@@ -1950,6 +1951,75 @@
                                 }
                               ]
                             },
+                            "script-interpolation": {
+                              "title": "script-interpolation",
+                              "description": "Detect template values that may change script syntax",
+                              "markdownDescription": "Detect template values that may change script syntax",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "shell-name": {
                               "title": "shell-name",
                               "description": "Validate script shells for the selected runner",
@@ -2339,6 +2409,7 @@
                           "expression-call",
                           "event-payload",
                           "script-injection",
+                          "script-interpolation",
                           "deprecated-commands",
                           "if-cond",
                           "require-commit-hash",
@@ -2957,6 +3028,7 @@
                                                           "ruff",
                                                           "runner-label",
                                                           "script-injection",
+                                                          "script-interpolation",
                                                           "shell-name",
                                                           "shellcheck",
                                                           "string-conditions",
@@ -3726,8 +3798,8 @@
                             },
                             "script-injection": {
                               "title": "script-injection",
-                              "description": "Detect untrusted values interpolated into scripts",
-                              "markdownDescription": "Detect untrusted values interpolated into scripts",
+                              "description": "Detect untrusted values and secrets interpolated into scripts",
+                              "markdownDescription": "Detect untrusted values and secrets interpolated into scripts",
                               "oneOf": [
                                 {
                                   "anyOf": [
@@ -5903,6 +5975,75 @@
                                           }
                                         ]
                                       },
+                                      "script-interpolation": {
+                                        "title": "script-interpolation",
+                                        "description": "Detect template values that may change script syntax",
+                                        "markdownDescription": "Detect template values that may change script syntax",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "shell-name": {
                                         "title": "shell-name",
                                         "description": "Validate script shells for the selected runner",
@@ -6292,6 +6433,7 @@
                                     "expression-call",
                                     "event-payload",
                                     "script-injection",
+                                    "script-interpolation",
                                     "deprecated-commands",
                                     "if-cond",
                                     "require-commit-hash",
@@ -6910,6 +7052,7 @@
                                                                     "ruff",
                                                                     "runner-label",
                                                                     "script-injection",
+                                                                    "script-interpolation",
                                                                     "shell-name",
                                                                     "shellcheck",
                                                                     "string-conditions",
@@ -7679,8 +7822,8 @@
                                       },
                                       "script-injection": {
                                         "title": "script-injection",
-                                        "description": "Detect untrusted values interpolated into scripts",
-                                        "markdownDescription": "Detect untrusted values interpolated into scripts",
+                                        "description": "Detect untrusted values and secrets interpolated into scripts",
+                                        "markdownDescription": "Detect untrusted values and secrets interpolated into scripts",
                                         "oneOf": [
                                           {
                                             "anyOf": [
@@ -8679,6 +8822,7 @@
                               "ruff",
                               "runner-label",
                               "script-injection",
+                              "script-interpolation",
                               "shell-name",
                               "shellcheck",
                               "string-conditions",

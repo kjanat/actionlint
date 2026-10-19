@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/application"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/processconfig"
@@ -12,6 +13,34 @@ import (
 	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
 )
+
+// Assert the independent interpolation finding before checking Ruff's findings.
+func ruffFindingsWithInterpolation(t *testing.T, findings []diagnostic.Diagnostic, interpolationLine int) []diagnostic.Diagnostic {
+	t.Helper()
+	var ruff []diagnostic.Diagnostic
+	interpolations := 0
+	for _, finding := range findings {
+		switch finding.Rule {
+		case "ruff":
+			ruff = append(ruff, finding)
+		case "script-interpolation":
+			interpolations++
+			if finding.Code != "unknown-script-value" || finding.Start.Line != interpolationLine {
+				t.Fatalf("unexpected interpolation finding: %+v", finding)
+			}
+		default:
+			t.Fatalf("unexpected independent finding: %+v", finding)
+		}
+	}
+	want := 0
+	if interpolationLine != 0 {
+		want = 1
+	}
+	if interpolations != want {
+		t.Fatalf("interpolation findings = %d, want %d", interpolations, want)
+	}
+	return ruff
+}
 
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
 	command := testutil.RequireRuff(t)
@@ -79,10 +108,15 @@ jobs:
 					if err != nil {
 						t.Fatal(err)
 					}
-					if len(result.Diagnostics) == 0 {
+					interpolationLine := 0
+					if strings.Contains(script, "${{ '[]' }}") {
+						interpolationLine = 9
+					}
+					ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, interpolationLine)
+					if len(ruff) == 0 {
 						t.Fatal("from clause caused script checking to be skipped")
 					}
-					for _, finding := range result.Diagnostics {
+					for _, finding := range ruff {
 						if finding.Rule != "ruff" || finding.Code != tc.code || finding.Start.Line != 9+strings.Count(script, "\n") {
 							t.Fatalf("from clause changed independent findings: %+v", result.Diagnostics)
 						}
@@ -128,7 +162,8 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 10 {
+	ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, 8)
+	if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 10 {
 		t.Fatalf("operator template changed independent diagnostics: %+v", result.Diagnostics)
 	}
 }

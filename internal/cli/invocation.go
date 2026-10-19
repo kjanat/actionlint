@@ -24,6 +24,10 @@ type invocation struct {
 
 // checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
+	RunnerTarget          string
+	RunnerProvider        string
+	RunnerSnapshot        string
+	RunnerScope           string
 	ResolverCommand       string
 	ResolverArguments     []string
 	Fix                   bool

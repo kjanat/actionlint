@@ -75,5 +75,6 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 	}
 
 	options.Analyzers = slices.Concat(options.Analyzers, l.registrations())
+	options.Runners.Providers = slices.Concat(options.Runners.Providers, l.runnerProviders())
 	return options, nil
 }

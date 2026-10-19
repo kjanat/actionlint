@@ -119,7 +119,7 @@ func TestCheckReportsPluginFailures(t *testing.T) {
 	if failing.Status != 3 || !strings.Contains(failing.Stderr, `analyzer "misbehave": plugin misbehave failed (memory 64 MiB, time 10s)`) {
 		t.Fatalf("failing: %+v", failing)
 	}
-	if !strings.Contains(failing.Stderr, `[Linter] Loaded plugin "misbehave" from `) || !strings.Contains(failing.Stderr, "[plugin misbehave.wasm] ") {
+	if !strings.Contains(failing.Stderr, `[Linter] Loaded component from `) || !strings.Contains(failing.Stderr, "[plugin misbehave.wasm] ") {
 		t.Fatalf("debug log: %q", failing.Stderr)
 	}
 }

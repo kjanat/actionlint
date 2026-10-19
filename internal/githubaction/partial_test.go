@@ -1,7 +1,9 @@
 package githubaction
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -50,7 +52,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 	ready := filepath.Join(t.TempDir(), "ready")
 	t.Setenv("ACTIONLINT_PARTIAL_RESULT_READY", ready)
 	workspace := workspaceWith(t, map[string]string{
-		"timeout.yaml": strings.ReplaceAll(brokenWorkflow, "echo hi", "echo HANG_ANALYZER"),
+		"timeout.yaml": strings.ReplaceAll(brokenWorkflow, "echo hi", "echo HANG_ANALYZER\n        shell: bash"),
 	})
 	resultPath := filepath.Join(t.TempDir(), "result.json")
 	env := map[string]string{
@@ -58,7 +60,14 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 		"ACTIONLINT_ACTION_RESULT": resultPath,
 	}
 	var output strings.Builder
+	// Trigger expiration only after the native process has started. Its startup
+	// latency is not part of the partial-result preservation behavior under test.
+	ctx, expire := context.WithCancel(t.Context())
+	defer expire()
 	a := &action{
+		withTimeout: func(context.Context, time.Duration) (context.Context, context.CancelFunc) {
+			return ctx, expire
+		},
 		args:   args("./timeout.yaml", "json", "", "", "true", "false", ".", "", "true"),
 		stdout: &output, env: func(name string) string { return env[name] },
 		newID: fixedID("DELIM"), timeout: 2 * time.Second,
@@ -69,7 +78,35 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 			return runLinter(req)
 		},
 	}
-	if code := a.run(); code != render.ExitFailure {
+	completed := make(chan int, 1)
+	go func() { completed <- a.run() }()
+	watchdog := time.NewTimer(30 * time.Second)
+	defer watchdog.Stop()
+	poll := time.NewTicker(10 * time.Millisecond)
+	defer poll.Stop()
+waiting:
+	for {
+		select {
+		case code := <-completed:
+			t.Fatalf("action exited before analyzer readiness: %d: %s", code, output.String())
+		case <-watchdog.C:
+			expire()
+			<-completed
+			t.Fatal("native analyzer did not start within startup watchdog")
+		case <-poll.C:
+			_, err := os.Stat(ready)
+			if err == nil {
+				break waiting
+			}
+			if !errors.Is(err, os.ErrNotExist) {
+				expire()
+				<-completed
+				t.Fatal(err)
+			}
+		}
+	}
+	expire()
+	if code := <-completed; code != render.ExitFailure {
 		t.Fatalf("exit = %d, want failure: %s", code, output.String())
 	}
 	if _, err := os.Stat(ready); err != nil {
@@ -115,7 +152,7 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{
 		"finding.yaml": cleanWorkflow,
 		"failure.yaml": strings.ReplaceAll(cleanWorkflow, "echo hi", "echo CRASH_ANALYZER"),
-		"both.yaml":    strings.ReplaceAll(brokenWorkflow, "echo hi", "echo CRASH_ANALYZER"),
+		"both.yaml":    strings.ReplaceAll(brokenWorkflow, "echo hi", "echo CRASH_ANALYZER\n        shell: bash"),
 	})
 	for _, tc := range []struct {
 		name, files, path, rule string

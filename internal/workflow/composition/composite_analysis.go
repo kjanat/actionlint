@@ -19,6 +19,7 @@ import (
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,
 // leaving Visitor responsible for the workflow's ordinary pass lifecycle.
 type compositeAnalyzer struct {
+	runners                           *runnerlang.Knowledge
 	resolveScriptExecution            bool
 	scripts                           []scriptexecution.Unit
 	scriptScopes                      []*scriptexecution.Scope
@@ -60,9 +61,14 @@ func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
 	analysis.jobScriptShell = scriptDefaultShell(job.Defaults)
 	analysis.scriptJobShell = execution.DefaultShell(job.Defaults)
 	analysis.scriptJobDir = execution.DefaultDirectory(job.Defaults)
-	analysis.scriptRunnerShell = execution.ShellValue{}
-	if runnerlang.PlatformOf(job.RunsOn) == runnerlang.Windows {
-		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: "pwsh"})
+	knowledge := analysis.runners.Job(job)
+	analysis.scriptRunnerShell = execution.ShellValue{Kind: execution.ShellUnknown}
+	if analysis.runners == nil {
+		// Standalone composition retains its historical unspecified-shell default.
+		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: "bash"})
+	}
+	if knowledge.Shell != "" {
+		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: knowledge.Shell})
 	}
 	if container := execution.ContainerShell(job.Container); container.Kind != execution.ShellUnspecified {
 		analysis.scriptRunnerShell = container

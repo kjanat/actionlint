@@ -16,10 +16,12 @@ import (
 	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 type Options struct {
+	Runners                          *runnerlang.Knowledge
 	Context                          context.Context
 	Actions                          *actionlocal.Resolver
 	Rules                            []workflowvisit.Rule
@@ -82,6 +84,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 	}
 	configs := map[string]*repoconfig.Config{}
 	c := &compositeAnalyzer{ctx: options.Context, actions: options.Actions, passes: passes,
+		runners:      options.Runners,
 		scriptConfig: options.Config, scriptPaths: options.Paths,
 		collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution}
 	if options.ConfigForFile != nil {

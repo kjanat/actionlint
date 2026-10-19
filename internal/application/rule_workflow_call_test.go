@@ -38,7 +38,8 @@ jobs:
     needs: call
     runs-on: ubuntu-latest
     steps:
-      - run: echo '${{ needs.call.outputs.result }}'
+      - run: printf '%s\n' "$RESULT"
+        env: {RESULT: '${{ needs.call.outputs.result }}'}
 `)
 				for _, pass := range []string{"cold cache", "warm cache"} {
 					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: source, Project: proj, Config: (proj).Config()}, nil, nil, cache)

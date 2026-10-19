@@ -52,23 +52,43 @@ jobs:
 					t.Fatal(err)
 				}
 				var codes []string
+				var ruff []diagmodel.Diagnostic
+				interpolations := 0
 				for _, diagnostic := range result.Diagnostics {
-					codes = append(codes, diagnostic.Code)
+					switch diagnostic.Rule {
+					case "ruff":
+						codes = append(codes, diagnostic.Code)
+						ruff = append(ruff, diagnostic)
+					case "script-interpolation":
+						if diagnostic.Code != "unknown-script-value" {
+							t.Fatal(diagnostic)
+						}
+						interpolations++
+					default:
+						t.Fatalf("unexpected finding: %+v", diagnostic)
+					}
+				}
+				wantInterpolations := 0
+				if strings.Contains(tc.statement, "${{") {
+					wantInterpolations = 1
+				}
+				if interpolations != wantInterpolations {
+					t.Fatalf("want %d interpolation findings, got %d", wantInterpolations, interpolations)
 				}
 				offset := strings.Count(tc.statement, "\n")
 				if tc.opaqueStatement {
 					if !slices.Equal(codes, []string{"F821"}) {
 						t.Fatalf("opaque statement affected other steps: %+v", result.Diagnostics)
 					}
-					finding := result.Diagnostics[0]
+					finding := ruff[0]
 					if finding.Start != (diagmodel.Position{Line: 12 + offset, Column: 20}) || finding.End != (diagmodel.Position{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
 						t.Fatalf("independent step finding moved: %+v", finding)
 					}
 					return
 				}
 				if !slices.Equal(codes, []string{"B018", "F821"}) ||
-					result.Diagnostics[0].Start != (diagmodel.Position{Line: 9 + offset, Column: 11}) || result.Diagnostics[0].End != (diagmodel.Position{Line: 9 + offset, Column: 13}) ||
-					result.Diagnostics[1].Start != (diagmodel.Position{Line: 10 + offset, Column: 17}) || result.Diagnostics[1].End != (diagmodel.Position{Line: 10 + offset, Column: 24}) {
+					ruff[0].Start != (diagmodel.Position{Line: 9 + offset, Column: 11}) || ruff[0].End != (diagmodel.Position{Line: 9 + offset, Column: 13}) ||
+					ruff[1].Start != (diagmodel.Position{Line: 10 + offset, Column: 17}) || ruff[1].End != (diagmodel.Position{Line: 10 + offset, Column: 24}) {
 					t.Fatalf("statement template changed independent findings: %+v", result.Diagnostics)
 				}
 			})

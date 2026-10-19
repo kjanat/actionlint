@@ -111,7 +111,7 @@ var targets = []*target{
 			mustRule("manual footer version", `(?m)^footer: actionlint (\d+\.\d+\.\d+)\r?$`, 1),
 			mustRule("document link", `/blob/v(\d+\.\d+\.\d+)/docs/`, 5),
 		},
-		unrelated: []string{"kjanat:actionlint/analyzer@0.1.0"},
+		unrelated: []string{"kjanat:actionlint/analyzer@0.1.0", "kjanat:actionlint/runner-provider@0.1.0"},
 	},
 	{
 		path: ".github/workflows/npm-release.yml",

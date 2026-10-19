@@ -11,6 +11,7 @@ import (
 // RuleShellName is a rule to check 'shell' field. For more details, see
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
 type RuleShellName struct {
+	runners *runnerlang.Knowledge
 	workflowvisit.Base
 	platform runnerlang.Platform
 }
@@ -36,7 +37,7 @@ func (rule *RuleShellName) VisitJobPre(n *workflowlang.Job) error {
 	if n.RunsOn == nil {
 		return nil
 	}
-	rule.platform = runnerlang.PlatformOf(n.RunsOn)
+	rule.platform = rule.runners.Job(n).Platform
 	rule.checkShellValue(execution.DefaultShell(n.Defaults))
 	return nil
 }

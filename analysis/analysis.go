@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/internal/tools/adapters"
 	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/resolver"
+	"actionlint.kjanat.dev/runner"
 )
 
 // Source is an in-memory workflow or action manifest with optional configuration.
@@ -43,6 +44,7 @@ type Tool struct {
 // Options controls configuration, external tools and filesystem access.
 // ReadFile must support concurrent calls. It does not sandbox external tools.
 type Options struct {
+	Runners        runner.Options
 	Resolver       resolver.Resolver
 	Analyzers      []analyzer.Registration
 	WorkingDir     string
@@ -72,6 +74,7 @@ type Request struct {
 // Result contains findings and selected document outlines. It may accompany an
 // error when analysis completed only partially. FileCount includes clean sources.
 type Result struct {
+	RunnerEvidence []runner.Report         `json:"runner_evidence"`
 	Diagnostics    []diagnostic.Diagnostic `json:"diagnostics"`
 	Documents      document.Outlines       `json:"documents"`
 	Inputs         []string                `json:"inputs"`
@@ -107,7 +110,7 @@ func toolOptions(tool Process) *processconfig.Options {
 
 func fileOptions(options FileOptions) application.Options {
 	return application.Options{
-		Resolver: options.Resolver, Analyzers: options.Analyzers, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
+		Resolver: options.Resolver, Analyzers: options.Analyzers, Runners: options.Runners, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: options.ReadFile,
 
@@ -122,7 +125,7 @@ func applicationResultView(result *application.Result) *Result {
 	if result == nil {
 		return nil
 	}
-	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
+	return &Result{RunnerEvidence: result.RunnerEvidence, Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
 }
 
 func backendProcessOptions(tool Tool) *processconfig.Options {

@@ -1,6 +1,6 @@
-# Analyzer contract generation
+# Component contract generation
 
-`go generate ./internal/plugins/component` parses `plugins/wit/analyzer.wit` and generates the complete expected
+`go generate ./internal/plugins/component` parses `plugins/wit/analyzer.wit` and `plugins/wit/runner.wit` and generates the complete expected
 interface graph plus enum names in WIT order. Explicit Go adapters still translate internal models; they use the
 generated enum order. The loader checks the graph before instantiating guest code. No WIT compiler runs at runtime.
 

@@ -2,6 +2,7 @@ package githubaction
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,8 @@ func actionVersion() string {
 }
 
 type action struct {
+	withTimeout func(context.Context, time.Duration) (context.Context, context.CancelFunc)
+
 	args    []string
 	stdout  io.Writer
 	env     func(string) string
