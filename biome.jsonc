@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!!**/testdata"]
+    "includes": ["**", "!!**/testdata", "!internal/webhook/payload/catalogue.json"]
   },
   "formatter": {
     "enabled": false,
@@ -17,6 +17,9 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
+      "a11y": {
+        "noSvgWithoutTitle": "off"
+      },
       "complexity": {
         "useLiteralKeys": "off"
       },
