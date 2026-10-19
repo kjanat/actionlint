@@ -61,7 +61,7 @@ jobs:
           bash tools/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
-      - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
+      - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
@@ -69,7 +69,7 @@ jobs:
       - name: Regenerate the configuration schema
         id: schema
         run: bash tools/ci/autofix-step.bash go generate -run generate-config-schema
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         if: steps.inputs.outputs.tables == 'true'
         with: { node-version-file: .node-version, package-manager-cache: false }
       - name: Install catalogue generator dependencies
@@ -80,7 +80,7 @@ jobs:
         if: steps.inputs.outputs.tables == 'true'
         run: bash tools/ci/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
-      - uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5
         with: { cache: true, auto_update: true }
       - name: Refresh the affected README demo
         id: readme
