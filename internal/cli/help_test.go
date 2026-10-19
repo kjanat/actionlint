@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -36,6 +37,19 @@ func TestManualDocumentsEveryFlag(t *testing.T) {
 			delete(documented, name)
 		}
 	})
+	// Flags specific to subcommands may also be documented in FLAGS. They
+	// are not part of the root's mandatory set, but are recognized commands.
+	var visit func(*cobra.Command)
+	visit = func(c *cobra.Command) {
+		c.Flags().VisitAll(func(f *pflag.Flag) {
+			delete(documented, "--"+f.Name)
+			delete(documented, "-"+f.Shorthand)
+		})
+		for _, child := range c.Commands() {
+			visit(child)
+		}
+	}
+	visit(app.root)
 	for name := range documented {
 		t.Errorf("manual documents unknown flag %s", name)
 	}

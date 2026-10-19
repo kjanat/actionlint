@@ -22,6 +22,7 @@ require (
 	github.com/tetratelabs/wazero v1.11.1-0.20260418165552-5cb4bb3ec0c1
 	github.com/yuin/goldmark v1.8.6
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
+	golang.org/x/mod v0.42.0
 	golang.org/x/net v0.61.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.49.0

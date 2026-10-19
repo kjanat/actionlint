@@ -17,18 +17,21 @@ import (
 
 // LanguageServer shares application selection, configuration and plugin loading
 // with ordinary checks. Unsaved open buffers overlay dependency reads.
-func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options application.Options, plugins []string) (err error) {
+func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options application.Options, plugins PluginSources) (err error) {
 	directory, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
 		return err
 	}
 	options.WorkingDir = directory
-	session, err := newEditorSession(ctx, options, plugins)
+	session, err := newEditorSession(ctx, options, plugins.Paths)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, session.close(context.WithoutCancel(ctx))) }()
 	return langserver.Serve(ctx, in, out, func(ctx context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
+		if err := plugins.ValidateScope(slices.Collect(maps.Keys(documents))); err != nil {
+			return langserver.Analysis{}, err
+		}
 		return analyzeDocuments(ctx, session.options, documents)
 	}, func(ctx context.Context, doc langserver.Document, offset int) []langserver.Completion {
 		if ctx.Err() != nil {

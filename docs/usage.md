@@ -1227,7 +1227,13 @@ by default; `--include-suggested` also includes edits requiring review. Conflict
 edits or stale source revisions abort preparation. Writes are atomic per file;
 an I/O failure during a multi-file application reports how many files were written.
 
-`--plugin PATH` accepts document-analyzer components or the Ruff core WebAssembly
+`actionlint plugin search` discovers published plugins. `plugin install REPOSITORY --version TAG`
+pins a verified artifact in `.github/actionlint.plugins.lock.json`; commit that lock.
+Check, fix, rules and LSP load it automatically. `plugin sync` restores exact pins;
+`plugin update` explicitly refreshes saved selectors. See [plugin installation](plugins.md#install-from-the-registry)
+for version selection, overrides and offline behavior.
+
+`--plugin PATH` accepts document-analyzer components, runner providers or the Ruff core WebAssembly
 engine. The Ruff engine replaces the native Ruff process while retaining the
 host's workflow expression masking and YAML position mapping.
 

@@ -59,6 +59,30 @@ also accepts.
 **lsp**
 : Serve versioned editor buffers, diagnostics and quick fixes over stdin/stdout.
 
+**plugin search** [*QUERY*], **plugin versions** *PLUGIN*
+: Discover canonical repository names and exact published tags from the registry.
+Use **--registry** to select a compatible HTTPS catalogue. **--json** includes
+host-specific compatibility evidence when listing versions.
+
+**plugin install** *PLUGIN* [**--version** *TAG|latest*]
+: Download and verify a plugin without executing it; save its exact version, URL,
+publisher identity and SHA256 in `.github/actionlint.plugins.lock.json`. Commit
+the lock. The default selector is the highest stable full semantic version;
+prereleases and arbitrary tags require exact selection. Admission does not prove
+runtime compatibility. Runner targets still require explicit selection.
+
+**plugin list**, **plugin update** [*PLUGIN*], **plugin remove** *PLUGIN*, **plugin sync**
+: List locked selections offline; resolve saved selectors and update pins;
+remove a selection; or restore exact pinned artifacts without catalogue access.
+Update accepts **--version** for one named plugin. Exact selectors stay exact;
+latest cannot downgrade unless an exact tag is explicitly selected. Failed updates
+preserve the old lock. Checks restore missing pinned artifacts and reuse verified
+cached bytes offline. Removal leaves the shared cache intact. Use **--plugin-lock**
+for a custom location or outside a repository.
+
+**plugin inspect** *PATH-OR-URI*
+: Read artifact metadata without executing a guest.
+
 **check** [*flags*] [*files*...]
 : Check workflows with the modern option grammar. Uses the same engine and
 repository discovery as the root invocation.
@@ -199,6 +223,18 @@ or `kjanat:actionlint/runner-provider@0.1.0`.
 Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of memory and
 10 seconds; a trap, an exit or an exceeded limit fails that document's analysis.
 
+**--plugin-lock** *FILE*
+: Load pinned plugins from this lock instead of discovering
+`.github/actionlint.plugins.lock.json`. Available on check, fix, rules, lsp and
+plugin management commands. Cannot accompany **--plugin**. Explicit **--plugin**
+sources replace automatic lock selection; **--no-config** disables automatic
+selection. Explicit **--config** selects an adjacent lock. LSP snapshots selection
+until restart. See the **plugin** commands.
+
+**--registry** *URL*
+: Select an HTTPS static catalogue for **plugin search**, **plugin versions** or
+**plugin install**. Default: `https://plugins.actionlint.kjanat.dev/`.
+
 **--runner-target** *TARGET*
 : Select the runner execution target. Defaults to `github`; installing a provider
 does not change the target. Also available on **lsp**.
@@ -293,6 +329,8 @@ for Zsh. Regenerate saved scripts after upgrading.
 : Root-only version flag. Retains its original three-line output. Use the
 **version** command for the new presentation or **version --json** for metadata.
 Lowercase **-v** continues to enable verbose logging.
+On **plugin install** and **plugin update**, **--version** instead takes an exact
+release tag or `latest` as described above.
 
 **--help**, **-h**
 : Show grouped help on stderr, or JSON command metadata on stdout with **--json**.

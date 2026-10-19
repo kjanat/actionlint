@@ -81,7 +81,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 	finished := make(chan struct{})
 	go func() {
 		defer close(finished)
-		done <- LanguageServer(ctx, in, out, options, nil)
+		done <- LanguageServer(ctx, in, out, options, PluginSources{})
 		_ = out.Close()
 	}()
 	t.Cleanup(func() {

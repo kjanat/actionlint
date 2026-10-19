@@ -34,13 +34,22 @@ func (r versionRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type rulesRequest struct {
-	Plugins []string
-	Name    string
-	JSON    bool
+	Plugins   []string
+	Selection localapp.PluginSelection
+	Name      string
+	JSON      bool
 }
 
 func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
-	rules, err := localapp.Rules(ctx, r.Plugins)
+	selection := r.Selection
+	if len(r.Plugins) > 0 {
+		selection.Paths = r.Plugins
+	}
+	paths, err := selectedRulePlugins(ctx, selection)
+	if err != nil {
+		return 0, commandUsageError{err}
+	}
+	rules, err := localapp.Rules(ctx, paths)
 	if err != nil {
 		return 0, commandUsageError{err}
 	}

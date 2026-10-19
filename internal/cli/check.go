@@ -82,7 +82,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		input.Kind, input.Reader, input.Name, input.NormalizePath = application.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
-	result, err := localapp.Check(ctx, options, input, c.Plugins)
+	plugins, err := c.pluginSelection().Resolve(ctx, workingDir, input)
+	if err != nil {
+		return 0, commandUsageError{err}
+	}
+	result, err := localapp.Check(ctx, options, input, plugins.Paths)
 	if err != nil {
 		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok {
 			return 0, commandUsageError{err}
@@ -92,7 +96,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}
 		return 0, err
 	}
-	inputs := append([]string{c.Config.Path, r.TemplateFile, c.RunnerSnapshot}, result.Inputs...)
+	inputs := append([]string{c.Config.Path, r.TemplateFile, c.RunnerSnapshot, plugins.LockFile}, result.Inputs...)
 	inputs = append(inputs, c.Paths...)
 	if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		inputs = append(inputs, c.StdinFilename)
@@ -134,10 +138,13 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
-		result, err = localapp.Check(ctx, options, input, c.Plugins)
+		result, err = localapp.Check(ctx, options, input, plugins.Paths)
 		if err != nil {
 			return 0, err
 		}
+	}
+	if plugins.LockFile != "" {
+		result.Inputs = append(result.Inputs, plugins.LockFile)
 	}
 	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, render.Prepare(*result)); err != nil {
 		return 0, err

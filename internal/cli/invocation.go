@@ -13,6 +13,7 @@ import (
 type invocation struct {
 	Operation operation
 	Check     checkInvocation
+	Plugin    pluginInvocation
 	Render    renderOptions
 	Yes       bool
 	JSON      bool
@@ -42,6 +43,7 @@ type checkInvocation struct {
 	RuffOptions           *processconfig.Options
 	Pyflakes              string
 	Plugins               []string
+	PluginLock            string
 	ShellcheckOptions     *processconfig.Options
 	Verbose               bool
 	Debug                 bool
@@ -82,6 +84,13 @@ const (
 	operationVersion        operation = "version"
 	operationRules          operation = "rules"
 	operationPluginInspect  operation = "plugin inspect"
+	operationPluginSearch   operation = "plugin search"
+	operationPluginVersions operation = "plugin versions"
+	operationPluginInstall  operation = "plugin install"
+	operationPluginList     operation = "plugin list"
+	operationPluginUpdate   operation = "plugin update"
+	operationPluginRemove   operation = "plugin remove"
+	operationPluginSync     operation = "plugin sync"
 	operationDoctor         operation = "doctor"
 	operationConfigPath     operation = "config path"
 	operationConfigShow     operation = "config show"
@@ -163,12 +172,14 @@ func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
 	case operationPluginInspect:
 		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON}, nil
+	case operationPluginSearch, operationPluginVersions, operationPluginInstall, operationPluginList, operationPluginUpdate, operationPluginRemove, operationPluginSync:
+		return pluginRegistryRequest{Operation: inv.Operation, Options: inv.Plugin, Paths: inv.Check.Paths, LockFile: inv.Check.PluginLock, JSON: inv.JSON}, nil
 	case "lsp":
 		return lspRequest{inv.Check}, nil
 	case operationVersion:
 		return versionRequest{JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	case operationRules:
-		return rulesRequest{Name: inv.Rule, JSON: inv.JSON, Plugins: inv.Check.Plugins}, nil
+		return rulesRequest{Name: inv.Rule, JSON: inv.JSON, Plugins: inv.Check.Plugins, Selection: inv.Check.pluginSelection()}, nil
 	case operationDoctor:
 		return doctorRequest{Config: inv.Check.Config, ShellCheck: inv.Check.ShellCheck,
 			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,

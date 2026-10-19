@@ -1,0 +1,58 @@
+package pluginregistry
+
+import (
+	"context"
+	"errors"
+	"io"
+	"net/http"
+	"strings"
+	"testing"
+)
+
+type responseTransport func(*http.Request) (*http.Response, error)
+
+func (f responseTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestCatalogueTransportLimits(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, redirect string
+		status               int
+	}{
+		{name: "size", body: strings.Repeat(" ", maxJSONBytes+1), status: 200},
+		{name: "duplicate", body: `{"schema_version":1,"schema_version":1,"plugins":[]}`, status: 200},
+		{name: "trailing", body: `{"schema_version":1,"plugins":[]} {}`, status: 200},
+		{name: "status", status: 404},
+		{name: "origin", redirect: "https://other.example/catalogue/index.json", status: 302},
+		{name: "path", redirect: "https://example.org/outside/index.json", status: 302},
+		{name: "escaped path", redirect: "https://example.org/catalogue/%2e%2e/outside/index.json", status: 302},
+		{name: "downgrade", redirect: "http://example.org/catalogue/index.json", status: 302},
+		{name: "loop", redirect: "https://example.org/catalogue/index.json", status: 302},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := New("https://example.org/catalogue/")
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			c.http.Transport = responseTransport(func(r *http.Request) (*http.Response, error) {
+				calls++
+				if calls > 1 && tc.name != "loop" {
+					t.Fatal("followed rejected redirect")
+				}
+				return &http.Response{StatusCode: tc.status, Header: http.Header{"Location": []string{tc.redirect}}, Body: io.NopCloser(strings.NewReader(tc.body)), Request: r}, nil
+			})
+			if _, err := c.Search(t.Context(), ""); err == nil {
+				t.Fatal("accepted invalid catalogue")
+			}
+		})
+	}
+	c, err := New(DefaultURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := c.Search(ctx, ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation: %v", err)
+	}
+}
