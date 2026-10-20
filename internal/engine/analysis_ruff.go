@@ -20,7 +20,7 @@ func newRuffAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 	checker, err := newRuffChecker(c)
 	if err != nil {
 		options := projectToolOptions("ruff", c.ruff, c.ruffOptions, c.config, c.workingDir)
-		if options == nil || !options.Optional {
+		if options == nil || !options.Optional || configuredScriptModule("ruff", c.ruff, c.ruffOptions, c.config) != nil {
 			return nil, err
 		}
 	}
@@ -32,7 +32,7 @@ func newRuffAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 		invocation.config = cfg
 		checker, err := newRuffChecker(invocation)
 		options := projectToolOptions("ruff", c.ruff, c.ruffOptions, cfg, c.workingDir)
-		if err != nil && options != nil && options.Optional {
+		if err != nil && options != nil && options.Optional && configuredScriptModule("ruff", c.ruff, c.ruffOptions, cfg) == nil {
 			return nil, nil
 		}
 		return checker, err
@@ -42,6 +42,12 @@ func newRuffAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 func newRuffChecker(c ruleContext) (*ruff.Checker, error) {
 	if c.ruffBackend != nil {
 		return ruff.NewBackend(c.process.ctx, c.ruffBackend, ruffExpressionEnd), nil
+	}
+	if engine, err := c.configuredScriptEngine("ruff", c.ruff, c.ruffOptions); engine != nil || err != nil {
+		if err != nil {
+			return nil, fmt.Errorf("could not initialize Ruff: %w", err)
+		}
+		return ruff.NewBackend(c.process.ctx, engine, ruffExpressionEnd), nil
 	}
 	if err := c.requireConfigProcessOptIn("ruff", c.ruff, c.ruffOptions, c.config); err != nil {
 		return nil, err

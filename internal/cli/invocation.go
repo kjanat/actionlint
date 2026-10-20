@@ -38,6 +38,7 @@ type checkInvocation struct {
 	Experimental         bool
 	ExperimentalSet      bool
 	PreCommit            bool
+	Plugins              []string
 }
 
 // renderOptions controls result presentation without changing analysis.

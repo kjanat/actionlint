@@ -139,10 +139,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if c.ExperimentalSet {
 		presets.Experimental = &c.Experimental
 	}
+	plugins, err := loadPlugins(ctx, c.Plugins, log, options.Debug)
+	if err != nil {
+		return 0, err
+	}
+	defer plugins.close(ctx)
 	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
 		AllowConfigProcesses: c.AllowConfigProcesses,
-		RulePresets:          presets,
-		Context:              ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
+		RulePresets:          presets, Analyzers: plugins.registrations(), LoadScriptEngine: scriptEngineLoader(log, options.Debug),
+		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
 		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
 		ShellcheckOptions: c.ShellcheckOptions,
 		Ruff:              c.Ruff, RuffOptions: c.RuffOptions,
@@ -152,6 +157,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
+	defer func() {
+		if closeErr := app.Close(ctx); err == nil {
+			err = closeErr
+		}
+	}()
 	var renderer *actionlint.AnalysisRenderer
 	if inv.Legacy {
 		// Root invocations validate templates before reading any workflow input.

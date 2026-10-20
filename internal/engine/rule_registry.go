@@ -38,6 +38,7 @@ type ruleContext struct {
 	workflowNames           *workflownames.Index
 	ruffBackend             analyzer.ScriptBackend
 	shellcheckBackend       analyzer.ScriptBackend
+	scriptEngine            func(string) (analyzer.ScriptBackend, error)
 	ruff                    string
 	ruffOptions             *ExternalCommandOptions
 	ruffCompatibility       *ruff.Compatibility
@@ -74,7 +75,7 @@ func ruleBehaviours() map[string]ruleBehaviour {
 		}, enabled: workflowRunNamesAvailable},
 		"ruff": {required: func(c ruleContext) bool {
 			options := projectToolOptions("ruff", c.ruff, c.ruffOptions, c.config, c.workingDir)
-			return c.ruffBackend != nil || options == nil || !options.Optional
+			return c.ruffBackend != nil || configuredScriptModule("ruff", c.ruff, c.ruffOptions, c.config) != nil || options == nil || !options.Optional
 		}, buildScripts: newRuffAnalyzer, enabled: func(c ruleContext) bool {
 			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
 			return (c.ruffBackend != nil || externalCommandEnabled(c.ruff, c.ruffOptions)) && (possible || err != nil)
@@ -110,7 +111,7 @@ func ruleBehaviours() map[string]ruleBehaviour {
 		"cache-operation":         {build: func(c ruleContext) (Rule, error) { return newRuleCacheOperation(c.workflows), nil }, enabled: func(c ruleContext) bool { return c.config.CachePolicyEnabled("cache-operation") }},
 		"shellcheck": {required: func(c ruleContext) bool {
 			options := projectToolOptions("shellcheck", c.shellcheck, c.shellcheckOptions, c.config, c.workingDir)
-			return c.shellcheckBackend != nil || options != nil && !options.Optional
+			return c.shellcheckBackend != nil || configuredScriptModule("shellcheck", c.shellcheck, c.shellcheckOptions, c.config) != nil || options != nil && !options.Optional
 		}, skipWhenDisabled: true, requiresScriptExecution: true, buildScripts: newShellcheckAnalyzer, enabled: func(c ruleContext) bool {
 			return (c.shellcheckBackend != nil || c.shellcheckRunner != nil || externalCommandEnabled(c.shellcheck, c.shellcheckOptions)) &&
 				(c.config == nil || c.config.Tools.Shellcheck.Enabled == nil || *c.config.Tools.Shellcheck.Enabled)

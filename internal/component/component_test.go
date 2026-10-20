@@ -1,0 +1,273 @@
+package component_test
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"actionlint.kjanat.dev/analysis"
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/component"
+)
+
+func pluginPath(name string) string {
+	return filepath.Join("testdata", "plugins", name+".wasm")
+}
+
+func loadPlugin(t *testing.T, name string, options component.Options) *component.Plugin {
+	t.Helper()
+	plugin, err := component.Load(t.Context(), pluginPath(name), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := plugin.Close(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	return plugin
+}
+
+func writeRepository(t *testing.T, files map[string]string) string {
+	t.Helper()
+	root := t.TempDir()
+	files[".git/HEAD"] = "ref: refs/heads/main\n"
+	for path, content := range files {
+		full := filepath.Join(root, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
+func analyzeRepository(t *testing.T, root string, plugin analyzer.Analyzer) *analysis.Result {
+	t.Helper()
+	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
+	result, err := analysis.Files(t.Context(), []string{workflow}, analysis.FileOptions{
+		Options: analysis.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: plugin}}}, SkipProjectConfig: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
+const pipeWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n"
+
+func TestRustPluginReportsPipeToShell(t *testing.T) {
+	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
+	descriptor := plugin.Descriptor()
+	if descriptor.Name != "pipe-to-shell" || strings.Join(factNames(descriptor.Requires), ",") != "scripts,invocations" {
+		t.Fatalf("descriptor=%+v", descriptor)
+	}
+	if plugin.Limits() != (component.Limits{Timeout: component.DefaultTimeout, MemoryPages: component.DefaultMemoryPages}) {
+		t.Fatalf("limits=%+v", plugin.Limits())
+	}
+	root := writeRepository(t, map[string]string{".github/workflows/ci.yml": pipeWorkflow})
+	result := analyzeRepository(t, root, plugin)
+	if len(result.Diagnostics) != 1 {
+		t.Fatalf("diagnostics=%+v", result.Diagnostics)
+	}
+	finding := result.Diagnostics[0]
+	if finding.Rule != "pipe-to-shell" || finding.Severity != "warning" || !strings.Contains(finding.Message, "into bash") {
+		t.Fatalf("finding=%+v", finding)
+	}
+	if finding.Start != (diagnostic.Position{Line: 6, Column: 62}) || finding.End != (diagnostic.Position{Line: 6, Column: 66}) {
+		t.Fatalf("range=%+v-%+v", finding.Start, finding.End)
+	}
+}
+
+func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
+	plugin := loadPlugin(t, "no-sudo", component.Options{})
+	if plugin.Descriptor().Name != "no-sudo" {
+		t.Fatalf("descriptor=%+v", plugin.Descriptor())
+	}
+	root := writeRepository(t, map[string]string{
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: make && sudo make install\n",
+		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: sudo apt-get install -y jq\n      shell: bash\n",
+	})
+	result := analyzeRepository(t, root, plugin)
+	if len(result.Diagnostics) != 2 {
+		t.Fatalf("diagnostics=%+v", result.Diagnostics)
+	}
+	action, workflow := result.Diagnostics[0], result.Diagnostics[1]
+	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Start != (diagnostic.Position{Line: 6, Column: 12}) || action.End != (diagnostic.Position{Line: 6, Column: 16}) {
+		t.Fatalf("action finding=%+v", action)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(workflow.Path), "ci.yml") || workflow.Rule != "no-sudo" || workflow.Start != (diagnostic.Position{Line: 7, Column: 22}) || workflow.End != (diagnostic.Position{Line: 7, Column: 26}) {
+		t.Fatalf("workflow finding=%+v", workflow)
+	}
+}
+
+func factNames(facts []analyzer.Fact) []string {
+	names := make([]string, len(facts))
+	for i, fact := range facts {
+		names[i] = string(fact)
+	}
+	return names
+}
+
+func TestLoadRefusesIncompatibleComponents(t *testing.T) {
+	for name, want := range map[string]string{
+		"wrong-version":    "plugin exports kjanat:actionlint/analyzer@0.2.0; this host supports kjanat:actionlint/analyzer@0.1.0",
+		"forbidden-import": "plugin imports wasi:sockets/tcp-create-socket@0.2.9, which this host does not grant",
+		"unknown-import":   "plugin imports example:other/capability@1.0.0, which this host does not grant",
+		"no-analyzer":      "plugin does not export kjanat:actionlint/analyzer@0.1.0",
+	} {
+		path := filepath.Join("testdata", "wat", name+".wasm")
+		plugin, err := component.Load(t.Context(), path, component.Options{})
+		if err == nil {
+			_ = plugin.Close(t.Context())
+			t.Fatalf("%s loaded", name)
+		}
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("%s: err=%v", name, err)
+		}
+	}
+	if _, err := component.Load(t.Context(), filepath.Join("testdata", "missing.wasm"), component.Options{}); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing: err=%v", err)
+	}
+	if _, err := component.Load(t.Context(), filepath.Join("testdata", "wat", "no-analyzer.wat"), component.Options{}); err == nil || !strings.Contains(err.Error(), "no-analyzer.wat") {
+		t.Fatalf("text: err=%v", err)
+	}
+}
+
+func misbehave(t *testing.T, plugin *component.Plugin, options string) ([]diagnostic.Diagnostic, error) {
+	t.Helper()
+	return plugin.Analyze(t.Context(), analyzer.Input{Path: "ci.yml", Options: json.RawMessage(options)})
+}
+
+func TestFailuresAreReportedAndIsolated(t *testing.T) {
+	var mu sync.Mutex
+	var logged []string
+	plugin := loadPlugin(t, "misbehave", component.Options{Timeout: 300 * time.Millisecond, MemoryPages: 96, Log: func(line string) {
+		mu.Lock()
+		defer mu.Unlock()
+		logged = append(logged, line)
+	}})
+	if plugin.Limits().String() != "memory 6 MiB, time 300ms" {
+		t.Fatalf("limits=%s", plugin.Limits())
+	}
+	for _, options := range []string{"trap", "panic", "allocate", "exit"} {
+		findings, err := misbehave(t, plugin, options)
+		if err == nil || findings != nil || !strings.Contains(err.Error(), "plugin misbehave failed (memory 6 MiB, time 300ms)") {
+			t.Fatalf("%s: findings=%v err=%v", options, findings, err)
+		}
+		recovered, err := misbehave(t, plugin, "ok")
+		if err != nil || len(recovered) != 1 || recovered[0].Code != "MB001" || recovered[0].Message != `options "ok"` {
+			t.Fatalf("after %s: findings=%+v err=%v", options, recovered, err)
+		}
+	}
+	if _, err := misbehave(t, plugin, "hang"); err == nil || err.Error() != "plugin misbehave exceeded its time limit (memory 6 MiB, time 300ms)" {
+		t.Fatalf("hang: err=%v", err)
+	}
+	if _, err := misbehave(t, plugin, "error"); err == nil || !strings.HasSuffix(err.Error(), ": analysis failed on purpose") {
+		t.Fatalf("error: err=%v", err)
+	}
+	if _, err := misbehave(t, plugin, "file"); err == nil || !strings.Contains(err.Error(), "filesystem denied") {
+		t.Fatalf("file: err=%v", err)
+	}
+	if _, err := misbehave(t, plugin, "environment"); err == nil || !strings.HasSuffix(err.Error(), "environment: []") {
+		t.Fatalf("environment: err=%v", err)
+	}
+	findings, err := misbehave(t, plugin, "log")
+	if err != nil || len(findings) != 0 {
+		t.Fatalf("log: findings=%v err=%v", findings, err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	log := strings.Join(logged, "\n")
+	for _, want := range []string{"plugin panic requested", "memory allocation of 1048576 bytes failed", "analyzing ci.yml\nstdout line\nstderr line"} {
+		if !strings.Contains(log, want) {
+			t.Fatalf("log lacks %q:\n%s", want, log)
+		}
+	}
+}
+
+func TestCancelledContextStopsAnalysis(t *testing.T) {
+	plugin := loadPlugin(t, "misbehave", component.Options{})
+	ctx, cancel := context.WithCancel(t.Context())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+	start := time.Now()
+	_, err := plugin.Analyze(ctx, analyzer.Input{Path: "ci.yml", Options: json.RawMessage("hang")})
+	if err == nil || !errors.Is(err, context.Canceled) || time.Since(start) > 5*time.Second {
+		t.Fatalf("err=%v after %s", err, time.Since(start))
+	}
+	cancel()
+	if _, err := plugin.Analyze(ctx, analyzer.Input{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestConcurrentCallsAreSerialized(t *testing.T) {
+	plugin := loadPlugin(t, "misbehave", component.Options{})
+	var wg sync.WaitGroup
+	errs := make(chan error, 24)
+	for range 8 {
+		wg.Go(func() {
+			for range 3 {
+				findings, err := misbehave(t, plugin, `{"n":1}`)
+				if err == nil && (len(findings) != 1 || findings[0].Message != `options "{\"n\":1}"`) {
+					err = errors.New("unexpected findings")
+				}
+				if err != nil {
+					errs <- err
+				}
+			}
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+}
+
+func TestClosedPluginRejectsCalls(t *testing.T) {
+	plugin, err := component.Load(t.Context(), pluginPath("misbehave"), component.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := plugin.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := misbehave(t, plugin, "ok"); err == nil {
+		t.Fatal("analyze succeeded after close")
+	}
+}
+
+func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
+	plugin := loadPlugin(t, "insecure-download", component.Options{})
+	if plugin.Descriptor().Name != "insecure-download" {
+		t.Fatalf("descriptor=%+v", plugin.Descriptor())
+	}
+	root := writeRepository(t, map[string]string{
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: wget --no-check-certificate https://example.com/x.sh\n",
+		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: curl -k https://example.com | sh\n      shell: bash\n",
+	})
+	result := analyzeRepository(t, root, plugin)
+	if len(result.Diagnostics) != 2 {
+		t.Fatalf("diagnostics=%+v", result.Diagnostics)
+	}
+	action, workflow := result.Diagnostics[0], result.Diagnostics[1]
+	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Message != "step disables TLS verification with -k for a download" || action.Start != (diagnostic.Position{Line: 6, Column: 17}) || action.End != (diagnostic.Position{Line: 6, Column: 19}) {
+		t.Fatalf("action finding=%+v", action)
+	}
+	if workflow.Rule != "insecure-download" || workflow.Message != "step disables TLS verification with --no-check-certificate for a download" || workflow.Start != (diagnostic.Position{Line: 7, Column: 19}) || workflow.End != (diagnostic.Position{Line: 7, Column: 41}) {
+		t.Fatalf("workflow finding=%+v", workflow)
+	}
+}

@@ -219,6 +219,8 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	annotateFlag(f, "strict", "Rule selection")
 	annotateFlag(f, "experimental", "Rule selection")
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use `FILE` as the stdin filename")
+	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly component plugin from `PATH` (repeatable)")
+	annotateFlag(f, "plugin", "Rule selection")
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
 	f.StringVarP(&a.opts.output, "output-format", "o", "text", "Output mode: text, oneline, json, jsonl, sarif or github")

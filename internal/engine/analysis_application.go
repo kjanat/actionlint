@@ -59,6 +59,10 @@ type AnalysisOptions struct {
 	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
 	ShellcheckRunner func([]string, string) ([]byte, error)
+	// LoadScriptEngine loads the core WebAssembly engine a configuration selects
+	// through tools.<name>.backend.wasm. The session loads each path once and
+	// releases the engines in Close. Nil rejects such configurations.
+	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
 }
@@ -67,6 +71,7 @@ type AnalysisOptions struct {
 // It retains project discovery state for callers that reuse a Linter.
 type AnalysisSession struct {
 	analysisLogger
+	engines           *ScriptEngines
 	projects          *Projects
 	defaultConfig     *Config
 	defaultConfigPath string
@@ -128,6 +133,10 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	if err := a.request.validateBackends(); err != nil {
 		return nil, err
+	}
+	if opts.LoadScriptEngine != nil {
+		a.engines = NewScriptEngines(opts.LoadScriptEngine)
+		a.request.LoadScriptEngine = a.engines.Load
 	}
 	if a.ctx == nil {
 		a.ctx = context.Background()
@@ -474,4 +483,9 @@ func (a *AnalysisSession) Completed(result *AnalysisResult) {
 	if len(result.files) > 1 {
 		a.selectionLog("Found", len(result.Diagnostics), "errors in", len(result.files), "files")
 	}
+}
+
+// Close releases the WebAssembly engines the session loaded.
+func (a *AnalysisSession) Close(ctx context.Context) error {
+	return a.engines.Close(ctx)
 }
