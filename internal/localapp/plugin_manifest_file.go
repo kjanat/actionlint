@@ -415,7 +415,7 @@ func manifestLineOffset(lines [][]byte, line int) int {
 }
 
 func spliceManifest(original []byte, start, end int, replacement []byte) []byte {
-	result := make([]byte, 0, len(original)-(end-start)+len(replacement))
+	var result []byte
 	result = append(result, original[:start]...)
 	result = append(result, replacement...)
 	return append(result, original[end:]...)
