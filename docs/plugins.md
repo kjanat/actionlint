@@ -3,7 +3,9 @@
 actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.1.0` interface. The contract is
 [`plugins/wit/analyzer.wit`](../plugins/wit/analyzer.wit). A plugin describes itself once, then receives one document per
 call with the facts it declared and returns diagnostics. Components may instead implement the independent
-`kjanat:actionlint/runner-provider@0.1.0` interface, or implement both roles. Any language with a component toolchain can implement them.
+`kjanat:actionlint/runner-provider@0.1.0` interface or the
+[`kjanat:actionlint/script-engine@0.1.0`](../plugins/wit/script-engine.wit) interface. Components can implement multiple
+roles. Any language with a component toolchain can implement them.
 
 ## Install from the registry
 
@@ -69,6 +71,11 @@ Failed downloads, identity changes, same-version digest replacements and concurr
 lock. Updates acquire every selected artifact before saving config and lock. A failed config write restores
 the previous lock unless another writer changed it. Removal updates both files and leaves shared cache entries intact.
 
+A new release may change its artifact filename or migrate from a core module to a component.
+An explicit update records that release's format, filename, interface and digest. Publisher, repository
+and plugin identity must remain unchanged, and an existing release cannot be replaced with different bytes,
+format or filename. Checking, synchronization and installation with an already matching pin keep the old artifact.
+
 Edit `plugins` directly, then run `actionlint plugin install` without arguments to resolve missing or changed
 dependencies. Existing matching pins stay pinned. This command also migrates older lock-only installations
 into config without upgrading their artifacts. Checks require declarations and matching pins; they never
@@ -106,8 +113,8 @@ use a fixed snapshot for that session; restart to refresh them. Configured local
 content changes, and selecting a different engine URI loads that identity separately. Earlier engines remain
 available to active analyses until shutdown. Every analysis still receives fresh document buffers and invocation state.
 
-The host refuses a component at load when it exports an unsupported version of either recognized interface, imports an interface
-the host does not grant, or exports neither role. Before guest startup it checks each implemented interface's complete
+The host refuses a component at load when it exports an unsupported version of a recognized interface, imports an interface
+the host does not grant, or exports no supported role. Before guest startup it checks each implemented interface's complete
 type graph against the canonical WIT, including function signatures, record fields and enum ordering. The expected
 graph and enum discriminants are generated with `go generate ./internal/plugins/component`; a test detects stale output.
 
@@ -299,21 +306,33 @@ file access are reported.
 
 ## Script engines
 
-Python and shell snippets go through a second contract, `analyzer.ScriptBackend`: actionlint selects the snippet,
+Python and shell snippets use `analyzer.ScriptBackend`: actionlint selects the snippet,
 masks workflow expressions and maps positions back, and the engine checks one sanitized snippet at a time.
-[actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) implements it as a core WebAssembly module
-with a JSON ABI: `check`, `validate_config` and `metadata` exports, no imports, requests and responses as UTF-8 JSON in
-linear memory. Select such a module in the configuration:
+The preferred component interface is [`script-engine.wit`](../plugins/wit/script-engine.wit), world
+`script-engine-plugin`. It has typed `describe`, `validate-config` and `check` operations. Plugin-specific
+configuration remains a JSON object checked by the engine; shared descriptors, diagnostics and outcomes use WIT
+records. Coordinates count one-based Unicode scalar values, with exclusive range ends. An outcome can contain
+both findings and an incomplete-analysis error. This interface does not provide fix edits.
+
+[actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) supplies a component and a legacy core
+module built from the same analysis implementation. Both use the existing Ruff expression sanitizer, configuration
+and YAML mapper. Select either artifact through `--plugin`, the registry, or the tool configuration:
 
 ```yaml
 tools:
   ruff:
     backend:
       wasm:
-        path: ./tools/actionlint-plugin-ruff.wasm.gz
+        path: ./tools/plugin.component.wasm.gz
 ```
 
-The host checks the ABI version, the export signatures and the advertised operation versions when it loads the module,
+From Go, load a component with `plugin.Load`, require `HasScriptEngine()`, and set the component as
+`analysis.Tool.Backend`. `plugin.LoadEngine` continues to load core modules unchanged. Component loading checks the
+typed interface, runtime descriptor and static declaration before registering the engine. Component engines use
+the same component execution limits and lifecycle as the other component roles.
+
+Legacy core modules retain their version 1 JSON ABI: `check`, `validate_config` and `metadata` exports, no imports,
+and UTF-8 JSON in linear memory. The host checks the ABI version, export signatures and advertised operation versions,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
 limit. Initialization and creation of pooled instances use the same time limit. A trap or an exceeded limit, including
 during allocation cleanup, discards that instance and fails the document's analysis. From Go, call
@@ -387,8 +406,7 @@ Plugins requiring `dependencies` receive literal action and reusable-workflow
 references, including source ranges and owning node identities. Dynamic references
 remain unknown and are not sent as literal dependencies.
 
-Core script engines use the version 1 JSON ABI because they analyze sanitized
-snippets, not workflow documents.
+Script engines analyze sanitized snippets through either the typed component interface or the legacy version 1 JSON ABI.
 `--plugin` accepts either binary kind and selects the appropriate host from its
 WebAssembly header. A failing component is never retried as a core module.
 

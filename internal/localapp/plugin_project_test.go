@@ -231,3 +231,67 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 		t.Fatalf("unexpected pins: %+v", project.Lock.Lock.Plugins)
 	}
 }
+
+func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
+	registry := testutil.NewPluginRegistry(t)
+	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
+	registry.Publish(t, "v1.0.0")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("LocalAppData", t.TempDir())
+	root := pluginRepository(t)
+	project, err := OpenPluginProject(t.Context(), root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, err := pluginref.New(testutil.FixturePluginName, "latest", testutil.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := []pluginref.Reference{ref}
+	if err := project.Resolve(t.Context(), refs, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := project.Save(t.Context(), refs); err != nil {
+		t.Fatal(err)
+	}
+	original := project.Lock.Lock.Plugins[0]
+	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	registry.Publish(t, "v1.0.0", "v2.0.0")
+	project, err = OpenPluginProject(t.Context(), root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := len(registry.Requests)
+	if err := project.Resolve(t.Context(), refs, ""); err != nil {
+		t.Fatal(err)
+	}
+	if len(registry.Requests) != requests || project.Lock.Lock.Plugins[0] != original {
+		t.Fatal("install upgraded an existing matching pin")
+	}
+	// A failed migration must leave the previous on-disk lock usable.
+	artifactURL := "https://" + testutil.FixturePluginName + "/releases/download/v2.0.0/plugin.component.wasm"
+	good := registry.Files[artifactURL]
+	registry.Files[artifactURL] = []byte("corrupt")
+	if err := project.Resolve(t.Context(), refs, "*"); err == nil {
+		t.Fatal("accepted corrupted replacement")
+	}
+	project, err = OpenPluginProject(t.Context(), root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, err := project.SelectedLock()
+	if err != nil || len(selected.Plugins) != 1 || selected.Plugins[0] != original {
+		t.Fatalf("failed update damaged previous selection: %+v %v", selected, err)
+	}
+	registry.Files[artifactURL] = good
+	if err := project.Resolve(t.Context(), refs, "*"); err != nil {
+		t.Fatal(err)
+	}
+	if err := project.Save(t.Context(), refs); err != nil {
+		t.Fatal(err)
+	}
+	selected, err = project.SelectedLock()
+	if err != nil || len(selected.Plugins) != 1 || selected.Plugins[0].Version != "v2.0.0" || selected.Plugins[0].Asset != "plugin.component.wasm" {
+		t.Fatalf("explicit update did not select component: %+v %v", selected, err)
+	}
+}

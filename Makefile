@@ -166,7 +166,7 @@ plugins-check-native:
 	cargo check --workspace --locked --all-targets
 
 .PHONY: plugin-examples plugins
-plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm
+plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm $(PLUGIN_FIXTURES)/script-engine.wasm
 
 plugins: plugin-examples $(PLUGIN_FIXTURES)/misbehave.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
@@ -185,6 +185,10 @@ $(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS)
 $(PLUGIN_FIXTURES)/buildkite-runners.wasm: plugins/wit/runner.wit $(RUST_BUILD_INPUTS) examples/plugins/buildkite-runners.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example buildkite-runners
 	install -m 644 target/wasm32-wasip2/wasm/examples/buildkite_runners.wasm $@
+
+$(PLUGIN_FIXTURES)/script-engine.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
+	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine
+	install -m 644 target/wasm32-wasip2/wasm/examples/script_engine.wasm $@
 
 $(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit examples/plugins/no-sudo/build.sh $(wildcard examples/plugins/no-sudo/*.c)
 	examples/plugins/no-sudo/build.sh $(abspath $@)
@@ -205,7 +209,7 @@ $(ENGINE_FIXTURES)/echo.wasm: $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/e
 internal/plugins/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/plugins/component/generate.go
 	go generate ./internal/plugins/component
 
-internal/plugins/component/contract_generated.go internal/plugins/component/runner_generated.go &: plugins/wit/analyzer.wit plugins/wit/runner.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
+internal/plugins/component/contract_generated.go internal/plugins/component/runner_generated.go internal/plugins/component/script_engine_generated.go &: plugins/wit/analyzer.wit plugins/wit/runner.wit plugins/wit/script-engine.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
 	go run -C tools/plugin-contract .
 
 CHANGELOG.md:

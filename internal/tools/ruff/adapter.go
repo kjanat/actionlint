@@ -132,7 +132,7 @@ func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 			if !mapped || !endMapped {
 				pos, end = script.Key, nil
 			}
-			finding := tools.Finding{Rule: "ruff", Message: fmt.Sprintf("Ruff reported issue in this script: %s: %s", d.Code, d.Message), Start: diagnostic.Position{Line: pos.Line, Column: pos.Col}, Code: d.Code, Severity: d.Severity, Script: i, Content: script.Content}
+			finding := tools.Finding{Rule: "ruff", Message: fmt.Sprintf("Ruff reported issue in this script: %s: %s", d.Code, d.Message), Start: diagnostic.Position{Line: pos.Line, Column: pos.Col}, Code: d.Code, Severity: d.Severity, DocumentationURL: d.URL, Script: i, Content: script.Content}
 			if end != nil {
 				finding.End = diagnostic.Position{Line: end.Line, Column: end.Col}
 			}

@@ -153,14 +153,14 @@ func TestRunnerContractShapeAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := checkRoleContracts(data, false, true); err != nil {
+	if err := checkRoleContracts(data, false, true, false); err != nil {
 		t.Fatal(err)
 	}
 	altered := bytes.ReplaceAll(data, []byte("case-sensitivity"), []byte("case-sensitivitx"))
 	if bytes.Equal(data, altered) {
 		t.Fatal("fixture contains no candidate field")
 	}
-	if err := checkRoleContracts(altered, false, true); err == nil {
+	if err := checkRoleContracts(altered, false, true, false); err == nil {
 		t.Fatal("changed nested provider contract accepted")
 	}
 }

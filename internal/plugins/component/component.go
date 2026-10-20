@@ -1,5 +1,5 @@
-// Package component loads WebAssembly component plugins that implement the
-// kjanat:actionlint/analyzer interface and runs them as analyzers.
+// Package component loads typed WebAssembly analyzer, provider and script-engine
+// components.
 package component
 
 import (
@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// AnalyzerInterface is the exported interface every plugin must implement.
+// AnalyzerInterface identifies the document analyzer role.
 const AnalyzerInterface = canonicalAnalyzerInterface
 
 // HostInterface is the interface the host implements for plugins.
@@ -68,6 +68,8 @@ type Plugin struct {
 	analyzerRole     bool
 	runnerRole       bool
 	runnerDescriptor runner.Descriptor
+	scriptRole       bool
+	scriptDescriptor analyzer.ScriptEngineDescriptor
 	digest           string
 	path             string
 	descriptor       analyzer.Descriptor
@@ -96,12 +98,12 @@ func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
 // LoadArtifact loads a resolved snapshot without reading its source again.
 func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, options Options) (*Plugin, error) {
 	path, data := artifact.Info.Source, artifact.Bytes
-	kind, _, err := pluginartifact.Sniff(data)
+	kind, staticMetadata, err := pluginartifact.Sniff(data)
 	if err != nil {
 		return nil, err
 	}
 	if kind != pluginartifact.Component {
-		return nil, errors.New("analyzer requires a WebAssembly component")
+		return nil, errors.New("plugin requires a WebAssembly component")
 	}
 	limits := Limits{Timeout: options.Timeout, MemoryPages: options.MemoryPages}
 	if limits.Timeout <= 0 {
@@ -120,34 +122,34 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 		WithMemoryLimitPages(limits.MemoryPages)
 	engine := wacogo.NewEngine(ctx, wacogo.WithRuntimeConfig(config))
 	p := &Plugin{path: path, digest: artifact.Info.SHA256, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1)}
-	if err := p.load(ctx, data); err != nil {
+	if err := p.load(ctx, data, staticMetadata); err != nil {
 		return nil, fmt.Errorf("plugin %s: %w", path, errors.Join(err, p.Close(context.WithoutCancel(ctx))))
 	}
 	return p, nil
 }
 
-func (p *Plugin) load(ctx context.Context, data []byte) error {
+func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	component, err := p.engine.LoadComponent(ctx, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
-	analyzerRole, runnerRole, err := extensionRoles(component.Exports())
+	roles, err := extensionRoles(component.Exports())
 	if err != nil {
 		return err
 	}
 	if err := checkImports(component.Imports()); err != nil {
 		return err
 	}
-	if err := checkRoleContracts(data, analyzerRole, runnerRole); err != nil {
+	if err := checkRoleContracts(data, roles.analyzer, roles.runner, roles.script); err != nil {
 		return err
 	}
 	p.component = component
-	p.analyzerRole, p.runnerRole = analyzerRole, runnerRole
+	p.analyzerRole, p.runnerRole, p.scriptRole = roles.analyzer, roles.runner, roles.script
 	p.factory, err = hostbind.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
 	}
-	if analyzerRole {
+	if roles.analyzer {
 		descriptor, err := p.describe(ctx)
 		if err != nil {
 			return err
@@ -157,7 +159,7 @@ func (p *Plugin) load(ctx context.Context, data []byte) error {
 		}
 		p.descriptor = descriptor
 	}
-	if runnerRole {
+	if roles.runner {
 		results, err := p.callInterface(ctx, RunnerInterface, "describe")
 		if err != nil {
 			return err
@@ -167,34 +169,53 @@ func (p *Plugin) load(ctx context.Context, data []byte) error {
 			return err
 		}
 	}
+	if roles.script {
+		results, err := p.callInterface(ctx, ScriptEngineInterface, "describe")
+		if err != nil {
+			return err
+		}
+		p.scriptDescriptor, err = liftScriptDescriptor(results[0])
+		if err != nil {
+			return err
+		}
+		if err := p.verifyScriptMetadata(staticMetadata); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func extensionRoles(exports []wacogo.ExportDesc) (bool, bool, error) {
-	var analyzerRole, runnerRole bool
+type extensionRoleSet struct {
+	analyzer bool
+	runner   bool
+	script   bool
+}
+
+func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
+	var roles extensionRoleSet
+	supported := []struct {
+		name string
+		role *bool
+	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ScriptEngineInterface, &roles.script}}
 	for _, export := range exports {
-		if (export.Name == AnalyzerInterface || export.Name == RunnerInterface) && export.Kind != wacogo.SortInstance {
-			return false, false, fmt.Errorf("plugin export %s must be an interface instance", export.Name)
-		}
-		if export.Name == AnalyzerInterface && export.Kind == wacogo.SortInstance {
-			analyzerRole = true
-		}
-		if export.Name == RunnerInterface && export.Kind == wacogo.SortInstance {
-			runnerRole = true
-		}
-	}
-	for _, export := range exports {
-		if strings.HasPrefix(export.Name, "kjanat:actionlint/analyzer@") && export.Name != AnalyzerInterface {
-			return false, false, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, AnalyzerInterface)
-		}
-		if strings.HasPrefix(export.Name, "kjanat:actionlint/runner-provider@") && export.Name != RunnerInterface {
-			return false, false, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, RunnerInterface)
+		for _, candidate := range supported {
+			prefix, _, _ := strings.Cut(candidate.name, "@")
+			if !strings.HasPrefix(export.Name, prefix+"@") {
+				continue
+			}
+			if export.Name != candidate.name {
+				return roles, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, candidate.name)
+			}
+			if export.Kind != wacogo.SortInstance {
+				return roles, fmt.Errorf("plugin export %s must be an interface instance", export.Name)
+			}
+			*candidate.role = true
 		}
 	}
-	if !analyzerRole && !runnerRole {
-		return false, false, fmt.Errorf("plugin does not export %s or %s", AnalyzerInterface, RunnerInterface)
+	if !roles.analyzer && !roles.runner && !roles.script {
+		return roles, fmt.Errorf("plugin does not export %s, %s or %s", AnalyzerInterface, RunnerInterface, ScriptEngineInterface)
 	}
-	return analyzerRole, runnerRole, nil
+	return roles, nil
 }
 
 func checkImports(imports []wacogo.ImportDesc) error {

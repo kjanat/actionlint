@@ -75,8 +75,11 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 				t.Fatalf("incorrect compatibility report: %+v", ruff)
 			}
 			text := run(args...)
+			if text.Status != 0 || text.Stderr != "" {
+				t.Fatalf("text doctor failed: %+v", text)
+			}
 			if tc.status == "unavailable" && !strings.Contains(text.Stdout, ruff.Error) {
-				t.Fatalf("text hid compatibility failure: %+v", text)
+				t.Fatalf("text hid JSON compatibility failure %q: %+v", ruff.Error, text)
 			}
 			invocations, err := os.ReadFile(calls)
 			if err != nil && !os.IsNotExist(err) {

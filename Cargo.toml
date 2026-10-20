@@ -33,6 +33,12 @@ name       = "buildkite-runners"
 path       = "examples/plugins/buildkite-runners.rs"
 test       = false
 
+[[example]]
+crate-type = ["cdylib"]
+name       = "script-engine"
+path       = "examples/plugins/script-engine.rs"
+test       = false
+
 [dev-dependencies]
 serde                 = { version = "1", features = ["derive"] }
 serde_json            = "1"

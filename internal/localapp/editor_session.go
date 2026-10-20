@@ -3,14 +3,12 @@ package localapp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/application"
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
 )
 
 // An editor session owns compiled plugins, never document or analysis state.
@@ -98,15 +96,11 @@ func (s *editorEngines) load(ctx context.Context, source string) (analyzer.Scrip
 		if existing, ok := s.loaded[identity]; ok {
 			return borrowEditorEngine(existing), nil
 		}
-		engine, loadErr := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: engineCacheDir()})
+		engine, loadErr := loadScriptArtifact(ctx, artifact, s.log, s.debug)
 		if loadErr != nil {
 			return nil, loadErr
 		}
 		backend = engine
-		if s.debug {
-			metadata := engine.Metadata()
-			_, _ = fmt.Fprintf(s.log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, engine.Path(), engine.Limits())
-		}
 	}
 	if err != nil {
 		// A superseded analysis must not poison the next generation's load.

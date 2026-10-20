@@ -3,6 +3,9 @@ package analyzer
 import (
 	"context"
 	"encoding/json"
+	"slices"
+
+	"actionlint.kjanat.dev/rule"
 )
 
 // ScriptBackend checks a sanitized snippet. The adapter owns its execution
@@ -18,6 +21,25 @@ type ScriptBackend interface {
 // its own configuration; the host does not maintain a second rule catalogue.
 type ScriptConfigValidator interface {
 	ValidateConfig(context.Context, json.RawMessage) error
+}
+
+// ScriptEngineDescriptor describes a portable snippet engine independently of
+// its transport. Rule names identify the host adapter it can replace.
+type ScriptEngineDescriptor struct {
+	ID            string
+	Version       string
+	Name          string
+	Engine        string
+	EngineVersion string
+	Shells        []string
+	Rule          rule.Descriptor
+}
+
+// Clone isolates mutable descriptor payloads from callers.
+func (d ScriptEngineDescriptor) Clone() ScriptEngineDescriptor {
+	d.Shells = slices.Clone(d.Shells)
+	d.Rule = d.Rule.Clone()
+	return d
 }
 
 // ScriptRequest is independent of process arguments and runtime memory layouts.

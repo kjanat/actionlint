@@ -17,7 +17,13 @@ import (
 
 type loadedPlugins struct {
 	plugins []*component.Plugin
-	engines []*corewasm.Engine
+	engines []scriptEngineRegistration
+	core    []*corewasm.Engine
+}
+
+type scriptEngineRegistration struct {
+	backend    analyzer.ScriptBackend
+	descriptor analyzer.ScriptEngineDescriptor
 }
 
 func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool) (*loadedPlugins, error) {
@@ -33,7 +39,13 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 			if err != nil {
 				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 			}
-			loaded.engines = append(loaded.engines, engine)
+			metadata := engine.Metadata()
+			loaded.core = append(loaded.core, engine)
+			loaded.engines = append(loaded.engines, scriptEngineRegistration{engine, analyzer.ScriptEngineDescriptor{
+				ID: metadata.ID, Version: metadata.PluginVersion, Name: metadata.Name,
+				Engine: metadata.Engine.Name, EngineVersion: metadata.Engine.Version,
+				Shells: metadata.Capabilities.ScriptShells, Rule: engineDescriptor(metadata),
+			}})
 
 			continue
 		}
@@ -52,6 +64,9 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 			_, _ = fmt.Fprintf(log, "[Linter] Loaded component from %s (%s)\n", path, plugin.Limits())
 		}
 		loaded.plugins = append(loaded.plugins, plugin)
+		if plugin.HasScriptEngine() {
+			loaded.engines = append(loaded.engines, scriptEngineRegistration{plugin, plugin.ScriptDescriptor()})
+		}
 	}
 	return loaded, nil
 }
@@ -82,9 +97,10 @@ func (l *loadedPlugins) close(ctx context.Context) error {
 	for _, plugin := range l.plugins {
 		err = errors.Join(err, plugin.Close(ctx))
 	}
-	for _, engine := range l.engines {
+	for _, engine := range l.core {
 		err = errors.Join(err, engine.Close(ctx))
 	}
+	l.core = nil
 	l.engines = nil
 	l.plugins = nil
 	return err
@@ -92,20 +108,43 @@ func (l *loadedPlugins) close(ctx context.Context) error {
 
 func scriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {
 	return func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
-		options := corewasm.Options{CacheDir: engineCacheDir(), Artifact: artifactOptions()}
-		if debug && options.CacheDir == "" {
-			_, _ = fmt.Fprintln(log, "[Linter] No user cache directory; compiling WebAssembly engines without a cache")
-		}
-		engine, err := corewasm.Load(ctx, path, options)
+		artifact, err := pluginartifact.Resolve(ctx, path, artifactOptions())
 		if err != nil {
 			return nil, err
 		}
-		if debug {
-			metadata := engine.Metadata()
-			_, _ = fmt.Fprintf(log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, engine.Path(), engine.Limits())
-		}
-		return engine, nil
+		return loadScriptArtifact(ctx, artifact, log, debug)
 	}
+}
+
+func loadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, log io.Writer, debug bool) (analyzer.ScriptBackend, error) {
+	if artifact.Info.Kind == pluginartifact.Component {
+		var options component.Options
+		if debug {
+			options.Log = func(line string) { _, _ = fmt.Fprintln(log, line) }
+		}
+		plugin, err := component.LoadArtifact(ctx, artifact, options)
+		if err != nil {
+			return nil, err
+		}
+		if !plugin.HasScriptEngine() {
+			return nil, errors.Join(errors.New("component does not implement the script-engine role"), plugin.Close(context.WithoutCancel(ctx)))
+		}
+		if debug {
+			descriptor := plugin.ScriptDescriptor()
+			_, _ = fmt.Fprintf(log, "[Linter] Loaded script component %q (%s %s) from %s (%s)\n",
+				descriptor.ID, descriptor.Engine, descriptor.EngineVersion, plugin.Path(), plugin.Limits())
+		}
+		return plugin, nil
+	}
+	engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: engineCacheDir()})
+	if err != nil {
+		return nil, err
+	}
+	if debug {
+		metadata := engine.Metadata()
+		_, _ = fmt.Fprintf(log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, engine.Path(), engine.Limits())
+	}
+	return engine, nil
 }
 
 func engineCacheDir() string {

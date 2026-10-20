@@ -1,5 +1,5 @@
 // Package plugin loads WebAssembly plugins: components that implement
-// kjanat:actionlint/analyzer or runner-provider and core script engines that follow the
+// kjanat:actionlint/analyzer, runner-provider or script-engine and core engines that follow the
 // actionlint-plugin-ruff JSON ABI.
 package plugin
 
@@ -11,8 +11,10 @@ import (
 	corewasm "actionlint.kjanat.dev/internal/plugins/core"
 )
 
-// Component is a loaded plugin. Inspect HasAnalyzer and HasRunnerProvider before
-// registering it for either role. A component may implement both.
+// Component is a loaded plugin. Inspect HasAnalyzer, HasRunnerProvider and
+// HasScriptEngine before registering its roles. A script engine implements
+// analyzer.ScriptBackend and ScriptConfigValidator and can be assigned directly
+// to analysis.Tool.Backend. Components may implement several roles.
 type Component = component.Plugin
 
 // Analyzer is the original name for Component, retained for compatibility.

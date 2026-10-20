@@ -13,10 +13,10 @@ import (
 // The generated consumer asks for the complete canonical interface, including
 // named types and nested record/enum shapes, rather than only its export name.
 func checkContract(data []byte) error {
-	return checkRoleContracts(data, true, false)
+	return checkRoleContracts(data, true, false, false)
 }
 
-func checkRoleContracts(data []byte, analyzerRole, runnerRole bool) error {
+func checkRoleContracts(data []byte, analyzerRole, runnerRole, scriptRole bool) error {
 	parser := wasmparser.NewValidatingParser(bytes.NewReader(data), wasmparser.DefaultFeatures())
 	for {
 		_, err := parser.Next()
@@ -39,6 +39,11 @@ func checkRoleContracts(data []byte, analyzerRole, runnerRole bool) error {
 	if runnerRole {
 		if err := expectedRunnerContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible runner contract: %w", err)
+		}
+	}
+	if scriptRole {
+		if err := expectedScriptEngineContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+			return fmt.Errorf("incompatible script-engine contract: %w", err)
 		}
 	}
 	return nil

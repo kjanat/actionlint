@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,9 +12,62 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/application"
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 )
+
+func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
+	module, err := filepath.Abs("../plugins/component/testdata/plugins/script-engine.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n      - run: echo missing\n        shell: bash\n"
+	result, err := Check(t.Context(), application.Options{}, application.Input{Kind: application.Stdin, Reader: strings.NewReader(input)}, []string{module})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "echo" || result.Diagnostics[0].Start.Line != 6 || result.Diagnostics[0].Start.Column != 20 {
+		t.Fatalf("component engine: %+v", result.Diagnostics)
+	}
+	descriptors, err := Rules(t.Context(), []string{module})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, descriptor := range descriptors {
+		if descriptor.Name == "echo" && descriptor.Provider == "echo-component" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("component engine missing from rule catalogue")
+	}
+	_, err = Check(t.Context(), application.Options{}, application.Input{Kind: application.Stdin, Reader: strings.NewReader(input)}, []string{module, "../plugins/core/testdata/engines/echo.wasm"})
+	if err == nil || !strings.Contains(err.Error(), "multiple plugins provide script engine") {
+		t.Fatalf("duplicate core/component engine accepted: %v", err)
+	}
+	loaded, err := scriptEngineLoader(io.Discard, false)(t.Context(), module)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closer, ok := loaded.(interface{ Close(context.Context) error })
+	if !ok {
+		t.Fatal("component engine has no lifecycle")
+	}
+	defer func() {
+		if err := closer.Close(context.Background()); err != nil {
+			t.Error(err)
+		}
+	}()
+	findings, err := loaded.Check(t.Context(), analyzer.ScriptRequest{Source: "missing", Filename: "script.py"})
+	if err != nil || len(findings) != 1 || findings[0].Code != "ECHO001" {
+		t.Fatalf("configured component backend: %#v, %v", findings, err)
+	}
+	if _, err := scriptEngineLoader(io.Discard, false)(t.Context(), "../plugins/component/testdata/plugins/no-sudo.wasm"); err == nil {
+		t.Fatal("analyzer-only component accepted as configured script engine")
+	}
+}
 
 func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	module, err := filepath.Abs("../plugins/core/testdata/engines/echo.wasm")
