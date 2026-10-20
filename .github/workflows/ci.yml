@@ -175,7 +175,7 @@ jobs:
 
       - name: Dog fooding 🐶
         # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
-        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
+        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color --shellcheck='shellcheck -o all'
 
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with: { use_oidc: true }
@@ -414,7 +414,7 @@ jobs:
         with: { version-file: .tool-versions, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all'
+        run: go run ./cmd/actionlint --shellcheck='shellcheck -o all'
           .github/workflows/*.y*ml # **/action.y*ml
       - name: Prepare the ordinary binary and release action
         env:
