@@ -225,7 +225,6 @@ test('runner sources select every Go consumer and provider tests select their te
 		'lint',
 		'docker',
 		'action',
-		'precommit',
 		'plugins',
 	]);
 	const tests = selectJobs(ci, ['runner/resolve_test.go']);

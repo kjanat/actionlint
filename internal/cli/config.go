@@ -168,7 +168,13 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 	if asJSON {
 		return writeCommandJSON(out, map[string]string{"path": path})
 	}
-	label, err := filepath.Rel(cwd, path)
+	// Plugin storage resolves checkout aliases; compare both paths in the same
+	// namespace, retaining the caller's relative spelling for display and links.
+	physicalCwd, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		return err
+	}
+	label, err := filepath.Rel(physicalCwd, path)
 	if err != nil {
 		label = path
 	}

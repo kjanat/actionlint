@@ -179,34 +179,20 @@ optional PR reviews, tool prerequisites, migration and the input/output referenc
 
 ## pre-commit
 
-[![Latest release][release-badge]][releases]
-
-Workflow files can be checked on every commit with [pre-commit][pre-commit]. Add this to `.pre-commit-config.yaml`:
+For v2, hooks move to [kjanat/actionlint-pre-commit](https://github.com/kjanat/actionlint-pre-commit).
+The first v2 hook release is pending. Once published, use its exact tag in
+`.pre-commit-config.yaml`:
 
 ```yaml
----
 repos:
-  - repo: https://github.com/kjanat/actionlint
-    rev: v1.17.0
+  - repo: https://github.com/kjanat/actionlint-pre-commit
+    rev: <published-v2-tag>
     hooks: [id: actionlint]
 ```
 
-<details><summary><h3>Choosing a hook</h3></summary>
-
-Four hooks check `.github/workflows/` the same way and differ only in where the `actionlint` executable comes from.
-
-| Hook ID                 | Where the executable comes from                                                                                    | Requires                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `actionlint`            | Built from this repository into an isolated `$GOPATH`.                                                             | Go toolchain                             |
-| `actionlint-shellcheck` | Same, plus rshellcheck, the native ShellCheck port, which its Go installer downloads from GitHub on the first run. | Go toolchain, GitHub access on first run |
-| `actionlint-docker`     | Pulls this repository's image from `ghcr.io`.                                                                      | Docker                                   |
-| `actionlint-system`     | Runs the `actionlint` already on `PATH`.                                                                           | [A manual install][install]              |
-
-The `actionlint` hook installs into an isolated `$GOPATH`, so [the ShellCheck integration][checks] finds a `shellcheck` executable only when one is already on `PATH`. `actionlint-shellcheck` supplies one itself, which is the option to pick when contributors should not have to install ShellCheck.
-
-</details>
-
-See [the usage document][usage] for the pinned ShellCheck build and how to choose a different one.
+The default hook installs the matching binary wheel in an isolated Python environment.
+Project configuration and the plugin lockfile select ShellCheck and Ruff Wasm plugins.
+See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 
 ## Documents
 

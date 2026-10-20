@@ -7,31 +7,7 @@ import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
-import {
-	assertOutsideCheckout,
-	createReleaseCommit,
-	pinPreCommitImage,
-	prepareRelease,
-	recordRelease,
-} from './build-action-release.mjs';
-
-const hooksManifest =
-	'- id: actionlint-docker\n  language: docker_image\n  entry: ghcr.io/kjanat/actionlint:nightly pre-commit\n';
-
-test('the candidate pins the nightly pre-commit image once', () => {
-	assert.equal(
-		pinPreCommitImage(hooksManifest, '1.17.0'),
-		'- id: actionlint-docker\n  language: docker_image\n  entry: ghcr.io/kjanat/actionlint:1.17.0 pre-commit\n',
-	);
-	assert.equal(
-		pinPreCommitImage(hooksManifest.replaceAll('\n', '\r\n'), '1.17.0'),
-		'- id: actionlint-docker\r\n  language: docker_image\r\n  entry: ghcr.io/kjanat/actionlint:1.17.0 pre-commit\r\n',
-	);
-	assert.throws(() => pinPreCommitImage(hooksManifest.replace('nightly', '1.16.0'), '1.17.0'), /found 0/);
-	assert.throws(() => pinPreCommitImage(`${hooksManifest}${hooksManifest}`, '1.17.0'), /found 2/);
-	assert.throws(() => pinPreCommitImage(hooksManifest.replace('  entry', 'entry'), '1.17.0'), /found 0/);
-	assert.throws(() => pinPreCommitImage(hooksManifest, 'v1.17.0'), /MAJOR\.MINOR\.PATCH/);
-});
+import { assertOutsideCheckout, createReleaseCommit, prepareRelease, recordRelease } from './build-action-release.mjs';
 
 test('release output cannot create generated files in the source checkout', () => {
 	const root = resolve('checkout');
@@ -74,7 +50,6 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		git(['config', 'core.autocrlf', 'true']);
 		const sourceFiles = {
 			'.gitattributes': await readFile(new URL('../../.gitattributes', import.meta.url), 'utf8'),
-			'.pre-commit-hooks.yaml': hooksManifest,
 			'action.yml': 'runs:\n  using: node24\n  main: action.mjs\n',
 			'README.md': '# Release fixture\n',
 			'LICENSE.txt': 'License fixture\n',
@@ -105,7 +80,6 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		assert.deepEqual(await readFile(join(root, '.git', 'index')), index);
 		assert.deepEqual(git(['ls-tree', '-r', '--name-only', commit]).split('\n'), [
 			'.gitattributes',
-			'.pre-commit-hooks.yaml',
 			'LICENSE.txt',
 			'README.md',
 			'SHA256SUMS',
@@ -117,9 +91,6 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		assert.equal(git(['show', `${commit}:source.txt`]), 'original');
 		assert.equal(git(['show', `${commit}:go.mod`]), sourceFiles['go.mod'].trim());
 		assert.equal(git(['show', `${commit}:action.mjs`]), bundle.trim());
-		assert.equal(git(['show', `${commit}:.pre-commit-hooks.yaml`]), pinPreCommitImage(hooksManifest, '1.17.0').trim());
-		assert.equal(git(['show', `${parent}:.pre-commit-hooks.yaml`]), hooksManifest.trim());
-		assert.equal(git(['ls-tree', commit, '--', '.pre-commit-hooks.yaml']).split(' ')[0], '100644');
 
 		git(['tag', 'v1.17.0', commit]);
 		assert.throws(() => recordRelease(root, 'v1.17.0', parent), /checkout changed/);
@@ -158,11 +129,6 @@ test('release commit keeps source HEAD, working files and staging index intact',
 		]);
 		assert.equal(await readFile(join(checkout, 'action.mjs'), 'utf8'), bundle);
 		assert.equal(await readFile(join(checkout, 'SHA256SUMS'), 'utf8'), `${digest}  action.mjs\n`);
-		assert.equal(
-			await readFile(join(checkout, '.pre-commit-hooks.yaml'), 'utf8'),
-			pinPreCommitImage(hooksManifest, '1.17.0'),
-		);
-		assert.equal(await readFile(join(integration, '.pre-commit-hooks.yaml'), 'utf8'), hooksManifest);
 
 		const consumer = join(temporary, 'consumer');
 		await mkdir(consumer);

@@ -93,4 +93,5 @@ lint:
 
 # Null variables/secrets disables name checking; [] permits no configured names.
 # Built-in secrets and workflow_call declarations remain available.
+
 # Run `actionlint config migrate` to preview conversion of older configuration.

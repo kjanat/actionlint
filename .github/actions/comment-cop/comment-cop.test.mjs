@@ -91,7 +91,7 @@ test('does not flag the generated configuration examples by length', () => {
 	const lines = source.split('\n');
 	const patch = `@@ -0,0 +1,${lines.length} @@\n${lines.map(line => `+${line}`).join('\n')}`;
 	const groups = groupsFromPatch('config_default.yaml', patch, source);
-	const examplesStart = lines.findIndex(line => line.startsWith('# Tools are discovered')) + 1;
+	const examplesStart = lines.findIndex(line => line.startsWith('# Plugins check scripts')) + 1;
 	assert.ok(examplesStart > 0);
 	assert.deepEqual(groups.filter(group => group.start >= examplesStart), []);
 });

@@ -125,6 +125,7 @@ func runLinter(req *lintRequest) *lintResult {
 			result.fileCount = len(files)
 			result.fileCountKnown = true
 		}, Tools: adapters.Options{Ruff: req.ruff,
+			RuffOptions:       &processconfig.Options{Optional: true},
 			ShellcheckOptions: toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
 			ShellCheck:        req.shellcheck}.Registrations(),
 	}

@@ -420,46 +420,6 @@ export async function publishWingetAndReport(directory, version, env = process.e
 	}
 }
 
-/** @param {string} directory @param {string} version @param {NodeJS.ProcessEnv} env @param {typeof fetch} request */
-export async function publishManifests(directory, version, env = process.env, request = fetch) {
-	if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Expected stable MAJOR.MINOR.PATCH version');
-	const targets = [
-		{
-			repo: 'homebrew-tap',
-			path: 'Casks/actionlint.rb',
-			asset: 'actionlint-homebrew.rb',
-			token: env.HOMEBREW_TAP_TOKEN,
-		},
-		{
-			repo: 'scoop-bucket',
-			path: 'bucket/actionlint.json',
-			asset: 'actionlint-scoop.json',
-			token: env.SCOOP_BUCKET_TOKEN,
-		},
-	];
-	for (const target of targets) if (!target.token) throw new Error(`Missing publication token for ${target.repo}`);
-	for (const target of targets) {
-		const token = target.token;
-		if (!token) throw new Error(`Missing publication token for ${target.repo}`);
-		const bytes = await readFile(join(directory, target.asset));
-		const endpoint = `repos/kjanat/${target.repo}/contents/${target.path}`;
-		const previous = await github(request, token, `${endpoint}?ref=master`, undefined);
-		if (
-			previous
-			&& (typeof previous.sha !== 'string' || typeof previous.content !== 'string' || previous.encoding !== 'base64')
-		) {
-			throw new Error(`Unexpected contents response for ${target.repo}`);
-		}
-		if (previous && Buffer.from(previous.content, 'base64').equals(bytes)) continue;
-		await github(request, token, endpoint, {
-			message: `Update actionlint to v${version}`,
-			branch: 'master',
-			content: bytes.toString('base64'),
-			...(previous ? { sha: previous.sha } : {}),
-		});
-	}
-}
-
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
 	try {
 		const [command, directory, version] = process.argv.slice(2);
@@ -469,14 +429,13 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
 				'The WinGet submission job failed. See the linked workflow log for details.',
 			);
 		} else {
-			if (!directory || !['collect', 'publish', 'publish-winget'].includes(command)) {
+			if (!directory || !['collect', 'publish-winget'].includes(command)) {
 				throw new Error(
-					'Usage: release-assets.mjs collect DIRECTORY | {publish|publish-winget} DIRECTORY VERSION | report-winget-failure VERSION',
+					'Usage: release-assets.mjs collect DIRECTORY | publish-winget DIRECTORY VERSION | report-winget-failure VERSION',
 				);
 			}
 			if (command === 'collect') await collectAssets(process.cwd(), resolve(directory));
-			else if (command === 'publish-winget') await publishWingetAndReport(resolve(directory), version);
-			else await publishManifests(resolve(directory), version);
+			else await publishWingetAndReport(resolve(directory), version);
 		}
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : String(error));

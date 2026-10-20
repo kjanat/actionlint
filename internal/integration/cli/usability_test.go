@@ -73,6 +73,23 @@ func TestConfigInitRelativeHyperlink(t *testing.T) {
 	}
 }
 
+func TestConfigInitThroughRepositoryAlias(t *testing.T) {
+	testutil.NewDefaultPluginRegistry(t)
+	root := t.TempDir()
+	gitRepository(t, root)
+	alias := filepath.Join(t.TempDir(), "checkout")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	t.Chdir(alias)
+	t.Setenv("PWD", alias)
+	got := testRunCommand("", "config", "init", "--hyperlinks=never")
+	want := "Created " + filepath.Join(".github", "actionlint.yaml") + "\n"
+	if got.Status != 0 || got.Stdout != want || got.Stderr != "" {
+		t.Fatalf("repository alias changed display path: %+v; want %q", got, want)
+	}
+}
+
 func TestCompletionGuidance(t *testing.T) {
 	t.Setenv("SHELL", "/bin/zsh")
 	for _, name := range []string{"completion", "completions"} {

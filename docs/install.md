@@ -14,8 +14,8 @@ contain actionlint only; install `shellcheck` and `ruff` separately on `PATH` to
 See [external linter configuration](usage.md#ignore-some-errors).
 
 Images built from this revision bundle both native executables, without requiring Python. The Nix package
-also provides both through its wrapper. The [`actionlint-bundled` pre-commit hook](usage.md#pre-commit)
-builds the Docker image from its selected source revision and includes both tools.
+also provides both through its wrapper. The v2 [pre-commit distribution](usage.md#pre-commit)
+uses the binary wheel and project-managed Wasm plugins.
 Previously published releases are unchanged and do not include Ruff.
 
 ## Project-maintained distributions
@@ -359,34 +359,29 @@ go install actionlint.kjanat.dev/cmd/actionlint@master
 
 ### pre-commit
 
-Install [pre-commit](https://pre-commit.com/#installation), then add this to `.pre-commit-config.yaml`:
+For v2, install hooks from
+[kjanat/actionlint-pre-commit](https://github.com/kjanat/actionlint-pre-commit).
+The first v2 hook release is pending. After publication, replace the placeholder
+with its exact tag:
 
 ```yaml
 repos:
-  - repo: https://github.com/kjanat/actionlint
-    rev: v1.17.0
+  - repo: https://github.com/kjanat/actionlint-pre-commit
+    rev: <published-v2-tag>
     hooks:
       - id: actionlint
 ```
 
-Install the Git hook and check all workflow files:
+The Python hook installs the matching binary wheel. Configure and lock the project's
+Wasm plugins, then run:
 
 ```sh
 pre-commit install
 pre-commit run actionlint --all-files
 ```
 
-This project's [hook manifest](../.pre-commit-hooks.yaml) provides five installation options:
-
-- `actionlint`: builds actionlint with Go. ShellCheck and Ruff are separate installations on `PATH`.
-- `actionlint-shellcheck`: builds actionlint with Go and installs rshellcheck, the native ShellCheck port, through its Go installer; the first run downloads the release binary from GitHub. Ruff is a separate installation.
-- `actionlint-docker`: pulls the project's published container image; requires Docker.
-- `actionlint-bundled`: builds the selected revision's container image with ShellCheck and Ruff; requires Docker.
-- `actionlint-system`: runs your existing `actionlint` installation on `PATH`.
-
-Choose a release or commit containing the hook you want. `actionlint-bundled` was added after v1.17.0.
-See [the pre-commit guide](usage.md#pre-commit) for hook selection and
-[updating pinned revisions](usage.md#updating-pre-commit-hooks).
+Existing users must change the repository URL; see [v2 migration](migration-v2.md).
+The [usage guide](usage.md#pre-commit) covers system/Docker alternatives and updates.
 
 ### GitHub Action
 

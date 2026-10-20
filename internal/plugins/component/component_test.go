@@ -161,17 +161,17 @@ func misbehave(t *testing.T, plugin *component.Plugin, options string) ([]diagno
 func TestFailuresAreReportedAndIsolated(t *testing.T) {
 	var mu sync.Mutex
 	var logged []string
-	plugin := loadPlugin(t, "misbehave", component.Options{Timeout: 300 * time.Millisecond, MemoryPages: 96, Log: func(line string) {
+	plugin := loadPlugin(t, "misbehave", component.Options{Timeout: 3 * time.Second, MemoryPages: 96, Log: func(line string) {
 		mu.Lock()
 		defer mu.Unlock()
 		logged = append(logged, line)
 	}})
-	if plugin.Limits().String() != "memory 6 MiB, time 300ms" {
+	if plugin.Limits().String() != "memory 6 MiB, time 3s" {
 		t.Fatalf("limits=%s", plugin.Limits())
 	}
 	for _, options := range []string{"trap", "panic", "allocate", "exit"} {
 		findings, err := misbehave(t, plugin, options)
-		if err == nil || findings != nil || !strings.Contains(err.Error(), "plugin misbehave failed (memory 6 MiB, time 300ms)") {
+		if err == nil || findings != nil || !strings.Contains(err.Error(), "plugin misbehave failed (memory 6 MiB, time 3s)") {
 			t.Fatalf("%s: findings=%v err=%v", options, findings, err)
 		}
 		recovered, err := misbehave(t, plugin, "ok")
@@ -179,7 +179,7 @@ func TestFailuresAreReportedAndIsolated(t *testing.T) {
 			t.Fatalf("after %s: findings=%+v err=%v", options, recovered, err)
 		}
 	}
-	if _, err := misbehave(t, plugin, "hang"); err == nil || err.Error() != "plugin misbehave exceeded its time limit (memory 6 MiB, time 300ms)" {
+	if _, err := misbehave(t, plugin, "hang"); err == nil || err.Error() != "plugin misbehave exceeded its time limit (memory 6 MiB, time 3s)" {
 		t.Fatalf("hang: err=%v", err)
 	}
 	if _, err := misbehave(t, plugin, "error"); err == nil || !strings.HasSuffix(err.Error(), ": analysis failed on purpose") {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -130,6 +131,7 @@ func TestActionConfiguredWasm(t *testing.T) {
 				".git": "", "ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
 				".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: " + string(encoded) + "\n",
 			})
+			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_RUFF": "true", "INPUT_SHELLCHECK": "false"}
 			lookup := func(key string) string { return env[key] }
 			req, err := provisioningRequest(lookup)
@@ -152,6 +154,35 @@ func TestActionConfiguredWasm(t *testing.T) {
 			result = runLinter(req)
 			if result.code != 0 {
 				t.Fatalf("disabled engine ran: %+v %s", result.diagnostics, result.stderr)
+			}
+		})
+	}
+}
+
+func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
+	for _, configured := range []bool{false, true} {
+		t.Run(strconv.FormatBool(configured), func(t *testing.T) {
+			files := map[string]string{
+				".git":   "",
+				"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
+			}
+			if configured {
+				files[".github/actionlint.yaml"] = "tools: {ruff: {backend: {process: {executable: missing-ruff}}}}\n"
+			}
+			workspace := workspaceWith(t, files)
+			t.Setenv("PATH", t.TempDir())
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_RUFF": "true", "INPUT_SHELLCHECK": "false"}
+			req, err := provisioningRequest(func(key string) string { return env[key] })
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := runLinter(req)
+			if configured {
+				if result.code != 3 || !strings.Contains(result.stderr, "missing-ruff") {
+					t.Fatalf("explicit native backend silently skipped: %+v", result.lintOutcome)
+				}
+			} else if result.code != 0 {
+				t.Fatalf("enabled Ruff required a native executable: %+v", result.lintOutcome)
 			}
 		})
 	}

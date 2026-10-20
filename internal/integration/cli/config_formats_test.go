@@ -23,8 +23,12 @@ func TestCheckReadsJSONAndTOMLConfigs(t *testing.T) {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			t.Fatal(err)
 		}
+		physical, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			t.Fatal(err)
+		}
 		got := testRunCommand(workflow, "check", "--config", path, "-")
-		if got.Status != 0 || got.Stdout != "" || got.Stderr != "warning: migrated configuration: "+path+"\n" {
+		if got.Status != 0 || got.Stdout != "" || got.Stderr != "warning: migrated configuration: "+physical+"\n" {
 			t.Fatalf("%s: %+v", name, got)
 		}
 		got = testRunCommand(workflow, "check", "--config", path, "-")

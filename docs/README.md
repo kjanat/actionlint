@@ -14,6 +14,7 @@
   checks, with YAML Language Server schema support.
 - [Go API](api.md): How to use actionlint as Go library.
 - [Plugins](plugins.md): Write, build, test and load WebAssembly component plugins, and where built-in rules live.
+- [v2 migration](migration-v2.md): Move pre-commit configurations to the separate hook repository.
 - [References](reference.md): Links to resources.
 - [GitHub Actions changelog](https://actionlint.kjanat.dev/github-changelog/): Browse and search the latest entries from
   GitHub's Actions changelog feed.
