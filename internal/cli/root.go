@@ -142,13 +142,9 @@ func newCommandApp(streams *Command) *commandApp {
 	a.commonFlags(rules, rules.Flags())
 	rules.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Include rules from a WebAssembly plugin")
 	annotateFlag(rules.Flags(), "plugin", "Rule selection")
-	plugins := &cobra.Command{
-		Use: "plugin", Short: "Inspect WebAssembly plugin artifacts", Args: cobra.NoArgs,
-		RunE: func(c *cobra.Command, args []string) error { a.help(c, args); return nil },
-	}
-	inspect := &cobra.Command{Use: "inspect <path-or-uri>", Short: "Read metadata without executing the plugin", Args: cobra.ExactArgs(1), RunE: a.capture(operationPluginInspect)}
-	a.commonFlags(inspect, inspect.Flags())
-	plugins.AddCommand(inspect)
+	a.configFlags(rules.Flags())
+	a.pluginLockFlag(rules.Flags())
+	plugins := a.pluginCommand()
 	doctor := &cobra.Command{Use: "doctor", Short: "Inspect configuration and external tool availability", Args: cobra.NoArgs, RunE: a.capture("doctor")}
 	a.commonFlags(doctor, doctor.Flags())
 	a.configFlags(doctor.Flags())
@@ -187,6 +183,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.runnerFlags(lsp.Flags())
 	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or URI")
 	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
+	a.pluginLockFlag(lsp.Flags())
 	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init)
 	return a
 }
@@ -263,6 +260,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	annotateFlag(f, "strict", "Rule selection")
 	annotateFlag(f, "experimental", "Rule selection")
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use `FILE` as the stdin filename")
+	a.pluginLockFlag(f)
 	a.runnerFlags(f)
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")

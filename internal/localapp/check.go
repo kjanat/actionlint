@@ -45,8 +45,13 @@ func Check(ctx context.Context, options application.Options, input application.I
 }
 
 func (l *loadedPlugins) configure(options application.Options) (application.Options, error) {
+	seen := map[string]bool{}
 	for _, engine := range l.engines {
 		metadata := engine.Metadata()
+		if seen[metadata.Engine.Name] {
+			return options, &PluginLoadError{fmt.Errorf("multiple plugins provide script engine %q", metadata.Engine.Name)}
+		}
+		seen[metadata.Engine.Name] = true
 		found := false
 		options.Tools = slices.Clone(options.Tools)
 		for i, registration := range options.Tools {
