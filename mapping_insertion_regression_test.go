@@ -52,7 +52,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 			}
 		})
 	}
-	// Expression results containing delimiters are data, not another template.
+	// Preserve expression delimiters in evaluated keys as literal data.
 	const key = "${{ vars.AXIS }}"
 	matrix := knownLiteralMatrix(map[string]any{key: []any{"ubuntu-latest"}}, &Pos{Line: 1, Col: 1})
 	if matrix == nil {
