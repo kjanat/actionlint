@@ -1070,7 +1070,15 @@ func (rule *RuleExpression) checkMatrix(m *Matrix) *ObjectType {
 		}
 	}
 	for n, r := range m.Rows {
-		o.Props[n] = rule.checkMatrixRow(r)
+		ty := rule.checkMatrixRow(r)
+		if !r.evaluated && r.Name != nil {
+			if _, known := knownMappingKey(r.Name); !known {
+				// A runtime key may introduce any axis, but known axes retain their types.
+				o.Loose()
+				continue
+			}
+		}
+		o.Props[n] = ty
 	}
 
 	if m.Include == nil {

@@ -79,14 +79,14 @@ func (rule *RuleAction) checkActionMetadataSchema(meta *ActionMetadata) {
 		}
 	}
 	checkTags(meta.schemaRoot)
-	rule.checkActionSchemaValue(meta, meta.schemaRoot, "action-root", schemapath.Path{}, 0, false)
+	rule.checkActionSchemaValue(meta, meta.schemaRoot, "action-root", schemapath.Path{}, 0, false, nil)
 }
 
 func (rule *RuleAction) actionSchemaError(meta *ActionMetadata, n *yaml.Node, path schemapath.Path, message string) {
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
-func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.Node, definition string, location schemapath.Path, depth int, evaluated bool) {
+func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.Node, definition string, location schemapath.Path, depth int, evaluated bool, seen map[string]bool) {
 	path := location.Schema()
 	n := actionSchemaNode(node)
 	if n == nil || definition == "any" {
@@ -130,7 +130,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			}
 		}
 		if slices.Contains(d.variants, variant) {
-			rule.checkActionSchemaValue(meta, n, variant, location, depth, evaluated)
+			rule.checkActionSchemaValue(meta, n, variant, location, depth, evaluated, seen)
 		}
 		return
 	}
@@ -197,7 +197,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			return
 		}
 		for index, value := range n.Content {
-			rule.checkActionSchemaValue(meta, value, d.item, location.Index(index), depth+1, evaluated)
+			rule.checkActionSchemaValue(meta, value, d.item, location.Index(index), depth+1, evaluated, nil)
 		}
 	case actionSchemaMapping:
 		if n.Kind != yaml.MappingNode {
@@ -206,7 +206,9 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 			}
 			return
 		}
-		seen := map[string]bool{}
+		if seen == nil {
+			seen = map[string]bool{}
+		}
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			key, value := n.Content[i], n.Content[i+1]
 			if expr := yamlExprString(key); !evaluated && expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
@@ -215,7 +217,8 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 				} else if isMappingInsertion(expr.Value) {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
-					rule.checkActionSchemaValue(meta, value, definition, location, depth+1, evaluated)
+					// Its keys belong to the containing mapping's duplicate scope.
+					rule.checkActionSchemaValue(meta, value, definition, location, depth+1, evaluated, seen)
 					continue
 				} else {
 					for _, violation := range actionExpressionViolationsWithInputs(expr.Value, false, path, meta.Inputs) {
@@ -251,7 +254,7 @@ func (rule *RuleAction) checkActionSchemaValue(meta *ActionMetadata, node *yaml.
 					continue
 				}
 			}
-			rule.checkActionSchemaValue(meta, value, child, childPath, depth+1, evaluated)
+			rule.checkActionSchemaValue(meta, value, child, childPath, depth+1, evaluated, nil)
 		}
 		for _, key := range d.required {
 			if !seen[key] && (path != "runs.steps.*" || !slices.Contains([]string{"run", "shell", "uses"}, key)) {
