@@ -9,6 +9,8 @@ import (
 	"io"
 	"slices"
 
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/pluginregistry"
 	"actionlint.kjanat.dev/internal/tools/backend"
 
 	"actionlint.kjanat.dev/internal/application"
@@ -22,6 +24,12 @@ func (e *PluginLoadError) Unwrap() error { return e.Err }
 
 // Check loads selected plugins, runs analysis and releases plugin resources.
 func Check(ctx context.Context, options application.Options, input application.Input, paths []string) (result *application.Result, err error) {
+	return CheckSources(ctx, options, input, PluginSources{Paths: paths})
+}
+
+// CheckSources preserves declared registry identities when choosing managed
+// tool replacements. Direct URLs and explicit files remain standalone analyzers.
+func CheckSources(ctx context.Context, options application.Options, input application.Input, sources PluginSources) (result *application.Result, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -29,7 +37,12 @@ func Check(ctx context.Context, options application.Options, input application.I
 	if log == nil {
 		log = io.Discard
 	}
-	plugins, err := loadPlugins(ctx, paths, log, options.Debug)
+	if sources.lock != nil {
+		if err := sources.lock.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }}); err != nil {
+			return nil, &PluginLoadError{err}
+		}
+	}
+	plugins, err := loadPlugins(ctx, sources.Paths, log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +51,71 @@ func Check(ctx context.Context, options application.Options, input application.I
 	if err != nil {
 		return nil, err
 	}
+	options, err = plugins.configureManaged(options, sources.managed)
+	if err != nil {
+		return nil, err
+	}
 	if options.LoadScriptEngine == nil {
 		options.LoadScriptEngine = scriptEngineLoader(log, options.Debug)
 	}
 	return application.Check(ctx, options, input)
+}
+
+// RequiredTools applies plugin replacements before deciding which native tools
+// must be provisioned. It shares plugin validation and lifetime with Check.
+func RequiredTools(ctx context.Context, options application.Options, paths, plugins []string) (needed application.ToolRequirements, err error) {
+	return RequiredToolsSources(ctx, options, paths, PluginSources{Paths: plugins})
+}
+
+// RequiredToolsSources retains declared replacement roles during native-tool
+// discovery, using the same configuration policy as CheckSources.
+func RequiredToolsSources(ctx context.Context, options application.Options, paths []string, sources PluginSources) (needed application.ToolRequirements, err error) {
+	loaded, err := loadPlugins(ctx, sources.Paths, io.Discard, false)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, loaded.close(context.WithoutCancel(ctx))) }()
+	options, err = loaded.configure(options)
+	if err != nil {
+		return nil, err
+	}
+	options, err = loaded.configureManaged(options, sources.managed)
+	if err != nil {
+		return nil, err
+	}
+	return application.RequiredTools(ctx, options, paths)
+}
+
+func (l *loadedPlugins) configureManaged(options application.Options, managed map[string]string) (application.Options, error) {
+	options.Tools = slices.Clone(options.Tools)
+	for path, tool := range managed {
+		guest := l.analyzerSources[path]
+		if guest == nil {
+			return options, &PluginLoadError{fmt.Errorf("managed %s plugin does not export a document analyzer", tool)}
+		}
+		found := false
+		for i, registration := range options.Tools {
+			if registration.Descriptor.Name != tool {
+				continue
+			}
+			if registration.WithAnalyzer == nil {
+				return options, &PluginLoadError{fmt.Errorf("tool %q cannot use a document analyzer", tool)}
+			}
+			next, err := registration.WithAnalyzer(guest)
+			if err != nil {
+				return options, &PluginLoadError{err}
+			}
+			options.Tools[i], found = next, true
+			break
+		}
+		if !found {
+			return options, &PluginLoadError{fmt.Errorf("managed plugin requires tool %q", tool)}
+		}
+		options.Analyzers = slices.DeleteFunc(slices.Clone(options.Analyzers), func(registration analyzer.Registration) bool {
+			return registration.Analyzer == guest
+		})
+	}
+	return options, nil
 }
 
 func (l *loadedPlugins) configure(options application.Options) (application.Options, error) {

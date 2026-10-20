@@ -14,9 +14,13 @@ inputs:
     required: false
     default: ""
   install-only:
-    description: Install actionlint and enabled optional tools on PATH without analyzing workflows. Requires add-actionlint-to-path.
+    description: Install actionlint on PATH without analyzing workflows. Requires add-actionlint-to-path.
     required: false
     default: "false"
+  plugin-cache:
+    description: Restore and save pinned plugin artifacts using GitHub Actions cache. Artifact digests are verified before use.
+    required: false
+    default: "true"
   files:
     description: >-
       Newline-separated workflow file paths.
@@ -47,24 +51,11 @@ inputs:
     required: false
     default: ""
   shellcheck:
-    description: Run ShellCheck for shell scripts in workflow steps.
+    description: Enable the configured ShellCheck Wasm plugin for shell scripts in workflow steps.
     required: false
     default: "true"
-  shellcheck-rc:
-    description: >-
-      ShellCheck rc: true discovers from working-directory, false disables
-      discovery, or specify an absolute file path or one relative to working-directory.
-      Blank inherits rc selection; discovery is otherwise disabled. Inline directives remain active.
-    required: false
-    default: ""
-  shellcheck-args:
-    description: >-
-      ShellCheck options as a YAML/JSON array of strings, merged over inherited
-      flags and workflow defaults. Reporting uses the action's format input.
-    required: false
-    default: ""
   ruff:
-    description: Check Python run steps with Ruff, using PATH or a verified download when required by the effective configuration.
+    description: Enable the configured Ruff Wasm plugin for Python run steps.
     required: false
     default: "true"
   pyflakes:
@@ -73,18 +64,6 @@ inputs:
     default: "false"
   add-actionlint-to-path:
     description: Make actionlint available on PATH for subsequent steps in this job.
-    required: false
-    default: "true"
-  add-shellcheck-to-path:
-    description: Make ShellCheck available on PATH for subsequent steps when shellcheck is enabled.
-    required: false
-    default: "true"
-  add-pyflakes-to-path:
-    description: "Deprecated and ignored: Pyflakes is no longer installed."
-    required: false
-    default: "false"
-  add-ruff-to-path:
-    description: Make Ruff available on PATH for subsequent steps when Ruff is enabled and required.
     required: false
     default: "true"
   working-directory:

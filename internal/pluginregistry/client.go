@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/internal/pluginref"
 	"golang.org/x/mod/semver"
 )
 
@@ -22,8 +23,9 @@ const maxJSONBytes = 4 << 20
 // Client reads bounded static JSON. It never executes a plugin or treats a
 // compatibility report for another host revision as proof for this host.
 type Client struct {
-	base *url.URL
-	http *http.Client
+	StatusOptions StatusOptions
+	base          *url.URL
+	http          *http.Client
 }
 
 func registryURL(raw string) (*url.URL, error) {
@@ -55,7 +57,7 @@ func (c *Client) contains(u *url.URL) bool {
 	return u.Scheme == c.base.Scheme && u.Host == c.base.Host && u.User == nil && u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" && !strings.Contains(u.Path, "\\") && strings.HasPrefix(path.Clean(u.Path), c.base.Path)
 }
 
-func get[T *Catalog | *manifest | *record](ctx context.Context, c *Client, path string, target T) error {
+func get[T *Catalog | *manifest | *record | *StatusSnapshot](ctx context.Context, c *Client, path string, target T) error {
 	u := c.base.ResolveReference(&url.URL{Path: path})
 	if !c.contains(u) {
 		return errors.New("registry link leaves catalogue")
@@ -97,6 +99,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]CatalogPlugin, err
 		return nil, errors.New("unsupported registry catalogue")
 	}
 	seen := map[string]bool{}
+	aliases := map[string]bool{}
 	result := []CatalogPlugin{}
 	query = strings.ToLower(query)
 	for _, p := range index.Plugins {
@@ -106,7 +109,15 @@ func (c *Client) Search(ctx context.Context, query string) ([]CatalogPlugin, err
 			return nil, fmt.Errorf("invalid or duplicate catalogue plugin %q", p.Name)
 		}
 		seen[key] = true
-		if strings.Contains(key, query) || strings.Contains(strings.ToLower(p.PluginID), query) {
+		matchesAlias := false
+		for _, alias := range p.Aliases {
+			if !pluginref.ValidAlias(alias) || aliases[alias] {
+				return nil, fmt.Errorf("invalid or duplicate catalogue alias %q", alias)
+			}
+			aliases[alias] = true
+			matchesAlias = matchesAlias || strings.Contains(alias, query)
+		}
+		if strings.Contains(key, query) || strings.Contains(strings.ToLower(p.PluginID), query) || matchesAlias {
 			result = append(result, p)
 		}
 	}
@@ -120,7 +131,7 @@ func (c *Client) manifest(ctx context.Context, name string) (CatalogPlugin, mani
 		return CatalogPlugin{}, manifest{}, err
 	}
 	for _, p := range plugins {
-		if !strings.EqualFold(p.Name, name) {
+		if !strings.EqualFold(p.Name, name) && !slices.Contains(p.Aliases, name) {
 			continue
 		}
 		var m manifest
@@ -182,14 +193,72 @@ func selectVersion(versions []Version, selector string) (Version, error) {
 }
 
 func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error) {
+	statuses, err := c.RefreshStatuses(ctx)
+	if err != nil {
+		return Pin{}, err
+	}
 	p, m, err := c.manifest(ctx, name)
 	if err != nil {
 		return Pin{}, err
 	}
-	v, err := selectVersion(m.Versions, selector)
-	if err != nil {
-		return Pin{}, err
+	versions := slices.Clone(m.Versions)
+	if selector == "latest" {
+		versions, err = c.availableVersions(ctx, p, m, statuses)
+		if err != nil {
+			return Pin{}, err
+		}
 	}
+	for {
+		v, err := selectVersion(versions, selector)
+		if err != nil {
+			return Pin{}, err
+		}
+		pin, err := c.resolveVersion(ctx, p, m, v, selector)
+		if err != nil {
+			return Pin{}, err
+		}
+		if pluginref.ValidAlias(name) {
+			pin.Alias = name
+		}
+		err = checkStatus(ctx, pin, statuses, c.StatusOptions, true)
+		if selector == "latest" && errors.Is(err, errReleaseUnavailable) {
+			versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == v.Version })
+			continue
+		}
+		if err != nil {
+			return Pin{}, err
+		}
+		return pin, nil
+	}
+}
+
+func (c *Client) availableVersions(ctx context.Context, plugin CatalogPlugin, manifest manifest, statuses StatusSnapshot) ([]Version, error) {
+	versions := slices.Clone(manifest.Versions)
+	for _, status := range statuses.Releases {
+		if !strings.EqualFold(status.Name, plugin.Name) || status.Status != ReleaseWithdrawn && status.Status != ReleaseRevoked {
+			continue
+		}
+		for _, version := range versions {
+			if version.Version != status.Version {
+				continue
+			}
+			// Confirm the status binds the published bytes before excluding it.
+			pin, err := c.resolveVersion(ctx, plugin, manifest, version, "latest")
+			if err != nil {
+				return nil, err
+			}
+			err = checkStatus(ctx, pin, statuses, c.StatusOptions, true)
+			if !errors.Is(err, errReleaseUnavailable) {
+				return nil, err
+			}
+			versions = slices.DeleteFunc(versions, func(candidate Version) bool { return candidate.Version == version.Version })
+			break
+		}
+	}
+	return versions, nil
+}
+
+func (c *Client) resolveVersion(ctx context.Context, p CatalogPlugin, m manifest, v Version, selector string) (Pin, error) {
 	var r record
 	directory := strings.TrimSuffix(p.Manifest, "index.json")
 	if err := get(ctx, c, directory+v.Record, &r); err != nil {

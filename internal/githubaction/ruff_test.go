@@ -7,7 +7,7 @@ import (
 )
 
 func TestRuffActionInput(t *testing.T) {
-	command, err := exec.LookPath("ruff")
+	_, err := exec.LookPath("ruff")
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
@@ -23,7 +23,7 @@ jobs:
 		input, config string
 		code          int
 	}{{"true", "", 1}, {"false", "", 0}, {"true", "tools: {ruff: false}", 0}, {"true", "lint: {rules: {external: {ruff: off}}}", 0}, {"invalid", "", 2}} {
-		env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_RUFF": tc.input, "ACTIONLINT_RUFF_COMMAND": command, "INPUT_CONFIG": tc.config}
+		env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_RUFF": tc.input, "INPUT_CONFIG": tc.config}
 		var out strings.Builder
 		if code := Main(func(k string) string { return env[k] }, &out); code != tc.code {
 			t.Fatalf("input=%q: exit=%d: %s", tc.input, code, &out)

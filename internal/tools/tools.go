@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/source"
 )
 
 // Context supplies invocation-owned resources to a registered adapter.
@@ -21,6 +22,9 @@ type Context struct {
 	LoadEngine              func(context.Context, string) (analyzer.ScriptBackend, error)
 	Debug                   func(string, ...any)
 	Warn                    func(error)
+	DocumentPath            string
+	DocumentContent         []byte
+	Reference               func(string, []byte, diagnostic.Position) source.Reference
 }
 
 // Registration owns a tool's selection and construction policy. The host only
@@ -34,6 +38,9 @@ type Registration struct {
 	Required          func(Context) bool
 	Build             func(Context) (Runner, error)
 	WithBackend       func(analyzer.ScriptBackend) (Registration, error)
+	// WithAnalyzer replaces an engine with a document analyzer while retaining
+	// the tool's configuration and diagnostic policy.
+	WithAnalyzer func(analyzer.Analyzer) (Registration, error)
 }
 
 type Runner interface {
@@ -56,15 +63,16 @@ type Execution struct {
 
 // Script is a prepared snippet and its source map, not a workflow AST visitor.
 type Script struct {
-	Text       string
-	Source     *workflow.ScriptSource
-	Key, Value *workflow.Pos
-	Shell      *string
-	Config     *config.Config
-	Path       string
-	Content    []byte
-	Scope      *Scope
-	Execution  Execution
+	Declaration diagnostic.Position
+	Text        string
+	Source      *workflow.ScriptSource
+	Key, Value  *workflow.Pos
+	Shell       *string
+	Config      *config.Config
+	Path        string
+	Content     []byte
+	Scope       *Scope
+	Execution   Execution
 }
 type Batch struct {
 	Scopes  []*Scope

@@ -46,7 +46,7 @@ paths: {'**': {ignore: ['a.*b']}}
 					t.Fatalf("effective config overrides Ruff's defaults: %v", selection)
 				}
 				for _, rule := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted"} {
-					if !roundTrip.Config.CachePolicyEnabled(rule) || resolved.Origins["/policy/"+rule].Source != "default" {
+					if !roundTrip.Config.CachePolicyEnabled(rule) || DiagnosticLevel(roundTrip.Config, rule) != "on" {
 						t.Fatalf("lost cache policy default or origin: %s", rule)
 					}
 				}

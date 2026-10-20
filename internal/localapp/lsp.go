@@ -23,17 +23,12 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ap
 		return err
 	}
 	options.WorkingDir = directory
-	session, err := newEditorSession(ctx, options, plugins.Paths)
+	session, err := newEditorSources(ctx, options, plugins)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, session.close(context.WithoutCancel(ctx))) }()
-	return langserver.Serve(ctx, in, out, func(ctx context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
-		if err := plugins.ValidateScope(slices.Collect(maps.Keys(documents))); err != nil {
-			return langserver.Analysis{}, err
-		}
-		return analyzeDocuments(ctx, session.options, documents)
-	}, func(ctx context.Context, doc langserver.Document, offset int) []langserver.Completion {
+	return langserver.Serve(ctx, in, out, session.analyze, func(ctx context.Context, doc langserver.Document, offset int) []langserver.Completion {
 		if ctx.Err() != nil {
 			return nil
 		}
@@ -44,6 +39,18 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ap
 		}
 		return result
 	})
+}
+
+func (s *editorSession) analyze(ctx context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
+	// A registry refresh in another process can revoke an already compiled
+	// plugin. Recheck local status before every analysis without network access.
+	if err := checkEditorPluginStatuses(ctx, s.sources, s.options.LogWriter); err != nil {
+		return langserver.Analysis{}, err
+	}
+	if err := s.sources.ValidateScope(slices.Collect(maps.Keys(documents))); err != nil {
+		return langserver.Analysis{}, err
+	}
+	return analyzeDocuments(ctx, s.options, documents)
 }
 
 func analyzeDocuments(ctx context.Context, options application.Options, documents map[string]langserver.Document) (langserver.Analysis, error) {

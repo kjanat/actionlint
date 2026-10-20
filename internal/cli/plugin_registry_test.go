@@ -88,7 +88,14 @@ func TestRegistryCLI(t *testing.T) {
 	r.Offline = true
 	requests := len(r.Requests)
 	pluginCommandTest(t, 0, "plugin", "install")
-	pluginCommandTest(t, 0, "plugin", "sync")
+	if len(r.Requests) != requests {
+		t.Fatal("matching installation contacted registry")
+	}
+	syncOutput := pluginCommandTest(t, 0, "plugin", "sync")
+	if len(r.Requests) != requests+1 || r.Requests[requests] != testutil.FixtureRegistryURL+"statuses.json" || !strings.Contains(syncOutput, "using cached status") {
+		t.Fatalf("offline sync should attempt status refresh only: %v %s", r.Requests[requests:], syncOutput)
+	}
+	requests = len(r.Requests)
 	pluginCommandTest(t, 0, "plugin", "list", "--json")
 	if output := pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
 		t.Fatal(output)

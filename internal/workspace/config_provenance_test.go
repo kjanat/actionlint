@@ -95,7 +95,7 @@ config-secrets: [SECRET]
 			if _, err := session.ConfigForProject(nil); err != nil {
 				t.Fatal(err)
 			}
-			origin := report.Inspection.Origins["/config-variables"]
+			origin := report.Inspection.Origins["/lint/rules/correctness/expression-reference/options/variables"]
 			if strings.HasPrefix(overlayText, "config-variables:") {
 				if origin.Source != "input" || origin.Input != "config" || origin.File != "" {
 					t.Fatalf("overlay origin=%+v", origin)
@@ -103,7 +103,7 @@ config-secrets: [SECRET]
 			} else if origin.File != base || origin.Line != 2 || origin.Source != "config" {
 				t.Fatalf("inherited origin=%+v", origin)
 			}
-			if origin := report.Inspection.Origins["/config-secrets"]; origin.File != leaf || origin.Line != 2 {
+			if origin := report.Inspection.Origins["/lint/rules/correctness/expression-reference/options/secrets"]; origin.File != leaf || origin.Line != 2 {
 				t.Fatalf("leaf origin=%+v", origin)
 			}
 			warnings := report.Inspection.Warnings
@@ -120,6 +120,37 @@ config-secrets: [SECRET]
 			}
 			if !strings.Contains(log.String(), base+":3:1: warning:") || strings.Contains(log.String(), leaf+":3:1:") {
 				t.Fatalf("warning attributed to wrong file: %s", &log)
+			}
+		})
+	}
+}
+
+func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
+	const pointer = "/lint/rules/policy/require-commit-hash/level"
+	for _, value := range []string{"true", "false", "null"} {
+		t.Run(value, func(t *testing.T) {
+			root := t.TempDir()
+			line := "policy: {require-commit-hash: " + value + "}"
+			base := writeToolFixture(t, root, "base.yml", "# source policy\n"+line+"\n")
+			leaf := writeToolFixture(t, root, "leaf.yml", "extends: [base.yml]\nconfig-variables: [SAFE]\n")
+			inspection, err := repoconfig.Inspect(repoconfig.Selection{Path: leaf}, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			state := "value"
+			if value == "null" {
+				state = "null"
+			}
+			want := repoconfig.Origin{File: base, Source: "config", State: state, Line: 2, Column: strings.Index(line, value) + 1}
+			if got := inspection.Origins[pointer]; got != want {
+				t.Fatalf("origin=%+v, want %+v", got, want)
+			}
+			if got := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; got != (repoconfig.Origin{Source: "default", State: "missing"}) {
+				t.Fatalf("implicit knowledge level acquired a source origin: %+v", got)
+			}
+			cfg, err := repoconfig.Load(leaf)
+			if err != nil || cfg.RequiresCommitHash() != (value == "true") {
+				t.Fatalf("policy behavior changed: %+v %v", cfg, err)
 			}
 		})
 	}

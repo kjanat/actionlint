@@ -24,8 +24,12 @@ func TestCheckReadsJSONAndTOMLConfigs(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := testRunCommand(workflow, "check", "--config", path, "-")
-		if got.Status != 0 || got.Stdout != "" || got.Stderr != "" {
+		if got.Status != 0 || got.Stdout != "" || got.Stderr != "warning: migrated configuration: "+path+"\n" {
 			t.Fatalf("%s: %+v", name, got)
+		}
+		got = testRunCommand(workflow, "check", "--config", path, "-")
+		if got.Status != 0 || got.Stdout != "" || got.Stderr != "" {
+			t.Fatalf("%s after migration: %+v", name, got)
 		}
 	}
 	broken := filepath.Join(dir, "broken.toml")

@@ -3,6 +3,7 @@
 # Lint rules: recommended checks are enabled without a configuration file.
 # Use all for all stable rules, or none to select rules individually.
 ---
+plugins: [shellcheck, ruff]
 lint:
   enabled: true
   rules:
@@ -12,6 +13,15 @@ lint:
     # List rules and their defaults with: actionlint rules
     # correctness:
     #   deprecated-commands: warn
+    #   runner-label:
+    #     level: default
+    #     options: {labels: [linux.2xlarge]}
+    #   expression-reference:
+    #     level: default
+    #     options: {variables: null, secrets: null}
+    #   workflow-call:
+    #     level: default
+    #     options: {default-permissions: restricted}
     # suspicious:
     #   case-insensitive-conditions: off
     # security:
@@ -37,7 +47,7 @@ lint:
     # nursery: {preset: none}
     # disable: []
 
-# Tools are discovered on PATH. Python scripts are linted without execution.
+# Plugins check scripts without executing them. Configure a native backend explicitly when needed.
 # This example selects F, B and S rules and targets Python 3.14.
 # tools:
 #   ruff: {enabled: true, target-version: py314, select: [F, B, S], ignore: []}
@@ -81,25 +91,6 @@ lint:
 # local-actions:
 #   ./generated-action: ./src/action
 
-# Repository-specific runner labels and allowed vars/secrets.
-# self-hosted-runner:
-#   labels: [linux.2xlarge]
-# config-variables: null  # null disables the check; [] allows no variables.
-# config-secrets: null   # null disables the check; [] allows only built-ins
-#                        # and secrets declared by workflow_call.
-# assume-default-permissions: restricted
-
-# Older configuration forms remain supported. Prefer lint.rules for policies
-# and ignores/overrides for scoped settings in new configurations.
-# paths:
-#   ".github/workflows/**/*.{yml,yaml}":
-#     ignore: ["shellcheck reported issue in this script: SC2086:.+"]
-# policy:
-#   cache-call-unrestricted: true
-#   cache-operation: true
-#   cache-write-untrusted: true
-#   disallow-suppressions: false
-#   require-commit-hash: false
-#   require-job-timeout: false
-#   require-permissions: false
-#   required-actions: []
+# Null variables/secrets disables name checking; [] permits no configured names.
+# Built-in secrets and workflow_call declarations remain available.
+# Run `actionlint config migrate` to preview conversion of older configuration.

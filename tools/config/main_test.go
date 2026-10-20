@@ -299,6 +299,13 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"runner knowledge", `lint: {rules: {correctness: {runner-label: {level: default, options: {labels: [gpu]}}}}}`, true, true},
+		{"expression knowledge", `lint: {rules: {correctness: {expression-reference: {level: default, options: {variables: [], secrets: null}}}}}`, true, true},
+		{"workflow knowledge", `lint: {rules: {correctness: {workflow-call: {level: default, options: {default-permissions: permissive}}}}}`, true, true},
+		{"unknown runner option", `lint: {rules: {correctness: {runner-label: {level: default, options: {label: [gpu]}}}}}`, false, false},
+		{"message filters", `lint: {message-ignores: {'**': ['legacy.*']}}`, true, true},
+		{"invalid message regex", `lint: {message-ignores: {'**': ['[']}}`, true, false},
+		{"invalid message path", `lint: {message-ignores: {'[': []}}`, true, false},
 		{"plugin shorthand", `plugins: [kjanat/actionlint-plugin-shellcheck@v0.1.1]`, true, true},
 		{"plugin custom catalogue", `plugins: [{name: gitlab.com/group/plugin, version: v1, registry: 'https://example.com/catalog/'}]`, true, true},
 		{"plugin empty list", `plugins: []`, true, true},
@@ -382,6 +389,7 @@ func TestSchemaValidation(t *testing.T) {
 		{"rule disabled alias", `lint: {rules: {correctness: {expression: false}}}`, true, true},
 		{"rule level disabled alias", `lint: {rules: {correctness: {expression: {level: false}}}}`, true, true},
 		{"rule level default", `lint: {rules: {correctness: {expression: {level: null}}}}`, true, true},
+		{"migrated policy reset", `lint: {rules: {policy: {require-job-timeout: {level: null, options: null}}}}`, true, true},
 		{"group enabled alias", `lint: {rules: {security: true}}`, true, true},
 		{"group all alias", `lint: {rules: {security: all}}`, true, true},
 		{"rule enabled alias", `lint: {rules: {policy: {disallow-suppressions: true}}}`, true, true},
@@ -565,8 +573,31 @@ policy: {required-actions: []}
 			if err := yaml.Unmarshal([]byte(tt.input), &value); err != nil {
 				t.Fatal(err)
 			}
-			if err := schema.Validate(value); (err == nil) != tt.schemaValid {
-				t.Errorf("schema validation error = %v, want valid = %v", err, tt.schemaValid)
+			// The current editor schema describes one syntax. Old documents
+			// remain parser inputs only through the migration boundary.
+			legacy := false
+			if root, ok := value.(map[string]any); ok {
+				for _, key := range []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"} {
+					_, exists := root[key]
+					legacy = legacy || exists
+				}
+			}
+			schemaValid := tt.schemaValid && !legacy
+			if err := schema.Validate(value); (err == nil) != schemaValid {
+				t.Errorf("schema validation error = %v, want valid = %v", err, schemaValid)
+			}
+			if legacy && tt.schemaValid && tt.parserValid {
+				migration, err := actionlint.MigrateDocument("config.yaml", []byte(tt.input))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var converted any
+				if err := yaml.Unmarshal(migration.Content, &converted); err != nil {
+					t.Fatal(err)
+				}
+				if err := schema.Validate(converted); err != nil {
+					t.Fatalf("migrated document violates current schema: %v\n%s", err, migration.Content)
+				}
 			}
 			if _, err := actionlint.Parse([]byte(tt.input)); (err == nil) != tt.parserValid {
 				t.Errorf("parser validation error = %v, want valid = %v", err, tt.parserValid)

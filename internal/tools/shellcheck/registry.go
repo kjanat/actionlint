@@ -58,6 +58,9 @@ func (o Options) Registration() tools.Registration {
 			return nil
 		},
 		WithBackend: func(backend analyzer.ScriptBackend) (tools.Registration, error) {
+			if o.Backend == nil && o.Runner == nil && !processconfig.Enabled(o.Command, o.Process) {
+				return o.Registration(), nil
+			}
 			if o.Backend != nil || o.Process != nil && !reflect.DeepEqual(*o.Process, processconfig.Options{Optional: true}) || o.Command != "" && o.Command != "shellcheck" || o.Runner != nil || o.Settings != nil {
 				return tools.Registration{}, errors.New("shellcheck plugin conflicts with an explicitly selected backend or command")
 			}
@@ -67,5 +70,6 @@ func (o Options) Registration() tools.Registration {
 			next.Backend = backend
 			return next.Registration(), nil
 		},
+		WithAnalyzer: o.withAnalyzer,
 	}
 }

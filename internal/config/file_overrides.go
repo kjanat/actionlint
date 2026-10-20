@@ -132,6 +132,9 @@ func lintConfigNode(config LintConfig) (*yaml.Node, error) {
 		}
 	}
 	value := map[string]any{}
+	if config.MessageIgnores != nil {
+		value["message-ignores"] = config.MessageIgnores
+	}
 	if config.Enabled != nil {
 		value["enabled"] = config.Enabled
 	}
@@ -167,6 +170,17 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 	node, err := lintConfigNode(config.Lint)
 	if err != nil {
 		return nil, err
+	}
+	if config.Lint.source == nil {
+		// Project programmatically constructed Go API values through the same
+		// canonical serialization before applying scoped lint overrides.
+		var document yaml.Node
+		if err := document.Encode(config); err != nil {
+			return nil, err
+		}
+		if lint := field(&document, "lint"); lint != nil {
+			node = lint
+		}
 	}
 	tools := config.Tools
 	localActions := config.LocalActions
@@ -217,6 +231,12 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 	if err := yaml.Unmarshal(content, &next.Lint); err != nil {
 		return nil, err
 	}
+	next.Paths = nil
+	next.SelfHostedRunner = SelfHostedRunnerConfig{}
+	next.ConfigVariables, next.ConfigSecrets = nil, nil
+	next.AssumeDefaultPermissions = DefaultPermissionsAssumptionUnset
+	next.Policy = Policy{}
+	projectSettings(&next)
 	return &next, nil
 }
 

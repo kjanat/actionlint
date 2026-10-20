@@ -61,7 +61,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 			t.Errorf("generated reference omits %s", key)
 		}
 	}
-	if strings.Index(string(b), "lint:") > strings.Index(string(b), "self-hosted-runner:") {
+	if strings.Index(string(b), "lint:") > strings.Index(string(b), "runner-label:") {
 		t.Fatal("repository allowlists precede lint settings")
 	}
 	if got := repoconfig.DiagnosticLevel(c, "missing-local-action"); got != "on" {

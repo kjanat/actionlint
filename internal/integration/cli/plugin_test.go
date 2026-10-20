@@ -39,6 +39,10 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 }
 
 func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
+	cache := t.TempDir()
+	t.Setenv("HOME", cache)
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("LOCALAPPDATA", cache)
 	var requests atomic.Int32
 	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm"))
 	if err != nil {
@@ -57,13 +61,14 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	config := writeEngineConfig(t, server.URL+"/echo")
+	config := writeEngineConfig(t, fmt.Sprintf("%s/echo#sha256=%x", server.URL, sha256.Sum256(module)))
 	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "F821") {
 		t.Fatalf("remote backend: %+v", got)
 	}
 	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo true\n"
-	got = testRunCommand(workflow, "check", "--no-config", "--plugin", server.URL+"/component", "-")
+	source := fmt.Sprintf("%s/component#sha256=%x", server.URL, sha256.Sum256(component))
+	got = testRunCommand(workflow, "check", "--no-config", "--plugin", source, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "sudo") {
 		t.Fatalf("remote component: %+v", got)
 	}

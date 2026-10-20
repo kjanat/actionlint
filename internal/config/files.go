@@ -50,6 +50,7 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 	if err != nil {
 		return nil, nil, err
 	}
+	node = resolved.Node
 	for i := range resolved.Warnings {
 		resolved.Warnings[i].File = path
 	}

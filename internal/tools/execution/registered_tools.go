@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 
+	"actionlint.kjanat.dev/diagnostic"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/tools"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -21,6 +22,9 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 	}
 	for _, s := range batch.Scripts {
 		prepared.Scripts = append(prepared.Scripts, tools.Script{Text: s.Run.Run.Value, Source: s.Run.Source, Key: s.Run.RunPos, Value: s.Run.Run.Pos, Shell: s.Shell, Config: s.Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}})
+		if s.Owner != nil && s.Owner.Step != nil {
+			prepared.Scripts[len(prepared.Scripts)-1].Declaration = diagnostic.Position{Line: s.Owner.Step.Line, Column: s.Owner.Step.Col}
+		}
 	}
 	findings, err := tool.Runner.Analyze(ctx, prepared)
 	out := make([]*findingmodel.Finding, 0, len(findings))

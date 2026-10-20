@@ -87,7 +87,14 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			origin := report.Inspection.Origins["/policy/require-commit-hash"]
+			pointer := "/lint/rules/policy/require-commit-hash/level"
+			if tc.input == "config" {
+				if _, exists := report.Inspection.Origins[pointer]; exists {
+					t.Fatal("whole-config reset retained a removed rule origin")
+				}
+				pointer = "/lint"
+			}
+			origin := report.Inspection.Origins[pointer]
 			if origin.Source != tc.source || origin.State != tc.state || (tc.source == "input" && origin.Input != tc.input) {
 				t.Fatalf("reset origin lost: %+v", origin)
 			}
@@ -122,11 +129,18 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			origin := report.Inspection.Origins["/policy/require-commit-hash"]
+			pointer := "/lint/rules/policy/require-commit-hash/level"
+			if reset == "null" {
+				if _, exists := report.Inspection.Origins[pointer]; exists {
+					t.Fatal("partial overlay fabricated a removed rule origin")
+				}
+				pointer = "/lint"
+			}
+			origin := report.Inspection.Origins[pointer]
 			if origin.Source != "input" || origin.Input != "config" || origin.State != "null" || cfg.RequiresCommitHash() {
 				t.Fatalf("lost reset after partial mapping: %+v", report.Inspection)
 			}
-			origin = report.Inspection.Origins["/policy/cache-operation"]
+			origin = report.Inspection.Origins["/lint/rules/correctness/cache-operation/level"]
 			if origin.Source != "input" || origin.Input != "policy" || origin.State != "value" || cfg.CachePolicyEnabled("cache-operation") {
 				t.Fatalf("lost setting after reset: %+v", report.Inspection)
 			}

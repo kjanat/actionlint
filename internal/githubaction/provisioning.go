@@ -6,25 +6,57 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/internal/localapp"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/render"
 )
 
-// ToolPlan validates Action configuration before the launcher installs tools.
-func ToolPlan(env func(string) string, stdout, stderr io.Writer) int {
-	needed, err := requiredTools(env)
+func provisioningRequest(env func(string) string) (*lintRequest, error) {
+	in, err := parseInputs(environmentArgs(env))
+	if err != nil {
+		return nil, err
+	}
+	a := &action{env: env}
+	workspace, err := a.workspace()
+	if err != nil {
+		return nil, err
+	}
+	return a.prepareRequest(in, workspace)
+}
+
+func (req *lintRequest) pluginSelection() localapp.PluginSelection {
+	return localapp.PluginSelection{ConfigFile: req.configFile, Overlays: req.overlays}
+}
+
+func (req *lintRequest) pluginInput() application.Input {
+	if len(req.files) != 0 {
+		return application.Input{Kind: application.Files, Paths: req.files}
+	}
+	return application.Input{Kind: application.Repository, Directory: req.workingDir}
+}
+
+// PluginPlan lets the launcher restore portable bytes before any plugin download.
+func PluginPlan(env func(string) string, stdout, stderr io.Writer) int {
+	req, err := provisioningRequest(env)
+	if err == nil && req.configFile != "" {
+		if _, readErr := os.Stat(req.configFile); readErr != nil {
+			err = fmt.Errorf("could not read config file %q: %w", req.configFile, readErr)
+		}
+	}
 	if err == nil {
-		err = json.NewEncoder(stdout).Encode(struct {
-			SchemaVersion int `json:"schema_version"`
-			// Released v1 launchers require this compatibility field.
-			Pyflakes   bool `json:"pyflakes"`
-			Shellcheck bool `json:"shellcheck"`
-			Ruff       bool `json:"ruff"`
-		}{1, false, needed["shellcheck"], needed["ruff"]})
+		var selected localapp.PluginSources
+		selected, err = req.pluginSelection().Select(context.Background(), req.workingDir, req.pluginInput())
+		if err == nil {
+			var plan localapp.PluginCachePlan
+			plan, err = selected.CachePlan()
+			if err == nil {
+				err = json.NewEncoder(stdout).Encode(plan)
+			}
+		}
 	}
 	if err == nil {
 		return render.ExitSuccessNoProblem
@@ -37,25 +69,4 @@ func ToolPlan(env func(string) string, stdout, stderr io.Writer) int {
 		return render.ExitInvalidCommandOption
 	}
 	return render.ExitFailure
-}
-
-func requiredTools(env func(string) string) (application.ToolRequirements, error) {
-	var none application.ToolRequirements
-	in, err := parseInputs(environmentArgs(env))
-	if err != nil {
-		return none, err
-	}
-	a := &action{env: env}
-	workspace, err := a.workspace()
-	if err != nil {
-		return none, err
-	}
-	req, err := a.prepareRequest(in, workspace)
-	if err != nil {
-		return none, err
-	}
-	return application.RequiredTools(context.Background(), application.Options{
-		WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
-		IgnorePatterns: req.ignore, Tools: adapters.Options{ShellCheck: req.shellcheck, Ruff: req.ruff, RuffOptions: req.ruffOptions}.Registrations(),
-	}, req.files)
 }

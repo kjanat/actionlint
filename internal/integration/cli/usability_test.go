@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/internal/testutil"
 )
 
 func TestConfigInitAliases(t *testing.T) {
@@ -19,6 +20,7 @@ func TestConfigInitAliases(t *testing.T) {
 		{"config", "--init"}, {"config", "--init-config"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			testutil.NewDefaultPluginRegistry(t)
 			commandTestRepo(t)
 			t.Setenv("NO_HYPERLINKS", "1")
 			got := testRunCommand("", args...)
@@ -42,6 +44,7 @@ func TestConfigInitAliases(t *testing.T) {
 func TestConfigInitRelativeHyperlink(t *testing.T) {
 	for _, mode := range []string{"always", "never"} {
 		t.Run(mode, func(t *testing.T) {
+			testutil.NewDefaultPluginRegistry(t)
 			commandTestRepo(t)
 			if err := os.Mkdir("nested", 0700); err != nil {
 				t.Fatal(err)

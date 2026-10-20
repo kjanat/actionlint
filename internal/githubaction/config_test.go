@@ -76,14 +76,14 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 	}
 }
 
-func TestToolCommandsFromEnvironment(t *testing.T) {
+func TestRetiredToolCommandsFromEnvironmentIgnored(t *testing.T) {
 	req := &lintRequest{shellcheck: "shellcheck"}
 	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck"}
 	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
 		t.Fatal(err)
 	}
-	if req.shellcheckOptions == nil || req.shellcheckOptions.Executable == nil || *req.shellcheckOptions.Executable != "/cache/shellcheck" {
-		t.Errorf("want provisioned shellcheck, got %#v", req.shellcheckOptions)
+	if req.shellcheckOptions != nil {
+		t.Errorf("retired provisioning environment changed configuration: %#v", req.shellcheckOptions)
 	}
 	disabled := &lintRequest{}
 	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.shellcheckOptions != nil {

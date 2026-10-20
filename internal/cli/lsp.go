@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"actionlint.kjanat.dev/internal/application"
@@ -19,6 +20,11 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, err
 	}
 	c := r.Check
+	if err := c.pluginSelection().Migrate(ctx, cwd, application.Input{Kind: application.Repository}, c.defaultPlugins(func(message string) {
+		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+message)
+	})); err != nil {
+		return 0, commandUsageError{err}
+	}
 	plugins, err := c.pluginSelection().Resolve(ctx, cwd, application.Input{Kind: application.Repository})
 	if err != nil {
 		return 0, commandUsageError{err}

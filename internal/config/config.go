@@ -375,12 +375,12 @@ type Config struct {
 	// SelfHostedRunner configures extra labels accepted for self-hosted runners.
 	//
 	// Add your labels under `labels`, for example `{labels: [linux.2xlarge]}`.
-	SelfHostedRunner SelfHostedRunnerConfig `yaml:"self-hosted-runner" jsonschema:"nullable"`
+	SelfHostedRunner SelfHostedRunnerConfig `yaml:"-"`
 	// ConfigVariables lists configuration variable names available to the checked workflows through `vars`.
 	//
 	// Omit this key or use `null` to disable variable-name checking. Use `[]` to allow no variables.
 	// A list such as `[DEFAULT_RUNNER, ENVIRONMENT_STAGE]` reports names outside that list as undefined.
-	ConfigVariables []string `yaml:"config-variables" jsonschema:"nullable"`
+	ConfigVariables []string `yaml:"-"`
 	// ConfigSecrets lists secret names available to the checked workflows through `secrets`.
 	//
 	// Omit this key or use `null` to disable secret-name checking. Use `[]` to allow only built-in
@@ -389,24 +389,24 @@ type Config struct {
 	//
 	// `GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG` are always allowed.
 	// List names only, never secret values.
-	ConfigSecrets []string `yaml:"config-secrets" jsonschema:"nullable"`
+	ConfigSecrets []string `yaml:"-"`
 	// Paths applies configuration to workflow files matching a glob pattern.
 	//
 	// Keys are paths relative to the repository root, using `/` separators and doublestar glob syntax,
 	// for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.
-	Paths map[string]PathConfig `yaml:"paths" jsonschema:"nullable"`
+	Paths map[string]PathConfig `yaml:"-"`
 	// AssumeDefaultPermissions selects the repository's assumed default token permissions when checking
 	// reusable workflow calls whose calling job and workflow both omit `permissions:`.
 	//
 	// `restricted` (the default) grants read access to `contents` and `packages` only.
 	// `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant.
 	// Omit this key or use `null` to assume `restricted`.
-	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"assume-default-permissions" jsonschema:"nullable"`
+	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"-"`
 	// Policy configures cache safety checks and repository conventions, such as pinned actions and job timeouts.
 	//
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
-	Policy Policy `yaml:"policy" jsonschema:"nullable"`
+	Policy Policy `yaml:"-"`
 }
 
 // ToolsConfig contains configuration for external analysis tools.
@@ -434,7 +434,7 @@ type ShellcheckToolConfig struct {
 	// File-relative paths use the directory containing actionlint.yaml; paths supplied by an overlay use the analysis working directory.
 	// ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} uses the repository root.
 	// ${{ github.workspace }} selects the runner workspace or local repository; ${{ github.action_path }} requires a composite action context.
-	// Lists replace during actionlint config overlays. The Action's explicit shellcheck-args can override settings.
+	// Lists replace during actionlint config overlays.
 	// Omission or null adds no directives. This does not enable rc-file discovery.
 	Config *ShellcheckConfigSource `yaml:"config"`
 }
@@ -590,12 +590,22 @@ func ResolveDocument(b []byte, additional ...string) (Resolved, error) {
 }
 
 func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, additional ...string) (Resolved, error) {
+	return resolveNode(root, inputs, true, additional...)
+}
+
+func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, additional ...string) (Resolved, error) {
 	if inputs == nil {
 		expanded, err := configtree.Expand(root, make(map[*yaml.Node]bool))
 		if err != nil {
 			return Resolved{}, err
 		}
 		root = normalizeToolSwitch(expanded)
+	}
+	legacyWarnings := configWarnings(root, inputs)
+	var err error
+	root, _, err = migrateNode(root)
+	if err != nil {
+		return Resolved{}, err
 	}
 	var c Config
 	if root != nil {
@@ -610,9 +620,12 @@ func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, additional ...str
 			}
 		}
 	}
+	projectSettings(&c)
 
-	if err := ValidateRuleNames(&c, additional...); err != nil {
-		return Resolved{}, err
+	if bindRules {
+		if err := ValidateRuleNames(&c, additional...); err != nil {
+			return Resolved{}, err
+		}
 	}
 	for pat := range c.Paths {
 		if !doublestar.ValidatePattern(pat) {
@@ -637,7 +650,7 @@ func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, additional ...str
 			tools.Shellcheck.Config.fromInput = origins["/overrides"].Source == "input"
 		}
 	}
-	return Resolved{Node: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: configWarnings(root, inputs)}, nil
+	return Resolved{Node: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }
 
 // Load reads the actionlint config file (actionlint.yaml) from the given file path.

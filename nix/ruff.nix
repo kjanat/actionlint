@@ -6,7 +6,7 @@
 }:
 
 let
-  release = builtins.fromJSON (builtins.readFile ../packages/github-action/tools/ruff.json);
+  release = builtins.fromJSON (builtins.readFile ./ruff-release.json);
   targets = {
     x86_64-linux = "x86_64-unknown-linux-gnu";
     aarch64-linux = "aarch64-unknown-linux-gnu";

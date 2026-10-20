@@ -26,8 +26,11 @@ type Options = component.Options
 // Limits reports the bounds an analyzer or engine runs under.
 type Limits = component.Limits
 
-// Load loads a component from a path, file URI or HTTP(S) URL.
+// Load loads a component from a path, file URI or SHA256-pinned HTTP(S) URL.
 func Load(ctx context.Context, path string, options Options) (*Component, error) {
+	if err := pluginartifact.RequireRemotePin(path); err != nil {
+		return nil, err
+	}
 	return component.Load(ctx, path, options)
 }
 
@@ -41,6 +44,9 @@ type EngineOptions = corewasm.Options
 // LoadEngine loads a core script engine from a raw or gzip-compressed module
 // path, file URI or HTTP(S) URL. Set the result as analysis.Tool.Backend.
 func LoadEngine(ctx context.Context, path string, options EngineOptions) (*Engine, error) {
+	if err := pluginartifact.RequireRemotePin(path); err != nil {
+		return nil, err
+	}
 	return corewasm.Load(ctx, path, options)
 }
 

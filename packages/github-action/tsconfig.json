@@ -21,5 +21,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "tsdown.config.ts", "tools/*.json"]
+  "include": ["src", "tests", "tsdown.config.ts"]
 }

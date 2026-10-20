@@ -9,10 +9,11 @@ roles. Any language with a component toolchain can implement them.
 
 ## Install from the registry
 
-Search the [published catalogue](https://plugins.actionlint.kjanat.dev/) using canonical repository names:
+Search the [published catalogue](https://plugins.actionlint.kjanat.dev/):
 
 ```sh
 actionlint plugin search shellcheck
+actionlint plugin install shellcheck
 actionlint plugin versions github.com/owner/plugin
 actionlint plugin install owner/plugin@v1.2.3
 actionlint plugin list
@@ -33,7 +34,13 @@ plugins:
   - gitlab.com/group/plugin
 ```
 
-`owner/plugin` is shorthand for `github.com/owner/plugin`. A new dependency without `@version` selects `latest`.
+The registry explicitly assigns short names such as `shellcheck` and `ruff` to published plugins.
+Names are never inferred from a repository prefix or claimed through plugin metadata.
+The config retains the shorthand; the lock records that alias and the full resolved repository identity.
+Aliases belong to their selected registry. Checking uses the recorded identity offline;
+an update refuses an alias reassigned to a different repository.
+Plugins without an assigned alias use `owner/plugin`, `github.com/owner/plugin` or `gitlab.com/group/plugin`.
+A new dependency without `@version` selects `latest`.
 Reinstalling an existing dependency preserves its declared version and registry unless explicitly overridden.
 Use an object for a custom registry:
 
@@ -64,7 +71,8 @@ actionlint plugin remove github.com/owner/plugin
 ```
 
 Only install/update resolve selectors against the catalogue. `sync` restores the exact locked artifacts into
-the shared user cache, useful after cloning or in CI. Checks also restore missing pinned artifacts; populated
+the shared user cache and refreshes registry withdrawal information, useful after cloning or in CI.
+Checks also restore missing pinned artifacts; populated
 caches work offline and cached bytes are re-hashed. No implicit upgrades run during linting or LSP analysis.
 `latest` refuses downgrades from a stale catalogue; an explicit exact tag permits a deliberate downgrade.
 Failed downloads, identity changes, same-version digest replacements and concurrent lock edits preserve the old
@@ -81,6 +89,62 @@ dependencies. Existing matching pins stay pinned. This command also migrates old
 into config without upgrading their artifacts. Checks require declarations and matching pins; they never
 activate extra entries left in the lock. `plugins: []` or `plugins: null` disables all declared plugins,
 including inherited ones. An inherited list is replaced as a whole; install/remove edit only the selected leaf config.
+
+`actionlint config init` installs and pins `shellcheck` and `ruff`. Migrating an old configuration
+adds these defaults when `plugins` was omitted, respecting disabled checks and explicit native backends.
+All downloads must verify before the migrated config and lock are saved.
+See [configuration migration](config-migration.md) for preview and automatic migration behavior.
+
+### Deprecated, withdrawn and revoked releases
+
+Registry status is separate from immutable release records. Deprecated versions remain installable
+with a warning. Withdrawn versions are excluded from new resolution; an existing lock can continue
+using them with a warning. Revoked artifact digests are refused, including already cached bytes.
+
+Install/update obtain current status when resolving versions. `plugin sync` refreshes each registry's
+status snapshot; if unavailable, it warns and uses previously recorded information. Ordinary checking
+uses the local snapshot without a registry request. An offline machine cannot learn a new revocation
+until a refresh succeeds. Once learned, a digest revocation cannot be erased by a later incomplete
+snapshot. Direct URLs are outside registry withdrawal policy.
+The language server checks this local status before loading plugins and before
+each analysis. A revocation learned by another process stops subsequent analyses
+using that plugin without requiring a server restart or a network request.
+
+### Pin a directly hosted artifact
+
+An HTTPS URL can appear in the same list, with a mandatory SHA256 pin:
+
+```yaml
+plugins:
+  - "https://example.org/plugins/check.wasm#sha256=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+```
+
+Replace the example digest with the downloaded file's SHA256. `actionlint plugin inspect URL`
+reports the digest without executing the plugin. `actionlint plugin install "URL#sha256=…"`
+verifies and caches the artifact before saving the declaration.
+
+Direct declarations already contain their exact artifact pin, so they need no lock row; projects
+using only direct URLs do not create a lockfile. Changing the artifact requires changing its URL
+or digest explicitly. Registry withdrawal information does not cover independent direct URLs.
+Remote execution through `--plugin` or configured Wasm backends also requires a digest pin.
+
+### GitHub Action caching
+
+The JavaScript Action loads the same declarations and locked artifacts as the CLI.
+Its `plugin-cache` input defaults to `true`. Before downloading or starting plugins, it restores
+only the selected digest-named artifact files from GitHub Actions cache. The key contains the
+operating system and exact set of digests. Every restored file is rehashed before use.
+
+Verified artifacts are saved even when linting reports findings. Cache service failures produce
+warnings and leave ordinary downloads available. Set `plugin-cache: false` to disable this
+optimization; compiled runtime state is never stored in this cache.
+
+The Action never installs native Ruff or ShellCheck executables or adds them to PATH.
+The official `shellcheck` dependency uses `tools.shellcheck` and the ordinary `shellcheck` rule
+controls. Explicit native rc/source settings retain a caller-provided native backend.
+A ShellCheck component loaded through a direct URL or `--plugin` remains a standalone analyzer,
+configured under its `shellcheck-rs` plugin rule. Explicit plugin analyzers are independent of
+the Action's native-tool enable switches.
 
 Check, fix, rules and LSP load declared plugins from their matching locked artifacts. Selection precedence:
 

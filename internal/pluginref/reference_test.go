@@ -1,11 +1,42 @@
 package pluginref
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestDirectURL(t *testing.T) {
+	source := "https://EXAMPLE.com/Plugin.wasm?version=1#sha256=" + strings.Repeat("AB", 32)
+	ref, err := Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "https://example.com/Plugin.wasm?version=1#sha256=" + strings.Repeat("ab", 32)
+	if ref.DirectSource() != want || ref.String() != want || ref.Registry != "" || ref.Version != "" {
+		t.Fatalf("unexpected direct declaration: %+v", ref)
+	}
+	if normalized, err := ref.Normalize(); err != nil || !ref.Equal(normalized) {
+		t.Fatalf("roundtrip: %+v %v", normalized, err)
+	}
+	for _, invalid := range []string{
+		"https://example.com/plugin.wasm", "https://example.com/plugin.wasm#sha256=bad",
+		"http://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32),
+		"https://user:pass@example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32),
+	} {
+		if _, err := Parse(invalid); err == nil {
+			t.Errorf("accepted %s", invalid)
+		}
+	}
+}
 
 func TestParse(t *testing.T) {
 	for _, tc := range []struct {
 		input, name, version, canonical string
 	}{
+		{"ruff", "ruff", "latest", "ruff"},
+		{"shellcheck@v1.2.3", "shellcheck", "v1.2.3", "shellcheck@v1.2.3"},
+		{"github.com/kjanat/actionlint-plugin-ruff@v1.2.3", "github.com/kjanat/actionlint-plugin-ruff", "v1.2.3", "github.com/kjanat/actionlint-plugin-ruff@v1.2.3"},
+		{"github.com/other/actionlint-plugin-ruff", "github.com/other/actionlint-plugin-ruff", "latest", "github.com/other/actionlint-plugin-ruff"},
 		{"Kjanat/Shellcheck", "github.com/kjanat/shellcheck", "latest", "github.com/kjanat/shellcheck"},
 		{"github.com/Kjanat/Shellcheck@v1.2.3", "github.com/kjanat/shellcheck", "v1.2.3", "github.com/kjanat/shellcheck@v1.2.3"},
 		{"gitlab.com/Group/Subgroup/Plugin@latest", "gitlab.com/group/subgroup/plugin", "latest", "gitlab.com/group/subgroup/plugin"},
@@ -25,7 +56,7 @@ func TestParse(t *testing.T) {
 
 func TestRejectInvalidReference(t *testing.T) {
 	for _, input := range []string{
-		"", "plugin", "owner/repo@", "owner/repo@@v1", "owner/repo@^1.0", "owner/repo@v1/extra",
+		"", ".plugin", "under_score", strings.Repeat("a", 65), "owner/repo@", "owner/repo@@v1", "owner/repo@^1.0", "owner/repo@v1/extra",
 		"github.com/owner/repo/extra", "https://github.com/owner/repo", "codeberg.org/owner/repo",
 		"../repo", "owner/../repo", " owner/repo", "owner/repo ", "gitlab.com/group//repo",
 	} {

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/pluginref"
 	"actionlint.kjanat.dev/internal/plugins/artifact"
 )
 
@@ -32,9 +33,10 @@ type Catalog struct {
 }
 
 type CatalogPlugin struct {
-	Name     string `json:"name"`
-	PluginID string `json:"plugin_id"`
-	Manifest string `json:"manifest"`
+	Name     string   `json:"name"`
+	Aliases  []string `json:"aliases,omitempty"`
+	PluginID string   `json:"plugin_id"`
+	Manifest string   `json:"manifest"`
 }
 
 type Compatibility struct {
@@ -116,6 +118,7 @@ type record struct {
 type Pin struct {
 	Registry     string        `json:"registry"`
 	Name         string        `json:"name"`
+	Alias        string        `json:"alias,omitempty"`
 	RepositoryID string        `json:"repository_id"`
 	OwnerID      string        `json:"owner_id"`
 	PluginID     string        `json:"plugin_id"`
@@ -129,6 +132,18 @@ type Pin struct {
 }
 
 func (p Pin) Source() string { return p.URL + "#sha256=" + p.SHA256 }
+
+// Matches binds declaration intent to the recorded registry and repository.
+// An alias is accepted only when the lock explicitly records that lookup.
+func (p Pin) Matches(ref pluginref.Reference) bool {
+	if !SameRegistry(p.Registry, ref.Registry) {
+		return false
+	}
+	if ref.IsAlias() {
+		return p.Alias == ref.Name
+	}
+	return strings.EqualFold(p.Name, ref.Name)
+}
 
 // SameRegistry compares validated catalogue endpoints. Hosts are insensitive to
 // case, while paths retain their case-sensitive identity.
@@ -159,7 +174,7 @@ func (p Pin) Validate() error {
 	if _, err := registryURL(p.Registry); err != nil {
 		return err
 	}
-	if !canonicalName(p.Name) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
+	if !canonicalName(p.Name) || p.Alias != "" && !pluginref.ValidAlias(p.Alias) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
 		!namePattern.MatchString(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) ||
 		!namePattern.MatchString(p.Asset) || (!strings.HasSuffix(p.Asset, ".wasm") && !strings.HasSuffix(p.Asset, ".wasm.gz")) ||
 		(p.Kind != artifact.Core && p.Kind != artifact.Component) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {

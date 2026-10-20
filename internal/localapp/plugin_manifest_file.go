@@ -31,11 +31,20 @@ type PluginManifest struct {
 	Exists     bool
 	original   []byte
 	snapshots  map[string][]byte
+	node       *yaml.Node
 }
 
 // OpenPluginManifest reads only plugin declarations. Plugin rule configuration
 // cannot be validated until the plugins supplying those rules have been loaded.
 func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, error) {
+	return openPluginManifest(ctx, path, readPluginManifest)
+}
+
+func openPluginManifest(ctx context.Context, path string, read func(context.Context, string) ([]byte, error)) (*PluginManifest, error) {
+	return openPluginManifestMode(ctx, path, read, pluginAnalysis)
+}
+
+func openPluginManifestMode(ctx context.Context, path string, read func(context.Context, string) ([]byte, error), mode pluginSelectionMode) (*PluginManifest, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -45,7 +54,7 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 		return nil, err
 	}
 	manifest := &PluginManifest{Path: absolute, snapshots: map[string][]byte{}}
-	data, err := readPluginManifest(ctx, absolute)
+	data, err := read(ctx, absolute)
 	if errors.Is(err, os.ErrNotExist) {
 		manifest.snapshots[absolute] = nil
 		return manifest, nil
@@ -59,23 +68,48 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 		if err != nil {
 			return nil, err
 		}
-		content, err := readPluginManifest(ctx, name)
+		content, err := read(ctx, name)
 		if err == nil {
 			manifest.snapshots[name] = content
 		}
 		return content, err
 	}, func(_ string, node *yaml.Node) (*yaml.Node, error) {
-		return node, validateManifestRoot(node)
+		if err := validateManifestRoot(node); err != nil {
+			return nil, err
+		}
+		if mode == pluginRuleDiscovery {
+			return pluginDependencyNode(node)
+		}
+		return config.NormalizeForMerge(node)
 	})
 	if err != nil {
 		return nil, err
 	}
 	manifest.original = manifest.snapshots[absolute]
+	manifest.node = loaded.Node
 	manifest.References, manifest.Declared, err = manifestReferences(loaded.Node)
 	if err != nil {
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
 	}
 	return manifest, nil
+}
+
+// The tree loader expands aliases before this projection, so plugin references
+// may still use anchors declared under unrelated fields. Validate every source
+// declaration before merging: a leaf reset cannot hide a malformed base.
+func pluginDependencyNode(node *yaml.Node) (*yaml.Node, error) {
+	if _, _, err := manifestReferences(node); err != nil {
+		return nil, err
+	}
+	projected := *node
+	projected.Content = nil
+	for i := 0; i < len(node.Content); i += 2 {
+		key := node.Content[i]
+		if key.Value == "plugins" || key.Value == "extends" {
+			projected.Content = append(projected.Content, key, node.Content[i+1])
+		}
+	}
+	return &projected, nil
 }
 
 // Like an explicitly selected lock, an explicit manifest trusts its containing
@@ -158,6 +192,10 @@ func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
 	if err := safePluginManifestPath(path); err != nil {
 		return nil, err
 	}
+	return readPluginManifestSource(ctx, path)
+}
+
+func readPluginManifestSource(ctx context.Context, path string) ([]byte, error) {
 	reader := fsread.New(ctx, nil, nil)
 	file, err := reader.Open(path)
 	if err != nil {
@@ -273,11 +311,11 @@ func (m *PluginManifest) Save(ctx context.Context, refs []pluginref.Reference) (
 func pluginManifestSequence(refs []pluginref.Reference) (*yaml.Node, error) {
 	sequence := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 	for _, ref := range refs {
-		normalized, err := pluginref.New(ref.Name, ref.Version, ref.Registry)
+		normalized, err := ref.Normalize()
 		if err != nil {
 			return nil, err
 		}
-		if normalized.Registry == pluginref.DefaultRegistry {
+		if normalized.DirectSource() != "" || normalized.Registry == pluginref.DefaultRegistry {
 			sequence.Content = append(sequence.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: normalized.String()})
 			continue
 		}

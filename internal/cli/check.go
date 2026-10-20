@@ -82,11 +82,16 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		input.Kind, input.Reader, input.Name, input.NormalizePath = application.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
+	if err := c.pluginSelection().Migrate(ctx, workingDir, input, c.defaultPlugins(func(message string) {
+		_, _ = fmt.Fprintln(log, "warning: "+message)
+	})); err != nil {
+		return 0, err
+	}
 	plugins, err := c.pluginSelection().Resolve(ctx, workingDir, input)
 	if err != nil {
 		return 0, commandUsageError{err}
 	}
-	result, err := localapp.Check(ctx, options, input, plugins.Paths)
+	result, err := localapp.CheckSources(ctx, options, input, plugins)
 	if err != nil {
 		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok {
 			return 0, commandUsageError{err}
@@ -138,7 +143,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
-		result, err = localapp.Check(ctx, options, input, plugins.Paths)
+		result, err = localapp.CheckSources(ctx, options, input, plugins)
 		if err != nil {
 			return 0, err
 		}

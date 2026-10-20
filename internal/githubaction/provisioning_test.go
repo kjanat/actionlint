@@ -1,13 +1,17 @@
 package githubaction
 
 import (
-	"encoding/json"
+	"context"
 	"maps"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/localapp"
+	"actionlint.kjanat.dev/internal/tools/adapters"
 )
 
-func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
+func TestActionNativeBackendRequirements(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		files      map[string]string
@@ -56,32 +60,27 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 			maps.Copy(files, tc.files)
 			env := map[string]string{"GITHUB_WORKSPACE": workspaceWith(t, files)}
 			maps.Copy(env, tc.inputs)
-			var stdout, stderr strings.Builder
-			if code := ToolPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 0 {
-				t.Fatalf("preflight failed with %d: %s", code, &stderr)
-			}
-			var got struct {
-				SchemaVersion int   `json:"schema_version"`
-				Shellcheck    bool  `json:"shellcheck"`
-				Pyflakes      *bool `json:"pyflakes"`
-			}
-			if err := json.Unmarshal([]byte(stdout.String()), &got); err != nil {
+			req, err := provisioningRequest(func(key string) string { return env[key] })
+			if err != nil {
 				t.Fatal(err)
 			}
-			if got.SchemaVersion != 1 || got.Shellcheck != tc.shellcheck {
-				t.Fatalf("got %+v; want shellcheck=%v", got, tc.shellcheck)
+			ctx := context.Background()
+			selected, err := req.pluginSelection().Resolve(ctx, req.workingDir, req.pluginInput())
+			if err != nil {
+				t.Fatal(err)
 			}
-			if got.Pyflakes == nil || *got.Pyflakes {
-				t.Fatalf("v1 tool plan must retain pyflakes:false: %s", &stdout)
-			}
-			if stderr.Len() != 0 {
-				t.Fatalf("unexpected stderr: %s", &stderr)
+			needed, err := localapp.RequiredToolsSources(ctx, application.Options{
+				WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
+				IgnorePatterns: req.ignore, Tools: adapters.Options{ShellCheck: req.shellcheck, Ruff: req.ruff}.Registrations(),
+			}, req.files, selected)
+			if err != nil || needed["shellcheck"] != tc.shellcheck {
+				t.Fatalf("requirements=%v error=%v; want shellcheck=%v", needed, err, tc.shellcheck)
 			}
 		})
 	}
 }
 
-func TestToolPlanRejectsInvalidConfiguration(t *testing.T) {
+func TestPluginPlanRejectsInvalidConfiguration(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		config string
@@ -99,7 +98,7 @@ func TestToolPlanRejectsInvalidConfiguration(t *testing.T) {
 			})}
 			maps.Copy(env, tc.inputs)
 			var stdout, stderr strings.Builder
-			if code := ToolPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != tc.code {
+			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != tc.code {
 				t.Fatalf("got status %d; want %d: %s", code, tc.code, &stderr)
 			}
 			if stdout.Len() != 0 || stderr.Len() == 0 {

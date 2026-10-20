@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -13,6 +14,9 @@ type LintConfig struct {
 	Enabled *bool `yaml:"enabled,omitempty" jsonschema:"nullable,default=true"`
 	// Rules selects diagnostic groups, individual levels and options.
 	Rules LintRulesConfig `yaml:"rules" jsonschema:"nullable"`
+	// MessageIgnores maps repository-relative globs to diagnostic message regular
+	// expressions. All matching paths apply; arrays replace inherited patterns.
+	MessageIgnores map[string]IgnorePatterns `yaml:"message-ignores,omitempty" jsonschema:"nullable"`
 }
 
 // LintRulesConfig groups checks independently of their recommended defaults.
@@ -41,6 +45,11 @@ func (c *LintConfig) UnmarshalYAML(n *yaml.Node) error {
 	var next plain
 	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
+	}
+	for pattern := range next.MessageIgnores {
+		if !doublestar.ValidatePattern(pattern) {
+			return fmt.Errorf("invalid glob pattern %q in lint.message-ignores", pattern)
+		}
 	}
 	*c = LintConfig(next)
 	c.source = n

@@ -9,25 +9,36 @@ settings.
 
 ```yaml
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
-self-hosted-runner:
-  labels: [linux.2xlarge, windows-latest-xl]
-config-variables: [DEFAULT_RUNNER, ENVIRONMENT_STAGE]
-config-secrets: [DEPLOY_TOKEN]
-assume-default-permissions: restricted
-paths:
-  .github/workflows/**/*.{yml,yaml}:
-    ignore:
+lint:
+  rules:
+    correctness:
+      runner-label:
+        level: default
+        options: { labels: [linux.2xlarge, windows-latest-xl] }
+      expression-reference:
+        level: default
+        options:
+          variables: [DEFAULT_RUNNER, ENVIRONMENT_STAGE]
+          secrets: [DEPLOY_TOKEN]
+      workflow-call:
+        level: default
+        options: { default-permissions: restricted }
+  message-ignores:
+    ".github/workflows/**/*.{yml,yaml}":
       - "shellcheck reported issue in this script: SC2086:.+"
 ```
 
-| Key                          | Purpose                                                                                                                                                         |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins`                    | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
-| `self-hosted-runner.labels`  | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                                |
-| `config-variables`           | Allowed `vars` names. Omitted or `null` disables the check; `[]` allows none.                                                                                   |
-| `config-secrets`             | Allowed secret names, case-insensitive. Omitted or `null` disables the check; `[]` allows only built-in and declared `workflow_call` secrets.                   |
-| `assume-default-permissions` | Assumed repository token default for reusable calls without explicit permissions: `restricted` (default) or `permissive`. Neither implicitly grants `id-token`. |
-| `paths`                      | Repository-relative [glob patterns][doublestar], using `/`. Each `ignore` list contains regular expressions matched against diagnostic messages.                |
+| Key                                                                | Purpose                                                                                                                                                        |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins`                                                          | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
+| `lint.rules.correctness.runner-label.options.labels`               | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                               |
+| `lint.rules.correctness.expression-reference.options.variables`    | Allowed `vars` names. Omitted or `null` disables checking; `[]` allows none.                                                                                   |
+| `lint.rules.correctness.expression-reference.options.secrets`      | Allowed secret names, case-insensitive. Omitted or `null` disables checking; `[]` allows only built-in and declared `workflow_call` secrets.                   |
+| `lint.rules.correctness.workflow-call.options.default-permissions` | Assumed repository token default: `restricted` (default) or `permissive`. Neither implicitly grants `id-token`.                                                |
+| `lint.message-ignores`                                             | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                              |
+
+Older root settings are converted at the parsing boundary. Use
+[`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
 
 ### JSON and TOML
 
@@ -37,14 +48,21 @@ file may carry a top-level `$schema` key. TOML editors take the schema from a `#
 ```toml
 #:schema ../node_modules/@kjanat/actionlint/actionlint.schema.json
 
-config-variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
-config-secrets   = ["DEPLOY_TOKEN"]
+[lint.rules.correctness.runner-label]
+level = "default"
 
-[self-hosted-runner]
+[lint.rules.correctness.runner-label.options]
 labels = ["linux.2xlarge", "windows-latest-xl"]
 
-[paths.".github/workflows/**/*.{yml,yaml}"]
-ignore = ["shellcheck reported issue in this script: SC2086:.+"]
+[lint.rules.correctness.expression-reference]
+level = "default"
+
+[lint.rules.correctness.expression-reference.options]
+variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
+secrets   = ["DEPLOY_TOKEN"]
+
+[lint.message-ignores]
+".github/workflows/**/*.{yml,yaml}" = ["shellcheck reported issue in this script: SC2086:.+"]
 ```
 
 Errors and warnings name the line and column in the file as written.
@@ -58,8 +76,8 @@ Use a source-commit schema when trying unreleased settings; `HEAD` changes with 
 The full editor experience works in a real config file. YAML inside the Action
 `config` string is validated at runtime; editors generally see only a string.
 The schema rejects unknown keys. Runtime parsing warns about ignored keys at the
-top level, in `self-hosted-runner`, and in `paths` entries, with their locations
-and accepted alternatives. New inline overlays reject unknown keys. Regex and glob
+top level and in legacy sections, with their locations and accepted alternatives.
+Rule options and inline overlays reject unknown keys. Regex and glob
 validity is checked when actionlint loads the file.
 
 ## Extending configuration
@@ -164,14 +182,14 @@ by `all` or their group level, but not by `recommended`. Nursery rules need
 an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false`
 suppresses all lint diagnostics. Configuration, I/O and other operational errors remain fatal.
 
-Resolution order is: existing defaults/legacy policy settings, global preset,
+Resolution order is: rule defaults, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
 lists. File overrides are merged before that resolution. `--experimental=false`
 is an explicit exclusion of nursery rules only. `--strict` selects all stable
-rules but respects group and individual exceptions. Existing top-level `policy`
-settings remain supported; `lint.rules` settings take precedence. The cache safety
-checks are classified under security (and cache-operation under correctness);
-their legacy configuration paths remain compatible.
+rules but respects group and individual exceptions. Legacy `policy` settings
+are migrated to explicit levels, so explicit disables now survive presets and
+`--strict`. Conflicting old and current values in one document are errors.
+Cache safety checks belong to security, with cache-operation under correctness.
 
 Severity is carried through JSON, SARIF and GitHub annotations. As before, the CLI
 exits nonzero for any reported finding, including warnings and informational
@@ -446,10 +464,8 @@ happens once. In workflow inputs, GitHub evaluates expressions first; pass a lit
 with `${{ '${{ configdir }}/.shellcheckrc' }}` when needed.
 
 The Action's `config` input overlays these settings: lists replace, boolean shorthand
-changes only `enabled`, and `null` restores defaults. `shellcheck-args` uses native
-ShellCheck precedence. The separate `shellcheck-rc` input accepts `true`, `false`
-or an absolute/Action-working-directory-relative rc path, without interpolation. It overrides rc
-selection; `false` leaves inline settings active.
+changes only `enabled`, and `null` restores defaults. Configure ShellCheck through
+`tools.shellcheck.config`; the Action forwards those options to the configured plugin.
 
 Inline settings use a separate [ShellCheck 0.11.0 schema][shellcheck-schema].
 That schema version does not pin the installed executable; optional checks depend
@@ -511,9 +527,10 @@ defaults. Relative composite working directories start at the workspace root;
 
 ## Policy checks
 
-The three cache policies below default to enabled. Other policies are opt-in.
-Omitted or `null` values keep defaults; `false` disables a boolean policy and `[]`
-disables `required-actions`. `policy: {}` does not disable cache checks.
+The three cache checks below default to enabled. Cache safety checks belong to
+`lint.rules.security`; `cache-operation` belongs to `lint.rules.correctness`.
+Other policies are opt-in under `lint.rules.policy`. Omitted rules and `level: default`
+keep defaults; `level: off` explicitly disables a rule, including under `--strict`.
 Policy names also identify their diagnostics.
 
 ### cache-call-unrestricted
@@ -522,7 +539,8 @@ Requires an explicit cache ceiling at reusable calls on low-trust triggers, set 
 the job or inherited from the workflow. Use `cache-mode: read` or `none` to cap
 the callee. A write-capable declaration satisfies this check but may trigger
 `cache-write-untrusted`. Applies to local and remote calls without downloading
-remote workflow bodies. Disable with `policy: {cache-call-unrestricted: false}`.
+remote workflow bodies. Disable with
+`lint: {rules: {security: {cache-call-unrestricted: off}}}`.
 
 ### cache-operation
 
@@ -537,7 +555,7 @@ Reports official cache actions disabled by the effective explicit cache mode:
 Follows inherited ceilings through local reusable workflows. Inherited violations
 are reported at the caller's `uses`; explicit callee modes are checked in the
 callee. Omitted modes, custom wrappers and remote bodies are not guessed.
-Disable with `policy: {cache-operation: false}`.
+Disable with `lint: {rules: {correctness: {cache-operation: off}}}`.
 
 ### cache-write-untrusted
 
@@ -552,7 +570,7 @@ Checked triggers: `branch_protection_rule`, `check_run`, `check_suite`, `deploym
 `image_version`, `issue_comment`, `issues`, `label`, `milestone`, `public`,
 `pull_request_target`, `status`, `watch` and `workflow_run`.
 See [cache checks](checks.md#cache-safety-policies) for diagnostic examples.
-Disable with `policy: {cache-write-untrusted: false}`.
+Disable with `lint: {rules: {security: {cache-write-untrusted: off}}}`.
 
 ### Local action source mappings
 
@@ -640,14 +658,18 @@ I/O and tool-launch failures remain operational errors and cannot be suppressed.
 
 ### disallow-suppressions
 
-`policy: {disallow-suppressions: true}` prohibits inline and configured exceptions.
+`lint.rules.policy.disallow-suppressions: on` prohibits inline and configured exceptions.
 To select rules and output:
 
 ```yaml
-policy:
-  disallow-suppressions:
-    rules: [cache-call-unrestricted, cache-write-untrusted]
-    report: all
+lint:
+  rules:
+    policy:
+      disallow-suppressions:
+        level: on
+        options:
+          rules: [cache-call-unrestricted, cache-write-untrusted]
+          report: all
 ```
 
 | `report`        | Prohibited directive | Original finding |
@@ -656,35 +678,39 @@ policy:
 | `suppression`   | Reported             | Suppressed       |
 | `violation`     | Not reported         | Retained         |
 
-`true` or `{}` selects all supported diagnostic rules; explicit `rules` must be nonempty.
-Omission, `null` or `false` permits exceptions. The policy cannot exempt itself,
+`on` without options selects all supported diagnostic rules; explicit `options.rules` must be nonempty.
+Omission or `off` permits exceptions. The policy cannot exempt itself,
 enable a disabled rule or override CLI/path ignores. `all` and `suppression` report
 prohibited inline directives even when no underlying finding exists. Configured
 exceptions are reported when they match a finding.
 
 ### require-commit-hash
 
-`policy: {require-commit-hash: true}` requires 40- or 64-digit hexadecimal refs for
+`lint.rules.policy.require-commit-hash: on` requires 40- or 64-digit hexadecimal refs for
 actions/reusable workflows and digests for `docker://` images. Local `./` and `$/`
 references and unresolved expressions are skipped.
 
 ### require-job-timeout
 
-`policy: {require-job-timeout: true}` requires `timeout-minutes` on jobs running
+`lint.rules.policy.require-job-timeout: on` requires `timeout-minutes` on jobs running
 steps. Reusable-call jobs are excluded. Optional inclusive bounds:
 
 ```yaml
-policy:
-  require-job-timeout: { min-minutes: 5, max-minutes: 60 }
+lint:
+  rules:
+    policy:
+      require-job-timeout:
+        level: on
+        options: { min-minutes: 5, max-minutes: 60 }
 ```
 
 Either bound may be omitted; both must be finite and positive, with minimum no
-greater than maximum. `{}` requires the key only. Expression values are not compared.
+greater than maximum. Omitted options require the key only. Expression values are not compared.
 
 ### require-permissions
 
-`policy: {require-permissions: true}` requires workflow-level `permissions`, as do
-`{}` and `{scope: workflow}`. Use `{scope: job}` to require it on every job,
+`lint.rules.policy.require-permissions: on` requires workflow-level `permissions`.
+Use `{level: on, options: {scope: job}}` to require it on every job,
 including reusable calls. Empty mappings, named scopes, `read-all` and `write-all`
 all satisfy the check. This policy only requires a declaration; it does not assess
 least privilege.
@@ -692,8 +718,12 @@ least privilege.
 ### required-actions
 
 ```yaml
-policy:
-  required-actions: [actions/checkout, my-org/security-scan@v2*]
+lint:
+  rules:
+    policy:
+      required-actions:
+        level: on
+        options: { actions: [actions/checkout, "my-org/security-scan@v2*"] }
 ```
 
 Patterns match action names case-insensitively and refs case-sensitively; `*` does

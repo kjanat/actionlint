@@ -55,7 +55,12 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]Origin, in
 		if _, ok := origins[pointer]; !ok {
 			continue
 		}
-		origins[pointer] = configNodeOrigin(value, inputs)
+		// Migration scaffolding has no spelling in the source. Its children
+		// retain their own locations, but the scaffold must not claim an input
+		// or file origin for an otherwise implicit default.
+		if value.Line != 0 || value.Column != 0 {
+			origins[pointer] = configNodeOrigin(value, inputs)
+		}
 		if err := configOrigins(value, pointer, origins, inputs); err != nil {
 			return err
 		}
@@ -101,29 +106,9 @@ func EffectiveValues(cfg *Config) (map[string]any, error) {
 	if resolved.Tools.Shellcheck.Enabled == nil {
 		resolved.Tools.Shellcheck.Enabled = new(true)
 	}
-	resolved.Policy.CacheCallUnrestricted = new(cfg.CachePolicyEnabled("cache-call-unrestricted"))
-	resolved.Policy.CacheOperation = new(cfg.CachePolicyEnabled("cache-operation"))
-	resolved.Policy.CacheWriteUntrusted = new(cfg.CachePolicyEnabled("cache-write-untrusted"))
-	resolved.Policy.RequireCommitHash = new(cfg.RequiresCommitHash())
-	if resolved.Policy.RequireJobTimeout == nil {
-		resolved.Policy.RequireJobTimeout = &JobTimeoutPolicy{}
-	}
-	if resolved.Policy.RequirePermissions == nil {
-		resolved.Policy.RequirePermissions = &PermissionsPolicy{}
-	}
-	if resolved.Policy.DisallowSuppressions == nil {
-		resolved.Policy.DisallowSuppressions = &SuppressionsPolicy{}
-	}
 	var document yaml.Node
-	if err := document.Encode(resolved); err != nil {
+	if err := document.Encode(&resolved); err != nil {
 		return nil, err
-	}
-	// Unlike other lists, nil variables/secrets disables checking; [] permits none.
-	for i := 0; i+1 < len(document.Content); i += 2 {
-		key := document.Content[i].Value
-		if (key == "config-variables" && cfg.ConfigVariables == nil) || (key == "config-secrets" && cfg.ConfigSecrets == nil) {
-			document.Content[i+1] = &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}
-		}
 	}
 	var values map[string]any
 	if err := document.Decode(&values); err != nil {

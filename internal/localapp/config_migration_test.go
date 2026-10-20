@@ -1,0 +1,191 @@
+package localapp
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/pluginregistry"
+	"actionlint.kjanat.dev/internal/testutil"
+)
+
+func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
+	registry := testutil.NewDefaultPluginRegistry(t)
+	root := pluginRepository(t)
+	path := filepath.Join(root, ".github", "actionlint.yaml")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	original := []byte("# retained comment\nconfig-variables: []\n")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.Changed || !bytes.Contains(plan.Content, []byte("shellcheck")) || !bytes.Contains(plan.Content, []byte("ruff")) {
+		t.Fatalf("missing defaults: %s", plan.Content)
+	}
+	registry.Offline = true
+	if err := plan.Apply(t.Context()); err == nil {
+		t.Fatal("offline default resolution succeeded")
+	}
+	if actual, err := os.ReadFile(path); err != nil || !bytes.Equal(actual, original) {
+		t.Fatalf("failed migration changed config: %s %v", actual, err)
+	}
+	lockPath := filepath.Join(filepath.Dir(path), pluginregistry.LockName)
+	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+		t.Fatalf("failed migration wrote lock: %v", err)
+	}
+	registry.Offline = false
+	if err := plan.Apply(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(path)
+	if err != nil || len(cfg.Plugins) != 2 || cfg.ConfigVariables == nil {
+		t.Fatalf("migrated config: %+v %v", cfg, err)
+	}
+	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
+	if err != nil || len(lock.Lock.Plugins) != 2 {
+		t.Fatalf("default pins: %+v %v", lock, err)
+	}
+	registry.Offline = true
+	before := len(registry.Requests)
+	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+		t.Fatal(err)
+	}
+	if len(registry.Requests) != before {
+		t.Fatal("already migrated config contacted registry")
+	}
+}
+
+func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
+	for _, tc := range []struct{ config, want string }{
+		{"{}", "shellcheck,ruff"},
+		{"plugins: []", ""},
+		{"plugins: null", ""},
+		{"plugins: [owner/custom]", "github.com/owner/custom"},
+		{"tools: {ruff: false}", "shellcheck"},
+		{"lint: {rules: {external: {shellcheck: off}}}", "ruff"},
+		{"tools: {ruff: {backend: {process: {executable: custom-ruff}}}}", "shellcheck"},
+		{"tools: {shellcheck: {config: .shellcheckrc}}", "ruff"},
+		{"tools: {shellcheck: {config: {external-sources: true}}}", "ruff"},
+		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "ruff"},
+	} {
+		t.Run(tc.config, func(t *testing.T) {
+			cfg, err := config.Parse([]byte(tc.config))
+			if err != nil {
+				t.Fatal(err)
+			}
+			refs, err := DefaultPluginReferences(cfg, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var names []string
+			for _, ref := range refs {
+				names = append(names, ref.String())
+			}
+			if strings.Join(names, ",") != tc.want {
+				t.Fatalf("%v, want %s", names, tc.want)
+			}
+		})
+	}
+}
+
+func TestConfigMigrationRejectsChangedCandidate(t *testing.T) {
+	for _, candidate := range []string{
+		"plugins: []\nlint: {rules: {correctness: {runner-label: {options: {unknown: true}}}}}\n",
+		"plugins: []\nextends: [new-base.yaml]\n",
+	} {
+		t.Run(candidate, func(t *testing.T) {
+			root := pluginRepository(t)
+			path := filepath.Join(root, "actionlint.yaml")
+			original := []byte("plugins: []\nconfig-variables: []\n")
+			if err := os.WriteFile(path, original, 0600); err != nil {
+				t.Fatal(err)
+			}
+			plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan.Content = []byte(candidate)
+			plan.Changed = false // Apply must recompute state from validated bytes.
+			if err := plan.Apply(t.Context()); err == nil {
+				t.Fatal("changed invalid migration candidate accepted")
+			}
+			actual, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(actual, original) {
+				t.Fatalf("invalid candidate changed config: %q, %v", actual, err)
+			}
+			if _, err := os.Stat(plan.project.Lock.Path); !os.IsNotExist(err) {
+				t.Fatalf("invalid candidate wrote lock: %v", err)
+			}
+		})
+	}
+}
+
+func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
+	for _, editBase := range []bool{false, true} {
+		t.Run(map[bool]string{false: "selected", true: "inherited"}[editBase], func(t *testing.T) {
+			root := pluginRepository(t)
+			path := filepath.Join(root, "actionlint.yaml")
+			base := filepath.Join(root, "base.yaml")
+			original := []byte("extends: [base.yaml]\nconfig-variables: []\n")
+			if err := os.WriteFile(base, []byte("plugins: []\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, original, 0600); err != nil {
+				t.Fatal(err)
+			}
+			plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			edited := path
+			if editBase {
+				edited = base
+			}
+			userEdit := []byte("plugins: []\nconfig-variables: [USER_EDIT]\n")
+			if err := os.WriteFile(edited, userEdit, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := plan.Apply(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+				t.Fatalf("concurrent edit accepted: %v", err)
+			}
+			actual, err := os.ReadFile(edited)
+			if err != nil || !bytes.Equal(actual, userEdit) {
+				t.Fatalf("user edit lost: %q, %v", actual, err)
+			}
+			if _, err := os.Stat(plan.project.Lock.Path); !os.IsNotExist(err) {
+				t.Fatalf("stale migration wrote lock: %v", err)
+			}
+			if editBase {
+				actual, err := os.ReadFile(path)
+				if err != nil || !bytes.Equal(actual, original) {
+					t.Fatalf("stale migration changed selected file: %q, %v", actual, err)
+				}
+			}
+		})
+	}
+}
+
+func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
+	registry := testutil.NewDefaultPluginRegistry(t)
+	root := pluginRepository(t)
+	path, err := InitializeConfig(t.Context(), root, "2.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(path)
+	if err != nil || len(cfg.Plugins) != 2 {
+		t.Fatalf("defaults missing: %+v %v", cfg, err)
+	}
+	registry.Offline = true
+	if _, err := InitializeConfig(t.Context(), root, "2.0.0"); err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("existing config not protected: %v", err)
+	}
+}

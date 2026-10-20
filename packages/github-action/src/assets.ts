@@ -1,6 +1,3 @@
-import ruff from '#tools/ruff' with { type: 'json' };
-import shellcheck from '#tools/shellcheck' with { type: 'json' };
-
 export type RunnerPlatform = {
 	os: 'linux' | 'darwin' | 'windows';
 	arch: 'amd64' | 'arm64';
@@ -37,41 +34,4 @@ export function checksumForAsset(checksums: string, filename: string): string {
 	}
 	if (digest === undefined) throw new Error(`Missing SHA-256 checksum for ${filename}`);
 	return digest;
-}
-
-export const shellcheckVersion = shellcheck.tagName.replace(/^v/, '');
-export const ruffVersion = ruff.tagName;
-
-export function ruffAsset(platform: RunnerPlatform, release: ShellcheckRelease = ruff): ReleaseAsset {
-	const arch = platform.arch === 'amd64' ? 'x86_64' : 'aarch64';
-	const target = { linux: 'unknown-linux-gnu', darwin: 'apple-darwin', windows: 'pc-windows-msvc' }[platform.os];
-	const archive = platform.os === 'windows' ? 'zip' : 'tar.gz';
-	const name = `ruff-${arch}-${target}.${archive}`;
-	const asset = release.assets.find((candidate) => candidate.name === name);
-	if (!asset) throw new Error(`Missing Ruff release asset: ${name}`);
-	const sha256 = /^sha256:([a-fA-F0-9]{64})$/.exec(asset.digest ?? '')?.[1];
-	if (!sha256) throw new Error(`Missing or invalid SHA-256 digest for Ruff asset: ${name}`);
-	return { name, url: asset.url, sha256: sha256.toLowerCase(), archive };
-}
-
-type ShellcheckRelease = {
-	tagName: string;
-	assets: readonly { name: string; url: string; digest: string | null }[];
-};
-
-export function shellcheckAsset(platform: RunnerPlatform, release: ShellcheckRelease = shellcheck): ReleaseAsset {
-	const arch = platform.arch === 'amd64' ? 'x86_64' : 'aarch64';
-	// ShellCheck's Windows binary also runs under x64 emulation on ARM64.
-	const target = platform.os === 'windows' ? 'zip' : `${platform.os}.${arch}.tar.gz`;
-	const name = `shellcheck-${release.tagName}.${target}`;
-	const asset = release.assets.find((candidate) => candidate.name === name);
-	if (!asset) throw new Error(`Missing ShellCheck release asset: ${name}`);
-	const sha256 = /^sha256:([a-fA-F0-9]{64})$/.exec(asset.digest ?? '')?.[1];
-	if (!sha256) throw new Error(`Missing or invalid SHA-256 digest for ShellCheck asset: ${name}`);
-	return {
-		name: asset.name,
-		url: asset.url,
-		sha256: sha256.toLowerCase(),
-		archive: platform.os === 'windows' ? 'zip' : 'tar.gz',
-	};
 }

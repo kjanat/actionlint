@@ -69,12 +69,12 @@ jobs:
             ],
             "action": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", "tools/release/*.mjs", ".pre-commit-hooks.yaml",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs", ".pre-commit-hooks.yaml",
               ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
             ],
             "action-tests": [
-              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
               ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
             ],
             "precommit": [
@@ -366,8 +366,7 @@ jobs:
           - *GoGomod
           - *Runner
           - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools }
-          - name: Install ShellCheck
-            if: runner.os == 'Linux'
+          - name: Install native ShellCheck for explicit backend tests
             uses: $/.github/actions/setup-shellcheck
       - name: Test the JavaScript runtime and release packaging
         if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
@@ -466,7 +465,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p .github
-          printf 'config-variables: []\n' > .github/actionlint.yaml
+          printf 'plugins: []\nconfig-variables: []\n' > .github/actionlint.yaml
       - name: Lint with shared configuration
         uses: ./.actionlint-action-test
         with:
@@ -507,15 +506,16 @@ jobs:
           actionlint_path="$(command -v actionlint)"
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
-          shellcheck --version
-          node tools/action/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
-      - name: Check exported tools from PowerShell
+      - name: Verify bundled plugins and real cache restoration
+        uses: ./.github/actions/test-action
+        with:
+          action-directory: ${{ runner.temp }}/actionlint-action/action
+          binary: ${{ env.ACTIONLINT_ACTION_BINARY }}
+      - name: Check exported actionlint from PowerShell
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           actionlint -version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          shellcheck --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           exit $LASTEXITCODE
   action-slim:

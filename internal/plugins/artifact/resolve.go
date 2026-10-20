@@ -30,6 +30,19 @@ type Options struct {
 	MaxBytes int64
 }
 
+// RequireRemotePin checks execution inputs without fetching their bytes.
+// Inspection may acquire unpinned URLs to discover their digest; execution may not.
+func RequireRemotePin(source string) error {
+	u, local, pin, err := parseSource(source)
+	if err != nil {
+		return err
+	}
+	if u != nil && local == "" && pin == "" {
+		return errors.New("remote plugin execution requires #sha256=<64 hex digits>")
+	}
+	return nil
+}
+
 // Resolve accepts paths, absolute file URIs and HTTP(S) URLs. A URI fragment of
 // #sha256=<hex> pins the distributed bytes. Unpinned URLs are always fetched.
 func Resolve(ctx context.Context, source string, options Options) (*Artifact, error) {

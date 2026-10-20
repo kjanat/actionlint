@@ -12,7 +12,13 @@ import (
 
 // Rules discovers selected providers without analyzing a document.
 func Rules(ctx context.Context, paths []string) (result []rule.Descriptor, err error) {
-	plugins, err := loadPlugins(ctx, paths, io.Discard, false)
+	return RulesSources(ctx, PluginSources{Paths: paths})
+}
+
+// RulesSources lists managed document replacements under their existing tool
+// rule. Explicit standalone components keep their independently declared rule.
+func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Descriptor, err error) {
+	plugins, err := loadPlugins(ctx, sources.Paths, io.Discard, false)
 	if err != nil {
 		return nil, err
 	}
@@ -20,6 +26,13 @@ func Rules(ctx context.Context, paths []string) (result []rule.Descriptor, err e
 	var extensions []rule.Descriptor
 	for _, plugin := range plugins.plugins {
 		if !plugin.HasAnalyzer() {
+			continue
+		}
+		managed := false
+		for path := range sources.managed {
+			managed = managed || plugins.analyzerSources[path] == plugin
+		}
+		if managed {
 			continue
 		}
 		extensions = append(extensions, plugin.Descriptor().Descriptor)

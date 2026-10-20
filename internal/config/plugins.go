@@ -28,10 +28,14 @@ func (p *PluginDeclarations) UnmarshalYAML(node *yaml.Node) error {
 		if err != nil {
 			return fmt.Errorf("plugins entry at line:%d,col:%d: %w", entry.Line, entry.Column, err)
 		}
-		if seen[ref.Name] {
-			return fmt.Errorf("duplicate plugin repository %q at line:%d,col:%d", ref.Name, entry.Line, entry.Column)
+		key := ref.Name
+		if ref.IsAlias() {
+			key = ref.Registry + "\n" + ref.Name
 		}
-		seen[ref.Name] = true
+		if seen[key] {
+			return fmt.Errorf("duplicate plugin declaration %q at line:%d,col:%d", ref.Name, entry.Line, entry.Column)
+		}
+		seen[key] = true
 		next = append(next, ref)
 	}
 	*p = next
@@ -66,7 +70,7 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 func (p PluginDeclarations) MarshalYAML() (any, error) {
 	entries := make([]any, 0, len(p))
 	for _, ref := range p {
-		if ref.Registry == pluginref.DefaultRegistry {
+		if ref.DirectSource() != "" || ref.Registry == pluginref.DefaultRegistry {
 			entries = append(entries, ref.String())
 			continue
 		}

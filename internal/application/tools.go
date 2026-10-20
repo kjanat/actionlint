@@ -14,7 +14,16 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	if _, err := repoconfig.CompileIgnorePatterns(options.IgnorePatterns); err != nil {
 		return ToolRequirements{}, err
 	}
-	session, err := workspace.New(workspace.Options{Context: ctx, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, ReadFile: options.ReadFile})
+	var names []string
+	for _, registration := range options.Analyzers {
+		if registration.Analyzer != nil {
+			names = append(names, registration.Analyzer.Descriptor().Name)
+		}
+	}
+	for _, registration := range options.Tools {
+		names = append(names, registration.Descriptor.Name)
+	}
+	session, err := workspace.New(workspace.Options{Context: ctx, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, ReadFile: options.ReadFile, RuleNames: names})
 	if err != nil {
 		return ToolRequirements{}, err
 	}

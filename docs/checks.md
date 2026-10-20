@@ -3018,7 +3018,7 @@ A reusable workflow can only use the permissions its caller passes on. GitHub re
 when a job of the called workflow asks for more, so actionlint compares each job of the called workflow against what the
 calling job grants. The grant is the calling job's `permissions:`, or the caller workflow's `permissions:` when the job has
 none. When neither exists the grant depends on the repository's "Workflow permissions" setting, which actionlint cannot
-read from a workflow file; the [`assume-default-permissions`](config.md#configuration-file) configuration selects which
+read from a workflow file; [`lint.rules.correctness.workflow-call.options.default-permissions`](config.md#configuration-file) selects which
 setting to assume.
 
 Note that this check only works with local or self-repository reusable workflows (starting with `./` or `$/`).

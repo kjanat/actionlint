@@ -11,16 +11,18 @@ import (
 
 // invocation holds parser state until it is converted to an operation-specific request.
 type invocation struct {
-	Operation operation
-	Check     checkInvocation
-	Plugin    pluginInvocation
-	Render    renderOptions
-	Yes       bool
-	JSON      bool
-	Legacy    bool
-	Origin    bool
-	Rule      string
-	Shell     string
+	Operation      operation
+	Check          checkInvocation
+	Plugin         pluginInvocation
+	Render         renderOptions
+	Yes            bool
+	JSON           bool
+	Legacy         bool
+	Origin         bool
+	MigrationWrite bool
+	MigrationCheck bool
+	Rule           string
+	Shell          string
 }
 
 // checkInvocation contains analysis inputs. It carries no command-framework state.
@@ -95,6 +97,7 @@ const (
 	operationConfigPath     operation = "config path"
 	operationConfigShow     operation = "config show"
 	operationConfigValidate operation = "config validate"
+	operationConfigMigrate  operation = "config migrate"
 	operationConfigInit     operation = "config init"
 	operationCompletion     operation = "completion"
 )
@@ -191,6 +194,11 @@ func (inv invocation) request() (commandRequest, error) {
 		return configShowRequest{Config: inv.Check.Config, JSON: inv.JSON, Origin: inv.Origin}, nil
 	case operationConfigValidate:
 		return configValidateRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
+	case operationConfigMigrate:
+		if inv.MigrationWrite && inv.MigrationCheck {
+			return nil, commandUsageError{errors.New("config migrate: --write and --check cannot be combined")}
+		}
+		return configMigrateRequest{Config: inv.Check.Config, JSON: inv.JSON, Write: inv.MigrationWrite, Check: inv.MigrationCheck}, nil
 	case operationConfigInit:
 		if inv.Legacy {
 			return legacyConfigInitRequest{ConfigPath: inv.Check.Config.Path, IgnoreRegex: inv.Check.IgnoreRegex,

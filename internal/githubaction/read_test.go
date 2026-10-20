@@ -39,17 +39,8 @@ tools: {shellcheck: false}
 			}
 			getenv := func(name string) string { return env[name] }
 			var plan, errors, output strings.Builder
-			if code := ToolPlan(getenv, &plan, &errors); code != render.ExitSuccessNoProblem {
-				t.Fatalf("tool plan failed: %d %s", code, errors.String())
-			}
-			var tools struct {
-				Shellcheck bool `json:"shellcheck"`
-			}
-			if err := json.Unmarshal([]byte(plan.String()), &tools); err != nil {
-				t.Fatal(err)
-			}
-			if tools.Shellcheck {
-				t.Fatalf("tool plan ignored external config: %s", plan.String())
+			if code := PluginPlan(getenv, &plan, &errors); code != render.ExitSuccessNoProblem {
+				t.Fatalf("plugin plan failed: %d %s", code, errors.String())
 			}
 			if code := Main(getenv, &output); code != render.ExitSuccessNoProblem {
 				t.Fatalf("analysis failed: %d %s", code, output.String())
@@ -195,12 +186,9 @@ tools: {shellcheck: false}
 				}
 				got := runLinter(req)
 				var stdout, stderr strings.Builder
-				code := ToolPlan(func(key string) string { return env[key] }, &stdout, &stderr)
+				code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr)
 				if got.code != render.ExitSuccessNoProblem || code != render.ExitSuccessNoProblem {
 					t.Fatalf("linked config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
-				}
-				if !strings.Contains(stdout.String(), `"shellcheck":false`) {
-					t.Fatalf("preflight ignored linked config: %s", stdout.String())
 				}
 			})
 		}

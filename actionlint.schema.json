@@ -12,56 +12,6 @@
       "markdownDescription": "Schema reference for editors. actionlint ignores it.",
       "type": "string"
     },
-    "assume-default-permissions": {
-      "title": "assume-default-permissions",
-      "description": "Selects the repository's assumed default token permissions when checking reusable workflow calls whose calling job and workflow both omit `permissions:`.\n\n`restricted` (the default) grants read access to `contents` and `packages` only. `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant. Omit this key or use `null` to assume `restricted`.",
-      "markdownDescription": "Selects the repository's assumed default token permissions when checking reusable workflow calls whose calling job and workflow both omit `permissions:`.\n\n`restricted` (the default) grants read access to `contents` and `packages` only. `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant. Omit this key or use `null` to assume `restricted`.",
-      "oneOf": [
-        {
-          "default": "restricted",
-          "type": "string",
-          "enum": [
-            "restricted",
-            "permissive"
-          ]
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "config-secrets": {
-      "title": "config-secrets",
-      "description": "Lists secret names available to the checked workflows through `secrets`.\n\nOmit this key or use `null` to disable secret-name checking. Use `[]` to allow only built-in secrets and secrets declared in `on.workflow_call.secrets`. A list such as `[DEPLOY_TOKEN, API_KEY]` also allows those names; other names are reported as undefined. Matching is case-insensitive.\n\n`GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG` are always allowed. List names only, never secret values.",
-      "markdownDescription": "Lists secret names available to the checked workflows through `secrets`.\n\nOmit this key or use `null` to disable secret-name checking. Use `[]` to allow only built-in secrets and secrets declared in `on.workflow_call.secrets`. A list such as `[DEPLOY_TOKEN, API_KEY]` also allows those names; other names are reported as undefined. Matching is case-insensitive.\n\n`GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG` are always allowed. List names only, never secret values.",
-      "oneOf": [
-        {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "config-variables": {
-      "title": "config-variables",
-      "description": "Lists configuration variable names available to the checked workflows through `vars`.\n\nOmit this key or use `null` to disable variable-name checking. Use `[]` to allow no variables. A list such as `[DEFAULT_RUNNER, ENVIRONMENT_STAGE]` reports names outside that list as undefined.",
-      "markdownDescription": "Lists configuration variable names available to the checked workflows through `vars`.\n\nOmit this key or use `null` to disable variable-name checking. Use `[]` to allow no variables. A list such as `[DEFAULT_RUNNER, ENVIRONMENT_STAGE]` reports names outside that list as undefined.",
-      "oneOf": [
-        {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "extends": {
       "title": "extends",
       "description": "Loads local YAML/JSON files, relative to this config, in order. Later bases override earlier bases; this file wins over all bases. No URLs.",
@@ -283,6 +233,32 @@
                 {
                   "default": true,
                   "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "message-ignores": {
+              "title": "message-ignores",
+              "description": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
+              "markdownDescription": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
                 },
                 {
                   "type": "null"
@@ -1078,9 +1054,60 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Reset rule options to their defaults.",
-                                      "markdownDescription": "Reset rule options to their defaults.",
-                                      "type": "null"
+                                      "description": "Options specific to this rule; null resets to defaults.",
+                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
+                                      "anyOf": [
+                                        {
+                                          "type": "null"
+                                        },
+                                        {
+                                          "allOf": [
+                                            {
+                                              "type": "object"
+                                            },
+                                            {
+                                              "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
+                                              "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
+                                              "type": "object",
+                                              "properties": {
+                                                "secrets": {
+                                                  "title": "secrets",
+                                                  "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                  "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                  "oneOf": [
+                                                    {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                },
+                                                "variables": {
+                                                  "title": "variables",
+                                                  "description": "Lists configured variable names; null disables checking and [] allows none.",
+                                                  "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
+                                                  "oneOf": [
+                                                    {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      ]
                                     }
                                   },
                                   "additionalProperties": false
@@ -1942,9 +1969,44 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Reset rule options to their defaults.",
-                                      "markdownDescription": "Reset rule options to their defaults.",
-                                      "type": "null"
+                                      "description": "Options specific to this rule; null resets to defaults.",
+                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
+                                      "anyOf": [
+                                        {
+                                          "type": "null"
+                                        },
+                                        {
+                                          "allOf": [
+                                            {
+                                              "type": "object"
+                                            },
+                                            {
+                                              "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
+                                              "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
+                                              "type": "object",
+                                              "properties": {
+                                                "labels": {
+                                                  "title": "labels",
+                                                  "description": "Lists additional accepted runner labels or Go path.Match patterns.",
+                                                  "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
+                                                  "oneOf": [
+                                                    {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      ]
                                     }
                                   },
                                   "additionalProperties": false
@@ -2287,9 +2349,46 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Reset rule options to their defaults.",
-                                      "markdownDescription": "Reset rule options to their defaults.",
-                                      "type": "null"
+                                      "description": "Options specific to this rule; null resets to defaults.",
+                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
+                                      "anyOf": [
+                                        {
+                                          "type": "null"
+                                        },
+                                        {
+                                          "allOf": [
+                                            {
+                                              "type": "object"
+                                            },
+                                            {
+                                              "description": "Sets repository assumptions for reusable workflow checks.",
+                                              "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
+                                              "type": "object",
+                                              "properties": {
+                                                "default-permissions": {
+                                                  "title": "default-permissions",
+                                                  "description": "Assumes restricted (default) or permissive repository token permissions.",
+                                                  "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
+                                                  "oneOf": [
+                                                    {
+                                                      "default": "restricted",
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "restricted",
+                                                        "permissive"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      ]
                                     }
                                   },
                                   "additionalProperties": false
@@ -4313,6 +4412,32 @@
                           }
                         ]
                       },
+                      "message-ignores": {
+                        "title": "message-ignores",
+                        "description": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
+                        "markdownDescription": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "oneOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
                       "rules": {
                         "title": "rules",
                         "description": "Selects diagnostic groups, individual levels and options.",
@@ -5102,9 +5227,60 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Reset rule options to their defaults.",
-                                                "markdownDescription": "Reset rule options to their defaults.",
-                                                "type": "null"
+                                                "description": "Options specific to this rule; null resets to defaults.",
+                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "null"
+                                                  },
+                                                  {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "object"
+                                                      },
+                                                      {
+                                                        "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
+                                                        "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "secrets": {
+                                                            "title": "secrets",
+                                                            "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                            "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                            "oneOf": [
+                                                              {
+                                                                "type": "array",
+                                                                "items": {
+                                                                  "type": "string"
+                                                                }
+                                                              },
+                                                              {
+                                                                "type": "null"
+                                                              }
+                                                            ]
+                                                          },
+                                                          "variables": {
+                                                            "title": "variables",
+                                                            "description": "Lists configured variable names; null disables checking and [] allows none.",
+                                                            "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
+                                                            "oneOf": [
+                                                              {
+                                                                "type": "array",
+                                                                "items": {
+                                                                  "type": "string"
+                                                                }
+                                                              },
+                                                              {
+                                                                "type": "null"
+                                                              }
+                                                            ]
+                                                          }
+                                                        },
+                                                        "additionalProperties": false
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
                                               }
                                             },
                                             "additionalProperties": false
@@ -5966,9 +6142,44 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Reset rule options to their defaults.",
-                                                "markdownDescription": "Reset rule options to their defaults.",
-                                                "type": "null"
+                                                "description": "Options specific to this rule; null resets to defaults.",
+                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "null"
+                                                  },
+                                                  {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "object"
+                                                      },
+                                                      {
+                                                        "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
+                                                        "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "labels": {
+                                                            "title": "labels",
+                                                            "description": "Lists additional accepted runner labels or Go path.Match patterns.",
+                                                            "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
+                                                            "oneOf": [
+                                                              {
+                                                                "type": "array",
+                                                                "items": {
+                                                                  "type": "string"
+                                                                }
+                                                              },
+                                                              {
+                                                                "type": "null"
+                                                              }
+                                                            ]
+                                                          }
+                                                        },
+                                                        "additionalProperties": false
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
                                               }
                                             },
                                             "additionalProperties": false
@@ -6311,9 +6522,46 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Reset rule options to their defaults.",
-                                                "markdownDescription": "Reset rule options to their defaults.",
-                                                "type": "null"
+                                                "description": "Options specific to this rule; null resets to defaults.",
+                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "null"
+                                                  },
+                                                  {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "object"
+                                                      },
+                                                      {
+                                                        "description": "Sets repository assumptions for reusable workflow checks.",
+                                                        "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "default-permissions": {
+                                                            "title": "default-permissions",
+                                                            "description": "Assumes restricted (default) or permissive repository token permissions.",
+                                                            "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
+                                                            "oneOf": [
+                                                              {
+                                                                "default": "restricted",
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "restricted",
+                                                                  "permissive"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "type": "null"
+                                                              }
+                                                            ]
+                                                          }
+                                                        },
+                                                        "additionalProperties": false
+                                                      }
+                                                    ]
+                                                  }
+                                                ]
                                               }
                                             },
                                             "additionalProperties": false
@@ -8664,43 +8912,6 @@
         }
       ]
     },
-    "paths": {
-      "title": "paths",
-      "description": "Applies configuration to workflow files matching a glob pattern.\n\nKeys are paths relative to the repository root, using `/` separators and doublestar glob syntax, for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.",
-      "markdownDescription": "Applies configuration to workflow files matching a glob pattern.\n\nKeys are paths relative to the repository root, using `/` separators and doublestar glob syntax, for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": {
-            "description": "Is a configuration for specific file path pattern. This is for values of the \"paths\" mapping in the configuration file.",
-            "markdownDescription": "Is a configuration for specific file path pattern. This is for values of the \"paths\" mapping in the configuration file.",
-            "type": "object",
-            "properties": {
-              "ignore": {
-                "title": "ignore",
-                "description": "Suppresses diagnostics whose message matches any of these Go regular expressions.\n\nApplies only to workflow files matching the parent path glob. For example, `[\"shellcheck reported issue in this script: SC2086\"]` ignores that ShellCheck diagnostic. Omit this key, use `null`, or use `[]` to suppress nothing. Like the `-ignore` CLI option.",
-                "markdownDescription": "Suppresses diagnostics whose message matches any of these Go regular expressions.\n\nApplies only to workflow files matching the parent path glob. For example, `[\"shellcheck reported issue in this script: SC2086\"]` ignores that ShellCheck diagnostic. Omit this key, use `null`, or use `[]` to suppress nothing. Like the `-ignore` CLI option.",
-                "oneOf": [
-                  {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "plugins": {
       "title": "plugins",
       "description": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
@@ -8711,9 +8922,13 @@
           "items": {
             "oneOf": [
               {
+                "description": "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.",
+                "markdownDescription": "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.",
                 "examples": [
+                  "shellcheck",
                   "kjanat/actionlint-plugin-shellcheck@v0.1.1",
-                  "gitlab.com/group/plugin"
+                  "gitlab.com/group/plugin",
+                  "https://example.com/plugin.wasm#sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 ],
                 "type": "string",
                 "minLength": 1
@@ -8726,8 +8941,8 @@
                 "properties": {
                   "name": {
                     "title": "name",
-                    "description": "Plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo.",
-                    "markdownDescription": "Plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo.",
+                    "description": "Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo.",
+                    "markdownDescription": "Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo.",
                     "type": "string",
                     "minLength": 1
                   },
@@ -8750,291 +8965,6 @@
               }
             ]
           }
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "policy": {
-      "title": "policy",
-      "description": "Configures cache safety checks and repository conventions, such as pinned actions and job timeouts.\n\nCache policies default to true; other policies are opt-in. Set individual keys to override their defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.",
-      "markdownDescription": "Configures cache safety checks and repository conventions, such as pinned actions and job timeouts.\n\nCache policies default to true; other policies are opt-in. Set individual keys to override their defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.",
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "cache-call-unrestricted": {
-              "title": "cache-call-unrestricted",
-              "description": "Requires explicit cache ceilings on low-trust reusable calls. Enabled by default. Set false to disable it; null or omission keeps the default.",
-              "markdownDescription": "Requires explicit cache ceilings on low-trust reusable calls. Enabled by default. Set false to disable it; null or omission keeps the default.",
-              "oneOf": [
-                {
-                  "default": true,
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "cache-operation": {
-              "title": "cache-operation",
-              "description": "Reports official cache action steps disabled by an explicit cache mode. Enabled by default. Set false to disable it; null or omission keeps the default.",
-              "markdownDescription": "Reports official cache action steps disabled by an explicit cache mode. Enabled by default. Set false to disable it; null or omission keeps the default.",
-              "oneOf": [
-                {
-                  "default": true,
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "cache-write-untrusted": {
-              "title": "cache-write-untrusted",
-              "description": "Reports write-capable cache modes on low-trust triggers. Enabled by default. Set false to disable it; null or omission keeps the default.",
-              "markdownDescription": "Reports write-capable cache modes on low-trust triggers. Enabled by default. Set false to disable it; null or omission keeps the default.",
-              "oneOf": [
-                {
-                  "default": true,
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "disallow-suppressions": {
-              "title": "disallow-suppressions",
-              "description": "Restricts inline and configured diagnostic exceptions. `true` or `{}` reports each prohibited directive or matching config exception and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (exception only), violation (original findings only), or all (both kinds of diagnostic).",
-              "markdownDescription": "Restricts inline and configured diagnostic exceptions. `true` or `{}` reports each prohibited directive or matching config exception and retains its original violations. Omission, null, or false permits exceptions. Both ignore and ignore-next-line are covered equally.\n\nUse `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs. Omitted rules selects all suppressible rules; an explicit list must be nonempty. Report accepts suppression (exception only), violation (original findings only), or all (both kinds of diagnostic).",
-              "oneOf": [
-                {
-                  "oneOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "report": {
-                          "title": "report",
-                          "description": "Report the prohibited directive or retain original violations or both.",
-                          "markdownDescription": "Report the prohibited directive or retain original violations or both.",
-                          "default": "all",
-                          "type": "string",
-                          "enum": [
-                            "suppression",
-                            "violation",
-                            "all"
-                          ]
-                        },
-                        "rules": {
-                          "title": "rules",
-                          "description": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
-                          "markdownDescription": "Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules.",
-                          "type": "array",
-                          "minItems": 1,
-                          "items": {
-                            "description": "Built-in rule ID or registered analyzer name.",
-                            "markdownDescription": "Built-in rule ID or registered analyzer name.",
-                            "examples": [
-                              "action",
-                              "cache-call-unrestricted",
-                              "cache-operation",
-                              "cache-write-untrusted",
-                              "case-insensitive-conditions",
-                              "context-availability",
-                              "credentials",
-                              "deprecated-commands",
-                              "disallow-suppressions",
-                              "env-var",
-                              "event-payload",
-                              "events",
-                              "executable-bit",
-                              "expression",
-                              "expression-call",
-                              "expression-reference",
-                              "expression-syntax",
-                              "expression-type",
-                              "glob",
-                              "id",
-                              "if-cond",
-                              "inline-suppression",
-                              "job-needs",
-                              "matrix",
-                              "missing-local-action",
-                              "mixed-type-comparisons",
-                              "mixed-type-matrix-filters",
-                              "parallel-steps",
-                              "permissions",
-                              "require-commit-hash",
-                              "require-job-timeout",
-                              "require-permissions",
-                              "required-actions",
-                              "ruff",
-                              "runner-label",
-                              "script-injection",
-                              "script-interpolation",
-                              "shell-name",
-                              "shellcheck",
-                              "string-conditions",
-                              "syntax-check",
-                              "unsound-ternary",
-                              "workflow-call",
-                              "workflow-run-names"
-                            ],
-                            "type": "string",
-                            "minLength": 1
-                          }
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  ]
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "require-commit-hash": {
-              "title": "require-commit-hash",
-              "description": "Requires `uses:` references to be pinned to a full commit SHA, or an image digest for Docker images, when set to `true`.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default. Local references and references built with expressions are skipped.",
-              "markdownDescription": "Requires `uses:` references to be pinned to a full commit SHA, or an image digest for Docker images, when set to `true`.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default. Local references and references built with expressions are skipped.",
-              "oneOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "require-job-timeout": {
-              "title": "require-job-timeout",
-              "description": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{min-minutes: 5, max-minutes: 60}` to require a timeout between 5 and 60 minutes. Either bound may be omitted. Bounds must be finite and greater than zero, and the minimum must not exceed the maximum. `{}` requires the key without bounds. Reusable workflow calls are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
-              "markdownDescription": "Requires jobs to declare `timeout-minutes` when set to `true`.\n\nUse `{min-minutes: 5, max-minutes: 60}` to require a timeout between 5 and 60 minutes. Either bound may be omitted. Bounds must be finite and greater than zero, and the minimum must not exceed the maximum. `{}` requires the key without bounds. Reusable workflow calls are skipped.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; the check is disabled by default.",
-              "oneOf": [
-                {
-                  "oneOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "max-minutes": {
-                          "title": "max-minutes",
-                          "description": "Largest allowed job timeout in minutes.",
-                          "markdownDescription": "Largest allowed job timeout in minutes.",
-                          "type": "number",
-                          "exclusiveMinimum": 0
-                        },
-                        "min-minutes": {
-                          "title": "min-minutes",
-                          "description": "Smallest allowed job timeout in minutes. Must not exceed max-minutes.",
-                          "markdownDescription": "Smallest allowed job timeout in minutes. Must not exceed max-minutes.",
-                          "type": "number",
-                          "exclusiveMinimum": 0
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  ]
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "require-permissions": {
-              "title": "require-permissions",
-              "description": "Requires an explicit `permissions:` declaration.\n\n`true` or `{scope: workflow}` requires a workflow-level declaration, including `permissions: {}`. `{scope: job}` requires a declaration on every job, including reusable workflow calls. `{}` enables workflow scope. This checks presence only; it does not infer the scopes a job needs.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.",
-              "markdownDescription": "Requires an explicit `permissions:` declaration.\n\n`true` or `{scope: workflow}` requires a workflow-level declaration, including `permissions: {}`. `{scope: job}` requires a declaration on every job, including reusable workflow calls. `{}` enables workflow scope. This checks presence only; it does not infer the scopes a job needs.\n\nSet `false` to disable the check. Omit this key or use `null` to leave it unset; it is disabled by default.",
-              "oneOf": [
-                {
-                  "oneOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "scope": {
-                          "title": "scope",
-                          "description": "Require a workflow-level declaration or a declaration on every job.",
-                          "markdownDescription": "Require a workflow-level declaration or a declaration on every job.",
-                          "default": "workflow",
-                          "type": "string",
-                          "enum": [
-                            "workflow",
-                            "job"
-                          ]
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  ]
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "required-actions": {
-              "title": "required-actions",
-              "description": "Lists actions that every workflow must use in its steps.\n\nWrite entries like `uses:` values: `actions/checkout` accepts any ref, while `actions/checkout@v4*` also matches the ref. Both halves support glob patterns; `*` does not match `/`. Names are matched case-insensitively and refs case-sensitively.\n\nUse `[]` to disable the check. Omit this key or use `null` to leave it unset; no actions are required by default. Actions inside composite actions or called workflows are not counted.",
-              "markdownDescription": "Lists actions that every workflow must use in its steps.\n\nWrite entries like `uses:` values: `actions/checkout` accepts any ref, while `actions/checkout@v4*` also matches the ref. Both halves support glob patterns; `*` does not match `/`. Names are matched case-insensitively and refs case-sensitively.\n\nUse `[]` to disable the check. Omit this key or use `null` to leave it unset; no actions are required by default. Actions inside composite actions or called workflows are not counted.",
-              "oneOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "self-hosted-runner": {
-      "title": "self-hosted-runner",
-      "description": "Configures extra labels accepted for self-hosted runners.\n\nAdd your labels under `labels`, for example `{labels: [linux.2xlarge]}`.",
-      "markdownDescription": "Configures extra labels accepted for self-hosted runners.\n\nAdd your labels under `labels`, for example `{labels: [linux.2xlarge]}`.",
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "labels": {
-              "title": "labels",
-              "description": "Lists additional self-hosted runner labels accepted in `runs-on`.\n\nFor example, `[linux.2xlarge, custom-*]` accepts that label and matching custom labels. Patterns use Go `path.Match` syntax. Omit this key, use `null`, or use `[]` to add no labels.",
-              "markdownDescription": "Lists additional self-hosted runner labels accepted in `runs-on`.\n\nFor example, `[linux.2xlarge, custom-*]` accepts that label and matching custom labels. Patterns use Go `path.Match` syntax. Omit this key, use `null`, or use `[]` to add no labels.",
-              "oneOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false
         },
         {
           "type": "null"
