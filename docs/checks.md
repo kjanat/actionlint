@@ -3159,7 +3159,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:22: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
+test.yaml:8:22: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> "${GITHUB_OUTPUT}"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
   |
 8 |       - run: echo '::set-output name=foo::bar'
   |                      ^~~~~~~~~~
