@@ -55,8 +55,15 @@ runCommand "actionlint-nix-integration"
     mkdir -p project/.github/workflows
     cp ${./integration.yml} project/.github/workflows/check.yml
     cd project
-    ${actionlint}/bin/actionlint -init-config
-    grep -F 'yaml-language-server: $schema=' .github/actionlint.yaml
+    cat > .github/actionlint.yaml <<'YAML'
+    plugins: []
+    tools:
+      shellcheck:
+        backend: {process: {executable: shellcheck}}
+      ruff:
+        backend: {process: {executable: ruff}}
+    YAML
+    ${actionlint}/bin/actionlint config validate
 
     set +e
     PATH= ${actionlint}/bin/actionlint -no-color -oneline > diagnostics.txt 2>&1

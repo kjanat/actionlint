@@ -301,7 +301,9 @@ try {
 			lint: { rules: { plugins: { 'shellcheck-rs': 'error' } } },
 		});
 	const cold = await run({ ...pluginInputs, config: pluginConfig(pluginURL) }, 1, pluginEnvironment);
-	assert.ok(cold.analysis.diagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), cold.log);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const coldDiagnostics = cold.analysis.diagnostics;
+	assert.ok(coldDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), cold.log);
 	if (realCache) {
 		// Remove only this test's verified artifact. The next process must restore
 		// it from GitHub cache; a warning/miss cannot masquerade as coverage.
@@ -328,12 +330,16 @@ try {
 		0,
 		pluginEnvironment,
 	);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const managedDiagnostics = managed.analysis.diagnostics;
 	assert.ok(
-		managed.analysis.diagnostics.some((diagnostic) => diagnostic.code === 'SC2086' && diagnostic.rule === 'shellcheck'),
+		managedDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086' && diagnostic.rule === 'shellcheck'),
 		managed.log,
 	);
 	const disabled = await run(pluginInputs, 0, pluginEnvironment);
-	assert.equal(disabled.analysis.diagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), false, disabled.log);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const disabledDiagnostics = disabled.analysis.diagnostics;
+	assert.equal(disabledDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), false, disabled.log);
 	console.log('GitHub Action entrypoint and published-plugin cache tests passed');
 } finally {
 	if (dirname(workspace) === tempRoot) {

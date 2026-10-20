@@ -30,10 +30,11 @@ test "${status}" -eq 1
 jq -e '.schema_version == 1 and (.diagnostics | length > 0)' broken.json
 
 cat >.github/actionlint.yaml <<'YAML'
+plugins: []
 config-variables: [PACKAGE_SMOKE]
 YAML
 "$@" config show --origin --json >config.json
-jq -e '.config["config-variables"] == ["PACKAGE_SMOKE"] and .origins["/config-variables"].source == "config"' config.json
+jq -e '.config.lint.rules.correctness["expression-reference"].options.variables == ["PACKAGE_SMOKE"] and .origins["/lint/rules/correctness/expression-reference/options/variables"].source == "config"' config.json
 
 "$@" rules --json >rules.json
 jq -e 'type == "array" and any(.[]; .name == "syntax-check")' rules.json
