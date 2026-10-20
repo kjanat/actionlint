@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +16,8 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental"
 )
 
 func enginePath(name string) string {
@@ -112,14 +115,13 @@ func TestFailedResponsePreservesDiagnostics(t *testing.T) {
 }
 
 func TestFailuresDiscardTheInstance(t *testing.T) {
-	engine := loadEngine(t, enginePath("echo"), corewasm.Options{Timeout: 300 * time.Millisecond, MemoryPages: 64})
-	if engine.Limits().String() != "memory 4 MiB, time 300ms" {
+	engine := loadEngine(t, enginePath("echo"), corewasm.Options{MemoryPages: 64})
+	if engine.Limits().String() != "memory 4 MiB, time 10s" {
 		t.Fatalf("limits=%s", engine.Limits())
 	}
 	for source, want := range map[string]string{
-		"trap":  "engine actionlint-engine-echo failed (memory 4 MiB, time 300ms)",
-		"grow":  "engine actionlint-engine-echo failed (memory 4 MiB, time 300ms)",
-		"hang":  "engine actionlint-engine-echo exceeded its time limit (memory 4 MiB, time 300ms)",
+		"trap":  "engine actionlint-engine-echo failed (memory 4 MiB, time 10s)",
+		"grow":  "engine actionlint-engine-echo failed (memory 4 MiB, time 10s)",
 		"error": "",
 	} {
 		_, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: source, Filename: "step.py"})
@@ -141,6 +143,45 @@ func TestFailuresDiscardTheInstance(t *testing.T) {
 	cancel()
 	if _, err := engine.Check(ctx, analyzer.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled: err=%v", err)
+	}
+}
+
+func TestCancelledCallDiscardsTheInstance(t *testing.T) {
+	callCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var instances []api.Module
+	listener := experimental.FunctionListenerFunc(func(_ context.Context, instance api.Module, _ api.FunctionDefinition, _ []uint64, _ experimental.StackIterator) {
+		instances = append(instances, instance)
+		if len(instances) == 1 {
+			// Cancel only after acquiring an instance and entering guest code.
+			// Compilation and scheduling speed cannot decide this test's outcome.
+			cancel()
+		}
+	})
+	loadCtx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(definition api.FunctionDefinition) experimental.FunctionListener {
+		if slices.Contains(definition.ExportNames(), "check") {
+			return listener
+		}
+		return nil
+	}))
+	engine, err := corewasm.Load(loadCtx, enginePath("echo"), corewasm.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := engine.Close(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := engine.Check(callCtx, analyzer.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled guest: %v", err)
+	}
+	recovered, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	if err != nil || len(recovered) != 1 {
+		t.Fatalf("after cancellation: diagnostics=%+v err=%v", recovered, err)
+	}
+	if len(instances) != 2 || instances[0] == instances[1] || !instances[0].IsClosed() {
+		t.Fatalf("cancelled instance was not closed and replaced: %v", instances)
 	}
 }
 
@@ -215,6 +256,66 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 			}
 			if err == nil || ctx.Err() != nil || time.Since(start) > 2*time.Second {
 				t.Fatalf("engine timeout was not enforced: elapsed=%s err=%v caller=%v", time.Since(start), err, ctx.Err())
+			}
+		})
+	}
+}
+
+func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
+	const timeout = 100 * time.Millisecond
+	var delay sync.Once
+	// Listener construction is part of compilation, before guest execution.
+	// Make a cold compilation outlast the call budget without a large fixture
+	// or dependence on the compiler's speed.
+	ctx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
+		delay.Do(func() { time.Sleep(2 * timeout) })
+		return nil
+	}))
+	engine, err := corewasm.Load(ctx, enginePath("echo"), corewasm.Options{Timeout: timeout})
+	if err != nil {
+		t.Fatalf("compilation consumed guest initialization budget: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := engine.Close(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	findings, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	if err != nil || len(findings) != 1 || findings[0].Code != "F821" {
+		t.Fatalf("compiled engine failed: findings=%+v err=%v", findings, err)
+	}
+}
+
+func TestCompilationHonorsCallerCancellation(t *testing.T) {
+	for _, name := range []string{"cancel", "deadline"} {
+		t.Run(name, func(t *testing.T) {
+			deadline := name == "deadline"
+			ctx, cancel := context.WithCancel(t.Context())
+			want := context.Canceled
+			if deadline {
+				cancel()
+				ctx, cancel = context.WithTimeout(t.Context(), 20*time.Millisecond)
+				want = context.DeadlineExceeded
+			}
+			defer cancel()
+			called := false
+			listener := experimental.FunctionListenerFunc(func(context.Context, api.Module, api.FunctionDefinition, []uint64, experimental.StackIterator) {
+				called = true
+			})
+			loadCtx := experimental.WithFunctionListenerFactory(ctx, experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
+				if deadline {
+					<-ctx.Done()
+				} else {
+					cancel()
+				}
+				return listener
+			}))
+			engine, err := corewasm.Load(loadCtx, enginePath("echo"), corewasm.Options{})
+			if engine != nil {
+				_ = engine.Close(context.Background())
+			}
+			if !errors.Is(err, want) || called {
+				t.Fatalf("cancelled compilation entered guest code: err=%v guestCalled=%v", err, called)
 			}
 		})
 	}
