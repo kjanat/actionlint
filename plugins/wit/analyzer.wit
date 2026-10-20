@@ -1,26 +1,38 @@
 package kjanat:actionlint@0.1.0;
 
-/// A plugin analyzes one document at a time. The host hands over the document and
-/// the facts the plugin declared in its descriptor, and takes back diagnostics.
+/// A plugin analyzes one document at a time.
+///
+/// The host hands over the document and the facts the plugin declared in its
+/// descriptor, and takes back diagnostics.
 interface analyzer {
-    /// One-based Unicode character position in a document. Range ends are
-    /// exclusive and may lie on a later line.
+    record source-reference {
+        document: string,
+        revision: string,
+        node: string,
+        address: string,
+    }
+
+    record revision {
+        path: string,
+        digest: string,
+    }
+
+    /// One-based Unicode character position in a document.
+    ///
+    /// Range ends are exclusive and may lie on a later line.
     record position {
         line: u32,
         column: u32,
     }
 
-    /// Maps the text columns [start, end) of one line of script text to the
-    /// declaring document. `document` is the position of the first mapped
-    /// character. `document-end` is set for a decoded escape sequence whose source
-    /// width differs from its text width.
+    /// Maps the text columns [start, end) of one line of script text to the declaring document.
+    /// `document` is the position of the first mapped character.
+    /// `document-end` is set for a decoded escape sequence whose source width differs from its text width.
     ///
-    /// To place a finding at text (line, column): find the span with that line
-    /// where `start <= column < end`; the document position is
-    /// `document.column + column - start` on `document.line`. For an exclusive end
-    /// column use `start < column <= end` and take `document-end` when it is set
-    /// and `column == end`. A zero-width span (`start == end`) matches an
-    /// exclusive column equal to `start`.
+    /// To place a finding at text (line, column): find the span with that line where `start <= column < end`;
+    /// the document position is `document.column + column - start` on `document.line`.
+    /// For an exclusive end column use `start < column <= end` and take `document-end` when it is set
+    /// and `column == end`. A zero-width span (`start == end`) matches an exclusive column equal to `start`.
     record span {
         line: u32,
         start: u32,
@@ -30,18 +42,21 @@ interface analyzer {
     }
 
     /// The step whose `uses:` reference reached a composite action's script.
-    /// An empty `caller` means the analyzed document. `depth` counts composite
-    /// calls from the analyzed document.
+    ///
+    /// An empty `caller` means the analyzed document.
+    /// `depth` counts composite calls from the analyzed document.
     record invocation {
+        reference: source-reference,
         caller: string,
         step: position,
         uses: string,
         depth: u32,
     }
 
-    /// Shell and working directory the runner would use. The `known` flags report
-    /// whether static analysis determined the value. `shell-implicit` marks a
-    /// shell supplied by the runner or platform rather than by a declaration.
+    /// Shell and working directory the runner would use.
+    ///
+    /// The `known` flags report whether static analysis determined the value.
+    /// `shell-implicit` marks a shell supplied by the runner or platform rather than by declaration.
     record runtime {
         shell: string,
         shell-known: bool,
@@ -50,12 +65,15 @@ interface analyzer {
         directory-known: bool,
     }
 
-    /// A declared run script. `shell` is the declared shell without runner
-    /// defaults. `start` points to the run value in the document at `path`; an
-    /// empty `path` means the analyzed document. `invocation` is set for scripts
-    /// reached through a composite action call. `runtime` is set when the
-    /// `execution` fact was requested.
+    /// A declared run script.
+    ///
+    /// `shell` is the declared shell without runner defaults.
+    /// `start` points to the run value in the document at `path`;
+    /// an empty `path` means the analyzed document.
+    /// `invocation` is set for scripts reached through a composite action call.
+    /// `runtime` is set when the `execution` fact was requested.
     record script {
+        reference: source-reference,
         job-id: string,
         step-id: string,
         text: string,
@@ -74,8 +92,9 @@ interface analyzer {
         invalid,
     }
 
-    /// One normalized mapping key. `evaluated` entries came from object
-    /// expressions and must not be interpreted again.
+    /// One normalized mapping key.
+    ///
+    /// `evaluated` entries came from object expressions and must not be interpreted again.
     record entry {
         name: string,
         state: key-state,
@@ -84,9 +103,11 @@ interface analyzer {
         start: position,
     }
 
-    /// Normalized names and source provenance for a declaration. `complete` is
-    /// false when an insertion or key depends on runtime values.
+    /// Normalized names and source provenance for a declaration.
+    ///
+    /// `complete` is false when an insertion or key depends on runtime values.
     record mapping {
+        reference: source-reference,
         scope: string,
         complete: bool,
         entries: list<entry>,
@@ -99,13 +120,24 @@ interface analyzer {
         mappings,
         invocations,
         execution,
+        dependencies,
     }
 
-    /// One document and its facts. `options` holds the JSON the host registered
-    /// for this plugin, or an empty string. `scripts` are declared by the document
-    /// itself. `invoked` scripts belong to composite actions the document calls and
-    /// name their own `path`.
+    /// One document and its facts. `options` holds the JSON the host registered for this plugin,
+    /// or an empty string.
+    ///
+    /// `scripts` are declared by the document itself.
+    /// `invoked` scripts belong to composite actions the document calls and name their own `path`.
+    record dependency {
+        reference: source-reference,
+        uses: string,
+        kind: string,
+        start: position,
+        end: position,
+    }
+
     record input {
+        reference: source-reference,
         path: string,
         content: string,
         kind: string,
@@ -115,6 +147,7 @@ interface analyzer {
         scripts: list<script>,
         invoked: list<script>,
         mappings: list<mapping>,
+        dependencies: list<dependency>,
     }
 
     /// Replaces a half-open Unicode range in the original source file.
@@ -127,14 +160,28 @@ interface analyzer {
 
     /// One complete suggested change. All edits apply together.
     record fix {
+        applicability: string,
+        revisions: list<revision>,
         description: string,
         edits: list<edit>,
+    }
+
+    record related {
+        message: string,
+        path: string,
+        start: position,
+        end: position,
     }
 
     /// A finding. `rule` must be empty or equal the descriptor name; `code`
     /// carries a plugin-specific check identifier. An empty `rule` or `path`
     /// takes the plugin name or analyzed document. `severity` carries its level.
     record diagnostic {
+        reference: option<source-reference>,
+        explanation: string,
+        help: string,
+        documentation-url: string,
+        related: list<related>,
         rule: string,
         code: string,
         severity: string,
@@ -145,20 +192,45 @@ interface analyzer {
         fixes: list<fix>,
     }
 
+    record example {
+        description: string,
+        before: string,
+        after: string,
+    }
+
     /// Plugin identity and the facts it needs before any document is analyzed.
     record descriptor {
+        description: string,
+        category: string,
+        subcategory: string,
+        maturity: string,
+        provider: string,
+        recommended: bool,
+        explanation: string,
+        help: string,
+        documentation-url: string,
+        fix-availability: string,
+        options-schema: string,
+        examples: list<example>,
         name: string,
         requires: list<fact>,
     }
 
     describe: func() -> descriptor;
 
-    /// Returns findings, or a message when analysis could not complete. A trap,
-    /// an exit or an exceeded limit is reported by the host as a failed analysis.
-    analyze: func(input: input) -> result<list<diagnostic>, string>;
+    /// Findings remain valid even when analysis could not complete.
+    record outcome {
+        diagnostics: list<diagnostic>,
+        error: option<string>,
+    }
+
+    /// Returns findings and an optional explanation of incomplete analysis.
+    ///
+    /// A trap, an exit or an exceeded limit is reported by the host as a failed analysis.
+    analyze: func(input: input) -> outcome;
 }
 
-/// Capabilities the host grants to every plugin.
+/// Capabilities granted to every plugin.
 interface host {
     /// Writes one diagnostic line to the host's log.
     log: func(message: string);

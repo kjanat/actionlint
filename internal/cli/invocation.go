@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.
@@ -22,23 +24,28 @@ type invocation struct {
 
 // checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
-	AllowConfigProcesses bool
-	Paths                []string
-	Config               actionlint.ConfigSelection
-	StdinFilename        string
-	IgnoreRegex          []string
-	ShellCheck           string
-	Ruff                 string
-	RuffOptions          *actionlint.ExternalCommandOptions
-	Pyflakes             string
-	ShellcheckOptions    *actionlint.ExternalCommandOptions
-	Verbose              bool
-	Debug                bool
-	Strict               bool
-	Experimental         bool
-	ExperimentalSet      bool
-	PreCommit            bool
-	Plugins              []string
+	ResolverCommand       string
+	ResolverArguments     []string
+	Fix                   bool
+	ApplyFixes            bool
+	IncludeSuggestedFixes bool
+	Paths                 []string
+	Config                repoconfig.Selection
+	StdinFilename         string
+	IgnoreRegex           []string
+	ShellCheck            string
+	Ruff                  string
+	RuffOptions           *processconfig.Options
+	Pyflakes              string
+	Plugins               []string
+	ShellcheckOptions     *processconfig.Options
+	Verbose               bool
+	Debug                 bool
+	Strict                bool
+	Experimental          bool
+	ExperimentalSet       bool
+	PreCommit             bool
+	AllowConfigProcesses  bool
 }
 
 // renderOptions controls result presentation without changing analysis.
@@ -46,11 +53,11 @@ type renderOptions struct {
 	PrettyJSON         bool
 	PrettyJSONExplicit bool
 	Hyperlinks         hyperlinkMode
-	Format             actionlint.OutputFormat
+	Format             render.Format
 	Template           string
 	TemplateFile       string
 	OutputFile         string
-	Color              actionlint.ColorOptionKind
+	Color              render.Color
 	Oneline            bool
 	Quiet              bool
 	Summary            bool
@@ -71,6 +78,7 @@ const (
 	operationCheck          operation = "check"
 	operationVersion        operation = "version"
 	operationRules          operation = "rules"
+	operationPluginInspect  operation = "plugin inspect"
 	operationDoctor         operation = "doctor"
 	operationConfigPath     operation = "config path"
 	operationConfigShow     operation = "config show"
@@ -128,7 +136,7 @@ func (a *commandApp) prepareInvocation() error {
 	case "text", "oneline", "json", "jsonl", "sarif", "github":
 		if explicitOutput || i.JSON {
 			i.Render.Oneline = false
-			i.Render.Format = actionlint.OutputFormat(o.output)
+			i.Render.Format = render.Format(o.output)
 		}
 	default:
 		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, oneline, json, jsonl, sarif or github", o.output)}
@@ -150,15 +158,20 @@ func (a *commandApp) prepareInvocation() error {
 
 func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
+	case operationPluginInspect:
+		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON}, nil
+	case "lsp":
+		return lspRequest{inv.Check}, nil
 	case operationVersion:
 		return versionRequest{JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	case operationRules:
-		return rulesRequest{Name: inv.Rule, JSON: inv.JSON}, nil
+		return rulesRequest{Name: inv.Rule, JSON: inv.JSON, Plugins: inv.Check.Plugins}, nil
 	case operationDoctor:
 		return doctorRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, ShellCheck: inv.Check.ShellCheck,
 			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,
 			ShellcheckOptions: inv.Check.ShellcheckOptions,
-			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
+			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
+		}, nil
 	case operationConfigPath:
 		return configPathRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case operationConfigShow:
@@ -167,9 +180,11 @@ func (inv invocation) request() (commandRequest, error) {
 		return configValidateRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, JSON: inv.JSON}, nil
 	case operationConfigInit:
 		if inv.Legacy {
-			return legacyConfigInitRequest{ConfigPath: inv.Check.Config.Path, IgnoreRegex: inv.Check.IgnoreRegex,
+			return legacyConfigInitRequest{
+				ConfigPath: inv.Check.Config.Path, IgnoreRegex: inv.Check.IgnoreRegex,
 				Template: inv.Render.Template, TemplateFile: inv.Render.TemplateFile,
-				Log: (inv.Check.Verbose || inv.Check.Debug) && !inv.Render.Quiet, JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
+				Log: (inv.Check.Verbose || inv.Check.Debug) && !inv.Render.Quiet, JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
+			}, nil
 		}
 		if inv.Check.Config.Path != "" || inv.Check.Config.Disabled {
 			return nil, commandUsageError{errors.New("config init always creates the repository config; omit --config and --no-config")}

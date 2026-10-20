@@ -33,7 +33,7 @@ jobs:
           fi
           args=(run --repo "${GITHUB_REPOSITORY}" --output ".cache/expression-probe/${GITHUB_RUN_ID}")
           if [[ "${PROBE_GROUP}" != all ]]; then args+=(--group "${PROBE_GROUP}"); fi
-          node scripts/expression-probe/probe.ts "${args[@]}"
+          node internal/expression/probe/probe.ts "${args[@]}"
       - name: Finish cleanup after interruption
         if: ${{ always() }}
         env:
@@ -42,7 +42,7 @@ jobs:
         run: |
           output=".cache/expression-probe/${GITHUB_RUN_ID}"
           if [[ -f "${output}/refs.json" ]]; then
-            node scripts/expression-probe/probe.ts cleanup --output "${output}"
+            node internal/expression/probe/probe.ts cleanup --output "${output}"
           fi
       - name: Publish measurement summary
         if: ${{ always() }}

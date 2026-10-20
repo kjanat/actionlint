@@ -2,40 +2,36 @@
 
 # Unreleased
 
+- Load WASM plugins and script engines from file URIs and HTTP(S) URLs, with optional SHA-256 pins and verified download caching. Read the `actionlint.plugin` custom section with `actionlint plugin inspect` or Go's `plugin.Inspect` without executing the artifact; core engine loading checks that static and runtime metadata agree. Bound downloads and decompression independently of execution limits.
+
+- Separate repository and configuration preparation from analysis execution. Keep analyzer scheduling and backend ownership independent of traversal, and apply diagnostic policy after analyzer completion. Preserve per-batch input provenance and cleanup on early failures.
+- Separate CLI presentation from application execution. CLI and Go file-analysis entry points share runtime cleanup and partial-result handling; terminal rendering and atomic report publication stay in the CLI. Move native command options, configuration creation, rule metadata and release identity to their owning packages. Build recipes now stamp `internal/buildinfo.ReleaseVersion` and `internal/buildinfo.InstallOrigin`.
+- Require Go 1.27 or later for source builds and library consumers. Decode core WebAssembly engine metadata and responses with `encoding/json/v2`, rejecting duplicate object keys and invalid UTF-8 and matching protocol fields case-sensitively. Keep unknown fields extensible and preserve existing JSON output formats.
 - Break the flat Go library API into `analysis`, `analyzer`, `diagnostic`, `document`, `config` and `syntax` packages. Keep execution, traversal rules and caches internal. Add explicit analyzer facts/results and document-scoped resource completion, including early traversal failures. Run Ruff, ShellCheck and deprecated-command checks from prepared script inputs, with checker-owned completion and isolated per-script results. Keep document codecs, configuration, syntax and rendering independent of the analysis engine. See the [Go API migration](docs/api.md#migration-from-the-flat-api).
-
 - Give Go analyzers invocation context. Scripts reached through composite action calls arrive in `Input.Invoked` with their declaring path, the calling step, the `uses` reference and the nesting depth. `Script.Position` maps script text to document positions, and the `execution` fact adds the effective shell and working directory with explicit known flags. The built-in deprecated-commands check consumes these facts through the public contract.
-
 - Emit SARIF from a typed document.
-
-- Load WebAssembly component plugins with `--plugin`. A plugin implements the `kjanat:actionlint/analyzer@0.1.0` WIT interface, runs in a fresh instance per document with memory and time limits, and reports traps, exits and exceeded limits as analysis failures. Rust, C and TinyGo examples live under `plugins/examples`. See [Plugins](docs/plugins.md).
-
-- Run core WebAssembly script engines in-process. `tools.<name>.backend.wasm.path` selects a raw or gzip-compressed module that follows the actionlint-plugin-ruff JSON ABI, version 1. actionlint checks its exports and metadata, caches the compiled code under the user cache directory, pools instances, and fails a document's analysis on a trap or an exceeded limit. The new `plugin` package loads component analyzers and script engines from Go.
-
+- Load WebAssembly component plugins with `--plugin`. A plugin implements the `kjanat:actionlint/analyzer@0.1.0` WIT interface, runs in a fresh instance per document with memory and time limits, and reports traps, exits and exceeded limits as analysis failures. A plugin describes itself with the shared rule metadata, receives source references on every document, script, invocation and mapping, can request the `dependencies` fact for literal action and reusable-workflow references, and returns structured help, related locations and revision-bound fixes. `actionlint rules --plugin PATH` lists its metadata, and `lint.rules.plugins` configures its level and options, which are validated against the plugin's bundled JSON schema. Rust, C and TinyGo examples live under `examples/plugins`. See [Plugins](docs/plugins.md).
+- Run core WebAssembly script engines in-process. `tools.<name>.backend.wasm.path` selects a raw or gzip-compressed module that follows the actionlint-plugin-ruff JSON ABI, version 1. actionlint checks its exports and metadata, caches the compiled code under the user cache directory, pools instances, and fails a document's analysis on a trap or an exceeded limit. The new `plugin` package loads component analyzers and script engines from Go. `--plugin` also accepts the Ruff core engine and selects the host from the module header; the engine replaces the native Ruff process while keeping the host's expression masking and position mapping.
+- Describe every rule with shared metadata: category, subcategory, maturity, provider, explanation, help, documentation URL and examples, in the new `rule` package. `analysis.Rules` combines built-in and registered descriptors in one namespace and rejects duplicate names. `actionlint rules RULE` prints the explanation, help and configuration path. The catalogue generates [`docs/rules.md`](docs/rules.md).
+- Identify sources and nodes. The new `source` package defines `Reference`: document path, content digest, node identity and structural address. Named jobs and steps keep their identity across edits; anonymous steps are identified by content and occurrence. Facts and diagnostics carry references, and the JSON and SARIF outputs include `reference`, `explanation`, `help`, `documentation_url` and `related`. Fixes declare `applicability` and the `revisions` of the sources they edit.
+- Add `actionlint fix`. It previews the safe edits of a check as JSON; `--include-suggested` adds edits that need review, and `--apply` writes the validated edits atomically per file and checks the files again. Conflicting edits and stale sources abort before any write. See [Editor, fixes and remote resolution](docs/usage.md#editor-fixes-and-remote-resolution).
+- Add `actionlint lsp`, a language server over stdin and stdout with UTF-16 positions, versioned buffers, ranged changes, diagnostics with help and related locations, and versioned quick-fix code actions. Open buffers overlay the files they shadow for dependency reads.
+- Resolve remote action and reusable-workflow references on request. `--resolve-with EXECUTABLE` and repeatable `--resolver-arg VALUE` select a provider that answers one JSON request per reference with an immutable commit or tree, the repository ID and its evidence; the `remote-resolution` rule reports the resolved commit and suggests a reviewable pin. The `resolver` package defines the Go contract. The separate `actionlint-plugin-commitish` project is a provider built on `commitish` and `commitish-github`; it reads a token only through an explicit `--token-env NAME`. Local analysis makes no requests.
+- Move the repository scripts under their owning packages: generators and release, CI, conformance and probe tooling under `internal/`, the install script to `distribution/install/download-actionlint.bash`, and the playground helper under `playground/tooling`. Commit-pinned download URLs keep working.
+- Validate action metadata mappings across `${{ insert }}` boundaries: a key duplicated between a literal entry and an inserted mapping is reported once, and an inserted unknown matrix axis no longer hides the known axes.
+- Read `.github/actionlint.json` and `.github/actionlint.toml` after the YAML names, and accept `--config` files and `extends` entries in any of the three formats. Errors and warnings name the line and column in the file as written. See [JSON and TOML](docs/config.md#json-and-toml).
 - Support `${{ insert }}` in action `with:` mappings and matrix axes, retaining input validation, matrix filtering and runner-label checks. Preserve one-level matrix sequence splicing. Check `case()` predicates as booleans and skip evaluation-dependent diagnostics in branches that cannot execute.
-
 - Recognize `${{ insert }}` in workflow environment mappings. Validate inserted object expressions and literal mappings without treating the directive as a variable, and retain context, value-type, environment-name and invocation-safety checks.
-
 - Accept root CLI flags before or after filenames, matching `check`. Use `--` to treat subsequent arguments as filenames.
-
 - Refresh CLI help with terminal-width wrapping, explicit `[--]` usage and focused completion guidance. Fix command completion in Zsh, accept `completions` and init aliases, and generate a current configuration reference with relative, optionally clickable paths. Ask for confirmation before replacing an existing report, with `-y`/`--yes` to skip the prompt, retaining the previous report when analysis fails.
-
 - Build the `actionlint-kjanat` and `actionlint-kjanat-git` AUR packages without reading the repository's mise configuration, so mise shims on the builder's `PATH` no longer ask to trust it. (kjanat/actionlint#195)
-
 - Store bundled action metadata in a versioned JSON catalogue with shared definitions and a JSON Schema for editor support. Preserve existing action validation and mutable Go API entries.
-
 - Install ShellCheck for the `actionlint-shellcheck` pre-commit hook through `github.com/kjanat/shellcheck-rs/go/cmd/shellcheck`, a Go installer that downloads and runs the native rshellcheck release, in place of go-shellcheck, which compiled a WASM build of ShellCheck in every process actionlint spawned. With `gh` signed in, the installer verifies the release's build provenance before installing. rshellcheck's own diagnostics, such as SC9001 and SC9002, pass through unchanged. (kjanat/actionlint#89)
-
 - Honour `.gitignore`, `.git/info/exclude` and the global Git excludes file when discovering `action.yml` and `action.yaml` manifests inside a repository, including Git worktrees. Discovery asks `git` 2.8 or newer which paths its ignore rules exclude. Tracked manifests inside ignored directories stay discovered. Discovery fails when `git` is missing or warns about an incomplete listing. Discovery walks the directory tree outside a repository. `files.excludes` remains the explicit override. The Docker image now includes `git`. (kjanat/actionlint#274)
-
 - Discover `action.yml` and `action.yaml` manifests alongside workflows by default, including unreferenced actions and action-only repositories. Check action metadata at its declarations and lint composite scripts. Allow workflows and actions in the same invocation and report action document outlines. (kjanat/actionlint#243)
-
 - Expand bundled action metadata by 117 action paths, including Bun, uv, pnpm, mise, Nix, Docker Bake, Gradle, cloud deployment, security scanners and release automation. Validate their declared inputs and outputs and recognize retired runtime versions.
-
 - Respect job event guards in `cache-call-unrestricted` and `cache-write-untrusted`. Keep findings for reachable restricted events, including unguarded jobs inheriting a workflow-level write grant. (kjanat/actionlint#198)
-
 - Accept both Ubuntu 24.04 and 26.04 for `ubuntu-latest` during its migration, while rejecting combinations of x64 and ARM64 Ubuntu labels. Map `macos-latest-xlarge` to macOS 26. Explain the completed GitHub.com Node 24 migration without rejecting `node20` action metadata. (kjanat/actionlint#179; kjanat/actionlint#216; kjanat/actionlint#197)
-
 - Publish `actionlint-kjanat` to PyPI with one wheel per release platform. Each wheel carries the release binary and installs the `actionlint` command without a Go toolchain.
 - Generate the WinGet manifests in `distribution/winget`, validated against the official manifest schemas, with an `InstallationMetadata` entry for `actionlint.exe -version` and documentation links, replacing GoReleaser's winget pipe. Do not treat the CLI's exit code 3 as an installer success code. (kjanat/actionlint#258)
 - Run every pre-commit hook on each commit against all repository workflows, so changing or deleting a local action, reusable workflow, or actionlint configuration rechecks the workflows that use it. The hooks run the new `actionlint pre-commit` command, which passes a repository without workflow files, ignores the arguments Git passes to a hook, and is left out of `--help`. Native Git hooks use the same command. On `master`, the `actionlint-docker` hook runs the `nightly` image; each release tag pins its own image. (kjanat/actionlint#170)
@@ -51,13 +47,10 @@
 - Suggest the missing parentheses when an expression uses a function name, such as `always`, without calling it. (kjanat/actionlint#226)
 - Resume WinGet update PRs for stable releases of `kjanat.actionlint`. (kjanat/actionlint#236)
 - Include typed workflow and action documents in JSON results, with source positions, inputs, outputs, execution variants and structured `uses` references. Preserve partial parses and ship matching schema and npm types. (kjanat/actionlint#189)
-
 - Select an exact Action binary with `version` or `version-file`, including `.tool-versions`; use `install-only` to put it and enabled optional tools on PATH without running analysis. (kjanat/actionlint#185)
-
 - Unify CLI and Action JSON results, including completion status and configuration provenance. Action JSON now wraps findings in `diagnostics`; JSONL uses the same diagnostic fields as the CLI. Ship the versioned schema and TypeScript types in `@kjanat/actionlint`. See the [migration notes](docs/results.md#migration).
 - Replace the Docker-only Action with a Node 24 launcher for the ordinary binary. Keep shipped inputs and output formats; add one inline configuration overlay, compact summaries, optional SARIF and PR reviews, and a versioned `result-file`. Normal release tags contain root `action.mjs`; retain the legacy Docker Action image tags. (kjanat/actionlint#185)
 - Add shared ShellCheck configuration with inline directives, rc selection and source resolution. Preserve inline directives when rc loading is disabled, resolve overlay paths from the analysis directory, and warn about ignored legacy config keys. (kjanat/actionlint#182)
-
 - Accept `uses: $/` and extra-slash variants for repository-root actions, including input and output validation. (kjanat/actionlint#199)
 - Link CLI help to documentation at the release tag or development build's commit, including Go pseudo-versions and Makefile builds.
 - Add documented `ACTIONLINT_*` defaults for configuration selection, output, filters, logging and presentation. Split ShellCheck environment settings into literal `BIN`, argument `FLAGS`, and child `ENV` values. Explicit flags override environment defaults, including empty and false values.
@@ -261,7 +254,7 @@
 ## [v1.11.0](https://github.com/kjanat/actionlint/releases/tag/v1.11.0) - 2026-08-20
 
 - Replace the Python action entrypoint with a Go program that reuses the actionlint package directly, keeping every declared input, output, format, and failure mode, and confining all workspace file access to an `os.Root` handle. (kjanat/actionlint#16)
-- Replace `scripts/bump-version.bash` with a Go tool that declares every version-bearing file and its expected occurrence count, verifies each update, refuses to run on a dirty tree or an existing tag, and pushes only with an explicit flag. (kjanat/actionlint#17)
+- Replace `tools/release/bump-version.bash` with a Go tool that declares every version-bearing file and its expected occurrence count, verifies each update, refuses to run on a dirty tree or an existing tag, and pushes only with an explicit flag. (kjanat/actionlint#17)
 - Raise the minimum Go version to 1.26 with Go 1.27 as the CI default, replace the 6x2 test matrix with seven targeted jobs plus one race and coverage job, cancel superseded pull request runs, and pin every action and Docker base image to a commit SHA. (kjanat/actionlint#14)
 - Consolidate the JavaScript tooling into a single root npm workspace with one lockfile. (kjanat/actionlint#15)
 - Add a first-party Docker action with validated inputs, GitHub annotations, multiple output formats, and structured result outputs, following up on rhysd/actionlint#257 and rhysd/actionlint#479. Release images are published as `action-{version}`, `action-v1`, and `action-latest`, so consumer workflows pull a prebuilt actionlint, ShellCheck, and pyflakes image instead of compiling actionlint. Releases also update the moving `v1` Git tag for `kjanat/actionlint@v1`. (kjanat/actionlint#5, thanks @norwd)
@@ -2837,7 +2830,7 @@ See documentation for more details:
 [`actions/cache/save`]: https://github.com/actions/cache/tree/main/save
 [`artifact-metadata` permission]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#defining-access-for-the-github_token-scopes
 [`case()` function]: https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#case
-[`check-checks` script]: https://github.com/rhysd/actionlint/tree/main/scripts/check-checks
+[`check-checks` script]: https://github.com/rhysd/actionlint/tree/main/internal/rulecatalog/check-docs
 [`deprecationMessage` property]: https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#inputsinput_iddeprecationmessage
 [`deprecationMessage`]: https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#inputsinput_iddeprecationmessage
 [`discussion` and `discussion_comment`]: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#discussion
@@ -2847,11 +2840,11 @@ See documentation for more details:
 [`docs/config.md`]: https://github.com/rhysd/actionlint/tree/main/docs/config.md
 [`docs/install.md`]: https://github.com/rhysd/actionlint/tree/main/docs/install.md
 [`docs/usage.md`]: https://github.com/rhysd/actionlint/tree/main/docs/usage.md
-[`download-actionlint.bash`]: https://github.com/rhysd/actionlint/blob/main/scripts/download-actionlint.bash
-[`download-actionlint.yaml`]: https://github.com/rhysd/actionlint/blob/main/scripts/download-actionlint.bash
+[`download-actionlint.bash`]: https://github.com/rhysd/actionlint/blob/main/distribution/install/download-actionlint.bash
+[`download-actionlint.yaml`]: https://github.com/rhysd/actionlint/blob/main/distribution/install/download-actionlint.bash
 [`exec.LookPath`]: https://pkg.go.dev/os/exec#LookPath
 [`execabs.LookPath`]: https://pkg.go.dev/golang.org/x/sys/execabs#LookPath
-[`generate-availability` script]: https://github.com/rhysd/actionlint/tree/main/scripts/generate-availability
+[`generate-availability` script]: https://github.com/rhysd/actionlint/tree/main/internal/workflow/context/generate
 [`gh` command]: https://cli.github.com/
 [`github` context]: https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
 [`go-yaml/yaml@v3`]: https://github.com/go-yaml/yaml
@@ -2893,7 +2886,7 @@ See documentation for more details:
 [document-2]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#if-cond-constant
 [document-3]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#contexts-and-built-in-functions
 [document-4]: https://github.com/rhysd/actionlint/blob/v1.7.4/docs/config.md
-[document-5]: https://github.com/rhysd/actionlint/blob/main/scripts/check-checks/README.md
+[document-5]: https://github.com/rhysd/actionlint/blob/main/internal/rulecatalog/check-docs/README.md
 [document]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#yaml-anchors
 [documentation-2]: https://github.com/rhysd/actionlint/blob/main/docs/install.md#homebrew
 [documentation-5]: https://github.com/rhysd/actionlint#check-glob-pattern
@@ -2908,7 +2901,7 @@ See documentation for more details:
 [glob pattern syntax]: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
 [go-shellcheck]: https://github.com/wasilibs/go-shellcheck/
 [go-yaml/go]: https://github.com/go-yaml/yaml
-[here-2]: https://github.com/rhysd/actionlint/blob/main/scripts/generate-popular-actions/main.go#L51
+[here-2]: https://github.com/rhysd/actionlint/blob/main/internal/actioncatalog/generate/main.go#L51
 [here]: https://github.com/rhysd/actionlint/releases/download/v1.7.3/actionlint_1.7.3_checksums.txt
 [how to install actionlint with Nix package manager]: https://github.com/rhysd/actionlint/blob/main/docs/install.md#nix
 [how to install actionlint with winget]: https://github.com/rhysd/actionlint/blob/main/docs/install.md#winget
@@ -2948,9 +2941,9 @@ See documentation for more details:
 [rule document]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#if-cond-constant
 [rust-cache]: https://github.com/Swatinem/rust-cache
 [scoop]: https://scoop.sh/
-[script to scrape the table]: https://github.com/rhysd/actionlint/tree/main/scripts/generate-webhook-events
-[script-2]: https://github.com/rhysd/actionlint/tree/main/scripts/generate-webhook-events
-[script]: https://github.com/rhysd/actionlint/tree/main/scripts/generate-actionlint-matcher
+[script to scrape the table]: https://github.com/rhysd/actionlint/tree/main/internal/webhook/generate
+[script-2]: https://github.com/rhysd/actionlint/tree/main/internal/webhook/generate
+[script]: https://github.com/rhysd/actionlint/tree/main/tools/matcher
 [shellcheck rule document]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-shellcheck-integ
 [table of webhook activity types]: https://github.com/rhysd/actionlint/blob/main/all_webhooks.go
 [the CI workflow]: https://github.com/rhysd/actionlint/actions/workflows/generate.yaml
@@ -2989,7 +2982,7 @@ See documentation for more details:
 [the document-8]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-workflow-call-syntax
 [the document-9]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-outputs-of-workflow-call-in-downstream-jobs
 [the document]: https://github.com/rhysd/actionlint/blob/main/docs/checks.md#deprecated-inputs-usage
-[the download script]: https://github.com/rhysd/actionlint/blob/main/scripts/download-actionlint.bash
+[the download script]: https://github.com/rhysd/actionlint/blob/main/distribution/install/download-actionlint.bash
 [the example Go template]: https://github.com/rhysd/actionlint/blob/main/testdata/format/sarif_template.txt
 [the installation document]: https://github.com/rhysd/actionlint/blob/main/docs/install.md
 [the instruction]: https://github.com/rhysd/actionlint#homebrew-on-macos

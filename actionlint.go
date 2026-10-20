@@ -7,8 +7,9 @@
 package actionlint
 
 import (
-	"actionlint.kjanat.dev/analysis"
 	"context"
+
+	"actionlint.kjanat.dev/analysis"
 )
 
 // Analyze checks in-memory workflows and action manifests without rendering output.

@@ -18,12 +18,15 @@
               },
               "properties": {
                 "description": "Validate action references, inputs, outputs, and local metadata",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action"
               },
               "fullDescription": {
-                "text": "Validate action references, inputs, outputs, and local metadata"
+                "text": "Validate action references, inputs, outputs, and local metadata."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action",
+              "help": {
+                "text": "Check the action reference, runtime, declared inputs and action metadata at the indicated source."
+              }
             },
             {
               "id": "cache-call-unrestricted",
@@ -33,12 +36,15 @@
               },
               "properties": {
                 "description": "Report reusable workflow calls without explicit cache limits on low-trust triggers",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-call-unrestricted"
               },
               "fullDescription": {
-                "text": "Report reusable workflow calls without explicit cache limits on low-trust triggers"
+                "text": "Report reusable workflow calls without explicit cache limits on low-trust triggers."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-call-unrestricted",
+              "help": {
+                "text": "Pass explicit cache limits to reusable workflows on low-trust triggers."
+              }
             },
             {
               "id": "cache-operation",
@@ -48,12 +54,15 @@
               },
               "properties": {
                 "description": "Report cache actions blocked by explicit cache access limits",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-operation"
               },
               "fullDescription": {
-                "text": "Report cache actions blocked by explicit cache access limits"
+                "text": "Report cache actions blocked by explicit cache access limits."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-operation",
+              "help": {
+                "text": "Align cache actions with the effective cache access limits."
+              }
             },
             {
               "id": "cache-write-untrusted",
@@ -63,12 +72,15 @@
               },
               "properties": {
                 "description": "Report cache write access granted on low-trust triggers",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-write-untrusted"
               },
               "fullDescription": {
-                "text": "Report cache write access granted on low-trust triggers"
+                "text": "Report cache write access granted on low-trust triggers."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#cache-write-untrusted",
+              "help": {
+                "text": "Restrict cache writes for low-trust triggers using explicit cache permissions or an event guard."
+              }
             },
             {
               "id": "case-insensitive-conditions",
@@ -78,12 +90,33 @@
               },
               "properties": {
                 "description": "Flag case-insensitive identity comparisons",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#case-insensitive-conditions"
               },
               "fullDescription": {
-                "text": "Flag case-insensitive identity comparisons"
+                "text": "Flag case-insensitive identity comparisons."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#case-insensitive-conditions",
+              "help": {
+                "text": "Expression string comparisons ignore case; avoid using them as case-sensitive identity checks."
+              }
+            },
+            {
+              "id": "context-availability",
+              "name": "ContextAvailability",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate contexts and functions available at a workflow field",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#context-availability"
+              },
+              "fullDescription": {
+                "text": "Validate contexts and functions available at a workflow field."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#context-availability",
+              "help": {
+                "text": "Move the expression to a field where its contexts and functions are available, or use an available value."
+              }
             },
             {
               "id": "credentials",
@@ -93,12 +126,15 @@
               },
               "properties": {
                 "description": "Detect hardcoded passwords in job and service containers",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#credentials"
               },
               "fullDescription": {
-                "text": "Detect hardcoded passwords in job and service containers"
+                "text": "Detect hardcoded passwords in job and service containers."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#credentials",
+              "help": {
+                "text": "Store the credential as a secret and reference it through the secrets context."
+              }
             },
             {
               "id": "deprecated-commands",
@@ -108,12 +144,15 @@
               },
               "properties": {
                 "description": "Report deprecated set-output, save-state, set-env, and add-path commands",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#deprecated-commands"
               },
               "fullDescription": {
-                "text": "Report deprecated set-output, save-state, set-env, and add-path commands"
+                "text": "Report deprecated set-output, save-state, set-env, and add-path commands."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#deprecated-commands",
+              "help": {
+                "text": "Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV or GITHUB_PATH file."
+              }
             },
             {
               "id": "disallow-suppressions",
@@ -123,12 +162,15 @@
               },
               "properties": {
                 "description": "Report suppressions forbidden by policy",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#disallow-suppressions"
               },
               "fullDescription": {
-                "text": "Report suppressions forbidden by policy"
+                "text": "Report suppressions forbidden by policy."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#disallow-suppressions",
+              "help": {
+                "text": "Remove the suppression and address its finding, or change the repository suppression policy."
+              }
             },
             {
               "id": "env-var",
@@ -138,12 +180,33 @@
               },
               "properties": {
                 "description": "Validate environment variable declarations",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#env-var"
               },
               "fullDescription": {
-                "text": "Validate environment variable declarations"
+                "text": "Validate environment variable declarations."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#env-var",
+              "help": {
+                "text": "Use valid environment variable names and values in the indicated mapping."
+              }
+            },
+            {
+              "id": "event-payload",
+              "name": "EventPayload",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate properties against the configured event payloads",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#event-payload"
+              },
+              "fullDescription": {
+                "text": "Validate properties against the configured event payloads."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#event-payload",
+              "help": {
+                "text": "Use a property supplied by the declared events and activity types. Unknown events and dynamic payload maps remain open."
+              }
             },
             {
               "id": "events",
@@ -153,12 +216,15 @@
               },
               "properties": {
                 "description": "Validate workflow triggers and their options",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#events"
               },
               "fullDescription": {
-                "text": "Validate workflow triggers and their options"
+                "text": "Validate workflow triggers and their options."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#events",
+              "help": {
+                "text": "Check the trigger name, activity type and filters at the reported location."
+              }
             },
             {
               "id": "executable-bit",
@@ -168,12 +234,15 @@
               },
               "properties": {
                 "description": "Report directly invoked repository scripts not marked executable in Git",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#executable-bit"
               },
               "fullDescription": {
-                "text": "Report directly invoked repository scripts not marked executable in Git"
+                "text": "Report directly invoked repository scripts not marked executable in Git."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#executable-bit",
+              "help": {
+                "text": "Record the executable bit for the referenced script in Git, or invoke it explicitly through its interpreter."
+              }
             },
             {
               "id": "expression",
@@ -182,13 +251,88 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Validate expression syntax, names, types, and context availability",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "description": "Validate expression values assigned to workflow fields",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression"
               },
               "fullDescription": {
-                "text": "Validate expression syntax, names, types, and context availability"
+                "text": "Validate expression values assigned to workflow fields."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression",
+              "help": {
+                "text": "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules."
+              }
+            },
+            {
+              "id": "expression-call",
+              "name": "ExpressionCall",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate function invocation and constant arguments",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-call"
+              },
+              "fullDescription": {
+                "text": "Validate function invocation and constant arguments."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-call",
+              "help": {
+                "text": "Check parentheses, argument count, format placeholders and literal JSON."
+              }
+            },
+            {
+              "id": "expression-reference",
+              "name": "ExpressionReference",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Resolve expression variables, properties and functions",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-reference"
+              },
+              "fullDescription": {
+                "text": "Resolve expression variables, properties and functions."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-reference",
+              "help": {
+                "text": "Use a declared context, property or function; check the suggested spelling and available names."
+              }
+            },
+            {
+              "id": "expression-syntax",
+              "name": "ExpressionSyntax",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Parse expression tokens and grammar",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-syntax"
+              },
+              "fullDescription": {
+                "text": "Parse expression tokens and grammar."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-syntax",
+              "help": {
+                "text": "Correct the indicated expression token, literal or delimiter."
+              }
+            },
+            {
+              "id": "expression-type",
+              "name": "ExpressionType",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Validate expression operand and argument types",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-type"
+              },
+              "fullDescription": {
+                "text": "Validate expression operand and argument types."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-type",
+              "help": {
+                "text": "Supply the expected value type; convert serialized values explicitly when needed."
+              }
             },
             {
               "id": "glob",
@@ -198,12 +342,15 @@
               },
               "properties": {
                 "description": "Validate branch, tag, and path filter patterns",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#glob"
               },
               "fullDescription": {
-                "text": "Validate branch, tag, and path filter patterns"
+                "text": "Validate branch, tag, and path filter patterns."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#glob",
+              "help": {
+                "text": "Correct the pattern syntax and check how positive and negative patterns are ordered."
+              }
             },
             {
               "id": "id",
@@ -213,12 +360,15 @@
               },
               "properties": {
                 "description": "Report invalid job or step IDs and duplicate step IDs",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#id"
               },
               "fullDescription": {
-                "text": "Report invalid job or step IDs and duplicate step IDs"
+                "text": "Report invalid job or step IDs and duplicate step IDs."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#id",
+              "help": {
+                "text": "Use a unique valid identifier within its job or workflow scope."
+              }
             },
             {
               "id": "if-cond",
@@ -228,12 +378,15 @@
               },
               "properties": {
                 "description": "Report conditions that always evaluate to true or false",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#if-cond"
               },
               "fullDescription": {
-                "text": "Report conditions that always evaluate to true or false"
+                "text": "Report conditions that always evaluate to true or false."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#if-cond",
+              "help": {
+                "text": "Remove the constant condition or correct the expression so it tests the intended runtime value."
+              }
             },
             {
               "id": "inline-suppression",
@@ -243,12 +396,15 @@
               },
               "properties": {
                 "description": "Validate inline suppression directives",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#inline-suppression"
               },
               "fullDescription": {
-                "text": "Validate inline suppression directives"
+                "text": "Validate inline suppression directives."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#inline-suppression",
+              "help": {
+                "text": "Use a known rule name and place the directive on the declaration it is intended to suppress."
+              }
             },
             {
               "id": "job-needs",
@@ -258,12 +414,15 @@
               },
               "properties": {
                 "description": "Report undefined job dependencies and dependency cycles",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#job-needs"
               },
               "fullDescription": {
-                "text": "Report undefined job dependencies and dependency cycles"
+                "text": "Report undefined job dependencies and dependency cycles."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#job-needs",
+              "help": {
+                "text": "Reference an existing job ID and remove dependency cycles."
+              }
             },
             {
               "id": "matrix",
@@ -273,12 +432,15 @@
               },
               "properties": {
                 "description": "Validate matrix definitions, combinations, and filters",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#matrix"
               },
               "fullDescription": {
-                "text": "Validate matrix definitions, combinations, and filters"
+                "text": "Validate matrix definitions, combinations, and filters."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#matrix",
+              "help": {
+                "text": "Check axis names and values and ensure include/exclude entries match the intended combinations."
+              }
             },
             {
               "id": "missing-local-action",
@@ -288,12 +450,15 @@
               },
               "properties": {
                 "description": "Report local action references whose manifests cannot be found",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-local-action"
               },
               "fullDescription": {
-                "text": "Report local action references whose manifests cannot be found"
+                "text": "Report local action references whose manifests cannot be found."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#missing-local-action",
+              "help": {
+                "text": "Check the uses path and ensure the local action metadata or Dockerfile exists in the repository."
+              }
             },
             {
               "id": "mixed-type-comparisons",
@@ -303,12 +468,15 @@
               },
               "properties": {
                 "description": "Flag condition comparisons that implicitly convert scalar types",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#mixed-type-comparisons"
               },
               "fullDescription": {
-                "text": "Flag condition comparisons that implicitly convert scalar types"
+                "text": "Flag condition comparisons that implicitly convert scalar types."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#mixed-type-comparisons",
+              "help": {
+                "text": "Compare values of matching types or convert them explicitly before comparison."
+              }
             },
             {
               "id": "mixed-type-matrix-filters",
@@ -318,12 +486,15 @@
               },
               "properties": {
                 "description": "Flag matrix filters that compare different or unknown scalar types",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#mixed-type-matrix-filters"
               },
               "fullDescription": {
-                "text": "Flag matrix filters that compare different or unknown scalar types"
+                "text": "Flag matrix filters that compare different or unknown scalar types."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#mixed-type-matrix-filters",
+              "help": {
+                "text": "Use the same value types in matrix axes and include/exclude filters."
+              }
             },
             {
               "id": "parallel-steps",
@@ -333,12 +504,15 @@
               },
               "properties": {
                 "description": "Validate background-step references and restrictions within parallel groups",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#parallel-steps"
               },
               "fullDescription": {
-                "text": "Validate background-step references and restrictions within parallel groups"
+                "text": "Validate background-step references and restrictions within parallel groups."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#parallel-steps",
+              "help": {
+                "text": "Check background-step names and wait/cancel references in the parallel group."
+              }
             },
             {
               "id": "permissions",
@@ -348,12 +522,15 @@
               },
               "properties": {
                 "description": "Validate token permission scopes and access levels",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#permissions"
               },
               "fullDescription": {
-                "text": "Validate token permission scopes and access levels"
+                "text": "Validate token permission scopes and access levels."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#permissions",
+              "help": {
+                "text": "Use supported permission scopes and read, write or none access levels."
+              }
             },
             {
               "id": "runner-label",
@@ -363,12 +540,33 @@
               },
               "properties": {
                 "description": "Report unknown or incompatible runner labels",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#runner-label"
               },
               "fullDescription": {
-                "text": "Report unknown or incompatible runner labels"
+                "text": "Report unknown or incompatible runner labels."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#runner-label",
+              "help": {
+                "text": "Correct the runner label or declare repository-specific labels in self-hosted-runner.labels."
+              }
+            },
+            {
+              "id": "script-injection",
+              "name": "ScriptInjection",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Detect untrusted values interpolated into scripts",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection"
+              },
+              "fullDescription": {
+                "text": "Detect untrusted values interpolated into scripts."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection",
+              "help": {
+                "text": "Pass untrusted values through environment variables or action inputs and read them as data inside the script."
+              }
             },
             {
               "id": "shell-name",
@@ -378,12 +576,15 @@
               },
               "properties": {
                 "description": "Validate script shells for the selected runner",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shell-name"
               },
               "fullDescription": {
-                "text": "Validate script shells for the selected runner"
+                "text": "Validate script shells for the selected runner."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shell-name",
+              "help": {
+                "text": "Select a supported shell for the runner, or provide an explicit shell command containing {0}."
+              }
             },
             {
               "id": "string-conditions",
@@ -393,12 +594,15 @@
               },
               "properties": {
                 "description": "Flag string conditions whose truthiness may be misleading",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#string-conditions"
               },
               "fullDescription": {
-                "text": "Flag string conditions whose truthiness may be misleading"
+                "text": "Flag string conditions whose truthiness may be misleading."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#string-conditions",
+              "help": {
+                "text": "Use a boolean expression; a nonempty string, including the string false, is truthy."
+              }
             },
             {
               "id": "syntax-check",
@@ -408,12 +612,15 @@
               },
               "properties": {
                 "description": "Validate GitHub Actions workflow syntax",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#syntax-check"
               },
               "fullDescription": {
-                "text": "Validate GitHub Actions workflow syntax"
+                "text": "Validate GitHub Actions workflow syntax."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#syntax-check",
+              "help": {
+                "text": "Check the indicated YAML field and its expected GitHub Actions value type."
+              }
             },
             {
               "id": "unsound-ternary",
@@ -422,13 +629,16 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Report a \u0026\u0026 b || c expressions where b is always falsy",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "description": "Report a && b || c expressions where b is always falsy",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unsound-ternary"
               },
               "fullDescription": {
-                "text": "Report a \u0026\u0026 b || c expressions where b is always falsy"
+                "text": "Report a && b || c expressions where b is always falsy."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unsound-ternary",
+              "help": {
+                "text": "The middle operand of a && b || c must be truthy to select b; use an explicit conditional or a truthy representation."
+              }
             },
             {
               "id": "workflow-call",
@@ -438,12 +648,15 @@
               },
               "properties": {
                 "description": "Validate reusable workflow references and their declared inputs and outputs",
-                "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call"
               },
               "fullDescription": {
-                "text": "Validate reusable workflow references and their declared inputs and outputs"
+                "text": "Validate reusable workflow references and their declared inputs and outputs."
               },
-              "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#workflow-call",
+              "help": {
+                "text": "Match the reusable workflow reference and its declared input/output contract."
+              }
             }
           ]
         }
@@ -476,11 +689,14 @@
           ]
         },
         {
-          "ruleId": "expression",
+          "ruleId": "expression-reference",
           "message": {
             "text": "property \"msg\" is not defined in object type {}"
           },
           "level": "error",
+          "properties": {
+            "diagnosticCode": "unknown-property"
+          },
           "locations": [
             {
               "physicalLocation": {

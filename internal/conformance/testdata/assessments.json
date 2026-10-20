@@ -48,7 +48,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/bad-character.yml": "575e2911ccec5ddeb94c62103c66bb5a1b04218a3a1af60d7d156b83d7bc091f"
+      "languageservices/workflow-parser/testdata/reader/bad-character.yml": "1d8ab89b615d9d71589df722882a0259f10253c94fd246ef2017ae8cb09131aa"
     },
     "findings": [
       {
@@ -424,7 +424,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/step-run.yml": "d9138078db0ec604916fb53d954dfb484fbfdbc03e98d0d2d99d7e4c306e290b"
+      "languageservices/workflow-parser/testdata/reader/step-run.yml": "e9618bcfdbc4582e75cdb20c8110cc667012d26de9abb166971ee4b2d1097aa9"
     },
     "findings": [
       {
@@ -533,7 +533,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-defaults.yml": "47243514805fb9d03bac129e5874c9f0a65980b216106fa94011720350d8e97b"
+      "languageservices/workflow-parser/testdata/reader/job-defaults.yml": "f2ef594540afb0c79ee3e29df634ac1f00030170d53c067ec87e5c8885632217"
     },
     "findings": [
       {
@@ -548,7 +548,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/step-if.yml": "cab81990438adb945d2d8fbd7f53e4cfb61124afddc8c0349c9e26ba8fe84bc7"
+      "languageservices/workflow-parser/testdata/reader/step-if.yml": "cfa663cea9926bb8749af1ace35b317398092f4a3ea0268633bb77d111f0a8d2"
     },
     "findings": [
       {
@@ -563,7 +563,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-environment.yml": "e6239dced25ca91a4705e0e4ca484487aa243f16568e4b369ef536706de58124"
+      "languageservices/workflow-parser/testdata/reader/job-environment.yml": "f599f5ae6f75a19afe111ae3b296a89da2d99222f40eb6e66219296e2c75ca84"
     },
     "findings": [
       {
@@ -678,22 +678,23 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "a868d1dfcaaabf72f26c6e51687d660a057491c1eb097306044d164ce9c74e6e"
+      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "e3963a5f544d705ddf31c61a8875bffff98e0109961e3a84cbe5b22df6328d7a"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Mixed reader differences: missing steps, undefined matrix and step properties, and numeric expression type checks.",
+        "rationale": "Mixed reader differences: missing steps, undefined matrix and step properties, numeric expression type checks, and github.event.number on a push trigger. The pinned OpenAPI push payload has no number member. The reader accepts the expression syntactically; the payload finding is additional lint feedback, not a claim that GitHub rejects the workflow.",
         "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/misc-jobs.yml"
+          "fixture:languageservices/workflow-parser/testdata/reader/misc-jobs.yml",
+          "internal/webhook/payload/catalogue.json (@octokit/openapi-webhooks-types 12.2.0, push)"
         ]
       }
     ]
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/round-to-infinity.yml": "9dd76adda11f330f38966dd39860b92024040b836263b4b94185419cf431120f"
+      "languageservices/workflow-parser/testdata/reader/round-to-infinity.yml": "b9f079499aea22ab7da7adb2005c7badc50c55b2dedf9794b5e2fd786410f5ac"
     },
     "findings": [
       {
@@ -753,7 +754,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-if.yml": "88da4e55734311fb1815b6d2cf857a63acc9629bfdeec685da3e22206df9bfa6"
+      "languageservices/workflow-parser/testdata/reader/job-if.yml": "c439857dd14ca87d49ee04975dd7420c8af0f9b48f8a1d33ca3f00fb7149e07b"
     },
     "findings": [
       {
@@ -913,10 +914,10 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "5be1f7b2bd8597bf6e2064a1c891b9001ac3268654347d9c9119ce9751fefa9a",
-      "schemastore/src/test/github-workflow/matrix_include.yaml": "bae36bbf688ed85265eb04e1b6ba05a8e6e9bbbb1ce7c2dfa4e0157aa8476ba5",
-      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "2d409447fae99917a27dc025207ba485997c9a364e52c7077df1b589f45fd7ac",
-      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "5bdf7b43c2533966f19536ee47be019a5386e46fda8350837c203c55e2ff3a70"
+      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "24f3025c6a803c15c944cace730d730221e301fcd8b8c5d19a3c089b1d5d50b8",
+      "schemastore/src/test/github-workflow/matrix_include.yaml": "081051f358ff2b48411b6291b5440fb13e8b39308a7d3b6ab1e0419f087e37fe",
+      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "4bb62ef4ab5357c3e6e6a5a4118fc4bc979a94e1be186f50fc3d7ace2356f782",
+      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "7bbf797654be7ab3518d1dc341711bcef923af83f1c2f3719e55619172b35e02"
     },
     "findings": [
       {
@@ -1009,7 +1010,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/defaults.yaml": "bb5ccf09aa83b7db12b9541825d273a00862183b8a8c5e824067173031368d48",
+      "schemastore/src/test/github-workflow/defaults.yaml": "20d3d8edbe5eb1689681f429e1183e2ca7c4f96324d73043018bab98e27a9292",
       "schemastore/src/test/github-workflow/env-with-simple-expression.yaml": "e3460c86aa525daa10699aa0f4103d36c1cfff1a846f902bd2ac4366a22cafc8"
     },
     "findings": [
@@ -1066,7 +1067,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/insert.yml": "1ff6f6817d6c0ee7f966e7b910763926340dc47ff469b048d1e988b0b50caca3"
+      "languageservices/workflow-parser/testdata/reader/insert.yml": "c63a8cfe753d861b251bc1d8aee07143574227c2fbefb8d0e0436a08c950f41a"
     },
     "findings": [
       {

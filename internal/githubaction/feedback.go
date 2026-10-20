@@ -7,10 +7,11 @@ import (
 	"slices"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/diagnostic"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 )
 
-func quotedIgnoreHints(patterns []string, problems []actionlint.Diagnostic) []string {
+func quotedIgnoreHints(patterns []string, problems []diagnostic.Diagnostic) []string {
 	var hints []string
 	for i, pattern := range patterns {
 		if len(pattern) < 2 || (pattern[0] != '\'' && pattern[0] != '"') || pattern[len(pattern)-1] != pattern[0] {
@@ -33,7 +34,7 @@ func quotedIgnoreHints(patterns []string, problems []actionlint.Diagnostic) []st
 
 func (a *action) emitConfiguration(result *lintResult, workingDir string) {
 	configs := slices.Clone(result.configs)
-	slices.SortFunc(configs, func(a, b actionlint.ConfigReport) int {
+	slices.SortFunc(configs, func(a, b repoconfig.Report) int {
 		return strings.Compare(a.Project, b.Project)
 	})
 	for _, config := range configs {

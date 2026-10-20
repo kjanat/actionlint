@@ -1,4 +1,4 @@
-on: push
+on: repository_dispatch
 
 jobs:
   nested-0:
@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         foo:
-          - ${{ fromJSON(github.event.matrix) }}
+          - ${{ fromJSON(github.event.client_payload.matrix) }}
         exclude:
           - foo: bar
     steps:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         foo:
-          - bar: ${{ fromJSON(github.event.matrix) }}
+          - bar: ${{ fromJSON(github.event.client_payload.matrix) }}
         exclude:
           - foo:
               bar: ...
@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         foo:
-          - ["${{ fromJSON(github.event.matrix) }}"]
+          - ["${{ fromJSON(github.event.client_payload.matrix) }}"]
         exclude:
           - foo: ['...']
     steps:

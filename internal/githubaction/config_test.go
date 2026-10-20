@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/diagnostic"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+
 	"go.yaml.in/yaml/v4"
 )
 
@@ -66,7 +68,7 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 		{`'different message'`, false},
 		{`'('`, false},
 	} {
-		errs := []actionlint.Diagnostic{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
+		errs := []diagnostic.Diagnostic{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
 		hints := quotedIgnoreHints([]string{tc.pattern}, errs)
 		if (len(hints) == 1) != tc.want {
 			t.Errorf("%q: hints=%v", tc.pattern, hints)
@@ -113,7 +115,7 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 	if err := yaml.Unmarshal([]byte(read(t, filepath.Join("..", "..", "action.yml"))), &metadata); err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range actionlint.ConfigKeys() {
+	for _, key := range repoconfig.Keys() {
 		// The released files input selects workflow paths.
 		if key == "files" {
 			continue

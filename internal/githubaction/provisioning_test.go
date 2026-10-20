@@ -38,8 +38,10 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 		{name: "expanded config overlay", inputs: map[string]string{
 			"INPUT_CONFIG": "tools: {shellcheck: {enabled: false}}",
 		}},
-		{name: "reset overlay", files: map[string]string{".github/actionlint.yaml": "tools: {shellcheck: false}"},
-			inputs: map[string]string{"INPUT_CONFIG": "tools: null"}, shellcheck: true},
+		{
+			name: "reset overlay", files: map[string]string{".github/actionlint.yaml": "tools: {shellcheck: false}"},
+			inputs: map[string]string{"INPUT_CONFIG": "tools: null"}, shellcheck: true,
+		},
 		{name: "explicit config and working directory", files: map[string]string{
 			".github/actionlint.yaml": "tools: {shellcheck: true}",
 			"sub/custom.yml":          "tools: {shellcheck: false}",

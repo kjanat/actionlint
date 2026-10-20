@@ -9,9 +9,9 @@ import (
 	"unicode/utf8"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
+	"actionlint.kjanat.dev/internal/yaml"
 	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
 	"actionlint.kjanat.dev/internal/yamlsource"
-	"go.yaml.in/yaml/v4"
 )
 
 // Pos represents a position in the file.

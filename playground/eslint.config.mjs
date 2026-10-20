@@ -36,11 +36,15 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ['eslint.config.mjs'],
+		files: ['**/*.{js,mjs,cjs}'],
+		rules: {
+			'@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+		},
 		languageOptions: {
 			parserOptions: {
 				projectService: false,
 				project: 'tsconfig.json',
+				tsconfigRootDir: import.meta.dirname,
 			},
 		},
 	},

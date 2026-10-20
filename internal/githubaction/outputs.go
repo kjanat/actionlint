@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 type namedOutput struct {
@@ -115,7 +115,7 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCo
 		fileCountText = strconv.Itoa(fileCount)
 		files = plural(fileCount, "workflow file", "workflow files")
 	}
-	if code == actionlint.ExitStatusSuccessNoProblem || code == actionlint.ExitStatusSuccessProblemFound {
+	if code == render.ExitSuccessNoProblem || code == render.ExitSuccessProblemFound {
 		problems := "problems"
 		if problemCount == "1" {
 			problems = "problem"
@@ -155,7 +155,7 @@ func (a *action) emit(rendered string, code int, format outputFormat) {
 	if rendered == "" {
 		return
 	}
-	if code == actionlint.ExitStatusInvalidCommandOption || code == actionlint.ExitStatusFailure {
+	if code == render.ExitInvalidCommandOption || code == render.ExitFailure {
 		_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint failed::%s\n", commandEscape(rendered))
 		return
 	}

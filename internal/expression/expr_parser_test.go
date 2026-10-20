@@ -199,6 +199,62 @@ func TestParseExpressionSyntaxOK(t *testing.T) {
 			},
 		},
 		{
+			what:  "context expression as index",
+			input: "secrets[matrix.name]",
+			expected: &IndexAccessNode{
+				Operand: &VariableNode{Name: "secrets"},
+				Index: &ObjectDerefNode{
+					Receiver: &VariableNode{Name: "matrix"},
+					Property: "name",
+				},
+			},
+		},
+		{
+			what:  "function call as index",
+			input: "vars[format('X_{0}', matrix.env)]",
+			expected: &IndexAccessNode{
+				Operand: &VariableNode{Name: "vars"},
+				Index: &FuncCallNode{
+					Callee: "format",
+					Args: []Node{
+						&StringNode{Value: "X_{0}"},
+						&ObjectDerefNode{Receiver: &VariableNode{Name: "matrix"}, Property: "env"},
+					},
+				},
+			},
+		},
+		{
+			what:  "operator precedence inside index",
+			input: "vars[matrix.env == 'DEV' && 'X_DEV' || 'X_PROD']",
+			expected: &IndexAccessNode{
+				Operand: &VariableNode{Name: "vars"},
+				Index: &LogicalOpNode{
+					Kind: LogicalOpNodeKindOr,
+					Left: &LogicalOpNode{
+						Kind: LogicalOpNodeKindAnd,
+						Left: &CompareOpNode{
+							Kind:  CompareOpNodeKindEq,
+							Left:  &ObjectDerefNode{Receiver: &VariableNode{Name: "matrix"}, Property: "env"},
+							Right: &StringNode{Value: "DEV"},
+						},
+						Right: &StringNode{Value: "X_DEV"},
+					},
+					Right: &StringNode{Value: "X_PROD"},
+				},
+			},
+		},
+		{
+			what:  "chained dynamic indexes and property",
+			input: "a[b][c].d",
+			expected: &ObjectDerefNode{
+				Receiver: &IndexAccessNode{
+					Operand: &IndexAccessNode{Operand: &VariableNode{Name: "a"}, Index: &VariableNode{Name: "b"}},
+					Index:   &VariableNode{Name: "c"},
+				},
+				Property: "d",
+			},
+		},
+		{
 			what:  "< operator",
 			input: "0 < 1",
 			expected: &CompareOpNode{

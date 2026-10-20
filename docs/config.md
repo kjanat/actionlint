@@ -1,8 +1,9 @@
 # Configuration
 
-Configuration is optional. Put `actionlint.yaml` or `actionlint.yml` in `.github/`,
-or select a file with `actionlint --config path/to/actionlint.yaml`.
-The CLI and GitHub Action use the same settings.
+Configuration is optional. Put `actionlint.yaml`, `actionlint.yml`, `actionlint.json` or
+`actionlint.toml` in `.github/`, or select a file with `actionlint --config path/to/actionlint.toml`.
+actionlint reads the first of those names that exists. The CLI and GitHub Action use the same
+settings.
 
 ## Configuration file
 
@@ -26,6 +27,26 @@ paths:
 | `config-secrets`             | Allowed secret names, case-insensitive. Omitted or `null` disables the check; `[]` allows only built-in and declared `workflow_call` secrets.                   |
 | `assume-default-permissions` | Assumed repository token default for reusable calls without explicit permissions: `restricted` (default) or `permissive`. Neither implicitly grants `id-token`. |
 | `paths`                      | Repository-relative [glob patterns][doublestar], using `/`. Each `ignore` list contains regular expressions matched against diagnostic messages.                |
+
+### JSON and TOML
+
+The same keys apply in every format, and `extends` entries may name files of any format. A JSON
+file may carry a top-level `$schema` key. TOML editors take the schema from a `#:schema` comment:
+
+```toml
+#:schema ../node_modules/@kjanat/actionlint/actionlint.schema.json
+
+config-variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
+config-secrets   = ["DEPLOY_TOKEN"]
+
+[self-hosted-runner]
+labels = ["linux.2xlarge", "windows-latest-xl"]
+
+[paths.".github/workflows/**/*.{yml,yaml}"]
+ignore = ["shellcheck reported issue in this script: SC2086:.+"]
+```
+
+Errors and warnings name the line and column in the file as written.
 
 The [schema](../actionlint.schema.json) provides editor completion and validation.
 An installed npm package also supplies it at
@@ -250,12 +271,14 @@ lint:
 
 Ruff uses its own default rule selection. `config` accepts Ruff's native options, including nested `lint` settings and rule-specific options. The selected Ruff engine validates them. Omitted or null options retain engine defaults.
 
-The legacy flat `select` and `ignore`
-accept Ruff codes or prefixes matching stable rules; preview-only selectors are
-rejected. Lists replace inherited lists. Flat selectors override their equivalents inside `config.lint`; `config.target-version` takes precedence over the flat target. `select: []` selects
-no lint rules (Python syntax errors can still be reported). `target-version`
-defaults to the version in an explicit interpreter such as `python3.9`, when
-supported by Ruff, and otherwise to `py314`. An explicit setting takes precedence.
+The legacy flat `select` and `ignore` accept Ruff codes or prefixes. The selected
+engine validates them, including preview selectors when `config.preview` is enabled.
+Lists replace inherited lists. Flat `select` and `ignore` replace the corresponding lists in
+`config.lint`. For Python targets, `config.target-version` takes precedence over the flat setting.
+`select: []` selects no lint rules (Python syntax errors can still be reported).
+If no target is configured, actionlint infers it from a versioned interpreter such as
+`python3.9`. The selected engine checks whether it supports that version. Without a
+versioned interpreter, the engine chooses its default. The native process adapter uses `py314`.
 
 Following [Astral's actionlint integration](https://github.com/astral-sh/actionlint/blob/0141e7822652fbee3a1b878c3d83d9c1dce87d67/rule_ruff.go),
 Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,

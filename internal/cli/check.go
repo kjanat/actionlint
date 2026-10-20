@@ -1,118 +1,44 @@
 package cli
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/tools/adapters"
+
+	"actionlint.kjanat.dev/internal/application"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/fix"
 	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/projectpath"
-	"github.com/fatih/color"
-	"github.com/mattn/go-colorable"
+	"actionlint.kjanat.dev/internal/localapp"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/resolution"
 )
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
 	c, r := inv.Check, inv.Render
-	overwrite := inv.Yes
-	if r.OutputFile != "" && r.OutputFile != "-" {
-		info, e := os.Lstat(r.OutputFile)
-		if e == nil {
-			if info.IsDir() {
-				return 0, fmt.Errorf("output file %q is a directory", r.OutputFile)
-			}
-			if !overwrite {
-				// stdin may be a pipe from yes, but never consume workflow input.
-				if _, terminal := terminalFile(streams.Stderr); !terminal || slices.Contains(c.Paths, "-") {
-					return 0, outputExistsError(r.OutputFile)
-				}
-				overwrite, err = confirmOverwrite(streams, r.OutputFile)
-				if err != nil {
-					return 0, err
-				}
-				if !overwrite {
-					return 0, fmt.Errorf("output file %q was not replaced", r.OutputFile)
-				}
-			}
-			if err := ctx.Err(); err != nil {
-				return 0, err
-			}
-		} else if !errors.Is(e, os.ErrNotExist) {
-			return 0, e
-		}
+	overwrite, err := selectReportDestination(ctx, streams, r.OutputFile, inv.Yes, slices.Contains(c.Paths, "-"))
+	if err != nil {
+		return 0, err
 	}
 	r, err = resolveTemplate(r)
 	if err != nil {
 		return 0, err
 	}
-	emptyRepository := false
-	var listed []string
-	if c.PreCommit {
-		cwd, wdErr := os.Getwd()
-		if wdErr != nil {
-			return 0, wdErr
-		}
-		record := fsread.New(ctx, nil, func(dir string) { listed = append(listed, dir) })
-		hasWorkflows := false
-		if root := projectpath.RepositoryRoot(cwd); root != "" {
-			hasWorkflows, err = projectpath.HasWorkflowFiles(root, record)
-			if err != nil {
-				return 0, err
-			}
-		}
-		typo, _ := projectpath.WorkflowTypo(cwd, record)
-		emptyRepository = typo == "" && !hasWorkflows
-	}
 
-	// A completed analysis replaces the previous report atomically.
-	out := streams.Stdout
-	if r.OutputFile != "" && r.OutputFile != "-" {
-		file, e := os.CreateTemp(filepath.Dir(r.OutputFile), ".actionlint-report-*")
-		if e != nil {
-			return 0, e
-		}
-		if info, statErr := os.Stat(r.OutputFile); statErr == nil {
-			if modeErr := file.Chmod(info.Mode().Perm()); modeErr != nil {
-				file.Close()
-				os.Remove(file.Name())
-				return 0, modeErr
-			}
-		}
-		out = file
-		defer func() {
-			closeErr := file.Close()
-			if err == nil {
-				err = closeErr
-			}
-			if err == nil {
-				if overwrite {
-					err = os.Rename(file.Name(), r.OutputFile)
-				} else {
-					// Publish without replacing a destination created during analysis.
-					err = publishNewReport(file.Name(), r.OutputFile)
-					if errors.Is(err, os.ErrExist) {
-						err = outputExistsError(r.OutputFile)
-					}
-				}
-			}
-			_ = os.Remove(file.Name())
-		}()
-		if r.Color == actionlint.ColorOptionKindAuto {
-			r.Color = actionlint.ColorOptionKindNever
-		}
+	destination, err := openReportDestination(streams.Stdout, r.OutputFile, overwrite)
+	if err != nil {
+		return 0, err
 	}
-	jsonColor := r.Color
-	r.resolveGitHubActionsColor(out)
-	jsonDestination := out
-	_, terminal := terminalFile(out)
-	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (r.Format == actionlint.OutputFormatJSON || r.Format == actionlint.OutputFormatSARIF)
+	defer func() { err = destination.finish(err) }()
+	out := destination.writer
+	if destination.file != nil && r.Color == render.ColorAuto {
+		r.Color = render.ColorNever
+	}
 	log := streams.Stderr
 	if inv.JSON {
 		log = &commandJSONLogWriter{out: log}
@@ -121,74 +47,45 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if c.Pyflakes != "" {
 		fmt.Fprintln(log, "warning: --pyflakes is deprecated; use --ruff for Python script linting")
 	}
-	options := actionlint.LinterOptions{
-		Context: ctx, LogWriter: log, Color: r.Color, Oneline: r.Oneline,
-		Shellcheck: c.ShellCheck, ConfigFile: c.Config.Path,
-		IgnorePatterns: c.IgnoreRegex, StdinFileName: c.StdinFilename,
-		Format: r.Template, OutputFormat: r.Format,
-		Verbose: c.Verbose && !r.Quiet, Debug: c.Debug && !r.Quiet,
-	}
-	if inv.Legacy {
-		out = actionlint.LegacyColorOutput(out, r.Color)
-	} else {
-		options.WorkingDir, err = os.Getwd()
-		if err != nil {
-			return 0, err
-		}
-	}
-	presets := actionlint.RulePresets{Strict: c.Strict}
-	if c.ExperimentalSet {
-		presets.Experimental = &c.Experimental
-	}
-	plugins, err := loadPlugins(ctx, c.Plugins, log, options.Debug)
+	workingDir, err := os.Getwd()
 	if err != nil {
 		return 0, err
 	}
-	defer plugins.close(ctx)
-	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
+	options := application.Options{
 		AllowConfigProcesses: c.AllowConfigProcesses,
-		RulePresets:          presets, Analyzers: plugins.registrations(), LoadScriptEngine: scriptEngineLoader(log, options.Debug),
-		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
-		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
-		ShellcheckOptions: c.ShellcheckOptions,
-		Ruff:              c.Ruff, RuffOptions: c.RuffOptions,
-		IgnorePatterns: options.IgnorePatterns, Verbose: options.Verbose, Debug: options.Debug, LogWriter: log,
-		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""), QuietSelection: !inv.Legacy,
-	})
-	if err != nil {
-		return 0, err
+		WorkingDir:           workingDir, ConfigFile: c.Config.Path,
+		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""),
+
+		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
+		Debug: c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
+		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: adapters.Options{
+			ShellCheck: c.ShellCheck, ShellcheckOptions: c.ShellcheckOptions,
+			Ruff: c.Ruff, RuffOptions: c.RuffOptions,
+		}.Registrations(),
 	}
-	defer func() {
-		if closeErr := app.Close(context.WithoutCancel(ctx)); err == nil {
-			err = closeErr
-		}
-	}()
-	var renderer *actionlint.AnalysisRenderer
+	if c.ResolverCommand != "" {
+		options.Resolver = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
+	}
+	if c.ExperimentalSet {
+		options.Presets.Experimental = &c.Experimental
+	}
+	var renderer *render.Renderer
 	if inv.Legacy {
-		// Root invocations validate templates before reading any workflow input.
-		renderer, err = actionlint.NewAnalysisRenderer(r.Format, r.Template, r.Oneline)
+		renderer, err = newResultRenderer(r)
 		if err != nil {
 			return 0, err
 		}
-		if options.Debug && !options.Verbose {
-			_, _ = fmt.Fprintf(log, "[Linter] Create a Linter instance with option %#v\n", &options)
-		}
 	}
-	var result *actionlint.AnalysisResult
-	if emptyRepository {
-		if options.Verbose {
-			_, _ = fmt.Fprintf(log, "verbose: No workflow files to check from %q\n", options.WorkingDir)
-		}
-		result, err = app.Empty()
-		if result != nil {
-			result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, listed...))))
-		}
-	} else {
-		result, err = analyzeCommand(app, streams.Stdin, c.Paths, !inv.Legacy)
+	input := application.Input{Kind: application.Files, Paths: c.Paths}
+	if len(c.Paths) == 0 {
+		input.Kind, input.AllowEmptyRepository = application.Repository, c.PreCommit
+	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
+		input.Kind, input.Reader, input.Name, input.NormalizePath = application.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
+	result, err := localapp.Check(ctx, options, input, c.Plugins)
 	if err != nil {
-		if inv.Legacy {
-			err = actionlint.LegacyAnalysisError(err)
+		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok {
+			return 0, commandUsageError{err}
 		}
 		if result != nil {
 			err = &checkAnalysisError{result: result, err: err}
@@ -208,50 +105,54 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			}
 		}
 	}
-	if !inv.Legacy {
-		renderer, err = actionlint.NewAnalysisRenderer(r.Format, r.Template, r.Oneline)
+	if c.Fix {
+		if input.Kind == application.Stdin {
+			return 0, commandUsageError{errors.New("fix requires files; stdin is read-only")}
+		}
+		allowed := map[string]bool{}
+		for _, path := range result.Inputs {
+			absolute, e := filepath.Abs(path)
+			if e != nil {
+				return 0, e
+			}
+			allowed[absolute] = true
+		}
+		disk := fsread.New(ctx, nil, nil)
+		reader := fsread.New(ctx, func(path string) ([]byte, error) {
+			if !allowed[path] {
+				return nil, fmt.Errorf("fix target %s was not an analysis input", path)
+			}
+			return disk.ReadFile(path)
+		}, nil)
+		plan, planErr := fix.Build(ctx, result.Diagnostics, reader, c.IncludeSuggestedFixes)
+		if planErr != nil {
+			return 0, planErr
+		}
+		if !c.ApplyFixes {
+			return 0, writeCommandJSON(out, plan)
+		}
+		written, applyErr := fix.Apply(ctx, plan, reader)
+		if applyErr != nil {
+			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
+		}
+		result, err = localapp.Check(ctx, options, input, c.Plugins)
 		if err != nil {
 			return 0, err
 		}
-		previous := color.NoColor
-		defer func() { color.NoColor = previous }()
-		switch r.Color {
-		case actionlint.ColorOptionKindNever:
-			color.NoColor = true
-		case actionlint.ColorOptionKindAlways:
-			color.NoColor = false
-		}
-		if file, ok := out.(*os.File); ok && !color.NoColor {
-			out = colorable.NewColorable(file)
-		}
 	}
-	var writes *commandResultWriter
-	if !inv.Legacy || r.OutputFile != "" {
-		writes = &commandResultWriter{Writer: out}
-		out = writes
-	}
-	if prettyJSON {
-		var data bytes.Buffer
-		if err := renderer.Render(&data, result); err != nil {
-			return 0, err
-		}
-		if err := writePrettyJSON(ctx, jsonDestination, jsonColor, data.Bytes(), r.PrettyJSONExplicit); err != nil {
-			return 0, err
-		}
-	} else if err := renderer.Render(out, result); err != nil {
+	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, render.Prepare(*result)); err != nil {
 		return 0, err
 	}
-	if writes != nil && writes.err != nil {
-		return 0, writes.err
+	if inv.Legacy && options.Verbose && result.FileCount > 1 {
+		_, _ = fmt.Fprintf(log, "verbose: Found %d errors in %d files\n", len(result.Diagnostics), result.FileCount)
 	}
-	app.Completed(result)
 	if len(result.Diagnostics) > 0 {
-		status = actionlint.ExitStatusSuccessProblemFound
+		status = render.ExitSuccessProblemFound
 	}
 	if r.Summary && !r.Quiet {
-		summary := actionlint.CheckSummary{Files: result.FileCount(), Findings: len(result.Diagnostics)}
+		summary := render.CheckSummary{Files: result.FileCount, Findings: len(result.Diagnostics)}
 		if inv.JSON {
-			err = writeCommandJSON(streams.Stderr, map[string]actionlint.CheckSummary{"summary": summary})
+			err = writeCommandJSON(streams.Stderr, map[string]render.CheckSummary{"summary": summary})
 		} else {
 			err = writeCheckSummary(streams.Stderr, inv.Render.Color, summary)
 		}
@@ -259,55 +160,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	return status, err
 }
 
-func outputExistsError(path string) error {
-	return fmt.Errorf("output file %q already exists; use --yes to replace it", path)
-}
-
-// Confirmation uses stderr so report output remains usable by other programs.
-func confirmOverwrite(streams Command, path string) (bool, error) {
-	if _, err := fmt.Fprintf(streams.Stderr, "%q already exists. Overwrite? [y/N] ", path); err != nil {
-		return false, err
-	}
-	answer, err := bufio.NewReader(streams.Stdin).ReadString('\n')
-	if err != nil && !errors.Is(err, io.EOF) {
-		return false, err
-	}
-	answer = strings.TrimSpace(answer)
-	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes"), nil
-}
-
 // checkAnalysisError carries collected findings to the existing failure report.
 type checkAnalysisError struct {
-	result *actionlint.AnalysisResult
+	result *application.Result
 	err    error
 }
 
 func (e *checkAnalysisError) Error() string { return e.err.Error() }
 func (e *checkAnalysisError) Unwrap() error { return e.err }
-
-func analyzeCommand(app *actionlint.AnalysisSession, stdin io.Reader, paths []string, normalizeStdin bool) (*actionlint.AnalysisResult, error) {
-	switch {
-	case len(paths) == 0:
-		return app.Repository("")
-	case len(paths) == 1 && paths[0] == "-":
-		return app.ReadStdin(stdin, normalizeStdin)
-	default:
-		return app.Files(paths, nil)
-	}
-}
-
-func sameCommandFile(a, b string) bool {
-	if absPath(a) == absPath(b) {
-		return true
-	}
-	aInfo, aErr := os.Stat(a)
-	bInfo, bErr := os.Stat(b)
-	return aErr == nil && bErr == nil && os.SameFile(aInfo, bInfo)
-}
-
-func absPath(path string) string {
-	if p, err := filepath.Abs(path); err == nil {
-		return p
-	}
-	return path
-}

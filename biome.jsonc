@@ -33,6 +33,12 @@
   },
   "overrides": [
     {
+      "includes": ["internal/webhook/payload/catalogue.json"],
+      "files": {
+        "maxSize": 3145728
+      }
+    },
+    {
       "includes": ["playground/src/test.ts", "playground/src/**/*.test.ts", "playground/src/**/*.spec.ts"],
       "linter": {
         "rules": {

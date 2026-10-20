@@ -9,7 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func TestProvisionedRuffPreservesPerFileWasmSelection(t *testing.T) {
@@ -17,7 +18,7 @@ func TestProvisionedRuffPreservesPerFileWasmSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	module, err := filepath.Abs(filepath.Join("..", "corewasm", "testdata", "engines", "echo.wasm"))
+	module, err := filepath.Abs(filepath.Join("..", "plugins", "core", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +31,7 @@ func TestProvisionedRuffPreservesPerFileWasmSelection(t *testing.T) {
 	env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_RUFF": "true", "ACTIONLINT_RUFF_COMMAND": command}
 	lookup := func(key string) string { return env[key] }
 	needed, err := requiredTools(lookup)
-	if err != nil || !needed.Ruff {
+	if err != nil || !needed["ruff"] {
 		t.Fatalf("needed=%+v err=%v", needed, err)
 	}
 	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
@@ -38,7 +39,7 @@ func TestProvisionedRuffPreservesPerFileWasmSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := runLinter(req)
-	if result.code != actionlint.ExitStatusSuccessProblemFound || len(result.diagnostics) != 2 {
+	if result.code != render.ExitSuccessProblemFound || len(result.diagnostics) != 2 {
 		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.diagnostics)
 	}
 	for _, finding := range result.diagnostics {
@@ -49,7 +50,7 @@ func TestProvisionedRuffPreservesPerFileWasmSelection(t *testing.T) {
 }
 
 func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
-	module, err := os.ReadFile(filepath.Join("..", "corewasm", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join("..", "plugins", "core", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			}
 			lookup := func(key string) string { return env[key] }
 			needed, err := requiredTools(lookup)
-			if err != nil || needed.Ruff || needed.Shellcheck {
+			if err != nil || needed["ruff"] || needed["shellcheck"] {
 				t.Fatalf("needed=%+v err=%v", needed, err)
 			}
 			in, err := parseInputs(environmentArgs(lookup))
@@ -100,7 +101,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			}
 			req.ctx = t.Context()
 			result := runLinter(req)
-			if result.code != actionlint.ExitStatusSuccessProblemFound || len(result.diagnostics) != 1 || result.diagnostics[0].Code != tc.code {
+			if result.code != render.ExitSuccessProblemFound || len(result.diagnostics) != 1 || result.diagnostics[0].Code != tc.code {
 				t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.diagnostics)
 			}
 		})
@@ -111,16 +112,16 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 	executable := "explicit-native-command"
 	for _, tc := range []struct {
 		name    string
-		options *actionlint.ExternalCommandOptions
+		options *processconfig.Options
 	}{
 		{"defaults", nil},
-		{"native", &actionlint.ExternalCommandOptions{Executable: &executable}},
-		{"ignore-config", &actionlint.ExternalCommandOptions{IgnoreConfig: true}},
-		{"optional", &actionlint.ExternalCommandOptions{Optional: true}},
-		{"wasm", &actionlint.ExternalCommandOptions{AllowWasm: true}},
+		{"native", &processconfig.Options{Executable: &executable}},
+		{"ignore-config", &processconfig.Options{IgnoreConfig: true}},
+		{"optional", &processconfig.Options{Optional: true}},
+		{"wasm", &processconfig.Options{AllowWasm: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			want := actionlint.ExternalCommandOptions{AllowWasm: true}
+			want := processconfig.Options{AllowWasm: true}
 			if tc.options != nil {
 				want = *tc.options
 			}

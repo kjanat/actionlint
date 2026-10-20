@@ -5,11 +5,12 @@ import (
 	"io"
 	"os"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
+
 	"github.com/fatih/color"
 )
 
-func writeCheckSummary(out io.Writer, mode actionlint.ColorOptionKind, summary actionlint.CheckSummary) error {
+func writeCheckSummary(out io.Writer, mode render.Color, summary render.CheckSummary) error {
 	workflows := "workflows"
 	if summary.Files == 1 {
 		workflows = "workflow"
@@ -25,7 +26,7 @@ func writeCheckSummary(out io.Writer, mode actionlint.ColorOptionKind, summary a
 		attribute = color.FgYellow
 	}
 	file, terminal := terminalFile(out)
-	colored := mode == actionlint.ColorOptionKindAlways || mode == actionlint.ColorOptionKindAuto &&
+	colored := mode == render.ColorAlways || mode == render.ColorAuto &&
 		(githubActionsColor(out) || terminal && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
 	style := color.New(attribute)
 	if colored {

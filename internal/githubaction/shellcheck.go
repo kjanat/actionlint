@@ -6,7 +6,9 @@ import (
 	"os"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+	"actionlint.kjanat.dev/internal/processconfig"
+
 	"go.yaml.in/yaml/v4"
 )
 
@@ -32,23 +34,23 @@ func (req *lintRequest) configureShellcheck(env func(string) string) error {
 	switch config := strings.TrimSpace(env("INPUT_SHELLCHECK-RC")); config {
 	case "": // Retain flag selection, or inherit the project configuration.
 	case "false":
-		flags.settings.Config = actionlint.ShellcheckRCDisabled
+		flags.settings.Config = toolconfig.ShellcheckRCDisabled
 	case "true":
-		flags.settings.Config = actionlint.ShellcheckRCDiscover
+		flags.settings.Config = toolconfig.ShellcheckRCDiscover
 	default:
-		flags.settings.Config = actionlint.ShellcheckRCFile(config)
+		flags.settings.Config = toolconfig.ShellcheckRCFile(config)
 	}
-	if config, ok := flags.settings.Config.(actionlint.ShellcheckRCFile); ok {
+	if config, ok := flags.settings.Config.(toolconfig.ShellcheckRCFile); ok {
 		path, err := shellcheckConfigPath(req.workingDir, string(config))
 		if err != nil {
 			return err
 		}
-		flags.settings.Config = actionlint.ShellcheckRCFile(path)
+		flags.settings.Config = toolconfig.ShellcheckRCFile(path)
 	}
 	req.shellcheckSettings = &flags.settings
 	req.hints = append(req.hints, flags.hints...)
 	if req.shellcheckOptions == nil {
-		req.shellcheckOptions = &actionlint.ExternalCommandOptions{AllowWasm: true}
+		req.shellcheckOptions = &processconfig.Options{AllowWasm: true}
 	}
 	req.shellcheckOptions.Arguments = append(req.shellcheckOptions.Arguments, flags.arguments()...)
 	// Pass the validated defaults once, before the explicit input arguments.

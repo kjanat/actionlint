@@ -2,7 +2,7 @@
 
 Expressions decide which steps run and how workflow inputs are interpreted. A condition can look reasonable and still run a step you expected to skip: the string `'false'` is truthy, missing properties can compare equal to `false`, and the same numeric text can acquire different values in different parsers.
 
-If your workflows use step outputs, supplied inputs or JSON to make decisions, this guide explains the pitfalls and shows how to validate values before using them. Each example connects the observed behavior to a practical change you can make in your workflow. The [probe corpus](../scripts/expression-probe/cases.ts) and [measurement workflow](../.github/workflows/expr-conformance-probe.yml) let you reproduce the results yourself.
+If your workflows use step outputs, supplied inputs or JSON to make decisions, this guide explains the pitfalls and shows how to validate values before using them. Each example connects the observed behavior to a practical change you can make in your workflow. The [probe corpus](../internal/expression/probe/cases.ts) and [measurement workflow](../.github/workflows/expr-conformance-probe.yml) let you reproduce the results yourself.
 
 The key distinction is where a value is interpreted. An expression literal, a string used in a comparison, a `fromJSON()` argument, and a declared `number` input do not necessarily pass through the same parser. The examples below follow those differences through to the resulting workflow decisions.
 
@@ -381,23 +381,23 @@ The repository must already have `.github/workflows/expr-conformance-probe.yml` 
 
 ```sh
 # Inspect the cases without network access.
-node scripts/expression-probe/probe.ts list
+node internal/expression/probe/probe.ts list
 
 # Capture the full corpus into a new directory.
-node scripts/expression-probe/probe.ts run \
+node internal/expression/probe/probe.ts run \
   --repo OWNER/REPO --output .cache/expression-probe/my-capture
 
 # Or measure one group / one case.
-node scripts/expression-probe/probe.ts run \
+node internal/expression/probe/probe.ts run \
   --repo OWNER/REPO --output .cache/expression-probe/json-capture --group from-json
-node scripts/expression-probe/probe.ts run \
+node internal/expression/probe/probe.ts run \
   --repo OWNER/REPO --output .cache/expression-probe/one-case --case json-leading-zero
 
 # Recollect evidence for existing run IDs without dispatching again.
-node scripts/expression-probe/probe.ts collect --output .cache/expression-probe/my-capture
+node internal/expression/probe/probe.ts collect --output .cache/expression-probe/my-capture
 
 # Finish cleanup if the driver was interrupted.
-node scripts/expression-probe/probe.ts cleanup --output .cache/expression-probe/my-capture
+node internal/expression/probe/probe.ts cleanup --output .cache/expression-probe/my-capture
 ```
 
 After a full capture and cleanup succeed, the last console line is:

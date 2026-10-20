@@ -12,9 +12,9 @@ import (
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	"actionlint.kjanat.dev/internal/yaml"
 	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
 	"actionlint.kjanat.dev/internal/yamlsource"
-	"go.yaml.in/yaml/v4"
 )
 
 const (
@@ -2098,7 +2098,7 @@ func (p *Parser) parse(n *yaml.Node) *Workflow {
 // }
 
 func HandleYAMLUnmarshalError(err error) []*SyntaxError {
-	es := &yaml.LoadErrors{}
+	es := &yaml.DecodeError{}
 	if errors.As(err, &es) {
 		errs := make([]*SyntaxError, 0, len(es.Errors))
 		for _, e := range es.Errors {

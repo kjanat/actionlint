@@ -115,8 +115,8 @@
     },
     "yaml-language-server": {
       "binary": {
-        "path": "mise",
-        "arguments": ["exec", "npm:yaml-language-server", "--", "yaml-language-server", "--stdio"],
+        "path": "npx",
+        "arguments": ["yaml-language-server", "--stdio"],
         "env": {},
       },
       "settings": {

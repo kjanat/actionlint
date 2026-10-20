@@ -125,10 +125,10 @@ Builtin context property types retain existing documentation-backed definitions;
 
 ## Verification
 
-`go test . ./scripts/generate-availability -run 'TestSchemaAudit|TestWorkflowKeyAvailability|TestSpecialFunctionNames|TestExprSemanticsCheck|TestExprBuiltinFunctionSignatures|TestOKWrite' -count=1` passes.
+`go test . ./internal/expression/context/generate -run 'TestSchemaAudit|TestWorkflowKeyAvailability|TestSpecialFunctionNames|TestExprSemanticsCheck|TestExprBuiltinFunctionSignatures|TestOKWrite' -count=1` passes.
 
 `schema_context_audit_test.go` includes complete availability profiles, special-function boundary and position tests, scalar AST checks, static required-flag rejections, and full visitor regressions for snapshots/background/static shell fields. Generator expected output was regenerated from its checked-in documentation fixture. Complete-suite results are reported by the integration audit; the command above is focused local verification. Remote CI was not run.
 
-Additional focused verification covers valid and invalid evaluated mapping/union values, matrix inference, unknown dynamic values, and the corrected existing expression fixture expectations. `rule_expression_schema.go` centralizes these evaluated-value contracts. It preserves optional properties and schema scalar-to-string conversion without treating truthiness as boolean assignability.
+Additional focused verification covers valid and invalid evaluated mapping/union values, matrix inference, unknown dynamic values, and the corrected existing expression fixture expectations. [`internal/workflow/schema`](../internal/workflow/schema/values.go) owns these evaluated-value contracts. It preserves optional properties and schema scalar-to-string conversion without treating truthiness as boolean assignability.
 
 Known `fromJSON` and string-literal values are retained for constraints lost by type merging: every heterogeneous array element is checked, declared nonempty strings remain nonempty, and concurrency queue enum/conflict rules apply. Thus `ports: [80, {}]` cannot evade checks by merging its inferred element type to `any`. Unknown computed values continue to be deferred. Explicit empty job-container images retain the runner's disabling behavior; evaluated mappings still require the image property as described above.

@@ -3,7 +3,7 @@ package workflow
 import (
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/mapping"
-	"go.yaml.in/yaml/v4"
+	"actionlint.kjanat.dev/internal/yaml"
 )
 
 func EnvMappingView(env *Env) *mapping.Inputs[*String] {

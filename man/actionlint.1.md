@@ -53,6 +53,12 @@ also accepts.
 
 # COMMANDS
 
+**fix** [**--apply**] [**--include-suggested**] [*FILES...*]
+: Preview edits as JSON; apply validated edits explicitly and recheck changed sources.
+
+**lsp**
+: Serve versioned editor buffers, diagnostics and quick fixes over stdin/stdout.
+
 **check** [*flags*] [*files*...]
 : Check workflows with the modern option grammar. Uses the same engine and
 repository discovery as the root invocation.
@@ -92,6 +98,12 @@ Missing optional tools are reported; malformed selected config returns status 3.
 : Show version and build details. Supports **--json**.
 
 # FLAGS
+
+**--resolve-with** *EXECUTABLE*
+: Opt in to remote dependency resolution with a literal provider executable.
+
+**--resolver-arg** *VALUE*
+: Pass a literal argument to the resolver. Repeat for multiple arguments.
 
 These options belong to the root and to **check**, unless noted otherwise.
 Root parsing retains the original single- and double-dash spellings; **check**
@@ -279,8 +291,9 @@ introducing deprecation warnings.
 
 # CONFIGURATION
 
-Configuration is optional. In a detected repository, actionlint reads `.github/actionlint.yaml`,
-or `.github/actionlint.yml` if the first filename is absent. **--config-file** selects a different
+Configuration is optional. In a detected repository, actionlint reads the first of
+`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` and
+`.github/actionlint.toml` that exists. **--config-file** selects a different
 file; settings are not merged with the repository file or a user-global configuration.
 
 The available settings are:
@@ -575,8 +588,8 @@ PowerShell fallback indicated by a nonempty `PSModulePath`.
 **.github/workflows/**
 : Workflow directory scanned when no filenames are provided.
 
-**.github/actionlint.yaml**, **.github/actionlint.yml**
-: Optional repository configuration; the `.yaml` spelling takes precedence.
+**.github/actionlint.yaml**, **.github/actionlint.yml**, **.github/actionlint.json**, **.github/actionlint.toml**
+: Optional repository configuration; the first existing name in that order is read.
 
 # DOCUMENTS
 

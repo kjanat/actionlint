@@ -8,7 +8,9 @@ import (
 	"runtime/debug"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/render"
+
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 	"github.com/spf13/cobra"
@@ -42,9 +44,9 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 	force := a.opts.color
 	if !a.anySet("color", "modern-color", "no-color") {
 		switch a.inv.Render.Color {
-		case actionlint.ColorOptionKindAlways:
+		case render.ColorAlways:
 			force = true
-		case actionlint.ColorOptionKindNever:
+		case render.ColorNever:
 			return false
 		}
 	}
@@ -122,7 +124,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		return
 	}
 	usage := strings.Replace(c.UseLine(), "actionlint", terminalLink(links, "actionlint", projectURL), 1)
-	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s", actionlint.Version()))
+	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s", buildinfo.Version()))
 	_, _ = fmt.Fprintf(out, "%s\n\n%s\n  %s\n", command.Sprint(c.Short), heading.Sprint("Usage:"), command.Sprint(usage))
 	if c.Long != "" {
 		_, _ = fmt.Fprintf(out, "\n%s\n", c.Long)
@@ -177,18 +179,16 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	command := helpStyle(colored, color.Bold)
 	option := helpStyle(colored, color.FgCyan)
 	name := terminalLink(links, "actionlint", projectURL)
-	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s — Check workflows, actions and embedded scripts", actionlint.Version()))
+	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s — Check workflows, actions and embedded scripts", buildinfo.Version()))
 	_, _ = fmt.Fprintf(out, "\n%s\n  %s [flags] [files...]\n  %s [flags] -\n  %s <command>\n", heading.Sprint("Usage:"), command.Sprint(name), command.Sprint(name), command.Sprint(name))
 	_, _ = fmt.Fprintln(out, "\nNo files: discover workflows and actions. Use - for stdin.\nUse -- before filenames beginning with a dash.")
 	_, _ = fmt.Fprintln(out, "\n"+heading.Sprint("Commands:"))
-	for _, name := range []string{"check", "config", "rules", "doctor", "completion", "version"} {
-		for _, sub := range a.root.Commands() {
-			if sub.Name() == name {
-				_, _ = fmt.Fprintf(out, "  %s %s\n", command.Sprintf("%-12s", sub.Name()), sub.Short)
-				break
-			}
+	for _, sub := range a.root.Commands() {
+		if !sub.Hidden && sub.Name() != "help" {
+			_, _ = fmt.Fprintf(out, "  %s %s\n", command.Sprintf("%-12s", sub.Name()), sub.Short)
 		}
 	}
+
 	type flagHelp struct{ name, usage string }
 	for _, group := range []struct {
 		name  string
@@ -234,7 +234,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
 	defer restore()
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	option := helpStyle(colored, color.FgCyan)
-	_, _ = fmt.Fprintln(out, helpStyle(colored, color.Bold).Sprintf("actionlint %s", actionlint.Version()))
+	_, _ = fmt.Fprintln(out, helpStyle(colored, color.Bold).Sprintf("actionlint %s", buildinfo.Version()))
 	_, _ = fmt.Fprintln(out, styleHelpFlags(`
   -format TEMPLATE        --template TEMPLATE
   -oneline                --output-format=oneline
@@ -245,8 +245,8 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -version                version
   -verbose / -debug       --log-level=info / --log-level=debug
   -color / -no-color      boolean options on the root; no-color wins
-  -shellcheck COMMAND     false or an empty value disables ShellCheck
-  -ruff COMMAND           false or an empty value disables Ruff
+  -shellcheck[=COMMAND]   false or an empty value disables ShellCheck
+  -ruff[=COMMAND]         false or an empty value disables Ruff
   -pyflakes COMMAND       Select Pyflakes rules through Ruff unless Ruff is selected
   -stdin-filename PATH    unchanged
 
@@ -258,7 +258,7 @@ over commands. Use --command NAME to select a command despite such a file.`, opt
 
 func writeHelpDestinations(out io.Writer, heading *color.Color, links bool) {
 	info, _ := debug.ReadBuildInfo()
-	ref := documentationRef(actionlint.Version(), info)
+	ref := documentationRef(buildinfo.Version(), info)
 	documentation := projectURL + "/tree/" + ref + "/docs/usage.md"
 	display := documentation
 	if len(ref) == 40 && !strings.ContainsAny(ref, "/.-") {

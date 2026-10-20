@@ -25,8 +25,8 @@ buildGoModule {
   ldflags = [
     "-s"
     "-w"
-    "-X actionlint.kjanat.dev/internal/engine.version=${version}"
-    "-X actionlint.kjanat.dev/internal/engine.installedFrom=Nix"
+    "-X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=${version}"
+    "-X actionlint.kjanat.dev/internal/buildinfo.InstallOrigin=Nix"
   ];
 
   nativeBuildInputs = [
@@ -44,7 +44,7 @@ buildGoModule {
   checkPhase = ''
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
-    go test -skip '^(${completionTests})$' . ./analysis/... ./analyzer/... ./config/... ./diagnostic/... ./document/... ./syntax/... ./cmd/... ./fuzz ./internal/...
+    go test -skip '^(${completionTests})$' . ./analysis/... ./analyzer/... ./config/... ./diagnostic/... ./document/... ./syntax/... ./cmd/... ./fuzz ./internal/... ./tools/...
     runHook postCheck
   '';
 

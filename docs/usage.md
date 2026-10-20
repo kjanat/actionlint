@@ -67,7 +67,8 @@ for the full reference.
 ### Commands and compatibility
 
 The root invocation and the explicit `check` command accept options before or
-after filenames. On the root, `-format` and `--format` are equivalent and boolean
+after filenames. Legacy single-dash names such as `-format` are accepted at the
+root and after subcommands, alongside `--format`. Boolean
 options accept `=false`. Both routes use the same analysis engine. Use `--` to
 treat every remaining argument as a filename, including names beginning with `-`.
 
@@ -290,7 +291,8 @@ actionlint config validate
 ```
 
 Configuration selection remains one explicit file or the repository's
-`.github/actionlint.yaml`, then `.github/actionlint.yml`. There is no new global
+`.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, then
+`.github/actionlint.toml`. There is no new global
 configuration search or merge policy. `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
 both. `--no-config` skips
@@ -406,7 +408,7 @@ An empty value disables ShellCheck.
 
 ```sh
 actionlint -shellcheck=
-actionlint -shellcheck 'shellcheck -e SC2086'
+actionlint --shellcheck='shellcheck -e SC2086'
 ```
 
 Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. A bare
@@ -415,8 +417,8 @@ command line, and `--no-ruff` to disable it. ShellCheck follows the same pattern
 `--shellcheck`, `--shellcheck=COMMAND`, and `--no-shellcheck`.
 Optional command values require `=` so the next argument remains a workflow path.
 A disable flag wins if both forms are supplied and skips the tool's environment
-settings. Legacy `-ruff COMMAND` and `-shellcheck COMMAND` still accept separate
-values on the root. The older `=false` and empty values also remain supported.
+settings. Legacy single-dash spellings follow the same rules at the root and after
+subcommands. The older `=false` and empty values also remain supported.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
 Repository configuration can select native executables through
@@ -1217,3 +1219,56 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [vim-ale]: https://github.com/dense-analysis/ale
 [vsc-extension]: https://marketplace.visualstudio.com/items?itemName=arahata.linter-actionlint
 [vscode]: https://code.visualstudio.com/
+
+## Editor, fixes and remote resolution
+
+`actionlint lsp` serves LSP over stdin/stdout. It supports UTF-16 positions,
+versioned open buffers, ranged changes, diagnostic publication, and versioned
+quick-fix edits. Open document changes invalidate analysis of open dependants.
+The client applies edits; the server never writes editor buffers to disk.
+
+`actionlint fix [files...]` previews source edits as JSON. `--apply` writes the
+validated edits and checks the files again. Only fixes marked safe are selected
+by default; `--include-suggested` also includes edits requiring review. Conflicting
+edits or stale source revisions abort preparation. Writes are atomic per file;
+an I/O failure during a multi-file application reports how many files were written.
+
+`--plugin PATH` accepts document-analyzer components or the Ruff core WebAssembly
+engine. The Ruff engine replaces the native Ruff process while retaining the
+host's workflow expression masking and YAML position mapping.
+
+Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
+provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. The
+commitish provider is maintained separately as `actionlint-plugin-commitish`. Build it
+from that project with `cargo build --locked --release`. Its executable accepts `--token-env NAME` only when
+you explicitly choose a credential variable. It resolves action and reusable
+workflow references using their respective commitish semantics, and proposes
+reviewable commit pins. Provider errors fail analysis instead of implying absence.
+The default local analysis makes no resolution requests.
+
+The language server provides expression property completions, including
+`github.event` payload fields selected by the workflow's triggers and activity
+filters. Dot access, quoted bracket access, array indices and wildcard access
+use the same types as expression diagnostics. Completions use the current editor
+buffer, including unsaved changes. Unknown events and caller-provided payloads
+remain open; conditions do not yet narrow the event type within a branch.
+
+Expression findings have independent rule settings. For example, allowing unknown
+payload properties does not disable script-injection checks:
+
+```yaml
+lint:
+  rules:
+    correctness:
+      event-payload: off
+      expression-reference: error
+    security:
+      script-injection: error
+```
+
+The former `expression` catch-all has been split into `expression-syntax`,
+`expression-reference`, `context-availability`, `expression-type`,
+`expression-call`, `event-payload` and `script-injection`. Update existing
+suppressions and severity settings to the specific check. The `expression` rule
+now covers expression values and interpolation forms required by workflow fields.
+See the [rule reference](rules.md) for each rule's configuration group and help.

@@ -14,7 +14,7 @@ var _ interface{ Limits() plugin.EngineLimits } = (*plugin.Engine)(nil)
 
 func ExampleLoad() {
 	ctx := context.Background()
-	component, err := plugin.Load(ctx, filepath.Join("..", "internal", "component", "testdata", "plugins", "pipe-to-shell.wasm"), plugin.Options{})
+	component, err := plugin.Load(ctx, filepath.Join("..", "internal", "plugins", "component", "testdata", "plugins", "pipe-to-shell.wasm"), plugin.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -38,7 +38,7 @@ func ExampleLoad() {
 
 func ExampleLoadEngine() {
 	ctx := context.Background()
-	engine, err := plugin.LoadEngine(ctx, filepath.Join("..", "internal", "corewasm", "testdata", "engines", "echo.wasm"), plugin.EngineOptions{})
+	engine, err := plugin.LoadEngine(ctx, filepath.Join("..", "internal", "plugins", "core", "testdata", "engines", "echo.wasm"), plugin.EngineOptions{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return

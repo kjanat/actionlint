@@ -43,7 +43,8 @@ func TestUpstreamConformanceScore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := upstreamScore{Cases: 6, Agreements: 2, Differences: 4, New: 1, Changed: 1, Resolved: 1, Current: 1, Stale: 1, Missing: 2,
+	want := upstreamScore{
+		Cases: 6, Agreements: 2, Differences: 4, New: 1, Changed: 1, Resolved: 1, Current: 1, Stale: 1, Missing: 2,
 		CategoryCases: map[string]int{}, CategoryFindings: map[string]int{},
 	}
 	for _, category := range upstreamAssessments {

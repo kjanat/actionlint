@@ -6,8 +6,10 @@ import (
 	"io"
 	"strings"
 
+	documentmodel "actionlint.kjanat.dev/document"
+
 	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/repoconfig"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/report"
 )
 
@@ -17,9 +19,28 @@ type Result struct {
 	FileCount      int
 	Diagnostics    []diagnostic.Diagnostic
 	Findings       []Finding
-	Documents      report.DocumentOutlines
+	Documents      documentmodel.Outlines
 	Configurations []repoconfig.Report
 	Rules          []Rule
+}
+
+// Prepare adapts an analysis snapshot for display. Presentation-only inclusive
+// columns are computed here; analysis retains canonical half-open spans.
+func Prepare(analysis report.Analysis) Result {
+	r := Result{
+		FileCount: analysis.FileCount, Diagnostics: analysis.Diagnostics,
+		Documents: analysis.Documents, Configurations: analysis.Configurations, Rules: analysis.Rules,
+	}
+	for i, d := range analysis.Diagnostics {
+		var source report.DiagnosticSource
+		if i < len(analysis.Sources) {
+			source = analysis.Sources[i]
+		}
+		finding := FindingOf(d, source.Content)
+		finding.RawScript = source.RawScript
+		r.Findings = append(r.Findings, finding)
+	}
+	return r
 }
 
 // CheckResult is the versioned JSON document shared by CLI and Action checks.
@@ -32,7 +53,7 @@ type CheckResult struct {
 	ExitCode      int                     `json:"exit_code"`
 	FileCount     *int                    `json:"file_count"`
 	Diagnostics   []diagnostic.Diagnostic `json:"diagnostics"`
-	Documents     report.DocumentOutlines `json:"documents"`
+	Documents     documentmodel.Outlines  `json:"documents"`
 	Configs       []ResultConfig          `json:"configurations"`
 	Hints         []string                `json:"hints"`
 	SARIF         json.RawMessage         `json:"sarif,omitempty"`

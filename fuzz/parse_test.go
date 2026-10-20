@@ -1,9 +1,9 @@
-package actionlint_fuzz
+package fuzz
 
 import (
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/syntax"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -38,6 +38,6 @@ jobs: {}
 			return
 		}
 
-		actionlint.Parse(data)
+		syntax.Parse(data)
 	})
 }

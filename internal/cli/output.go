@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 type commandResultWriter struct {
@@ -77,18 +77,18 @@ func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
 }
 
 func (a *commandApp) reportError(err error) int {
-	status := actionlint.ExitStatusFailure
+	status := render.ExitFailure
 	if _, ok := errors.AsType[commandUsageError](err); ok {
-		status = actionlint.ExitStatusInvalidCommandOption
+		status = render.ExitInvalidCommandOption
 	}
 	if a.errorJSON || a.jsonOutput() {
 		if a.inv.Operation == "check" {
-			result := actionlint.NewCheckResult(status)
+			result := render.NewCheckResult(status)
 			result.Error = err.Error()
 			if failure, ok := errors.AsType[*checkAnalysisError](err); ok {
 				result.Diagnostics = failure.result.Diagnostics
 				result.Documents = failure.result.Documents
-				count := failure.result.FileCount()
+				count := failure.result.FileCount
 				result.FileCount = &count
 				for _, config := range failure.result.Configurations {
 					result.AddConfiguration(config)

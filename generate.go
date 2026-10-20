@@ -1,8 +1,11 @@
 package actionlint
 
-//go:generate go run ./scripts/generate-config-schema
-//go:generate go run ./scripts/generate-availability ./internal/workflowcontext/availability.go
-//go:generate go run ./scripts/generate-webhook-events ./internal/engine/all_webhooks.go
-//go:generate go run ./scripts/generate-action-metadata -runtimes -output internal/engine/action_runtimes.go
-//go:generate go run ./scripts/generate-popular-actions -f json ./internal/actioncatalog/popular_actions.json
-//go:generate go run ./scripts/generate-action-metadata -output internal/engine/action_metadata_availability.go
+//go:generate -command generate-config-schema go run ./tools/config
+//go:generate generate-config-schema
+//go:generate go run ./internal/rulecatalog/generate
+//go:generate go run ./internal/expression/context/generate ./internal/expression/context/availability.go
+//go:generate go run ./internal/webhook/generate ./internal/webhook/webhooks.go
+//go:generate node ./internal/webhook/payload/generate/main.mts
+//go:generate go run ./internal/actioncatalog/metadata -runtimes -output internal/action/runtimes_generated.go
+//go:generate go run ./internal/actioncatalog/generate -f json ./internal/actioncatalog/popular_actions.json
+//go:generate go run ./internal/actioncatalog/metadata -output internal/action/availability_generated.go

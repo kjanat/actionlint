@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	contextspec "actionlint.kjanat.dev/internal/expression/context"
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
-	workflowcontext "actionlint.kjanat.dev/internal/workflowcontext"
 )
 
 func ordinal(i int) string {
@@ -445,10 +445,11 @@ func NewChecker(checkUntrustedInput bool, cfg *Options) *Checker {
 	return c
 }
 
-func errorAtExpr(e Node, msg string) *Error {
+func errorAtExpr(kind findingKind, e Node, msg string) *Error {
 	span := ExpressionSpan(e)
 	return &Error{
-		Message:   msg,
+		Message: msg,
+		Rule:    kind.rule, Code: kind.code,
 		Offset:    span.Start,
 		EndOffset: span.End,
 		Line:      span.Line,
@@ -456,20 +457,20 @@ func errorAtExpr(e Node, msg string) *Error {
 	}
 }
 
-func errorfAtExpr(e Node, format string, args ...any) *Error {
-	return errorAtExpr(e, fmt.Sprintf(format, args...))
+func errorfAtExpr(kind findingKind, e Node, format string, args ...any) *Error {
+	return errorAtExpr(kind, e, fmt.Sprintf(format, args...))
 }
 
-func (sema *Checker) errorf(e Node, format string, args ...any) {
-	sema.errs = append(sema.errs, errorfAtExpr(e, format, args...))
+func (sema *Checker) errorf(kind findingKind, e Node, format string, args ...any) {
+	sema.errs = append(sema.errs, errorfAtExpr(kind, e, format, args...))
 }
 
-func errorfAtCallee(n *FuncCallNode, format string, args ...any) *Error {
-	return errorAtToken(n.Token(), fmt.Sprintf(format, args...))
+func errorfAtCallee(kind findingKind, n *FuncCallNode, format string, args ...any) *Error {
+	return errorAtToken(kind, n.Token(), fmt.Sprintf(format, args...))
 }
 
-func (sema *Checker) calleeErrorf(n *FuncCallNode, format string, args ...any) {
-	sema.errs = append(sema.errs, errorfAtCallee(n, format, args...))
+func (sema *Checker) calleeErrorf(kind findingKind, n *FuncCallNode, format string, args ...any) {
+	sema.errs = append(sema.errs, errorfAtCallee(kind, n, format, args...))
 }
 
 func (sema *Checker) ensureVarsCopied() {
@@ -568,7 +569,9 @@ func (sema *Checker) UpdateDispatchInputs(ty *ObjectType) {
 	sema.ensureGithubVarCopied()
 	if gh, ok := sema.vars["github"].(*ObjectType); ok {
 		if ev, ok := gh.Props["event"].(*ObjectType); ok {
+			ev = copyEventObject(ev)
 			ev.Props["inputs"] = ty
+			gh.Props["event"] = ev
 		}
 	}
 }
@@ -607,7 +610,7 @@ func (sema *Checker) checkAvailableContext(n *VariableNode) {
 	default:
 		notes = "available contexts are " + stringutil.Quotes(sema.availableContexts)
 	}
-	sema.errorf(
+	sema.errorf(unavailableContext,
 		n,
 		"context %q is not allowed here. %s. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details",
 		n.Name,
@@ -635,7 +638,7 @@ func (sema *Checker) SetSpecialFunctionAvailability(avail []string) {
 // and failure; step and snapshot conditions require zero arguments.
 func (sema *Checker) SetWorkflowKeyAvailability(key string) {
 	sema.condition = strings.HasSuffix(key, ".if")
-	contexts, functions := workflowcontext.WorkflowKeyAvailability(key)
+	contexts, functions := contextspec.WorkflowKeyAvailability(key)
 	sema.SetContextAvailability(contexts)
 	sema.SetSpecialFunctionAvailability(functions)
 	sema.jobCondition = key == "jobs.<job_id>.if"
@@ -644,7 +647,7 @@ func (sema *Checker) SetWorkflowKeyAvailability(key string) {
 func (sema *Checker) checkSpecialFunctionAvailability(n *FuncCallNode) {
 	f := strings.ToLower(n.Callee)
 
-	allowed, ok := workflowcontext.SpecialFunctionNames[f]
+	allowed, ok := contextspec.SpecialFunctionNames[f]
 	if !ok {
 		return // This function is not special
 	}
@@ -653,7 +656,7 @@ func (sema *Checker) checkSpecialFunctionAvailability(n *FuncCallNode) {
 		return
 	}
 
-	sema.calleeErrorf(
+	sema.calleeErrorf(unavailableFunction,
 		n,
 		"calling function %q is not allowed here. %q is only available in %s. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details",
 		n.Callee,
@@ -681,28 +684,28 @@ func (sema *Checker) checkVariable(n *VariableNode) Type {
 			name := n.Token().Value
 			for _, sig := range sigs {
 				if len(sig.Params) == 0 {
-					sema.errorf(n, "function %q must be called with parentheses; did you mean %q?", name, name+"()")
+					sema.errorf(missingCall, n, "function %q must be called with parentheses; did you mean %q?", name, name+"()")
 					return AnyType{}
 				}
 			}
-			sema.errorf(n, "function %q must be called with parentheses and arguments", name)
+			sema.errorf(missingCall, n, "function %q must be called with parentheses and arguments", name)
 			return AnyType{}
 		}
 		if inputs, ok := sema.vars["inputs"].(*ObjectType); ok && inputs.IsStrict() && slices.Contains(sema.availableContexts, "inputs") {
 			if _, declared := inputs.Props[n.Name]; declared {
-				sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, "inputs."+n.Name)
+				sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, "inputs."+n.Name)
 				return AnyType{}
 			}
 		}
 		if suggestion := sema.contextPropertySuggestion(n.Name); suggestion != "" {
-			sema.errorf(n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
 			return AnyType{}
 		}
 		ss := make([]string, 0, len(sema.vars))
 		for n := range sema.vars {
 			ss = append(ss, n)
 		}
-		sema.errorf(n, "undefined variable %q. available variables are %s", n.Token().Value, stringutil.SortedQuotes(ss))
+		sema.errorf(unknownVariable, n, "undefined variable %q. available variables are %s", n.Token().Value, stringutil.SortedQuotes(ss))
 		return AnyType{}
 	}
 
@@ -736,17 +739,19 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 				switch receiver.Name {
 				case "github", "job", "runner", "strategy":
 					if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
-						sema.errorf(n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
+						sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
 						return AnyType{}
 					}
 				}
 			}
-			sema.errorf(n, "property %q is not defined in object type %s", n.Property, ty.String())
+			if !sema.missingEventProperty(n, n.Receiver, n.Property, ty) {
+				sema.errorf(unknownProperty, n, "property %q is not defined in object type %s", n.Property, ty.String())
+			}
 		}
 		return AnyType{}
 	case *ArrayType:
 		if !ty.Deref {
-			sema.errorf(n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
+			sema.errorf(operandType, n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
 			return AnyType{}
 		}
 		switch et := ty.Elem.(type) {
@@ -761,11 +766,13 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 			} else if et.Mapped != nil {
 				elem = et.Mapped
 			} else if et.IsStrict() {
-				sema.errorf(n, "property %q is not defined in object type %s as element of filtered array", n.Property, et.String())
+				if !sema.missingEventProperty(n, n.Receiver, n.Property, et) {
+					sema.errorf(unknownProperty, n, "property %q is not defined in object type %s as element of filtered array", n.Property, et.String())
+				}
 			}
 			return &ArrayType{elem, true}
 		default:
-			sema.errorf(
+			sema.errorf(operandType,
 				n,
 				"property filtered by %q at object filtering must be type of object but got %q",
 				n.Property,
@@ -774,7 +781,7 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 			return AnyType{}
 		}
 	default:
-		sema.errorf(n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
+		sema.errorf(operandType, n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
 		return AnyType{}
 	}
 }
@@ -811,7 +818,7 @@ func ContextPropertySuggestion(name string, contexts []string, variables map[str
 func (sema *Checker) checkConfigVariables(n Node, prop string) {
 	// https://docs.github.com/en/actions/learn-github-actions/variables#naming-conventions-for-configuration-variables
 	if strings.HasPrefix(prop, "github_") {
-		sema.errorf(
+		sema.errorf(invalidVariableName,
 			n,
 			"configuration variable name %q must not start with the GITHUB_ prefix (case insensitive). note: see the convention at https://docs.github.com/en/actions/learn-github-actions/variables#naming-conventions-for-configuration-variables",
 			prop,
@@ -824,7 +831,7 @@ func (sema *Checker) checkConfigVariables(n Node, prop string) {
 		if '0' <= r && r <= '9' || 'a' <= r && r <= 'z' || r == '_' {
 			continue
 		}
-		sema.errorf(
+		sema.errorf(invalidVariableName,
 			n,
 			"configuration variable name %q can only contain alphabets, decimal numbers, and '_'. note: see the convention at https://docs.github.com/en/actions/learn-github-actions/variables#naming-conventions-for-configuration-variables",
 			prop,
@@ -836,7 +843,7 @@ func (sema *Checker) checkConfigVariables(n Node, prop string) {
 		return
 	}
 	if len(sema.configVars) == 0 {
-		sema.errorf(
+		sema.errorf(unknownConfigVariable,
 			n,
 			"no configuration variable is allowed since the variables list is empty in actionlint.yaml. you may forget adding the variable %q to the list",
 			prop,
@@ -850,7 +857,7 @@ func (sema *Checker) checkConfigVariables(n Node, prop string) {
 		}
 	}
 
-	sema.errorf(
+	sema.errorf(unknownConfigVariable,
 		n,
 		"undefined configuration variable %q. defined configuration variables in actionlint.yaml are %s",
 		prop,
@@ -863,7 +870,7 @@ func (sema *Checker) checkConfigSecrets(n Node, prop string) {
 		return
 	}
 	if len(sema.configSecrets) == 0 {
-		sema.errorf(
+		sema.errorf(unknownSecret,
 			n,
 			"no secret is allowed since the secrets list is empty in actionlint.yaml. you may forget adding the secret %q to the list",
 			prop,
@@ -875,7 +882,7 @@ func (sema *Checker) checkConfigSecrets(n Node, prop string) {
 	}) {
 		return
 	}
-	sema.errorf(
+	sema.errorf(unknownSecret,
 		n,
 		"undefined secret %q. defined secrets in actionlint.yaml are %s",
 		prop,
@@ -888,8 +895,7 @@ func (sema *Checker) checkArrayDeref(n *ArrayDerefNode) Type {
 	case AnyType:
 		return &ArrayType{AnyType{}, true}
 	case *ArrayType:
-		ty.Deref = true
-		return ty
+		return &ArrayType{Elem: ty.Elem, Deref: true}
 	case *ObjectType:
 		// Object filtering is available for objects, not only arrays (#66)
 
@@ -901,11 +907,15 @@ func (sema *Checker) checkArrayDeref(n *ArrayDerefNode) Type {
 			case *ObjectType:
 				return &ArrayType{mty, true}
 			default:
-				sema.errorf(n, "elements of object at receiver of object filtering `.*` must be type of object but got %q. the type of receiver was %q", mty.String(), ty.String())
+				sema.errorf(operandType, n, "elements of object at receiver of object filtering `.*` must be type of object but got %q. the type of receiver was %q", mty.String(), ty.String())
 				return AnyType{}
 			}
 		}
 
+		// Payload object filters select scalar members as well as object members.
+		if strings.HasPrefix(eventReference(n.Receiver), "github.event") {
+			return &ArrayType{Elem: AnyType{}, Deref: true}
+		}
 		// For strict object at receiver of .*
 		found := false
 		for _, t := range ty.Props {
@@ -915,13 +925,13 @@ func (sema *Checker) checkArrayDeref(n *ArrayDerefNode) Type {
 			}
 		}
 		if !found {
-			sema.errorf(n, "object type %q cannot be filtered by object filtering `.*` since it has no object element", ty.String())
+			sema.errorf(operandType, n, "object type %q cannot be filtered by object filtering `.*` since it has no object element", ty.String())
 			return AnyType{}
 		}
 
 		return &ArrayType{AnyType{}, true}
 	default:
-		sema.errorf(n, "receiver of object filtering `.*` must be type of array or object but got %q", ty.String())
+		sema.errorf(operandType, n, "receiver of object filtering `.*` must be type of array or object but got %q", ty.String())
 		return AnyType{}
 	}
 }
@@ -941,7 +951,7 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 		case AnyType, NumberType:
 			return ty.Elem
 		default:
-			sema.errorf(n.Index, "index access of array must be type of number but got %q", idx.String())
+			sema.errorf(operandType, n.Index, "index access of array must be type of number but got %q", idx.String())
 			return AnyType{}
 		}
 	case *ObjectType:
@@ -951,7 +961,7 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 		case StringType:
 			// Index access with String literal like foo['bar']
 			if lit, ok := n.Index.(*StringNode); ok {
-				if prop, ok := ty.Props[lit.Value]; ok {
+				if prop, ok := ty.Props[strings.ToLower(lit.Value)]; ok {
 					return prop
 				}
 				if ty.Mapped != nil {
@@ -967,7 +977,9 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 					return ty.Mapped
 				}
 				if ty.IsStrict() {
-					sema.errorf(n, "property %q is not defined in object type %s", lit.Value, ty.String())
+					if !sema.missingEventProperty(n, n.Operand, lit.Value, ty) {
+						sema.errorf(unknownProperty, n, "property %q is not defined in object type %s", lit.Value, ty.String())
+					}
 				}
 			}
 			if ty.Mapped != nil {
@@ -975,11 +987,11 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 			}
 			return AnyType{} // Fallback
 		default:
-			sema.errorf(n.Index, "property access of object must be type of string but got %q", idx.String())
+			sema.errorf(operandType, n.Index, "property access of object must be type of string but got %q", idx.String())
 			return AnyType{}
 		}
 	default:
-		sema.errorf(n, "index access operand must be type of object or array but got %q", ty.String())
+		sema.errorf(operandType, n, "index access operand must be type of object or array but got %q", ty.String())
 		return AnyType{}
 	}
 }
@@ -991,7 +1003,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []Type) *Error
 		if sig.VariableLengthParams {
 			atLeast = "at least "
 		}
-		return errorfAtCallee(
+		return errorfAtCallee(argumentCount,
 			n,
 			"number of arguments is wrong. function %q takes %s%d parameters but %d arguments are given",
 			sig.String(),
@@ -1004,7 +1016,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []Type) *Error
 	for i := range len(sig.Params) {
 		p, a := sig.Params[i], args[i]
 		if !p.Assignable(a) {
-			return errorfAtExpr(
+			return errorfAtExpr(argumentType,
 				n.Args[i],
 				"%s argument of function call is not assignable. %q cannot be assigned to %q. called function type is %q",
 				ordinal(i+1),
@@ -1022,7 +1034,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []Type) *Error
 		p := sig.Params[lp-1]
 		for i, a := range rest {
 			if !p.Assignable(a) {
-				return errorfAtExpr(
+				return errorfAtExpr(argumentType,
 					n.Args[lp+i],
 					"%s argument of function call is not assignable. %q cannot be assigned to %q. called function type is %q",
 					ordinal(lp+i+1),
@@ -1062,14 +1074,14 @@ func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) T
 
 		for i := range l {
 			if _, ok := holders[i]; !ok {
-				sema.calleeErrorf(n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
+				sema.calleeErrorf(formatPlaceholder, n, "format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", lit.Value, i)
 				continue
 			}
 			delete(holders, i) // forget it to check unused placeholders
 		}
 
 		for i := range holders {
-			sema.calleeErrorf(n, "format string %q contains placeholder {%d} but only %d arguments are given to format", lit.Value, i, l)
+			sema.calleeErrorf(formatPlaceholder, n, "format string %q contains placeholder {%d} but only %d arguments are given to format", lit.Value, i, l)
 		}
 	case "fromjson":
 		lit, ok := n.Args[0].(*StringNode)
@@ -1078,7 +1090,7 @@ func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) T
 		}
 		collisions := JSONMemberCollisions(lit.Value)
 		for _, collision := range collisions {
-			sema.errorf(lit, "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)
+			sema.errorf(jsonCollision, lit, "fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)
 		}
 		if len(collisions) > 0 {
 			return sig.Ret
@@ -1089,11 +1101,11 @@ func (sema *Checker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) T
 			return TypeOfJSONValue(v)
 		}
 		if s, ok := errors.AsType[*json.SyntaxError](err); ok {
-			sema.errorf(lit, "broken JSON string is passed to fromJSON() at offset %d: %s", s.Offset, s)
+			sema.errorf(invalidJSON, lit, "broken JSON string is passed to fromJSON() at offset %d: %s", s.Offset, s)
 		}
 	case "case":
 		if len(n.Args)%2 == 0 {
-			sema.calleeErrorf(n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
+			sema.calleeErrorf(argumentCount, n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
 		}
 	}
 
@@ -1117,7 +1129,7 @@ func (sema *Checker) checkCaseCall(n *FuncCallNode) Type {
 			switch ty.(type) {
 			case BoolType, AnyType:
 			default:
-				sema.errorf(n.Args[i], "case() predicate must be boolean but found %s", ty.String())
+				sema.errorf(operandType, n.Args[i], "case() predicate must be boolean but found %s", ty.String())
 			}
 		}
 		value, known := ConditionConstantValue(n.Args[i])
@@ -1140,14 +1152,14 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 		for n := range sema.funcs {
 			ss = append(ss, n)
 		}
-		sema.calleeErrorf(n, "undefined function %q. available functions are %s", n.Callee, stringutil.SortedQuotes(ss))
+		sema.calleeErrorf(unknownFunction, n, "undefined function %q. available functions are %s", n.Callee, stringutil.SortedQuotes(ss))
 		return AnyType{}
 	}
 
 	// The runner's expression parser limits these variadic functions to 255 arguments.
 	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/DTExpressions2/Expressions2/ExpressionConstants.cs
 	if (callee == "hashfiles" || callee == "format" || callee == "case") && len(n.Args) > 255 {
-		sema.calleeErrorf(n, "function %q takes at most 255 arguments but %d arguments are given", n.Callee, len(n.Args))
+		sema.calleeErrorf(argumentCount, n, "function %q takes at most 255 arguments but %d arguments are given", n.Callee, len(n.Args))
 	}
 	if sema.jobCondition && (callee == "success" || callee == "failure") && len(n.Args) > 0 {
 		sigs = []*FuncSignature{{
@@ -1186,7 +1198,7 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 func (sema *Checker) checkNotOp(n *NotOpNode) Type {
 	ty := sema.check(n.Operand)
 	if !(BoolType{}).Assignable(ty) {
-		sema.errorf(n, "type of operand of ! operator %q is not assignable to type \"bool\"", ty.String())
+		sema.errorf(operandType, n, "type of operand of ! operator %q is not assignable to type \"bool\"", ty.String())
 	}
 	return BoolType{}
 }
@@ -1251,7 +1263,7 @@ func (sema *Checker) checkCompareOp(n *CompareOpNode) Type {
 	sema.checkConditionComparison(n, l, r)
 
 	if !validateCompareOpOperands(n.Kind, l, r) {
-		sema.errorf(n, "%q value cannot be compared to %q value with %q operator", l.String(), r.String(), n.Kind.String())
+		sema.errorf(operandType, n, "%q value cannot be compared to %q value with %q operator", l.String(), r.String(), n.Kind.String())
 	}
 
 	return BoolType{}

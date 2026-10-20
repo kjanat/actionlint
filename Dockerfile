@@ -9,12 +9,15 @@ COPY analysis analysis/
 COPY config config/
 COPY diagnostic diagnostic/
 COPY document document/
+COPY resolver resolver/
+COPY rule rule/
+COPY source source/
 COPY syntax syntax/
 COPY cmd cmd/
 COPY internal internal/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
-RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/internal/engine.version=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/internal/engine.installedFrom=official Docker image'" -o . ./cmd/actionlint
+RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/internal/buildinfo.InstallOrigin=official Docker image'" -o . ./cmd/actionlint
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 # Release binaries support larger ARM64 page sizes, unlike Ruff's distroless build.
@@ -42,7 +45,7 @@ COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
 COPY --from=ruff /ruff /usr/local/bin/ruff
 
 FROM runtime AS action
-COPY --chmod=755 scripts/docker-action.sh /usr/local/bin/actionlint-action
+COPY --chmod=755 distribution/docker/docker-action.sh /usr/local/bin/actionlint-action
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
 FROM runtime AS cli

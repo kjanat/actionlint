@@ -101,8 +101,10 @@ func assessUpstreamResults(results []upstreamResult, baseline map[string][]strin
 	for _, result := range results {
 		group, assessed := byID[result.ID]
 		delete(byID, result.ID)
-		review := upstreamReview{CaseID: result.ID, ObservationFingerprint: result.Fingerprint,
-			ReviewedFingerprint: group.Cases[result.ID], Findings: group.Findings}
+		review := upstreamReview{
+			CaseID: result.ID, ObservationFingerprint: result.Fingerprint,
+			ReviewedFingerprint: group.Cases[result.ID], Findings: group.Findings,
+		}
 		recorded, known := baseline[result.ID]
 		if !result.Difference {
 			report.Score.Agreements++

@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"os"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 // Internal aliases keep reporters on the public result contract.
-type persistedResult = actionlint.CheckResult
+type persistedResult = render.CheckResult
 
 func (a *action) persistResult(code int, failure error) error {
 	path := a.env("ACTIONLINT_ACTION_RESULT")
@@ -22,11 +22,11 @@ func (a *action) persistResult(code int, failure error) error {
 	return os.WriteFile(path, append(data, '\n'), 0o600)
 }
 
-func (a *action) checkResult(code int, failure error) actionlint.CheckResult {
+func (a *action) checkResult(code int, failure error) render.CheckResult {
 	if a.result != nil && failure == nil {
 		code = a.result.code
 	}
-	r := actionlint.NewCheckResult(code)
+	r := render.NewCheckResult(code)
 	if a.result != nil {
 		lint := a.result
 		r.Documents = lint.documents
@@ -45,7 +45,7 @@ func (a *action) checkResult(code int, failure error) actionlint.CheckResult {
 		if lint.sarif != "" {
 			r.SARIF = json.RawMessage(lint.sarif)
 		}
-		if lint.code >= actionlint.ExitStatusInvalidCommandOption {
+		if lint.code >= render.ExitInvalidCommandOption {
 			r.Error = lint.stderr
 		}
 	}

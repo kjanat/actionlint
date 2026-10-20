@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
@@ -39,17 +39,19 @@ tools: {shellcheck: false}
 			}
 			getenv := func(name string) string { return env[name] }
 			var plan, errors, output strings.Builder
-			if code := ToolPlan(getenv, &plan, &errors); code != actionlint.ExitStatusSuccessNoProblem {
+			if code := ToolPlan(getenv, &plan, &errors); code != render.ExitSuccessNoProblem {
 				t.Fatalf("tool plan failed: %d %s", code, errors.String())
 			}
-			var tools actionlint.ExternalToolRequirements
+			var tools struct {
+				Shellcheck bool `json:"shellcheck"`
+			}
 			if err := json.Unmarshal([]byte(plan.String()), &tools); err != nil {
 				t.Fatal(err)
 			}
 			if tools.Shellcheck {
 				t.Fatalf("tool plan ignored external config: %s", plan.String())
 			}
-			if code := Main(getenv, &output); code != actionlint.ExitStatusSuccessNoProblem {
+			if code := Main(getenv, &output); code != render.ExitSuccessNoProblem {
 				t.Fatalf("analysis failed: %d %s", code, output.String())
 			}
 			var result persistedResult
@@ -95,7 +97,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 				"GITHUB_OUTPUT":            filepath.Join(t.TempDir(), "outputs"),
 			}
 			var output strings.Builder
-			if code := Main(func(name string) string { return env[name] }, &output); code != actionlint.ExitStatusSuccessProblemFound {
+			if code := Main(func(name string) string { return env[name] }, &output); code != render.ExitSuccessProblemFound {
 				t.Fatalf("external workflow findings lost: %d %s", code, output.String())
 			}
 			var result persistedResult
@@ -160,7 +162,7 @@ jobs:
 				}
 				linkWorkspaceFile(t, target, filepath.Join(workspace, filepath.FromSlash(tc.link)))
 				got := runLinter(&lintRequest{workingDir: workspace, files: []string{".github/workflows/ci.yml"}, format: formatJSON})
-				if got.code != actionlint.ExitStatusSuccessNoProblem {
+				if got.code != render.ExitSuccessNoProblem {
 					t.Fatalf("linked dependency failed: %d %s%s", got.code, got.stderr, got.stdout)
 				}
 			})
@@ -194,7 +196,7 @@ tools: {shellcheck: false}
 				got := runLinter(req)
 				var stdout, stderr strings.Builder
 				code := ToolPlan(func(key string) string { return env[key] }, &stdout, &stderr)
-				if got.code != actionlint.ExitStatusSuccessNoProblem || code != actionlint.ExitStatusSuccessNoProblem {
+				if got.code != render.ExitSuccessNoProblem || code != render.ExitSuccessNoProblem {
 					t.Fatalf("linked config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
 				}
 				if !strings.Contains(stdout.String(), `"shellcheck":false`) {

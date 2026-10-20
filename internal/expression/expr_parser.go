@@ -8,9 +8,10 @@ import (
 	stringutil "actionlint.kjanat.dev/internal/stringutil"
 )
 
-func errorAtToken(t *Token, msg string) *Error {
+func errorAtToken(kind findingKind, t *Token, msg string) *Error {
 	return &Error{
-		Message:   msg,
+		Message: msg,
+		Rule:    kind.rule, Code: kind.code,
 		Offset:    t.Offset,
 		EndOffset: t.Offset + len(t.Value),
 		Line:      t.Line,
@@ -34,7 +35,7 @@ func NewParser() *Parser {
 
 func (p *Parser) error(msg string) {
 	if p.err == nil {
-		p.err = errorAtToken(p.cur, msg)
+		p.err = errorAtToken(syntax, p.cur, msg)
 	}
 }
 
@@ -377,7 +378,7 @@ func (p *Parser) Parse(l *Lexer) (Node, *Error) {
 		return nil, p.err
 	}
 	if node := expressionExceedingDepth(root); node != nil {
-		p.err = errorAtToken(node.Token(), "exceeded max expression depth 50")
+		p.err = errorAtToken(syntax, node.Token(), "exceeded max expression depth 50")
 		return nil, p.err
 	}
 
