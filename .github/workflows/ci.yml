@@ -1,7 +1,7 @@
 ---
 name: CI
 on:
-  push: { branches: [master] }
+  push: { branches: [master, fuck-it] }
   pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,9 +32,10 @@ jobs:
               "flake.lock"
             ],
             "nix": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "nix/**",
+              "tools/**/*.go", "tools/**/testdata/**", "fuzz/**", "testdata/**",
               "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "tools/release/check-packaged-cli.bash",
-              ".github/workflows/nix.yml", "!**/testdata/**"
+              ".github/workflows/nix.yml"
             ],
             "wasm": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",
@@ -82,7 +83,7 @@ jobs:
             ],
             "plugins": [
               ".github/actions/setup-wasm-toolchain/**",
-              "plugins/**", "examples/plugins/**", "testdata/plugins/**", "testdata/runner-provider/**", "tools/runner-host/**", "plugin/**", "internal/plugins/**", "internal/application/**", "analysis/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "diagnostic/**", "go.mod", "go.sum", "Makefile", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"
+              "plugins/**", "examples/plugins/**", "testdata/plugins/**", "testdata/runner-provider/**", "tools/runner-host/**", "tools/plugin-contract/**", "plugin/**", "internal/plugins/**", "internal/application/**", "internal/localapp/**", "analysis/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "diagnostic/**", "go.mod", "go.sum", "Makefile", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"
             ]
           }
         }
@@ -348,6 +349,10 @@ jobs:
         run: cargo build --locked --manifest-path tools/runner-host/Cargo.toml
       - name: Build the plugin fixtures from source
         run: make -B plugins
+      - name: Verify generated plugin interfaces
+        run: |
+          go run -C tools/plugin-contract .
+          git diff --exit-code -- internal/plugins/component/contract_generated.go internal/plugins/component/runner_generated.go internal/plugins/component/script_engine_generated.go
       - name: Load the Rust, C and TinyGo examples
         run: >-
           go run ./cmd/actionlint --no-config --shellcheck= --ruff=
@@ -361,7 +366,7 @@ jobs:
         run: |
           test -x "${ACTIONLINT_RUNNER_HOST}"
           go test -count=1 -v ./internal/plugins/component ./internal/plugins/core ./plugin
-      - run: go test -count=1 -run "Plugin|Engine" ./internal/integration/cli
+      - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/localapp ./internal/integration/cli
   docker:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}

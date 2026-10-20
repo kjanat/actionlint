@@ -58,3 +58,29 @@ func ExampleLoadEngine() {
 	// loaded actionlint-engine-echo with memory 256 MiB, time 10s
 	// step.py:1:7 F821 Undefined name `missing`
 }
+
+func ExampleLoad_scriptEngine() {
+	ctx := context.Background()
+	engine, err := plugin.Load(ctx, filepath.Join("..", "internal", "plugins", "component", "testdata", "plugins", "script-engine.wasm"), plugin.Options{})
+	if err != nil {
+		fmt.Println("load:", err)
+		return
+	}
+	defer engine.Close(ctx)
+	fmt.Println("script engine:", engine.HasScriptEngine(), engine.ScriptDescriptor().Engine)
+	if err := engine.ValidateConfig(ctx, nil); err != nil {
+		fmt.Println("config:", err)
+		return
+	}
+	findings, err := engine.Check(ctx, analyzer.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
+	if err != nil {
+		fmt.Println("check:", err)
+		return
+	}
+	for _, finding := range findings {
+		fmt.Printf("%s:%d:%d %s\n", finding.Filename, finding.Location.Row, finding.Location.Column, finding.Code)
+	}
+	// Output:
+	// script engine: true echo
+	// step.py:1:7 ECHO001
+}

@@ -225,12 +225,12 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		return Pin{}, errors.New("unsupported registry version record")
 	}
 	i, s, ri := m.Plugin, r.Submission, r.Receipt.Identity
-	if s.SchemaVersion != 1 || s.Tag != v.Version || s.Provider != i.Provider || s.Repository != i.Repository || s.Asset != i.Asset || s.Kind != i.Kind ||
+	if s.SchemaVersion != 1 || s.Tag != v.Version || s.Provider != i.Provider || s.Repository != i.Repository ||
 		r.Receipt.SchemaVersion != 1 || r.Receipt.Submission != s || ri.Issuer != i.Issuer || ri.RepositoryID != i.RepositoryID || ri.OwnerID != i.OwnerID || ri.Repository != i.Repository || ri.Ref != "refs/tags/"+v.Version || ri.Commit != r.Commit ||
-		strconv.FormatInt(r.RepositoryID, 10) != i.RepositoryID || strconv.FormatInt(r.OwnerID, 10) != i.OwnerID || d.PluginID != i.PluginID || d.Kind != i.Kind || !strings.EqualFold(d.Repository, "https://"+p.Name) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
+		strconv.FormatInt(r.RepositoryID, 10) != i.RepositoryID || strconv.FormatInt(r.OwnerID, 10) != i.OwnerID || d.PluginID != i.PluginID || d.Kind != s.Kind || !strings.EqualFold(d.Repository, "https://"+p.Name) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
 		return Pin{}, errors.New("registry version disagrees with publisher identity or selected release")
 	}
-	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: i.Kind, Asset: i.Asset, URL: r.URL, SHA256: s.SHA256, Contract: d.Contract}
+	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.Asset, URL: r.URL, SHA256: s.SHA256, Contract: d.Contract}
 	if err := pin.Validate(); err != nil {
 		return Pin{}, err
 	}

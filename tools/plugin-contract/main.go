@@ -30,6 +30,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if err := generateScriptEngine(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if *fixtures {
 		if err := generateFixtures(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -179,6 +183,20 @@ func (g *generator) defined(kind wit.TypeDefKind) (string, error) {
 	case *wit.Option:
 		value, err := g.value(kind.Type)
 		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindOption, Option:" + value + "}", err
+	case *wit.Result:
+		payload := func(typ wit.Type) (string, error) {
+			if typ == nil {
+				return "wp.None[wp.ValTypeDesc]()", nil
+			}
+			value, err := g.value(typ)
+			return "wp.Some(" + value + ")", err
+		}
+		ok, err := payload(kind.OK)
+		if err != nil {
+			return "", err
+		}
+		failure, err := payload(kind.Err)
+		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindResult, ResultOk:" + ok + ", ResultErr:" + failure + "}", err
 	case *wit.Variant:
 		var cases []string
 		for _, item := range kind.Cases {

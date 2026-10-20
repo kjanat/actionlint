@@ -40,7 +40,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 		}
 	}
 	for _, engine := range plugins.engines {
-		rules = append(rules, engine.Metadata().Engine.Name)
+		rules = append(rules, engine.descriptor.Rule.Name)
 	}
 	if err := ctx.Err(); err != nil {
 		return inspection, err
