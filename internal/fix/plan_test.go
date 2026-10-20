@@ -17,6 +17,10 @@ func TestPlanAndApply(t *testing.T) {
 	if err := os.WriteFile(path, []byte(before), 0600); err != nil {
 		t.Fatal(err)
 	}
+	original, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	d := diagnostic.Diagnostic{Fixes: []diagnostic.Fix{{Applicability: "safe", Revisions: map[string]string{path: sourceid.Digest([]byte(before))}, Edits: []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
 	reader := fsread.New(t.Context(), nil, nil)
 	plan, err := Build(t.Context(), []diagnostic.Diagnostic{d}, reader, false)
@@ -34,8 +38,11 @@ func TestPlanAndApply(t *testing.T) {
 	if err != nil || string(data) != plan.Changes[0].After {
 		t.Fatalf("written=%q %v", data, err)
 	}
-	info, _ := os.Stat(path)
-	if info.Mode().Perm() != 0600 {
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != original.Mode().Perm() {
 		t.Fatal(info.Mode())
 	}
 	if _, err := Apply(t.Context(), plan, reader); err == nil {

@@ -2,6 +2,7 @@ package action
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -28,7 +29,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 		if err != nil || parsed.positions == nil {
 			t.Fatalf("source-backed metadata cache: %+v, %v", parsed, err)
 		}
-		if parsed.Path() != "nested/action.yml" || string(parsed.Source) != content {
+		if parsed.Path() != filepath.Join("nested", "action.yml") || string(parsed.Source) != content {
 			t.Fatal("parser lost source identity")
 		}
 	}
