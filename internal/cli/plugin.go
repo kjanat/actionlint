@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -68,10 +69,18 @@ func (c checkInvocation) pluginSelection() localapp.PluginSelection {
 
 func (c checkInvocation) defaultPlugins(warning func(string)) localapp.DefaultPluginOptions {
 	return localapp.DefaultPluginOptions{
-		Shellcheck: c.ShellCheck == "shellcheck" && c.ShellcheckOptions == nil,
-		Ruff:       c.Ruff == "ruff" && c.RuffOptions == nil,
+		Shellcheck: c.ShellCheck == "shellcheck" && implicitProcessOptions(c.ShellcheckOptions),
+		Ruff:       c.Ruff == "ruff" && implicitProcessOptions(c.RuffOptions),
 		Warning:    warning,
 	}
+}
+
+// Optional discovery is a default, not an explicit choice of a native checker.
+// Arguments (including the legacy pyflakes selection) still opt into native use.
+func implicitProcessOptions(options *processconfig.Options) bool {
+	return options == nil || options.Optional && !options.IgnoreConfig && options.Executable == nil &&
+		len(options.Arguments) == 0 && len(options.LauncherArguments) == 0 &&
+		len(options.Environment) == 0 && options.WorkingDir == ""
 }
 
 type pluginRegistryRequest struct {

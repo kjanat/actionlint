@@ -164,11 +164,22 @@ try {
 	assert.match(await readFile(summaryFile, 'utf8'), /Could not start analysis/);
 	assert.match(setupFailure.log, /::error::/);
 	await run({ files: '' }, 3);
+	// Tool booleans enable selected plugins; they do not install native tools.
+	// Select the released plugin explicitly and forbid PATH-based fallbacks.
+	const shellCache = join(workspace, 'shell-cache');
+	await mkdir(shellCache);
+	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
+	const installShell = spawnSync(resolve(binary), ['plugin', 'install', 'shellcheck@v0.1.1'], {
+		cwd: workspace,
+		env: { ...process.env, ...shellEnvironment },
+		encoding: 'utf8',
+	});
+	assert.equal(installShell.status, 0, `${installShell.error ?? ''}\n${installShell.stdout}\n${installShell.stderr}`);
 	const shell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
 		pyflakes: 'false',
 		'fail-on-error': 'false',
-	});
+	}, 0, shellEnvironment);
 	assert.equal(shell.outputs.get('problem-count'), '12', shell.log);
 	await writeFile(
 		join(workspace, 'shell-fix.yaml'),
@@ -180,14 +191,14 @@ try {
 		'fail-on-error': 'false',
 		annotations: 'true',
 		sarif: 'true',
-	});
+	}, 0, shellEnvironment);
 	const githubFixable = await run({
 		files: 'shell-fix.yaml',
 		pyflakes: 'false',
 		'fail-on-error': 'false',
 		annotations: 'true',
 		format: 'github',
-	});
+	}, 0, shellEnvironment);
 	const jsonAnnotations = fixable.log.match(/^::(?:error|warning|notice) file=.*$/gm) || [];
 	const githubAnnotations = githubFixable.log.match(/^::(?:error|warning|notice) file=.*$/gm) || [];
 	assert.ok(
@@ -215,14 +226,16 @@ try {
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
 		shellcheck: 'false',
 		pyflakes: 'false',
-	});
+	}, 0, shellEnvironment);
 	assert.equal(noShell.outputs.get('problem-count'), '0', noShell.log);
 	const configuredNoShell = await run({
 		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
 		config: 'tools: {shellcheck: {enabled: false}}',
 		pyflakes: 'false',
-	});
+	}, 0, shellEnvironment);
 	assert.equal(configuredNoShell.outputs.get('problem-count'), '0', configuredNoShell.log);
+	await rm(join(workspace, '.github/actionlint.yaml'));
+	await rm(join(workspace, '.github/actionlint.plugins.lock.json'));
 	const saved = await run({
 		files: 'testdata/err/one_error.yaml',
 		format: 'json-lines',
