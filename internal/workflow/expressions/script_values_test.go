@@ -1,12 +1,56 @@
 package expressions
 
 import (
+	"fmt"
 	"maps"
 	"testing"
 
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
+
+func TestInheritedScriptEnvironment(t *testing.T) {
+	for _, tc := range []struct {
+		name, workflowEnv, jobEnv, stepEnv string
+		unsafe                             bool
+	}{
+		{"workflow literal", "{VALUE: safe}", "{OTHER: safe}", "{OTHER: safe}", false},
+		{"job literal", "{OTHER: safe}", "{VALUE: safe}", "{OTHER: safe}", false},
+		{"step literal overrides unsafe job", "{OTHER: safe}", "{VALUE: 'unsafe value'}", "{VALUE: safe}", false},
+		{"job overrides unsafe workflow", "{VALUE: 'unsafe value'}", "{VALUE: safe}", "{OTHER: safe}", false},
+		{"unrelated step entry", "{VALUE: safe}", "{OTHER: safe}", "{OTHER: safe}", false},
+		{"unknown step shadows workflow", "{VALUE: safe}", "{OTHER: safe}", "{VALUE: '${{ github.ref }}'}", true},
+		{"unsafe job shadows workflow", "{VALUE: safe}", "{VALUE: 'unsafe value'}", "{OTHER: safe}", true},
+		{"unknown step insertion", "{VALUE: safe}", "{OTHER: safe}", "{'${{ insert }}': '${{ fromJSON(vars.ENV) }}'}", true},
+		{"unknown job mapping", "{VALUE: safe}", "'${{ fromJSON(vars.ENV) }}'", "{OTHER: safe}", true},
+		{"absent variable", "{OTHER: safe}", "{OTHER: safe}", "{OTHER: safe}", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := fmt.Sprintf("on: push\nenv: %s\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: %s\n    steps:\n      - env: %s\n        run: echo '${{ env.VALUE }}'\n", tc.workflowEnv, tc.jobEnv, tc.stepEnv)
+			workflow, errors := workflowlang.Parse([]byte(source))
+			if len(errors) != 0 {
+				t.Fatal(errors)
+			}
+			rule := newTestChecker()
+			job := workflow.Jobs["test"]
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			unsafe := false
+			for _, finding := range rule.Findings() {
+				unsafe = unsafe || finding.Rule == "script-interpolation"
+			}
+			if unsafe != tc.unsafe {
+				t.Fatalf("unsafe=%t, want %t: %+v", unsafe, tc.unsafe, rule.Findings())
+			}
+			if rule.jobEnv != nil || rule.scriptEnv != nil {
+				t.Fatal("environment scope leaked after visiting job")
+			}
+		})
+	}
+}
 
 func TestSafeMatrixScriptReferences(t *testing.T) {
 	for _, tc := range []struct {

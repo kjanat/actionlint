@@ -9,6 +9,28 @@ import (
 	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
 )
 
+func (rule *Checker) safeScriptEnv(name string) bool {
+	var workflowEnv *workflowlang.Env
+	if rule.workflow != nil {
+		workflowEnv = rule.workflow.Env
+	}
+	for _, env := range []*workflowlang.Env{rule.scriptEnv, rule.jobEnv, workflowEnv} {
+		if env == nil {
+			continue
+		}
+		mapping := workflowlang.EnvMappingView(env)
+		names, complete := workflowlang.InputResolver.Names(mapping)
+		if !complete {
+			return false
+		}
+		if _, present := names[strings.ToLower(name)]; present {
+			value, known := workflowlang.InputResolver.Value(mapping, name)
+			return known && exprlang.SafeScriptLiteral(value)
+		}
+	}
+	return false
+}
+
 // safeMatrixScriptReferences proves individual paths across all declared axis
 // values and include assignments, without expanding the Cartesian product.
 // Exclusions can only remove values, so ignoring them keeps the proof conservative.

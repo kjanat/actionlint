@@ -113,9 +113,8 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 			if c.IsScriptSafeScalar(node) || safeMatrixScriptReference(node, rule.matrixScriptSafe) {
 				return true
 			}
-			if name, ok := strings.CutPrefix(path, "env."); ok && rule.scriptEnv != nil {
-				value, known := workflowlang.InputResolver.Value(workflowlang.EnvMappingView(rule.scriptEnv), name)
-				return known && exprlang.SafeScriptLiteral(value)
+			if name, ok := strings.CutPrefix(path, "env."); ok {
+				return rule.safeScriptEnv(name)
 			}
 			return false
 		})
