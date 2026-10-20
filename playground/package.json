@@ -59,7 +59,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@kjanat/rshellcheck-wasm": "^1",
+    "@kjanat/rshellcheck-wasm": "1.0.0",
     "@types/node": "^26.4.0",
     "dreamcli": "npm:@kjanat/dreamcli@^4",
     "eslint": "^10.9.1",
