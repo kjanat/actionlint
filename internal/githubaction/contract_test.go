@@ -65,6 +65,7 @@ func TestCLIAndActionResultContract(t *testing.T) {
 	for _, tc := range []struct {
 		name, source string
 		code         int
+		symlink      bool
 	}{
 		{"clean", `on: push
 jobs:
@@ -72,17 +73,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
-`, 0},
+`, 0, false},
 		{"findings", `on: push
 jobs:
   test:
     runs-on: invalid-runner
     steps:
       - run: echo ok
-`, 1},
+`, 1, false},
+		{"symlinked workspace", `on: push
+jobs:
+  test:
+    runs-on: invalid-runner
+    steps:
+      - run: echo ok
+`, 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workspace := t.TempDir()
+			if tc.symlink {
+				alias := filepath.Join(t.TempDir(), "workspace")
+				if err := os.Symlink(workspace, alias); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
+				workspace = alias
+			}
 			t.Chdir(workspace)
 			if err := os.WriteFile("ci.yml", []byte(tc.source), 0600); err != nil {
 				t.Fatal(err)

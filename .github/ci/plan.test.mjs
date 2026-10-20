@@ -229,18 +229,34 @@ test('runner sources select every Go consumer and provider tests select their te
 		'plugins',
 	]);
 	const tests = selectJobs(ci, ['runner/resolve_test.go']);
-	assert.deepEqual(Object.keys(tests).filter(job => tests[job]), ['unit', 'race', 'lint', 'plugins']);
+	assert.deepEqual(Object.keys(tests).filter(job => tests[job]), ['unit', 'race', 'nix', 'lint', 'plugins']);
 });
 
-test('test-only CLI changes keep Go coverage without rebuilding packages or running unrelated suites', () => {
+test('test-only CLI changes select Go and Nix tests without release builds or unrelated suites', () => {
 	const jobs = selectJobs(workflowFilters('ci'), ['internal/integration/cli/usability_test.go']);
-	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['unit', 'race', 'lint']);
+	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['unit', 'race', 'nix', 'lint']);
 	for (const workflow of ['codeql', 'conformance', 'expression-probe-tests', 'matcher']) {
 		assert.ok(
 			Object.values(selectJobs(workflowFilters(workflow), ['internal/integration/cli/usability_test.go'])).every(run =>
 				!run
 			),
 		);
+	}
+});
+
+test('Nix checks include test sources and fixtures used by its Go suite', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of [
+			'internal/localapp/plugins_test.go',
+			'internal/plugins/core/testdata/engines/echo.wasm',
+			'tools/config/main_test.go',
+			'tools/config/testdata/example.yaml',
+			'fuzz/fuzz_test.go',
+			'testdata/ok/minimal.yaml',
+		]
+	) {
+		assert.equal(selectJobs(ci, [path]).nix, true, path);
 	}
 });
 

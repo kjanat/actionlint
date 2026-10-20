@@ -32,9 +32,10 @@ jobs:
               "flake.lock"
             ],
             "nix": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "nix/**",
+              "tools/**/*.go", "tools/**/testdata/**", "fuzz/**", "testdata/**",
               "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "tools/release/check-packaged-cli.bash",
-              ".github/workflows/nix.yml", "!**/testdata/**"
+              ".github/workflows/nix.yml"
             ],
             "wasm": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",

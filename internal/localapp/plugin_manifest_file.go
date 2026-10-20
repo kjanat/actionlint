@@ -40,6 +40,10 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 	if err != nil {
 		return nil, err
 	}
+	absolute, err = physicalPluginManifestPath(absolute)
+	if err != nil {
+		return nil, err
+	}
 	manifest := &PluginManifest{Path: absolute, snapshots: map[string][]byte{}}
 	data, err := readPluginManifest(ctx, absolute)
 	if errors.Is(err, os.ErrNotExist) {
@@ -72,6 +76,33 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
 	}
 	return manifest, nil
+}
+
+// Like an explicitly selected lock, an explicit manifest trusts its containing
+// directory, including checkout aliases and macOS /var. Resolve that directory
+// once, never the file itself. Automatic project selection has already checked
+// its .github directory through OpenProjectLock before choosing the manifest.
+func physicalPluginManifestPath(absolute string) (string, error) {
+	base := filepath.Dir(absolute)
+	for {
+		_, err := os.Lstat(base)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, os.ErrNotExist) || filepath.Dir(base) == base {
+			return "", err
+		}
+		base = filepath.Dir(base)
+	}
+	physical, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		return "", err
+	}
+	relative, err := filepath.Rel(base, absolute)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(physical, relative), nil
 }
 
 func manifestReferences(node *yaml.Node) ([]pluginref.Reference, bool, error) {

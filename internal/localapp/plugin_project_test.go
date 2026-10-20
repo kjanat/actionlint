@@ -133,6 +133,7 @@ func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
 	}
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("LocalAppData", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	project, err := OpenPluginProject(t.Context(), pluginRepository(t), "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -210,6 +211,7 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	}
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("LocalAppData", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	project, err := OpenPluginProject(t.Context(), pluginRepository(t), "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -238,6 +240,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	registry.Publish(t, "v1.0.0")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("LocalAppData", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	root := pluginRepository(t)
 	project, err := OpenPluginProject(t.Context(), root, "", "")
 	if err != nil {

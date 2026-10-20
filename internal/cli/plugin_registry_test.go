@@ -43,6 +43,7 @@ func TestRegistryCLI(t *testing.T) {
 	t.Chdir(root)
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("LocalAppData", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	if err := os.Mkdir(".git", 0700); err != nil {
@@ -156,6 +157,7 @@ func TestRegistryCLI(t *testing.T) {
 	// catalogue itself is missing. It never reselects latest during sync.
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("LocalAppData", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	delete(r.Files, testutil.FixtureRegistryURL+"index.json")
 	pluginCommandTest(t, 0, "plugin", "sync")
 	r.Offline = true
@@ -172,6 +174,7 @@ func TestRegistryManifestInstallAndMigration(t *testing.T) {
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("LocalAppData", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	t.Chdir(t.TempDir())
@@ -259,6 +262,7 @@ func TestRegistryInstallDoesNotExecutePlugin(t *testing.T) {
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("LocalAppData", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	t.Chdir(t.TempDir())
 	lock := filepath.Join(t.TempDir(), pluginregistry.LockName)
 	output := pluginCommandTest(t, 0, "plugin", "install", testutil.FixturePluginName, "--registry", testutil.FixtureRegistryURL, "--plugin-lock", lock, "--json")
