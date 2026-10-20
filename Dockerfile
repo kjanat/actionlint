@@ -50,6 +50,9 @@ COPY --chmod=755 distribution/docker/docker-action.sh /usr/local/bin/actionlint-
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
 FROM runtime AS cli
+# Alpine guest (uid 405) otherwise has /dev/null as its home.
+ENV HOME=/home/actionlint
+RUN mkdir -p "${HOME}" && chown 405 "${HOME}"
 WORKDIR /w
 USER 405
 ENTRYPOINT ["/usr/local/bin/actionlint"]

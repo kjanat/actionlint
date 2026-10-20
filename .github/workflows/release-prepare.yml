@@ -251,6 +251,7 @@ jobs:
               bash distribution/docker/test-docker-action.bash "${image}" "linux/${arch}"
             else
               bash distribution/docker/test-docker-ruff.bash "${image}" "linux/${arch}"
+              bash distribution/docker/test-docker-plugins.bash "${image}" "linux/${arch}"
               docker run --rm --platform "linux/${arch}" --mount type=bind,source="${PWD}",target=/w \
                 "${image}" testdata/ok/minimal.yaml
               status=0

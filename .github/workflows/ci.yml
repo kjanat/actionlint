@@ -330,6 +330,8 @@ jobs:
         with: { load: true, push: false, tags: actionlint:test }
       - name: Check bundled Ruff
         run: bash distribution/docker/test-docker-ruff.bash actionlint:test
+      - name: Check published Wasm plugins and offline cache
+        run: bash distribution/docker/test-docker-plugins.bash actionlint:test
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
