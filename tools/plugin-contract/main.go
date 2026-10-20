@@ -59,8 +59,10 @@ func generate() error {
 	fmt.Fprintln(&g.output, `import wp "github.com/partite-ai/wacogo/wasmparser"`)
 	identity := analyzer.Package.Name
 	identity.Extension = *analyzer.Name
-	fmt.Fprintf(&g.output, "const canonicalAnalyzerInterface = %q\n", identity.String())
-	fmt.Fprintf(&g.output, "const canonicalContractDigest = %q\n", fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))))
+	fmt.Fprintln(&g.output, "const (")
+	fmt.Fprintf(&g.output, "canonicalAnalyzerInterface = %q\n", identity.String())
+	fmt.Fprintf(&g.output, "canonicalContractDigest = %q\n", fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))))
+	fmt.Fprintln(&g.output, ")")
 	fmt.Fprintln(&g.output, "func expectedAnalyzerContract() *wp.ComponentType {")
 	fmt.Fprintln(&g.output, "b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()")
 	var exports []string
@@ -82,10 +84,11 @@ func generate() error {
 		}
 		exports = append(exports, fmt.Sprintf("%q: {Kind: wp.EntityFunc, FuncID: b.PushFuncType(wp.FuncTypeDesc{Params: %s, Results: %s})},", name, params, results))
 	}
-	fmt.Fprintf(&g.output, "analyzer := b.PushInstanceType(wp.InstanceTypeDesc{Exports: map[string]wp.ComponentEntityType{%s}})\n", strings.Join(exports, "\n"))
+	fmt.Fprintf(&g.output, "analyzer := b.PushInstanceType(wp.InstanceTypeDesc{Exports: map[string]wp.ComponentEntityType{\n%s\n}})\n", strings.Join(exports, "\n"))
 	fmt.Fprintln(&g.output, "plugin := b.PushInstanceType(wp.InstanceTypeDesc{Exports: map[string]wp.ComponentEntityType{AnalyzerInterface: {Kind: wp.EntityInstance, InstID: analyzer}}})")
 	fmt.Fprintln(&g.output, `return b.NewComponentTypeHandle(b.PushComponentType(wp.ComponentTypeDesc{Imports: map[string]wp.ComponentEntityType{"plugin": {Kind: wp.EntityInstance, InstID: plugin}}, ImportOrder: []string{"plugin"}}))`)
 	fmt.Fprintln(&g.output, "}")
+	fmt.Fprintln(&g.output, "var (")
 	for name, td := range analyzer.TypeDefs.All() {
 		enum, ok := td.Kind.(*wit.Enum)
 		if !ok {
@@ -96,8 +99,9 @@ func generate() error {
 			names = append(names, strconv.Quote(item.Name))
 		}
 		identifier := strings.ReplaceAll(name, "-", "_")
-		fmt.Fprintf(&g.output, "var canonical_%s = []string{%s}\n", identifier, strings.Join(names, ","))
+		fmt.Fprintf(&g.output, "canonical_%s = []string{%s}\n", identifier, strings.Join(names, ","))
 	}
+	fmt.Fprintln(&g.output, ")")
 	formatted, err := format.Source(g.output.Bytes())
 	if err != nil {
 		return fmt.Errorf("format generated contract: %w", err)
