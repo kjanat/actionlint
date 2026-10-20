@@ -3,7 +3,7 @@ package expression
 import (
 	"strings"
 
-	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	stringutil "actionlint.kjanat.dev/v2/internal/stringutil"
 )
 
 func isSafeFuncCall(call *FuncCallNode) bool {

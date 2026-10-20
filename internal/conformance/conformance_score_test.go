@@ -10,7 +10,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"actionlint.kjanat.dev/internal/conformance"
+	"actionlint.kjanat.dev/v2/internal/conformance"
 	"github.com/google/go-cmp/cmp"
 )
 

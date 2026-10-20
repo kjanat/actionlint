@@ -12,9 +12,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/analyzer"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/rule"
 	"github.com/partite-ai/wacogo"
 )
 

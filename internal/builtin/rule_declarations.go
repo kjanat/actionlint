@@ -1,11 +1,11 @@
 package builtin
 
 import (
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/checks"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/checks"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // declarationRule is the traversal adapter for stateless declaration checks.

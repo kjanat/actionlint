@@ -1,7 +1,7 @@
 package langserver
 
 import (
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 	"context"
 	"unicode/utf8"
 )

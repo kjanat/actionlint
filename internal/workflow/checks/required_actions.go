@@ -4,9 +4,9 @@ import (
 	"path"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/workflow/references"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // actionUse is one "uses:" value of an action step found while visiting a workflow.

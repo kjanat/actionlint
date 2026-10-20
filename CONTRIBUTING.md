@@ -148,7 +148,7 @@ Since actionlint doesn't use any cgo features, setting `CGO_ENABLED=0` environme
 
 ### Packaging source builds
 
-Use the module path from `go.mod` when stamping the version: `-ldflags "-X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=<package-version>"`. A different module path silently leaves the binary reporting a development version and linking to development documentation.
+Use the module path from `go.mod` when stamping the version: `-ldflags "-X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=<package-version>"`. A different module path silently leaves the binary reporting a development version and linking to development documentation.
 
 The source tarball uploaded by the release workflow includes `man/actionlint.1`. GitHub's automatically generated source downloads do not. Generate just the installed manpage with:
 

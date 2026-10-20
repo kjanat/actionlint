@@ -3,11 +3,11 @@ package expressions
 import (
 	"strings"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/references"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 // Get type of `outputs.<output name>`

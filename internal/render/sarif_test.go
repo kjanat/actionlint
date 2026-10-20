@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestNativeSARIFUNCPaths(t *testing.T) {

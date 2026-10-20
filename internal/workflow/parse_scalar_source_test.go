@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestQuotedFoldedScriptSource(t *testing.T) {

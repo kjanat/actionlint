@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
 
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {

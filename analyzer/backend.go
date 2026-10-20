@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"slices"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // ScriptBackend checks a sanitized snippet. The adapter owns its execution

@@ -3,8 +3,8 @@ package builtin
 import (
 	"testing"
 
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func testValidateEnvVarName(t *testing.T, name string) []*findingmodel.Finding {

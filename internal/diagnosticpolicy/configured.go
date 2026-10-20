@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/filefilter"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/suppression"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/filefilter"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/suppression"
 )
 
 // FilterConfigured applies resolved ignore selectors to the same logical invocation.

@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/resolver"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/resolver"
 )
 
 type Analyzer struct{ Resolver resolver.Resolver }

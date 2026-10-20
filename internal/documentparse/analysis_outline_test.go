@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 )
 
 func TestOutlineLocalReferenceScope(t *testing.T) {

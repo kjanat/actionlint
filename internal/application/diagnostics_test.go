@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 type detailedAnalyzer struct{ findings []diagnostic.Diagnostic }

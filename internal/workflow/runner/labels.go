@@ -7,13 +7,13 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/stringutil"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
-	"actionlint.kjanat.dev/internal/workflow/schema"
-	runnerapi "actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 type runnerOSCompat uint

@@ -10,8 +10,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Generate creates the repository configuration without producing terminal output.

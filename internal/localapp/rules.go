@@ -5,9 +5,9 @@ import (
 	"errors"
 	"io"
 
-	"actionlint.kjanat.dev/internal/plugins/core"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/internal/plugins/core"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Rules discovers selected providers without analyzing a document.

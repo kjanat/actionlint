@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func TestActionReportsFilesOnAnotherVolume(t *testing.T) {

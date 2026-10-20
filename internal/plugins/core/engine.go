@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/rule"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -29,9 +29,10 @@ const (
 	// DefaultTimeout bounds one engine call.
 	DefaultTimeout = 10 * time.Second
 	// DefaultMemoryPages bounds an engine instance's linear memory in 64 KiB pages.
-	DefaultMemoryPages   uint32 = 4096
-	defaultMaxInputBytes        = 8 * 1024 * 1024
-	transport                   = "wasm-core-json"
+	DefaultMemoryPages    uint32 = 4096
+	defaultCompileTimeout        = time.Minute
+	defaultMaxInputBytes         = 8 * 1024 * 1024
+	transport                    = "wasm-core-json"
 )
 
 var requiredExports = map[string]struct{ params, results []api.ValueType }{
@@ -169,20 +170,41 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 	}
 	e := &Engine{path: path, limits: limits, runtime: wazero.NewRuntimeWithConfig(ctx, config), cache: cache, maxInput: defaultMaxInputBytes}
 	if err := e.load(ctx, data, metadata); err != nil {
-		_ = e.Close(ctx)
-		return nil, e.failure(ctx, err)
+		_ = e.Close(context.WithoutCancel(ctx))
+		return nil, err
 	}
 	return e, nil
 }
 
 func (e *Engine) load(ctx context.Context, data, staticMetadata []byte) error {
+	// Native compilation can take longer than one guest call on a cold cache.
+	// Bound it independently, while retaining any earlier caller deadline.
+	compileCtx, compileCancel := context.WithTimeout(ctx, defaultCompileTimeout)
+	defer compileCancel()
+	if err := compileCtx.Err(); err != nil {
+		return fmt.Errorf("engine %s compilation cancelled: %w", e.name(), err)
+	}
+	compiled, err := e.runtime.CompileModule(compileCtx, data)
+	e.compiled = compiled
+	// Compilation cancellation is cooperative. Never initialize a module after
+	// its deadline, even when the compiler returns a successful result.
+	if ctxErr := compileCtx.Err(); ctxErr != nil {
+		err = errors.Join(err, ctxErr)
+	}
+	if err != nil {
+		return fmt.Errorf("engine %s compilation failed (time %s): %w", e.name(), defaultCompileTimeout, err)
+	}
+	compileCancel()
 	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
 	defer cancel()
-	compiled, err := e.runtime.CompileModule(ctx, data)
-	if err != nil {
-		return err
+	if err := e.initialize(ctx, staticMetadata); err != nil {
+		return e.failure(ctx, err)
 	}
-	e.compiled = compiled
+	return nil
+}
+
+func (e *Engine) initialize(ctx context.Context, staticMetadata []byte) error {
+	compiled := e.compiled
 	for _, imported := range compiled.ImportedFunctions() {
 		module, name, _ := imported.Import()
 		return fmt.Errorf("module imports %s.%s; a core engine must not import", module, name)

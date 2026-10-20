@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/analyzer"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/internal/plugins/component"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/analyzer"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 type loadedPlugins struct {

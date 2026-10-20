@@ -4,10 +4,10 @@ import (
 	"cmp"
 	"slices"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func WorkflowOutline(path string, workflow *workflowlang.Workflow, parseErrors bool) documentmodel.Workflow {

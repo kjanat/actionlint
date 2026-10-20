@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
 
 func TestShellcheckSourcedDiagnostics(t *testing.T) {

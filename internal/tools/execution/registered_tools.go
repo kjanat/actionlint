@@ -3,11 +3,11 @@ package execution
 import (
 	"context"
 
-	"actionlint.kjanat.dev/diagnostic"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/tools"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowexecution "actionlint.kjanat.dev/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
 
 type Tool struct{ Runner tools.Runner }

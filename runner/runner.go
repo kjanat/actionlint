@@ -3,7 +3,7 @@
 package runner
 
 import (
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 	"context"
 	"crypto/sha256"
 	"encoding/json"

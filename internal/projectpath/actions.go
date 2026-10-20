@@ -16,7 +16,7 @@ import (
 	"golang.org/x/sys/execabs"
 	"golang.org/x/text/unicode/norm"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Actions discovers manifests without following symlinks or crossing repository

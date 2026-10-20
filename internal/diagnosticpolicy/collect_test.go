@@ -3,8 +3,8 @@ package diagnosticpolicy
 import (
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 )
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {

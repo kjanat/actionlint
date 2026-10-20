@@ -85,7 +85,7 @@ Published platforms: ${cyan(supported)}
 
 Workarounds:
 ${indent}- build from source, which works anywhere Go does: ${
-			cyan('go install actionlint.kjanat.dev/cmd/actionlint@latest')
+			cyan('go install actionlint.kjanat.dev/v2/cmd/actionlint@latest')
 		}
 ${indent}- ask for this platform: ${link(issues, issues)}
 `,
@@ -124,7 +124,7 @@ ${indent}- install it explicitly: ${cyan(`npm install ${wanted}`)}
 ${indent}- bun + ${cyan('minimumReleaseAge')}: add ${cyan(`${wanted.slice(0, wanted.indexOf('/'))}/*`)} alongside ${
 			cyan(pkgName)
 		} in ${cyan('minimumReleaseAgeExcludes')}; a fresh release is otherwise age-gated
-${indent}- build from source instead: ${cyan('go install actionlint.kjanat.dev/cmd/actionlint@latest')}
+${indent}- build from source instead: ${cyan('go install actionlint.kjanat.dev/v2/cmd/actionlint@latest')}
 ${indent}- file an issue: ${link(issues, issues)}
 `,
 	);

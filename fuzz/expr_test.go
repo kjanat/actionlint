@@ -4,7 +4,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 )
 
 func FuzzExprParse(f *testing.F) {

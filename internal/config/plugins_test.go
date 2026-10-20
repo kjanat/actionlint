@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
 )

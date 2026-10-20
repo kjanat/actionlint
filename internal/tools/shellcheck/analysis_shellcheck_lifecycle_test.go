@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	"actionlint.kjanat.dev/internal/config"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/config"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {

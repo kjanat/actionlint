@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
 
 // safeMatrixScriptReferences proves individual paths across all declared axis

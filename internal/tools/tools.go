@@ -4,14 +4,14 @@ package tools
 import (
 	"context"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/rule"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/rule"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // Context supplies invocation-owned resources to a registered adapter.

@@ -8,15 +8,15 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 
-	"actionlint.kjanat.dev/internal/application"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fix"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/localapp"
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/resolution"
+	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fix"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/resolution"
 )
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {

@@ -3,8 +3,8 @@ package matrix
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/internal/mapping"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 type matrixInsertionView = mapping.Matrix[*workflowlang.MatrixRow, *workflowlang.MatrixCombinations, *workflowlang.String]

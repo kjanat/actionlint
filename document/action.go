@@ -3,7 +3,7 @@ package document
 import (
 	"encoding/json"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Action is a lossy projection of selected action declarations.

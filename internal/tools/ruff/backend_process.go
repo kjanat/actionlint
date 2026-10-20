@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 // Execute is the process adapter's only execution capability. It returns after

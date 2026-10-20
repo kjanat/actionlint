@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	contextspec "actionlint.kjanat.dev/internal/expression/context"
+	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
 )
 
 func TestExprContextPropertySuggestions(t *testing.T) {

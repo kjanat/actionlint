@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	contextspec "actionlint.kjanat.dev/internal/expression/context"
-	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
+	stringutil "actionlint.kjanat.dev/v2/internal/stringutil"
 )
 
 func ordinal(i int) string {

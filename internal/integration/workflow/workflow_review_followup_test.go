@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/testutil"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/testutil"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestWorkflowRunPathsUntrusted(t *testing.T) {

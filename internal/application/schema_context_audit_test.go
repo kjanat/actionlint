@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/v2/internal/engine"
 
-	"actionlint.kjanat.dev/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 
-	"actionlint.kjanat.dev/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/builtin"
 )
 
 func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {

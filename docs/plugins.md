@@ -398,7 +398,10 @@ the same component execution limits and lifecycle as the other component roles.
 Legacy core modules retain their version 1 JSON ABI: `check`, `validate_config` and `metadata` exports, no imports,
 and UTF-8 JSON in linear memory. The host checks the ABI version, export signatures and advertised operation versions,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
-limit. Initialization and creation of pooled instances use the same time limit. A trap or an exceeded limit, including
+limit. Initialization and creation of pooled instances use the same time limit. Native compilation has a separate
+one-minute deadline; a cold compilation does not consume the guest execution budget. An earlier caller deadline
+still applies to both phases. Compiler cancellation is cooperative, and an expired compilation never proceeds
+to guest initialization. A trap or an exceeded limit, including
 during allocation cleanup, discards that instance and fails the document's analysis. From Go, call
 `plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the
 repository configuration.

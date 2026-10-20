@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/filefilter"
+	"actionlint.kjanat.dev/v2/internal/filefilter"
 
 	"go.yaml.in/yaml/v4"
 )

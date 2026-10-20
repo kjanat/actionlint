@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/syntax"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/syntax"
 )
 
 // stepNameAnalyzer checks a document without depending on the traversal host.

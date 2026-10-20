@@ -9,7 +9,7 @@
 
 [actionlint][repo] is a static checker for GitHub Actions workflow files. [Try it online!][playground]
 
-This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev`. Report problems through [this fork's issue tracker][issue-form].
+This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries the upstream checks plus cache safety policies enabled by default, configurable opt-in [policy checks][config], composite action step validation, shell completion, and a first-party GitHub Action, and it ships attested binaries, a Docker image on [GHCR][ghcr] and [Docker Hub][dockerhub], and a Go module at `actionlint.kjanat.dev/v2`. Report problems through [this fork's issue tracker][issue-form].
 
 ## Fork provenance and versioning
 
@@ -135,10 +135,10 @@ npx @kjanat/actionlint
 With a Go toolchain, install it from source:
 
 ```sh
-go install actionlint.kjanat.dev/cmd/actionlint@latest
+go install actionlint.kjanat.dev/v2/cmd/actionlint@latest
 ```
 
-<sub><em><code>actionlint.kjanat.dev</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/@latest</code></sub>
+<sub><em><code>actionlint.kjanat.dev/v2</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/v2/@latest</code></sub>
 
 Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives as minimal as possible.
 
@@ -229,8 +229,8 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [WinGet]: docs/install.md#winget
 [Semantic Versioning for the supported CLI and configuration contracts]: CONTRIBUTING.md#release-versioning
 [`internal/documentation/check-readme`]: internal/documentation/check-readme
-[apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev.svg
-[apidoc]: https://pkg.go.dev/actionlint.kjanat.dev
+[apidoc-badge]: https://pkg.go.dev/badge/actionlint.kjanat.dev/v2.svg
+[apidoc]: https://pkg.go.dev/actionlint.kjanat.dev/v2
 [changelog]: CHANGELOG.md#upstream-history
 [ci-badge]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml/badge.svg
 [ci]: https://github.com/kjanat/actionlint/actions/workflows/ci.yml

@@ -1,11 +1,11 @@
 package builtin
 
 import (
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/cachepolicy"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/cachepolicy"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleCacheWriteUntrusted adapts cache trust checks to the workflow traversal.

@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actioncheck "actionlint.kjanat.dev/internal/action/validation"
-	"actionlint.kjanat.dev/internal/testutil"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
+	"actionlint.kjanat.dev/v2/internal/testutil"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestSelfRepositoryReferenceSuffix(t *testing.T) {

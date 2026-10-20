@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 func TestScopesIsACopy(t *testing.T) {

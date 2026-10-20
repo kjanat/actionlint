@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/testutil"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func pluginCommandTest(t *testing.T, want int, args ...string) string {

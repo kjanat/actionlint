@@ -1,8 +1,8 @@
 package config
 
 import (
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 type RuleInfo = rule.Descriptor

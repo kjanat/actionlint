@@ -9,10 +9,10 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/langserver"
-	"actionlint.kjanat.dev/internal/workflow/editor"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/langserver"
+	"actionlint.kjanat.dev/v2/internal/workflow/editor"
 )
 
 // LanguageServer shares application selection, configuration and plugin loading

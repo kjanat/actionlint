@@ -6,9 +6,9 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/testutil"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestWorkflowRunMissingAncestorAlias(t *testing.T) {

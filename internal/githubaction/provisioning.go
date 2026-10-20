@@ -8,11 +8,11 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/localapp"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/render"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func provisioningRequest(env func(string) string) (*lintRequest, error) {

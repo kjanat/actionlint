@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"golang.org/x/mod/semver"
 )
 

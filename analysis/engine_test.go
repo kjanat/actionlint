@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/plugin"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/plugin"
 )
 
 func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {

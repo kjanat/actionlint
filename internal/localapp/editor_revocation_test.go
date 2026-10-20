@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/langserver"
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/langserver"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {

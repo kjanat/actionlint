@@ -1,7 +1,7 @@
 package eventpayload
 
 import (
-	expr "actionlint.kjanat.dev/internal/expression"
+	expr "actionlint.kjanat.dev/v2/internal/expression"
 	"strings"
 	"testing"
 )

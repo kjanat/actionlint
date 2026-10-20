@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/render"
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )

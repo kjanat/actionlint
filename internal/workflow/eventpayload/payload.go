@@ -2,8 +2,8 @@
 package eventpayload
 
 import (
-	expr "actionlint.kjanat.dev/internal/expression"
-	workflow "actionlint.kjanat.dev/internal/workflow"
+	expr "actionlint.kjanat.dev/v2/internal/expression"
+	workflow "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func Type(w *workflow.Workflow) *expr.ObjectType {

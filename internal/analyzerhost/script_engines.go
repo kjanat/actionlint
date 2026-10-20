@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 // ScriptEngines loads each configured WebAssembly engine once and closes them together.

@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Finding carries a canonical diagnostic and analysis-only provenance. All rule

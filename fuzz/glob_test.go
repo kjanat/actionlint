@@ -3,7 +3,7 @@ package fuzz
 import (
 	"testing"
 
-	glob "actionlint.kjanat.dev/internal/semantics/glob"
+	glob "actionlint.kjanat.dev/v2/internal/semantics/glob"
 )
 
 func FuzzGlobGitRef(f *testing.F) {

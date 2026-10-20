@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 )
 
 func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {

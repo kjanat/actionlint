@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestDocumentOutlinesRoundTrip(t *testing.T) {

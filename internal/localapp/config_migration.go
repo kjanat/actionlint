@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/projectpath"
-	"actionlint.kjanat.dev/internal/tools/shellcheck"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/projectpath"
+	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
 )
 
 // DefaultPluginOptions preserves invocation-level native selections during migration.

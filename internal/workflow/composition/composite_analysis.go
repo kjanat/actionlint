@@ -3,17 +3,17 @@ package composition
 import (
 	"context"
 
-	checks "actionlint.kjanat.dev/internal/checks"
-	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
+	checks "actionlint.kjanat.dev/v2/internal/checks"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	"actionlint.kjanat.dev/internal/builtin"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,

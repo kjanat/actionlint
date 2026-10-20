@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/render"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
-	"actionlint.kjanat.dev/internal/workspace"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/render"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 type customRuleForTest struct {

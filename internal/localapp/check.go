@@ -9,11 +9,11 @@ import (
 	"io"
 	"slices"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 
-	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/v2/internal/application"
 )
 
 // PluginLoadError identifies invalid plugin selection without imposing CLI status codes.

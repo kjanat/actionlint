@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 
 	"go.yaml.in/yaml/v4"
 )

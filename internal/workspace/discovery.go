@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/projectpath"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
 func RepositoryPaths(ctx context.Context, project *Project, reader *fsread.Reader) ([]string, error) {

@@ -1,10 +1,10 @@
 package checks
 
 import (
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // WithOrigins annotates results while a synchronous pass still has its owner.

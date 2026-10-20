@@ -4,9 +4,9 @@ import (
 	"slices"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 	"github.com/google/go-cmp/cmp"
 )
 

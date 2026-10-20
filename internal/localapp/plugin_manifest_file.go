@@ -12,10 +12,10 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/config/tree"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/tree"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"github.com/pelletier/go-toml/v2/unstable"
 	"go.yaml.in/yaml/v4"
 )

@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"slices"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/report"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/report"
 )
 
 // File carries completed document findings and their diagnostic identity scope.

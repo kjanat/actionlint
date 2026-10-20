@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	"actionlint.kjanat.dev/v2/analyzer"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental"
 )
@@ -256,6 +256,66 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 			}
 			if err == nil || ctx.Err() != nil || time.Since(start) > 2*time.Second {
 				t.Fatalf("engine timeout was not enforced: elapsed=%s err=%v caller=%v", time.Since(start), err, ctx.Err())
+			}
+		})
+	}
+}
+
+func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
+	const timeout = 100 * time.Millisecond
+	var delay sync.Once
+	// Listener construction is part of compilation, before guest execution.
+	// Make a cold compilation outlast the call budget without a large fixture
+	// or dependence on the compiler's speed.
+	ctx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
+		delay.Do(func() { time.Sleep(2 * timeout) })
+		return nil
+	}))
+	engine, err := corewasm.Load(ctx, enginePath("echo"), corewasm.Options{Timeout: timeout})
+	if err != nil {
+		t.Fatalf("compilation consumed guest initialization budget: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := engine.Close(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	findings, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	if err != nil || len(findings) != 1 || findings[0].Code != "F821" {
+		t.Fatalf("compiled engine failed: findings=%+v err=%v", findings, err)
+	}
+}
+
+func TestCompilationHonorsCallerCancellation(t *testing.T) {
+	for _, name := range []string{"cancel", "deadline"} {
+		t.Run(name, func(t *testing.T) {
+			deadline := name == "deadline"
+			ctx, cancel := context.WithCancel(t.Context())
+			want := context.Canceled
+			if deadline {
+				cancel()
+				ctx, cancel = context.WithTimeout(t.Context(), 20*time.Millisecond)
+				want = context.DeadlineExceeded
+			}
+			defer cancel()
+			called := false
+			listener := experimental.FunctionListenerFunc(func(context.Context, api.Module, api.FunctionDefinition, []uint64, experimental.StackIterator) {
+				called = true
+			})
+			loadCtx := experimental.WithFunctionListenerFactory(ctx, experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
+				if deadline {
+					<-ctx.Done()
+				} else {
+					cancel()
+				}
+				return listener
+			}))
+			engine, err := corewasm.Load(loadCtx, enginePath("echo"), corewasm.Options{})
+			if engine != nil {
+				_ = engine.Close(context.Background())
+			}
+			if !errors.Is(err, want) || called {
+				t.Fatalf("cancelled compilation entered guest code: err=%v guestCalled=%v", err, called)
 			}
 		})
 	}

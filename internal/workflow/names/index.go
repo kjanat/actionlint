@@ -12,7 +12,7 @@ import (
 	"sync"
 	"unicode"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Names is a complete inventory only when every workflow name could be read.

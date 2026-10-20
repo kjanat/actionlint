@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestSuppressionsPolicyInspection(t *testing.T) {

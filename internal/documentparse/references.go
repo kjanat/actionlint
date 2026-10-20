@@ -1,6 +1,6 @@
 package documentparse
 
-import workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
+import workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 
 // References preserves caller paths as lookup keys while identify supplies the
 // stable document identity shared by aliases of the same source.

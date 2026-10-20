@@ -3,9 +3,9 @@ package visit_test
 import (
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 func TestRuleDiagnosticSourceRange(t *testing.T) {

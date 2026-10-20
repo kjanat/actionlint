@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/v2/internal/application"
 )
 
 func TestActionDiscoverySymlinkRoot(t *testing.T) {

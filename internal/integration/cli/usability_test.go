@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestConfigInitAliases(t *testing.T) {

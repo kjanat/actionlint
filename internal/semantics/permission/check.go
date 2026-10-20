@@ -6,8 +6,8 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/stringutil"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/stringutil"
 )
 
 type Value struct {

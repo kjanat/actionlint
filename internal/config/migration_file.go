@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"reflect"
 
-	configtree "actionlint.kjanat.dev/internal/config/tree"
-	"actionlint.kjanat.dev/internal/fsread"
+	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"go.yaml.in/yaml/v4"
 )
 

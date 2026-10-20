@@ -1,9 +1,9 @@
 package diagnosticpolicy
 
 import (
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/suppression"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/suppression"
 )
 
 // SuppressionRules returns the ordered rule catalogue for inline directives.

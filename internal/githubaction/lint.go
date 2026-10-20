@@ -11,18 +11,18 @@ import (
 	"strings"
 	"time"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/localapp"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 const lintTimeout = 300 * time.Second

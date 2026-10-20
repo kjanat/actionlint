@@ -3,11 +3,11 @@ package application
 import (
 	"context"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 )
 
 func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registration, input analyzer.Input, metadataSources map[string][]byte, usedRules *[]rule.Descriptor) ([]*findingmodel.Finding, error) {

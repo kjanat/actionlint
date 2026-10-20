@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/tools/adapters"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 // Set by the site build to reject catalogue/WASM deployment mismatches.

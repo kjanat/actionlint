@@ -4,9 +4,9 @@ import (
 	"slices"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/testutil"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestCompositeStatusConditionCheckout(t *testing.T) {

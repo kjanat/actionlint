@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 // Position uses one-based Unicode scalar coordinates.

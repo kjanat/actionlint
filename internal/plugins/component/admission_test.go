@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/plugins/component"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
 )
 
 func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {

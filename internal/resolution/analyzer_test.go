@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/resolver"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/resolver"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 type fakeResolver struct {

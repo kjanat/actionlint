@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {

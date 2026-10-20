@@ -3,7 +3,7 @@ package document
 import (
 	"encoding/json"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Workflow describes selected workflow declarations recovered by a parser.

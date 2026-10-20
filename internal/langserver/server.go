@@ -11,7 +11,7 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 type Document struct {

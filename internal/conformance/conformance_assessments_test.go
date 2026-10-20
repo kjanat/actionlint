@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/conformance"
+	"actionlint.kjanat.dev/v2/internal/conformance"
 )
 
 var upstreamAssessments = []string{"actionlint-gap", "reference-gap", "extra-lint", "adapter-limit", "dependency-gap", "contract-difference", "unassessed"}

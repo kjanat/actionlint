@@ -3,8 +3,8 @@ package workflow_test
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 func TestRunnerMatrixFilterExpansion(t *testing.T) {

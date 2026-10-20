@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/localapp"
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func isolatePluginCache(t *testing.T) string {

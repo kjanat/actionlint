@@ -1,20 +1,23 @@
 # Go library API
 
-The Go library has one module, `actionlint.kjanat.dev`, with packages for distinct responsibilities. The v1.18.0 API
+The Go library has one module, `actionlint.kjanat.dev/v2`, with packages for distinct responsibilities. The v2 API
 intentionally breaks the former flat root API. The command-line interface and its output formats are separate contracts.
+
+Update Go imports from `actionlint.kjanat.dev/...` to `actionlint.kjanat.dev/v2/...`, then run
+`go get actionlint.kjanat.dev/v2@latest` and `go mod tidy`. The unversioned module path continues to select v1.
 
 | Package                            | Responsibility                                                        |
 | ---------------------------------- | --------------------------------------------------------------------- |
-| `actionlint.kjanat.dev`            | Convenience `Analyze` entry point                                     |
-| `actionlint.kjanat.dev/analysis`   | Source requests, file/repository discovery and results                |
-| `actionlint.kjanat.dev/analyzer`   | Analyzer input, required facts, registration and returned diagnostics |
-| `actionlint.kjanat.dev/document`   | Workflow/action outlines and structured action references             |
-| `actionlint.kjanat.dev/diagnostic` | Diagnostics, source positions and suggested edits                     |
-| `actionlint.kjanat.dev/config`     | Configuration values, loading, composition and inspection             |
-| `actionlint.kjanat.dev/rule`       | Shared rule metadata, categories, examples and capabilities           |
-| `actionlint.kjanat.dev/source`     | Document revision, node identity and structural address               |
-| `actionlint.kjanat.dev/resolver`   | Optional dependency resolver contract and provenance                  |
-| `actionlint.kjanat.dev/syntax`     | Workflow syntax model and parser                                      |
+| `actionlint.kjanat.dev/v2`            | Convenience `Analyze` entry point                                     |
+| `actionlint.kjanat.dev/v2/analysis`   | Source requests, file/repository discovery and results                |
+| `actionlint.kjanat.dev/v2/analyzer`   | Analyzer input, required facts, registration and returned diagnostics |
+| `actionlint.kjanat.dev/v2/document`   | Workflow/action outlines and structured action references             |
+| `actionlint.kjanat.dev/v2/diagnostic` | Diagnostics, source positions and suggested edits                     |
+| `actionlint.kjanat.dev/v2/config`     | Configuration values, loading, composition and inspection             |
+| `actionlint.kjanat.dev/v2/rule`       | Shared rule metadata, categories, examples and capabilities           |
+| `actionlint.kjanat.dev/v2/source`     | Document revision, node identity and structural address               |
+| `actionlint.kjanat.dev/v2/resolver`   | Optional dependency resolver contract and provenance                  |
+| `actionlint.kjanat.dev/v2/syntax`     | Workflow syntax model and parser                                      |
 
 ## Analyze loaded sources
 
@@ -138,9 +141,10 @@ accompany a failure. The host maps them into the workflow/action source, applies
 all started work. A backend must honor cancellation and permit concurrent calls; callers own its lifetime.
 It may implement `ScriptConfigValidator` to validate its engine configuration before checking a snippet.
 
-`plugin.LoadEngine` returns such a backend for a core WebAssembly module that follows the
-actionlint-plugin-ruff JSON ABI, and `plugin.Load` returns an `analyzer.Analyzer` for a component plugin.
-Both report their limits. See [Plugins](plugins.md). Repository configuration can select an engine module
+`plugin.Load` returns a component that may implement analyzer, runner-provider and script-engine roles.
+For a script engine, require `HasScriptEngine()` and assign the component to `analysis.Tool.Backend`.
+`plugin.LoadEngine` loads the legacy core WebAssembly JSON ABI. Both loaders report their limits and require
+a SHA256 pin for remote artifacts. See [Plugins](plugins.md). Repository configuration can select an engine module
 through `tools.<name>.backend.wasm`; library tool settings take precedence over it, as they do for
 configured processes.
 
@@ -150,9 +154,9 @@ source includes resolved inline directives and runner startup options. That back
 source or rc-file capability: requests for those features fail explicitly. Native ShellCheck retains its
 filesystem-aware integration, including sourced-file diagnostics and fixes.
 
-These Go types are a host API, not a stable wire ABI. A core-WASM adapter can translate them to a versioned
-plugin operation; a future component adapter can use WIT types without imitating process arguments.
-No WASM runtime or component loader is included by this API change.
+These Go types are the host API. Component script engines use the typed
+[`script-engine.wit`](../plugins/wit/script-engine.wit) interface; legacy core engines keep their existing JSON ABI.
+The host adapts either transport to `analyzer.ScriptBackend`.
 
 ## Catalogue and source identity
 

@@ -3,9 +3,9 @@ package checks
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 type credentialsCheck struct{ findingCollector }

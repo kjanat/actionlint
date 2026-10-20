@@ -3,8 +3,8 @@ package checks
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/webhook"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/webhook"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestSchemaNestedTimezoneAliases(t *testing.T) {

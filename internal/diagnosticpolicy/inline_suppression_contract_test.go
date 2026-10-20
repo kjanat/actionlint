@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/diagnosticpolicy"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 
 	"github.com/google/go-cmp/cmp"
 )

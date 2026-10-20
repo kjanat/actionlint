@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 func TestRepositoryRootAndWorkflowFiles(t *testing.T) {

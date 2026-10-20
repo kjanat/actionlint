@@ -1,11 +1,11 @@
 package builtin
 
 import (
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleShellName is a rule to check 'shell' field. For more details, see

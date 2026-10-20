@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"

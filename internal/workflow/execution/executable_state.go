@@ -3,7 +3,7 @@ package execution
 import (
 	"maps"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // executableState tracks when indexed modes still describe execution. Workspace

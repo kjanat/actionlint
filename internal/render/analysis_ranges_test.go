@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/report"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/report"
 )
 
 func TestStructuredRenderRanges(t *testing.T) {

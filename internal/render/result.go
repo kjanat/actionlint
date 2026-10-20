@@ -6,11 +6,11 @@ import (
 	"io"
 	"strings"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	"actionlint.kjanat.dev/diagnostic"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/report"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/report"
 )
 
 // Result is a completed analysis prepared for rendering. Findings carry the

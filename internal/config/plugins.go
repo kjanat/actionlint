@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"go.yaml.in/yaml/v4"
 )
 

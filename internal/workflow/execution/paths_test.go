@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	execution "actionlint.kjanat.dev/internal/workflow/execution"
+	execution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestRunDirectoryContexts(t *testing.T) {

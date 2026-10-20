@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/tools/adapters"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {

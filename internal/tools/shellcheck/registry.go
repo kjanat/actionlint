@@ -4,13 +4,13 @@ import (
 	"errors"
 	"reflect"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/config"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/tools/selection"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // Options selects ShellCheck's transport and source configuration.

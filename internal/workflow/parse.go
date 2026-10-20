@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	stringutil "actionlint.kjanat.dev/internal/stringutil"
-	"actionlint.kjanat.dev/internal/yaml"
-	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	stringutil "actionlint.kjanat.dev/v2/internal/stringutil"
+	"actionlint.kjanat.dev/v2/internal/yaml"
+	yamlscalar "actionlint.kjanat.dev/v2/internal/yamlscalar"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 const (

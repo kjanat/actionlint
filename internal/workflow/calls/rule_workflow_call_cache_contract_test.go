@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/calls"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 
 	"github.com/google/go-cmp/cmp"
 )

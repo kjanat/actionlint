@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestSameRegistry(t *testing.T) {

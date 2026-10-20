@@ -6,9 +6,9 @@ package plugin
 import (
 	"context"
 
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/internal/plugins/component"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 )
 
 // Component is a loaded plugin. Inspect HasAnalyzer, HasRunnerProvider and

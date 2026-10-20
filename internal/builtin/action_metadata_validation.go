@@ -4,11 +4,11 @@ import (
 	"strconv"
 	"strings"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actioncheck "actionlint.kjanat.dev/internal/action/validation"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Each workflow analysis owns its validation store.

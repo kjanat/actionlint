@@ -18,7 +18,7 @@ COPY cmd cmd/
 COPY internal internal/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
-RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/internal/buildinfo.InstallOrigin=official Docker image'" -o . ./cmd/actionlint
+RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/v2/internal/buildinfo.InstallOrigin=official Docker image'" -o . ./cmd/actionlint
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 # Release binaries support larger ARM64 page sizes, unlike Ruff's distroless build.

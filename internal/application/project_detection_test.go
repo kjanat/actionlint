@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/v2/internal/application"
 )
 
 func TestContentPathDetectsProject(t *testing.T) {

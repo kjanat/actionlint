@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
-	"actionlint.kjanat.dev/source"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestAnonymousStepIdentitySurvivesReordering(t *testing.T) {

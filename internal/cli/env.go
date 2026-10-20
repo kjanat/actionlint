@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/render"
 
 	"github.com/mattn/go-shellwords"
 )

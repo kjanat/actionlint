@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // ExpressionEndPosition returns a verified exclusive end, or nil without a mapping.

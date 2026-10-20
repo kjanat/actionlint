@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestShellcheckInvocationDebugContext(t *testing.T) {

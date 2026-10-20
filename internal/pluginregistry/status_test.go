@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func releaseStatus(pin pluginregistry.Pin, state pluginregistry.ReleaseState) pluginregistry.ReleaseStatus {

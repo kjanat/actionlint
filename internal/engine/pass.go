@@ -8,8 +8,8 @@ import (
 	"slices"
 	"time"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // Visitor visits syntax tree from root in depth-first order

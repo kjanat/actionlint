@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func TestAnalysisEmptyDocuments(t *testing.T) {

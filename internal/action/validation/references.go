@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/references"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 // Repository checks a repository action reference and the metadata selected for it.

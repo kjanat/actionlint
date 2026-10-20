@@ -2,8 +2,8 @@
 package syntax
 
 import (
-	"actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 type (

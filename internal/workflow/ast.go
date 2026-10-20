@@ -8,10 +8,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/yaml"
-	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/yaml"
+	yamlscalar "actionlint.kjanat.dev/v2/internal/yamlscalar"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 // Pos represents a position in the file.

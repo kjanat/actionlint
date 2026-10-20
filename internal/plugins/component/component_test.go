@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/plugins/component"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
 )
 
 func pluginPath(name string) string {

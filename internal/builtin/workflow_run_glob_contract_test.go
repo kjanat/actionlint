@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {

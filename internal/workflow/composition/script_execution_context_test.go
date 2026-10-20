@@ -3,8 +3,8 @@ package composition
 import (
 	"testing"
 
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Regression for #409

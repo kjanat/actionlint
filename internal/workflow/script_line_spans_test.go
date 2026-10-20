@@ -5,8 +5,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 func TestScriptSourceLineSpansMatchLookup(t *testing.T) {

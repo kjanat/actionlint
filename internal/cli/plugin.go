@@ -8,10 +8,10 @@ import (
 	"slices"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/localapp"
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/pluginregistry"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

@@ -4,9 +4,9 @@ import (
 	"regexp"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/workflow/references"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // reCommitSHA matches a full-length Git object ID in both the SHA-1 and the SHA-256 object formats.

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/sourceid"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
 func TestPlanAndApply(t *testing.T) {

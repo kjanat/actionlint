@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strconv"
 
-	"actionlint.kjanat.dev/internal/sourceid"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 type References struct {

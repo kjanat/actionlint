@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
 )
 
 func ExampleCommand() {

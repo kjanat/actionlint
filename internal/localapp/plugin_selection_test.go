@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/langserver"
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/langserver"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func pluginRepository(t *testing.T) string {

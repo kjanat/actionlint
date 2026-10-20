@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/filefilter"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/filefilter"
 
 	"go.yaml.in/yaml/v4"
 )

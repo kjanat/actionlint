@@ -3,7 +3,7 @@ package expression_test
 import (
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 )
 
 func TestConditionConstantCase(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/stringutil"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/stringutil"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 // CheckShell validates builtin names and accepts custom shell templates.

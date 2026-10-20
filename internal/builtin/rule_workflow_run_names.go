@@ -3,11 +3,11 @@ package builtin
 import (
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflownames "actionlint.kjanat.dev/internal/workflow/names"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 func workflowRunNamesAvailable(c Context) bool {

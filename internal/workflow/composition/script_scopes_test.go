@@ -4,9 +4,9 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestPreparedScriptsRetainIndependentShells(t *testing.T) {

@@ -340,7 +340,50 @@ try {
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const disabledDiagnostics = disabled.analysis.diagnostics;
 	assert.equal(disabledDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), false, disabled.log);
-	console.log('GitHub Action entrypoint and published-plugin cache tests passed');
+	const installRuff = spawnSync(resolve(binary), ['plugin', 'install', 'ruff@v0.1.0'], {
+		cwd: workspace,
+		env: { ...process.env, ...pluginEnvironment },
+		encoding: 'utf8',
+	});
+	assert.equal(installRuff.status, 0, `${installRuff.error ?? ''}\n${installRuff.stdout}\n${installRuff.stderr}`);
+	await writeFile(
+		join(workspace, 'default-plugins.yml'),
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $GITHUB_SHA\n      - shell: python\n        run: print(unknown_name)\n',
+	);
+	const defaultInputs = {
+		files: 'default-plugins.yml',
+		shellcheck: 'true',
+		ruff: 'true',
+		'plugin-cache': 'false',
+		'fail-on-error': 'false',
+	};
+	const lockPath = join(workspace, '.github/actionlint.plugins.lock.json');
+	const lock = await readFile(lockPath, 'utf8');
+	const defaults = await run(defaultInputs, 0, pluginEnvironment);
+	assert.equal(defaults.analysis.completed, true, defaults.log);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const defaultDiagnostics = defaults.analysis.diagnostics;
+	for (const [rule, code] of [['shellcheck', 'SC2086'], ['ruff', 'F821']]) {
+		assert.ok(
+			defaultDiagnostics.some((diagnostic) => diagnostic.rule === rule && diagnostic.code === code),
+			`missing ${rule}/${code}: ${defaults.log}`,
+		);
+	}
+	// Both packages are pinned and cached now. Broken proxies make any registry
+	// or artifact fetch fail; checking must use the recorded bytes unchanged.
+	const offline = await run(defaultInputs, 0, {
+		...pluginEnvironment,
+		HTTP_PROXY: 'http://127.0.0.1:1',
+		HTTPS_PROXY: 'http://127.0.0.1:1',
+		http_proxy: 'http://127.0.0.1:1',
+		https_proxy: 'http://127.0.0.1:1',
+		NO_PROXY: '',
+		no_proxy: '',
+	});
+	assert.equal(offline.analysis.completed, true, offline.log);
+	assert.deepEqual(offline.analysis.diagnostics, defaultDiagnostics);
+	assert.equal(await readFile(lockPath, 'utf8'), lock);
+	console.log('GitHub Action entrypoint, published default plugins and cache tests passed');
 } finally {
 	if (dirname(workspace) === tempRoot) {
 		await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });

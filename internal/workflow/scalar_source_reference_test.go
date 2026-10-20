@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 
 	"github.com/google/go-cmp/cmp"
 )

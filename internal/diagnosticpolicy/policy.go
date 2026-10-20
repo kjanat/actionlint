@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"slices"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/rule"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Policy applies source-specific suppressions and severity after all analyzers finish.

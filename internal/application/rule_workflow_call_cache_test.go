@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {

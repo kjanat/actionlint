@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"actionlint.kjanat.dev/internal/cli"
-	"actionlint.kjanat.dev/internal/githubaction"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/githubaction"
 
 	_ "time/tzdata"
 )

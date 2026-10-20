@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/workspace"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {

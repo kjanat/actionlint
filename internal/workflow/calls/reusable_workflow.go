@@ -10,12 +10,12 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/workflow/references"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func expectedMapping(where string, n *yaml.Node) error {

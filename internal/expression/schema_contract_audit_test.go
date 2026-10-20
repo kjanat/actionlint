@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	contextspec "actionlint.kjanat.dev/internal/expression/context"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
 )
 
 // The context profiles follow runner 759385a3510197a58b5c08dc1f373b74b9f4643b

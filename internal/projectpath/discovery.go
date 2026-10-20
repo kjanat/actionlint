@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // RepositoryRoot returns the nearest directory containing .git, or "" outside a repository.

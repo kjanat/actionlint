@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 const DefaultURL = "https://plugins.actionlint.kjanat.dev/"

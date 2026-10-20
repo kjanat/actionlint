@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 
 	"github.com/google/go-cmp/cmp"
 )

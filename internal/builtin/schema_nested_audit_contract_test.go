@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
-	"actionlint.kjanat.dev/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/builtin"
 )
 
 func TestSchemaNestedEmptyChoiceOption(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 )
 
 func manifestTestReference(t *testing.T, name string) pluginref.Reference {

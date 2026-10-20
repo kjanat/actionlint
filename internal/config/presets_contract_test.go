@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestNurserySelectionIsIndependent(t *testing.T) {

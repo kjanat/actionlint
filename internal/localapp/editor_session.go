@@ -7,10 +7,10 @@ import (
 	"io"
 	"strings"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 // An editor session owns compiled plugins, never document or analysis state.

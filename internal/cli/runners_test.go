@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 func TestRunnerProviderCLI(t *testing.T) {

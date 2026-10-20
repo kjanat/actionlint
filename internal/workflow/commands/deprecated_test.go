@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowcommands "actionlint.kjanat.dev/internal/workflow/commands"
+	workflowcommands "actionlint.kjanat.dev/v2/internal/workflow/commands"
 	"github.com/google/go-cmp/cmp"
 )
 

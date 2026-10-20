@@ -1,10 +1,10 @@
 package builtin
 
 import (
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 type RuleRunnerLabel struct {

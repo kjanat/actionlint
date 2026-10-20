@@ -4,12 +4,12 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/mapping"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yamlsource"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // Declarations prepares reusable mapping and dependency facts without execution.

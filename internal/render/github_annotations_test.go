@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/render"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func TestGitHubAnnotationEscaping(t *testing.T) {

@@ -1,8 +1,8 @@
 package visit
 
 import (
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Base accumulates findings and provides default callbacks for synchronous visitors.

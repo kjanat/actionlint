@@ -3,13 +3,13 @@ package checks
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 
-	"actionlint.kjanat.dev/internal/semantics/glob"
+	"actionlint.kjanat.dev/v2/internal/semantics/glob"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
 )
 
 type globCheck struct{ findingCollector }

@@ -7,17 +7,17 @@ import (
 	"errors"
 	"io"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	"actionlint.kjanat.dev/internal/checks"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/engine"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/checks"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/engine"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 type Options struct {

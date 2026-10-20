@@ -4,12 +4,12 @@ import (
 	"errors"
 	"reflect"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/tools/selection"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // Options selects Ruff's transport independently of workflow traversal.

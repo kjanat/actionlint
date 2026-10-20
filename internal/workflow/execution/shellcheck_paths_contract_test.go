@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {

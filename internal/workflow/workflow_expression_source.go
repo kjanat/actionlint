@@ -3,7 +3,7 @@ package workflow
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func (p *Parser) workflowExpressionSources(root *yaml.Node) map[Pos]*ScriptSource {

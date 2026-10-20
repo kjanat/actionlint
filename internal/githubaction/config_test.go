@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
 	"go.yaml.in/yaml/v4"
 )

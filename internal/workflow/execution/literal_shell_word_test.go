@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 
 	"mvdan.cc/sh/v3/syntax"
 )

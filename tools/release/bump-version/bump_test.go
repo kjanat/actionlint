@@ -500,21 +500,44 @@ func gitRepo(t *testing.T) *repo {
 
 func TestPreflightPassesOnCleanRepo(t *testing.T) {
 	r := gitRepo(t)
-	if err := r.preflight("v9.9.9"); err != nil {
+	if err := r.preflight("v9.9.9", false, false); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestPreflightRejectsUntrackedFile(t *testing.T) {
+func TestVersionPreparationOnBranchCannotPublish(t *testing.T) {
+	r := releaseRepo(t)
+	if _, err := r.git("switch", "-c", "prepare-v2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.preflight("v9.9.9", false, false); err != nil {
+		t.Fatalf("local branch preparation rejected: %v", err)
+	}
+	err := Main(t.Context(), []string{"bump-version", "-root", r.root, "-push", "9.9.9"}, io.Discard, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "-push requires") {
+		t.Fatalf("branch publication was not rejected: %v", err)
+	}
+	if status, err := r.git("status", "--porcelain"); err != nil || status != "" {
+		t.Fatalf("rejected publication changed files: %q, %v", status, err)
+	}
+	if remote, err := r.git("ls-remote", "origin"); err != nil || remote != "" {
+		t.Fatalf("rejected publication pushed refs: %q, %v", remote, err)
+	}
+}
+
+func TestAutomaticCommitRequiresCleanTree(t *testing.T) {
 	r := gitRepo(t)
 	if err := os.WriteFile(filepath.Join(r.root, "scratch.txt"), []byte("x\n"), 0o666); err != nil {
 		t.Fatal(err)
 	}
-	err := r.preflight("v9.9.9")
+	if err := r.preflight("v9.9.9", false, false); err != nil {
+		t.Fatalf("local preparation rejected unrelated work: %v", err)
+	}
+	err := r.preflight("v9.9.9", true, false)
 	if err == nil {
 		t.Fatal("preflight accepted a working tree with an untracked file")
 	}
-	if want := "not clean"; !strings.Contains(err.Error(), want) {
+	if want := "clean working tree"; !strings.Contains(err.Error(), want) {
 		t.Errorf("error %q does not mention %q", err, want)
 	}
 }
@@ -530,7 +553,7 @@ func TestPreflightRejectsRemoteOnlyTag(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	err := r.preflight("v9.9.9")
+	err := r.preflight("v9.9.9", false, false)
 	if err == nil {
 		t.Fatal("preflight accepted a tag which already exists on origin")
 	}
@@ -627,6 +650,40 @@ func TestReleaseStopsBeforeCommitAndTagWhenNixFails(t *testing.T) {
 	}
 	if tag, err := r.git("tag", "--list", "v9.9.9"); err != nil || tag != "" {
 		t.Fatalf("the failed check created a release tag: %q, %v", tag, err)
+	}
+}
+
+func TestLocalPreparationPreservesUnrelatedChanges(t *testing.T) {
+	r := releaseRepo(t)
+	if _, err := r.git("switch", "-c", "prepare-v2"); err != nil {
+		t.Fatal(err)
+	}
+	before, err := r.git("rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(r.root, "file.txt")
+	const content = "unrelated work\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ACTIONLINT_TEST_NIX_SUCCESS", "1")
+	command := fmt.Sprintf("'%s' -test.run=^TestNixFailureProcess$ --", exe)
+	if err := Main(t.Context(), []string{"bump-version", "-root", r.root, "-nix-command", command, "9.9.9"}, io.Discard, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(path); err != nil || string(got) != content {
+		t.Fatalf("unrelated work changed: %q, %v", got, err)
+	}
+	if after, err := r.git("rev-parse", "HEAD"); err != nil || after != before {
+		t.Fatalf("local preparation committed changes: %q -> %q, %v", before, after, err)
+	}
+	if version, err := Check(r.root, targets, io.Discard); err != nil || version != "9.9.9" {
+		t.Fatalf("version edits not prepared: %q, %v", version, err)
 	}
 }
 

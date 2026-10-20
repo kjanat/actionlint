@@ -9,12 +9,12 @@ import (
 	"strings"
 	"sync"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	"actionlint.kjanat.dev/internal/localaction"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	"actionlint.kjanat.dev/internal/workflow/references"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/localaction"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 // MetadataLookup supplies metadata to checks without exposing cache or resolver state.

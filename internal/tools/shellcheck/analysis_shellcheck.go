@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/tools/selection"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // shellcheckAnalyzer owns execution; traversal supplies resolved invocation facts.

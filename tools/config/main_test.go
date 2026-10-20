@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	actionlint "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/genfile"
+	actionlint "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/genfile"
 
 	"github.com/google/go-cmp/cmp"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"

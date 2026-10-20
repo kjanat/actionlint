@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/expression"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/expression"
 )
 
 func Check(value string, start diagnostic.Position) []diagnostic.Diagnostic {

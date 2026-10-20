@@ -6,8 +6,8 @@ import (
 	"maps"
 	"strings"
 
-	configtree "actionlint.kjanat.dev/internal/config/tree"
-	"actionlint.kjanat.dev/internal/filefilter"
+	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
+	"actionlint.kjanat.dev/v2/internal/filefilter"
 
 	"go.yaml.in/yaml/v4"
 )

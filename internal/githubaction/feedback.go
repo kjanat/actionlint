@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func quotedIgnoreHints(patterns []string, problems []diagnostic.Diagnostic) []string {

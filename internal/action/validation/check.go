@@ -9,13 +9,13 @@ import (
 	"slices"
 	"strings"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/semantics/identifier"
-	"actionlint.kjanat.dev/internal/stringutil"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/semantics/identifier"
+	"actionlint.kjanat.dev/v2/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 type validator struct {

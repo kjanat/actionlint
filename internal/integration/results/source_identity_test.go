@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/analyzer"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 type identityCapture struct{ input analyzer.Input }

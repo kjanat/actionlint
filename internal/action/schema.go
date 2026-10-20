@@ -5,11 +5,11 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/schemapath"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/schemapath"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 type actionSchemaKind uint8

@@ -3,11 +3,11 @@ package expressions
 import (
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/mapping"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
-	"actionlint.kjanat.dev/internal/workflow/schema"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
 func (rule *Checker) checkMatrixExpression(expr *workflowlang.String) *exprlang.ObjectType {

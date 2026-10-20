@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"slices"
 
-	lintconfig "actionlint.kjanat.dev/internal/config/rules"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/rule"
+	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/rule"
 
 	"go.yaml.in/yaml/v4"
 )

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest

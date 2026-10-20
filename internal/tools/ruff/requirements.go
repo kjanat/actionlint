@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func projectMayEnable(config, projectConfig *repoconfig.Config, project bool) (bool, error) {

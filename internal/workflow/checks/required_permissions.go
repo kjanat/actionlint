@@ -1,7 +1,7 @@
 package checks
 
 import (
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // RequiredWorkflowPermissions checks the workflow declaration when workflow scope is enabled.

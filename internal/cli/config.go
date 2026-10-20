@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/localapp"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/localapp"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/projectpath"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/projectpath"
+	"actionlint.kjanat.dev/v2/internal/render"
 	"go.yaml.in/yaml/v4"
 )
 

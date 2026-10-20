@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version: { description: "Stable version (MAJOR.MINOR.PATCH)", required: true, type: string }
-      source: { description: Expected master commit; empty uses the selected master revision, required: false, type: string }
+      source: { description: Expected source commit; empty uses the selected revision, required: false, type: string }
+      validation-only: { description: Test the selected branch without creating a release draft, default: false, type: boolean }
 
 concurrency:
   group: actionlint-release
@@ -29,9 +30,11 @@ jobs:
       - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0, persist-credentials: false }
       - name: Check requested source and version
-        env: { EXPECTED_SOURCE: "${{ inputs.source }}" }
+        env: { EXPECTED_SOURCE: "${{ inputs.source }}", VALIDATION_ONLY: "${{ inputs.validation-only }}" }
         run: |
-          test "${GITHUB_REF}" = refs/heads/master
+          if [[ "${VALIDATION_ONLY}" != true ]]; then
+            test "${GITHUB_REF}" = refs/heads/master
+          fi
           test -z "${EXPECTED_SOURCE}" || test "${EXPECTED_SOURCE}" = "${GITHUB_SHA}"
           [[ "${VERSION}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           existing_tag="$(git tag --list "v${VERSION}")"
@@ -46,6 +49,8 @@ jobs:
             with: { version-file: .tool-versions }
           - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
             with: { install: false, env: false, add_shims_to_path: false }
+      - name: Install locked JavaScript dependencies
+        run: npm ci --ignore-scripts
       - name: Stage stub release archives for the PyPI wheel check
         run: |
           stub="${RUNNER_TEMP}/pypi-stub"
@@ -162,14 +167,15 @@ jobs:
             tar -xz -C "${binary_dir}" < "${archive}"
           fi
           echo "ACTIONLINT_ACTION_BINARY=${binary_dir}/actionlint${BINARY_SUFFIX}" >> "${GITHUB_ENV}"
-      - name: Test the packaged entrypoint and CLI compatibility
-        run: node tools/action/test-action.mjs .actionlint-action-candidate "${ACTIONLINT_ACTION_BINARY}"
+      - name: Test the packaged entrypoint, published plugin and GitHub cache
+        uses: $/.github/actions/test-action
+        with: { action-directory: .actionlint-action-candidate, binary: "${{ env.ACTIONLINT_ACTION_BINARY }}" }
       - name: Exercise the candidate through the real runner
         id: smoke
         # ./ loads the candidate tree generated during this job.
         uses: ./.actionlint-action-candidate
         with: { files: testdata/ok/minimal.yaml, format: json }
-      - name: Verify runner outputs and exported tools
+      - name: Verify runner outputs and exported actionlint
         env:
           EXIT_CODE: ${{ steps.smoke.outputs.exit-code }}
           RESULT: ${{ steps.smoke.outputs.result }}
@@ -178,14 +184,11 @@ jobs:
         run: |
           node tools/action/check-action-outputs.mjs
           actionlint -version
-          shellcheck --version
       - name: Verify Windows command resolution
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           actionlint -version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          shellcheck --version
           exit $LASTEXITCODE
       - name: Run the prepared Windows x86-64 wheel
         if: runner.os == 'Windows'
@@ -265,12 +268,11 @@ jobs:
             ${{ runner.temp }}/${{ matrix.asset }}_${{ inputs.version }}.digest
           if-no-files-found: error
           compression-level: 0
-  draft:
-    name: Store the validated release draft
+  manifest:
+    name: Record the validated release candidate
     needs: [prepare, nix, action, container]
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions: { contents: write }
     steps:
       - uses: *Checkout
         with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
@@ -293,6 +295,24 @@ jobs:
           path: ${{ runner.temp }}/actionlint-action/assets/release-candidate.json
           if-no-files-found: error
           retention-days: 90
+  draft:
+    name: Store the validated release draft
+    needs: [prepare, manifest]
+    if: ${{ !inputs.validation-only }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: write }
+    steps:
+      - uses: *Checkout
+        with: { ref: "${{ needs.prepare.outputs.source }}", fetch-depth: 0, persist-credentials: false }
+      - uses: *Download
+        with: { name: prepared-release, path: "${{ runner.temp }}/actionlint-action" }
+      - uses: *Download
+        with: { pattern: prepared-container-*, merge-multiple: true, path: "${{ runner.temp }}/actionlint-action/assets" }
+      - uses: *Download
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/actionlint-action/assets
       - name: Create the draft without publishing a version tag
         env: { GH_TOKEN: "${{ github.token }}", SOURCE: "${{ needs.prepare.outputs.source }}" }
         run: |

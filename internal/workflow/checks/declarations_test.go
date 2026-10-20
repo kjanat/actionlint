@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {

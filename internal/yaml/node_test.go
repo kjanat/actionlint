@@ -38,7 +38,7 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 	if nodes.Base.Content[1].Tag != "!!null" || nodes.Base.Content[1].Line != 1 {
 		t.Fatal(nodes)
 	}
-	if reflect.TypeFor[Node]().PkgPath() != "actionlint.kjanat.dev/internal/yaml" {
+	if reflect.TypeFor[Node]().PkgPath() != "actionlint.kjanat.dev/v2/internal/yaml" {
 		t.Fatal("tree is a parser alias")
 	}
 }

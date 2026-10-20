@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func TestActionReadsPathsOutsideWorkspace(t *testing.T) {

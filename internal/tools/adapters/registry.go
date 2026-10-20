@@ -3,12 +3,12 @@
 package adapters
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/tools/ruff"
-	"actionlint.kjanat.dev/internal/tools/shellcheck"
+	"actionlint.kjanat.dev/v2/analyzer"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/ruff"
+	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
 )
 
 type Options struct {

@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/tools/adapters"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	"actionlint.kjanat.dev/internal/workspace"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
 )

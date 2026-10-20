@@ -1,7 +1,7 @@
 package rulecatalog
 
 import (
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 	"strings"
 )
 

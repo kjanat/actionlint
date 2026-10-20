@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/sourceid"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
 // Apply prepares all replacement files and verifies every revision before the

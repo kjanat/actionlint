@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/langserver"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/langserver"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
 
 type editorTestBackend struct {

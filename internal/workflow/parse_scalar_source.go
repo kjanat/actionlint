@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/internal/yaml"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 type scalarContext = yamlsource.Context

@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/semantics/permission"
-	"actionlint.kjanat.dev/internal/stringutil"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/semantics/permission"
+	"actionlint.kjanat.dev/v2/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 
 	"github.com/google/go-cmp/cmp"
 )

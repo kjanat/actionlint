@@ -3,8 +3,8 @@ package local
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 
 	"mvdan.cc/sh/v3/syntax"
 )

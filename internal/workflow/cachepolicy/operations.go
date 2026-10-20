@@ -5,10 +5,10 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	"actionlint.kjanat.dev/internal/workflow/references"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 // MetadataLookup provides reusable workflow metadata without owning discovery or policy.

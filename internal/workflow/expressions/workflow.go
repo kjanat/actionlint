@@ -1,11 +1,11 @@
 package expressions
 
 import (
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/eventpayload"
-	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
-	"actionlint.kjanat.dev/internal/workflow/schema"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/eventpayload"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.

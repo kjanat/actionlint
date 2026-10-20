@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/config"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 )
 
 func TestProjectToolBackendPrecedence(t *testing.T) {

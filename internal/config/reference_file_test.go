@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
 	"github.com/google/go-cmp/cmp"
 )

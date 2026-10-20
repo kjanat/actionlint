@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/config"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 )
 
 // PluginCachePlan describes portable artifact bytes, never compiled native code.

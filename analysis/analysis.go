@@ -5,16 +5,16 @@ package analysis
 import (
 	"context"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/config"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/document"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/tools/adapters"
-	"actionlint.kjanat.dev/internal/workspace"
-	"actionlint.kjanat.dev/resolver"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/config"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/document"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/resolver"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 // Source is an in-memory workflow or action manifest with optional configuration.

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerapi "actionlint.kjanat.dev/runner"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 // builtinProvider implements the same boundary as external providers. The

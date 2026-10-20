@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	configtree "actionlint.kjanat.dev/internal/config/tree"
+	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"github.com/pelletier/go-toml/v2"
 	"go.yaml.in/yaml/v4"
 )

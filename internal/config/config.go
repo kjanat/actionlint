@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	ruffconfig "actionlint.kjanat.dev/internal/config/tools/ruff"
-	configtree "actionlint.kjanat.dev/internal/config/tree"
-	"actionlint.kjanat.dev/internal/fsread"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	ruffconfig "actionlint.kjanat.dev/v2/internal/config/tools/ruff"
+	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"go.yaml.in/yaml/v4"

@@ -13,8 +13,8 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"golang.org/x/mod/semver"
 )
 

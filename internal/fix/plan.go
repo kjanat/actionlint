@@ -11,10 +11,10 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/sourceid"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 type Change struct {

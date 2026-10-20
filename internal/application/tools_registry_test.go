@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/tools/backend"
-	"actionlint.kjanat.dev/internal/workspace"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestIndependentProcessTool(t *testing.T) {

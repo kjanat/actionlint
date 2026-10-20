@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 func TestCompositeActionPathCasing(t *testing.T) {

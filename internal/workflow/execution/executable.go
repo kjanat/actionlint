@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/fsread"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 
 	"mvdan.cc/sh/v3/syntax"
 )

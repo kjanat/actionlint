@@ -5,9 +5,9 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 var scalarDecoderInvariantCorpus = []string{

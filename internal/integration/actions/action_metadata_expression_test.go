@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actioncheck "actionlint.kjanat.dev/internal/action/validation"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/testutil"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/testutil"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestActionMetadataContextSuggestion(t *testing.T) {

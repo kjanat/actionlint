@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func (run *shellcheckRun) sourcedDiagnostic(comment shellcheckError, directory string, sources map[string][]byte) *Error {

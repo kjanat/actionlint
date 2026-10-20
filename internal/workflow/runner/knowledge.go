@@ -10,9 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerapi "actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 // JobKnowledge is a conservative join of the alternatives for one job. It is

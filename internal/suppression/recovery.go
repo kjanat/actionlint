@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 // recoverInlineSuppressionComments reads lexical comments when malformed YAML

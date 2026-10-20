@@ -4,9 +4,9 @@ import (
 	"math"
 	"strconv"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func (rule *checker) checkFilterTypes(matrix *workflowlang.Matrix, expressions bool) {

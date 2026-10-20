@@ -1,8 +1,8 @@
 package execution
 
 import (
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/schema"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
 // ShellKind distinguishes absent, source, evaluated and unknown overrides.

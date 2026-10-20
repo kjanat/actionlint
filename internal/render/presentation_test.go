@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/rulecatalog"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"

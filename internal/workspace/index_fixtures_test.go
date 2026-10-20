@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func executableFixture(t *testing.T) (string, func(...string)) {

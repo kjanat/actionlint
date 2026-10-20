@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/localapp"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
 
 func TestActionNativeBackendRequirements(t *testing.T) {

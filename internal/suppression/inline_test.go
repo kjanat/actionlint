@@ -3,7 +3,7 @@ package suppression
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 
 	"github.com/google/go-cmp/cmp"
 )

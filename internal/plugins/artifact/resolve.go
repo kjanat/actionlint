@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Options bounds artifact acquisition independently of runtime execution limits.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestUpkeepGoToolchain(t *testing.T) {

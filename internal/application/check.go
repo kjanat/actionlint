@@ -10,17 +10,17 @@ import (
 	"runtime"
 	"slices"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/projectpath"
-	"actionlint.kjanat.dev/internal/report"
-	"actionlint.kjanat.dev/internal/resolution"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/workspace"
-	"actionlint.kjanat.dev/resolver"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/projectpath"
+	"actionlint.kjanat.dev/v2/internal/report"
+	"actionlint.kjanat.dev/v2/internal/resolution"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/resolver"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 // Options selects configuration and analysis backends for one application session.

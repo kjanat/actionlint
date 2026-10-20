@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/stringutil"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/schema"
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // Check validates one job's matrix and optionally checks loose filter types.

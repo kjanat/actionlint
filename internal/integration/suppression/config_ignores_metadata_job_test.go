@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/testutil"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestReusableIgnoresMetadataPerJob(t *testing.T) {

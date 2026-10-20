@@ -4,7 +4,7 @@ package rulecatalog
 import (
 	"slices"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 var builtins = []rule.Descriptor{

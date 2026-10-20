@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/sourceid"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
 func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {

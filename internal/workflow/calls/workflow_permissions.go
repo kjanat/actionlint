@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // PermissionLevel is an access level of a single permission scope of the GITHUB_TOKEN.
