@@ -87,10 +87,10 @@ homebrew_casks:
     homepage: https://actionlint.kjanat.dev
     description: Static checker for GitHub Actions workflow files
     skip_upload: true
-    # The binary is not notarized. Without this, Gatekeeper blocks it, and the
-    # completion generation above runs it during install.
+    # The binary is not notarized. Remove quarantine in preflight because
+    # Homebrew generates completions before running postflight blocks.
     hooks:
-      post:
+      pre:
         install: |
           if OS.mac?
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/actionlint"]
