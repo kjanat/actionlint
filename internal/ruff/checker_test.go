@@ -186,14 +186,11 @@ func TestShellSelectionAndFork(t *testing.T) {
 	}
 	python, bash, dynamic := "python3 -u {0}", "bash", "${{ inputs.shell }}"
 	check(c, nil, Config{}, 0)
-	c.WorkflowShell(&python)
-	check(c, nil, Config{}, 1)
-	c.JobShell(&bash)
-	check(c, nil, Config{}, 1)
+	check(c, &python, Config{}, 1)
+	check(c, &bash, Config{}, 1)
 	check(c, &python, Config{}, 2)
 	check(c, &dynamic, Config{}, 2)
-	c.JobShell(nil)
-	check(c, nil, Config{}, 3)
+	check(c, &python, Config{}, 3)
 	check(c, nil, Config{Enabled: new(false)}, 3)
 	check(c.Fork(), nil, Config{}, 3)
 	check(c.Fork(), &python, Config{}, 4)

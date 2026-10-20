@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/ruffconfig"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -28,7 +28,7 @@ func TestReleaseMatchesActionManifest(t *testing.T) {
 
 func TestVendoredSchema(t *testing.T) {
 	t.Chdir("../..")
-	if ruff.SchemaPath != schemaPath || ruff.SelectorSchemaPath != selectorSchemaPath {
+	if ruffconfig.SchemaPath != schemaPath || ruffconfig.SelectorSchemaPath != selectorSchemaPath {
 		t.Fatal("generated schema paths are stale")
 	}
 	schema, err := os.ReadFile(schemaPath)
@@ -39,10 +39,10 @@ func TestVendoredSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(versions, ruff.SupportedTargetVersions()) {
+	if !slices.Equal(versions, ruffconfig.SupportedTargetVersions()) {
 		t.Fatal("generated Python versions differ from the upstream schema")
 	}
-	wrapper, err := selectorSchema(schema, ruff.SupportedRuleSelectors())
+	wrapper, err := selectorSchema(schema, ruffconfig.SupportedRuleSelectors())
 	if err != nil {
 		t.Fatal(err)
 	}

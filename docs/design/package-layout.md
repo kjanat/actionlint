@@ -1,17 +1,8 @@
-# Package layout
+# Historical package layout proposal
 
-Issue kjanat/actionlint#21 asks whether the flat root package should be split into
-`ast`, `expr` and `rule`, and names one question as blocking the work: where `Pos` and `Error` end up. This document
-answers that question, records the measured dependency graph the answer rests on, gives a target layout that the same
-measurement shows is acyclic, and lists what each phase of the move has to do.
-
-Nothing here changes Go code. Phase 0 is this document.
-
-Implementation update for kjanat/actionlint#155: the frontend now lives in `internal/cli`.
-The root package exposes analysis sessions, result rendering and configuration inspection, and no longer imports Cobra or
-pflag. Build metadata remains in `version.go`, which also supplies the template's `getVersion` function. This removes the
-frontend/version dependency described below. The measurements and proposed broader package split remain the historical
-snapshot at [`kjanat/actionlint@2f85e20`].
+This document records the dependency measurements and proposal at `2f85e20`. The implemented boundaries and their
+limitations are described in [Analysis contracts and library boundaries](analysis-contracts.md). The measurements below
+are historical; they do not describe the current repository layout.
 
 ## How the graph was measured
 

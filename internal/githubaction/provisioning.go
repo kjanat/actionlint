@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 // ToolPlan validates Action configuration before the launcher installs tools.

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/google/go-cmp/cmp"
 )
 

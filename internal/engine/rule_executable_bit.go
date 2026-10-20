@@ -1,0 +1,806 @@
+package engine
+
+import (
+	"path"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+	"unicode/utf8"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"mvdan.cc/sh/v3/syntax"
+)
+
+// RuleExecutableBit checks direct script calls against the Git index, independently
+// of host filesystem permissions and of ShellCheck availability.
+type RuleExecutableBit struct {
+	RuleBase
+	executableState
+	context                             ruleContext
+	workflowDir, jobDir                 runDirectory
+	workflowShell, jobShell             shellValue
+	paths                               runPaths
+	unix                                bool
+	workflowEnv, jobEnv                 bool
+	workflowGitEnv                      *workflowlang.Env
+	jobGitEnv                           bool
+	workflowPathUnknown, jobPathUnknown bool
+	pathUnknown                         bool
+	skipFindings                        bool
+	caseInsensitive                     bool
+	shIsDash                            bool
+	callerRepositoryUnknown             bool
+}
+
+func newRuleExecutableBit(context ruleContext) *RuleExecutableBit {
+	return &RuleExecutableBit{RuleBase: builtinRuleBase("executable-bit"), context: context}
+}
+
+func (rule *RuleExecutableBit) VisitWorkflowPre(workflow *workflowlang.Workflow) error {
+	rule.workflowDir = defaultsWorkingDirectory(workflow.Defaults)
+	rule.workflowShell = defaultsShellValue(workflow.Defaults)
+	rule.workflowEnv = shellEnvironmentUnknown(workflow.Env)
+	rule.workflowGitEnv = workflow.Env
+	rule.workflowPathUnknown = shellPathUnknown(workflow.Env)
+	_, rule.callerRepositoryUnknown = workflow.FindWorkflowCallEvent()
+	return nil
+}
+
+func (rule *RuleExecutableBit) VisitJobPre(job *workflowlang.Job) error {
+	rule.jobDir, rule.jobShell = defaultsWorkingDirectory(job.Defaults), defaultsShellValue(job.Defaults)
+	rule.jobEnv = rule.workflowEnv || shellEnvironmentUnknown(job.Env)
+	platform := runnerPlatform(job.RunsOn)
+	rule.jobGitEnv = checkoutEnvironmentUnknown(rule.workflowGitEnv, platform) || checkoutEnvironmentUnknown(job.Env, platform)
+	rule.jobPathUnknown = rule.workflowPathUnknown || shellPathUnknown(job.Env)
+	rule.unix = runnerPlatform(job.RunsOn) == platformKindMacOrLinux
+	rule.caseInsensitive = macOSRunner(job.RunsOn)
+	rule.shIsDash = ubuntuRunner(job.RunsOn)
+	// Container mounts can replace the checked-out tree. Treat them as unknown.
+	if job.Container != nil || servicesMayChangeWorkspace(job.Services) {
+		rule.unix = false
+	}
+	if enabled, known := jobInvocationCondition(job); known && !enabled {
+		rule.unix = false
+	}
+	rule.executableState = newExecutableState(knownHostedRunner(job.RunsOn), rule.callerRepositoryUnknown)
+	rule.paths = runPaths{workspace: rule.context.projectRoot, analysis: rule.context.workingDir, platform: runnerPlatform(job.RunsOn), reader: rule.context.reader}
+	return nil
+}
+
+func (rule *RuleExecutableBit) VisitStep(step *workflowlang.Step) error {
+	if !rule.unix || !rule.sequential {
+		return nil
+	}
+	enabled, conditionKnown := invocationCondition(step.If)
+	if conditionKnown && !enabled {
+		return nil
+	}
+	if stepCanRunAfterFailure(step.If) {
+		rule.afterPossibleFailure()
+	}
+	if boolMayBeTrue(step.Background) {
+		rule.afterConcurrentExecution()
+		return nil
+	}
+	switch command := step.Exec.(type) {
+	case *workflowlang.ExecParallel:
+		rule.afterConcurrentExecution()
+	case *workflowlang.ExecAction:
+		if rule.jobGitEnv || checkoutEnvironmentUnknown(step.Env, rule.paths.platform) {
+			rule.repositoryUnknown = true
+			rule.actionPristine = false
+		}
+		if command.Uses == nil {
+			rule.actionPristine = false
+		} else if name, _, versioned := strings.Cut(command.Uses.Value, "@"); !versioned || !strings.EqualFold(name, "actions/checkout") {
+			rule.actionPristine = false
+		}
+		rule.checkout(command, !conditionKnown || boolMayBeTrue(step.ContinueOnError))
+	case *workflowlang.ExecRun:
+		workspacePristine := rule.pristine
+		independent := rule.paths.effectiveRunDirectory(command, rule.jobDir, rule.workflowDir).kind == directoryActionKnown
+		if independent {
+			rule.pristine = rule.actionPristine
+		}
+		rule.pathUnknown = rule.jobPathUnknown || shellPathUnknown(step.Env)
+		if rule.jobEnv || shellEnvironmentUnknown(step.Env) {
+			rule.pristine = false
+		}
+		if rule.pristine {
+			rule.checkScript(command)
+		}
+		if !conditionKnown {
+			// Its invocation sees the current state, but its effects may be skipped.
+			rule.pristine = false
+		}
+		if !rule.pristine {
+			rule.actionPristine = false
+		}
+		if independent {
+			rule.pristine = workspacePristine && rule.pristine
+		}
+		if !rule.pristine {
+			rule.repositoryUnknown = true
+		}
+	}
+	return nil
+}
+
+func stepCondition(condition *workflowlang.String) (enabled, known bool) {
+	if condition == nil {
+		return true, true
+	}
+	expression, _, _ := exprlang.ParseConditionExpression(condition.Value)
+	value, known := exprlang.ConditionConstantValue(expression)
+	if !known {
+		// Explicit success() has the same gate as an ordinary step.
+		if call, ok := expression.(*exprlang.FuncCallNode); ok && strings.EqualFold(call.Callee, "success") && len(call.Args) == 0 {
+			return true, true
+		}
+		return false, false
+	}
+	switch value := value.(type) {
+	case nil:
+		return false, true
+	case bool:
+		return value, true
+	case float64:
+		return value != 0, true
+	case string:
+		return value != "", true
+	default:
+		// Known JSON arrays and objects are truthy, including empty ones.
+		return true, true
+	}
+}
+
+func stepCanRunAfterFailure(condition *workflowlang.String) bool {
+	if condition == nil {
+		return false
+	}
+	expression, err, _ := exprlang.ParseConditionExpression(condition.Value)
+	if err != nil || expression == nil {
+		return true
+	}
+	hasStatusFunction := false
+	exprlang.Visit(expression, func(node, _ exprlang.Node, entering bool) {
+		if call, ok := node.(*exprlang.FuncCallNode); entering && ok {
+			switch strings.ToLower(call.Callee) {
+			case "always", "cancelled", "failure", "success":
+				hasStatusFunction = true
+			}
+		}
+	})
+	// A status function removes the runner's implicit success() condition.
+	return hasStatusFunction && !expressionRequiresSuccess(expression)
+}
+
+func expressionRequiresSuccess(expression exprlang.Node) bool {
+	switch node := expression.(type) {
+	case *exprlang.FuncCallNode:
+		return strings.EqualFold(node.Callee, "success") && len(node.Args) == 0
+	case *exprlang.LogicalOpNode:
+		left, right := expressionRequiresSuccess(node.Left), expressionRequiresSuccess(node.Right)
+		switch node.Kind {
+		case exprlang.LogicalOpNodeKindAnd:
+			return left || right
+		case exprlang.LogicalOpNodeKindOr:
+			return left && right
+		default:
+			return false
+		}
+	default:
+		return false
+	}
+}
+
+func knownHostedRunner(runner *workflowlang.Runner) bool {
+	if runner == nil || runner.Group != nil {
+		return false
+	}
+	for _, expression := range []*workflowlang.String{runner.Expression, runner.LabelsExpr} {
+		if expression == nil {
+			continue
+		}
+		value, known := workflowlang.WorkflowExpressionLiteral(expression)
+		if !known {
+			return false
+		}
+		if selection, ok := value.(map[string]any); ok {
+			for key := range selection {
+				if !strings.EqualFold(key, "labels") {
+					return false
+				}
+			}
+		}
+	}
+	labels := runnerPlatformLabels(runner)
+	if len(labels) != 1 {
+		return false
+	}
+	for _, label := range labels {
+		if !slices.Contains(allGitHubHostedRunnerLabels, strings.ToLower(label.Value)) {
+			return false
+		}
+	}
+	return len(labels) != 0
+}
+
+func boolMayBeTrue(value *workflowlang.Bool) bool {
+	if value == nil {
+		return false
+	}
+	if value.Expression == nil {
+		return value.Value
+	}
+	literal, known := workflowlang.WorkflowExpressionLiteral(value.Expression)
+	enabled, boolean := literal.(bool)
+	return !known || !boolean || enabled
+}
+
+// A known self checkout establishes which index is represented in the workspace.
+// Opaque actions may change permissions or replace files, so invalidate that state.
+func (rule *RuleExecutableBit) checkout(action *workflowlang.ExecAction, mayNotComplete bool) {
+	rule.pristine = false
+	if rule.repositoryUnknown {
+		return
+	}
+	// Opaque execution can change Git settings that preserve working-tree modes.
+	rule.repositoryUnknown = true
+	if action.Uses == nil || mayNotComplete {
+		return
+	}
+	name, ref, versioned := strings.Cut(action.Uses.Value, "@")
+	if !versioned || ref == "" || !strings.EqualFold(name, "actions/checkout") {
+		return
+	}
+	for _, input := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
+		if value, known := checkoutInput(action, input); !known || value != "" {
+			return
+		}
+	}
+	if clean, known := checkoutInput(action, "clean"); !known || clean != "" && !strings.EqualFold(clean, "true") {
+		return
+	}
+	checkout, known := checkoutInput(action, "path")
+	checkout, representable := runnerRelativePath(checkout, rule.paths.platform)
+	if !known || !representable {
+		return
+	}
+	if checkout != "" {
+		checkout = path.Clean(checkout)
+	}
+	if checkout == ".." || strings.HasPrefix(checkout, "../") {
+		return
+	}
+	rule.paths.checkout = checkout
+	rule.afterKnownCheckout(checkout, rule.caseInsensitive)
+}
+
+func checkoutInput(action *workflowlang.ExecAction, name string) (string, bool) {
+	value, known := workflowlang.ActionInputValue(action, name)
+	return strings.TrimSpace(value), known
+}
+
+func (rule *RuleExecutableBit) checkScript(run *workflowlang.ExecRun) {
+	if run.Run == nil {
+		return
+	}
+	shell := resolveRunShell(run, rule.jobShell, rule.workflowShell, shellValue{})
+	shellName := strings.ToLower(shell.name)
+	if shellName != "bash" && shellName != "sh" {
+		rule.pristine = false
+		return
+	}
+	// Expressions can inject shell syntax, including additional commands.
+	if run.Run.ContainsExpression() {
+		rule.pristine = false
+		return
+	}
+	variant := syntax.LangBash
+	if shellName == "sh" {
+		variant = syntax.LangPOSIX
+	}
+	file, err := syntax.NewParser(syntax.Variant(variant)).Parse(strings.NewReader(run.Run.Value), "")
+	if err != nil {
+		rule.pristine = false
+		return
+	}
+	directory := rule.paths.effectiveRunDirectory(run, rule.jobDir, rule.workflowDir)
+	for _, statement := range file.Stmts {
+		rule.statement(statement, run, &directory)
+	}
+}
+
+func (rule *RuleExecutableBit) statement(statement *syntax.Stmt, run *workflowlang.ExecRun, directory *runDirectory) {
+	if !rule.pristine {
+		return
+	}
+	if statement.Background || !rule.redirectsKnown(statement.Redirs, *directory) {
+		rule.pristine = false
+		return
+	}
+	if statement.Negated || len(statement.Redirs) != 0 {
+		// Negation changes continuation; redirects can overwrite later inputs.
+		defer func() { rule.pristine = false }()
+	}
+	switch command := statement.Cmd.(type) {
+	case *syntax.CallExpr:
+		rule.call(command, run, directory)
+	case *syntax.BinaryCmd:
+		if command.Op == syntax.Pipe || command.Op == syntax.PipeAll {
+			if invocation, known := pipelineInvocation(statement); known && invocation != nil {
+				rule.statement(invocation, run, directory)
+			}
+			rule.pristine = false
+			return
+		}
+		if command.Op == syntax.OrStmt {
+			rule.statement(command.X, run, directory)
+			rule.pristine = false
+			return
+		}
+		if command.Op != syntax.AndStmt {
+			rule.pristine = false
+			return
+		}
+		rule.statement(command.X, run, directory)
+		rule.statement(command.Y, run, directory)
+	default:
+		// Functions, control flow and subshells need a separate execution model.
+		rule.pristine = false
+	}
+}
+
+// A single invocation can be checked against incoming modes only when every
+// concurrent sibling is a literal, nonmutating builtin. Afterwards state is unknown.
+func pipelineInvocation(statement *syntax.Stmt) (*syntax.Stmt, bool) {
+	if statement.Background || len(statement.Redirs) != 0 {
+		return nil, false
+	}
+	switch command := statement.Cmd.(type) {
+	case *syntax.BinaryCmd:
+		if command.Op != syntax.Pipe && command.Op != syntax.PipeAll {
+			return nil, false
+		}
+		left, leftKnown := pipelineInvocation(command.X)
+		right, rightKnown := pipelineInvocation(command.Y)
+		if !leftKnown || !rightKnown || left != nil && right != nil {
+			return nil, false
+		}
+		if left != nil {
+			return left, true
+		}
+		return right, true
+	case *syntax.CallExpr:
+		if len(command.Args) == 0 {
+			return nil, false
+		}
+		name, known := literalShellWord(command.Args[0].Parts)
+		if known && len(command.Assigns) == 0 && (name == "true" || name == ":" || name == "echo") {
+			for _, word := range command.Args[1:] {
+				if _, literal := literalShellWord(word.Parts); !literal {
+					return nil, false
+				}
+			}
+			return nil, true
+		}
+		return statement, true
+	default:
+		return nil, false
+	}
+}
+
+func (rule *RuleExecutableBit) redirectsKnown(redirects []*syntax.Redirect, directory runDirectory) bool {
+	for _, redirect := range redirects {
+		if redirect.Word == nil || redirect.Hdoc != nil || redirect.N != nil && !standardShellDescriptor(redirect.N.Value) {
+			return false
+		}
+		target, literal := literalShellWord(redirect.Word.Parts)
+		if !literal {
+			return false
+		}
+		switch redirect.Op {
+		case syntax.DplIn, syntax.DplOut:
+			if !standardShellDescriptor(target) {
+				return false
+			}
+			continue
+		case syntax.RdrIn, syntax.RdrOut, syntax.AppOut, syntax.RdrInOut, syntax.RdrClob, syntax.RdrAll, syntax.AppAll:
+		default:
+			return false
+		}
+		if target == "/dev/null" {
+			continue
+		}
+		location, known := rule.scriptPath(directory, target)
+		if !known || rule.modeChanges(directory)[location.runner] {
+			return false
+		}
+		name := location.repository
+		// Checkout creates Git metadata outside the tracked index tree.
+		if directory.kind == directoryKnown && (name == ".git" || rule.caseInsensitive && strings.EqualFold(name, ".git")) {
+			return false
+		}
+		snapshot := rule.index()
+		switch snapshot.modes[name] {
+		case "100644", "100755":
+		case "":
+			if redirect.Op == syntax.RdrIn || snapshot.directoryExists(name) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func standardShellDescriptor(value string) bool {
+	return value == "0" || value == "1" || value == "2"
+}
+
+func (rule *RuleExecutableBit) call(command *syntax.CallExpr, run *workflowlang.ExecRun, directory *runDirectory) {
+	if len(command.Args) == 0 {
+		rule.pristine = false
+		return
+	}
+	shell := resolveRunShell(run, rule.jobShell, rule.workflowShell, shellValue{})
+	bashReadonly := !rule.shIsDash || !strings.EqualFold(shell.name, "sh")
+	for _, assignment := range command.Assigns {
+		if assignment.Append || assignment.Naked || assignment.Index != nil || assignment.Array != nil {
+			rule.pristine = false
+			return
+		}
+		if bashReadonly && assignment.Name != nil {
+			switch assignment.Name.Value {
+			case "UID", "EUID", "PPID", "BASHOPTS", "SHELLOPTS", "BASH_VERSINFO":
+				// Outside known Ubuntu sh, Bash may provide sh and abort on readonly names.
+				rule.pristine = false
+				return
+			}
+		}
+		if assignment.Value != nil {
+			if !simpleShellArgument(assignment.Value.Parts) {
+				rule.pristine = false
+				return
+			}
+		}
+	}
+	name, literal := literalShellWord(command.Args[0].Parts)
+	if !literal {
+		rule.pristine = false
+		return
+	}
+	arguments := command.Args
+	if name == "exec" || name == "command" {
+		arguments = arguments[1:]
+		if len(arguments) > 0 {
+			if option, literal := literalShellWord(arguments[0].Parts); literal && option == "--" && (name != "exec" || strings.EqualFold(shell.name, "bash")) {
+				arguments = arguments[1:]
+			}
+		}
+		if len(arguments) == 0 {
+			rule.pristine = false
+			return
+		}
+		name, literal = literalShellWord(arguments[0].Parts)
+		// Lookup-only flags and other options do not prove a script invocation.
+		if !literal || strings.HasPrefix(name, "-") || !strings.Contains(name, "/") {
+			rule.pristine = false
+			return
+		}
+	}
+	if strings.Contains(name, "/") {
+		for _, word := range arguments[1:] {
+			if !simpleShellArgument(word.Parts) {
+				rule.pristine = false
+				return
+			}
+		}
+		rule.checkInvocation(run, arguments[0], *directory, name)
+		rule.pristine = false
+		return
+	}
+	if len(command.Assigns) != 0 {
+		// Prefix assignments can alter builtin behavior and subsequent shell state.
+		rule.pristine = false
+		return
+	}
+	args := make([]string, len(command.Args))
+	for i, word := range command.Args {
+		value, ok := literalShellWord(word.Parts)
+		if !ok {
+			rule.pristine = false
+			return
+		}
+		args[i] = value
+	}
+	switch args[0] {
+	case "cd":
+		if len(args) == 2 && (directory.kind == directoryKnown || directory.kind == directoryActionKnown) && args[1] != "" && !strings.HasPrefix(args[1], "-") {
+			destination, representable := runnerRelativePath(args[1], rule.paths.platform)
+			candidate := joinRunnerPath(directory.path, destination)
+			if _, known := rule.checkedRunnerPathFor(candidate+"/", rule.paths.directoryOrigin(*directory)); known && representable {
+				directory.path = candidate
+				return
+			}
+		}
+		*directory = runDirectory{kind: directoryUnknown}
+	case "chmod":
+		if rule.pathUnknown {
+			rule.pristine = false
+			return
+		}
+		// Any literal chmod makes the Git-index mode obsolete for its operands.
+		if len(args) < 3 || !knownChmodMode.MatchString(args[1]) || strings.HasPrefix(args[1], "-") {
+			rule.pristine = false
+			return
+		}
+		options, hasOperand := true, false
+		for _, operand := range args[2:] {
+			if options && operand == "--" {
+				options = false
+				continue
+			}
+			if options && strings.HasPrefix(operand, "-") {
+				rule.pristine = false
+				return
+			}
+			location, ok := rule.scriptPath(*directory, operand)
+			mode := rule.index().modes[location.repository]
+			if !ok || mode != "100644" && mode != "100755" {
+				rule.pristine = false
+				return
+			}
+			rule.modeChanges(*directory)[location.runner] = true
+			if directory.kind == directoryActionKnown {
+				// Workspace checkout cannot reset modes in the independent action copy.
+				rule.actionPristine = false
+			}
+			hasOperand = true
+		}
+		if !hasOperand {
+			rule.pristine = false
+		}
+	case "echo", ":", "true":
+		// Literal arguments and no redirects/substitutions cannot change files.
+	default:
+		// Includes interpreter/source calls: no executable-bit requirement on the
+		// argument, but their execution may change subsequent filesystem state.
+		rule.pristine = false
+	}
+}
+
+// Accept simple parameter reads; substitutions and arithmetic may change files before execution.
+func simpleShellArgument(parts []syntax.WordPart) bool {
+	for _, part := range parts {
+		switch value := part.(type) {
+		case *syntax.Lit, *syntax.SglQuoted:
+		case *syntax.DblQuoted:
+			if value.Dollar || !simpleShellArgument(value.Parts) {
+				return false
+			}
+		case *syntax.ParamExp:
+			if value.Param == nil || value.Excl || value.Index != nil || value.Slice != nil || value.Repl != nil || value.Exp != nil {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// Repository paths identify indexed modes; runner paths distinguish copies.
+type executableLocation struct {
+	repository, runner string
+}
+
+func (rule *RuleExecutableBit) scriptPath(directory runDirectory, script string) (executableLocation, bool) {
+	if directory.kind != directoryKnown && directory.kind != directoryActionKnown || script == "" {
+		return executableLocation{}, false
+	}
+	script, scriptKnown := runnerRelativePath(script, rule.paths.platform)
+	directoryPath, directoryKnown := runnerRelativePath(directory.path, rule.paths.platform)
+	directory.path = directoryPath
+	if !scriptKnown || !directoryKnown {
+		return executableLocation{}, false
+	}
+	runnerPath := joinRunnerPath(directory.path, script)
+	paths := rule.paths.directoryOrigin(directory)
+	runnerPath, ok := rule.checkedRunnerPathFor(runnerPath, paths)
+	if !ok {
+		return executableLocation{}, false
+	}
+	file, ok := paths.local(runnerPath)
+	if !ok {
+		return executableLocation{}, false
+	}
+	relative, err := filepath.Rel(rule.paths.workspace, file)
+	if err != nil || !filepath.IsLocal(relative) {
+		return executableLocation{}, false
+	}
+	runnerPath = path.Clean(runnerPath)
+	if rule.caseInsensitive {
+		runnerPath = strings.ToLower(runnerPath)
+	}
+	return executableLocation{repository: filepath.ToSlash(relative), runner: runnerPath}, true
+}
+
+func (rule *RuleExecutableBit) checkInvocation(run *workflowlang.ExecRun, word *syntax.Word, directory runDirectory, script string) {
+	if rule.skipFindings {
+		return
+	}
+	location, ok := rule.scriptPath(directory, script)
+	if !ok || rule.modeChanges(directory)[location.runner] {
+		return
+	}
+	name := location.repository
+	snapshot := rule.index()
+	if snapshot.modes[name] != "100644" {
+		return
+	}
+	pos := run.RunPos
+	// The shell parser counts bytes; scriptSource uses Unicode columns.
+	line, column := int(word.Pos().Line()), int(word.Pos().Col())
+	lines := strings.Split(run.Run.Value, "\n")
+	if line <= len(lines) && column <= len(lines[line-1])+1 {
+		column = utf8.RuneCountInString(lines[line-1][:column-1]) + 1
+	}
+	if mapped, ok := run.Source.Position(line, column); ok {
+		pos = mapped
+	}
+	rule.Errorf(pos, "script %q is executed directly but its Git index mode is 100644 (not executable); commit an executable bit with git update-index --chmod=+x, or invoke its interpreter explicitly", name)
+}
+
+func (rule *RuleExecutableBit) modeChanges(directory runDirectory) map[string]bool {
+	if directory.kind == directoryActionKnown {
+		return rule.actionChanged
+	}
+	return rule.changed
+}
+
+func literalShellWord(parts []syntax.WordPart) (string, bool) {
+	var out strings.Builder
+	for _, part := range parts {
+		switch value := part.(type) {
+		case *syntax.Lit:
+			if strings.ContainsAny(value.Value, "\\*?[~{}") {
+				return "", false
+			}
+			out.WriteString(value.Value)
+		case *syntax.SglQuoted:
+			if value.Dollar {
+				return "", false
+			}
+			out.WriteString(value.Value)
+		case *syntax.DblQuoted:
+			if value.Dollar {
+				return "", false
+			}
+			for _, part := range value.Parts {
+				literal, ok := part.(*syntax.Lit)
+				if !ok || strings.ContainsRune(literal.Value, '\\') {
+					return "", false
+				}
+				out.WriteString(literal.Value)
+			}
+		default:
+			return "", false
+		}
+	}
+	return out.String(), true
+}
+
+func (rule *RuleExecutableBit) index() *gitModeSnapshot {
+	snapshot := rule.context.gitModes.load(rule.context.process.ctx, rule.paths.workspace)
+	if snapshot.err != nil {
+		rule.Debug("Git index unavailable: %v", snapshot.err)
+	} else {
+		rule.paths.reader.Record(snapshot.index)
+	}
+	return snapshot
+}
+
+func joinRunnerPath(base, relative string) string {
+	if base == "" {
+		return relative
+	}
+	// Preserve components until symlink traversal has been checked in the index.
+	return base + "/" + relative
+}
+
+func (snapshot *gitModeSnapshot) ordinaryTraversal(runnerPath, checkout string) bool {
+	parts := strings.Split(runnerPath, "/")
+	location := ""
+	checkout = path.Clean(checkout)
+	if checkout == "." {
+		checkout = ""
+	}
+	for i, part := range parts {
+		location = path.Join(location, part)
+		if location == ".." || strings.HasPrefix(location, "../") {
+			return false
+		}
+		name := location
+		if checkout != "" {
+			var within bool
+			name, within = strings.CutPrefix(location, checkout+"/")
+			if !within {
+				if location == "." || location == checkout || strings.HasPrefix(checkout, location+"/") {
+					continue
+				}
+				return false
+			}
+		}
+		if i < len(parts)-1 && !snapshot.directoryExists(name) {
+			return false
+		}
+	}
+	return true
+}
+
+func (snapshot *gitModeSnapshot) directoryExists(name string) bool {
+	if name == "" || name == "." {
+		return true
+	}
+	if snapshot.modes[name] != "" {
+		return false
+	}
+	snapshot.prepareDirectories()
+	_, exists := snapshot.dirs[name]
+	return exists
+}
+
+// Model common octal and symbolic modes; other syntax leaves execution unknown.
+var knownChmodMode = regexp.MustCompile(`^([0-7]{1,4}|[ugoa]*([+=-]([rwxXst]*|[ugo]))+(,[ugoa]*([+=-]([rwxXst]*|[ugo]))+)*)$`)
+
+func shellEnvironmentUnknown(env *workflowlang.Env) bool {
+	return shellEnvironmentUnknownForPlatform(env, platformKindMacOrLinux)
+}
+
+func shellEnvironmentUnknownForPlatform(env *workflowlang.Env, platform platformKind) bool {
+	return environmentContains(env, platform, func(name, value string, known bool) bool {
+		if loaderEnvironmentUnknown(name, value, known) {
+			return true
+		}
+		if strings.HasPrefix(name, "BASH_FUNC_") && strings.HasSuffix(name, "%%") {
+			return true
+		}
+		switch name {
+		case "BASH_ENV", "ENV", "CDPATH", "SHELLOPTS", "BASHOPTS":
+			if !known || value != "" {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func shellPathUnknown(env *workflowlang.Env) bool {
+	return shellPathUnknownForPlatform(env, platformKindMacOrLinux)
+}
+
+func shellPathUnknownForPlatform(env *workflowlang.Env, platform platformKind) bool {
+	return environmentContains(env, platform, func(name, _ string, _ bool) bool {
+		return name == "PATH"
+	})
+}
+
+func (rule *RuleExecutableBit) checkoutPaths() *runPaths    { return &rule.paths }
+func (rule *RuleExecutableBit) deferActionInvocation() bool { return true }
+func (rule *RuleExecutableBit) forComposite(invocation compositeInvocation) (Rule, error) {
+	child := rule.forkComposite(invocation.call, invocation.actionPath, invocation.actions)
+	child.SetConfig(rule.Config())
+	return child, nil
+}
+
+func (rule *RuleExecutableBit) joinCompositeResult(call *workflowlang.Step, result Rule) {
+	child, ok := result.(*RuleExecutableBit)
+	if ok {
+		rule.joinComposite(call, child)
+	}
+}

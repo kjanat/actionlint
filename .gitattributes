@@ -1,6 +1,6 @@
 * text=auto eol=lf
 /actup.schema.json linguist-generated=true -diff
-/sarif_template.txt -text
+/internal/engine/sarif_template.txt -text
 /scripts/bump-version/testdata/** -text
 /scripts/generate-actionlint-matcher/testdata/** -text
 /scripts/generate-availability/testdata/** -text

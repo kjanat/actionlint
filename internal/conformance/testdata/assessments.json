@@ -881,7 +881,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "cbc0c501aa515e77dc4cf59d427a358be22327e7573962886bc5be2371ea4c2c"
+      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "74da26593b2b8407d3df5ea55d688947839402a5d699383e8daf7e673fcc67c0"
     },
     "findings": [
       {

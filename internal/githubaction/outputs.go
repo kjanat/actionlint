@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 type namedOutput struct {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -117,7 +117,7 @@ jobs:
 		name, cliIgnore, configIgnore, format string
 		want                                  []string
 	}{
-		{"SARIF", "", "", actionlint.SARIFTemplate(), []string{"cache-write-untrusted", "disallow-suppressions"}},
+		{"SARIF", "", "", "sarif", []string{"cache-write-untrusted", "disallow-suppressions"}},
 		{"CLI removes directive", forbidden, "", "{{json .}}", []string{"cache-write-untrusted"}},
 		{"CLI removes violation", violation, "", "{{json .}}", []string{"disallow-suppressions"}},
 		{"path removes directive", "", "paths: {'test.yaml': {ignore: ['" + forbidden + "']}}", "{{json .}}", []string{"cache-write-untrusted"}},
@@ -131,7 +131,12 @@ jobs:
 			}
 			var stdout, stderr strings.Builder
 			cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-			args := []string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-no-color", "-format", tc.format, "-config-file", config, "-stdin-filename", "test.yaml"}
+			args := []string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-no-color", "-config-file", config, "-stdin-filename", "test.yaml"}
+			if tc.format == "sarif" {
+				args = append(args, "-output", "sarif")
+			} else {
+				args = append(args, "-format", tc.format)
+			}
 			if tc.cliIgnore != "" {
 				args = append(args, "-ignore", tc.cliIgnore)
 			}
@@ -144,7 +149,7 @@ jobs:
 				t.Fatalf("status=%d, want=%d; stderr=%s", status, wantStatus, &stderr)
 			}
 			var kinds []string
-			if tc.format == actionlint.SARIFTemplate() {
+			if tc.format == "sarif" {
 				var report struct {
 					Runs []struct {
 						Tool struct {

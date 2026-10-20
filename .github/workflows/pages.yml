@@ -5,10 +5,15 @@ on:
     branches: [master]
     paths:
       - "*.go"
+      - "analysis/**"
+      - "analyzer/**"
+      - "config/**"
+      - "diagnostic/**"
+      - "document/**"
+      - "syntax/**"
       - "go.mod"
       - "go.sum"
-      - "config_default.yaml"
-      - "sarif_template.txt"
+      - "internal/engine/config_default.yaml"
       - "cmd/**"
       - "internal/**"
       - "playground/**"

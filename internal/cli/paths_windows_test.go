@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func windowsPathSpellings(path string) map[string]string {

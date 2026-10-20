@@ -1,0 +1,559 @@
+package expression
+
+import (
+	"strings"
+
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+)
+
+func isSafeFuncCall(call *FuncCallNode) bool {
+	c := strings.ToLower(call.Callee)
+	return c == "contains" || c == "startswith" || c == "endswith"
+}
+
+// UntrustedInputMap is a recursive map to match context object property dereferences.
+// Root of this map represents each context names and their ancestors represent recursive properties.
+type UntrustedInputMap struct {
+	Name     string
+	Parent   *UntrustedInputMap
+	Children map[string]*UntrustedInputMap
+}
+
+func (m *UntrustedInputMap) String() string {
+	var b strings.Builder
+	m.buildPath(&b)
+	return b.String()
+}
+
+// Find child with the exact key in this map
+func (m *UntrustedInputMap) findChild(key string) (*UntrustedInputMap, bool) {
+	if m != nil && m.Children != nil {
+		if c, ok := m.Children[key]; ok {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
+// Find child object property in this map. A `**` child matches any property name.
+func (m *UntrustedInputMap) findObjectProp(name string) (*UntrustedInputMap, bool) {
+	if c, ok := m.findChild(name); ok {
+		return c, true
+	}
+	return m.findAnyProp()
+}
+
+// Find child array element in this map. This is special case with object filter where its receiver is an array
+func (m *UntrustedInputMap) findArrayElem() (*UntrustedInputMap, bool) {
+	return m.findChild("*")
+}
+
+// Find child which matches any property name in this map
+func (m *UntrustedInputMap) findAnyProp() (*UntrustedInputMap, bool) {
+	return m.findChild("**")
+}
+
+// Build path like `github.event.commits.*.body` by following parents
+func (m *UntrustedInputMap) buildPath(b *strings.Builder) {
+	if m.Parent != nil && m.Parent.Name != "" {
+		m.Parent.buildPath(b)
+		b.WriteRune('.')
+	}
+	b.WriteString(m.Name)
+}
+
+// NewUntrustedInputMap creates new instance of UntrustedInputMap. It is used for node of search
+// tree of untrusted input checker.
+// The name `*` matches an array element and is reached by an index access or an object
+// filter. The name `**` matches any property name. A map which uses either name must have
+// it as its only child.
+func NewUntrustedInputMap(name string, children ...*UntrustedInputMap) *UntrustedInputMap {
+	m := &UntrustedInputMap{
+		Name:     name,
+		Parent:   nil,
+		Children: nil, // Leaf of the tree is nil
+	}
+	if len(children) > 0 {
+		m.Children = make(map[string]*UntrustedInputMap, len(children))
+		for _, c := range children {
+			c.Parent = m
+			m.Children[c.Name] = c
+		}
+	}
+	return m
+}
+
+// UntrustedInputSearchRoots is a list of untrusted inputs. It forms tree structure to detect
+// untrusted inputs in nested object property access, array index access, and object filters
+// efficiently. Each value of this map represents a root of the search so their names are context
+// names.
+type UntrustedInputSearchRoots map[string]*UntrustedInputMap
+
+// AddRoot adds a new root to search for detecting untrusted input.
+func (ms UntrustedInputSearchRoots) AddRoot(m *UntrustedInputMap) {
+	ms[m.Name] = m
+}
+
+// TODO: Automatically generate BuiltinUntrustedInputs from https://github.com/github/codeql/blob/main/javascript/ql/src/experimental/Security/CWE-094/ExpressionInjection.ql
+
+// BuiltinUntrustedInputs is list of untrusted inputs. These inputs are detected as untrusted in
+// `run:` scripts. See the URL for more details.
+// - https://securitylab.github.com/research/github-actions-untrusted-input/
+// - https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks
+// - https://github.com/github/codeql/blob/main/javascript/ql/src/experimental/Security/CWE-094/ExpressionInjection.ql
+var BuiltinUntrustedInputs = UntrustedInputSearchRoots{
+	"github": NewUntrustedInputMap("github",
+		NewUntrustedInputMap("event",
+			NewUntrustedInputMap("issue",
+				NewUntrustedInputMap("title"),
+				NewUntrustedInputMap("body"),
+			),
+			NewUntrustedInputMap("pull_request",
+				NewUntrustedInputMap("title"),
+				NewUntrustedInputMap("body"),
+				NewUntrustedInputMap("head",
+					NewUntrustedInputMap("ref"),
+					NewUntrustedInputMap("label"),
+					NewUntrustedInputMap("repo",
+						NewUntrustedInputMap("default_branch"),
+					),
+				),
+			),
+			NewUntrustedInputMap("comment",
+				NewUntrustedInputMap("body"),
+			),
+			NewUntrustedInputMap("review",
+				NewUntrustedInputMap("body"),
+			),
+			NewUntrustedInputMap("review_comment",
+				NewUntrustedInputMap("body"),
+			),
+			NewUntrustedInputMap("pages",
+				NewUntrustedInputMap("*",
+					NewUntrustedInputMap("page_name"),
+				),
+			),
+			NewUntrustedInputMap("commits",
+				NewUntrustedInputMap("*",
+					NewUntrustedInputMap("message"),
+					NewUntrustedInputMap("committer",
+						NewUntrustedInputMap("email"),
+						NewUntrustedInputMap("name"),
+					),
+					NewUntrustedInputMap("author",
+						NewUntrustedInputMap("email"),
+						NewUntrustedInputMap("name"),
+					),
+				),
+			),
+			NewUntrustedInputMap("head_commit",
+				NewUntrustedInputMap("message"),
+				NewUntrustedInputMap("committer",
+					NewUntrustedInputMap("email"),
+					NewUntrustedInputMap("name"),
+				),
+				NewUntrustedInputMap("author",
+					NewUntrustedInputMap("email"),
+					NewUntrustedInputMap("name"),
+				),
+			),
+			NewUntrustedInputMap("discussion",
+				NewUntrustedInputMap("title"),
+				NewUntrustedInputMap("body"),
+			),
+			NewUntrustedInputMap("workflow",
+				NewUntrustedInputMap("name"),
+				NewUntrustedInputMap("path"),
+			),
+			// A workflow_run can describe a run from a fork. Repository metadata,
+			// branch names and Git commit identities/messages can be contributor-controlled.
+			NewUntrustedInputMap("workflow_run",
+				NewUntrustedInputMap("actor", NewUntrustedInputMap("name"), NewUntrustedInputMap("email")),
+				NewUntrustedInputMap("triggering_actor", NewUntrustedInputMap("name"), NewUntrustedInputMap("email")),
+				NewUntrustedInputMap("head_repository",
+					NewUntrustedInputMap("default_branch"),
+					NewUntrustedInputMap("description"),
+					NewUntrustedInputMap("homepage"),
+					NewUntrustedInputMap("owner", NewUntrustedInputMap("name"), NewUntrustedInputMap("email")),
+				),
+				NewUntrustedInputMap("head_branch"),
+				NewUntrustedInputMap("name"),
+				NewUntrustedInputMap("path"),
+				NewUntrustedInputMap("referenced_workflows",
+					NewUntrustedInputMap("*",
+						NewUntrustedInputMap("ref"),
+						NewUntrustedInputMap("path"),
+					),
+				),
+				NewUntrustedInputMap("pull_requests",
+					NewUntrustedInputMap("*",
+						NewUntrustedInputMap("head", NewUntrustedInputMap("ref")),
+					),
+				),
+				NewUntrustedInputMap("display_title"),
+				NewUntrustedInputMap("head_commit",
+					NewUntrustedInputMap("message"),
+					NewUntrustedInputMap("author", NewUntrustedInputMap("name"), NewUntrustedInputMap("email")),
+					NewUntrustedInputMap("committer", NewUntrustedInputMap("name"), NewUntrustedInputMap("email")),
+				),
+			),
+		),
+		NewUntrustedInputMap("head_ref"),
+	),
+}
+
+// UntrustedInputChecker is a checker to detect untrusted inputs in an expression syntax tree.
+// This checker checks object property accesses, array index accesses, and object filters. And
+// detects paths to untrusted inputs. Found errors are stored in this instance and can be get via
+// Errs method.
+//
+// Note: To avoid breaking the state of checking property accesses on nested property accesses like
+// foo[aaa.bbb].bar, IndexAccessNode.Index must be visited before IndexAccessNode.Operand.
+type UntrustedInputChecker struct {
+	roots           UntrustedInputSearchRoots
+	filteringObject bool
+	cur             []*UntrustedInputMap
+	start           Node
+	errs            []*Error
+	safeCalls       int
+	booleanContexts int
+	visits          []untrustedInputVisit
+}
+
+type untrustedInputVisit struct {
+	node    Node
+	boolean bool
+}
+
+// NewUntrustedInputChecker creates a new UntrustedInputChecker instance. The roots argument is a
+// search tree which defines untrusted input paths as trees.
+func NewUntrustedInputChecker(roots UntrustedInputSearchRoots) *UntrustedInputChecker {
+	return &UntrustedInputChecker{
+		roots: roots,
+		errs:  []*Error{},
+	}
+}
+
+// Reset the state for next search
+func (u *UntrustedInputChecker) reset() {
+	u.start = nil
+	u.filteringObject = false
+	u.cur = u.cur[:0]
+}
+
+func (u *UntrustedInputChecker) compact() {
+	delta := 0
+	for i, c := range u.cur {
+		if c == nil {
+			delta++
+			continue
+		}
+		if delta > 0 {
+			u.cur[i-delta] = c
+		}
+	}
+	u.cur = u.cur[:len(u.cur)-delta]
+}
+
+func (u *UntrustedInputChecker) onVar(v *VariableNode) {
+	c, ok := u.roots[v.Name] // Find root context (currently only "github" exists)
+	if !ok {
+		return
+	}
+	u.start = v
+	u.cur = append(u.cur, c)
+}
+
+func (u *UntrustedInputChecker) onPropAccess(name string) {
+	compact := false
+	for i, cur := range u.cur {
+		c, ok := cur.findObjectProp(name)
+		if !ok {
+			u.cur[i] = nil
+			compact = true
+			continue
+		}
+		u.cur[i] = c // depth + 1
+	}
+	if compact {
+		u.compact()
+	}
+}
+
+func (u *UntrustedInputChecker) onIndexAccess() {
+	if u.filteringObject {
+		u.filteringObject = false
+		return // For example, match `github.event.*.body[0]` as `github.event.commits[0].body`
+	}
+
+	compact := false
+	for i, cur := range u.cur {
+		if c, ok := cur.findArrayElem(); ok {
+			u.cur[i] = c
+			continue
+		}
+		if c, ok := cur.findAnyProp(); ok {
+			u.cur[i] = c
+			continue
+		}
+		u.cur[i] = nil
+		compact = true
+	}
+	if compact {
+		u.compact()
+	}
+}
+
+func (u *UntrustedInputChecker) onObjectFilter() {
+	u.filteringObject = true
+
+	compact := false
+	for i, cur := range u.cur {
+		// Object filter for arrays
+		if c, ok := cur.findArrayElem(); ok {
+			u.cur[i] = c
+			continue
+		}
+
+		if len(cur.Children) == 0 {
+			u.cur[i] = nil
+			compact = true
+		}
+
+		// Object filter for objects
+		first := true
+		for _, c := range cur.Children {
+			if first {
+				u.cur[i] = c
+				first = false
+			} else {
+				u.cur = append(u.cur, c)
+			}
+		}
+	}
+	if compact {
+		u.compact()
+	}
+}
+
+func (u *UntrustedInputChecker) end() {
+	u.endInput(false)
+}
+
+func (u *UntrustedInputChecker) endInput(serialized bool) {
+	var inputs []string
+	for _, cur := range u.cur {
+		if cur.Children != nil && !serialized {
+			continue // When `Children` is nil, the node is a leaf
+		}
+		var b strings.Builder
+		cur.buildPath(&b)
+		inputs = append(inputs, b.String())
+	}
+	u.reportInputs(u.start, inputs)
+	u.reset()
+}
+
+func (u *UntrustedInputChecker) reportInputs(start Node, inputs []string) {
+	if len(inputs) == 1 {
+		err := errorfAtExpr(
+			start,
+			"%q is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
+			inputs[0],
+		)
+		u.errs = append(u.errs, err)
+	} else if len(inputs) > 1 {
+		// When multiple untrusted inputs are detected, it means the expression extracts multiple properties with object
+		// filter syntax. Show all properties in error message.
+		err := errorfAtExpr(
+			start,
+			"object filter extracts potentially untrusted properties %s. avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details",
+			stringutil.SortedQuotes(inputs),
+		)
+		u.errs = append(u.errs, err)
+	}
+}
+
+// serializedContainers follows values selected for JSON serialization. Boolean
+// operands and function predicates do not contribute container contents.
+func (u *UntrustedInputChecker) serializedContainers(expr Node) {
+	switch n := expr.(type) {
+	case *LogicalOpNode:
+		if value, known := ConditionConstantValue(n.Left); known {
+			if ExpressionTruthy(value) != (n.Kind == LogicalOpNodeKindOr) {
+				u.serializedContainers(n.Right)
+			}
+			return
+		}
+		if n.Kind == LogicalOpNodeKindOr {
+			u.serializedContainers(n.Left)
+		}
+		u.serializedContainers(n.Right)
+	case *FuncCallNode:
+		if !strings.EqualFold(n.Callee, "case") || len(n.Args) < 3 || len(n.Args)%2 != 1 {
+			return
+		}
+		for i := 0; i < len(n.Args)-1; i += 2 {
+			if value, known := ConditionConstantValue(n.Args[i]); known {
+				if !ExpressionTruthy(value) {
+					continue
+				}
+				u.serializedContainers(n.Args[i+1])
+				return
+			}
+			u.serializedContainers(n.Args[i+1])
+		}
+		u.serializedContainers(n.Args[len(n.Args)-1])
+	default:
+		access := &UntrustedInputChecker{roots: u.roots}
+		if !access.followAccess(expr) {
+			return
+		}
+		var inputs []string
+		for _, cur := range access.cur {
+			if cur.Children != nil {
+				inputs = append(inputs, cur.String())
+			}
+		}
+		u.reportInputs(access.start, inputs)
+	}
+}
+
+func (u *UntrustedInputChecker) followAccess(expr Node) bool {
+	switch n := expr.(type) {
+	case *VariableNode:
+		u.onVar(n)
+	case *ObjectDerefNode:
+		if !u.followAccess(n.Receiver) {
+			return false
+		}
+		u.onPropAccess(n.Property)
+	case *ArrayDerefNode:
+		if !u.followAccess(n.Receiver) {
+			return false
+		}
+		u.onObjectFilter()
+	case *IndexAccessNode:
+		if !u.followAccess(n.Operand) {
+			return false
+		}
+		if key, ok := n.Index.(*StringNode); ok {
+			u.onPropAccess(strings.ToLower(key.Value))
+		} else {
+			u.onIndexAccess()
+		}
+	default:
+		return false
+	}
+	if u.start != nil {
+		u.start = expr
+	}
+	return true
+}
+
+func (u *UntrustedInputChecker) OnVisitNodeEnter(n Node) {
+	boolean := false
+	switch n.(type) {
+	case *CompareOpNode, *NotOpNode:
+		boolean = true
+	}
+	if len(u.visits) > 0 {
+		switch parent := u.visits[len(u.visits)-1].node.(type) {
+		case *LogicalOpNode:
+			boolean = boolean || parent.Kind == LogicalOpNodeKindAnd && parent.Left == n
+		case *FuncCallNode:
+			if strings.EqualFold(parent.Callee, "case") {
+				for i := 0; i < len(parent.Args)-1; i += 2 {
+					boolean = boolean || parent.Args[i] == n
+				}
+			}
+		}
+	}
+	u.visits = append(u.visits, untrustedInputVisit{node: n, boolean: boolean})
+	if boolean {
+		u.booleanContexts++
+	}
+	if f, ok := n.(*FuncCallNode); ok && isSafeFuncCall(f) {
+		u.safeCalls++
+	}
+}
+
+// OnVisitNodeLeave is a callback which should be called on visiting node after visiting its children.
+func (u *UntrustedInputChecker) OnVisitNodeLeave(n Node) {
+	defer func() {
+		if len(u.visits) > 0 {
+			visit := u.visits[len(u.visits)-1]
+			u.visits = u.visits[:len(u.visits)-1]
+			if visit.boolean {
+				u.booleanContexts--
+			}
+		}
+	}()
+	// Skip unsafe checks if we are inside of safe function call expression
+	if u.safeCalls > 0 {
+		if f, ok := n.(*FuncCallNode); ok && isSafeFuncCall(f) {
+			u.safeCalls--
+		}
+		return
+	}
+
+	switch n := n.(type) {
+	case *VariableNode:
+		u.end()
+		u.onVar(n)
+	case *ObjectDerefNode:
+		u.onPropAccess(n.Property)
+		if u.start != nil {
+			u.start = n
+		}
+	case *IndexAccessNode:
+		if lit, ok := n.Index.(*StringNode); ok {
+			// Special case like github['event']['issue']['title']
+			u.onPropAccess(strings.ToLower(lit.Value))
+		} else {
+			u.onIndexAccess()
+		}
+		if u.start != nil {
+			u.start = n
+		}
+	case *ArrayDerefNode:
+		u.onObjectFilter()
+		if u.start != nil {
+			u.start = n
+		}
+	case *FuncCallNode:
+		if u.booleanContexts == 0 && strings.EqualFold(n.Callee, "toJSON") && len(n.Args) == 1 {
+			switch n.Args[0].(type) {
+			case *VariableNode, *ObjectDerefNode, *ArrayDerefNode, *IndexAccessNode:
+				u.endInput(true)
+				return
+			default:
+				u.serializedContainers(n.Args[0])
+			}
+		}
+		u.end()
+	default:
+		u.end()
+	}
+}
+
+// OnVisitEnd is a callback which should be called after visiting whole syntax tree. This callback
+// is necessary to handle the case where an untrusted input access is at root of expression.
+func (u *UntrustedInputChecker) OnVisitEnd() {
+	u.end()
+}
+
+// Errs returns errors detected by this checker. This method should be called after visiting all
+// nodes in a syntax tree.
+func (u *UntrustedInputChecker) Errs() []*Error {
+	return u.errs
+}
+
+// Init initializes a state of checker.
+func (u *UntrustedInputChecker) Init() {
+	u.errs = u.errs[:0]
+	u.safeCalls = 0
+	u.booleanContexts = 0
+	u.visits = u.visits[:0]
+	u.reset()
+}

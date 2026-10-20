@@ -2,6 +2,12 @@ package ruff
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/analyzerhost"
+	"actionlint.kjanat.dev/internal/ruffconfig"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,25 +35,34 @@ type ExpressionEnd func(string) (int, bool)
 // Checker owns Python selection, invocation and diagnostic delivery. It knows
 // nothing about the host AST: its callbacks bridge expressions and source maps.
 type Checker struct {
-	run                     Run
-	wait                    func() error
-	expressionEnd           ExpressionEnd
-	flags                   []string
-	commandError            error
-	workingDirectory        string
-	beforeCheck             func() (bool, error)
-	workflowShell, jobShell *string
-	mu                      sync.Mutex
+	commandPolicy
+	backend       analyzer.ScriptBackend
+	ctx           context.Context
+	pending       []analyzerhost.Task[Diagnostic]
+	run           Run
+	wait          func() error
+	expressionEnd ExpressionEnd
+	beforeCheck   func() (bool, error)
+	mu            sync.Mutex
 }
 
 // New creates a checker. The host must accept exit statuses 0 and 1, but not 2.
 func New(run Run, wait func() error, expressionEnd ExpressionEnd, flags ...string) *Checker {
-	return &Checker{run: run, wait: wait, expressionEnd: expressionEnd, flags: append([]string(nil), flags...)}
+	return &Checker{run: run, wait: wait, expressionEnd: expressionEnd, commandPolicy: commandPolicy{flags: append([]string(nil), flags...)}}
 }
 
-// Fork shares command scheduling but not workflow defaults or diagnostic state.
+// NewBackend binds a transport-independent engine to actionlint's Python
+// selection, sanitization, and result filtering. No process is resolved.
+func NewBackend(ctx context.Context, backend analyzer.ScriptBackend, expressionEnd ExpressionEnd) *Checker {
+	return &Checker{backend: backend, ctx: ctx, expressionEnd: expressionEnd}
+}
+
+// Fork shares command scheduling and copies checker configuration.
 func (c *Checker) Fork() *Checker {
 	child := New(c.run, c.wait, c.expressionEnd, c.flags...)
+	if c.backend != nil {
+		child = NewBackend(c.ctx, c.backend, c.expressionEnd)
+	}
 	child.workingDirectory = c.workingDirectory
 	child.beforeCheck = c.beforeCheck
 	child.commandError = c.commandError
@@ -67,25 +82,21 @@ func (c *Checker) OptionalVersion(check *Compatibility, ctx context.Context, war
 // They must be removed after applying explicit child environment overrides too.
 func UnsetEnvironment() []string { return []string{"RUFF_OUTPUT_FILE"} }
 
-// WorkflowShell sets the workflow-level default shell.
-func (c *Checker) WorkflowShell(shell *string) { c.workflowShell = shell }
-
-// JobShell sets (or clears) the job-level default shell.
-func (c *Checker) JobShell(shell *string) { c.jobShell = shell }
-
 // Wait drains scheduled checks before diagnostics are read.
-func (c *Checker) Wait() error { return c.wait() }
+func (c *Checker) Wait() error {
+	if c.backend == nil {
+		return c.wait()
+	}
+	tasks := c.pending
+	c.pending = nil
+	_, err := analyzerhost.RunTasks(c.ctx, tasks)
+	return err
+}
 
 // Check schedules a Python script and serializes delivery to report.
 func (c *Checker) Check(script string, shell *string, location string, config Config, report func(Diagnostic)) error {
 	if config.Enabled != nil && !*config.Enabled {
 		return nil
-	}
-	if shell == nil {
-		shell = c.jobShell
-	}
-	if shell == nil {
-		shell = c.workflowShell
 	}
 	if shell == nil || strings.Contains(*shell, "${{") {
 		return nil
@@ -93,67 +104,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !isPythonShell(*shell) {
 		return nil
 	}
-	if c.commandError != nil {
-		return c.commandError
-	}
-	for _, flag := range c.flags {
-		if strings.HasPrefix(flag, "@") {
-			return fmt.Errorf("ruff argument files are not supported for script at %s: %q", location, flag)
-		}
-	}
-	for i := 0; i < len(c.flags); i++ {
-		flag := c.flags[i]
-		if !strings.HasPrefix(flag, "-") || flag == "-" || flag == "--" {
-			return fmt.Errorf("ruff extra file operands are not supported for script at %s: %q", location, flag)
-		}
-		if flag == "--show-files" || flag == "--show-settings" {
-			return fmt.Errorf("ruff inspection output is not supported for script at %s: %q", location, flag)
-		}
-		if flag == "--diff" || flag == "--fix-only" {
-			return fmt.Errorf("ruff editing output is not supported for script at %s: %q", location, flag)
-		}
-		if flag == "--statistics" {
-			return fmt.Errorf("ruff statistics output is not supported for script at %s", location)
-		}
-		if flag == "--output-file" || strings.HasPrefix(flag, "--output-file=") ||
-			strings.HasPrefix(flag, "-") && !strings.HasPrefix(flag, "--") && strings.ContainsRune(flag[1:], 'o') {
-			return fmt.Errorf("ruff output redirection is not supported for script at %s: %q", location, flag)
-		}
-		if flag == "--silent" || strings.HasPrefix(flag, "-") && !strings.HasPrefix(flag, "--") && strings.ContainsRune(flag[1:], 's') {
-			return fmt.Errorf("ruff silent output is not supported for script at %s", location)
-		}
-		option, _, _ := strings.Cut(flag, "=")
-		if option == "--extension" {
-			return fmt.Errorf("ruff source-type overrides are not supported for script at %s", location)
-		}
-		if option == "--help" || option == "--watch" || option == "--add-noqa" || option == "--add-ignore" ||
-			strings.HasPrefix(option, "-") && !strings.HasPrefix(option, "--") && strings.ContainsAny(option[1:], "hw") {
-			return fmt.Errorf("ruff non-diagnostic mode %q is not supported for script at %s", option, location)
-		}
-		if strings.HasPrefix(option, "-") && !strings.HasPrefix(option, "--") && strings.ContainsRune(option[1:], 'n') {
-			option = "--no-cache"
-		}
-		switch option {
-		case "--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "--target-version", "--stdin-filename", "--output-format":
-			return fmt.Errorf("ruff integration-owned option %q must be removed from extra arguments for script at %s", option, location)
-		}
-		if option == "--config" {
-			_, value, attached := strings.Cut(flag, "=")
-			if !attached && i+1 < len(c.flags) {
-				value = c.flags[i+1]
-			}
-			if strings.TrimSpace(value) == "" {
-				return fmt.Errorf("ruff option %q requires a value for script at %s", option, location)
-			}
-			if value != "" && !strings.HasPrefix(value, "-") && !ruffInlineConfig(value, c.workingDirectory) {
-				return fmt.Errorf("ruff configuration files cannot be used in isolated mode for script at %s; use inline --config KEY=VALUE overrides", location)
-			}
-		}
-		if ruffOptionTakesValue(option) && !strings.Contains(flag, "=") {
-			if i+1 == len(c.flags) || strings.HasPrefix(c.flags[i+1], "-") {
-				return fmt.Errorf("ruff option %q requires a value for script at %s", option, location)
-			}
-			i++
+	if c.backend == nil {
+		if err := c.validateCommand(location); err != nil {
+			return err
 		}
 	}
 	placeholders := &templateMasks{identifiers: make(map[Position]int), parentheses: make(map[Position]Position), quoted: make(map[Position]string)}
@@ -173,30 +126,35 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if directory == "" {
 		directory = "."
 	}
-	directoryInfo, err := os.Stat(directory)
-	if err != nil {
-		return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
-	}
-	if !directoryInfo.IsDir() {
-		return fmt.Errorf("ruff stdin directory for script at %s is not a directory: %q", location, directory)
+	var directoryInfo os.FileInfo
+	if c.backend == nil {
+		directoryInfo, err = os.Stat(directory)
+		if err != nil {
+			return fmt.Errorf("ruff stdin directory for script at %s: %w", location, err)
+		}
+		if !directoryInfo.IsDir() {
+			return fmt.Errorf("ruff stdin directory for script at %s is not a directory: %q", location, directory)
+		}
 	}
 	if config.TargetVersion == "" {
 		config.TargetVersion = pythonShellTarget(*shell)
 	}
-	defaults := arguments(config)
-	args := make([]string, 1, len(defaults)+len(c.flags))
-	args[0] = "check"
-	args = append(args, c.flags...)
-	args = append(args, defaults[1:]...)
-	c.run(args, source, func(stdout []byte, err error) error {
-		if err != nil {
+	deliver := func(diagnostics []Diagnostic, err error) error {
+		if err != nil && len(diagnostics) == 0 {
 			return fmt.Errorf("ruff failed while checking Python script at %s: %w", location, err)
 		}
-		diagnostics, err := Decode(stdout)
-		if err != nil {
-			return fmt.Errorf("ruff output for script at %s: %w", location, err)
-		}
-		for _, diagnostic := range diagnostics {
+
+		for i := range diagnostics {
+			diagnostic := &diagnostics[i]
+			if diagnostic.Code == "" {
+				diagnostic.Code = diagnostic.Name
+			}
+			if c.backend != nil {
+				if diagnostic.Filename != stdinFilename || diagnostic.Code == "" || diagnostic.Message == "" || diagnostic.Location.Row < 1 || diagnostic.Location.Column < 1 {
+					return fmt.Errorf("invalid backend diagnostic for %s: %+v", stdinFilename, diagnostic)
+				}
+				continue
+			}
 			parent, err := os.Stat(filepath.Dir(diagnostic.Filename))
 			if !filepath.IsAbs(diagnostic.Filename) || filepath.Base(diagnostic.Filename) != stdinFilename || err != nil || !os.SameFile(directoryInfo, parent) {
 				return fmt.Errorf("ruff output for script at %s refers to unexpected file %q; expected %q in %q", location, diagnostic.Filename, stdinFilename, directory)
@@ -229,8 +187,46 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 			}
 			report(d)
 		}
-		return nil
-	})
+		return err
+	}
+	if c.backend != nil {
+		options, err := config.EngineOptions()
+		if err != nil {
+			return err
+		}
+		encoded, err := json.Marshal(options)
+		if err != nil {
+			return err
+		}
+		request := analyzer.ScriptRequest{Source: source, Filename: stdinFilename, Config: encoded}
+		c.pending = append(c.pending, func(ctx context.Context) ([]Diagnostic, error) {
+			if validator, ok := c.backend.(analyzer.ScriptConfigValidator); ok {
+				if err := validator.ValidateConfig(ctx, request.Config); err != nil {
+					return nil, err
+				}
+			}
+			findings, err := c.backend.Check(ctx, request)
+			return nil, deliver(findings, err)
+		})
+	} else {
+		defaults := arguments(config)
+		native, err := config.NativeArguments()
+		if err != nil {
+			return err
+		}
+		args := make([]string, 1, len(defaults)+len(c.flags))
+		args[0] = "check"
+		args = append(args, native...)
+		args = append(args, c.flags...)
+		args = append(args, defaults[1:]...)
+		c.run(args, source, func(stdout []byte, err error) error {
+			if err != nil {
+				return deliver(nil, err)
+			}
+			findings, decodeErr := Decode(stdout)
+			return deliver(findings, errors.Join(err, decodeErr))
+		})
+	}
 	return nil
 }
 
@@ -343,7 +339,7 @@ func pythonShellTarget(shell string) string {
 		command = "python" + version
 	}
 	if minor, ok := strings.CutPrefix(command, "python3."); ok {
-		if target := "py3" + minor; slices.Contains(SupportedTargetVersions(), target) {
+		if target := "py3" + minor; slices.Contains(ruffconfig.SupportedTargetVersions(), target) {
 			return target
 		}
 	}
@@ -362,6 +358,9 @@ func arguments(config Config) []string {
 		selectRules, ignoreRules = []string{"ALL"}, []string{"ALL"}
 	}
 	args := []string{"check", "--isolated", "--target-version", target, "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
+	if config.Native["target-version"] != nil {
+		args = append(args[:2], args[4:]...)
+	}
 	if selectRules != nil {
 		args = append(args, "--select", strings.Join(selectRules, ","))
 	}

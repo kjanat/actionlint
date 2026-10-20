@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 // Internal aliases keep reporters on the public result contract.

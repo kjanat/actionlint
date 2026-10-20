@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.

@@ -1,12 +1,15 @@
 package actionlint_fuzz
 
 import (
+	"io/fs"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/analysis"
+	actionlint "actionlint.kjanat.dev/internal/engine"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-func parseWorkflowPanicFree(data []byte) *actionlint.Workflow {
+func parseWorkflowPanicFree(data []byte) *workflowlang.Workflow {
 	// Avoid Parse() panicking. It panics when go-yaml panics
 	defer func() { _ = recover() }()
 	w, _ := actionlint.Parse(data)
@@ -29,38 +32,15 @@ jobs:
       - uses: actions/checkout@v4
 `))
 
-	f.Fuzz(func(_ *testing.T, data []byte) {
+	f.Fuzz(func(t *testing.T, data []byte) {
 		w := parseWorkflowPanicFree(data)
 		if w == nil {
 			return
 		}
 
-		ac := actionlint.NewLocalActionsCache(nil, nil)
-		wc := actionlint.NewLocalReusableWorkflowCache(nil, "", nil)
-
-		rules := []actionlint.Rule{
-			actionlint.NewRuleMatrix(),
-			actionlint.NewRuleCredentials(),
-			actionlint.NewRuleShellName(),
-			actionlint.NewRuleRunnerLabel(),
-			actionlint.NewRuleEvents(),
-			actionlint.NewRuleGlob(),
-			actionlint.NewRuleJobNeeds(),
-			actionlint.NewRuleAction(ac),
-			actionlint.NewRuleEnvVar(),
-			actionlint.NewRuleID(),
-			actionlint.NewRuleExpression(ac, wc),
-			actionlint.NewRuleWorkflowCall("test.yaml", wc),
-			actionlint.NewRulePermissions(),
-			actionlint.NewRuleDeprecatedCommands(),
-			actionlint.NewRuleIfCond(),
-		}
-
-		v := actionlint.NewVisitor()
-		for _, rule := range rules {
-			v.AddPass(rule)
-		}
-
-		_ = v.Visit(w)
+		_, _ = analysis.Analyze(t.Context(), analysis.Request{
+			Sources: []analysis.Source{{Path: "test.yaml", Content: data}},
+			Options: analysis.Options{ReadFile: func(string) ([]byte, error) { return nil, fs.ErrNotExist }},
+		})
 	})
 }

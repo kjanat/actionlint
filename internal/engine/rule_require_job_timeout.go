@@ -1,0 +1,66 @@
+package engine
+
+import (
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
+
+// RuleRequireJobTimeout is a rule to check that every job sets "timeout-minutes:". The
+// "require-job-timeout" policy enables it and can set inclusive minimum and maximum bounds.
+// https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idtimeout-minutes
+type RuleRequireJobTimeout struct {
+	RuleBase
+	policy *JobTimeoutPolicy
+}
+
+// NewRuleRequireJobTimeout creates a new RuleRequireJobTimeout instance with the given policy.
+func NewRuleRequireJobTimeout(policy *JobTimeoutPolicy) *RuleRequireJobTimeout {
+	return &RuleRequireJobTimeout{
+		RuleBase: builtinRuleBase("require-job-timeout"),
+		policy:   policy,
+	}
+}
+
+// VisitJobPre is callback when visiting Job node before visiting its children.
+func (rule *RuleRequireJobTimeout) VisitJobPre(n *workflowlang.Job) error {
+	if !rule.policy.Enabled() {
+		return nil
+	}
+
+	// A job which calls a reusable workflow cannot set "timeout-minutes:".
+	// https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations#supported-keywords-for-jobs-that-call-a-reusable-workflow
+	if n.WorkflowCall != nil || n.Steps == nil {
+		return nil
+	}
+
+	if n.TimeoutMinutes == nil {
+		rule.Errorf(
+			n.Pos,
+			"%q is not set in job %q. it is required because \"require-job-timeout\" is enabled in the \"policy\" configuration. a job which does not set it is cancelled after the default of 360 minutes",
+			"timeout-minutes",
+			n.ID.Value,
+		)
+		return nil
+	}
+
+	if n.TimeoutMinutes.Expression != nil {
+		return nil
+	}
+	if limit, ok := rule.policy.MinMinutes(); ok && n.TimeoutMinutes.Value < limit {
+		rule.Errorf(
+			n.TimeoutMinutes.Pos,
+			"%q is %v in job %q. it must not be smaller than %v because \"min-minutes\" of \"require-job-timeout\" is set in the \"policy\" configuration",
+			"timeout-minutes", n.TimeoutMinutes.Value, n.ID.Value, limit,
+		)
+	}
+	if limit, ok := rule.policy.MaxMinutes(); ok && n.TimeoutMinutes.Value > limit {
+		rule.Errorf(
+			n.TimeoutMinutes.Pos,
+			"%q is %v in job %q. it must not be larger than %v because \"max-minutes\" of \"require-job-timeout\" is set in the \"policy\" configuration",
+			"timeout-minutes",
+			n.TimeoutMinutes.Value,
+			n.ID.Value,
+			limit,
+		)
+	}
+	return nil
+}

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/mattn/go-shellwords"
 )
 
@@ -106,6 +106,12 @@ func (a *commandApp) applyEnvironment() error {
 		if err != nil {
 			return err
 		}
+	}
+	if a.set["shellcheck"] {
+		i.Check.ShellcheckOptions = &actionlint.ExternalCommandOptions{IgnoreConfig: true}
+	}
+	if a.set["ruff"] {
+		i.Check.RuffOptions = &actionlint.ExternalCommandOptions{IgnoreConfig: true}
 	}
 	if i.Operation == operationDoctor {
 		return nil

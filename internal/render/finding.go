@@ -1,0 +1,142 @@
+package render
+
+import (
+	"fmt"
+	"io"
+	"strings"
+
+	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/yamlsource"
+	"github.com/fatih/color"
+	"github.com/mattn/go-runewidth"
+)
+
+var (
+	bold   = new(color.Color).Add(color.Bold)
+	green  = new(color.Color).Add(color.FgGreen)
+	yellow = new(color.Color).Add(color.FgYellow)
+	gray   = new(color.Color).Add(color.FgHiBlack)
+)
+
+// Finding is one diagnostic together with the source its snippet is rendered from.
+// EndColumn is the inclusive column where the indicator ends; zero infers the
+// token end. RawScript selects LF line splitting for external checker sources.
+type Finding struct {
+	Diagnostic diagnostic.Diagnostic
+	Source     []byte
+	EndColumn  int
+	RawScript  bool
+}
+
+// FindingOf adapts a canonical half-open span to the inclusive legacy columns.
+func FindingOf(d diagnostic.Diagnostic, source []byte) Finding {
+	f := Finding{Diagnostic: d, Source: source}
+	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
+		f.EndColumn = d.End.Column - 1
+	}
+	return f
+}
+
+// SourceLine returns the physical line at the one-based position.
+func SourceLine(source []byte, line int, rawScript bool) (string, bool) {
+	if !rawScript {
+		return yamlsource.SourceLine(string(source), line)
+	}
+	current := 0
+	for text := range strings.SplitSeq(string(source), "\n") {
+		current++
+		if current == line {
+			return strings.TrimSuffix(text, "\r"), true
+		}
+	}
+	return "", false
+}
+
+// InclusiveEnd returns the explicit inclusive end column, or the end of the
+// whitespace-delimited token at column.
+func InclusiveEnd(line string, column, explicit int) int {
+	if explicit >= column {
+		return explicit
+	}
+	return yamlsource.TokenEndColumn(line, column) - 1
+}
+
+func (f Finding) line() (string, bool) {
+	return SourceLine(f.Source, f.Diagnostic.Start.Line, f.RawScript)
+}
+
+func (f Finding) end(line string) int {
+	return InclusiveEnd(line, f.Diagnostic.Start.Column, f.EndColumn)
+}
+
+func (f Finding) indicator(line string) string {
+	column := f.Diagnostic.Start.Column
+	if column <= 0 {
+		return ""
+	}
+	start, ok := yamlsource.ByteOffsetAtColumn(line, column)
+	if !ok {
+		return ""
+	}
+	width := 0
+	if end := f.end(line); end >= column {
+		offset, ok := yamlsource.ByteOffsetAtColumn(line, end+1)
+		if !ok {
+			offset = len(line)
+		}
+		width = runewidth.StringWidth(line[start:offset])
+	}
+	if width > 0 {
+		width--
+	}
+	return fmt.Sprintf("%s^%s", strings.Repeat(" ", runewidth.StringWidth(line[:start])), strings.Repeat("~", width))
+}
+
+// TemplateFields prepares the finding for a custom Go template.
+func (f Finding) TemplateFields() *TemplateFields {
+	d := f.Diagnostic
+	snippet := ""
+	end := d.Start.Column
+	if len(f.Source) > 0 && d.Start.Line > 0 {
+		if line, ok := f.line(); ok {
+			snippet = line
+			if indicator := f.indicator(line); indicator != "" {
+				snippet += "\n" + indicator
+				end = f.end(line)
+			}
+		}
+	}
+	return &TemplateFields{
+		Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
+		Kind: d.Rule, Snippet: snippet, EndColumn: end,
+	}
+}
+
+// PrettyPrint writes the location, message, rule and an indicated source line.
+// A nil Source omits the snippet. Set fatih/color.NoColor to disable colors.
+func (f Finding) PrettyPrint(w io.Writer) {
+	d := f.Diagnostic
+	_, _ = yellow.Fprint(w, d.Path)
+	_, _ = gray.Fprint(w, ":")
+	_, _ = fmt.Fprint(w, d.Start.Line)
+	_, _ = gray.Fprint(w, ":")
+	_, _ = fmt.Fprint(w, d.Start.Column)
+	_, _ = gray.Fprint(w, ": ")
+	_, _ = bold.Fprint(w, d.Message)
+	_, _ = gray.Fprintf(w, " [%s]\n", d.Rule)
+
+	if len(f.Source) == 0 || d.Start.Line <= 0 {
+		return
+	}
+	line, ok := f.line()
+	if !ok || len(line) < d.Start.Column-1 {
+		return
+	}
+	number := fmt.Sprintf("%d | ", d.Start.Line)
+	indent := strings.Repeat(" ", len(number)-2)
+	_, _ = gray.Fprintf(w, "%s|\n", indent)
+	_, _ = gray.Fprint(w, number)
+	_, _ = fmt.Fprintln(w, line)
+	_, _ = gray.Fprintf(w, "%s| ", indent)
+	_, _ = green.Fprintln(w, f.indicator(line))
+}

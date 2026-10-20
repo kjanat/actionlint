@@ -1,0 +1,467 @@
+package workflow
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"go.yaml.in/yaml/v4"
+)
+
+func TestParseYAMLIntegerRadixBounds(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  int
+	}{
+		{"0x0", 0},
+		{"0x7fffffff", 2147483647},
+		{"0x80000000", -2147483648},
+		{"0xffffffff", -1},
+		{"0o0", 0},
+		{"0o17777777777", 2147483647},
+		{"0o20000000000", -2147483648},
+		{"0o37777777777", -1},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			got, err := parseYAMLInteger(tc.value)
+			if err != nil || got != tc.want {
+				t.Fatalf("got (%d, %v), want (%d, nil)", got, err, tc.want)
+			}
+		})
+	}
+	for _, value := range []string{"0x100000000", "0o40000000000", "0x", "0o8"} {
+		t.Run(value, func(t *testing.T) {
+			if _, err := parseYAMLInteger(value); err == nil {
+				t.Fatal("expected invalid or overflowing integer to fail")
+			}
+		})
+	}
+}
+
+func TestParserRejectsInvalidMappingKeys(t *testing.T) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(`!!int first: {nested: !!bool nope}
+!!bool second: value
+'': empty
+valid: kept
+VALID: duplicate
+`), &doc); err != nil {
+		t.Fatal(err)
+	}
+	p := &Parser{}
+	var keys []string
+	for e := range p.parseSectionMapping("test", doc.Content[0], false, false) {
+		keys = append(keys, e.id)
+	}
+	if len(keys) != 1 || keys[0] != "valid" {
+		t.Fatalf("invalid keys entered mapping: %v", keys)
+	}
+	want := []string{
+		`invalid value "first" for "!!int" tag`,
+		`invalid value "nope" for "!!bool" tag`,
+		`invalid value "second" for "!!bool" tag`,
+		`string should not be empty`,
+		`key "VALID" is duplicated`,
+	}
+	if len(p.Errors) != len(want) {
+		t.Fatalf("want %d diagnostics, got %v", len(want), p.Errors)
+	}
+	for i, message := range want {
+		if !strings.HasPrefix(p.Errors[i].Message, message) {
+			t.Errorf("diagnostic %d: want %q, got %s", i, message, p.Errors[i])
+		}
+	}
+	for _, source := range []string{"!!int invalid: value", "? [invalid]\n: value"} {
+		t.Run(source, func(t *testing.T) {
+			var doc yaml.Node
+			if err := yaml.Unmarshal([]byte(source), &doc); err != nil {
+				t.Fatal(err)
+			}
+			p := &Parser{}
+			for entry := range p.parseSectionMapping("test", doc.Content[0], false, false) {
+				t.Fatalf("invalid entry retained: %v", entry)
+			}
+			if len(p.Errors) != 1 || strings.Contains(p.Errors[0].Message, "should not be empty") {
+				t.Fatalf("want only the invalid key diagnostic: %v", p.Errors)
+			}
+		})
+	}
+}
+
+func TestParserAnchorNames(t *testing.T) {
+	for _, name := range []string{"git+opts", "git-opts", "git_opts", "opts123"} {
+		t.Run(name, func(t *testing.T) {
+			src := fmt.Sprintf(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: &%s echo test
+      - run: *%s
+`, name, name)
+			_, errs := Parse([]byte(src))
+			if name != "git+opts" {
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				return
+			}
+			if len(errs) != 2 {
+				t.Fatalf("wanted anchor and alias errors, got %v", errs)
+			}
+			for i, err := range errs {
+				if err.Line != 6+i || err.Column != 14 || !strings.Contains(err.Message, `"git+opts"`) {
+					t.Fatalf("unexpected anchor diagnostic: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestParserAliasTypeLocations(t *testing.T) {
+	tests := []struct {
+		name, value, message string
+		check                func(*Parser, *yaml.Node)
+	}{
+		{"string", "{}", "expected scalar node for string value", func(p *Parser, n *yaml.Node) { p.parseString(n, false) }},
+		{"cache mode", "{}", "expected string for \"cache-mode\"", func(p *Parser, n *yaml.Node) { p.parseCacheMode(n) }},
+		{"sequence", "{}", "must be sequence node", func(p *Parser, n *yaml.Node) { p.checkSequence("steps", n, false) }},
+		{"mapping", "[]", "mapping node is expected", func(p *Parser, n *yaml.Node) {
+			for range p.parseSectionMapping("env", n, false, false) {
+			}
+		}},
+		{"bool", "{}", "expected bool value", func(p *Parser, n *yaml.Node) { p.parseBool(n) }},
+		{"integer", "{}", "expected scalar node for integer value", func(p *Parser, n *yaml.Node) { p.parseInt(n) }},
+		{"float", "{}", "expected scalar node for float value", func(p *Parser, n *yaml.Node) { p.parseFloat(n) }},
+		{"expression", "plain", "expecting a single ${{...}} expression", func(p *Parser, n *yaml.Node) { p.parseBool(n) }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var doc yaml.Node
+			src := "anchor: &value " + tt.value + `
+first: *value
+second: *value
+`
+			if err := yaml.Unmarshal([]byte(src), &doc); err != nil {
+				t.Fatal(err)
+			}
+			p := &Parser{}
+			p.resolveAliases(&doc)
+			for _, n := range []*yaml.Node{doc.Content[0].Content[3], doc.Content[0].Content[5]} {
+				tt.check(p, n)
+			}
+			if len(p.Errors) != 2 {
+				t.Fatalf("wanted one error per alias use, got %v", p.Errors)
+			}
+			for i, err := range p.Errors {
+				if err.Line != i+2 || err.Column != i+8 {
+					t.Errorf("error points to %d:%d, want %d:%d", err.Line, err.Column, i+2, i+8)
+				}
+				if !strings.Contains(err.Message, tt.message) || !strings.Contains(err.Message, `alias "value" refers to the anchor at line:1, column:9`) {
+					t.Errorf("error lost the type mismatch or anchor location: %s", err.Message)
+				}
+			}
+		})
+	}
+}
+
+func TestParserScriptSource(t *testing.T) {
+	tests := []struct {
+		name       string
+		source     string
+		node       *yaml.Node
+		line       int
+		column     int
+		want       Pos
+		wantMapped bool
+	}{
+		{
+			name: "literal block",
+			source: `run: |2-
+  echo $foo
+    nested
+next: value
+`,
+			node: &yaml.Node{
+				Style:  yaml.LiteralStyle,
+				Value:  "echo $foo\n  nested",
+				Line:   1,
+				Column: 6,
+			},
+			line:       1,
+			column:     6,
+			want:       Pos{Line: 2, Col: 8},
+			wantMapped: true,
+		},
+		{
+			name: "indented literal line",
+			source: `run: |2-
+  echo $foo
+    nested
+next: value
+`,
+			node: &yaml.Node{
+				Style:  yaml.LiteralStyle,
+				Value:  "echo $foo\n  nested",
+				Line:   1,
+				Column: 6,
+			},
+			line:       2,
+			column:     3,
+			want:       Pos{Line: 3, Col: 5},
+			wantMapped: true,
+		},
+		{
+			name: "leading blank literal line",
+			source: `run: |
+
+  echo hi
+next: value
+`,
+			node: &yaml.Node{
+				Style:  yaml.LiteralStyle,
+				Value:  "\necho hi\n",
+				Line:   1,
+				Column: 6,
+			},
+			line:       2,
+			column:     1,
+			want:       Pos{Line: 3, Col: 3},
+			wantMapped: true,
+		},
+		{
+			name:       "single-line plain scalar",
+			source:     "run: echo $foo # YAML comment\n",
+			node:       &yaml.Node{Value: "echo $foo", Line: 1, Column: 6},
+			line:       1,
+			column:     6,
+			want:       Pos{Line: 1, Col: 11},
+			wantMapped: true,
+		},
+		{
+			name: "multiline plain scalar",
+			source: `run: echo first
+  echo $foo
+next: value
+`,
+			node:       &yaml.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
+			line:       1,
+			column:     17,
+			want:       Pos{Line: 2, Col: 8},
+			wantMapped: true,
+		},
+		{
+			name: "synthetic whitespace in plain scalar",
+			source: `run: echo first
+  echo $foo
+next: value
+`,
+			node:       &yaml.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
+			line:       1,
+			column:     11,
+			wantMapped: false,
+		},
+		{
+			name: "short continuation of plain scalar",
+			source: `step:
+  run: echo first
+    x
+`,
+			node:       &yaml.Node{Value: "echo first x", Line: 2, Column: 8},
+			line:       1,
+			column:     12,
+			want:       Pos{Line: 3, Col: 5},
+			wantMapped: true,
+		},
+		{
+			name:       "plain scalar with unicode",
+			source:     "run: echo é $foo\n",
+			node:       &yaml.Node{Value: "echo é $foo", Line: 1, Column: 6},
+			line:       1,
+			column:     8,
+			want:       Pos{Line: 1, Col: 13},
+			wantMapped: true,
+		},
+		{
+			name: "folded block",
+			source: `run: >
+  echo $foo
+`,
+			node:       &yaml.Node{Style: yaml.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
+			line:       1,
+			column:     6,
+			want:       Pos{Line: 2, Col: 8},
+			wantMapped: true,
+		},
+		{
+			name: "mismatched literal source falls back",
+			source: `run: |
+  echo source
+`,
+			node:       &yaml.Node{Style: yaml.LiteralStyle, Value: "echo decoded\n", Line: 1, Column: 6},
+			line:       1,
+			column:     1,
+			wantMapped: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			p := NewSourceParser([]byte(tc.source))
+			source := p.ScriptSource(tc.node)
+			var have *Pos
+			var ok bool
+			if source != nil {
+				have, ok = source.Position(tc.line, tc.column)
+			}
+			if ok != tc.wantMapped {
+				t.Fatalf("mapped=%v but wanted %v (position=%v)", ok, tc.wantMapped, have)
+			}
+			if ok && *have != tc.want {
+				t.Fatalf("mapped position is %v but wanted %v", have, tc.want)
+			}
+		})
+	}
+
+	t.Run("parser-backed literal block", func(t *testing.T) {
+		input := `run: |
+  echo $foo
+`
+		var root yaml.Node
+		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+			t.Fatal(err)
+		}
+		run := root.Content[0].Content[1]
+		p := NewSourceParser([]byte(input))
+		source := p.ScriptSource(run)
+		pos, ok := source.Position(1, 6)
+		if !ok {
+			t.Fatal("script position was not mapped")
+		}
+		if want := (Pos{Line: 2, Col: 8}); *pos != want {
+			t.Fatalf("mapped position is %v but wanted %v", pos, want)
+		}
+		end, ok := source.EndPos(1, 10)
+		if !ok {
+			t.Fatal("script end position was not mapped")
+		}
+		if want := (Pos{Line: 2, Col: 12}); *end != want {
+			t.Fatalf("mapped end position is %v but wanted %v", end, want)
+		}
+	})
+
+	t.Run("aliased literal block", func(t *testing.T) {
+		input := `script: &script |
+  echo $foo
+run: *script
+`
+		var root yaml.Node
+		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+			t.Fatal(err)
+		}
+		p := NewSourceParser([]byte(input))
+		p.resolveAliases(&root)
+		if len(p.Errors) != 0 {
+			t.Fatal(p.Errors)
+		}
+		for _, n := range []*yaml.Node{root.Content[0].Content[1], root.Content[0].Content[3]} {
+			source := p.ScriptSource(n)
+			if source == nil {
+				t.Fatal("literal script lost its source mapping")
+			}
+			pos, ok := source.Position(1, 6)
+			if want := (Pos{Line: 2, Col: 8}); !ok || *pos != want {
+				t.Fatalf("script position is %v (mapped=%v), want %v", pos, ok, want)
+			}
+		}
+	})
+
+	t.Run("parser-backed plain scalar with blank continuation", func(t *testing.T) {
+		input := `run: echo first
+
+  echo $foo
+`
+		var root yaml.Node
+		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+			t.Fatal(err)
+		}
+		run := root.Content[0].Content[1]
+		p := NewSourceParser([]byte(input))
+		pos, ok := p.ScriptSource(run).Position(2, 6)
+		if !ok {
+			t.Fatal("script position after blank continuation was not mapped")
+		}
+		if want := (Pos{Line: 3, Col: 8}); *pos != want {
+			t.Fatalf("mapped position is %v but wanted %v", pos, want)
+		}
+	})
+}
+
+func BenchmarkParseWorkflow(b *testing.B) {
+	type bench struct {
+		name  string
+		input []byte
+	}
+
+	loadBench := func(name string) bench {
+		i, err := os.ReadFile(filepath.Join("..", "..", "testdata", "bench", name+".yaml"))
+		if err != nil {
+			b.Fatal(err)
+		}
+		return bench{name, i}
+	}
+
+	for _, bc := range []bench{
+		loadBench("minimal"),
+		loadBench("small"),
+		loadBench("large"),
+	} {
+		b.Run(bc.name, func(b *testing.B) {
+			for range b.N {
+				if _, errs := Parse(bc.input); len(errs) > 0 {
+					b.Fatal(errs)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkParseTestData(b *testing.B) {
+	type bench struct {
+		name   string
+		inputs [][]byte
+	}
+
+	loadBench := func(name string) bench {
+		inputs := [][]byte{}
+		fs, err := filepath.Glob(filepath.Join("..", "..", "testdata", name, "*.y*ml"))
+		if err != nil {
+			b.Fatal(err)
+		}
+		for _, f := range fs {
+			bs, err := os.ReadFile(f)
+			if err != nil {
+				b.Fatal(err)
+			}
+			inputs = append(inputs, bs)
+		}
+		return bench{name, inputs}
+	}
+
+	for _, bc := range []bench{
+		loadBench("examples"),
+		loadBench("ok"),
+		loadBench("err"),
+	} {
+		b.Run(bc.name, func(b *testing.B) {
+			for range b.N {
+				for _, in := range bc.inputs {
+					// Note: Some workflows may cause parse error
+					Parse(in)
+				}
+			}
+		})
+	}
+}

@@ -1,0 +1,961 @@
+package engine
+
+import (
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+)
+
+// BrandingColors is a set of colors allowed at branding.color in action.yaml.
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+var BrandingColors = map[string]struct{}{
+	"white":     {},
+	"black":     {},
+	"yellow":    {},
+	"blue":      {},
+	"green":     {},
+	"orange":    {},
+	"red":       {},
+	"purple":    {},
+	"gray-dark": {},
+}
+
+// BrandingIcons is a set of icon names allowed at branding.icon in action.yaml.
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon
+//
+// Note: The list of icons is based on [Feather Icons](https://feathericons.com/) [v4.28.0](https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/icons.json).
+//
+// Omitted icons:
+// Brand icons, and all the following icons, are omitted.
+//
+// - coffee
+// - columns
+// - divide
+// - divide-circle
+// - divide-square
+// - frown
+// - hexagon
+// - key
+// - meh
+// - mouse-pointer
+// - smile
+// - tool
+// - x-octagon
+//
+// TODO:
+//
+//	generate the list of icons from the Feather Icons JSON file to keep it up-to-date.
+//	and embed the JSON file in the binary to avoid this crap.
+var BrandingIcons = map[string]struct{}{
+	"activity":           {},
+	"airplay":            {},
+	"alert-circle":       {},
+	"alert-octagon":      {},
+	"alert-triangle":     {},
+	"align-center":       {},
+	"align-justify":      {},
+	"align-left":         {},
+	"align-right":        {},
+	"anchor":             {},
+	"aperture":           {},
+	"archive":            {},
+	"arrow-down-circle":  {},
+	"arrow-down-left":    {},
+	"arrow-down-right":   {},
+	"arrow-down":         {},
+	"arrow-left-circle":  {},
+	"arrow-left":         {},
+	"arrow-right-circle": {},
+	"arrow-right":        {},
+	"arrow-up-circle":    {},
+	"arrow-up-left":      {},
+	"arrow-up-right":     {},
+	"arrow-up":           {},
+	"at-sign":            {},
+	"award":              {},
+	"bar-chart-2":        {},
+	"bar-chart":          {},
+	"battery-charging":   {},
+	"battery":            {},
+	"bell-off":           {},
+	"bell":               {},
+	"bluetooth":          {},
+	"bold":               {},
+	"book-open":          {},
+	"book":               {},
+	"bookmark":           {},
+	"box":                {},
+	"briefcase":          {},
+	"calendar":           {},
+	"camera-off":         {},
+	"camera":             {},
+	"cast":               {},
+	"check-circle":       {},
+	"check-square":       {},
+	"check":              {},
+	"chevron-down":       {},
+	"chevron-left":       {},
+	"chevron-right":      {},
+	"chevron-up":         {},
+	"chevrons-down":      {},
+	"chevrons-left":      {},
+	"chevrons-right":     {},
+	"chevrons-up":        {},
+	"circle":             {},
+	"clipboard":          {},
+	"clock":              {},
+	"cloud-drizzle":      {},
+	"cloud-lightning":    {},
+	"cloud-off":          {},
+	"cloud-rain":         {},
+	"cloud-snow":         {},
+	"cloud":              {},
+	"code":               {},
+	"command":            {},
+	"compass":            {},
+	"copy":               {},
+	"corner-down-left":   {},
+	"corner-down-right":  {},
+	"corner-left-down":   {},
+	"corner-left-up":     {},
+	"corner-right-down":  {},
+	"corner-right-up":    {},
+	"corner-up-left":     {},
+	"corner-up-right":    {},
+	"cpu":                {},
+	"credit-card":        {},
+	"crop":               {},
+	"crosshair":          {},
+	"database":           {},
+	"delete":             {},
+	"disc":               {},
+	"dollar-sign":        {},
+	"download-cloud":     {},
+	"download":           {},
+	"droplet":            {},
+	"edit-2":             {},
+	"edit-3":             {},
+	"edit":               {},
+	"external-link":      {},
+	"eye-off":            {},
+	"eye":                {},
+	"fast-forward":       {},
+	"feather":            {},
+	"file-minus":         {},
+	"file-plus":          {},
+	"file-text":          {},
+	"file":               {},
+	"film":               {},
+	"filter":             {},
+	"flag":               {},
+	"folder-minus":       {},
+	"folder-plus":        {},
+	"folder":             {},
+	"gift":               {},
+	"git-branch":         {},
+	"git-commit":         {},
+	"git-merge":          {},
+	"git-pull-request":   {},
+	"globe":              {},
+	"grid":               {},
+	"hard-drive":         {},
+	"hash":               {},
+	"headphones":         {},
+	"heart":              {},
+	"help-circle":        {},
+	"home":               {},
+	"image":              {},
+	"inbox":              {},
+	"info":               {},
+	"italic":             {},
+	"layers":             {},
+	"layout":             {},
+	"life-buoy":          {},
+	"link-2":             {},
+	"link":               {},
+	"list":               {},
+	"loader":             {},
+	"lock":               {},
+	"log-in":             {},
+	"log-out":            {},
+	"mail":               {},
+	"map-pin":            {},
+	"map":                {},
+	"maximize-2":         {},
+	"maximize":           {},
+	"menu":               {},
+	"message-circle":     {},
+	"message-square":     {},
+	"mic-off":            {},
+	"mic":                {},
+	"minimize-2":         {},
+	"minimize":           {},
+	"minus-circle":       {},
+	"minus-square":       {},
+	"minus":              {},
+	"monitor":            {},
+	"moon":               {},
+	"more-horizontal":    {},
+	"more-vertical":      {},
+	"move":               {},
+	"music":              {},
+	"navigation-2":       {},
+	"navigation":         {},
+	"octagon":            {},
+	"package":            {},
+	"paperclip":          {},
+	"pause-circle":       {},
+	"pause":              {},
+	"percent":            {},
+	"phone-call":         {},
+	"phone-forwarded":    {},
+	"phone-incoming":     {},
+	"phone-missed":       {},
+	"phone-off":          {},
+	"phone-outgoing":     {},
+	"phone":              {},
+	"pie-chart":          {},
+	"play-circle":        {},
+	"play":               {},
+	"plus-circle":        {},
+	"plus-square":        {},
+	"plus":               {},
+	"pocket":             {},
+	"power":              {},
+	"printer":            {},
+	"radio":              {},
+	"refresh-ccw":        {},
+	"refresh-cw":         {},
+	"repeat":             {},
+	"rewind":             {},
+	"rotate-ccw":         {},
+	"rotate-cw":          {},
+	"rss":                {},
+	"save":               {},
+	"scissors":           {},
+	"search":             {},
+	"send":               {},
+	"server":             {},
+	"settings":           {},
+	"share-2":            {},
+	"share":              {},
+	"shield-off":         {},
+	"shield":             {},
+	"shopping-bag":       {},
+	"shopping-cart":      {},
+	"shuffle":            {},
+	"sidebar":            {},
+	"skip-back":          {},
+	"skip-forward":       {},
+	"slash":              {},
+	"sliders":            {},
+	"smartphone":         {},
+	"speaker":            {},
+	"square":             {},
+	"star":               {},
+	"stop-circle":        {},
+	"sun":                {},
+	"sunrise":            {},
+	"sunset":             {},
+	"table":              {},
+	"tablet":             {},
+	"tag":                {},
+	"target":             {},
+	"terminal":           {},
+	"thermometer":        {},
+	"thumbs-down":        {},
+	"thumbs-up":          {},
+	"toggle-left":        {},
+	"toggle-right":       {},
+	"trash-2":            {},
+	"trash":              {},
+	"trending-down":      {},
+	"trending-up":        {},
+	"triangle":           {},
+	"truck":              {},
+	"tv":                 {},
+	"type":               {},
+	"umbrella":           {},
+	"underline":          {},
+	"unlock":             {},
+	"upload-cloud":       {},
+	"upload":             {},
+	"user-check":         {},
+	"user-minus":         {},
+	"user-plus":          {},
+	"user-x":             {},
+	"user":               {},
+	"users":              {},
+	"video-off":          {},
+	"video":              {},
+	"voicemail":          {},
+	"volume-1":           {},
+	"volume-2":           {},
+	"volume-x":           {},
+	"volume":             {},
+	"watch":              {},
+	"wifi-off":           {},
+	"wifi":               {},
+	"wind":               {},
+	"x-circle":           {},
+	"x-square":           {},
+	"x":                  {},
+	"zap-off":            {},
+	"zap":                {},
+	"zoom-in":            {},
+	"zoom-out":           {},
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runsimage
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+//
+// Required! The Docker image to use as the container to run the action.
+// The value can be the Docker base image name, a local `Dockerfile` in your repository,
+// or a public image in Docker Hub or another registry.
+//
+// To reference a `Dockerfile` local to your repository, the file must be named `Dockerfile`
+// and you must use a path relative to your action metadata file.
+// The `docker` application will execute this file.
+func isImageOnDockerRegistry(image string) bool {
+	return strings.HasPrefix(image, "docker://") ||
+		strings.HasPrefix(image, "gcr.io/") ||
+		strings.HasPrefix(image, "pkg.dev/") ||
+		strings.HasPrefix(image, "ghcr.io/") ||
+		strings.HasPrefix(image, "docker.io/")
+}
+
+func selfRepositoryUsesLocalSpec(spec string) (string, bool) {
+	p, ok := strings.CutPrefix(spec, "$/")
+	if !ok || strings.ContainsRune(p, '@') {
+		return "", false
+	}
+	p = strings.TrimLeft(p, "/")
+	return "./" + p, true
+}
+
+// RuleAction is a rule to check running action in steps of jobs.
+// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
+type RuleAction struct {
+	RuleBase
+	cache      *LocalActionsCache
+	validation *actionMetadataValidation
+	standalone *ActionMetadata
+}
+
+// NewRuleAction creates new RuleAction instance.
+func NewRuleAction(cache *LocalActionsCache) *RuleAction {
+	validation := newActionMetadataValidation()
+	if cache != nil && cache.validation != nil {
+		validation = cache.validation
+	}
+	return &RuleAction{
+		RuleBase:   builtinRuleBase("action"),
+		cache:      cache,
+		validation: validation,
+	}
+}
+
+// VisitStep is callback when visiting Step node.
+func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
+	e, ok := n.Exec.(*workflowlang.ExecAction)
+	if !ok || e.Uses == nil {
+		return nil
+	}
+
+	if e.Uses.ContainsExpression() {
+		// Cannot parse specification made with interpolation. Give up
+		return nil
+	}
+
+	spec := e.Uses.Value
+
+	if strings.HasPrefix(spec, "./") {
+		// Relative to repository root
+		rule.checkLocalAction(spec, spec, e)
+		return nil
+	}
+
+	if strings.HasPrefix(spec, "$/") {
+		// Relative to the repository and commit that contain the running workflow.
+		// Normalize it to the existing local path form so metadata and output validation still work.
+		local, ok := selfRepositoryUsesLocalSpec(spec)
+		if !ok {
+			rule.invalidActionFormat(e.Uses.Pos, spec, "self-repository references do not support an '@ref' suffix")
+			return nil
+		}
+		rule.checkLocalAction(local, spec, e)
+		return nil
+	}
+
+	if strings.HasPrefix(spec, "docker://") {
+		rule.checkDockerAction(spec, e)
+		return nil
+	}
+
+	rule.checkRepoAction(spec, e)
+	return nil
+}
+
+// splitActionUses splits a `{owner}/{repo}@{ref}` or `{owner}/{repo}/{path}@{ref}` specification into its owner, repository and ref.
+// The problem is empty when the specification has one of those shapes, in which case any of the three parts may still be empty.
+func splitActionUses(spec string) (owner, repo, ref, problem string) {
+	s := spec
+	idx := strings.IndexRune(s, '@')
+	if idx == -1 {
+		return "", "", "", "ref is missing"
+	}
+	ref = s[idx+1:]
+	s = s[:idx] // remove {ref}
+
+	idx = strings.IndexRune(s, '/')
+	if idx == -1 {
+		return "", "", "", "owner is missing"
+	}
+
+	owner = s[:idx]
+	s = s[idx+1:] // eat {owner}
+
+	repo = s
+	if idx := strings.IndexRune(s, '/'); idx >= 0 {
+		repo = s[:idx]
+	}
+
+	return owner, repo, ref, ""
+}
+
+func (rule *RuleAction) checkRepoAction(spec string, exec *workflowlang.ExecAction) {
+	owner, repo, ref, problem := splitActionUses(spec)
+	if problem != "" {
+		rule.invalidActionFormat(exec.Uses.Pos, spec, problem)
+		return
+	}
+
+	if owner == "" || repo == "" || ref == "" {
+		rule.invalidActionFormat(exec.Uses.Pos, spec, "owner and repo and ref should not be empty")
+	}
+
+	meta, retired := lookupPopularAction(spec)
+	if meta == nil {
+		if retired {
+			rule.Errorf(exec.Uses.Pos, "the runtime or service used by %q action is retired on GitHub.com. update the action's version to fix this issue", spec)
+			return
+		}
+		rule.Debug("This action is not found in popular actions data set: %s", spec)
+		return
+	}
+	if problem := actionRuntimeProblem(meta.Runs.Using); problem != "" {
+		rule.Errorf(exec.Uses.Pos, "%s. update the version of action %q", problem, spec)
+	}
+	if meta.SkipInputs {
+		rule.Debug("This action skips to check inputs: %s", spec)
+		return
+	}
+
+	rule.checkAction(meta, exec, func(m *ActionMetadata) string {
+		return strconv.Quote(spec)
+	})
+}
+
+func (rule *RuleAction) invalidActionFormat(pos *workflowlang.Pos, spec string, why string) {
+	rule.Errorf(pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\", \"./{path}\", or \"$/{path}\"", spec, why)
+}
+
+func (rule *RuleAction) missingRunsProp(pos *workflowlang.Pos, prop, ty, action, path string) {
+	pos = rule.metadataFieldPosition(pos, "runs", prop)
+	rule.Errorf(pos, `%q is required in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
+}
+
+func (rule *RuleAction) checkInvalidRunsProps(pos *workflowlang.Pos, r *ActionMetadataRuns, ty, action, path string, props []string) {
+	for _, prop := range props {
+		invalid := prop == "main" && r.Main != "" ||
+			prop == "pre" && r.Pre != "" ||
+			prop == "pre-if" && r.PreIf != "" ||
+			prop == "post" && r.Post != "" ||
+			prop == "post-if" && r.PostIf != "" ||
+			prop == "steps" && len(r.Steps) > 0 ||
+			prop == "image" && r.Image != "" ||
+			prop == "pre-entrypoint" && r.PreEntrypoint != "" ||
+			prop == "entrypoint" && r.Entrypoint != "" ||
+			prop == "post-entrypoint" && r.PostEntrypoint != "" ||
+			prop == "args" && r.Args != nil ||
+			prop == "env" && r.Env != nil
+
+		if invalid {
+			pos := rule.metadataFieldPosition(pos, "runs", prop)
+			rule.Errorf(pos, `%q is not allowed in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
+		}
+	}
+}
+
+func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *workflowlang.Pos) {
+	pos = rule.metadataFieldPosition(pos, "runs", prop)
+	f := filepath.FromSlash(file)
+	if f == "" {
+		return
+	}
+	p := filepath.Join(dir, f)
+	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+		rule.Errorf(pos, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, dir, prop, name)
+	}
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+func (rule *RuleAction) checkLocalDockerActionRuns(r *ActionMetadataRuns, dir, name string, pos *workflowlang.Pos) {
+	if r.Image == "" {
+		rule.missingRunsProp(pos, "image", "Docker", name, dir)
+	} else if !isImageOnDockerRegistry(r.Image) {
+		rule.checkRunsFileExists(r.Image, dir, "image", name, pos)
+		if filepath.Base(filepath.FromSlash(r.Image)) != "Dockerfile" {
+			pos := rule.metadataFieldPosition(pos, "runs", "image")
+			rule.Errorf(pos, `the local file %q referenced from "image" key must be named "Dockerfile" in %q action. the action is defined at %q`, r.Image, name, dir)
+		}
+	}
+	// Entrypoints resolve inside the container image; only a local Dockerfile can be checked here.
+	rule.checkInvalidRunsProps(pos, r, "Docker", name, dir, []string{"main", "pre", "post", "steps"})
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+func (rule *RuleAction) checkLocalCompositeActionRuns(meta *ActionMetadata, pos *workflowlang.Pos) {
+	r := &meta.Runs
+	if r.Steps == nil {
+		rule.missingRunsProp(pos, "steps", "Composite", meta.Name, meta.Dir())
+	}
+	ids := map[string]bool{}
+	for i, s := range r.Steps {
+		if s.id != nil && s.id.Value != "" {
+			id := s.id.Value
+			switch {
+			case !jobIDPattern.MatchString(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
+			case ids[strings.ToLower(id)]:
+				rule.compositeStepErrorfAt(meta, i, s.id.Line, s.id.Column, nil, "has duplicate ID %q; step IDs are case insensitive", id)
+			}
+			ids[strings.ToLower(id)] = true
+		}
+		rule.checkCompositeActionStep(meta, s, i)
+	}
+	rule.checkInvalidRunsProps(pos, r, "Composite", meta.Name, meta.Dir(), []string{"main", "pre", "pre-if", "post", "post-if", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
+}
+
+// compositeStepErrorf reports an error at the step's own position in the action metadata file
+// instead of at the "uses" site in the workflow being linted.
+func (rule *RuleAction) compositeStepErrorf(meta *ActionMetadata, s *ActionCompositeStep, idx int, format string, args ...any) {
+	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, format, args...)
+}
+
+// compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
+func (rule *RuleAction) compositeStepErrorfAt(meta *ActionMetadata, idx, line, col int, end *workflowlang.Pos, format string, args ...any) {
+	m := fmt.Sprintf(format, args...)
+	err := errorAt(&workflowlang.Pos{Line: line, Col: col}, rule.name, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
+	err.Filepath = meta.Path()
+	err.source = meta.src
+	err.endPosition = end
+	if idx >= 0 && idx < len(meta.Runs.Steps) {
+		step := meta.Runs.Steps[idx]
+		origin := &diagnosticIgnoreOrigin{}
+		if step.id != nil {
+			origin.stepID = step.id.Value
+		}
+		if step.StepName != nil {
+			origin.stepName = step.StepName.Value
+		}
+		if step.Uses != nil {
+			origin.uses = *step.Uses
+		}
+		for _, value := range []*string{&origin.stepID, &origin.stepName, &origin.uses} {
+			if literal := exprlang.LiteralExpressionValue(*value); literal != nil {
+				*value = *literal
+			}
+		}
+		err.ignoreOrigin = origin
+	}
+	rule.errs = append(rule.errs, err)
+}
+
+// metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
+func (rule *RuleAction) metadataErrorfAt(meta *ActionMetadata, line, col int, end *workflowlang.Pos, format string, args ...any) {
+	err := errorfAt(&workflowlang.Pos{Line: line, Col: col}, rule.name, format, args...)
+	err.Filepath = meta.Path()
+	err.source = meta.src
+	err.endPosition = end
+	err.ignoreOrigin = &diagnosticIgnoreOrigin{metadata: true}
+	rule.errs = append(rule.errs, err)
+}
+
+func (rule *RuleAction) checkActionInputDefaults(meta *ActionMetadata) {
+	const field = "inputs.*.default"
+	for _, kv := range meta.InputDefaults {
+		for _, v := range actionExpressionViolationsWithInputs(kv.Value.Value, false, field, meta.Inputs) {
+			pos := metadataExpressionPosition(meta, &kv.Value, v.offset)
+			message := v.message
+			if v.context != "" {
+				message = fmt.Sprintf(
+					`uses context %q which is not available in input defaults. available contexts are %s`,
+					v.context, stringutil.Quotes(actionMetadataAvailability[field].contexts),
+				)
+			}
+			rule.metadataErrorfAt(
+				meta, pos.Line, pos.Col, metadataExpressionEndPosition(meta, &kv.Value, v),
+				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
+			)
+		}
+	}
+}
+
+func (rule *RuleAction) checkCompositeActionStepKeys(meta *ActionMetadata, s *ActionCompositeStep, idx int, allowed []string) {
+	for _, k := range s.Keys {
+		if !slices.Contains(allowed, strings.ToLower(k)) {
+			rule.compositeStepErrorf(meta, s, idx, "has unexpected key %q. expected one of %s", k, stringutil.SortedQuotes(allowed))
+		}
+	}
+}
+
+func (rule *RuleAction) checkCompositeActionStep(meta *ActionMetadata, s *ActionCompositeStep, idx int) {
+	if !s.IsMapping {
+		rule.compositeStepErrorf(meta, s, idx, `must be a mapping with "run" or "uses" key`)
+		return
+	}
+
+	var hasRun, hasShell, hasUses bool
+	for _, k := range s.Keys {
+		switch strings.ToLower(k) {
+		case "run":
+			hasRun = true
+		case "shell":
+			hasShell = true
+		case "uses":
+			hasUses = true
+		}
+	}
+
+	switch {
+	case hasRun && hasUses:
+		rule.compositeStepErrorf(meta, s, idx, `cannot have both "run" and "uses" keys`)
+	case hasRun:
+		if s.Run == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "run" key`)
+		}
+		if !hasShell {
+			rule.compositeStepErrorf(meta, s, idx, `requires "shell" key since it has "run" key`)
+		} else if s.shell == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "shell" key`)
+		}
+		rule.checkCompositeActionStepKeys(meta, s, idx, actionMetadataKeys["run-step"])
+	case hasUses:
+		if s.Uses == nil {
+			rule.compositeStepErrorf(meta, s, idx, `must have a string value at "uses" key`)
+		} else if *s.Uses == "" {
+			rule.compositeStepErrorf(meta, s, idx, `has empty "uses" value`)
+		} else if strings.HasPrefix(*s.Uses, "$/") && strings.ContainsRune(*s.Uses, '@') {
+			rule.compositeStepErrorf(meta, s, idx, `self-repository references do not support an '@ref' suffix at "uses" key`)
+		} else if u, _, _ := strings.Cut(*s.Uses, "@"); strings.HasSuffix(u, ".yml") || strings.HasSuffix(u, ".yaml") {
+			rule.compositeStepErrorf(meta, s, idx, `cannot call reusable workflow %q at "uses" key`, *s.Uses)
+		}
+		rule.checkCompositeActionStepKeys(meta, s, idx, actionMetadataKeys["uses-step"])
+	default:
+		rule.compositeStepErrorf(meta, s, idx, `requires either "run" or "uses" key`)
+		keys := slices.Concat(actionMetadataKeys["run-step"], actionMetadataKeys["uses-step"])
+		slices.Sort(keys)
+		rule.checkCompositeActionStepKeys(meta, s, idx, slices.Compact(keys))
+	}
+
+	rule.checkCompositeActionStepExprs(meta, s, idx)
+}
+
+func (rule *RuleAction) checkCompositeActionStepExprs(meta *ActionMetadata, s *ActionCompositeStep, idx int) {
+	report := func(key, field string, v *ActionExprString, bare bool) {
+		if v == nil {
+			return
+		}
+		for _, violation := range actionExpressionViolationsWithInputs(v.Value, bare, "runs.steps.*."+field, meta.Inputs) {
+			pos := metadataExpressionPosition(meta, v, violation.offset)
+			end := metadataExpressionEndPosition(meta, v, violation)
+			if ctx := violation.context; ctx != "" {
+				rule.compositeStepErrorfAt(
+					meta, idx, pos.Line, pos.Col, end,
+					`uses context %q at %q key which is not available in a composite action. %s`,
+					ctx, key, compositeStepContextHint(ctx),
+				)
+			} else {
+				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, `%s at %q key`, violation.message, key)
+			}
+		}
+	}
+
+	report("if", "if", s.If, true)
+	report("run", "run", s.Run, false)
+	report("working-directory", "working-directory", s.WorkingDirectory, false)
+	report("name", "name", s.StepName, false)
+	report("shell", "shell", s.shell, false)
+	report("continue-on-error", "continue-on-error", s.continueOnError, false)
+	report("with", "with", s.withExpr, false)
+	report("env", "env", s.envExpr, false)
+	for _, kv := range s.With {
+		report(`with.`+kv.Name, "with.*", &kv.Value, false)
+	}
+	for _, kv := range s.Env {
+		report(`env.`+kv.Name, "env.*", &kv.Value, false)
+	}
+}
+
+func compositeStepContextHint(ctx string) string {
+	switch ctx {
+	case "secrets":
+		return "pass secrets to the action as inputs instead"
+	case "vars":
+		return "the runner does not provide the vars context to actions; pass the values as inputs instead"
+	case "needs":
+		return "the needs context is only available in workflow jobs"
+	default:
+		return "see https://docs.github.com/en/actions/reference/workflows-and-actions/contexts for details"
+	}
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-javascript-actions
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+func (rule *RuleAction) checkLocalJavaScriptActionRuns(r *ActionMetadataRuns, dir, name string, pos *workflowlang.Pos) {
+	if r.Main == "" {
+		rule.missingRunsProp(pos, "main", "JavaScript", name, dir)
+	} else {
+		rule.checkRunsFileExists(r.Main, dir, "main", name, pos)
+	}
+
+	rule.checkRunsFileExists(r.Pre, dir, "pre", name, pos)
+	if r.Pre == "" && r.PreIf != "" {
+		pos := rule.metadataFieldPosition(pos, "runs", "pre-if")
+		rule.Errorf(pos, `"pre" is required when "pre-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
+	}
+
+	rule.checkRunsFileExists(r.Post, dir, "post", name, pos)
+	if r.Post == "" && r.PostIf != "" {
+		pos := rule.metadataFieldPosition(pos, "runs", "post-if")
+		rule.Errorf(pos, `"post" is required when "post-if" is specified in "runs" section in %q action. the action is defined at %q`, name, dir)
+	}
+
+	rule.checkInvalidRunsProps(pos, r, "JavaScript", name, dir, []string{"steps", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
+}
+
+func (rule *RuleAction) checkLocalActionInputs(meta *ActionMetadata, pos *workflowlang.Pos) {
+	for _, i := range meta.Inputs {
+		if i.Deprecated && i.DeprecationMessage == "" {
+			rule.Errorf(
+				rule.metadataFieldPosition(pos, "inputs", i.Name, "deprecationMessage"),
+				"input %q is deprecated but \"deprecationMessage\" is empty in metadata of %q action at %q",
+				i.Name,
+				meta.Name,
+				meta.Path(),
+			)
+		}
+	}
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+func (rule *RuleAction) checkLocalActionRuns(meta *ActionMetadata, pos *workflowlang.Pos) {
+	pos = rule.metadataFieldPosition(pos, "runs", "using")
+	r := &meta.Runs
+	using := strings.ToLower(r.Using)
+	switch using {
+	case "":
+		if r.Plugin == "" {
+			rule.Errorf(pos, `"runs.using" is missing in local action %q defined at %q`, meta.Name, meta.Dir())
+		}
+	case "docker":
+		rule.checkLocalDockerActionRuns(r, meta.Dir(), meta.Name, pos)
+	case "composite":
+		rule.checkLocalCompositeActionRuns(meta, pos)
+	default:
+		if _, ok := ActionRuntimes[using]; !ok {
+			rule.Errorf(pos, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are %s. see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, meta.Dir(), validActionRuntimes())
+		} else if problem := actionRuntimeProblem(using); problem != "" {
+			rule.Errorf(pos, "%s. update runs.using in local action %q to a current runtime", problem, meta.Name)
+		}
+
+		// Validate JavaScript fields even when the runtime declaration has a diagnostic.
+		if strings.HasPrefix(using, "node") {
+			rule.checkLocalJavaScriptActionRuns(r, meta.Dir(), meta.Name, pos)
+		}
+	}
+}
+
+// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-the-github-packages-container-registry
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
+func (rule *RuleAction) checkDockerAction(uri string, exec *workflowlang.ExecAction) {
+	tag := ""
+	tagExists := false
+	if idx := strings.IndexRune(uri[len("docker://"):], ':'); idx != -1 {
+		idx += len("docker://")
+		if idx < len(uri) {
+			tag = uri[idx+1:]
+			uri = uri[:idx]
+			tagExists = true
+		}
+	}
+
+	if _, err := url.Parse(uri); err != nil {
+		rule.Errorf(
+			exec.Uses.Pos,
+			"URI for Docker container %q is invalid: %s (tag=%s)",
+			uri,
+			err.Error(),
+			tag,
+		)
+	}
+
+	if tagExists && tag == "" {
+		rule.Errorf(exec.Uses.Pos, "tag of Docker action should not be empty: %q", uri)
+	}
+}
+
+// https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
+func (rule *RuleAction) checkLocalActionMetadata(meta *ActionMetadata, action *workflowlang.ExecAction) {
+	rule.checkActionMetadataSchema(meta)
+	if meta.Name == "" {
+		rule.Errorf(rule.metadataFieldPosition(action.Uses.Pos, "name"), "name is required in action metadata %q", meta.Path())
+	}
+	if meta.Description == "" {
+		rule.Errorf(rule.metadataFieldPosition(action.Uses.Pos, "description"), "description is required in metadata of %q action at %q", meta.Name, meta.Path())
+	}
+	if meta.Branding.Icon != "" {
+		if _, ok := BrandingIcons[strings.ToLower(meta.Branding.Icon)]; !ok {
+			rule.Errorf(
+				rule.metadataFieldPosition(action.Uses.Pos, "branding", "icon"),
+				"incorrect icon name %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported icons: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingicon",
+				meta.Branding.Icon,
+				meta.Name,
+				meta.Path(),
+			)
+		}
+	}
+	if meta.Branding.Color != "" {
+		if _, ok := BrandingColors[strings.ToLower(meta.Branding.Color)]; !ok {
+			rule.Errorf(
+				rule.metadataFieldPosition(action.Uses.Pos, "branding", "color"),
+				"incorrect color %q at branding.icon in metadata of %q action at %q. see the official document to know the exhaustive list of supported colors: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#brandingcolor",
+				meta.Branding.Color,
+				meta.Name,
+				meta.Path(),
+			)
+		}
+	}
+	rule.checkLocalActionInputs(meta, action.Uses.Pos)
+	rule.checkActionInputDefaults(meta)
+	rule.checkLocalActionRuns(meta, action.Uses.Pos)
+}
+
+// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
+// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
+func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *workflowlang.ExecAction) {
+	if strings.HasPrefix(displaySpec, "$/") {
+		localSpec = displaySpec
+	}
+	meta, _, err := rule.cache.FindMetadata(localSpec)
+	if err != nil {
+		if _, unresolved := errors.AsType[unresolvedLocalActionError](err); unresolved {
+			rule.errs = append(rule.errs, errorAt(action.Uses.Pos, "missing-local-action", err.Error()))
+		} else {
+			finding := errorAt(action.Uses.Pos, rule.Name(), err.Error())
+			if parseError, ok := errors.AsType[*actionMetadataParseError](err); ok {
+				finding.metadataParsePath = parseError.path
+			}
+			rule.errs = append(rule.errs, finding)
+		}
+		return
+	}
+	if meta == nil {
+		return
+	}
+
+	rule.replayMetadataFindings(meta, action, displaySpec)
+
+	rule.checkAction(meta, action, func(m *ActionMetadata) string {
+		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)
+	})
+}
+
+var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
+
+func (rule *RuleAction) checkAction(meta *ActionMetadata, exec *workflowlang.ExecAction, describe func(*ActionMetadata) string) {
+	inputs, known := workflowlang.ActionInputNames(exec)
+	// Check specified inputs are defined in action's inputs spec
+	for id, i := range inputs {
+		m, ok := meta.Inputs[id]
+		if !ok {
+			ns := make([]string, 0, len(meta.Inputs))
+			for _, i := range meta.Inputs {
+				ns = append(ns, i.Name)
+			}
+			rule.Errorf(
+				i.Name.Pos,
+				"input %q is not defined in action %s. available inputs are %s",
+				i.Name.Value,
+				describe(meta),
+				stringutil.SortedQuotes(ns),
+			)
+		} else if m.Deprecated && !m.Required {
+			// Note: Using required inputs cannot be avoided. So we don't report it as error (though this should not
+			// happen normally).
+			msg := fmt.Sprintf(
+				"avoid using deprecated input %q in action %s",
+				i.Name.Value,
+				describe(meta),
+			)
+			d := reNewlineWithIndent.ReplaceAllString(strings.TrimRight(m.DeprecationMessage, ". "), " ")
+			if d != "" {
+				msg += ": " + d
+			}
+			rule.Error(i.Name.Pos, msg)
+		}
+	}
+
+	// Check mandatory inputs are specified
+	for id, i := range meta.Inputs {
+		if i.Required && known {
+			if _, ok := inputs[id]; !ok {
+				ns := make([]string, 0, len(meta.Inputs))
+				for _, i := range meta.Inputs {
+					if i.Required {
+						ns = append(ns, i.Name)
+					}
+				}
+				rule.Errorf(
+					exec.Uses.Pos,
+					"missing input %q which is required by action %s. all required inputs are %s",
+					i.Name,
+					describe(meta),
+					stringutil.SortedQuotes(ns),
+				)
+			}
+		}
+	}
+}
+
+func (rule *RuleAction) forMetadata(actions *LocalActionsCache) Rule {
+	child := NewRuleAction(actions)
+	child.SetConfig(rule.Config())
+	return child
+}
+
+func (rule *RuleAction) checkStandaloneMetadata(meta *ActionMetadata) {
+	rule.standalone = meta
+	defer func() { rule.standalone = nil }()
+	rule.checkLocalActionMetadata(meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Pos: &workflowlang.Pos{Line: 1, Col: 1}}})
+	for _, finding := range rule.errs {
+		finding.metadataFinding = &actionMetadataFinding{key: metadataFindingKey(meta, finding), declaration: true}
+	}
+}

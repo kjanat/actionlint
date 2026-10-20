@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func analysisForRender(t *testing.T, prefix string) *actionlint.AnalysisResult {

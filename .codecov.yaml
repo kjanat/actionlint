@@ -1,7 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/codecov.json
 # https://docs.codecov.com/docs/commit-status#disabling-a-status
-coverage:
-  status:
-    project: off
-    patch: off
-
+---
 comment: false
+github_checks: { annotations: true }

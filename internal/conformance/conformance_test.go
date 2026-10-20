@@ -20,8 +20,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/conformance"
+	actionlint "actionlint.kjanat.dev/internal/engine"
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
 )
@@ -353,8 +355,8 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 	t.Helper()
 	switch c.Kind {
 	case "expression":
-		parser := actionlint.ExprParser{}
-		lexer := actionlint.NewExprLexer(c.Input + "}}")
+		parser := exprlang.Parser{}
+		lexer := exprlang.NewLexer(c.Input + "}}")
 		node, err := parser.Parse(lexer)
 		if err != nil {
 			return []string{err.Error()}
@@ -362,31 +364,31 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		if lexer.Offset() != len(c.Input)+2 {
 			return []string{fmt.Sprintf("unexpected expression terminator at byte %d in standalone expression", lexer.Offset()-2)}
 		}
-		checker := actionlint.NewExprSemanticsChecker(false, nil)
-		contexts := map[string]actionlint.ExprType{}
+		checker := exprlang.NewChecker(false, nil)
+		contexts := map[string]exprlang.Type{}
 		for name := range c.Contexts {
-			contexts[strings.ToLower(name)] = actionlint.AnyType{}
+			contexts[strings.ToLower(name)] = exprlang.AnyType{}
 		}
 		checker.SetContextTypes(contexts)
 		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
-		var diagnostics []*actionlint.ExprError
+		var diagnostics []*exprlang.Error
 		// GitHub's parser checks symbols and arity, but leaves coercion and evaluation to its evaluator.
-		actionlint.VisitExprNode(node, func(n, _ actionlint.ExprNode, entering bool) {
+		exprlang.Visit(node, func(n, _ exprlang.Node, entering bool) {
 			if !entering {
 				return
 			}
 			switch n := n.(type) {
-			case *actionlint.VariableNode:
+			case *exprlang.VariableNode:
 				_, errs := checker.Check(n)
 				diagnostics = append(diagnostics, errs...)
-			case *actionlint.FuncCallNode:
-				callChecker := actionlint.NewExprSemanticsChecker(false, nil)
-				callChecker.SetContextTypes(map[string]actionlint.ExprType{"argument": actionlint.AnyType{}})
+			case *exprlang.FuncCallNode:
+				callChecker := exprlang.NewChecker(false, nil)
+				callChecker.SetContextTypes(map[string]exprlang.Type{"argument": exprlang.AnyType{}})
 				callChecker.SetContextAvailability([]string{"argument"})
 				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})
-				args := make([]actionlint.ExprNode, len(n.Args))
+				args := make([]exprlang.Node, len(n.Args))
 				for i := range args {
-					argument, err := parser.Parse(actionlint.NewExprLexer("argument}}"))
+					argument, err := parser.Parse(exprlang.NewLexer("argument}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -455,9 +457,9 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		rule := actionlint.NewRuleAction(actionlint.NewLocalActionsCache(project, nil))
 		// Input binding is outside the manifest-parser contract.
-		err = rule.VisitStep(&actionlint.Step{Exec: &actionlint.ExecAction{
-			Uses:             &actionlint.String{Value: "./action", Pos: &actionlint.Pos{Line: 1, Col: 1}},
-			InputsExpression: &actionlint.String{Value: "${{ inputs }}", Pos: &actionlint.Pos{Line: 1, Col: 1}},
+		err = rule.VisitStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{
+			Uses:             &workflowlang.String{Value: "./action", Pos: &workflowlang.Pos{Line: 1, Col: 1}},
+			InputsExpression: &workflowlang.String{Value: "${{ inputs }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}},
 		}})
 		if err != nil {
 			t.Fatal(err)

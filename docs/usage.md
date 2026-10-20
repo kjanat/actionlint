@@ -554,7 +554,7 @@ Use the built-in format directly:
 actionlint --output sarif > actionlint.sarif
 ```
 
-The [canonical template](../sarif_template.txt) remains available for custom formatting.
+Native SARIF output is a typed JSON document.
 
 Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
 

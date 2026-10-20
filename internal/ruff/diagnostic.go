@@ -6,23 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"actionlint.kjanat.dev/analyzer"
 )
 
-// Position uses Ruff's one-based Unicode character coordinates.
-type Position struct {
-	Row    int `json:"row"`
-	Column int `json:"column"`
-}
+// Position uses one-based Unicode scalar coordinates.
+type Position = analyzer.ScriptPosition
 
-// Diagnostic is the read-only subset of Ruff's JSON diagnostic contract.
-type Diagnostic struct {
-	Filename    string   `json:"filename"`
-	Code        string   `json:"code"`
-	Name        string   `json:"name"`
-	Message     string   `json:"message"`
-	Location    Position `json:"location"`
-	EndLocation Position `json:"end_location"`
-}
+// Diagnostic is the portable script-check result.
+type Diagnostic = analyzer.ScriptDiagnostic
 
 // Decode validates the entire response before callers publish any findings.
 func Decode(data []byte) ([]Diagnostic, error) {

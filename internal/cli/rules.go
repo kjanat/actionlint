@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func commandRules() []actionlint.RuleInfo {

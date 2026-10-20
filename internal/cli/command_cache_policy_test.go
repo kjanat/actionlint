@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest

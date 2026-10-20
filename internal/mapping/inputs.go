@@ -1,7 +1,11 @@
 // Package mapping resolves workflow mapping insertions while retaining source provenance.
 package mapping
 
-import "strings"
+import (
+	"maps"
+	"slices"
+	"strings"
+)
 
 // Resolver adapts source strings without importing the public AST. The zero
 // value of S represents an absent source; NewText preserves source locations.
@@ -14,6 +18,7 @@ type Resolver[S comparable] struct {
 
 type Input[S comparable] struct {
 	Name, Value S
+	Evaluated   bool
 }
 
 type Inputs[S comparable] struct {
@@ -22,10 +27,27 @@ type Inputs[S comparable] struct {
 	Insertions []*Inputs[S]
 }
 
+// KeyState distinguishes runtime uncertainty from a statically invalid name.
+type KeyState uint8
+
+const (
+	UnknownKey KeyState = iota
+	KnownKey
+	InvalidKey
+)
+
+// ResolvedKey retains source provenance independently of the canonical name.
+// Evaluated names are data and must never be passed back to expression parsing.
+type ResolvedKey[S comparable] struct {
+	Name      S
+	Source    S
+	State     KeyState
+	Evaluated bool
+}
+
 type Entry[S comparable] struct {
-	Input[S]
-	SourceName S
-	Evaluated  bool
+	ResolvedKey[S]
+	Value S
 }
 
 type Checks[S comparable] struct {
@@ -37,7 +59,7 @@ type Checks[S comparable] struct {
 func (r Resolver[S]) Check(inputs *Inputs[S], action string, checks Checks[S]) {
 	var zero S
 	r.Walk(inputs, checks.Mapping, func(entry Entry[S]) {
-		CheckSourceKey(entry.SourceName, entry.Evaluated, checks.String)
+		CheckSourceKey(entry.Source, entry.Evaluated, checks.String)
 		if entry.Evaluated {
 			return
 		}
@@ -49,31 +71,49 @@ func (r Resolver[S]) Check(inputs *Inputs[S], action string, checks Checks[S]) {
 	})
 }
 
-func (r Resolver[S]) Key(key S) (S, bool) {
-	if !r.HasExpression(key) {
-		return key, true
+// ResolveKey is the shared key contract for parsing and every semantic consumer.
+func (r Resolver[S]) ResolveKey(source S, evaluated bool) ResolvedKey[S] {
+	result := ResolvedKey[S]{Source: source, Evaluated: evaluated}
+	if evaluated || !r.HasExpression(source) {
+		result.Name, result.State = source, KnownKey
+	} else {
+		literal, known := r.Evaluate(source)
+		if !known {
+			return result
+		}
+		name, scalar := ScalarString(literal)
+		if !scalar {
+			result.State = InvalidKey
+			return result
+		}
+		result.Name, result.State = r.NewText(name, source), KnownKey
 	}
-	literal, known := r.Evaluate(key)
-	name, scalar := ScalarString(literal)
-	if !known || !scalar {
-		var zero S
-		return zero, false
+	if r.Text(result.Name) == "" {
+		result.State = InvalidKey
 	}
-	return r.NewText(name, key), true
+	return result
+}
+
+func (r Resolver[S]) Key(source S) (S, bool) {
+	key := r.ResolveKey(source, false)
+	var zero S
+	return key.Name, key.State != UnknownKey && key.Name != zero
 }
 
 // Walk presents the same resolved names and source provenance to every consumer.
 func (r Resolver[S]) Walk(mapping *Inputs[S], expression func(S), visit func(Entry[S])) bool {
 	var zero S
 	complete := true
-	for key, input := range mapping.Values {
+	for _, key := range slices.Sorted(maps.Keys(mapping.Values)) {
+		input := mapping.Values[key]
 		name := input.Name
 		if name == zero {
 			name = r.NewText(key, zero)
 		}
-		resolved, known := r.Key(name)
-		complete = complete && known
-		visit(Entry[S]{Input: Input[S]{Name: resolved, Value: input.Value}, SourceName: input.Name})
+		resolved := r.ResolveKey(name, input.Evaluated)
+		resolved.Source = input.Name
+		complete = complete && resolved.State == KnownKey
+		visit(Entry[S]{ResolvedKey: resolved, Value: input.Value})
 	}
 	if source := mapping.Expression; source != zero {
 		if expression != nil {
@@ -84,12 +124,15 @@ func (r Resolver[S]) Walk(mapping *Inputs[S], expression func(S), visit func(Ent
 		if !known || !isObject {
 			complete = false
 		} else {
-			for name, candidate := range object {
+			for _, name := range slices.Sorted(maps.Keys(object)) {
+				candidate := object[name]
 				var value S
 				if text, scalar := ScalarString(candidate); scalar {
 					value = r.NewText(text, source)
 				}
-				visit(Entry[S]{Input: Input[S]{Name: r.NewText(name, source), Value: value}, Evaluated: true})
+				key := r.ResolveKey(r.NewText(name, source), true)
+				complete = complete && key.State == KnownKey
+				visit(Entry[S]{ResolvedKey: key, Value: value})
 			}
 		}
 	}
@@ -130,7 +173,7 @@ func (r Resolver[S]) Names(mapping *Inputs[S]) (map[string]Input[S], bool) {
 	inputs := map[string]Input[S]{}
 	complete := r.Walk(mapping, nil, func(entry Entry[S]) {
 		if entry.Name != zero {
-			inputs[strings.ToLower(r.Text(entry.Name))] = entry.Input
+			inputs[strings.ToLower(r.Text(entry.Name))] = Input[S]{Name: entry.Name, Value: entry.Value}
 		}
 	})
 	return inputs, complete
