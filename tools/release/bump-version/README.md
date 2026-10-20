@@ -124,7 +124,7 @@ The check does not refresh `flake.lock` or `vendorHash`. Update Nixpkgs delibera
 and update the Go dependency hash when dependencies change, as described in
 [Nix development](../../../CONTRIBUTING.md#nix-development). `-check` and `-notes` do not require Nix.
 
-Print the release notes of a version, which is what the release workflow publishes.
+Print the release notes published by the release workflow:
 
 ```sh
 go run ./tools/release/bump-version -notes v1.2.3

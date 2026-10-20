@@ -49,7 +49,7 @@ func SelectedPath(selection Selection) (string, error) {
 	if root == "" {
 		return "", nil
 	}
-	for _, name := range []string{"actionlint.yaml", "actionlint.yml"} {
+	for _, name := range RepositoryConfigNames {
 		path := filepath.Join(root, ".github", name)
 		if _, err := os.Stat(path); err == nil {
 			return path, nil

@@ -10,11 +10,11 @@ import (
 )
 
 func TestGeneratePreservesExistingConfig(t *testing.T) {
-	for _, name := range []string{"actionlint.yaml", "actionlint.yml"} {
+	for _, name := range repoconfig.RepositoryConfigNames {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			path := writeOverrideFixture(t, root, filepath.Join(".github", name), "# existing configuration\n")
-			_, err := repoconfig.Generate(root, false, "test")
+			_, err := repoconfig.Generate(root, true, "test")
 			if err == nil || !strings.Contains(err.Error(), "config file already exists at") {
 				t.Fatalf("wrong collision error: %v", err)
 			}
@@ -24,6 +24,10 @@ func TestGeneratePreservesExistingConfig(t *testing.T) {
 			}
 			if string(content) != "# existing configuration\n" {
 				t.Fatalf("existing config changed: %q", content)
+			}
+			entries, err := os.ReadDir(filepath.Join(root, ".github"))
+			if err != nil || len(entries) != 1 {
+				t.Fatalf("configuration created beside existing file: %v, %v", entries, err)
 			}
 		})
 	}

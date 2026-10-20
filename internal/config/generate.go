@@ -26,7 +26,7 @@ func Generate(root string, skipConfig bool, version string) (string, error) {
 		}
 	}
 	directory := filepath.Join(root, ".github")
-	for _, name := range []string{"actionlint.yaml", "actionlint.yml"} {
+	for _, name := range RepositoryConfigNames {
 		path := filepath.Join(directory, name)
 		if _, err := os.Stat(path); err == nil {
 			return "", fmt.Errorf("config file already exists at %q", path)

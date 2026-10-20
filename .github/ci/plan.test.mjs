@@ -248,6 +248,7 @@ test('action tests, probe results, mixed documentation and source changes select
 	assert.equal(selectJobs(ci, ['tools/action/check-action-outputs.mjs'])['action-tests'], true);
 	assert.equal(selectJobs(ci, ['tools/config/main.go']).unit, true);
 	assert.equal(selectJobs(ci, ['tools/config/main.go']).lint, true);
+	assert.equal(selectJobs(ci, ['internal/webhook/payload/generate/main.mts']).javascript, true);
 	assert.equal(selectJobs(ci, ['.github/workflows/upkeep.yml']).unit, true);
 	assert.ok(Object.values(selectJobs(ci, ['.github/workflows/ci.yml'])).every(Boolean));
 });

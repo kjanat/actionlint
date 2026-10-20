@@ -42,7 +42,7 @@ jobs:
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "Makefile", ".github/actions/setup-pandoc/**"
             ],
             "javascript": [
-              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
+              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/*.mts", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**", "tools/**/mise.toml", "distribution/**/mise.toml"
             ],

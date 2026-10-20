@@ -3,6 +3,7 @@ package langserver
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
@@ -123,7 +124,11 @@ func editorPosition(content []byte, p diagnostic.Position) position {
 		return position{max(0, p.Line-1), max(0, p.Column-1)}
 	}
 	line, units := 0, 0
-	for i := 0; i < offset; {
+	start := 0
+	if bytes.HasPrefix(content, []byte("\ufeff")) {
+		start = len("\ufeff")
+	}
+	for i := start; i < offset; {
 		r, n := utf8.DecodeRune(content[i:])
 		if r == '\r' && i+n < len(content) && content[i+n] == '\n' {
 			n++

@@ -2,6 +2,7 @@ package langserver
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,51 @@ import (
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/sourceid"
 )
+
+func TestUnsupportedRequestsReceiveMethodNotFound(t *testing.T) {
+	var input, output bytes.Buffer
+	for _, request := range []message{
+		{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "initialize"},
+		{JSONRPC: "2.0", Method: "unsupported/notification"},
+		{JSONRPC: "2.0", ID: json.RawMessage(`"hover-request"`), Method: "textDocument/hover"},
+		{JSONRPC: "2.0", ID: json.RawMessage(`2`), Method: "shutdown"},
+		{JSONRPC: "2.0", Method: "exit"},
+	} {
+		if err := writeMessage(&input, request); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Serve(t.Context(), &input, &output, func(context.Context, map[string]Document) (Analysis, error) {
+		return Analysis{}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	reader := bufio.NewReader(&output)
+	for _, want := range []struct {
+		id   string
+		code int
+	}{{`1`, 0}, {`"hover-request"`, -32601}, {`2`, 0}} {
+		raw, err := readRawEnvelope(reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var response struct {
+			ID    json.RawMessage `json:"id"`
+			Error struct {
+				Code int `json:"code"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(raw, &response); err != nil {
+			t.Fatal(err)
+		}
+		if string(response.ID) != want.id || response.Error.Code != want.code {
+			t.Fatalf("response=%s, want id=%s error=%d", raw, want.id, want.code)
+		}
+	}
+	if _, err := reader.ReadByte(); err != io.EOF {
+		t.Fatalf("unexpected notification response: %v", err)
+	}
+}
 
 func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 	in, client := io.Pipe()
@@ -254,7 +300,7 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 			for _, doc := range documents {
 				if doc.Text == "uses dependency" {
 					return Analysis{
-						Sources:     map[string]string{dependency: "😀bad\n", related: "😀related\n"},
+						Sources:     map[string]string{dependency: "\ufeff😀bad\n", related: "\ufeff😀related\n"},
 						Diagnostics: []diagnostic.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Related: []diagnostic.Related{{Path: related, Message: "related", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 9}}}}},
 					}, nil
 				}

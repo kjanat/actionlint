@@ -1,6 +1,7 @@
 package config
 
 import (
+	jsonv2 "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,34 @@ func TestLoadRepositoryFindsEveryFormat(t *testing.T) {
 	}
 	if filepath.Base(path) != "actionlint.yml" || loaded.Config.ConfigVariables[0] != "YAML" {
 		t.Fatalf("path=%q variables=%v", path, loaded.Config.ConfigVariables)
+	}
+}
+
+func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
+	for _, name := range RepositoryConfigNames {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			github := filepath.Join(root, ".github")
+			if err := os.Mkdir(github, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			want := writeConfig(t, github, name, formatSources[name])
+			t.Chdir(github)
+			got, err := Inspect(Selection{}, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Path != want {
+				t.Fatalf("selected path=%q, want %q", got.Path, want)
+			}
+			variables, err := jsonv2.Marshal(got.Config["config-variables"])
+			if err != nil || string(variables) != `["STAGE"]` {
+				t.Fatalf("configuration variables=%s, error=%v", variables, err)
+			}
+		})
 	}
 }
 
