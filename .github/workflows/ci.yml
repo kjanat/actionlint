@@ -137,7 +137,7 @@ jobs:
       - &Uv { uses: *SetupUv, with: *NoCache }
       - { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
 
-      - run: go test -v -race -coverprofile coverage.txt -covermode=atomic ./...
+      - run: go test -v -race -coverpkg=./... -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
 
       # Set -race for catching data races on dog fooding (#333)
