@@ -191,6 +191,80 @@ func TestPluginManifestRefusesSymlink(t *testing.T) {
 	}
 }
 
+func TestPluginManifestDirectoryAlias(t *testing.T) {
+	physical, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(physical, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	writeManifestTest(t, filepath.Join(physical, "base.yml"), "plugins: [base/plugin]\n")
+	writeManifestTest(t, filepath.Join(physical, "config.yml"), "extends: [base.yml]\n")
+	for _, name := range []string{"config.yml", filepath.Join("new", "config.yml")} {
+		t.Run(name, func(t *testing.T) {
+			manifest, err := OpenPluginManifest(t.Context(), filepath.Join(alias, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if manifest.Path != filepath.Join(physical, name) {
+				t.Fatalf("manifest retained directory alias: %q", manifest.Path)
+			}
+			if err := manifest.Save(t.Context(), nil); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := OpenPluginManifest(t.Context(), filepath.Join(physical, name)); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestPluginManifestRejectsInheritedDirectoryLink(t *testing.T) {
+	root := t.TempDir()
+	external := t.TempDir()
+	writeManifestTest(t, filepath.Join(external, "base.yml"), "plugins: []\n")
+	if err := os.Symlink(external, filepath.Join(root, "inherited")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	path := filepath.Join(root, "config.yml")
+	writeManifestTest(t, path, "extends: [inherited/base.yml]\n")
+	if _, err := OpenPluginManifest(t.Context(), path); err == nil || !strings.Contains(err.Error(), "symlink refused") {
+		t.Fatalf("inherited directory link accepted: %v", err)
+	}
+}
+
+func TestPluginManifestRejectsDirectoryReplacement(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "config")
+	if err := os.Mkdir(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "actionlint.yml")
+	writeManifestTest(t, path, "plugins: []\n")
+	manifest, err := OpenPluginManifest(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	moved := filepath.Join(root, "moved")
+	if err := os.Rename(directory, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(moved, directory); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := manifest.Save(t.Context(), nil); err == nil || !strings.Contains(err.Error(), "symlink refused") {
+		t.Fatalf("replacement directory link accepted: %v", err)
+	}
+	if got := readManifestTest(t, filepath.Join(moved, "actionlint.yml")); got != "plugins: []\n" {
+		t.Fatalf("changed target through directory link: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(moved, "actionlint.yml.writing")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("created guard through directory link: %v", err)
+	}
+}
+
 func TestPluginManifestCancellationAndAnchors(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yml")
 	source := "plugins: &dependencies [old/plugin]\nother: *dependencies\n"
