@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 ---
 version: 2
+project_name: actionlint
 
 release:
   draft: true
