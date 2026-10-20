@@ -73,8 +73,17 @@ jobs:
         if: steps.inputs.outputs.tables == 'true'
         run: bash scripts/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with: { cache: true, auto_update: true }
+      - name: Keep mise metadata with cached tools
+        run: printf 'MISE_CACHE_DIR=%s/mise/cache\n' "${RUNNER_TEMP//\\//}" >> "${GITHUB_ENV}"
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          cache: true
+          auto_update: true
+          mise_dir: ${{ runner.temp }}/mise
+          cache_save_post: true
+          cache_key: >-
+            actionlint-mise-v2-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+          install_args: github:kjanat/dprint
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'

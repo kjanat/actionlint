@@ -87,8 +87,18 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with: { cache: true, auto_update: true }
+      - name: Keep mise metadata with cached tools
+        shell: bash
+        run: printf 'MISE_CACHE_DIR=%s/mise/cache\n' "${RUNNER_TEMP//\\//}" >> "${GITHUB_ENV}"
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          cache: true
+          auto_update: true
+          mise_dir: ${{ runner.temp }}/mise
+          cache_save_post: true
+          cache_key: >-
+            actionlint-mise-v2-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+          install_args: github:kjanat/actionlint github:rhysd/actionlint
       - run: go run ./scripts/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes
