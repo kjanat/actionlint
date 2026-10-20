@@ -257,7 +257,12 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "ruff" || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 9 {
+			interpolationLine := 0
+			if strings.Contains(script, "${{ '==' }}") {
+				interpolationLine = 7
+			}
+			ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, interpolationLine)
+			if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 9 {
 				t.Fatalf("unexpected findings: %+v", result.Diagnostics)
 			}
 		})

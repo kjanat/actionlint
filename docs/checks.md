@@ -312,7 +312,7 @@ test.yaml:7:28: property access of object must be type of string but got "number
   |
 7 |       - run: echo '${{ env[0] }}'
   |                            ^
-test.yaml:9:24: property "os" is not defined in object type {id: string; network: string} [expression-reference]
+test.yaml:9:24: property "os" is not defined in job.container [expression-reference]
   |
 9 |       - run: echo '${{ job.container.os }}'
   |                        ^~~~~~~~~~~~~~~~
@@ -475,7 +475,7 @@ test.yaml:7:24: undefined variable "unknown_context". available variables are "e
   |
 7 |       - run: echo '${{ unknown_context }}'
   |                        ^~~~~~~~~~~~~~~
-test.yaml:9:24: property "events" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression-reference]
+test.yaml:9:24: property "events" is not defined in github; did you mean "event"? [expression-reference]
   |
 9 |       - run: echo '${{ github.events }}'
   |                        ^~~~~~~~~~~~~
@@ -534,7 +534,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:18: property "mac" is not defined in object type {linux: string; win: string} [expression-reference]
+test.yaml:6:18: property "mac" is not defined in this object [expression-reference]
   |
 6 |     runs-on: ${{ fromJSON('{"win":"windows-latest","linux":"ubuntul-latest"}')['mac'] }}
   |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -591,11 +591,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:10:24: property "get_value" is not defined in object type {} [expression-reference]
+test.yaml:10:24: property "get_value" is not defined in steps [expression-reference]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:22:24: property "get_value" is not defined in object type {} [expression-reference]
+test.yaml:15:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+15 |       - run: echo '${{ steps.get_value.outputs.name }}'
+   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:17:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+17 |       - run: echo '${{ steps.get_value.conclusion }}'
+   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:22:24: property "get_value" is not defined in steps [expression-reference]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
@@ -639,11 +647,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:23: property "cache" is not defined in object type {} [expression-reference]
+test.yaml:8:23: property "cache" is not defined in steps [expression-reference]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
   |                       ^~~~~~~~~~~
-test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: string} [expression-reference]
+test.yaml:16:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+16 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
+   |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:18:23: property "cache_hit" is not defined in steps.cache.outputs; did you mean "cache-hit"? [expression-reference]
    |
 18 |       - run: echo ${{ steps.cache.outputs.cache_hit }}
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -759,15 +771,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:19:24: property "platform" is not defined in object type {node: number; npm: string; os: string; package: {name: string; optional: bool}} [expression-reference]
+test.yaml:19:24: property "platform" is not defined in matrix [expression-reference]
    |
 19 |       - run: echo '${{ matrix.platform }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:21:24: property "dev" is not defined in object type {name: string; optional: bool} [expression-reference]
+test.yaml:21:24: property "dev" is not defined in matrix.package [expression-reference]
    |
 21 |       - run: echo '${{ matrix.package.dev }}'
    |                        ^~~~~~~~~~~~~~~~~~
-test.yaml:34:24: property "os" is not defined in object type {} [expression-reference]
+test.yaml:34:24: property "os" is not defined in matrix [expression-reference]
    |
 34 |       - run: echo '${{ matrix.os }}'
    |                        ^~~~~~~~~
@@ -931,19 +943,27 @@ jobs:
 Output:
 
 ```console
-test.yaml:16:24: property "prepare" is not defined in object type {} [expression-reference]
+test.yaml:16:24: property "prepare" is not defined in needs [expression-reference]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
    |                        ^~~~~~~~~~~~~
-test.yaml:26:24: property "foo" is not defined in object type {installed: string} [expression-reference]
+test.yaml:24:45: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+24 |       - run: echo 'build something with ${{ needs.install.outputs.installed }} and ${{ needs.prepare.outputs.prepared }}'
+   |                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:24:88: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+24 |       - run: echo 'build something with ${{ needs.install.outputs.installed }} and ${{ needs.prepare.outputs.prepared }}'
+   |                                                                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.yaml:26:24: property "foo" is not defined in needs.install.outputs [expression-reference]
    |
 26 |       - run: echo '${{ needs.install.outputs.foo }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:28:24: property "some_job" is not defined in object type {install: {outputs: {installed: string}; result: string}; prepare: {outputs: {prepared: string}; result: string}} [expression-reference]
+test.yaml:28:24: property "some_job" is not defined in needs [expression-reference]
    |
 28 |       - run: echo '${{ needs.some_job }}'
    |                        ^~~~~~~~~~~~~~
-test.yaml:33:24: property "build" is not defined in object type {} [expression-reference]
+test.yaml:33:24: property "build" is not defined in needs [expression-reference]
    |
 33 |       - run: echo '${{ needs.build.outputs.built }}'
    |                        ^~~~~~~~~~~
@@ -1619,7 +1639,7 @@ test.yaml:26:18: type of "age" input is "number" but its default value "teen" ca
    |
 26 |         default: teen
    |                  ^~~~
-test.yaml:33:24: property "massage" is not defined in object type {age: number; id: any; kind: string; message: string; name: string; verbose: bool} [expression-reference]
+test.yaml:33:24: property "massage" is not defined in inputs; did you mean "message"? [expression-reference]
    |
 33 |       - run: echo "${{ inputs.massage }}"
    |                        ^~~~~~~~~~~~~~
@@ -2569,6 +2589,18 @@ test.yaml:25:18: input "path" of workflow_call event has the default value "", b
    |
 25 |         default: ""
    |                  ^~
+test.yaml:31:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
+   |                        ^~~~~~~~~~~~~
+test.yaml:31:47: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
+   |                                               ^~~~~~~~~~~
+test.yaml:31:84: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+31 |       - run: echo "${{ inputs.scheme }}://${{ inputs.host }}:${{ inputs.port }}${{ inputs.path }}"
+   |                                                                                    ^~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNp8kbtu8zAMhff/KQjjX52gl0nP0KEXdC5kma6cyqJCUUiDQO9eKHYCw4272R/JwyMe8uofwIH4q3N0+DDauQIAeh+SxPEbIBqLA17+AFqMhvsgPXkFb+ciUAfvr0+zlk4nJwqsSIhXLMeACqJw7z8naCmK+j2H33oIDjeGhr+mA7GsGHsmllVblbq7f3isFtI+DQ3yBPcJ+bii/VJqS/FRg5odGrnY02LX7GmxSwXGfeoZWwXCCW+4rm7fYkfNOayWxmWcfKzLktQkL6l2WjCOnqJguAZbl04FaCxB9f90mnLfjIFDzmq7neESVYEzVO4POc9JeVfO1U8AAAD//6DQrqw=)
@@ -2617,7 +2649,7 @@ test.yaml:12:5: "with" is only available for a reusable workflow call with "uses
    |
 12 |     with:
    |     ^~~~~
-test.yaml:19:11: could not read reusable workflow file for "./.github/workflows/not-existing.yml": open /path/to/repo/.github/workflows/not-existing.yml: no such file or directory [workflow-call]
+test.yaml:19:11: could not read reusable workflow file for "./.github/workflows/not-existing.yml": open /path/to/repo\.github\workflows\not-existing.yml: The system cannot find the file specified. [workflow-call]
    |
 19 |     uses: ./.github/workflows/not-existing.yml
    |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2671,11 +2703,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:20:23: property "uri" is not defined in object type {lucky_number: number; url: string} [expression-reference]
+test.yaml:20:23: property "uri" is not defined in inputs; did you mean "url"? [expression-reference]
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
    |                       ^~~~~~~~~~
-test.yaml:23:22: property "credentials" is not defined in object type {actions_runner_debug: string; actions_step_debug: string; credential: string; github_token: string} [expression-reference]
+test.yaml:23:22: property "credentials" is not defined in secrets; did you mean "credential"? [expression-reference]
    |
 23 |           TOKEN: ${{ secrets.credentials }}
    |                      ^~~~~~~~~~~~~~~~~~~
@@ -2763,7 +2795,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:20: property "imagetag" is not defined in object type {image_tag: string} [expression-reference]
+test.yaml:7:20: property "imagetag" is not defined in jobs.gen-image-version.outputs; did you mean "image_tag"? [expression-reference]
   |
 7 |         value: ${{ jobs.gen-image-version.outputs.imagetag }}
   |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

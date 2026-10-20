@@ -4,6 +4,7 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/eventpayload"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
@@ -179,6 +180,7 @@ func (rule *Checker) VisitJobPre(n *workflowlang.Job) error {
 	//       runs-on: ${{ matrix.os }}
 	if n.Strategy != nil {
 		if n.Strategy.Expression != nil {
+			rule.matrixScriptSafe = safeMatrixScriptReferences(matrixcheck.KnownStrategy(n.Strategy.Expression))
 			ty := rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", schema.Strategy)
 			rule.matrixTy = exprlang.NewEmptyObjectType()
 			if object, ok := ty.(*exprlang.ObjectType); ok {

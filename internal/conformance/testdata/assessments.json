@@ -424,7 +424,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/step-run.yml": "e9618bcfdbc4582e75cdb20c8110cc667012d26de9abb166971ee4b2d1097aa9"
+      "languageservices/workflow-parser/testdata/reader/step-run.yml": "ad5b5ff37075ca2a868b9e591169bd9d0420308034c2d68c483de61247a9a5e6"
     },
     "findings": [
       {
@@ -433,6 +433,21 @@
         "rationale": "Extra expression type check: the fixture references an undeclared steps.foo property.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/step-run.yml"
+        ]
+      },
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          0,
+          2,
+          3
+        ],
+        "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/step-run.yml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_values.go"
         ]
       }
     ]
@@ -484,7 +499,6 @@
       "schemastore/src/test/github-workflow/issue_2463_file_1.yaml": "5d1c23d23652d4a7fa624c07efb70a4054998a1fd25de5388d9b60cacf95d2da",
       "schemastore/src/test/github-workflow/npm-publish.yaml": "759533cf506c4845839f6ef9c5a8645f476a99e3077d4e3a68103ef86f0756ef",
       "schemastore/src/test/github-workflow/parallel-steps.yaml": "cb69e50c8bfc12c51a10989c1f15ad6467fce04eeb294cb7f37cc41196cac086",
-      "schemastore/src/test/github-workflow/reusable-workflow.yaml": "cb3be99b7cf7afd5e8e56b65a5dbacd583740131af694319def6920e7f2458f3",
       "schemastore/src/test/github-workflow/runs-on-interpolated.yaml": "113953425614c94984953b60ea88794272087b216c5398c7e493cf7121aa815b",
       "schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml": "7f891cfe0210d6c2776718d7d12e8917e574a0181c693fe2b0c5a4ea7a2800e5"
     },
@@ -533,7 +547,35 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-defaults.yml": "f2ef594540afb0c79ee3e29df634ac1f00030170d53c067ec87e5c8885632217"
+      "schemastore/src/test/github-workflow/reusable-workflow.yaml": "ac359e9c0bbc1f684dbcea50ff8e7c5eee080bcb3334495b589c1f2873807b9f"
+    },
+    "findings": [
+      {
+        "category": "extra-lint",
+        "scope": "fixture",
+        "rationale": "Extra lifecycle checks: these historical fixtures remain parser-valid, while actionlint reports their deprecated or retired action runtimes.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml"
+        ]
+      },
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          1
+        ],
+        "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/reusable-workflow.yaml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_values.go"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-defaults.yml": "9af85f3d4f33100010ef1714b016df7b2ac0a633f659252b5f8295527eed5680"
     },
     "findings": [
       {
@@ -548,7 +590,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/step-if.yml": "cfa663cea9926bb8749af1ace35b317398092f4a3ea0268633bb77d111f0a8d2"
+      "languageservices/workflow-parser/testdata/reader/step-if.yml": "a3e600c0e8a7c40849ff42271bf3a0805a349b4d6f0aa40afe48fc8d2fe64d0c"
     },
     "findings": [
       {
@@ -563,13 +605,13 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-environment.yml": "f599f5ae6f75a19afe111ae3b296a89da2d99222f40eb6e66219296e2c75ca84"
+      "languageservices/workflow-parser/testdata/reader/job-environment.yml": "d9a16d5c8708bd24d4e7c0a733adf85645f5151949a800587406de600d06a132"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "Extra lint checks: empty environment names and references to missing step outputs are accepted by this reader fixture.",
+        "rationale": "Extra lint checks: empty environment names and references to the undeclared inputs.env property are accepted by this reader fixture.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/job-environment.yml"
         ]
@@ -678,7 +720,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "e3963a5f544d705ddf31c61a8875bffff98e0109961e3a84cbe5b22df6328d7a"
+      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "2287fa3c0e9d2de18326444354431f13a1f114a589080700af8a66bf1f05dfc6"
     },
     "findings": [
       {
@@ -739,7 +781,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "9195162d4974d9a199e47ece1866eb3122f7be3034114baab6a93f728fb9b366"
+      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "3a89b2d5504a957fce03250a0fb99249c0b8a41daabc77c7ee4b989fe05097bb"
     },
     "findings": [
       {
@@ -749,12 +791,29 @@
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-all.yml"
         ]
+      },
+      {
+        "category": "contract-difference",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          6,
+          10,
+          11,
+          12
+        ],
+        "rationale": "The pinned workflow schema permits stacked pull-request activity and milestoned/demilestoned pull_request_target activity. The trigger registry deliberately follows the pinned Actions documentation activity tables, which omit these activities. This is the recorded documentation/schema disagreement, not verified GitHub service rejection.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-all.yml",
+          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request",
+          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
+          "source:internal/webhook/generate/sources/manifest.json"
+        ]
       }
     ]
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/job-if.yml": "c439857dd14ca87d49ee04975dd7420c8af0f9b48f8a1d33ca3f00fb7149e07b"
+      "languageservices/workflow-parser/testdata/reader/job-if.yml": "1e4c792885d2a44185fb16c98834e65b3c4836b7f3f4847acd856615559d0bb5"
     },
     "findings": [
       {
@@ -882,7 +941,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "74da26593b2b8407d3df5ea55d688947839402a5d699383e8daf7e673fcc67c0"
+      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "bd44ae6d1e430cca7acc4b07e72e5d209063ed0424ffafc8a68bd9d6878c0c9f"
     },
     "findings": [
       {
@@ -891,6 +950,35 @@
         "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (action, deprecated-commands, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml"
+        ]
+      },
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          7,
+          10,
+          12,
+          14,
+          19,
+          20,
+          21,
+          22,
+          23,
+          33,
+          34,
+          35,
+          36,
+          42,
+          43,
+          44,
+          45
+        ],
+        "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_values.go"
         ]
       }
     ]
@@ -914,10 +1002,10 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "24f3025c6a803c15c944cace730d730221e301fcd8b8c5d19a3c089b1d5d50b8",
-      "schemastore/src/test/github-workflow/matrix_include.yaml": "081051f358ff2b48411b6291b5440fb13e8b39308a7d3b6ab1e0419f087e37fe",
-      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "4bb62ef4ab5357c3e6e6a5a4118fc4bc979a94e1be186f50fc3d7ace2356f782",
-      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "7bbf797654be7ab3518d1dc341711bcef923af83f1c2f3719e55619172b35e02"
+      "schemastore/src/test/github-workflow/matrix_from_json.yaml": "770b6c8b3d4eeeb45eb717d05f0951e71f9296578535a5885c24ee812a477053",
+      "schemastore/src/test/github-workflow/matrix_include.yaml": "c61a9fc39c31e964aff3d76a12c56c19e4ad1a6826589e3b1f14fec88b4af747",
+      "schemastore/src/test/github-workflow/matrix_include_expression.yaml": "46cc13bfb6791a20ee7198190f1fc731b9af63f098d0d158e7e4fc48001d9e1e",
+      "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": "a47d268395151901297d0248aefa84059991b9ba5295572d02820a7eb9b4a0a0"
     },
     "findings": [
       {
@@ -1010,7 +1098,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/defaults.yaml": "20d3d8edbe5eb1689681f429e1183e2ca7c4f96324d73043018bab98e27a9292",
+      "schemastore/src/test/github-workflow/defaults.yaml": "dc5894d647c61f68228b4e79a4dbf2c0279c33385d507bcc8f01d0b9e28905cb",
       "schemastore/src/test/github-workflow/env-with-simple-expression.yaml": "e3460c86aa525daa10699aa0f4103d36c1cfff1a846f902bd2ac4366a22cafc8"
     },
     "findings": [
@@ -1067,7 +1155,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/insert.yml": "c63a8cfe753d861b251bc1d8aee07143574227c2fbefb8d0e0436a08c950f41a"
+      "languageservices/workflow-parser/testdata/reader/insert.yml": "40c26aaa22e870ba8cb3889424fef1a2c4bdf119892be5fb50057a79782e9789"
     },
     "findings": [
       {
@@ -2035,6 +2123,80 @@
           "fixture:schemastore/src/test/github-action/composite-run-steps.json",
           "https://github.com/actions/runner/blob/602c0085328df8cb595fc2641d69f640a11377a4/src/Sdk/WorkflowParser/Conversion/WorkflowTemplateConverter.cs",
           "https://github.com/actions/runner/blob/602c0085328df8cb595fc2641d69f640a11377a4/src/Sdk/WorkflowParser/Conversion/IdBuilder.cs"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/job-strategy.yml": "44c5ab2ae204edd9e7bf1035adcf1f8aaefa9255d82247d1fb0d76a7a1e2bd6a"
+    },
+    "findings": [
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          0
+        ],
+        "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/job-strategy.yml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_values.go"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-names.yml": "4c77b6f06ed9291e8848d79bfa6bf2179973965310353c69ef2b16c2614511da"
+    },
+    "findings": [
+      {
+        "category": "contract-difference",
+        "scope": "feature",
+        "rationale": "The pinned reader fixture accepts image_version.types: [ready], while the pinned Actions documentation marks activity types Not applicable and documents names/versions filters only. The trigger registry intentionally follows that documentation exception. Actual GitHub service rejection has not been verified.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/on-event-config-image-version-names.yml",
+          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
+          "source:internal/webhook/generate/sources/manifest.json"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-versions.yml": "56ffc8383e7ff1fc00cb985669390ddb9ae4378c107cc2c32df9f0bfaa7a4a57"
+    },
+    "findings": [
+      {
+        "category": "contract-difference",
+        "scope": "feature",
+        "rationale": "The pinned reader fixture accepts image_version.types: [ready], while the pinned Actions documentation marks activity types Not applicable and documents names/versions filters only. The trigger registry intentionally follows that documentation exception. Actual GitHub service rejection has not been verified.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/on-event-config-image-version-versions.yml",
+          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
+          "source:internal/webhook/generate/sources/manifest.json"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "schemastore/src/test/github-workflow/issues-activity-types.yaml": "cae462ef505074286ee68b9ea620797f25db2d43e26eb53548af5c6ae6437c0a"
+    },
+    "findings": [
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          0
+        ],
+        "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/issues-activity-types.yaml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_values.go"
         ]
       }
     ]

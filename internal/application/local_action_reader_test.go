@@ -23,7 +23,7 @@ func TestLocalActionSourceCustomReader(t *testing.T) {
 				}
 				return os.ReadFile(path)
 			}
-			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated\n        id: generated\n      - run: echo '${{ steps.generated.outputs.result }}'\n        shell: bash\n")
+			content := []byte("on: push\njobs:\n  test:\n    runs-on: " + runner + "\n    steps:\n      - uses: ./generated\n        id: generated\n      - run: printf '%s\\n' \"$RESULT\"\n        shell: bash\n        env: {RESULT: '${{ steps.generated.outputs.result }}'}\n")
 			config, err := repoconfig.Parse([]byte("local-actions: {'./generated': './virtual'}"))
 			if err != nil {
 				t.Fatal(err)
