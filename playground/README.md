@@ -35,7 +35,7 @@ Production builds give the JSON a content-hashed URL. WASM excludes the embedded
 bytes against its build-time SHA-256 before exposing the lint function. A failed fetch or mismatched deployment
 stops startup and reports an error. Ordinary CLI and library builds still embed the catalogue.
 
-Shell scripts are checked locally with `@kjanat/rshellcheck-wasm` 0.11.0. The browser loads its
+Shell scripts are checked locally with `@kjanat/rshellcheck-wasm` 1.0.0. The browser loads its
 worker, JavaScript wrapper and WASM from version-pinned jsDelivr URLs. A same-origin module-worker
 bootstrap imports the CDN worker. Scripts stay in the browser; they are not sent to an analysis server.
 CDN download or initialization failures stop startup with an error. The npm development dependency
