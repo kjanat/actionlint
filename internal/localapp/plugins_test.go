@@ -16,6 +16,10 @@ import (
 )
 
 func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
+	cache := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("LOCALAPPDATA", cache)
+	t.Setenv("HOME", cache)
 	module, err := filepath.Abs("../plugins/core/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
