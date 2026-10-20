@@ -61,6 +61,31 @@ test('still scans prose list items in YAML comments', () => {
 	assert.deepEqual(groupsFromPatch('config.yml', patch).map(group => group.reasons), [['"X rather than Y"']]);
 });
 
+test('scans labeled YAML prose independently of nearby examples', () => {
+	const source = [
+		'# Note: use the robust wrapper rather than the default.',
+		'# tools:',
+		'#   ruff:',
+		'#     select: [F, B, S]',
+		'# Warning: use the robust wrapper rather than the default.',
+		'# note: robust',
+	].join('\n');
+	const patch = `@@ -0,0 +1,6 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+	for (const contents of [undefined, source]) {
+		const groups = groupsFromPatch('config.yaml', patch, contents);
+		assert.deepEqual(groups.map(group => ({ start: group.start, reasons: group.reasons })), [
+			{ start: 1, reasons: ['"X rather than Y"', 'inflated diction'] },
+			{ start: 5, reasons: ['"X rather than Y"', 'inflated diction'] },
+		]);
+	}
+});
+
+test('recognizes unchanged YAML parents around partial diff hunks', () => {
+	const source = '# tools:\n#   ruff:\n#     select: [F, B, S]\n#     ignore: [F401]\n#     enabled: true';
+	const patch = '@@ -2,2 +2,4 @@\n #   ruff:\n+#     select: [F, B, S]\n+#     ignore: [F401]\n+#     enabled: true';
+	assert.deepEqual(groupsFromPatch('config.yml', patch, source), []);
+});
+
 test('does not flag the generated configuration examples by length', () => {
 	const source = readFileSync(new URL('../../../config_default.yaml', import.meta.url), 'utf8');
 	const lines = source.split('\n');
@@ -278,7 +303,13 @@ const firstGroup = {
 };
 
 /** @param {string[]} seenBodies @param {Error | undefined} submitError */
-function reviewHarness(seenBodies = [], submitError = undefined, files = reviewFiles, threadPath = 'docs/first.md') {
+function reviewHarness(
+	seenBodies = [],
+	submitError = undefined,
+	files = reviewFiles,
+	threadPath = 'docs/first.md',
+	source = 'Plain Markdown with no code fences.',
+) {
 	const createReview = mock.fn(async (/** @type {ReviewParams} */ params) => {
 		if (submitError) throw submitError;
 		return params;
@@ -304,7 +335,7 @@ function reviewHarness(seenBodies = [], submitError = undefined, files = reviewF
 		github: {
 			rest: { pulls: { listFiles: mock.fn(), createReview } },
 			paginate: mock.fn(async () => files),
-			request: mock.fn(async () => ({ data: 'Plain Markdown with no code fences.' })),
+			request: mock.fn(async () => ({ data: source })),
 			graphql,
 		},
 		context: {
@@ -405,7 +436,7 @@ test('resolves an existing finding caused by commented YAML data', async () => {
 		contents_url: 'config',
 		patch: `@@ -0,0 +1,3 @@\n${text.split('\n').map(line => `+${line}`).join('\n')}`,
 	}];
-	const h = reviewHarness([bodyFor(oldGroup)], undefined, files, path);
+	const h = reviewHarness([bodyFor(oldGroup)], undefined, files, path, text);
 	await run(h.args);
 
 	assert.equal(h.createReview.mock.callCount(), 0);
@@ -421,4 +452,74 @@ test('reports a failed batch without submitting individual reviews', async () =>
 	assert.equal(h.createReview.mock.callCount(), 1);
 	assert.deepEqual(h.warning.mock.calls[0].arguments, ['Could not submit Comment Cop review: Review rejected']);
 	assert.match(h.info.mock.calls[0].arguments[0], /0 posted/);
+});
+
+test('recognizes consecutive scalar YAML examples while retaining prose labels', () => {
+	const source = [
+		'# Note: use the robust wrapper rather than the default.',
+		'# image: ubuntu-latest',
+		'# shell: bash',
+		'# working-directory: src',
+		'# Warning: use the robust wrapper rather than the default.',
+	].join('\n');
+	const patch = `@@ -0,0 +1,5 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+	for (const contents of [undefined, source]) {
+		assert.deepEqual(
+			groupsFromPatch('config.yml', patch, contents).map(group => ({ start: group.start, reasons: group.reasons })),
+			[
+				{ start: 1, reasons: ['"X rather than Y"', 'inflated diction'] },
+				{ start: 5, reasons: ['"X rather than Y"', 'inflated diction'] },
+			],
+		);
+	}
+});
+
+test('recognizes scalar mapping keys in sequence items and partial hunks', () => {
+	for (const prefix of ['- ', '  - ', '-   ']) {
+		for (const key of ['name', '"name"', "'name'"]) {
+			const source = [
+				`# ${prefix}${key}: build rather than deploy`,
+				`# ${' '.repeat(prefix.length)}run: echo rather than deploy`,
+				`# ${' '.repeat(prefix.length)}shell: bash`,
+			].join('\n');
+			const patch = `@@ -0,0 +1,3 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+			for (const contents of [undefined, source]) {
+				assert.deepEqual(groupsFromPatch('workflow.yml', patch, contents), []);
+			}
+			assert.deepEqual(groupsFromPatch('workflow.yml', `@@ -1 +1 @@\n+${source.split('\n')[0]}`, source), []);
+		}
+	}
+});
+
+test('recognizes a standalone sequence mapping while retaining labeled prose', () => {
+	assert.deepEqual(groupsFromPatch('config.yml', '@@ -0,0 +1 @@\n+# - name: build rather than deploy'), []);
+	assert.deepEqual(
+		groupsFromPatch('config.yml', '@@ -0,0 +1 @@\n+# - Note: use this rather than that').map(group => group.reasons),
+		[['"X rather than Y"']],
+	);
+});
+
+test('recognizes commented block scalars and restores prose at their boundary', () => {
+	for (const indicator of ['|', '|-', '|+', '>', '>-', '>+', '|2', '|2-', '|-2', '>2+', '>+2', '| # script']) {
+		for (const [header, indent] of [['run:', '  '], ['- run:', '    '], ['-', '  '], ['  run:', '    ']]) {
+			const source = [
+				`# ${header} ${indicator}`,
+				`# ${indent}echo use this rather than that`,
+				'#',
+				`# ${indent}Note: use this rather than that`,
+				'# Note: use this rather than that',
+			].join('\n');
+			const patch = `@@ -0,0 +1,5 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`;
+			for (const contents of [undefined, source]) {
+				assert.deepEqual(
+					groupsFromPatch('workflow.yml', patch, contents).map(group => ({
+						start: group.start,
+						reasons: group.reasons,
+					})),
+					[{ start: 5, reasons: ['"X rather than Y"'] }],
+				);
+			}
+			assert.deepEqual(groupsFromPatch('workflow.yml', `@@ -2 +2 @@\n+${source.split('\n')[1]}`, source), []);
+		}
+	}
 });

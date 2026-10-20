@@ -1,7 +1,6 @@
 package actionlint
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
@@ -190,6 +189,9 @@ func (rule *RuleExpression) checkWorkflowExpression(s *String, what, key string,
 	if len(errors) == 0 {
 		if value, known := workflowExpressionLiteral(s); known {
 			errors = workflowExpressionLiteralErrors(shape, value, what)
+			if len(errors) == 0 {
+				ty = typeOfJSONValue(value)
+			}
 		}
 	}
 	for _, message := range errors {
@@ -203,30 +205,7 @@ func workflowExpressionLiteral(s *String) (any, bool) {
 	if expr == nil {
 		return nil, false
 	}
-	switch literal := expr.(type) {
-	case *StringNode:
-		return literal.Value, true
-	case *IntNode:
-		return float64(literal.Value), true
-	case *FloatNode:
-		return literal.Value, true
-	case *BoolNode:
-		return literal.Value, true
-	case *NullNode:
-		return nil, true
-	}
-	if call, ok := expr.(*FuncCallNode); ok && strings.EqualFold(call.Callee, "fromJSON") && len(call.Args) == 1 {
-		if literal, ok := call.Args[0].(*StringNode); ok {
-			if len(jsonMemberCollisions(literal.Value)) != 0 {
-				return nil, false
-			}
-			var value any
-			if json.Unmarshal([]byte(literal.Value), &value) == nil {
-				return value, true
-			}
-		}
-	}
-	return nil, false
+	return conditionConstantValue(expr)
 }
 
 func workflowExpressionLiteralErrors(shape workflowExpressionShape, value any, path string) []string {

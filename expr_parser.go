@@ -444,6 +444,16 @@ func parseAssignedExpression(s string) ExprNode {
 	return expr
 }
 
+// insert is a directive only when it is the complete expression in a mapping key.
+// Elsewhere it remains an ordinary variable subject to expression validation.
+//
+// Mapping insertion syntax reference (Azure Pipelines):
+// https://learn.microsoft.com/en-us/azure/devops/pipelines/process/template-expressions?view=azure-devops&source=recommendations#insertion
+func isMappingInsertion(s string) bool {
+	node, ok := parseAssignedExpression(strings.TrimSpace(s)).(*VariableNode)
+	return ok && node.Token().Value == "insert"
+}
+
 // literalExpressionValue evaluates a single string literal and requires complete input consumption.
 func literalExpressionValue(s string) *string {
 	if !strings.HasPrefix(s, "${{") {

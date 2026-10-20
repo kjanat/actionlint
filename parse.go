@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"maps"
 	"math"
 	"slices"
 	"strconv"
@@ -456,6 +457,10 @@ func (p *parser) parseFloat(n *yaml.Node) *Float {
 }
 
 func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, caseSensitive bool) iter.Seq[workflowMappingEntry] {
+	return p.parseMappingEntries(where, n, allowEmpty, caseSensitive, false)
+}
+
+func (p *parser) parseMappingEntries(where delayedSprintf, n *yaml.Node, allowEmpty, caseSensitive, insertions bool) iter.Seq[workflowMappingEntry] {
 	return func(yield func(workflowMappingEntry) bool) {
 		if n.Kind == yaml.ScalarNode && n.Tag == yamlTagNull {
 			if !allowEmpty {
@@ -472,7 +477,11 @@ func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, ca
 		keys := make(map[string]*Pos, len(n.Content)/2)
 		empty := true
 		for i := 0; i < len(n.Content); i += 2 {
-			if !p.checkString(n.Content[i], false) {
+			keyNode := n.Content[i]
+			if insertions {
+				keyNode = inputResolver.KeyNode(keyNode, newString)
+			}
+			if !p.checkString(keyNode, false) {
 				p.checkRawYAMLTags(n.Content[i+1])
 				empty = false
 				continue
@@ -484,7 +493,7 @@ func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, ca
 				continue
 			}
 
-			id := k.Value
+			id := keyNode.Value
 			if !caseSensitive {
 				// Keys of mappings are sometimes case insensitive. For example, following matrix is invalid.
 				//   matrix:
@@ -494,6 +503,22 @@ func (p *parser) parseMapping(where delayedSprintf, n *yaml.Node, allowEmpty, ca
 				id = strings.ToLower(id)
 			}
 
+			if insertions && isMappingInsertion(k.Value) {
+				if !yield(workflowMappingEntry{id, k, n.Content[i+1]}) {
+					break
+				}
+				insertedKeys := knownInsertedMappingKeys(n.Content[i+1])
+				for _, name := range slices.Sorted(maps.Keys(insertedKeys)) {
+					inserted := insertedKeys[name]
+					if previous, duplicate := keys[name]; duplicate {
+						p.errorfAt(inserted.Pos, "key %q is duplicated in %s. previously defined at %s. note that this key is case insensitive", inserted.Value, where.String(), previous.String())
+					} else {
+						keys[name] = inserted.Pos
+					}
+				}
+				empty = false
+				continue
+			}
 			if pos, ok := keys[id]; ok {
 				var note string
 				if !caseSensitive {
@@ -915,21 +940,29 @@ func (p *parser) parsePermissions(pos *Pos, n *yaml.Node) *Permissions {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#env
 func (p *parser) parseEnv(n *yaml.Node) *Env {
+	return p.parseEnvMapping(n, false)
+}
+
+func (p *parser) parseEnvMapping(n *yaml.Node, allowEmpty bool) *Env {
 	if n.Kind == yaml.ScalarNode {
 		return &Env{
 			Expression: p.parseExpression(n, "mapping value for \"env\" section"),
 		}
 	}
 
-	vars := map[string]*EnvVar{}
-	for e := range p.parseSectionMapping("env", n, false, false) {
-		vars[e.id] = &EnvVar{
+	env := &Env{Vars: map[string]*EnvVar{}}
+	for e := range p.parseMappingEntries(sprintf("%q section", "env"), n, allowEmpty, false, true) {
+		if isMappingInsertion(e.key.Value) {
+			env.Insertions = append(env.Insertions, p.parseEnvMapping(e.val, true))
+			continue
+		}
+		env.Vars[e.id] = &EnvVar{
 			Name:  e.key,
 			Value: p.parseString(e.val, true),
 		}
 	}
 
-	return &Env{Vars: vars}
+	return env
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#defaults
@@ -1166,6 +1199,10 @@ func (p *parser) parseMatrixCombinations(sec string, n *yaml.Node) *MatrixCombin
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
+	return p.parseMatrixMapping(pos, n, false, false)
+}
+
+func (p *parser) parseMatrixMapping(pos *Pos, n *yaml.Node, allowEmpty, evaluated bool) *Matrix {
 	if n.Kind == yaml.ScalarNode {
 		return &Matrix{
 			Expression: p.parseExpression(n, "matrix"),
@@ -1175,7 +1212,11 @@ func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
 
 	ret := &Matrix{Pos: pos, Rows: make(map[string]*MatrixRow)}
 
-	for e := range p.parseSectionMapping("matrix", n, false, false) {
+	for e := range p.parseMappingEntries(sprintf("%q section", "matrix"), n, allowEmpty, false, !evaluated) {
+		if !evaluated && isMappingInsertion(e.key.Value) {
+			ret.Insertions = append(ret.Insertions, p.parseMatrixMapping(e.key.Pos, e.val, true, false))
+			continue
+		}
 		switch e.id {
 		case "include":
 			ret.Include = p.parseMatrixCombinations("include", e.val)
@@ -1184,6 +1225,7 @@ func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
 		default:
 			if e.val.Kind == yaml.ScalarNode {
 				ret.Rows[e.id] = &MatrixRow{
+					Name:       e.key,
 					Expression: p.parseExpression(e.val, "array value for matrix variations"),
 				}
 				continue
@@ -1207,6 +1249,16 @@ func (p *parser) parseMatrix(pos *Pos, n *yaml.Node) *Matrix {
 		}
 	}
 
+	for _, row := range ret.Rows {
+		row.evaluated = evaluated
+	}
+	for _, filters := range []*MatrixCombinations{ret.Include, ret.Exclude} {
+		if filters != nil {
+			for _, combination := range filters.Combinations {
+				combination.evaluated = evaluated
+			}
+		}
+	}
 	return ret
 }
 
@@ -1369,6 +1421,80 @@ func (p *parser) parseTimeoutMinutes(n *yaml.Node) *Float {
 	return f
 }
 
+func (p *parser) parseActionInputMapping(n *yaml.Node, allowEmpty bool, docker *ExecAction) *ActionInputMapping {
+	if n.Kind == yaml.ScalarNode {
+		expression := p.parseExpression(n, "mapping value for \"with\" section")
+		p.parseDockerInputExpression(n, expression, docker)
+		return &ActionInputMapping{Expression: expression}
+	}
+	mapping := &ActionInputMapping{Inputs: map[string]*Input{}}
+	for e := range p.parseMappingEntries(sprintf("%q section", "with"), n, allowEmpty, false, true) {
+		switch {
+		case isMappingInsertion(e.key.Value):
+			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
+		case p.parseDockerInput(e, docker):
+		default:
+			mapping.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
+		}
+	}
+	return mapping
+}
+
+func (p *parser) parseDockerInput(entry workflowMappingEntry, docker *ExecAction) bool {
+	if docker == nil {
+		return false
+	}
+	key, known := knownMappingKey(entry.key)
+	if !known {
+		return false
+	}
+	switch strings.ToLower(key.Value) {
+	case "entrypoint":
+		docker.Entrypoint = p.parseString(entry.val, false)
+		docker.entrypointEvaluated = false
+	case "args":
+		docker.Args = p.parseString(entry.val, true)
+		docker.argsEvaluated = false
+	default:
+		return false
+	}
+	if entry.key.ContainsExpression() {
+		docker.inputNameExpressions = append(docker.inputNameExpressions, entry.key)
+	}
+	return true
+}
+
+func (p *parser) parseDockerInputExpression(n *yaml.Node, expression *String, docker *ExecAction) {
+	if docker == nil || expression == nil {
+		return
+	}
+	literal, known := workflowExpressionLiteral(expression)
+	object, isObject := literal.(map[string]any)
+	if !known || !isObject {
+		return
+	}
+	for _, name := range slices.Sorted(maps.Keys(object)) {
+		key := strings.ToLower(name)
+		if key != "entrypoint" && key != "args" {
+			continue
+		}
+		value, scalar := workflowScalarString(object[name])
+		if !scalar {
+			continue
+		}
+		if key == "entrypoint" && value == "" {
+			p.error(n, "string should not be empty")
+			continue
+		}
+		resolved := &String{Value: value, Pos: expression.Pos}
+		if key == "entrypoint" {
+			docker.Entrypoint, docker.entrypointEvaluated = resolved, true
+		} else {
+			docker.Args, docker.argsEvaluated = resolved, true
+		}
+	}
+}
+
 func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bool) *ExecAction {
 	ret := &ExecAction{}
 
@@ -1381,25 +1507,29 @@ func (p *parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 		case "with":
 			if expr := p.mayParseExpression(e.val); expr != nil {
 				ret.InputsExpression = expr
+				if isDocker {
+					p.parseDockerInputExpression(e.val, expr, ret)
+				}
 				continue
 			}
 			ret.Inputs = map[string]*Input{}
-			with := p.parseSectionMapping("with", e.val, false, false)
+			with := p.parseMappingEntries(sprintf("%q section", "with"), e.val, false, false, true)
 			if isDocker {
 				for e := range with {
-					switch e.id {
-					case "entrypoint":
-						// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithentrypoint
-						ret.Entrypoint = p.parseString(e.val, false)
-					case "args":
-						// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepswithargs
-						ret.Args = p.parseString(e.val, true)
-					default:
+					if isMappingInsertion(e.key.Value) {
+						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, ret))
+						continue
+					}
+					if !p.parseDockerInput(e, ret) {
 						ret.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
 					}
 				}
 			} else {
 				for e := range with {
+					if isMappingInsertion(e.key.Value) {
+						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, nil))
+						continue
+					}
 					ret.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
 				}
 			}

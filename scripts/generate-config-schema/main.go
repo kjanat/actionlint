@@ -2,16 +2,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
 	"unicode"
 
 	"actionlint.kjanat.dev"
+	"actionlint.kjanat.dev/internal/genfile"
 	"actionlint.kjanat.dev/internal/ruff"
 	"github.com/invopop/jsonschema"
 )
@@ -349,19 +350,7 @@ func initializeShellcheckSchema() error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(shellcheckSchemaPath), 0755); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(shellcheckSchemaPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(b)
-	closeErr := f.Close()
-	if err != nil {
-		return err
-	}
-	return closeErr
+	return genfile.Write(context.Background(), shellcheckSchemaPath, b, true)
 }
 
 func main() {
@@ -378,7 +367,7 @@ func main() {
 	}
 	b, err := generate()
 	if err == nil {
-		err = os.WriteFile("actionlint.schema.json", b, 0644)
+		err = genfile.Write(context.Background(), "actionlint.schema.json", b, false)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

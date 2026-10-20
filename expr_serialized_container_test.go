@@ -31,7 +31,7 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 			"toJSON(" + path + ") == '{}'",
 			"!toJSON(" + path + ")",
 			"toJSON(" + path + ") && 'safe'",
-			"case(toJSON(" + path + "), 'safe', 'fallback')",
+			"case(toJSON(" + path + ") != '', 'safe', 'fallback')",
 		} {
 			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false) })
 		}

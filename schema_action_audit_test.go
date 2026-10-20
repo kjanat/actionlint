@@ -225,6 +225,9 @@ runs:
 		{"composite env insert", composite + `      env:
         '${{ insert }}': {VALUE: text}
 `, true},
+		{"composite env compact insert", composite + `      env:
+        '${{insert}}': {VALUE: text}
+`, true},
 		{"composite env insert shape", composite + `      env:
         '${{ insert }}': []
 `, false},

@@ -1045,18 +1045,18 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			expected: AnyType{},
 		},
 		{
-			what:     "case() with number predicate (coerced to bool)",
-			input:    "case(1, 'a', 'b')",
+			what:     "case() with numeric comparison predicate",
+			input:    "case(1 == 1, 'a', 'b')",
 			expected: AnyType{},
 		},
 		{
-			what:     "case() with string predicate (coerced to bool)",
-			input:    "case('yes', 'a', 'b')",
+			what:     "case() with string comparison predicate",
+			input:    "case('yes' != '', 'a', 'b')",
 			expected: AnyType{},
 		},
 		{
-			what:     "case() with null predicate (coerced to bool)",
-			input:    "case(null, 'a', 'b')",
+			what:     "case() with null comparison predicate",
+			input:    "case(null == null, 'a', 'b')",
 			expected: AnyType{},
 		},
 		{
@@ -2369,3 +2369,35 @@ func TestExprIsConstant(t *testing.T) {
 }
 
 // vim: nofoldenable
+
+func TestContextReplacementDispatchInputs(t *testing.T) {
+	for _, github := range []ExprType{nil, StringType{}, NewStrictObjectType(map[string]ExprType{"event": NewStrictObjectType(nil)})} {
+		checker := NewExprSemanticsChecker(false, nil)
+		contexts := map[string]ExprType{}
+		if github != nil {
+			contexts["GITHUB"] = github
+		}
+		checker.SetContextTypes(contexts)
+		checker.UpdateDispatchInputs(NewStrictObjectType(map[string]ExprType{"enabled": BoolType{}}))
+		if inputs, ok := checker.vars["inputs"].(*ObjectType); !ok || inputs.Props["enabled"] == nil {
+			t.Fatal("dispatch inputs were not installed")
+		}
+		if github == nil && checker.vars["github"] != nil {
+			t.Fatal("missing github context was introduced")
+		}
+		if original, ok := github.(*ObjectType); ok {
+			if original.Props["event"].(*ObjectType).Props["inputs"] != nil {
+				t.Fatal("caller-owned github context was modified")
+			}
+			copied := checker.vars["github"].(*ObjectType).Props["event"].(*ObjectType).Props["inputs"].(*ObjectType)
+			if _, ok := copied.Props["enabled"].(StringType); !ok {
+				t.Fatal("github.event.inputs did not receive string types")
+			}
+		}
+		checker.SetContextTypes(nil)
+		checker.UpdateDispatchInputs(NewStrictObjectType(map[string]ExprType{"again": StringType{}}))
+		if checker.vars["github"] != nil {
+			t.Fatal("context replacement retained github")
+		}
+	}
+}
