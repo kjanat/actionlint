@@ -11,6 +11,7 @@ COPY diagnostic diagnostic/
 COPY document document/
 COPY resolver resolver/
 COPY rule rule/
+COPY runner runner/
 COPY source source/
 COPY syntax syntax/
 COPY cmd cmd/
