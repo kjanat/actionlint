@@ -306,7 +306,7 @@ jobs:
       - name: Test the JavaScript runtime and release packaging
         if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
-        run: runner i --no-tools -fs actionlint-action:typecheck actionlint-action:test //scripts:test
+        run: run -s actionlint-action:typecheck actionlint-action:test //scripts:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
