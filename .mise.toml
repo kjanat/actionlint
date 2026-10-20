@@ -69,6 +69,7 @@ tools       = { tombi = { prefix = "1.8" } }
 [monorepo]
 config_roots = [
   ".github/actions/comment-cop",
+  ".github/actions/setup-shellcheck",
   ".github/actions/shellcheck-versions",
   ".github/ci",
   "scripts",
