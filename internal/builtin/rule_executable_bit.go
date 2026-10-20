@@ -23,7 +23,7 @@ func newRuleExecutableBit(c Context) *RuleExecutableBit {
 	r := &RuleExecutableBit{tag: "executable-bit"}
 	r.ExecutableChecker = execution.NewExecutableChecker(execution.ExecutableContext{
 		Context: ctx, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
-		Reader: c.Reader, Index: c.Index, Log: r.Debug,
+		Reader: c.Reader, Index: c.Index, Log: r.Debug, Runners: c.Runners,
 	})
 	return r
 }

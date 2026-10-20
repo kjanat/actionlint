@@ -2,7 +2,8 @@
 
 actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.1.0` interface. The contract is
 [`plugins/wit/analyzer.wit`](../plugins/wit/analyzer.wit). A plugin describes itself once, then receives one document per
-call with the facts it declared and returns diagnostics. Any language with a component toolchain can implement it.
+call with the facts it declared and returns diagnostics. Components may instead implement the independent
+`kjanat:actionlint/runner-provider@0.1.0` interface, or implement both roles. Any language with a component toolchain can implement them.
 
 ## Load a plugin
 
@@ -10,7 +11,7 @@ call with the facts it declared and returns diagnostics. Any language with a com
 actionlint --plugin ./pipe-to-shell.wasm --plugin ./no-sudo.wasm
 ```
 
-Each `--plugin` loads one component or a supported core script engine. Findings carry the plugin name as their rule, so `--ignore-regex`, inline
+Each `--plugin` loads one component or a supported core script engine. Analyzer findings carry the plugin name as their rule, so `--ignore-regex`, inline
 suppressions and configured ignores apply to them like built-in rules. `--log-level debug` prints the plugin's limits
 when it loads and forwards its log lines, stdout and stderr.
 
@@ -23,8 +24,8 @@ use a fixed snapshot for that session; restart to refresh them. Configured local
 content changes, and selecting a different engine URI loads that identity separately. Earlier engines remain
 available to active analyses until shutdown. Every analysis still receives fresh document buffers and invocation state.
 
-The host refuses a component at load when it exports another version of the analyzer interface, imports an interface
-the host does not grant, or does not export the analyzer at all. Before guest startup it checks the complete analyzer
+The host refuses a component at load when it exports an unsupported version of either recognized interface, imports an interface
+the host does not grant, or exports neither role. Before guest startup it checks each implemented interface's complete
 type graph against the canonical WIT, including function signatures, record fields and enum ordering. The expected
 graph and enum discriminants are generated with `go generate ./internal/plugins/component`; a test detects stale output.
 
@@ -59,6 +60,76 @@ The host grants these imports and nothing else:
 `wasi:sockets`, `wasi:http` and custom interfaces are refused at load.
 
 The public Go package `actionlint.kjanat.dev/plugin` provides `plugin.Load`, `plugin.Options` and `plugin.Limits`.
+
+## Runner providers
+
+[`plugins/wit/runner.wit`](../plugins/wit/runner.wit) defines the separate `runner-plugin` world. A provider-only
+component exports `describe` and `resolve`; it needs no dummy analyzer. Existing analyzer components remain compatible.
+The host resolves a batch of whole selectors before running checks. Labels within a selector are conjunctive; groups,
+correlated matrix alternatives, source positions and unresolved expressions survive normalization. Incomplete matrix
+alternatives cannot establish a resolved execution environment.
+
+Runner validation, shell validation, script execution facts, local action resolution and executable checks consume
+the same prepared knowledge. The built-in GitHub catalogue implements this boundary too. Installing a provider never
+changes authority: `--runner-target` defaults to `github`; choose another target explicitly. Multiple applicable
+providers require `--runner-provider`. Configuration labels stay configuration, without plugin mutation.
+
+Results distinguish resolved candidates, no match, unknown and not applicable. Operational errors remain separate;
+independent checks still run, while runner-dependent inference stays unknown. No match produces a `runner-label`
+finding only with fresh, complete evidence. Stale, missing or incomplete evidence cannot prove an invalid label or a default shell.
+Explicit shells and container defaults retain precedence. Providers contribute knowledge, not diagnostic policy.
+
+### Offline Buildkite example
+
+[`examples/plugins/buildkite-runners.rs`](../examples/plugins/buildkite-runners.rs) resolves an explicit queue mapping
+snapshot. It is an offline example, not a live Agent API client or a claim of GitHub image/toolchain parity.
+Each queue declares its name, labels, optional group, OS, architecture and default shell. All labels and the requested
+group must match the same queue. The catalogue's completeness refers to the selected scope.
+
+```sh
+cargo build --locked --profile wasm --target wasm32-wasip2 --example buildkite-runners
+actionlint --plugin target/wasm32-wasip2/wasm/examples/buildkite_runners.wasm \
+  --runner-target buildkite --runner-provider buildkite-runners \
+  --runner-scope my-org/my-repo --runner-snapshot runners.json workflow.yml
+```
+
+`runners.json` is a JSON envelope, with provider-specific catalogue JSON encoded in `content`:
+
+```json
+{
+  "scope": "my-org/my-repo",
+  "obtained_at": "2026-10-19T00:00:00Z",
+  "freshness": "fresh",
+  "complete": true,
+  "content": "{\"queues\":[{\"name\":\"windows-build\",\"labels\":[\"buildkite-windows\",\"x64\"],\"group\":\"build\",\"os\":\"windows\",\"architecture\":\"x64\",\"shell\":\"pwsh\"}]}"
+}
+```
+
+The host reads this bounded envelope once per session. Refresh by replacing the snapshot before another CLI run,
+or restarting the language server. Freshness is an explicit input classification; no implicit TTL or network refresh
+runs during analysis. Snapshot and answer scope must match the requested scope. Host snapshot limits on freshness
+and completeness cannot be upgraded by a provider.
+
+The public `runner` package exposes the provider contract and `analysis.Options.Runners` selects it. Loaded components
+expose `HasAnalyzer`, `HasRunnerProvider`, `RunnerDescriptor` and `ArtifactDigest`. Register providers in
+`runner.Options.Providers`. `analysis.Result.RunnerEvidence` records provider/artifact identity, target, scope,
+snapshot digest and answers. Its dependency identity includes the request, implementation, configuration and returned
+evidence; consumers caching findings must include it. Changing a catalogue or artifact invalidates that identity.
+Provider trust is selected by the host; the Wasm sandbox does not prove answers true.
+
+### Cross-runtime verification
+
+[`tools/runner-host`](../tools/runner-host) is a finite Wasmtime parity probe, not a full Rust actionlint port.
+It uses the unchanged WIT and the exact same component bytes as the Go host. Build and compare normalized answers,
+source positions, candidate guarantees, evidence and artifact digest:
+
+```sh
+cargo build --locked --manifest-path tools/runner-host/Cargo.toml --target-dir target/runner-host
+ACTIONLINT_RUNNER_HOST="$PWD/target/runner-host/debug/actionlint-runner-host" \
+  go test ./internal/plugins/component -run TestRunnerProviderWasmtimeParity -count=1
+```
+
+On Windows, set `ACTIONLINT_RUNNER_HOST` to the absolute `.exe` path before running the test.
 
 ## Write a plugin
 

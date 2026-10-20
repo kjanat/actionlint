@@ -20,10 +20,12 @@ import (
 	"actionlint.kjanat.dev/internal/tools"
 	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/resolver"
+	"actionlint.kjanat.dev/runner"
 )
 
 // Options selects configuration and analysis backends for one application session.
 type Options struct {
+	Runners                      runner.Options
 	Tools                        []tools.Registration
 	Resolver                     resolver.Resolver
 	WorkingDir, ConfigFile       string
@@ -90,7 +92,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	processes := analyzerhost.NewProcessPool(ctx, runtime.NumCPU())
 	engines := analyzerhost.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
-	request := analysisRequest{Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
+	request := analysisRequest{Processes: processes, Runners: options.Runners, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 
 	if options.LoadScriptEngine != nil {
 		request.LoadScriptEngine = engines.Load

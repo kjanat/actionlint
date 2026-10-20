@@ -26,6 +26,7 @@
 /result-*
 /target/
 /vendor/
+/tools/runner-host/target/
 node_modules/
 docs/releases/vX.Y.Z.md
 blockers.md

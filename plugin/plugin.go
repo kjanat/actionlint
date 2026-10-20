@@ -1,5 +1,5 @@
-// Package plugin loads WebAssembly plugins: component analyzers that implement
-// kjanat:actionlint/analyzer and core script engines that follow the
+// Package plugin loads WebAssembly plugins: components that implement
+// kjanat:actionlint/analyzer or runner-provider and core script engines that follow the
 // actionlint-plugin-ruff JSON ABI.
 package plugin
 
@@ -11,10 +11,14 @@ import (
 	corewasm "actionlint.kjanat.dev/internal/plugins/core"
 )
 
-// Analyzer is a loaded component. It implements analyzer.Analyzer.
+// Component is a loaded plugin. Inspect HasAnalyzer and HasRunnerProvider before
+// registering it for either role. A component may implement both.
+type Component = component.Plugin
+
+// Analyzer is the original name for Component, retained for compatibility.
 type Analyzer = component.Plugin
 
-// Options configures a component analyzer.
+// Options configures a component.
 type Options = component.Options
 
 // Limits reports the bounds a component analyzer runs under.
@@ -23,8 +27,8 @@ type Limits = component.Limits
 // EngineLimits reports the bounds a core script engine runs under.
 type EngineLimits = corewasm.Limits
 
-// Load loads a component analyzer from a path, file URI or HTTP(S) URL.
-func Load(ctx context.Context, path string, options Options) (*Analyzer, error) {
+// Load loads a component from a path, file URI or HTTP(S) URL.
+func Load(ctx context.Context, path string, options Options) (*Component, error) {
 	return component.Load(ctx, path, options)
 }
 

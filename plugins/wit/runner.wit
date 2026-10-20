@@ -1,0 +1,71 @@
+package kjanat:actionlint@0.1.0;
+
+/// Runner knowledge is separate from analyzer identity and diagnostic policy.
+/// One call uses one fixed evidence snapshot. The host grants no networking.
+interface runner-provider {
+    variant term { literal(string), expression(string) }
+    /// Host source coordinates. Rejections echo a supplied constraint position;
+    /// (0, 0) refers to the containing job.
+    record position { line: u32, column: u32 }
+    record constraint { value: term, position: position }
+    record rejection { reason: string, position: position }
+    record selector {
+        /// Partial matrix evidence cannot establish a resolved environment.
+        incomplete: bool,
+        labels: list<constraint>,
+        group: option<constraint>,
+        expression: string,
+    }
+    enum freshness { fresh, stale, missing }
+    record snapshot {
+        content: string,
+        scope: string,
+        obtained-at: string,
+        freshness: freshness,
+        complete: bool,
+    }
+    record request {
+        target: string,
+        scope: string,
+        snapshot: snapshot,
+        selectors: list<selector>,
+    }
+    enum os { unknown, linux, macos, windows }
+    enum case-sensitivity { unknown, sensitive, insensitive }
+    record candidate {
+        name: string,
+        os: os,
+        architecture: string,
+        default-shell: string,
+        case-sensitivity: case-sensitivity,
+        sh-is-dash: bool,
+        ephemeral: bool,
+    }
+    variant resolution {
+        resolved(list<candidate>),
+        no-match(list<rejection>),
+        unknown(string),
+        not-applicable,
+    }
+    /// Complete means the candidate set is exhaustive within the requested scope,
+    /// as well as permitting absence claims. Dataset identifies the data revision.
+    record evidence {
+        dataset: string,
+        scope: string,
+        obtained-at: string,
+        freshness: freshness,
+        complete: bool,
+    }
+    record answer { resolution: resolution, evidence: evidence }
+    record descriptor { name: string, version: string, targets: list<string> }
+    record outcome { answers: list<answer>, error: option<string> }
+
+    describe: func() -> descriptor;
+    /// Exactly one answer per selector, in order. Labels within a selector are
+    /// conjunctive; selectors are alternatives. Unresolved terms must not be
+    /// treated as literal labels. No-match requires fresh, complete evidence
+    /// for the requested scope. Operational errors invalidate this batch.
+    resolve: func(request: request) -> outcome;
+}
+
+world runner-plugin { export runner-provider; }

@@ -26,6 +26,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if err := generateRunner(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if *fixtures {
 		if err := generateFixtures(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -175,6 +179,20 @@ func (g *generator) defined(kind wit.TypeDefKind) (string, error) {
 	case *wit.Option:
 		value, err := g.value(kind.Type)
 		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindOption, Option:" + value + "}", err
+	case *wit.Variant:
+		var cases []string
+		for _, item := range kind.Cases {
+			payload := "wp.None[wp.ValTypeDesc]()"
+			if item.Type != nil {
+				value, err := g.value(item.Type)
+				if err != nil {
+					return "", err
+				}
+				payload = "wp.Some(" + value + ")"
+			}
+			cases = append(cases, fmt.Sprintf("{Name:%q, Type:%s}", item.Name, payload))
+		}
+		return "wp.DefinedTypeDesc{Kind:wp.DefinedKindVariant, Variant:&wp.VariantTypeDesc{Cases:[]wp.VariantCaseDesc{" + strings.Join(cases, ",") + "}}}", nil
 	default:
 		return "", fmt.Errorf("unsupported canonical definition %T", kind)
 	}

@@ -6,6 +6,7 @@ import (
 	documentmodel "actionlint.kjanat.dev/document"
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/runner"
 )
 
 // Analysis is the completed or partial result of an analysis session. It contains
@@ -13,6 +14,7 @@ import (
 // Sources is aligned with Diagnostics and retains the exact analyzed text, including
 // dependencies. Consumers may change displayed diagnostic paths without losing it.
 type Analysis struct {
+	RunnerEvidence []runner.Report
 	FileCount      int
 	Diagnostics    []diagnostic.Diagnostic
 	Sources        []DiagnosticSource

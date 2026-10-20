@@ -152,7 +152,7 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{
 		"finding.yaml": cleanWorkflow,
 		"failure.yaml": strings.ReplaceAll(cleanWorkflow, "echo hi", "echo CRASH_ANALYZER"),
-		"both.yaml":    strings.ReplaceAll(brokenWorkflow, "echo hi", "echo CRASH_ANALYZER"),
+		"both.yaml":    strings.ReplaceAll(brokenWorkflow, "echo hi", "echo CRASH_ANALYZER\n        shell: bash"),
 	})
 	for _, tc := range []struct {
 		name, files, path, rule string

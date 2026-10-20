@@ -25,6 +25,7 @@ type MetadataLookup interface {
 // Resolver interprets local action references in one workflow's execution scope.
 // Metadata is shared through base; checkout, mappings and environment state stay local.
 type Resolver struct {
+	Runners              *runnerlang.Knowledge
 	base                 *Cache
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string

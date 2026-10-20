@@ -20,7 +20,9 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
 	rules := make([]string, 0, len(plugins.plugins)+len(plugins.engines))
 	for _, plugin := range plugins.plugins {
-		rules = append(rules, plugin.Descriptor().Name)
+		if plugin.HasAnalyzer() {
+			rules = append(rules, plugin.Descriptor().Name)
+		}
 	}
 	for _, engine := range plugins.engines {
 		rules = append(rules, engine.Metadata().Engine.Name)

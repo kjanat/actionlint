@@ -13,12 +13,14 @@ import (
 	workflowcommands "actionlint.kjanat.dev/internal/workflow/commands"
 	"actionlint.kjanat.dev/internal/workflow/execution"
 	workflownames "actionlint.kjanat.dev/internal/workflow/names"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 // Context supplies resolved document inputs and observations to built-in adapters.
 // It contains no process pool, application session or engine implementation.
 type Context struct {
+	Runners                       *runnerlang.Knowledge
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
 	Config                        *repoconfig.Config
@@ -50,8 +52,8 @@ func ruleBehaviours() map[string]behaviour {
 		}, Enabled: workflowRunNamesAvailable},
 		"matrix":         {Build: func(c Context) workflowvisit.Rule { return NewRuleMatrix() }},
 		"credentials":    {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
-		"shell-name":     {Build: func(c Context) workflowvisit.Rule { return NewRuleShellName() }},
-		"runner-label":   {Build: func(c Context) workflowvisit.Rule { return NewRuleRunnerLabel() }},
+		"shell-name":     {Build: func(c Context) workflowvisit.Rule { r := NewRuleShellName(); r.runners = c.Runners; return r }},
+		"runner-label":   {Build: func(c Context) workflowvisit.Rule { r := NewRuleRunnerLabel(); r.runners = c.Runners; return r }},
 		"events":         {Build: func(c Context) workflowvisit.Rule { return NewRuleEvents() }},
 		"job-needs":      {Build: func(c Context) workflowvisit.Rule { return NewRuleJobNeeds() }},
 		"parallel-steps": {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},

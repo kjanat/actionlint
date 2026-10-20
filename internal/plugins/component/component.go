@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/diagnostic"
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 	hostbind "actionlint.kjanat.dev/internal/plugins/component/bindings/kjanat/actionlint/host"
+	"actionlint.kjanat.dev/runner"
 	"github.com/partite-ai/wacogo"
 	"github.com/partite-ai/wacogo/host"
 	"github.com/partite-ai/wacogo/wasi"
@@ -66,10 +67,14 @@ func (l Limits) String() string {
 // Plugin is a loaded component. It implements analyzer.Analyzer. Calls are
 // serialized; each analysis runs in a fresh instance.
 type Plugin struct {
-	path       string
-	descriptor analyzer.Descriptor
-	limits     Limits
-	log        func(string)
+	analyzerRole     bool
+	runnerRole       bool
+	runnerDescriptor runner.Descriptor
+	digest           string
+	path             string
+	descriptor       analyzer.Descriptor
+	limits           Limits
+	log              func(string)
 
 	engine    *wacogo.Engine
 	component *wacogo.Component
@@ -126,7 +131,7 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 		wacogo.WithRuntimeConfig(config),
 		wacogo.WithLiftLimits(wacogo.LiftLimits{MaxBytes: maxLiftBytes, MaxValues: maxLiftValues}),
 	)
-	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1), memory: &memoryBudget{limit: uint64(limits.MemoryPages) << 16}}
+	p := &Plugin{path: path, digest: artifact.Info.SHA256, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1), memory: &memoryBudget{limit: uint64(limits.MemoryPages) << 16}}
 	if err := p.load(ctx, data); err != nil {
 		return nil, fmt.Errorf("plugin %s: %w", path, errors.Join(err, p.Close(context.WithoutCancel(ctx))))
 	}
@@ -138,47 +143,75 @@ func (p *Plugin) load(ctx context.Context, data []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := checkExports(component.Exports()); err != nil {
+	analyzerRole, runnerRole, err := extensionRoles(component.Exports())
+	if err != nil {
 		return err
 	}
 	if err := checkImports(component.Imports()); err != nil {
 		return err
 	}
-	if err := checkContract(data); err != nil {
+	if err := checkRoleContracts(data, analyzerRole, runnerRole); err != nil {
 		return err
 	}
 	p.component = component
+	p.analyzerRole, p.runnerRole = analyzerRole, runnerRole
 	p.factory, err = hostbind.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
 	}
-	descriptor, err := p.describe(ctx)
-	if err != nil {
-		return err
+	if analyzerRole {
+		descriptor, err := p.describe(ctx)
+		if err != nil {
+			return err
+		}
+		if descriptor.Name == "" {
+			return errors.New("plugin describes itself with an empty name")
+		}
+		if strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, ",\r\n") ||
+			strings.Contains(descriptor.Name, " -- ") || strings.HasSuffix(descriptor.Name, " --") {
+			return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", descriptor.Name)
+		}
+		p.descriptor = descriptor
 	}
-	if descriptor.Name == "" {
-		return errors.New("plugin describes itself with an empty name")
+	if runnerRole {
+		results, err := p.callInterface(ctx, RunnerInterface, "describe")
+		if err != nil {
+			return err
+		}
+		p.runnerDescriptor, err = liftRunnerDescriptor(results[0])
+		if err != nil {
+			return err
+		}
 	}
-	if strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, ",\r\n") ||
-		strings.Contains(descriptor.Name, " -- ") || strings.HasSuffix(descriptor.Name, " --") {
-		return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", descriptor.Name)
-	}
-	p.descriptor = descriptor
+
 	return nil
 }
 
-func checkExports(exports []wacogo.ExportDesc) error {
+func extensionRoles(exports []wacogo.ExportDesc) (bool, bool, error) {
+	var analyzerRole, runnerRole bool
 	for _, export := range exports {
+		if (export.Name == AnalyzerInterface || export.Name == RunnerInterface) && export.Kind != wacogo.SortInstance {
+			return false, false, fmt.Errorf("plugin export %s must be an interface instance", export.Name)
+		}
 		if export.Name == AnalyzerInterface && export.Kind == wacogo.SortInstance {
-			return nil
+			analyzerRole = true
+		}
+		if export.Name == RunnerInterface && export.Kind == wacogo.SortInstance {
+			runnerRole = true
 		}
 	}
 	for _, export := range exports {
-		if strings.HasPrefix(export.Name, "kjanat:actionlint/analyzer@") {
-			return fmt.Errorf("plugin exports %s; this host supports %s", export.Name, AnalyzerInterface)
+		if strings.HasPrefix(export.Name, "kjanat:actionlint/analyzer@") && export.Name != AnalyzerInterface {
+			return false, false, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, AnalyzerInterface)
+		}
+		if strings.HasPrefix(export.Name, "kjanat:actionlint/runner-provider@") && export.Name != RunnerInterface {
+			return false, false, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, RunnerInterface)
 		}
 	}
-	return fmt.Errorf("plugin does not export %s", AnalyzerInterface)
+	if !analyzerRole && !runnerRole {
+		return false, false, fmt.Errorf("plugin does not export %s or %s", AnalyzerInterface, RunnerInterface)
+	}
+	return analyzerRole, runnerRole, nil
 }
 
 func checkImports(imports []wacogo.ImportDesc) error {
@@ -218,6 +251,9 @@ func (p *Plugin) Descriptor() analyzer.Descriptor {
 // Analyze runs the plugin on one document in a fresh instance. A trap, an
 // exit, an exceeded limit or a refused call is returned as an error.
 func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	if !p.analyzerRole {
+		return nil, errors.New("component does not implement the analyzer role")
+	}
 	results, err := p.call(ctx, "analyze", lowerInput(input))
 	if err != nil {
 		return nil, err
@@ -250,6 +286,10 @@ func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
 }
 
 func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
+	return p.callInterface(ctx, AnalyzerInterface, name, args...)
+}
+
+func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
 	if err := p.gate.Acquire(ctx, 1); err != nil {
 		return nil, p.failure(ctx, err)
 	}
@@ -311,9 +351,9 @@ func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (res
 			p.discardImports(ctx)
 		}
 	}()
-	exported := guest.ExportedInstance(AnalyzerInterface)
+	exported := guest.ExportedInstance(iface)
 	if exported == nil {
-		return nil, p.failure(ctx, fmt.Errorf("instance does not export %s", AnalyzerInterface))
+		return nil, p.failure(ctx, fmt.Errorf("instance does not export %s", iface))
 	}
 	fn := exported.ExportedFunc(name)
 	if fn == nil {

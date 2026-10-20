@@ -13,6 +13,7 @@ import (
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
 	"actionlint.kjanat.dev/internal/workflow/schema"
+	runnerapi "actionlint.kjanat.dev/runner"
 )
 
 type runnerOSCompat uint
@@ -146,13 +147,17 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 func Check(job *workflowlang.Job, customLabels []string) []diagnostic.Diagnostic {
 	rule := checker{labels: customLabels}
 	rule.checkJob(job)
-	return rule.findings
+	findings := make([]diagnostic.Diagnostic, 0, len(rule.rejections))
+	for _, rejection := range rule.rejections {
+		findings = append(findings, diagnostic.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason})
+	}
+	return findings
 }
 
 type checker struct {
-	findings []diagnostic.Diagnostic
-	labels   []string
-	compats  map[runnerOSCompat]*workflowlang.String
+	rejections []runnerapi.Rejection
+	labels     []string
+	compats    map[runnerOSCompat]*workflowlang.String
 }
 
 func (rule *checker) checkJob(n *workflowlang.Job) {
@@ -641,5 +646,5 @@ func (rule *checker) checkMatrixLabels(groups [][]*workflowlang.String) {
 func (rule *checker) getKnownLabels() []string { return rule.labels }
 
 func (rule *checker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
-	rule.findings = append(rule.findings, diagnostic.Diagnostic{Rule: "runner-label", Start: diagnostic.Position{Line: pos.Line, Column: pos.Col}, Message: fmt.Sprintf(format, args...)})
+	rule.rejections = append(rule.rejections, runnerapi.Rejection{Position: diagnostic.Position{Line: pos.Line, Column: pos.Col}, Reason: fmt.Sprintf(format, args...)})
 }

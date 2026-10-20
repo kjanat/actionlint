@@ -12,6 +12,7 @@ import (
 func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 	packages := []string{
 		"actionlint.kjanat.dev/analyzer",
+		"actionlint.kjanat.dev/runner",
 		"actionlint.kjanat.dev/diagnostic",
 		"actionlint.kjanat.dev/document",
 		"actionlint.kjanat.dev/syntax",

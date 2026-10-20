@@ -19,6 +19,9 @@ func Rules(ctx context.Context, paths []string) (result []rule.Descriptor, err e
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
 	var extensions []rule.Descriptor
 	for _, plugin := range plugins.plugins {
+		if !plugin.HasAnalyzer() {
+			continue
+		}
 		extensions = append(extensions, plugin.Descriptor().Descriptor)
 	}
 	result, err = rulecatalog.Combine(extensions...)
