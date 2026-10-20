@@ -3,9 +3,9 @@ package eventpayload
 import (
 	"maps"
 	"slices"
-	"strings"
 
 	expr "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/webhook"
 	"actionlint.kjanat.dev/v2/internal/webhook/payload"
 )
 
@@ -21,32 +21,88 @@ type Trigger struct {
 // Dynamic mappings remain open; only known object members are checked strictly.
 func FromTriggers(triggers []Trigger) *expr.ObjectType {
 	b := builder{cache: map[int]expr.Type{}, active: map[int]bool{}}
-	var result expr.Type
+	var selected []expr.EventVariant
 	for _, trigger := range triggers {
 		name := trigger.Name
 		if name == "pull_request_target" {
 			name = "pull_request"
 		}
 		variants, known := payload.Variants(name)
-		if !known {
-			return expr.NewEmptyObjectType()
+		var dispatch *expr.ObjectType
+		if trigger.Name == "repository_dispatch" {
+			// OpenAPI indexes this shared schema by an example event_type. That
+			// example is not a restriction on user-defined dispatch activities.
+			var combined expr.Type
+			for _, action := range slices.Sorted(maps.Keys(variants)) {
+				combined = combine(combined, b.build(variants[action]))
+			}
+			if object, ok := combined.(*expr.ObjectType); ok {
+				copyObject := *object
+				copyObject.Props = maps.Clone(object.Props)
+				copyObject.Props["client_payload"] = expr.NewEmptyObjectType()
+				dispatch = &copyObject
+			}
 		}
 		actions := trigger.Actions
 		if len(actions) == 0 {
-			actions = slices.Sorted(maps.Keys(variants))
+			actions, _ = webhook.DefaultActivities(trigger.Name)
+		}
+		if len(actions) == 0 {
+			// Events without a types filter can still carry webhook actions, e.g.
+			// deployment's "created" payload. The registry decides syntax validity;
+			// the catalogue supplies each possible payload for an actionless trigger.
+			if trigger.Name != "repository_dispatch" {
+				actions = slices.Sorted(maps.Keys(variants))
+			}
+			if len(actions) == 0 {
+				actions = []string{""}
+			}
 		}
 		for _, action := range actions {
 			id, ok := variants[action]
-			if !ok {
-				return expr.NewEmptyObjectType()
+			object := expr.NewEmptyObjectType()
+			if dispatch != nil {
+				object = dispatch
+			} else if known && ok {
+				if projected, ok := b.build(id).(*expr.ObjectType); ok {
+					object = projected
+				}
 			}
-			result = combine(result, b.build(id))
+			if trigger.Name == "workflow_run" {
+				object = workflowRunPayload(object)
+			}
+			event := trigger.Name
+			if event == "workflow_call" {
+				// A reusable workflow inherits its caller's actual event name.
+				event = ""
+			}
+			selected = append(selected, expr.EventVariant{Event: event, Action: action, Payload: object})
 		}
 	}
-	if object, ok := result.(*expr.ObjectType); ok {
+	return expr.NewEventType(selected)
+}
+
+// Keep the established Actions repository metadata overlay on each alternative,
+// so narrowing cannot discard it. Clone only the path being changed.
+func workflowRunPayload(object *expr.ObjectType) *expr.ObjectType {
+	run, ok := object.Props["workflow_run"].(*expr.ObjectType)
+	if !ok {
 		return object
 	}
-	return expr.NewEmptyObjectType()
+	repository, ok := run.Props["head_repository"].(*expr.ObjectType)
+	if !ok {
+		return object
+	}
+	copyRepository := *repository
+	copyRepository.Props = maps.Clone(repository.Props)
+	copyRepository.Props["homepage"] = expr.StringType{}
+	copyRun := *run
+	copyRun.Props = maps.Clone(run.Props)
+	copyRun.Props["head_repository"] = &copyRepository
+	copyObject := *object
+	copyObject.Props = maps.Clone(object.Props)
+	copyObject.Props["workflow_run"] = &copyRun
+	return &copyObject
 }
 
 type builder struct {
@@ -78,7 +134,7 @@ func (b *builder) build(id int) expr.Type {
 		t = expr.BoolType{}
 	case "array":
 		t = &expr.ArrayType{Elem: known(b.build(n.Element))}
-	case "union":
+	case "union", "intersection":
 		for _, alternative := range n.Alternatives {
 			t = combine(t, b.build(alternative))
 		}
@@ -86,7 +142,7 @@ func (b *builder) build(id int) expr.Type {
 		o := expr.NewEmptyStrictObjectType()
 		o.DisplayName = "object"
 		for _, name := range slices.Sorted(maps.Keys(n.Properties)) {
-			o.Props[strings.ToLower(name)] = known(b.build(n.Properties[name].Type))
+			o.SetProperty(name, known(b.build(n.Properties[name].Type)))
 		}
 		if n.Mapped != nil {
 			o.Mapped = known(b.build(*n.Mapped))
@@ -119,10 +175,17 @@ func combine(a, b expr.Type) expr.Type {
 	if x, ok := a.(*expr.ObjectType); ok {
 		if y, ok := b.(*expr.ObjectType); ok {
 			o := expr.NewStrictObjectType(maps.Clone(x.Props))
+			o.PropertyNames = maps.Clone(x.PropertyNames)
 			o.DisplayName = "object"
 			o.Mapped = combine(x.Mapped, y.Mapped)
 			for name, t := range y.Props {
 				o.Props[name] = combine(o.Props[name], t)
+				if original, ok := y.PropertyNames[name]; ok {
+					if o.PropertyNames == nil {
+						o.PropertyNames = map[string]string{}
+					}
+					o.PropertyNames[name] = original
+				}
 			}
 			return o
 		}

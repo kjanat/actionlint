@@ -39,7 +39,7 @@ jobs:
           USER: rhysd
           PASS: P@ssw0rd
         if: *cond
-      - run: echo ${{ env.PASS }}
+      - run: echo "$PASS"
         env: *cred_env
         if: *cond
   test2: &job
@@ -54,7 +54,7 @@ jobs:
           ref: *runner
       - run: echo ${{ env.R }}
         env: *default_env
-      - run: echo ${{ env.USER }}@${{ env.PASS }}
+      - run: echo "$env:USER@$env:PASS"
         env: *cred_env
       - run: echo "$SHELL"
         shell: *default_shell
@@ -100,7 +100,7 @@ jobs:
         credentials: *cred
     runs-on: ubuntu-slim
     steps:
-      - run: ./login.bash ${{ env.username }}@${{ env.password }}
+      - run: ./login.bash "$username@$password"
         env: *cred
   test6:
     env: &expr ${{ fromJSON('{}') }}

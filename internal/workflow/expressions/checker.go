@@ -23,6 +23,8 @@ type Checker struct {
 	dependencies     Dependencies
 	errs             []*findingmodel.Finding
 	matrixTy         *exprlang.ObjectType
+	matrixScriptSafe map[string]bool
+	scriptEnv        *workflowlang.Env
 	stepsTy          *exprlang.ObjectType
 	needsTy          *exprlang.ObjectType
 	secretsTy        *exprlang.ObjectType

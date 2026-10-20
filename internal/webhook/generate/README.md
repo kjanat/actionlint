@@ -1,6 +1,48 @@
 # generate-webhook-events
 
-This is a script for generating [`webhooks.go`](../webhooks.go).
+Generates the Actions trigger registry [`webhooks.go`](../webhooks.go), offline:
+
+```sh
+go run ./internal/webhook/generate --registry internal/webhook/webhooks.go
+go test ./internal/webhook/generate
+```
+
+`sources/manifest.json` pins full source revisions and SHA-256 digests. The primary
+machine-readable input is GitHub's `actions/languageservices` workflow schema,
+following `workflow-root-strict` -> `on-strict` -> `on-mapping-strict`. The permissive
+schema is never used. Event configuration keys and activity enums are resolved
+through the referenced `one-of`, `mapping`, and `sequence` definitions.
+
+The pinned Actions documentation activity tables take precedence on conflicts.
+The pull-request table includes its pinned reusable Markdown fragment. This
+snapshot targets GitHub.com (fpt/ghec), not every historical GHES version.
+The manifest distinguishes omitted-`types` defaults from permitted activities.
+Its default source is the documentation's pull-request and pull-request-target
+sections; both select opened, synchronize and reopened. Other events select all
+permitted activities, including the actionless and arbitrary-dispatch cases.
+
+Generation reconciles three sources: strict workflow schema, Actions docs, and
+the separately pinned OpenAPI payload catalogue. Webhook-only actions never
+expand trigger permissions. Every difference needs an exact manifest exception
+with rationale, pinned source, product/version scope and production verification
+status. Missing, incomplete and stale exceptions fail generation and tests.
+The fixtures are public specifications; none asserts GitHub server validation was
+tested. Payload aliases and special Actions payloads stay in the workflow adapter.
+
+To update, fetch the three source files at explicit commits, update their hashes
+and the payload provenance, and run generation. Review each reported difference
+against Actions docs before changing exceptions. Do not mechanically accept all
+webhook activities. Normal tests and generation perform no network requests.
+
+The source files retain upstream text: the workflow schema is from the MIT-licensed
+[actions/languageservices](https://github.com/actions/languageservices); documentation
+is from [github/docs](https://github.com/github/docs), licensed CC BY 4.0 for content.
+Exact source URLs and revisions are retained in the manifest for attribution.
+
+## Documentation audit
+
+The original HTML parser remains available as an independent documentation audit.
+Its output is not the canonical registry and must not overwrite `webhooks.go`.
 
 It does:
 
@@ -14,16 +56,16 @@ It does:
 generate-webhook-events [[srcfile] dstfile]
 ```
 
-Generate `webhooks.go` file:
+Generate an independent documentation observation:
 
 ```sh
-go run ./internal/webhook/generate ./internal/webhook/webhooks.go
+go run ./internal/webhook/generate -
 ```
 
 When the HTML file is in local:
 
 ```sh
-go run ./internal/webhook/generate ./input.html ./internal/webhook/webhooks.go
+go run ./internal/webhook/generate ./input.html -
 ```
 
 For debugging, specifying `-` to `dstfile` outputs the generated source to stdout:

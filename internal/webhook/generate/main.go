@@ -312,30 +312,6 @@ var AllWebhookTypes = map[string][]string{`)
 	return nil
 }
 
-// addWebhookOnlyActivityTypes supplements the Actions trigger documentation with activity types
-// in its webhook reference or official workflow schema. Keep this separate from parse so the
-// HTML parser remains a faithful representation of its input.
-func addWebhookOnlyActivityTypes(parsed map[string][]string) {
-	additional := map[string][]string{
-		"merge_group": {"destroyed"},
-		// https://github.com/actions/languageservices/pull/384
-		"pull_request":        {"stacked"},
-		"pull_request_target": {"stacked"},
-	}
-	for event, types := range additional {
-		current, ok := parsed[event]
-		if !ok {
-			continue
-		}
-		for _, typ := range types {
-			if !slices.Contains(current, typ) {
-				current = append(current, typ)
-			}
-		}
-		parsed[event] = current
-	}
-}
-
 func fetch(url string) ([]byte, error) {
 	var c http.Client
 
@@ -412,8 +388,6 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 	if err != nil {
 		return err
 	}
-	addWebhookOnlyActivityTypes(p)
-
 	if err := write(p, out); err != nil {
 		return err
 	}
@@ -431,6 +405,13 @@ func run(args []string, stdout, dbgout io.Writer, srcURL string) error {
 }
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--registry" {
+		if err := generateRegistry(os.Args[2]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(os.Args[1:], os.Stdout, os.Stderr, theURL); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

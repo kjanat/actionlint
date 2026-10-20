@@ -49,6 +49,10 @@ func TestObservationsAreIsolated(t *testing.T) {
 		t.Fatal("caller changed catalogue variants")
 	}
 	node := Node(id)
+	for node.Kind == "intersection" && len(node.Alternatives) == 1 {
+		id = node.Alternatives[0]
+		node = Node(id)
+	}
 	if len(node.Properties) == 0 {
 		t.Fatal("push has no properties")
 	}

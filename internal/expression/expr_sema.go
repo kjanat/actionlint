@@ -294,7 +294,7 @@ var builtinSecretProps = map[string]Type{
 var BuiltinGlobalVariableTypes = map[string]Type{
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#github-context
 	// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/contexts
-	"github": NewStrictObjectType(map[string]Type{
+	"github": newNamedObjectType(map[string]Type{
 		"action":                    StringType{},
 		"action_path":               StringType{}, // Note: Composite actions only
 		"action_ref":                StringType{},
@@ -325,7 +325,7 @@ var BuiltinGlobalVariableTypes = map[string]Type{
 		"repository_owner":          StringType{},
 		"repository_owner_id":       StringType{},
 		"repository_visibility":     StringType{}, // Note: Missing from the context reference; documented as an OIDC claim
-		"repositoryurl":             StringType{}, // repositoryUrl
+		"repositoryUrl":             StringType{},
 		"retention_days":            StringType{},
 		"run_attempt":               StringType{},
 		"run_id":                    StringType{},
@@ -533,7 +533,7 @@ func (sema *Checker) UpdateSecrets(ty *ObjectType) {
 	sema.ensureVarsCopied()
 
 	// Merges automatically supplied secrets with manually defined secrets.
-	copied := &ObjectType{Props: maps.Clone(builtinSecretProps), Mapped: ty.Mapped}
+	copied := &ObjectType{Props: maps.Clone(builtinSecretProps), Mapped: ty.Mapped, PropertyNames: maps.Clone(ty.PropertyNames)}
 	maps.Copy(copied.Props, ty.Props)
 	sema.vars["secrets"] = copied
 }
@@ -564,13 +564,21 @@ func (sema *Checker) UpdateDispatchInputs(ty *ObjectType) {
 	for n := range ty.Props {
 		p[n] = StringType{}
 	}
-	ty = NewStrictObjectType(p)
+	ty = &ObjectType{Props: p, PropertyNames: maps.Clone(ty.PropertyNames)}
 
 	sema.ensureGithubVarCopied()
 	if gh, ok := sema.vars["github"].(*ObjectType); ok {
 		if ev, ok := gh.Props["event"].(*ObjectType); ok {
 			ev = copyEventObject(ev)
 			ev.Props["inputs"] = ty
+			ev.EventVariants = slices.Clone(ev.EventVariants)
+			for i, variant := range ev.EventVariants {
+				if variant.Event == "workflow_dispatch" {
+					updated := copyEventObject(variant.Payload)
+					updated.Props["inputs"] = ty
+					ev.EventVariants[i].Payload = updated
+				}
+			}
 			gh.Props["event"] = ev
 		}
 	}
@@ -739,14 +747,12 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 				switch receiver.Name {
 				case "github", "job", "runner", "strategy":
 					if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
-						sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
+						sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.PropertyName(), suggestion)
 						return AnyType{}
 					}
 				}
 			}
-			if !sema.missingEventProperty(n, n.Receiver, n.Property, ty) {
-				sema.errorf(unknownProperty, n, "property %q is not defined in object type %s", n.Property, ty.String())
-			}
+			sema.missingProperty(n, n.Receiver, n.PropertyName(), ty)
 		}
 		return AnyType{}
 	case *ArrayType:
@@ -766,9 +772,7 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 			} else if et.Mapped != nil {
 				elem = et.Mapped
 			} else if et.IsStrict() {
-				if !sema.missingEventProperty(n, n.Receiver, n.Property, et) {
-					sema.errorf(unknownProperty, n, "property %q is not defined in object type %s as element of filtered array", n.Property, et.String())
-				}
+				sema.missingProperty(n, n.Receiver, n.PropertyName(), et)
 			}
 			return &ArrayType{elem, true}
 		default:
@@ -913,7 +917,7 @@ func (sema *Checker) checkArrayDeref(n *ArrayDerefNode) Type {
 		}
 
 		// Payload object filters select scalar members as well as object members.
-		if strings.HasPrefix(eventReference(n.Receiver), "github.event") {
+		if path := strings.ToLower(eventReference(n.Receiver)); path == "github.event" || strings.HasPrefix(path, "github.event.") || strings.HasPrefix(path, "github.event[") {
 			return &ArrayType{Elem: AnyType{}, Deref: true}
 		}
 		// For strict object at receiver of .*
@@ -977,9 +981,7 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 					return ty.Mapped
 				}
 				if ty.IsStrict() {
-					if !sema.missingEventProperty(n, n.Operand, lit.Value, ty) {
-						sema.errorf(unknownProperty, n, "property %q is not defined in object type %s", lit.Value, ty.String())
-					}
+					sema.missingProperty(n, n.Operand, lit.Value, ty)
 				}
 			}
 			if ty.Mapped != nil {
@@ -1283,13 +1285,13 @@ func (sema *Checker) checkWithNarrowing(n Node, isTruthy bool) Type {
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {
 				sema.check(n.Left)
-				return sema.check(n.Right)
+				return sema.withEventGuard(n.Left, true, func() Type { return sema.check(n.Right) })
 			}
 		case LogicalOpNodeKindOr:
 			// When `l || r` is false, narrow its type to `typeof(r)`
 			if !isTruthy {
 				sema.check(n.Left)
-				return sema.check(n.Right)
+				return sema.withEventGuard(n.Left, false, func() Type { return sema.check(n.Right) })
 			}
 		}
 		return sema.checkLogicalOp(n)
@@ -1307,13 +1309,15 @@ func (sema *Checker) checkLogicalOp(n *LogicalOpNode) Type {
 		// Narrow the type of LHS expression by assuming its value is falsy.
 		left := sema.checkWithNarrowing(n.Left, false)
 		value, known := ConditionConstantValue(n.Left)
-		return left.Merge(sema.checkExpressionBranch(n.Right, known && !ExpressionTruthy(value)))
+		right := sema.withEventGuard(n.Left, true, func() Type { return sema.checkExpressionBranch(n.Right, known && !ExpressionTruthy(value)) })
+		return left.Merge(right)
 	case LogicalOpNodeKindOr:
 		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise `typeof(r).
 		// Narrow the type of LHS expression by assuming its value is truthy.
 		left := sema.checkWithNarrowing(n.Left, true)
 		value, known := ConditionConstantValue(n.Left)
-		return left.Merge(sema.checkExpressionBranch(n.Right, known && ExpressionTruthy(value)))
+		right := sema.withEventGuard(n.Left, false, func() Type { return sema.checkExpressionBranch(n.Right, known && ExpressionTruthy(value)) })
+		return left.Merge(right)
 	default:
 		sema.check(n.Left)
 		sema.check(n.Right)
@@ -1371,6 +1375,9 @@ func (sema *Checker) Check(expr Node) (Type, []*Error) {
 	if sema.untrusted != nil {
 		sema.untrusted.OnVisitEnd()
 		errs = append(errs, sema.untrusted.Errs()...)
+		if len(sema.errs) == 0 {
+			errs = append(errs, CheckSecretInterpolations(expr)...)
+		}
 	}
 	return ty, errs
 }

@@ -4,6 +4,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          if [[ "${{ github.event.sender.login}}" == "rhysd" ]]; then
+          if [[ "$SENDER" == "rhysd" ]]; then
             echo "it's me"
           fi
+        env:
+          SENDER: ${{ github.event.sender.login}}

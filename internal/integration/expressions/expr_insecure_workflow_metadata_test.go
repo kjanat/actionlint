@@ -60,8 +60,12 @@ func TestWorkflowRunSiblingWorkflowMetadataSafeControls(t *testing.T) {
 	} {
 		t.Run(expression, func(t *testing.T) {
 			findings := lintSiblingWorkflowMetadata(t, "      - run: echo '${{ "+expression+" }}'\n", "\n")
-			if len(findings) != 0 {
-				t.Fatalf("safe expression rejected: %+v", findings)
+			if expression == "github.event.workflow.id" || strings.HasPrefix(expression, "contains(") || strings.HasPrefix(expression, "startsWith(") || strings.HasPrefix(expression, "endsWith(") {
+				if len(findings) != 0 {
+					t.Fatal(findings)
+				}
+			} else if len(findings) != 1 || findings[0].Rule != "script-interpolation" {
+				t.Fatalf("expected syntax warning for unproved string, not untrusted-input finding: %+v", findings)
 			}
 		})
 	}

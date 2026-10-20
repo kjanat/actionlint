@@ -20,13 +20,5 @@ func Type(w *workflow.Workflow) *expr.ObjectType {
 		}
 		triggers = append(triggers, trigger)
 	}
-	result := FromTriggers(triggers)
-	// Retain the repository metadata covered by the existing workflow_run
-	// injection regressions. The upstream head_repository projection omits homepage.
-	if run, ok := result.Props["workflow_run"].(*expr.ObjectType); ok {
-		if repo, ok := run.Props["head_repository"].(*expr.ObjectType); ok {
-			repo.Props["homepage"] = expr.StringType{}
-		}
-	}
-	return result
+	return FromTriggers(triggers)
 }

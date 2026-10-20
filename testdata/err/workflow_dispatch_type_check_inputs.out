@@ -1,6 +1,7 @@
-test.yaml:23:24: property "select" is not defined in object type {boolean: bool; choice: string; environment: string; number: number; string: string} [expression-reference]
+test.yaml:23:24: property "select" is not defined in inputs [expression-reference]
 test.yaml:24:24: property "select" is not defined in github.event.inputs for the configured workflow events [event-payload]
 test.yaml:26:31: property access of object must be type of string but got "bool" [expression-type]
+test.yaml:28:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
 test.yaml:30:39: index access of array must be type of number but got "string" [expression-type]
 test.yaml:31:39: index access of array must be type of number but got "string" [expression-type]
 test.yaml:32:39: index access of array must be type of number but got "string" [expression-type]

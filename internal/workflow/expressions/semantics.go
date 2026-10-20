@@ -107,6 +107,22 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 	}
 
 	ty, errs := c.Check(expr)
+	if checkUntrusted && len(errs) == 0 {
+		findings := exprlang.CheckScriptInterpolation(expr, ty, func(node exprlang.Node) bool {
+			path := exprlang.StaticReference(node)
+			if c.IsScriptSafeScalar(node) || safeMatrixScriptReference(node, rule.matrixScriptSafe) {
+				return true
+			}
+			if name, ok := strings.CutPrefix(path, "env."); ok && rule.scriptEnv != nil {
+				value, known := workflowlang.InputResolver.Value(workflowlang.EnvMappingView(rule.scriptEnv), name)
+				return known && exprlang.SafeScriptLiteral(value)
+			}
+			return false
+		})
+		for _, finding := range findings {
+			rule.exprError(finding, line, col)
+		}
+	}
 	for _, err := range errs {
 		rule.exprError(err, line, col)
 	}

@@ -7,6 +7,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo '${{ inputs.logLevel }}'
-      - run: echo '${{ inputs.loglevel }}'
-      - run: echo '${{ inputs.LOGLEVEL }}'
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.logLevel }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.loglevel }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.LOGLEVEL }}
