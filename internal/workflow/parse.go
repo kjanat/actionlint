@@ -2143,6 +2143,7 @@ func Parse(b []byte) (*Workflow, []*SyntaxError) {
 
 	p := NewSourceParser(b)
 	p.IndexScalarSources(&n)
+	p.checkFlowMappingNulls(&n, false)
 	w := p.parse(&n)
 	w.ExpressionSources = p.workflowExpressionSources(&n)
 
