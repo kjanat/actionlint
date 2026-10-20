@@ -31,8 +31,10 @@ func generateRunner() error {
 		fmt.Fprintln(&g.output, `import wp "github.com/partite-ai/wacogo/wasmparser"`)
 		identity := iface.Package.Name
 		identity.Extension = *iface.Name
-		fmt.Fprintf(&g.output, "const RunnerInterface = %q\n", identity.String())
-		fmt.Fprintf(&g.output, "const runnerContractDigest = %q\n", fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))))
+		fmt.Fprintln(&g.output, "const (")
+		fmt.Fprintf(&g.output, "RunnerInterface = %q\n", identity.String())
+		fmt.Fprintf(&g.output, "runnerContractDigest = %q\n", fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))))
+		fmt.Fprintln(&g.output, ")")
 		fmt.Fprintln(&g.output, "func expectedRunnerContract() *wp.ComponentType {")
 		fmt.Fprintln(&g.output, "b := wp.NewArena(wp.DefaultFeatures()).HostTypeBuilder()")
 		var exports []string
@@ -54,10 +56,11 @@ func generateRunner() error {
 			}
 			exports = append(exports, fmt.Sprintf("%q: {Kind: wp.EntityFunc, FuncID: b.PushFuncType(wp.FuncTypeDesc{Params: %s, Results: %s})},", name, params, results))
 		}
-		fmt.Fprintf(&g.output, "provider := b.PushInstanceType(wp.InstanceTypeDesc{Exports: map[string]wp.ComponentEntityType{%s}})\n", strings.Join(exports, "\n"))
+		fmt.Fprintf(&g.output, "provider := b.PushInstanceType(wp.InstanceTypeDesc{Exports: map[string]wp.ComponentEntityType{\n%s\n}})\n", strings.Join(exports, "\n"))
 		fmt.Fprintln(&g.output, "plugin := b.PushInstanceType(wp.InstanceTypeDesc{Exports: map[string]wp.ComponentEntityType{RunnerInterface: {Kind: wp.EntityInstance, InstID: provider}}})")
 		fmt.Fprintln(&g.output, `return b.NewComponentTypeHandle(b.PushComponentType(wp.ComponentTypeDesc{Imports: map[string]wp.ComponentEntityType{"plugin": {Kind: wp.EntityInstance, InstID: plugin}}, ImportOrder: []string{"plugin"}}))`)
 		fmt.Fprintln(&g.output, "}")
+		fmt.Fprintln(&g.output, "var (")
 		for name, td := range iface.TypeDefs.All() {
 			var names []string
 			switch kind := td.Kind.(type) {
@@ -72,8 +75,9 @@ func generateRunner() error {
 			default:
 				continue
 			}
-			fmt.Fprintf(&g.output, "var runner_%s = []string{%s}\n", strings.ReplaceAll(name, "-", "_"), strings.Join(names, ","))
+			fmt.Fprintf(&g.output, "runner_%s = []string{%s}\n", strings.ReplaceAll(name, "-", "_"), strings.Join(names, ","))
 		}
+		fmt.Fprintln(&g.output, ")")
 		formatted, err := format.Source(g.output.Bytes())
 		if err != nil {
 			return err
