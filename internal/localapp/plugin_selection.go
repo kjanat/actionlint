@@ -54,18 +54,22 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 	if s.Disabled && s.LockFile == "" {
 		return PluginSources{}, nil
 	}
-	if s.LockFile != "" || s.ConfigFile != "" {
+	if s.LockFile != "" {
 		f, err := OpenPluginLock(ctx, directory, s.LockFile, s.ConfigFile)
 		if err != nil {
 			return PluginSources{}, err
 		}
 		if !f.Exists() {
-			if s.LockFile != "" {
-				return PluginSources{}, fmt.Errorf("plugin lock does not exist: %s", f.Path)
-			}
-			return PluginSources{}, nil
+			return PluginSources{}, fmt.Errorf("plugin lock does not exist: %s", f.Path)
 		}
 		return sourcesFromLock(ctx, f, "")
+	}
+	if s.ConfigFile != "" {
+		project, err := OpenPluginProject(ctx, directory, "", s.ConfigFile)
+		if err != nil {
+			return PluginSources{}, err
+		}
+		return sourcesFromProject(ctx, project, "")
 	}
 	starts := []string{directory}
 	if input.Kind == application.Files && len(input.Paths) > 0 {
@@ -85,7 +89,7 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 	}
 	roots := map[string]bool{}
 	var selected PluginSources
-	var selectedFile *pluginregistry.LockFile
+	var selectedProject *PluginProject
 	for _, start := range starts {
 		root := pluginProjectRoot(start)
 		if roots[root] {
@@ -95,30 +99,46 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 		if root == "" {
 			continue
 		}
-		f, err := pluginregistry.OpenProjectLock(ctx, root)
+		project, err := OpenPluginProject(ctx, root, "", "")
 		if err != nil {
 			return PluginSources{}, err
 		}
-		if f.Exists() {
-			selected = PluginSources{LockFile: f.Path, root: root, automatic: true}
-			selectedFile = f
+		if project.Lock.Exists() || project.Manifest.Declared {
+			selected = PluginSources{LockFile: project.Lock.Path, root: root, automatic: true}
+			selectedProject = project
 		}
 	}
 	if selected.LockFile == "" {
 		return PluginSources{root: pluginProjectRoot(directory), automatic: true}, nil
 	}
 	if len(roots) != 1 {
-		return PluginSources{}, errors.New("inputs span repositories with a plugin lock; check them separately or select --plugin-lock explicitly")
+		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
 	}
-	return sourcesFromLock(ctx, selectedFile, selected.root)
+	return sourcesFromProject(ctx, selectedProject, selected.root)
 }
 
 func sourcesFromLock(ctx context.Context, f *pluginregistry.LockFile, root string) (PluginSources, error) {
-	if err := SyncPlugins(ctx, f.Lock); err != nil {
+	return sourcesFromPins(ctx, f.Path, f.Lock, root)
+}
+
+func sourcesFromProject(ctx context.Context, project *PluginProject, root string) (PluginSources, error) {
+	lock, err := project.SelectedLock()
+	if err != nil {
 		return PluginSources{}, err
 	}
-	selected := PluginSources{LockFile: f.Path, root: root, automatic: root != ""}
-	for _, p := range f.Lock.Plugins {
+	path := project.Lock.Path
+	if !project.Lock.Exists() && !project.Manifest.Declared {
+		path = ""
+	}
+	return sourcesFromPins(ctx, path, lock, root)
+}
+
+func sourcesFromPins(ctx context.Context, path string, lock pluginregistry.Lock, root string) (PluginSources, error) {
+	if err := SyncPlugins(ctx, lock); err != nil {
+		return PluginSources{}, err
+	}
+	selected := PluginSources{LockFile: path, root: root, automatic: root != ""}
+	for _, p := range lock.Plugins {
 		selected.Paths = append(selected.Paths, p.Source())
 	}
 	return selected, nil
@@ -141,9 +161,18 @@ func (s PluginSources) ValidateScope(paths []string) error {
 			}
 			_, err := os.Lstat(filepath.Join(root, ".github", pluginregistry.LockName))
 			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			if err != nil {
+				configPath, err := pluginConfigPath(filepath.Join(root, ".github"))
+				if err != nil {
+					return err
+				}
+				manifest, err := OpenPluginManifest(context.Background(), configPath)
+				if err != nil {
+					return err
+				}
+				if len(manifest.References) == 0 {
+					continue
+				}
+			} else if err != nil {
 				return err
 			}
 		}

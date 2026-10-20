@@ -134,6 +134,24 @@ func openLock(ctx context.Context, absolute string) (*LockFile, error) {
 
 func (f *LockFile) Exists() bool { return f.original != nil }
 
+// CheckUnchanged verifies the destination's safe ancestry and original bytes
+// before a caller creates transaction guards or modifies a related manifest.
+func (f *LockFile) CheckUnchanged(ctx context.Context) error {
+	_, err := f.unchangedBytes(ctx)
+	return err
+}
+
+func (f *LockFile) unchangedBytes(ctx context.Context) ([]byte, error) {
+	current, err := readLockBytes(ctx, f.Path)
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(current, f.original) || (current == nil) != (f.original == nil) {
+		return nil, errors.New("plugin lock changed during operation; retry")
+	}
+	return current, nil
+}
+
 // An explicit lock chooses its containing directory as the boundary. Resolve
 // aliases of that directory; never resolve the lock file itself. Automatic
 // project selection uses OpenProjectLock with its already-selected boundary.
@@ -190,6 +208,23 @@ func (f *LockFile) Save(ctx context.Context) (err error) {
 	if len(data) > maxJSONBytes {
 		return errors.New("plugin lock exceeds 4 MiB")
 	}
+	return f.replace(ctx, data)
+}
+
+// Restore rolls back this instance's last write, but only while its written bytes
+// are still present. It never overwrites an intervening edit by another writer.
+func (f *LockFile) Restore(ctx context.Context, previous *LockFile) error {
+	if f.Path != previous.Path {
+		return errors.New("cannot restore a different plugin lock")
+	}
+	if err := f.replace(ctx, previous.original); err != nil {
+		return err
+	}
+	f.Lock = previous.Lock
+	return nil
+}
+
+func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 	if err := safePath(f.Path); err != nil {
 		return err
 	}
@@ -201,14 +236,21 @@ func (f *LockFile) Save(ctx context.Context) (err error) {
 		return fmt.Errorf("plugin lock busy (%s): %w", guardPath, err)
 	}
 	defer func() { err = errors.Join(err, os.Remove(guardPath)) }()
-	current, err := readLockBytes(ctx, f.Path)
+	current, err := f.unchangedBytes(ctx)
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(current, f.original) || (current == nil) != (f.original == nil) {
-		return errors.New("plugin lock changed during operation; retry")
-	}
 	if bytes.Equal(current, data) {
+		return nil
+	}
+	if data == nil {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := os.Remove(f.Path); err != nil {
+			return err
+		}
+		f.original = nil
 		return nil
 	}
 	temp, err := os.CreateTemp(filepath.Dir(f.Path), ".actionlint-plugins-*")
@@ -249,7 +291,7 @@ func (f *LockFile) Set(pin Pin) error {
 		if !strings.EqualFold(old.Name, pin.Name) {
 			continue
 		}
-		if old.Registry != pin.Registry || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID || old.Kind != pin.Kind || old.Asset != pin.Asset {
+		if !SameRegistry(old.Registry, pin.Registry) || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID || old.Kind != pin.Kind || old.Asset != pin.Asset {
 			return fmt.Errorf("publisher or artifact identity changed for %s; remove explicitly before switching", pin.Name)
 		}
 		if old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || old.Contract != pin.Contract) {

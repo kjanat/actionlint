@@ -12,7 +12,7 @@ Search the [published catalogue](https://plugins.actionlint.kjanat.dev/) using c
 ```sh
 actionlint plugin search shellcheck
 actionlint plugin versions github.com/owner/plugin
-actionlint plugin install github.com/owner/plugin --version v1.2.3
+actionlint plugin install owner/plugin@v1.2.3
 actionlint plugin list
 actionlint check
 ```
@@ -22,14 +22,35 @@ Use `--registry https://example.org/catalogue/` on search, versions or install t
 Registry metadata requests stay within that HTTPS origin and catalogue directory. Artifact URLs must match the
 registered GitHub release or GitLab generic package. Registry publication remains a separate publisher workflow.
 
-Installation writes `.github/actionlint.plugins.lock.json` in the nearest Git repository. Commit this file.
-Each entry records the registry, publisher repository/owner IDs, plugin ID, selection intent, exact release tag,
-artifact URL, kind, contract and SHA256. The digest covers the distributed bytes, including compression.
+Installation updates the root `plugins` list in your existing `.github/actionlint.yaml` (also `.yml`, `.json`
+or `.toml`), creating `.github/actionlint.yaml` when no config exists:
+
+```yaml
+plugins:
+  - github.com/owner/plugin@v1.2.3
+  - gitlab.com/group/plugin
+```
+
+`owner/plugin` is shorthand for `github.com/owner/plugin`. A new dependency without `@version` selects `latest`.
+Reinstalling an existing dependency preserves its declared version and registry unless explicitly overridden.
+Use an object for a custom registry:
+
+```yaml
+plugins:
+  - name: github.com/owner/plugin
+    version: v1.2.3
+    registry: https://example.org/catalogue/
+```
+
+Exact downloaded versions and verification data go into the adjacent `actionlint.plugins.lock.json`.
+Commit **both files**. The config declares dependencies; the lock records their resolved artifacts.
+Each lock entry records publisher identity, exact release tag, artifact URL, kind, interface version and SHA256.
+The digest covers the distributed bytes, including compression.
 Install verifies the download and embedded metadata without executing guest code. Actual ABI/capability checks
 run when the plugin loads. Registry admission and reports for another host revision do not guarantee compatibility.
 `versions --json` includes the registry's host-specific compatibility evidence; missing evidence is not a failure.
 
-Omitting `--version`, or using `--version latest`, selects the highest stable full semantic version. Prereleases
+For new dependencies, omitting `--version`, or using `--version latest`, selects the highest stable full semantic version. Prereleases
 and non-semantic tags require exact selection. Equal-precedence tags are ambiguous and require an exact tag too.
 Exact tags remain exact during updates. To change an installed selector:
 
@@ -45,21 +66,30 @@ the shared user cache, useful after cloning or in CI. Checks also restore missin
 caches work offline and cached bytes are re-hashed. No implicit upgrades run during linting or LSP analysis.
 `latest` refuses downgrades from a stale catalogue; an explicit exact tag permits a deliberate downgrade.
 Failed downloads, identity changes, same-version digest replacements and concurrent lock edits preserve the old
-lock. Updates acquire every selected artifact before replacing the file. Removal leaves shared cache entries intact.
+lock. Updates acquire every selected artifact before saving config and lock. A failed config write restores
+the previous lock unless another writer changed it. Removal updates both files and leaves shared cache entries intact.
 
-Check, fix, rules and LSP automatically use the selected project lock. Selection precedence:
+Edit `plugins` directly, then run `actionlint plugin install` without arguments to resolve missing or changed
+dependencies. Existing matching pins stay pinned. This command also migrates older lock-only installations
+into config without upgrading their artifacts. Checks require declarations and matching pins; they never
+activate extra entries left in the lock. `plugins: []` or `plugins: null` disables all declared plugins,
+including inherited ones. An inherited list is replaced as a whole; install/remove edit only the selected leaf config.
+
+Check, fix, rules and LSP load declared plugins from their matching locked artifacts. Selection precedence:
 
 - Explicit `--plugin` sources replace automatic selection.
-- `--plugin-lock FILE` selects one invocation-wide lock and cannot accompany `--plugin`.
+- `--plugin-lock FILE` explicitly loads every entry in one invocation-wide lock, bypassing config declarations.
+  It cannot accompany `--plugin`.
 - `--no-config` (or `ACTIONLINT_NO_CONFIG`) disables automatic plugin selection; explicit sources/locks still work.
-- Explicit `--config FILE` selects an adjacent `actionlint.plugins.lock.json`, with no repository fallback.
-- Otherwise the nearest repository's `.github/actionlint.plugins.lock.json` is selected for the inputs.
+- Explicit `--config FILE` selects that config's declarations and adjacent lock, with no repository fallback.
+- Otherwise declarations come from the nearest repository's `.github/actionlint.*`, with its adjacent lock.
 
 Checks spanning repositories with a lock require separate invocations or an explicit invocation-wide selection.
 LSP snapshots the startup selection; restart after installing, updating or removing plugins. Automatic project
 plugins cannot apply to documents from another repository. Use a separate server or an explicit lock for that scope.
 Installing a runner provider does not select its execution target; `--runner-target` remains explicit.
-Outside a Git repository, use `--plugin-lock FILE` for install/list/update/remove/sync as well.
+Management commands accept `--config FILE` too. Outside a Git repository, select a config with `--config FILE`,
+or use `--plugin-lock FILE` to place a config beside that lock. Management commands reject `--no-config`.
 
 ## Load a plugin directly
 

@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/internal/application"
+	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/localapp"
+	"actionlint.kjanat.dev/internal/pluginref"
 	"actionlint.kjanat.dev/internal/pluginregistry"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -28,6 +31,7 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	parent := &cobra.Command{Use: "plugin", Short: "Discover, install and inspect WebAssembly plugins", Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, args []string) error { a.help(c, args); return nil }}
 	a.commonFlags(parent, parent.PersistentFlags())
+	a.configFlags(parent.PersistentFlags())
 	parent.AddCommand(&cobra.Command{Use: "inspect <path-or-uri>", Short: "Read metadata without executing the plugin", Args: cobra.ExactArgs(1), RunE: a.capture(operationPluginInspect)})
 	for _, item := range []struct {
 		use, description string
@@ -36,10 +40,10 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	}{
 		{"search [query]", "Search the published plugin catalogue", operationPluginSearch, cobra.MaximumNArgs(1)},
 		{"versions <plugin>", "List published tags and host-specific compatibility evidence", operationPluginVersions, cobra.ExactArgs(1)},
-		{"install <plugin>", "Download, verify and pin a plugin in the project lock", operationPluginInstall, cobra.ExactArgs(1)},
-		{"list", "List locked plugins without network access", operationPluginList, cobra.NoArgs},
-		{"update [plugin]", "Resolve saved selectors and atomically update their pins", operationPluginUpdate, cobra.MaximumNArgs(1)},
-		{"remove <plugin>", "Remove a plugin from the project lock", operationPluginRemove, cobra.ExactArgs(1)},
+		{"install [plugin]", "Install declared plugins, or add a plugin to configuration and lock it", operationPluginInstall, cobra.MaximumNArgs(1)},
+		{"list", "List declared and locked plugins without network access", operationPluginList, cobra.NoArgs},
+		{"update [plugin]", "Resolve declared versions and update their pins", operationPluginUpdate, cobra.MaximumNArgs(1)},
+		{"remove <plugin>", "Remove a plugin from configuration and lockfile", operationPluginRemove, cobra.ExactArgs(1)},
 		{"sync", "Restore exact locked artifacts without catalogue lookups", operationPluginSync, cobra.NoArgs},
 	} {
 		c := &cobra.Command{Use: item.use, Short: item.description, Args: item.args, RunE: a.capture(item.op)}
@@ -68,6 +72,7 @@ type pluginRegistryRequest struct {
 	Options   pluginInvocation
 	Paths     []string
 	LockFile  string
+	Config    repoconfig.Selection
 	JSON      bool
 }
 
@@ -83,112 +88,162 @@ func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, e
 	if r.Operation == operationPluginSearch || r.Operation == operationPluginVersions {
 		return 0, r.discover(ctx, streams, registry, name)
 	}
+	if r.Config.Disabled {
+		return 0, commandUsageError{errors.New("plugin management requires configuration; remove --no-config")}
+	}
+	if name == "" && (r.Options.Version != "" || r.Options.Registry != "") {
+		return 0, commandUsageError{errors.New("--version and --registry require a plugin name")}
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		return 0, err
 	}
-	f, err := localapp.OpenPluginLock(ctx, cwd, r.LockFile, "")
+	project, err := localapp.OpenPluginProject(ctx, cwd, r.LockFile, r.Config.Path)
 	if err != nil {
 		return 0, err
 	}
+	var selected pluginregistry.Lock
 	switch r.Operation {
 	case operationPluginInstall:
-		client, err := pluginregistry.New(registry)
-		if err != nil {
+		if err := r.install(ctx, project, name); err != nil {
 			return 0, err
 		}
-		selector := r.Options.Version
-		if selector == "" {
-			selector = "latest"
-		}
-		pin, err := client.Resolve(ctx, name, selector)
-		if err != nil {
-			return 0, err
-		}
-		if err := f.Set(pin); err != nil {
-			return 0, err
-		}
-		if err := localapp.SyncPlugins(ctx, f.Lock); err != nil {
-			return 0, err
-		}
-		if err := f.Save(ctx); err != nil {
-			return 0, err
-		}
+		selected = project.Lock.Lock
 	case operationPluginUpdate:
-		if r.Options.Version != "" && name == "" {
-			return 0, commandUsageError{errors.New("--version requires a plugin name for update")}
-		}
-		if err := updatePluginPins(ctx, f, name, r.Options.Version); err != nil {
+		if err := r.update(ctx, project, name); err != nil {
 			return 0, err
 		}
-		if err := localapp.SyncPlugins(ctx, f.Lock); err != nil {
-			return 0, err
-		}
-		if err := f.Save(ctx); err != nil {
-			return 0, err
-		}
+		selected = project.Lock.Lock
 	case operationPluginRemove:
-		if err := f.Remove(name); err != nil {
+		if err := removePlugin(ctx, project, name); err != nil {
 			return 0, err
 		}
-		if err := f.Save(ctx); err != nil {
-			return 0, err
-		}
+		selected = project.Lock.Lock
 	case operationPluginSync:
-		if !f.Exists() {
-			return 0, fmt.Errorf("plugin lock does not exist: %s", f.Path)
+		selected, err = project.SelectedLock()
+		if err != nil {
+			return 0, err
 		}
-		if err := localapp.SyncPlugins(ctx, f.Lock); err != nil {
+		if err := localapp.SyncPlugins(ctx, selected); err != nil {
 			return 0, err
 		}
 	case operationPluginList:
+		selected, err = project.SelectedLock()
+		if err != nil {
+			return 0, err
+		}
 	default:
 		return 0, fmt.Errorf("unsupported plugin operation %q", r.Operation)
 	}
 	if r.JSON {
-		return 0, writeCommandJSON(streams.Stdout, f.Lock)
+		return 0, writeCommandJSON(streams.Stdout, selected)
 	}
-	for _, p := range f.Lock.Plugins {
+	for _, p := range selected.Plugins {
 		if _, err := fmt.Fprintf(streams.Stdout, "%s@%s (%s) sha256:%s\n", p.Name, p.Version, p.Selector, p.SHA256); err != nil {
 			return 0, err
 		}
 	}
-	if len(f.Lock.Plugins) == 0 {
+	if len(selected.Plugins) == 0 {
 		_, err = fmt.Fprintln(streams.Stdout, "No plugins installed.")
 	}
 	return 0, err
 }
 
-func updatePluginPins(ctx context.Context, f *pluginregistry.LockFile, name, selector string) error {
-	if !f.Exists() {
-		return fmt.Errorf("plugin lock does not exist: %s", f.Path)
+func requestedPlugin(name string, options pluginInvocation, existing []pluginref.Reference) (pluginref.Reference, error) {
+	ref, err := pluginref.Parse(name)
+	if err != nil {
+		return pluginref.Reference{}, commandUsageError{err}
 	}
-	found := name == ""
-	for _, old := range f.Lock.Plugins {
-		if name != "" && !strings.EqualFold(name, old.Name) {
-			continue
+	if strings.Contains(name, "@") && options.Version != "" && ref.Version != options.Version {
+		return pluginref.Reference{}, commandUsageError{errors.New("plugin @version conflicts with --version")}
+	}
+	for _, old := range existing {
+		if old.Name == ref.Name {
+			ref.Registry = old.Registry
+			if !strings.Contains(name, "@") {
+				ref.Version = old.Version
+			}
+			break
 		}
-		found = true
-		client, err := pluginregistry.New(old.Registry)
+	}
+	if options.Version != "" {
+		ref.Version = options.Version
+	}
+	if options.Registry != "" {
+		ref.Registry = options.Registry
+	}
+	ref, err = pluginref.New(ref.Name, ref.Version, ref.Registry)
+	if err != nil {
+		return pluginref.Reference{}, commandUsageError{err}
+	}
+	return ref, nil
+}
+
+func (r pluginRegistryRequest) install(ctx context.Context, project *localapp.PluginProject, name string) error {
+	refs, err := project.Dependencies(name == "")
+	if err != nil {
+		return err
+	}
+	if name != "" {
+		ref, err := requestedPlugin(name, r.Options, refs)
 		if err != nil {
 			return err
 		}
-		intent := old.Selector
-		if selector != "" {
-			intent = selector
+		index := slices.IndexFunc(refs, func(old pluginref.Reference) bool { return old.Name == ref.Name })
+		if index < 0 {
+			refs = append(refs, ref)
+		} else {
+			refs[index] = ref
 		}
-		pin, err := client.Resolve(ctx, old.Name, intent)
+	}
+	if err := project.Resolve(ctx, refs, ""); err != nil {
+		return err
+	}
+	return project.Save(ctx, refs)
+}
+
+func (r pluginRegistryRequest) update(ctx context.Context, project *localapp.PluginProject, name string) error {
+	refs, err := project.Dependencies(false)
+	if err != nil {
+		return err
+	}
+	update := "*"
+	if name != "" {
+		ref, err := requestedPlugin(name, r.Options, refs)
 		if err != nil {
 			return err
 		}
-		if err := f.Set(pin); err != nil {
-			return err
+		index := slices.IndexFunc(refs, func(old pluginref.Reference) bool { return old.Name == ref.Name })
+		if index < 0 {
+			return fmt.Errorf("plugin %q is not declared", ref.Name)
 		}
+		refs[index] = ref
+		update = ref.Name
 	}
-	if !found {
-		return fmt.Errorf("plugin %q is not installed", name)
+	if err := project.Resolve(ctx, refs, update); err != nil {
+		return err
 	}
-	return nil
+	return project.Save(ctx, refs)
+}
+
+func removePlugin(ctx context.Context, project *localapp.PluginProject, name string) error {
+	ref, err := pluginref.Parse(name)
+	if err != nil {
+		return commandUsageError{err}
+	}
+	refs, err := project.Dependencies(false)
+	if err != nil {
+		return err
+	}
+	index := slices.IndexFunc(refs, func(old pluginref.Reference) bool { return old.Name == ref.Name })
+	if index < 0 {
+		return fmt.Errorf("plugin %q is not declared", ref.Name)
+	}
+	refs = slices.Delete(refs, index, index+1)
+	project.Lock.Lock.Plugins = slices.DeleteFunc(project.Lock.Lock.Plugins, func(pin pluginregistry.Pin) bool {
+		return strings.EqualFold(pin.Name, ref.Name)
+	})
+	return project.Save(ctx, refs)
 }
 
 func (r pluginRegistryRequest) discover(ctx context.Context, streams Command, registry, name string) error {
@@ -214,7 +269,11 @@ func (r pluginRegistryRequest) discover(ctx context.Context, streams Command, re
 		}
 		return err
 	}
-	versions, err := client.Versions(ctx, name)
+	ref, err := pluginref.Parse(name)
+	if err != nil {
+		return commandUsageError{err}
+	}
+	versions, err := client.Versions(ctx, ref.Name)
 	if err != nil {
 		return err
 	}

@@ -8701,6 +8701,61 @@
         }
       ]
     },
+    "plugins": {
+      "title": "plugins",
+      "description": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
+      "markdownDescription": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "examples": [
+                  "kjanat/actionlint-plugin-shellcheck@v0.1.1",
+                  "gitlab.com/group/plugin"
+                ],
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "title": "name",
+                    "description": "Plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo.",
+                    "markdownDescription": "Plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "registry": {
+                    "title": "registry",
+                    "description": "HTTPS catalogue directory URL. Omission uses the public actionlint registry.",
+                    "markdownDescription": "HTTPS catalogue directory URL. Omission uses the public actionlint registry.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "title": "version",
+                    "description": "Exact release tag or latest stable. Omission selects latest.",
+                    "markdownDescription": "Exact release tag or latest stable. Omission selects latest.",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "policy": {
       "title": "policy",
       "description": "Configures cache safety checks and repository conventions, such as pinned actions and job timeouts.\n\nCache policies default to true; other policies are opt-in. Set individual keys to override their defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.",

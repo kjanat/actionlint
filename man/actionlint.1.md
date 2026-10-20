@@ -64,21 +64,25 @@ also accepts.
 Use **--registry** to select a compatible HTTPS catalogue. **--json** includes
 host-specific compatibility evidence when listing versions.
 
-**plugin install** *PLUGIN* [**--version** *TAG|latest*]
-: Download and verify a plugin without executing it; save its exact version, URL,
-publisher identity and SHA256 in `.github/actionlint.plugins.lock.json`. Commit
-the lock. The default selector is the highest stable full semantic version;
+**plugin install** [*PLUGIN*] [**--version** *TAG|latest*]
+: Declare a dependency in the config's root **plugins** list and download it
+without executing it. Accepts `owner/repo@tag` and forge-qualified names.
+Save its exact version, URL, publisher identity and SHA256 in the adjacent
+`actionlint.plugins.lock.json`. Commit config and lock. Without a name, install
+declared dependencies, preserving matching pins; migrate older lock-only projects.
+The default selector for new dependencies is the highest stable full semantic version;
 prereleases and arbitrary tags require exact selection. Admission does not prove
 runtime compatibility. Runner targets still require explicit selection.
 
 **plugin list**, **plugin update** [*PLUGIN*], **plugin remove** *PLUGIN*, **plugin sync**
-: List locked selections offline; resolve saved selectors and update pins;
-remove a selection; or restore exact pinned artifacts without catalogue access.
+: List declared pins offline; resolve declared versions and update pins;
+remove a declaration and its pin; or restore exact declared pins without catalogue access.
 Update accepts **--version** for one named plugin. Exact selectors stay exact;
 latest cannot downgrade unless an exact tag is explicitly selected. Failed updates
 preserve the old lock. Checks restore missing pinned artifacts and reuse verified
-cached bytes offline. Removal leaves the shared cache intact. Use **--plugin-lock**
-for a custom location or outside a repository.
+cached bytes offline. Only declared plugins load automatically. Missing or mismatched
+pins require **plugin install**. Removal leaves the shared cache intact. Use **--config**
+for a custom config or outside a repository. Management rejects **--no-config**.
 
 **plugin inspect** *PATH-OR-URI*
 : Read artifact metadata without executing a guest.
@@ -224,11 +228,13 @@ Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of me
 10 seconds; a trap, an exit or an exceeded limit fails that document's analysis.
 
 **--plugin-lock** *FILE*
-: Load pinned plugins from this lock instead of discovering
-`.github/actionlint.plugins.lock.json`. Available on check, fix, rules, lsp and
+: Explicitly load every pin from this lock, bypassing config declarations.
+Available on check, fix, rules, lsp and
 plugin management commands. Cannot accompany **--plugin**. Explicit **--plugin**
 sources replace automatic lock selection; **--no-config** disables automatic
-selection. Explicit **--config** selects an adjacent lock. LSP snapshots selection
+selection. Explicit **--config** selects its declarations and adjacent lock. On
+management commands, **--plugin-lock** places a default config beside that lock
+unless **--config** selects another file. LSP snapshots selection
 until restart. See the **plugin** commands.
 
 **--registry** *URL*

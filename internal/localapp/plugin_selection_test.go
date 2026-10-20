@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/langserver"
+	"actionlint.kjanat.dev/internal/pluginref"
 	"actionlint.kjanat.dev/internal/pluginregistry"
 	"actionlint.kjanat.dev/internal/testutil"
 )
@@ -117,6 +118,17 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := f.Save(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	project, err := OpenPluginProject(t.Context(), root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, err := pluginref.New(pin.Name, pin.Selector, pin.Registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
 	selected, err := (PluginSelection{}).Resolve(t.Context(), root, application.Input{Kind: application.Repository})

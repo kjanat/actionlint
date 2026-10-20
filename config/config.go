@@ -1,7 +1,10 @@
 // Package config loads and describes actionlint configuration.
 package config
 
-import repoconfig "actionlint.kjanat.dev/internal/config"
+import (
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/pluginref"
+)
 
 type Config = repoconfig.Config
 type Inspection = repoconfig.Inspection
@@ -20,6 +23,8 @@ type LintConfig = repoconfig.LintConfig
 type LintRulesConfig = repoconfig.LintRulesConfig
 type LocalActionSources = repoconfig.LocalActionSources
 type PathConfig = repoconfig.PathConfig
+type PluginDeclarations = repoconfig.PluginDeclarations
+type PluginReference = pluginref.Reference
 type PermissionsPolicy = repoconfig.PermissionsPolicy
 type Policy = repoconfig.Policy
 type RuffToolConfig = repoconfig.RuffToolConfig

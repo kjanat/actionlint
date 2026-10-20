@@ -350,6 +350,11 @@ type Config struct {
 	// Extends loads local YAML/JSON files, relative to this config, in order.
 	// Later bases override earlier bases; this file wins over all bases. No URLs.
 	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
+	// Plugins declares plugin repositories and requested versions. Entries are
+	// owner/repo or forge-qualified names, optionally followed by @release-tag.
+	// Omitted versions select latest stable. Use a mapping with name, version,
+	// and registry for a custom catalogue. Empty or null disables plugins.
+	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
 	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Lint configures rule selection separately from repository policy.
@@ -596,6 +601,13 @@ func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, additional ...str
 	if root != nil {
 		if err := root.Decode(&c); err != nil {
 			return Resolved{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
+		}
+		// YAML null bypasses field decoders. Preserve its explicit selection of
+		// no plugins, including when it replaces an inherited declaration.
+		for i := 0; root.Kind == yaml.MappingNode && i+1 < len(root.Content); i += 2 {
+			if root.Content[i].Value == "plugins" && root.Content[i+1].ShortTag() == "!!null" {
+				c.Plugins = PluginDeclarations{}
+			}
 		}
 	}
 

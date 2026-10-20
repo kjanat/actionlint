@@ -45,6 +45,19 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
+	case reflect.TypeFor[actionlint.PluginDeclarations]():
+		mapping := reflectMapping(struct {
+			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
+			Version  string `yaml:"version,omitempty" jsonschema:"minLength=1,description=Exact release tag or latest stable. Omission selects latest."`
+			Registry string `yaml:"registry,omitempty" jsonschema:"minLength=1,description=HTTPS catalogue directory URL. Omission uses the public actionlint registry."`
+		}{})
+		return &jsonschema.Schema{
+			Type: "array",
+			Items: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
+				{Type: "string", MinLength: new(uint64(1)), Examples: []any{"kjanat/actionlint-plugin-shellcheck@v0.1.1", "gitlab.com/group/plugin"}},
+				mapping,
+			}},
+		}
 	case reflect.TypeFor[actionlint.IgnoreConfig]():
 		mapping := reflectMapping(struct {
 			Rule   string `yaml:"rule" jsonschema:"required,minLength=1,description=Diagnostic rule to suppress."`

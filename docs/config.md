@@ -22,6 +22,7 @@ paths:
 
 | Key                          | Purpose                                                                                                                                                         |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins`                    | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
 | `self-hosted-runner.labels`  | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                                |
 | `config-variables`           | Allowed `vars` names. Omitted or `null` disables the check; `[]` allows none.                                                                                   |
 | `config-secrets`             | Allowed secret names, case-insensitive. Omitted or `null` disables the check; `[]` allows only built-in and declared `workflow_call` secrets.                   |

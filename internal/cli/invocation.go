@@ -173,7 +173,7 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationPluginInspect:
 		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON}, nil
 	case operationPluginSearch, operationPluginVersions, operationPluginInstall, operationPluginList, operationPluginUpdate, operationPluginRemove, operationPluginSync:
-		return pluginRegistryRequest{Operation: inv.Operation, Options: inv.Plugin, Paths: inv.Check.Paths, LockFile: inv.Check.PluginLock, JSON: inv.JSON}, nil
+		return pluginRegistryRequest{Operation: inv.Operation, Options: inv.Plugin, Paths: inv.Check.Paths, LockFile: inv.Check.PluginLock, Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case "lsp":
 		return lspRequest{inv.Check}, nil
 	case operationVersion:

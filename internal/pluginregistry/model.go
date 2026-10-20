@@ -132,6 +132,21 @@ type Pin struct {
 
 func (p Pin) Source() string { return p.URL + "#sha256=" + p.SHA256 }
 
+// SameRegistry compares validated catalogue endpoints. Hosts are insensitive to
+// case, while paths retain their case-sensitive identity.
+func SameRegistry(left, right string) bool {
+	a, err := registryURL(left)
+	if err != nil {
+		return false
+	}
+	b, err := registryURL(right)
+	if err != nil {
+		return false
+	}
+	a.Host, b.Host = strings.ToLower(a.Host), strings.ToLower(b.Host)
+	return a.String() == b.String()
+}
+
 func numericID(value string) bool {
 	n, err := strconv.ParseInt(value, 10, 64)
 	return err == nil && n > 0 && strconv.FormatInt(n, 10) == value
