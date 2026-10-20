@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Term distinguishes literal labels from unresolved expressions.

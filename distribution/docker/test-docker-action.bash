@@ -98,7 +98,7 @@ ruff_environment=()
 
 mkdir -p "${temporary}/workspace/sub/.github/workflows"
 cp testdata/ok/minimal.yaml "${temporary}/workspace/sub/.github/workflows/check.yaml"
-printf 'self-hosted-runner:\n  labels: [custom-runner]\n' >"${temporary}/workspace/sub/lint.yaml"
+printf 'plugins: []\nself-hosted-runner:\n  labels: [custom-runner]\n' >"${temporary}/workspace/sub/lint.yaml"
 expect_status 0 '.github/workflows/check.yaml' json '' lint.yaml false false sub reports/result.json true
 expect_output output-file reports/result.json
 report="$(cat "${temporary}/workspace/reports/result.json")"

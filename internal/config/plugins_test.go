@@ -3,12 +3,36 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
 )
+
+func TestDirectPluginDeclaration(t *testing.T) {
+	source := "https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32)
+	cfg, err := Parse([]byte("plugins: [\"" + source + "\"]"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Plugins) != 1 || cfg.Plugins[0].DirectSource() != source {
+		t.Fatalf("unexpected declarations: %+v", cfg.Plugins)
+	}
+	data, err := yaml.Marshal(cfg.Plugins)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var refs PluginDeclarations
+	if err := yaml.Unmarshal(data, &refs); err != nil || !refs[0].Equal(cfg.Plugins[0]) {
+		t.Fatalf("roundtrip: %s %v", data, err)
+	}
+	duplicate := "plugins: [\"" + source + "\", \"" + strings.ReplaceAll(source, "abab", "cdcd") + "\"]"
+	if _, err := Parse([]byte(duplicate)); err == nil {
+		t.Fatal("accepted two pins for the same URL")
+	}
+}
 
 func TestPluginDeclarations(t *testing.T) {
 	cfg, err := Parse([]byte(`plugins:
@@ -36,6 +60,33 @@ func TestPluginDeclarations(t *testing.T) {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(want, roundTrip.Plugins); diff != "" {
+		t.Fatal(diff)
+	}
+}
+
+func TestPluginAliasRegistryScope(t *testing.T) {
+	cfg, err := Parse([]byte(`plugins:
+  - community-check
+  - name: community-check
+    registry: https://custom.example/
+  - github.com/kjanat/actionlint-plugin-ruff
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Plugins) != 3 || cfg.Plugins[0].Name != "community-check" || cfg.Plugins[1].Name != "community-check" ||
+		cfg.Plugins[2].String() != "github.com/kjanat/actionlint-plugin-ruff" {
+		t.Fatalf("alias scope or explicit repository rewritten: %+v", cfg.Plugins)
+	}
+	data, err := yaml.Marshal(cfg.Plugins)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var roundTrip PluginDeclarations
+	if err := yaml.Unmarshal(data, &roundTrip); err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(cfg.Plugins, roundTrip); diff != "" {
 		t.Fatal(diff)
 	}
 }

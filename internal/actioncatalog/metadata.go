@@ -3,7 +3,7 @@ package actioncatalog
 import (
 	"strings"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 )
 
 // PopularActions contains bundled metadata indexed by exact action reference.

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )

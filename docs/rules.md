@@ -626,7 +626,7 @@ Configure this rule with `lint.rules.external.ruff`. Use `off`, `on`, `info`, `w
 
 Report unknown or incompatible runner labels.
 
-Correct the runner label or declare repository-specific labels in self-hosted-runner.labels.
+Correct the runner label or declare repository-specific labels in lint.rules.correctness.runner-label.options.labels.
 
 - Category: `correctness/runners`
 - Provider: `actionlint`

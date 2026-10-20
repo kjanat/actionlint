@@ -4,13 +4,13 @@ import (
 	"errors"
 	"reflect"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/config"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/tools/selection"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // Options selects ShellCheck's transport and source configuration.
@@ -63,6 +63,9 @@ func (o Options) Registration() tools.Registration {
 			return nil
 		},
 		WithBackend: func(backend analyzer.ScriptBackend) (tools.Registration, error) {
+			if o.Backend == nil && o.Runner == nil && !processconfig.Enabled(o.Command, o.Process) {
+				return o.Registration(), nil
+			}
 			if o.Backend != nil || o.Process != nil && !reflect.DeepEqual(*o.Process, processconfig.Options{Optional: true}) || o.Command != "" && o.Command != "shellcheck" || o.Runner != nil || o.Settings != nil {
 				return tools.Registration{}, errors.New("shellcheck plugin conflicts with an explicitly selected backend or command")
 			}
@@ -72,6 +75,7 @@ func (o Options) Registration() tools.Registration {
 			next.Backend = backend
 			return next.Registration(), nil
 		},
+		WithAnalyzer: o.withAnalyzer,
 	}
 	registration.ConfiguredBackend = func(c tools.Context) (analyzer.ScriptBackend, error) {
 		if o.Backend != nil {

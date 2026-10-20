@@ -9,16 +9,39 @@ import (
 	"slices"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/pluginregistry"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 // PluginProject keeps human-authored dependencies separate from resolved pins.
 type PluginProject struct {
-	Manifest *PluginManifest
-	Lock     *pluginregistry.LockFile
-	original pluginregistry.LockFile
+	Manifest      *PluginManifest
+	Lock          *pluginregistry.LockFile
+	StatusOptions pluginregistry.StatusOptions
+	original      pluginregistry.LockFile
+}
+
+// DirectSources lists artifacts whose URL and digest are pinned in configuration.
+func (p *PluginProject) DirectSources() []string {
+	var sources []string
+	for _, ref := range p.Manifest.References {
+		if source := ref.DirectSource(); source != "" {
+			sources = append(sources, source)
+		}
+	}
+	return sources
+}
+
+// SyncDirect restores directly declared artifacts without registry resolution.
+func (p *PluginProject) SyncDirect(ctx context.Context) error {
+	for _, source := range p.DirectSources() {
+		if _, err := artifact.Resolve(ctx, source, artifactOptions()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func pluginConfigPath(directory string) (string, error) {
@@ -72,7 +95,11 @@ func (p *PluginProject) Dependencies(migrate bool) ([]pluginref.Reference, error
 	}
 	refs := make([]pluginref.Reference, 0, len(p.Lock.Lock.Plugins))
 	for _, pin := range p.Lock.Lock.Plugins {
-		ref, err := pluginref.New(pin.Name, pin.Selector, pin.Registry)
+		name := pin.Name
+		if pin.Alias != "" {
+			name = pin.Alias
+		}
+		ref, err := pluginref.New(name, pin.Selector, pin.Registry)
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +109,7 @@ func (p *PluginProject) Dependencies(migrate bool) ([]pluginref.Reference, error
 }
 
 func pluginPinMatches(pin pluginregistry.Pin, ref pluginref.Reference) bool {
-	return strings.EqualFold(pin.Name, ref.Name) && pluginregistry.SameRegistry(pin.Registry, ref.Registry) && pin.Selector == ref.Version
+	return pin.Matches(ref) && pin.Selector == ref.Version
 }
 
 // SelectedLock ignores stale extra pins: only declarations authorize loading.
@@ -93,6 +120,9 @@ func (p *PluginProject) SelectedLock() (pluginregistry.Lock, error) {
 	}
 	selected := pluginregistry.Lock{SchemaVersion: 1, Plugins: []pluginregistry.Pin{}}
 	for _, ref := range refs {
+		if ref.DirectSource() != "" {
+			continue
+		}
 		found := false
 		for _, pin := range p.Lock.Lock.Plugins {
 			if pluginPinMatches(pin, ref) {
@@ -105,19 +135,25 @@ func (p *PluginProject) SelectedLock() (pluginregistry.Lock, error) {
 			return pluginregistry.Lock{}, fmt.Errorf("plugin %s is missing or out of date in %s; run actionlint plugin install", ref.String(), p.Lock.Path)
 		}
 	}
-	return selected, nil
+	return selected, selected.Validate()
 }
 
-// Resolve acquires only missing dependencies unless update selects a package (or
-// "*"). Existing immutable identity checks still apply to every replacement.
-func (p *PluginProject) Resolve(ctx context.Context, refs []pluginref.Reference, update string) error {
+// Resolve acquires missing dependencies and refreshes the specified declarations.
+// Existing immutable identity checks still apply to every replacement.
+func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Reference) error {
 	p.Lock.Lock.Plugins = slices.DeleteFunc(p.Lock.Lock.Plugins, func(pin pluginregistry.Pin) bool {
 		return !slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
-			return strings.EqualFold(pin.Name, ref.Name)
+			return pin.Matches(ref) || !ref.IsAlias() && strings.EqualFold(pin.Name, ref.Name)
 		})
 	})
 	selected := make([]pluginregistry.Pin, 0, len(refs))
 	for _, ref := range refs {
+		if source := ref.DirectSource(); source != "" {
+			if _, err := artifact.Resolve(ctx, source, artifactOptions()); err != nil {
+				return err
+			}
+			continue
+		}
 		var pin pluginregistry.Pin
 		found := false
 		for _, old := range p.Lock.Lock.Plugins {
@@ -126,11 +162,12 @@ func (p *PluginProject) Resolve(ctx context.Context, refs []pluginref.Reference,
 				break
 			}
 		}
-		if !found || update == "*" || strings.EqualFold(update, ref.Name) {
+		if !found || slices.Contains(update, ref) {
 			client, err := pluginregistry.New(ref.Registry)
 			if err != nil {
 				return err
 			}
+			client.StatusOptions = p.StatusOptions
 			pin, err = client.Resolve(ctx, ref.Name, ref.Version)
 			if err != nil {
 				return err
@@ -142,6 +179,12 @@ func (p *PluginProject) Resolve(ctx context.Context, refs []pluginref.Reference,
 		selected = append(selected, pin)
 	}
 	p.Lock.Lock.Plugins = selected
+	if err := p.Lock.Lock.Validate(); err != nil {
+		return err
+	}
+	if err := p.Lock.Lock.CheckStatuses(ctx, p.StatusOptions); err != nil {
+		return err
+	}
 	return SyncPlugins(ctx, p.Lock.Lock)
 }
 
@@ -163,10 +206,16 @@ func (p *PluginProject) Save(ctx context.Context, refs []pluginref.Reference) (e
 	if err := p.Manifest.CheckUnchanged(ctx); err != nil {
 		return err
 	}
-	if err := p.Lock.Save(ctx); err != nil {
-		return err
+	writeLock := p.Lock.Exists() || len(p.Lock.Lock.Plugins) != 0
+	if writeLock {
+		if err := p.Lock.Save(ctx); err != nil {
+			return err
+		}
 	}
 	if err := p.Manifest.Save(ctx, refs); err != nil {
+		if !writeLock {
+			return err
+		}
 		return errors.Join(err, p.Lock.Restore(context.WithoutCancel(ctx), &p.original))
 	}
 	p.original = *p.Lock

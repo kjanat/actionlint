@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/source"
 	"github.com/partite-ai/wacogo"
 )
 

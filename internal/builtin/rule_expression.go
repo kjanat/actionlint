@@ -3,14 +3,14 @@ package builtin
 import (
 	"errors"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	"actionlint.kjanat.dev/internal/actioncatalog"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	workflowexpr "actionlint.kjanat.dev/internal/workflow/expressions"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/actioncatalog"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowexpr "actionlint.kjanat.dev/v2/internal/workflow/expressions"
 )
 
 // RuleExpression connects workflow expression checking to host lookups and options.

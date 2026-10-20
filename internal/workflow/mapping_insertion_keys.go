@@ -1,9 +1,9 @@
 package workflow
 
 import (
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/mapping"
-	"actionlint.kjanat.dev/internal/yaml"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func EnvMappingView(env *Env) *mapping.Inputs[*String] {

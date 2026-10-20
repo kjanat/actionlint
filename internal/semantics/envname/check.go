@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 func Check(entries []analyzer.Entry) []diagnostic.Diagnostic {

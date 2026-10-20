@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"

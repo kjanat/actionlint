@@ -31,23 +31,11 @@ func mustRule(desc, pattern string, count int) rule {
 	return rule{desc: desc, pattern: re, count: count}
 }
 
-const rshellcheckDependency = "github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@4698af259e9ac9b327d8b1e6e55d7ad17815e1db"
-
 var targets = []*target{
 	{
 		path: "flake.nix",
 		rules: []rule{
 			mustRule("Nix package version", `(?m)^      version = "(\d+\.\d+\.\d+)";\r?$`, 1),
-		},
-	},
-	{
-		path: ".pre-commit-hooks.yaml",
-		rules: []rule{
-			mustRule("pre-commit Docker image tag", `(?m)^  entry: ghcr\.io/kjanat/actionlint:(\d+\.\d+\.\d+|nightly) pre-commit\r?$`, 1),
-		},
-		unrelated: []string{
-			"minimum_pre_commit_version: 3.0.0",
-			rshellcheckDependency,
 		},
 	},
 	{
@@ -65,44 +53,27 @@ var targets = []*target{
 		rules: []rule{
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 3),
 			mustRule("CLI image tag example", "`ghcr\\.io/kjanat/actionlint:(\\d+\\.\\d+\\.\\d+)`", 1),
-			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 2),
 			mustRule("Trunk linter version", ` actionlint@(\d+\.\d+\.\d+)`, 2),
 		},
 		unrelated: []string{
 			"sarif/v2.1.0/sarif-v2.1.0.html",
 			"git-scm.com/docs/git-hook/2.54.0",
 			"git-scm.com/docs/git-hook/2.55.0",
-			rshellcheckDependency,
 			"We recommend v1.76.2 or newer.",
 		},
 	},
 	{
 		path: "docs/install.md",
 		rules: []rule{
-			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
 			mustRule("gh release download tag", `--pattern '[^']+' v(\d+\.\d+\.\d+)`, 1),
 			mustRule("release asset name", `actionlint_(\d+\.\d+\.\d+)_linux_amd64\.tar\.gz`, 2),
 			mustRule("download script example description", `example installs v(\d+\.\d+\.\d+)`, 1),
 			mustRule("download script argument", `download-actionlint\.bash\) (\d+\.\d+\.\d+)`, 1),
 		},
 		unrelated: []string{
-			"was added after v1.17.0",
 			"has proposed switching the package to this fork at v1.16.0",
 			"mise 2026.9.7 release PR",
 			"On mise 2026.9.6,",
-		},
-	},
-	{
-		path: "README.md",
-		rules: []rule{
-			mustRule("pre-commit revision", `(?m)^    rev: v(\d+\.\d+\.\d+)\r?$`, 1),
-		},
-		unrelated: []string{
-			"[v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12)",
-			"Its independent release series starts at v1.8.0.",
-		},
-		generated: []*regexp.Regexp{
-			regexp.MustCompile(`(?m)^\*\*(?:Upstream actionlint|This fork) \d+\.\d+\.\d+ reports`),
 		},
 	},
 	{

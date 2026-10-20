@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
-	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
 
 func TestMatrixExcludeSequenceInsertions(t *testing.T) {

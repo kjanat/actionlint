@@ -3,8 +3,8 @@ package cachepolicy
 import (
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // cacheReachableEvents removes only events for which the job condition is false.

@@ -1,11 +1,11 @@
 package execution
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowexecution "actionlint.kjanat.dev/internal/workflow/execution"
-	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/analyzer"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
 func Fact(unit Unit, document, documentAbs string, includeExecution bool) analyzer.Script {

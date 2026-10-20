@@ -13,9 +13,9 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"golang.org/x/mod/semver"
 )
 
@@ -31,6 +31,7 @@ func (l Lock) Validate() error {
 		return errors.New("unsupported plugin lock schema")
 	}
 	names, ids := map[string]bool{}, map[string]bool{}
+	aliases := map[string]bool{}
 	for _, p := range l.Plugins {
 		if err := p.Validate(); err != nil {
 			return err
@@ -40,6 +41,15 @@ func (l Lock) Validate() error {
 			return fmt.Errorf("duplicate plugin repository or metadata ID: %s (%s)", p.Name, p.PluginID)
 		}
 		names[name], ids[p.PluginID] = true, true
+		if p.Alias != "" {
+			registry, _ := registryURL(p.Registry)
+			registry.Host = strings.ToLower(registry.Host)
+			key := registry.String() + "\n" + p.Alias
+			if aliases[key] {
+				return fmt.Errorf("duplicate plugin alias %q in registry %s", p.Alias, p.Registry)
+			}
+			aliases[key] = true
+		}
 	}
 	return nil
 }
@@ -331,6 +341,9 @@ func (f *LockFile) set(pin Pin, selectedRegistry string) error {
 		return err
 	}
 	for i, old := range f.Lock.Plugins {
+		if pin.Alias != "" && old.Alias == pin.Alias && SameRegistry(old.Registry, pin.Registry) && !strings.EqualFold(old.Name, pin.Name) {
+			return fmt.Errorf("registry alias %q changed from %s to %s; remove explicitly before switching", pin.Alias, old.Name, pin.Name)
+		}
 		if !strings.EqualFold(old.Name, pin.Name) {
 			continue
 		}
@@ -365,7 +378,7 @@ func (f *LockFile) Remove(name string) error {
 // Sync restores exact pins without registry access or guest startup. Cached
 // bytes are re-hashed by artifact.Resolve and work without network access.
 func (l Lock) Sync(ctx context.Context, options artifact.Options) error {
-	if err := l.Validate(); err != nil {
+	if err := l.CheckStatuses(ctx, StatusOptions{}); err != nil {
 		return err
 	}
 	for _, p := range l.Plugins {

@@ -6,7 +6,7 @@ on:
       tag: { description: Release tag to publish, required: true, type: string }
   workflow_dispatch:
     inputs:
-      tag: { description: "Release tag to publish (e.g. v1.17.0)", required: true, type: string }
+      tag: { description: "Release tag to publish (e.g. v2.0.0)", required: true, type: string }
       dry-run: { description: Build and smoke-test the wheels but do not publish, required: true, default: false, type: boolean }
 
 permissions: { contents: read }

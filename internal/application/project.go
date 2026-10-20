@@ -3,7 +3,7 @@ package application
 import (
 	"path/filepath"
 
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func absPath(path string) string {

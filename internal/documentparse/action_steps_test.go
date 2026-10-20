@@ -3,7 +3,7 @@ package documentparse
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestCompositeScriptNodeSharing(t *testing.T) {

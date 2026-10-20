@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Use on-disk spelling for cache keys and diagnostics, even on a Linux host.

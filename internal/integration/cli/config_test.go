@@ -8,8 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestConfigValidationWarnings(t *testing.T) {
@@ -59,6 +60,7 @@ config-variable: [TYPO]
 }
 
 func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
+	testutil.NewDefaultPluginRegistry(t)
 	commandTestRepo(t)
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
 		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)
@@ -78,10 +80,11 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	if err != nil || !bytes.Contains(data, []byte("yaml-language-server: $schema=")) {
 		t.Fatalf("%s (%v)", data, err)
 	}
-	if got := testRunCommand("", "config", "show"); got.Status != 0 || !strings.Contains(got.Stdout, "config-variables: null") {
+	if got := testRunCommand("", "config", "show"); got.Status != 0 || !strings.Contains(got.Stdout, "plugins:") {
 		t.Fatal(got)
 	}
-	config := `defaults: &defaults {config-variables: []}
+	config := `plugins: []
+defaults: &defaults {config-variables: []}
 <<: *defaults
 config-secrets: null
 `
@@ -93,7 +96,7 @@ config-secrets: null
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	if inspection.Origins["/config-variables"].Source != "config" || inspection.Origins["/config-secrets"].State != "null" {
+	if inspection.Origins["/lint/rules/correctness/expression-reference/options/variables"].Source != "config" || inspection.Origins["/lint/rules/correctness/expression-reference/options/secrets"].State != "null" {
 		t.Fatal(inspection.Origins)
 	}
 	if _, exists := inspection.Origins["/defaults"]; exists {
@@ -103,12 +106,15 @@ config-secrets: null
 
 func TestModernConfigSelectionAndOrigins(t *testing.T) {
 	commandTestRepo(t)
-	config := `config-variables: []
-config-secrets: null
-policy:
-  require-commit-hash: false
-  required-actions: []
-  require-job-timeout: {min-minutes: 2, max-minutes: 10}
+	config := `plugins: []
+lint:
+  rules:
+    correctness:
+      expression-reference: {level: on, options: {variables: [], secrets: null}}
+    policy:
+      require-commit-hash: off
+      required-actions: {level: on, options: {actions: []}}
+      require-job-timeout: {level: on, options: {min-minutes: 2, max-minutes: 10}}
 `
 	if err := os.WriteFile(".github/actionlint.yml", []byte(config), 0o600); err != nil {
 		t.Fatal(err)
@@ -118,21 +124,25 @@ policy:
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	for key, state := range map[string]string{"/config-variables": "value", "/config-secrets": "null", "/policy/require-commit-hash": "value", "/policy/required-actions": "value"} {
+	for key, state := range map[string]string{"/lint/rules/correctness/expression-reference/options/variables": "value", "/lint/rules/correctness/expression-reference/options/secrets": "null", "/lint/rules/policy/require-commit-hash": "value", "/lint/rules/policy/required-actions/options/actions": "value"} {
 		origin := inspection.Origins[key]
 		if origin.Source != "config" || origin.State != state || origin.Line == 0 {
 			t.Errorf("%s: %+v", key, origin)
 		}
 	}
-	if inspection.Origins["/assume-default-permissions"].Source != "default" {
-		t.Fatal(inspection.Origins)
+	data, err := json.Marshal(inspection.Config)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if inspection.Config["config-variables"] == nil || inspection.Config["config-secrets"] != nil {
+	resolved, err := repoconfig.Parse(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.ConfigVariables == nil || resolved.ConfigSecrets != nil {
 		t.Fatal("[] and null lost their distinction")
 	}
-	policy := inspection.Config["policy"].(map[string]any)
-	if policy["require-commit-hash"] != false || policy["required-actions"] == nil {
-		t.Fatal(policy)
+	if repoconfig.DiagnosticLevel(resolved, "require-commit-hash") != "off" || resolved.Policy.RequiredActions == nil {
+		t.Fatal(resolved.Policy)
 	}
 	for _, args := range [][]string{{"config", "validate"}, {"config", "path"}, {"config", "show"}} {
 		if got := testRunCommand("", args...); got.Status != 0 || got.Stderr != "" || got.Stdout == "" {
@@ -167,6 +177,7 @@ policy:
 }
 
 func TestCommandConfigAndEmptyArgs(t *testing.T) {
+	testutil.NewDefaultPluginRegistry(t)
 	t.Setenv("NO_COLOR", "1")
 	t.Chdir(t.TempDir())
 	gitRepository(t, ".")
@@ -204,26 +215,29 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	if refused.Status != 3 || !strings.Contains(refused.Stderr, "already exists") {
 		t.Fatalf("%+v", refused)
 	}
-	if err := os.WriteFile(created.Path, []byte(`paths:
+	if err := os.WriteFile(created.Path, []byte(`plugins: []
+paths:
   '**':
     ignore: ['undefined variable']
 `), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got = testRunCommand(commandBadWorkflow, "--config-file", created.Path, "--json", "-")
-	if got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
+	if got.Status != 0 || !cleanCheckJSON(got.Stdout) || !strings.Contains(got.Stderr, "migrated configuration") {
 		t.Fatalf("explicit config not applied: %+v", got)
 	}
 }
 
 func TestConfigOriginNestedReplacement(t *testing.T) {
 	t.Chdir(t.TempDir())
-	for _, replacement := range []string{"{}", "null", "{required-actions: [actions/checkout]}"} {
+	for _, replacement := range []string{"{}", "null", "{required-actions: {level: on, options: {actions: [actions/checkout]}}}"} {
 		source := `defaults: &defaults
   policy:
-    require-commit-hash: true
-<<: *defaults
-policy: ` + replacement + "\n"
+    require-commit-hash: on
+lint:
+  rules:
+    <<: *defaults
+    policy: ` + replacement + "\n"
 		if err := os.WriteFile("config.yml", []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -231,11 +245,16 @@ policy: ` + replacement + "\n"
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.Origins["/policy/require-commit-hash"].Source != "default" {
+		if origin, exists := result.Origins["/lint/rules/policy/require-commit-hash"]; exists && (origin.File != "" || origin.Line != 0) {
 			t.Fatalf("stale origin for %s: %+v", replacement, result)
 		}
-		if result.Config["policy"].(map[string]any)["require-commit-hash"] != false {
-			t.Fatal(result.Config)
+		data, err := json.Marshal(result.Config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resolved, err := repoconfig.Parse(data)
+		if err != nil || repoconfig.DiagnosticLevel(resolved, "require-commit-hash") != "off" {
+			t.Fatalf("replaced policy survived: %+v %v", result.Config, err)
 		}
 	}
 }

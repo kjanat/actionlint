@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/examples/plugins/pinnedactions"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/examples/plugins/pinnedactions"
 )
 
 func ExampleAnalyzer_dependencies() {

@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 type testAnalyzer struct {

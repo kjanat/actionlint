@@ -5,12 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	"actionlint.kjanat.dev/internal/documentparse"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 type phaseScriptAnalyzer struct {

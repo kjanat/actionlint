@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 func TestActionInputMappingInsertions(t *testing.T) {

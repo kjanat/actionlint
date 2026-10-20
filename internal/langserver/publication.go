@@ -1,6 +1,6 @@
 package langserver
 
-import "actionlint.kjanat.dev/diagnostic"
+import "actionlint.kjanat.dev/v2/diagnostic"
 
 func diagnosticItems(doc Document, findings []diagnostic.Diagnostic, documents map[string]Document) []any {
 	items := make([]any, 0, len(findings))

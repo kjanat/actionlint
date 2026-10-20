@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestKnownExpressionRunnerLabels(t *testing.T) {

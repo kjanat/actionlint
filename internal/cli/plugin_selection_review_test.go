@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 )
 
 func TestPluginSelectionFailureExitStatus(t *testing.T) {

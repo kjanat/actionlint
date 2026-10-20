@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	stringutil "actionlint.kjanat.dev/internal/stringutil"
+	stringutil "actionlint.kjanat.dev/v2/internal/stringutil"
 )
 
 func errorAtToken(kind findingKind, t *Token, msg string) *Error {

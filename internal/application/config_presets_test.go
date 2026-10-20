@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 func TestRulePresetsPreserveAbsentConfiguration(t *testing.T) {

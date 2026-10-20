@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/webhook"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/webhook"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest

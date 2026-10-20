@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestSchemaAuditScalarDecoding(t *testing.T) {

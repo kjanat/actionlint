@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	"actionlint.kjanat.dev/internal/actioncatalog"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 )
 
 func TestBundledCatalogRoundTrip(t *testing.T) {

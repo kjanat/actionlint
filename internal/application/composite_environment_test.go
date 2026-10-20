@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/v2/internal/application"
 )
 
 func TestCompositePersistentCheckoutEnvironment(t *testing.T) {

@@ -18,7 +18,7 @@ COPY cmd cmd/
 COPY internal internal/
 ENV CGO_ENABLED=0
 ARG ACTIONLINT_VER=
-RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/internal/buildinfo.InstallOrigin=official Docker image'" -o . ./cmd/actionlint
+RUN go build -v -ldflags "-s -w -X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=${ACTIONLINT_VER} -X 'actionlint.kjanat.dev/v2/internal/buildinfo.InstallOrigin=official Docker image'" -o . ./cmd/actionlint
 
 FROM koalaman/shellcheck-alpine:stable AS shellcheck
 # Release binaries support larger ARM64 page sizes, unlike Ruff's distroless build.
@@ -50,6 +50,9 @@ COPY --chmod=755 distribution/docker/docker-action.sh /usr/local/bin/actionlint-
 ENTRYPOINT ["/usr/local/bin/actionlint-action"]
 
 FROM runtime AS cli
+# Alpine guest (uid 405) otherwise has /dev/null as its home.
+ENV HOME=/home/actionlint
+RUN mkdir -p "${HOME}" && chown 405 "${HOME}"
 WORKDIR /w
 USER 405
 ENTRYPOINT ["/usr/local/bin/actionlint"]

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func TestVersionShorthand(t *testing.T) {
@@ -38,7 +38,7 @@ func TestCommandVersionNamesTheModule(t *testing.T) {
 	if len(lines) != 3 {
 		t.Fatalf("version output should have 3 lines but has %d: %q", len(lines), output.String())
 	}
-	if !strings.HasPrefix(lines[0], "actionlint.kjanat.dev ") {
+	if !strings.HasPrefix(lines[0], "actionlint.kjanat.dev/v2/v2 ") {
 		t.Errorf("first line should start with the module path: %q", lines[0])
 	}
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify the image (also used by actionlint-bundled) includes working Ruff.
+# Verify the image includes working Ruff.
 set -euo pipefail
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then

@@ -1,11 +1,11 @@
 package expressions
 
 import (
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/calls"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 )
 
 type typedExpr struct {

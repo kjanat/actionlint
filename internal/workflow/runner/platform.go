@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Platform identifies the runner path and shell conventions known to analysis.

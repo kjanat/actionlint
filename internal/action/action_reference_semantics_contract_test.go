@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestCompositeOutputCaseCollisions(t *testing.T) {

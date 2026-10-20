@@ -3,10 +3,10 @@ package expressions
 import (
 	"strings"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/references"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 // Get type of `outputs.<output name>`

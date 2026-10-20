@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"actionlint.kjanat.dev/internal/conformance"
+	"actionlint.kjanat.dev/v2/internal/conformance"
 )
 
 func main() {

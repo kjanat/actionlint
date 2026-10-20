@@ -4,17 +4,17 @@ import (
 	"path/filepath"
 	"strings"
 
-	checks "actionlint.kjanat.dev/internal/checks"
-	"actionlint.kjanat.dev/internal/documentparse"
-	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
+	checks "actionlint.kjanat.dev/v2/internal/checks"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	"actionlint.kjanat.dev/internal/builtin"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // Each invocation owns its rules: external callbacks must not share mutable

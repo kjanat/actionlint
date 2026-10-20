@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {

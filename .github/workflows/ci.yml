@@ -21,13 +21,13 @@ jobs:
           "jobs": {
             "unit": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
-              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
+              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile",
               ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
             "race": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
-              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
+              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile",
               ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
@@ -50,7 +50,7 @@ jobs:
             "release": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
               ".goreleaser.yaml", ".github/actions/setup-pandoc/**", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
-              "tools/release/build-action-release.mjs", "tools/release/*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
+              "tools/release/build-action-release.mjs", "tools/release/*.mjs", "action.yml", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
               "!tools/**/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
             ],
@@ -69,17 +69,13 @@ jobs:
             ],
             "action": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", "tools/release/*.mjs", ".pre-commit-hooks.yaml",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs",
               ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
             ],
             "action-tests": [
-              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", ".github/actions/test-action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
               ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
-            ],
-            "precommit": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              ".pre-commit-hooks.yaml", "tools/release/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
             ],
             "plugins": [
               ".github/actions/setup-wasm-toolchain/**",
@@ -379,6 +375,8 @@ jobs:
         with: { load: true, push: false, tags: actionlint:test }
       - name: Check bundled Ruff
         run: bash distribution/docker/test-docker-ruff.bash actionlint:test
+      - name: Check published Wasm plugins and offline cache
+        run: bash distribution/docker/test-docker-plugins.bash actionlint:test
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
@@ -412,8 +410,7 @@ jobs:
       - *GoGomod
       - *Runner
       - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
-      - name: Install ShellCheck
-        if: runner.os == 'Linux'
+      - name: Install native ShellCheck for explicit backend tests
         uses: $/.github/actions/setup-shellcheck
       - name: Install JavaScript Action build dependencies
         # Packaging also runs when JavaScript-only tests are not selected.
@@ -516,7 +513,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p .github
-          printf 'config-variables: []\n' > .github/actionlint.yaml
+          printf 'plugins: []\nconfig-variables: []\n' > .github/actionlint.yaml
       - name: Lint with shared configuration
         uses: ./.actionlint-action-test
         with:
@@ -557,15 +554,16 @@ jobs:
           actionlint_path="$(command -v actionlint)"
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
-          shellcheck --version
-          node tools/action/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
-      - name: Check exported tools from PowerShell
+      - name: Verify bundled plugins and real cache restoration
+        uses: ./.github/actions/test-action
+        with:
+          action-directory: ${{ runner.temp }}/actionlint-action/action
+          binary: ${{ env.ACTIONLINT_ACTION_BINARY }}
+      - name: Check exported actionlint from PowerShell
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           actionlint -version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          shellcheck --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           exit $LASTEXITCODE
   action-slim:
@@ -601,90 +599,3 @@ jobs:
             exit 0
           fi
           test "${RESULT}" = success && test "${SLIM_RESULT}" = success
-  pre-commit-shellcheck:
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['precommit']) }}
-    name: pre-commit ShellCheck integration
-    runs-on: ubuntu-latest
-    steps:
-      - *ActCheckNocred
-      - parallel: [*Go, *Uv]
-      - parallel:
-          - run: uv tool install pre-commit
-          - name: Remove the runner's ShellCheck so only the hook's own can be found
-            run: sudo apt-get remove -y shellcheck
-      - name: Confirm shellcheck is not on PATH
-        run: if command -v shellcheck; then echo "shellcheck is still on PATH; test invalid" >&2; exit 1; fi
-      - name: Confirm actionlint-shellcheck reports a fixture's SC2086
-        run: |
-          cat > .github/workflows/_pre-commit-shellcheck-fixture.yml <<'FIXTURE'
-          name: CI
-          on: push
-          jobs: {fixture: {runs-on: ubuntu-latest, steps: [{run: "echo $GITHUB_SHA"}]}}
-          FIXTURE
-          set +e
-          pre-commit try-repo . actionlint-shellcheck --files .github/workflows/_pre-commit-shellcheck-fixture.yml --verbose > pre-commit-output.txt 2>&1
-          status=$?
-          set -e
-          cat pre-commit-output.txt
-          rm .github/workflows/_pre-commit-shellcheck-fixture.yml
-          test "${status}" -ne 0
-          grep -q SC2086 pre-commit-output.txt
-      - name: Check 60 generated workflows through the hook within the startup budget
-        run: |
-          for i in $(seq -w 1 60); do
-            cat > ".github/workflows/_pre-commit-shellcheck-bench-${i}.yml" <<FIXTURE
-          name: Bench ${i}
-          on: push
-          jobs:
-            bench:
-              runs-on: ubuntu-latest
-              steps:
-                - run: echo "\${GITHUB_SHA}"
-                - run: printf '%s\n' "\${RUNNER_OS}"
-                - run: test -d "\${GITHUB_WORKSPACE}"
-          FIXTURE
-          done
-          set +e
-          pre-commit try-repo . actionlint-shellcheck --files .github/workflows/_pre-commit-shellcheck-bench-*.yml --verbose > bench-output.txt 2>&1
-          status=$?
-          set -e
-          cat bench-output.txt
-          rm .github/workflows/_pre-commit-shellcheck-bench-*.yml
-          duration="$(sed -n 's/^- duration: \([0-9]*\(\.[0-9]*\)\?\)s$/\1/p' bench-output.txt)"
-          test -n "${duration}"
-          echo "actionlint-shellcheck checked 60 generated workflows in ${duration}s, exit ${status}"
-          test "${status}" -eq 0
-          awk -v duration="${duration}" 'BEGIN { exit !(duration <= 30) }'
-      - name: Confirm the pinned installer verifies release provenance offline
-        run: |
-          dependency="$(grep -o 'github\.com/kjanat/shellcheck-rs/go/cmd/shellcheck@[^] ]*' .pre-commit-hooks.yaml | sort -u)"
-          pins="$(wc -l <<< "${dependency}")"
-          test "${pins}" -eq 1
-          GOBIN="${RUNNER_TEMP}/rshellcheck-installer" go install "${dependency}"
-          real_gh="$(command -v gh)"
-          offline_config="$(mktemp -d "${RUNNER_TEMP}/gh-offline.XXXXXX")"
-          mkdir -p "${RUNNER_TEMP}/gh-shim"
-          cat > "${RUNNER_TEMP}/gh-shim/gh" <<SHIM
-          #!/usr/bin/env bash
-          printf '%s\n' "\$*" >> "${RUNNER_TEMP}/gh-calls.txt"
-          exec sudo unshare --net env -u GH_TOKEN -u GITHUB_TOKEN \
-            -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN \
-            GH_CONFIG_DIR="${offline_config}" "${real_gh}" "\$@"
-          SHIM
-          chmod +x "${RUNNER_TEMP}/gh-shim/gh"
-          PATH="${RUNNER_TEMP}/gh-shim:${PATH}" XDG_CACHE_HOME="${RUNNER_TEMP}/rshellcheck-cache" \
-            "${RUNNER_TEMP}/rshellcheck-installer/shellcheck" --version 2> installer-stderr.txt
-          cat installer-stderr.txt
-          if grep -q 'provenance not verified' installer-stderr.txt; then
-            echo '::error::The rshellcheck installer skipped provenance verification.' >&2
-            exit 1
-          fi
-          cat "${RUNNER_TEMP}/gh-calls.txt"
-          grep -Eq '^attestation verify .* --repo kjanat/shellcheck-rs( |$)' "${RUNNER_TEMP}/gh-calls.txt"
-          for flag in bundle custom-trusted-root source-digest signer-digest; do
-            grep -Eq " --${flag} [^ ]+( |$)" "${RUNNER_TEMP}/gh-calls.txt"
-          done
-      - name: Run the deletion-only pre-commit integration test
-        env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
-        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' ./internal/integration/cli

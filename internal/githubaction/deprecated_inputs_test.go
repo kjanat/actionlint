@@ -21,16 +21,13 @@ func TestDeprecatedPyflakesInputsWarnOnlyWhenRequested(t *testing.T) {
 					t.Fatalf("Action status %d: %s", code, &out)
 				}
 				warnings := 0
-				if pathInput == "true" {
-					warnings++
-				}
 				if pyflakes == "true" {
 					warnings++
 				}
 				if got := strings.Count(out.String(), "::warning::"); got != warnings {
 					t.Fatalf("want %d warnings, got %d: %s", warnings, got, &out)
 				}
-				if got := strings.Contains(out.String(), "add-pyflakes-to-path input is deprecated and ignored"); got != (pathInput == "true") {
+				if strings.Contains(out.String(), "add-pyflakes-to-path") {
 					t.Fatalf("unexpected PATH deprecation warning: %s", &out)
 				}
 			})

@@ -1,8 +1,8 @@
 package ruff
 
 import (
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/tools/selection"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 func projectMayEnable(config, projectConfig *repoconfig.Config, project bool) (bool, error) {

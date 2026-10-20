@@ -3,6 +3,7 @@
 package pluginref
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -15,6 +16,7 @@ import (
 const DefaultRegistry = "https://plugins.actionlint.kjanat.dev/"
 
 var (
+	shortNamePattern        = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
 	githubRepositoryPattern = regexp.MustCompile(`^github\.com/[A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9][A-Za-z0-9._-]*$`)
 	gitlabSegmentPattern    = regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_.-]*$`)
 	versionPattern          = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
@@ -48,22 +50,65 @@ func ValidRepository(name string) bool {
 	return true
 }
 
-// Reference declares a repository, requested release, and catalogue.
+// Reference declares a registry alias or repository, requested release, and catalogue.
 // Version is "latest" or an exact release tag, never a resolved artifact.
 type Reference struct {
 	Name     string
 	Version  string
 	Registry string
+	direct   string
 }
 
-// Parse accepts owner/repo or a supported forge-qualified repository, optionally
-// followed by @latest or an exact release tag.
+// Parse accepts a registry alias, owner/repo or a supported forge-qualified
+// repository, optionally followed by @latest or an exact release tag.
 func Parse(value string) (Reference, error) {
+	if strings.Contains(value, "://") {
+		return directURL(value)
+	}
 	name, version, found := strings.Cut(value, "@")
 	if found && version == "" {
 		return Reference{}, errors.New("plugin version must not be empty after @")
 	}
 	return New(name, version, "")
+}
+
+// DirectSource returns a SHA-pinned artifact URL, or empty for registry entries.
+// Direct declarations already contain their immutable pin and need no lock row.
+func (r Reference) DirectSource() string { return r.direct }
+
+// IsAlias reports a registry-assigned shorthand, whose repository is resolved
+// by that registry and recorded in the project lock.
+func (r Reference) IsAlias() bool { return r.direct == "" && ValidAlias(r.Name) }
+
+// ValidAlias checks the shared catalogue and declaration shorthand syntax.
+func ValidAlias(name string) bool { return shortNamePattern.MatchString(name) }
+
+// Equal compares normalized declaration identities and selection intent.
+func (r Reference) Equal(other Reference) bool { return r == other }
+
+// Normalize validates either supported declaration form.
+func (r Reference) Normalize() (Reference, error) {
+	if r.direct != "" {
+		return directURL(r.direct)
+	}
+	return New(r.Name, r.Version, r.Registry)
+}
+
+func directURL(value string) (Reference, error) {
+	u, err := url.Parse(value)
+	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Opaque != "" {
+		return Reference{}, errors.New("direct plugin URL must use HTTPS without credentials")
+	}
+	digest, ok := strings.CutPrefix(u.Fragment, "sha256=")
+	decoded, err := hex.DecodeString(digest)
+	if !ok || err != nil || len(decoded) != 32 {
+		return Reference{}, errors.New("direct plugin URL requires #sha256=<64 hex digits>")
+	}
+	u.Host = strings.ToLower(u.Host)
+	u.Fragment, u.RawFragment = "", ""
+	name := u.String()
+	u.Fragment = "sha256=" + strings.ToLower(digest)
+	return Reference{Name: name, direct: u.String()}, nil
 }
 
 // New validates and normalizes a plugin declaration. Empty version and registry
@@ -73,8 +118,8 @@ func New(name, version, registry string) (Reference, error) {
 	if strings.Count(name, "/") == 1 {
 		name = "github.com/" + name
 	}
-	if !ValidRepository(name) {
-		return Reference{}, fmt.Errorf("invalid plugin repository %q: use owner/repo, github.com/owner/repo, or gitlab.com/group/repo", name)
+	if !ValidAlias(name) && !ValidRepository(name) {
+		return Reference{}, fmt.Errorf("invalid plugin reference %q: use a registry alias, owner/repo, github.com/owner/repo, or gitlab.com/group/repo", name)
 	}
 	if version == "" {
 		version = "latest"
@@ -101,10 +146,14 @@ func New(name, version, registry string) (Reference, error) {
 	return Reference{Name: name, Version: version, Registry: u.String()}, nil
 }
 
-// String returns the canonical repository with an exact tag when requested.
+// String preserves the declared alias or full repository identity.
 func (r Reference) String() string {
-	if r.Version == "latest" {
-		return r.Name
+	if r.direct != "" {
+		return r.direct
 	}
-	return r.Name + "@" + r.Version
+	name := r.Name
+	if r.Version == "latest" {
+		return name
+	}
+	return name + "@" + r.Version
 }

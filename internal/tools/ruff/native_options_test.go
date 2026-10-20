@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 func TestNativeConfigReadOnlyBoundary(t *testing.T) {

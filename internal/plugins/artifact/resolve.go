@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Options bounds artifact acquisition independently of runtime execution limits.
@@ -48,6 +48,19 @@ func NormalizeSource(source, directory string) (reference, local string, err err
 		local = filepath.Clean(local)
 	}
 	return local, local, nil
+}
+
+// RequireRemotePin checks execution inputs without fetching their bytes.
+// Inspection may acquire unpinned URLs to discover their digest; execution may not.
+func RequireRemotePin(source string) error {
+	u, local, pin, err := parseSource(source)
+	if err != nil {
+		return err
+	}
+	if u != nil && local == "" && pin == "" {
+		return errors.New("remote plugin execution requires #sha256=<64 hex digits>")
+	}
+	return nil
 }
 
 // Resolve accepts paths, absolute file URIs and HTTP(S) URLs. A URI fragment of

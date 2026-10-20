@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	"actionlint.kjanat.dev/internal/workspace"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"github.com/google/go-cmp/cmp"
 )

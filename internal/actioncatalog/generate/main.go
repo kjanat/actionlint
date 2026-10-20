@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // List of known outdated actions which cannot be detected from 'runs' in action.yml
@@ -304,7 +304,7 @@ package engine
 	if chunked {
 		fmt.Fprintln(b, "import \"maps\"")
 	}
-	fmt.Fprintln(b, `import actionmeta "actionlint.kjanat.dev/internal/action"`)
+	fmt.Fprintln(b, `import actionmeta "actionlint.kjanat.dev/v2/internal/action"`)
 	fmt.Fprint(b, `
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 
 	"golang.org/x/sys/execabs"
 )

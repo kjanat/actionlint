@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestLocalActionRuntimeLifecycle(t *testing.T) {

@@ -111,7 +111,7 @@ endif
 
 GIT_DESCRIBE := $(shell git describe --tags 2>/dev/null)
 ifneq ($(GIT_DESCRIBE),)
-BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=$(GIT_DESCRIBE)"
+BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=$(GIT_DESCRIBE)"
 endif
 
 # Creating or moving a tag changes the version stamp without touching a prerequisite.

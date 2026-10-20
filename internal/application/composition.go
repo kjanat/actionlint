@@ -3,14 +3,14 @@ package application
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	"actionlint.kjanat.dev/internal/checks"
-	"actionlint.kjanat.dev/internal/tools"
-	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/checks"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 )
 
 type documentChecks struct {

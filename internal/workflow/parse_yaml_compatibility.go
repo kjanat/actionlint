@@ -3,7 +3,7 @@ package workflow
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // Check the physical tree before alias resolution. YAML accepts compact empty

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/fix"
+	"actionlint.kjanat.dev/v2/internal/fix"
 )
 
 func TestFixPreviewAndApplyRechecks(t *testing.T) {

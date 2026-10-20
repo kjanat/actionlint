@@ -12,10 +12,10 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/config/tree"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/tree"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"github.com/pelletier/go-toml/v2/unstable"
 	"go.yaml.in/yaml/v4"
 )
@@ -31,6 +31,7 @@ type PluginManifest struct {
 	Exists     bool
 	original   []byte
 	snapshots  map[string][]byte
+	node       *yaml.Node
 }
 
 // OpenPluginManifest reads only plugin declarations. Plugin rule configuration
@@ -40,7 +41,7 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 }
 
 func openSelectedPluginManifest(ctx context.Context, path string) (*PluginManifest, error) {
-	manifest, err := openPluginManifest(ctx, path, readPluginManifestFile)
+	manifest, err := openPluginManifest(ctx, path, readPluginManifestSource)
 	if err != nil || len(manifest.References) == 0 {
 		return manifest, err
 	}
@@ -49,6 +50,10 @@ func openSelectedPluginManifest(ctx context.Context, path string) (*PluginManife
 }
 
 func openPluginManifest(ctx context.Context, path string, read func(context.Context, string) ([]byte, error)) (*PluginManifest, error) {
+	return openPluginManifestMode(ctx, path, read, pluginAnalysis)
+}
+
+func openPluginManifestMode(ctx context.Context, path string, read func(context.Context, string) ([]byte, error), mode pluginSelectionMode) (*PluginManifest, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -78,17 +83,42 @@ func openPluginManifest(ctx context.Context, path string, read func(context.Cont
 		}
 		return content, err
 	}, func(_ string, node *yaml.Node) (*yaml.Node, error) {
-		return node, validateManifestRoot(node)
+		if err := validateManifestRoot(node); err != nil {
+			return nil, err
+		}
+		if mode == pluginRuleDiscovery {
+			return pluginDependencyNode(node)
+		}
+		return config.NormalizeForMerge(node)
 	})
 	if err != nil {
 		return nil, err
 	}
 	manifest.original = manifest.snapshots[absolute]
+	manifest.node = loaded.Node
 	manifest.References, manifest.Declared, err = manifestReferences(loaded.Node)
 	if err != nil {
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
 	}
 	return manifest, nil
+}
+
+// The tree loader expands aliases before this projection, so plugin references
+// may still use anchors declared under unrelated fields. Validate every source
+// declaration before merging: a leaf reset cannot hide a malformed base.
+func pluginDependencyNode(node *yaml.Node) (*yaml.Node, error) {
+	if _, _, err := manifestReferences(node); err != nil {
+		return nil, err
+	}
+	projected := *node
+	projected.Content = nil
+	for i := 0; i < len(node.Content); i += 2 {
+		key := node.Content[i]
+		if key.Value == "plugins" || key.Value == "extends" {
+			projected.Content = append(projected.Content, key, node.Content[i+1])
+		}
+	}
+	return &projected, nil
 }
 
 // Like an explicitly selected lock, an explicit manifest trusts its containing
@@ -171,10 +201,10 @@ func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
 	if err := safePluginManifestPath(path); err != nil {
 		return nil, err
 	}
-	return readPluginManifestFile(ctx, path)
+	return readPluginManifestSource(ctx, path)
 }
 
-func readPluginManifestFile(ctx context.Context, path string) ([]byte, error) {
+func readPluginManifestSource(ctx context.Context, path string) ([]byte, error) {
 	reader := fsread.New(ctx, nil, nil)
 	file, err := reader.Open(path)
 	if err != nil {
@@ -295,11 +325,11 @@ func (m *PluginManifest) Save(ctx context.Context, refs []pluginref.Reference) (
 func pluginManifestSequence(refs []pluginref.Reference) (*yaml.Node, error) {
 	sequence := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
 	for _, ref := range refs {
-		normalized, err := pluginref.New(ref.Name, ref.Version, ref.Registry)
+		normalized, err := ref.Normalize()
 		if err != nil {
 			return nil, err
 		}
-		if normalized.Registry == pluginref.DefaultRegistry {
+		if normalized.DirectSource() != "" || normalized.Registry == pluginref.DefaultRegistry {
 			sequence.Content = append(sequence.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: normalized.String()})
 			continue
 		}

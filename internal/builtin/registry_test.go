@@ -3,7 +3,7 @@ package builtin
 import (
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestRuleBehavioursMatchCatalog(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/document"
+	"actionlint.kjanat.dev/v2/document"
 )
 
 func TestReportsDecodeWithoutAnalysis(t *testing.T) {

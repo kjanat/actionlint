@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 
 	"golang.org/x/sys/execabs"
 )

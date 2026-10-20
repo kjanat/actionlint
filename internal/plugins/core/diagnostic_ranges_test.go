@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 	"github.com/tetratelabs/wazero/api"
 )
 

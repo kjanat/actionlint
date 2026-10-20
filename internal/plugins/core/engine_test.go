@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	"actionlint.kjanat.dev/v2/analyzer"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental"
 )

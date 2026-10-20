@@ -3,8 +3,8 @@ package execution
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 // CheckoutEnvironmentUnknown reports settings that can make checkout differ from the local index.

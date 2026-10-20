@@ -5,8 +5,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // The cache belongs to parsed source metadata, never to an action invocation.

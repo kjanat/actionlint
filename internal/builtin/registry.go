@@ -4,17 +4,17 @@ import (
 	"context"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/analyzer"
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	lintconfig "actionlint.kjanat.dev/internal/config/rules"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	workflowcommands "actionlint.kjanat.dev/internal/workflow/commands"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	workflownames "actionlint.kjanat.dev/internal/workflow/names"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/analyzer"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowcommands "actionlint.kjanat.dev/v2/internal/workflow/commands"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // Context supplies resolved document inputs and observations to built-in adapters.

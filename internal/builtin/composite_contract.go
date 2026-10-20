@@ -1,11 +1,11 @@
 package builtin
 
 import (
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // Invocation supplies the already-resolved caller and action scope.

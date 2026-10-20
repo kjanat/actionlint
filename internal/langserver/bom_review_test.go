@@ -3,7 +3,7 @@ package langserver
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 func TestBOMEditorCoordinatesRoundTrip(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 )
 
 func TestCustomMetadataMustMatchRuntime(t *testing.T) {

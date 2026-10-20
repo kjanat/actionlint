@@ -1,8 +1,8 @@
 package workflow
 
 import (
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/mapping"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/mapping"
 )
 
 func WorkflowExpressionLiteral(s *String) (any, bool) {

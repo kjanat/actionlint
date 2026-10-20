@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
@@ -51,7 +51,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 }
 
 func TestActionDiagnosticAndSARIFPaths(t *testing.T) {
-	shellcheck, err := exec.LookPath("shellcheck")
+	_, err := exec.LookPath("shellcheck")
 	if err != nil {
 		t.Skipf("ShellCheck required: %s", err)
 	}
@@ -79,7 +79,7 @@ jobs:
 				outputPath := filepath.Join(t.TempDir(), "output")
 				env := map[string]string{
 					"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-					"ACTIONLINT_SHELLCHECK_COMMAND": shellcheck, "INPUT_PYFLAKES": "false", "INPUT_WORKING-DIRECTORY": "work",
+					"INPUT_PYFLAKES": "false", "INPUT_WORKING-DIRECTORY": "work",
 					"INPUT_FILES": tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
 					"INPUT_SARIF": "true",
 				}
@@ -162,7 +162,7 @@ jobs:
 }
 
 func TestActionSARIFOutputRetainsStructuredDiagnostics(t *testing.T) {
-	shellcheck, err := exec.LookPath("shellcheck")
+	_, err := exec.LookPath("shellcheck")
 	if err != nil {
 		t.Skipf("ShellCheck required: %s", err)
 	}
@@ -181,8 +181,8 @@ jobs:
 	outputPath := filepath.Join(t.TempDir(), "output")
 	env := map[string]string{
 		"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
-		"ACTIONLINT_ACTION_RESULT": resultPath, "ACTIONLINT_SHELLCHECK_COMMAND": shellcheck,
-		"INPUT_FILES": "my workflow.yml", "INPUT_FORMAT": "sarif",
+		"ACTIONLINT_ACTION_RESULT": resultPath,
+		"INPUT_FILES":              "my workflow.yml", "INPUT_FORMAT": "sarif",
 		"INPUT_OUTPUT-FILE": "report.sarif", "INPUT_PYFLAKES": "false",
 	}
 	var output strings.Builder

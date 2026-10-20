@@ -4,11 +4,11 @@ import (
 	"errors"
 	"strings"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // ParseActionOutline parses a standalone action manifest without reading files

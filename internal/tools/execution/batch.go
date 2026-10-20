@@ -3,12 +3,12 @@ package execution
 import (
 	"context"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowexecution "actionlint.kjanat.dev/internal/workflow/execution"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
 
 // Unit snapshots invocation context before analyzers run. Source mapping

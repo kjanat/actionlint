@@ -3,10 +3,10 @@
 package documentparse
 
 import (
-	documentmodel "actionlint.kjanat.dev/document"
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	documentmodel "actionlint.kjanat.dev/v2/document"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 type Document struct {

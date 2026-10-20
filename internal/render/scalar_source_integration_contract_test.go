@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/render"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func TestDiagnosticLongSourceLine(t *testing.T) {

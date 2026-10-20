@@ -77,7 +77,6 @@ config_roots = [
   ".github/actions/setup-runner",
   ".github/actions/setup-shellcheck",
   ".github/actions/setup-wasm-toolchain",
-  ".github/actions/shellcheck-versions",
   ".github/ci",
   "distribution/docker",
   "internal/expression/probe",

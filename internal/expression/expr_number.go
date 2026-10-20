@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	yamlscalar "actionlint.kjanat.dev/internal/yamlscalar"
+	yamlscalar "actionlint.kjanat.dev/v2/internal/yamlscalar"
 )
 
 func ToNumber(value any) float64 {

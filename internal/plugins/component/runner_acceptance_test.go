@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {

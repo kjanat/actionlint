@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/yaml"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestCIActionResultGate(t *testing.T) {

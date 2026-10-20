@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/tools"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestRetainsInitializationAndCheckFailures(t *testing.T) {

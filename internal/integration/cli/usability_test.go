@@ -9,7 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestConfigInitAliases(t *testing.T) {
@@ -24,6 +25,7 @@ func TestConfigInitAliases(t *testing.T) {
 		{"config", "--init-config"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			testutil.NewDefaultPluginRegistry(t)
 			commandTestRepo(t)
 			t.Setenv("NO_HYPERLINKS", "1")
 			got := testRunCommand("", args...)
@@ -47,6 +49,7 @@ func TestConfigInitAliases(t *testing.T) {
 func TestConfigInitRelativeHyperlink(t *testing.T) {
 	for _, mode := range []string{"always", "never"} {
 		t.Run(mode, func(t *testing.T) {
+			testutil.NewDefaultPluginRegistry(t)
 			commandTestRepo(t)
 			if err := os.Mkdir("nested", 0700); err != nil {
 				t.Fatal(err)
@@ -72,6 +75,23 @@ func TestConfigInitRelativeHyperlink(t *testing.T) {
 				t.Fatalf("%+v; want %q", got, want)
 			}
 		})
+	}
+}
+
+func TestConfigInitThroughRepositoryAlias(t *testing.T) {
+	testutil.NewDefaultPluginRegistry(t)
+	root := t.TempDir()
+	gitRepository(t, root)
+	alias := filepath.Join(t.TempDir(), "checkout")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	t.Chdir(alias)
+	t.Setenv("PWD", alias)
+	got := testRunCommand("", "config", "init", "--hyperlinks=never")
+	want := "Created " + filepath.Join(".github", "actionlint.yaml") + "\n"
+	if got.Status != 0 || got.Stdout != want || got.Stderr != "" {
+		t.Fatalf("repository alias changed display path: %+v; want %q", got, want)
 	}
 }
 

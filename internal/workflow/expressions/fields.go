@@ -4,11 +4,11 @@ import (
 	"strconv"
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/mapping"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/schema"
-	"actionlint.kjanat.dev/internal/yamlscalar"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/yamlscalar"
 )
 
 func (rule *Checker) checkOneExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {

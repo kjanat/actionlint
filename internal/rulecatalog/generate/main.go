@@ -5,8 +5,8 @@ import (
 	"context"
 	"log"
 
-	"actionlint.kjanat.dev/internal/genfile"
-	"actionlint.kjanat.dev/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/genfile"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 )
 
 func main() {

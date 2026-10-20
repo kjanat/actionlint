@@ -3,13 +3,13 @@ package builtin
 import (
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/cachepolicy"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	"actionlint.kjanat.dev/internal/workflow/references"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/cachepolicy"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleWorkflowCall is a rule checker to check workflow call at jobs.<job_id>.

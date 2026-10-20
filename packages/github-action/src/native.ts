@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
-import { access, cp, mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, delimiter, dirname, extname, isAbsolute, join, resolve } from 'node:path';
+import { delimiter, extname, isAbsolute, join, resolve } from 'node:path';
 
 import { normalizeEnvironment, subprocessEnvironment } from '#environment';
 
@@ -104,58 +104,6 @@ export async function temporary<T>(task: (directory: string) => Promise<T>): Pro
 		// Windows can retain a just-exited executable briefly (including during
 		// antivirus scanning). Retry transient locks, but still report failure.
 		await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-	}
-}
-
-function cachePath(name: string, version: string, arch: string): string {
-	const root = process.env.RUNNER_TOOL_CACHE;
-	if (!root) throw new Error('RUNNER_TOOL_CACHE is required to install external tools');
-	return join(root, name, version, arch);
-}
-
-export async function findTool(name: string, version: string, arch: string): Promise<string> {
-	const path = cachePath(name, version, arch);
-	if (await completedTool(path)) return path;
-	let entries: string[];
-	try {
-		entries = await readdir(dirname(path));
-	} catch (error) {
-		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return '';
-		throw error;
-	}
-	for (const entry of entries.sort()) {
-		if (!entry.startsWith(`${basename(path)}-`) || entry.endsWith('.complete')) continue;
-		const candidate = join(dirname(path), entry);
-		if (await completedTool(candidate)) return candidate;
-	}
-	return '';
-}
-
-async function completedTool(path: string): Promise<boolean> {
-	try {
-		await access(`${path}.complete`);
-		return (await stat(path)).isDirectory();
-	} catch (error) {
-		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false;
-		throw error;
-	}
-}
-
-export async function cacheTool(source: string, name: string, version: string, arch: string): Promise<string> {
-	const existing = await findTool(name, version, arch);
-	if (existing) return existing;
-	const path = cachePath(name, version, arch);
-	await mkdir(dirname(path), { recursive: true });
-	const installation = await mkdtemp(`${path}-`);
-	try {
-		await cp(source, installation, { recursive: true });
-		// Publish an immutable generation: other installers may still be copying or using theirs.
-		await writeFile(`${installation}.complete`, '');
-		return installation;
-	} catch (error) {
-		await rm(installation, { recursive: true, force: true });
-		await rm(`${installation}.complete`, { force: true });
-		throw error;
 	}
 }
 

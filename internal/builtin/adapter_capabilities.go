@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 // Configuration supplies the optional settings capability of built-in adapters.

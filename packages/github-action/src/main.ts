@@ -3,11 +3,12 @@ import { arch, env, platform as pf } from 'node:process';
 import { runnerPlatform } from '#assets';
 import { normalizeEnvironment } from '#environment';
 import { temporary } from '#native';
-import { publishTools } from '#path';
+import { publishActionlint } from '#path';
+import { withPluginCache } from '#plugin-cache';
 import { withReporting } from '#reporters';
 import type { Environment } from '#runtime';
 import { InputError, runAction } from '#runtime';
-import { checkExecutable, executeNative, inspectTools, nativeBinary, ruffBinary, shellcheckBinary } from '#tools';
+import { checkExecutable, executeNative, nativeBinary } from '#tools';
 import { selectedVersion } from '#version';
 import { commandEscape, writeOutputs } from '#workflow';
 
@@ -29,10 +30,8 @@ async function main(): Promise<void> {
 					return executable;
 				},
 				checkExecutable,
-				inspect: inspectTools,
-				shellcheck: () => shellcheckBinary(platform),
-				ruff: () => ruffBinary(platform),
-				publish: (tools) => publishTools(tools, environment),
+				plugins: withPluginCache,
+				publish: (executable) => publishActionlint(executable, environment),
 				execute: executeNative,
 			})
 		);

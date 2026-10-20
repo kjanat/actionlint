@@ -3,7 +3,7 @@ package workflow
 import (
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 )
 
 func TestRawYAMLScalarEquals(t *testing.T) {

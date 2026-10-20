@@ -1,6 +1,6 @@
 package workflow
 
-import "actionlint.kjanat.dev/internal/mapping"
+import "actionlint.kjanat.dev/v2/internal/mapping"
 
 var InputResolver = mapping.Resolver[*String]{
 	Text:          func(s *String) string { return s.Value },

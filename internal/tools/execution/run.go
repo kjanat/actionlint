@@ -4,8 +4,8 @@ package execution
 import (
 	"context"
 
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 )
 
 // Service owns scheduling and joining every script analyzer in a prepared batch.

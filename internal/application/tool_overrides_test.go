@@ -3,8 +3,8 @@ package application_test
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
 
 func TestFileOverrideToolRequirements(t *testing.T) {

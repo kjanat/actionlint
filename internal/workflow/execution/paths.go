@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
-	"actionlint.kjanat.dev/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
 type DirectoryKind uint8

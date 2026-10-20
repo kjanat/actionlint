@@ -3,9 +3,9 @@ package ruff
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/tools"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/tools"
 )
 
 func TestActionInputDoesNotLoadRuffConfiguration(t *testing.T) {

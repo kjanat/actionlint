@@ -3,9 +3,9 @@ package composition
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 )
 
 func TestKnownShellStateReset(t *testing.T) {

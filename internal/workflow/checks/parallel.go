@@ -3,7 +3,7 @@ package checks
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // parallelCheck is a rule to check parallel steps: a 'wait' or 'cancel' step must refer to the ID

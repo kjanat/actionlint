@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
 	"github.com/google/go-cmp/cmp"
 )

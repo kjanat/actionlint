@@ -3,8 +3,8 @@ package finding
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {

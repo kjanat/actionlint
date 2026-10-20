@@ -3,9 +3,9 @@ package analysis
 import (
 	"errors"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Rules returns built-in and registered analyzer metadata in name order. Duplicate

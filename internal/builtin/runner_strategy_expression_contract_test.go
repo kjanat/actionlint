@@ -3,8 +3,8 @@ package builtin_test
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestRunnerMatrixIncludeExcludeParity(t *testing.T) {

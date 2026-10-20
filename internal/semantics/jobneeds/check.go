@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 type Name struct {

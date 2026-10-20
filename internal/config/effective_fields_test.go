@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestEffectiveConfigFieldCoverage(t *testing.T) {

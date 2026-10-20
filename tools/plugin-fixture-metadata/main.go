@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 func main() {

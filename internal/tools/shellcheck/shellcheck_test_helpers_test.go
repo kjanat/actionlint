@@ -3,7 +3,7 @@ package shellcheck
 import (
 	"context"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 func newShellcheckRunForTest(cmd *externalCommand) *shellcheckRun {

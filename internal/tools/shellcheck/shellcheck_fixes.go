@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 type shellcheckFix struct {

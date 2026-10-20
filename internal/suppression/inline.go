@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Directive is a validated inline exception over a physical source range.

@@ -3,7 +3,7 @@ package syntax_test
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/syntax"
+	"actionlint.kjanat.dev/v2/syntax"
 )
 
 func TestPublicCacheModeSyntax(t *testing.T) {

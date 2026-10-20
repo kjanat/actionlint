@@ -3,7 +3,7 @@ package fuzz
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/syntax"
+	"actionlint.kjanat.dev/v2/syntax"
 	"go.yaml.in/yaml/v4"
 )
 

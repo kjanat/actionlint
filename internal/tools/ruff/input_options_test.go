@@ -1,8 +1,8 @@
 package ruff
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/tools"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/tools"
 	"strings"
 	"testing"
 )

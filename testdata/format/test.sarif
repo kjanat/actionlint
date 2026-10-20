@@ -547,7 +547,7 @@
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#runner-label",
               "help": {
-                "text": "Correct the runner label or declare repository-specific labels in self-hosted-runner.labels."
+                "text": "Correct the runner label or declare repository-specific labels in lint.rules.correctness.runner-label.options.labels."
               }
             },
             {

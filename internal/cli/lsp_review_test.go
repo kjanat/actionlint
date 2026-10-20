@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/internal/langserver"
+	"actionlint.kjanat.dev/v2/internal/langserver"
 )
 
 type lspTestMessage struct {

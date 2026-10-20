@@ -1,4 +1,4 @@
-module actionlint.kjanat.dev
+module actionlint.kjanat.dev/v2
 
 go 1.27.0
 

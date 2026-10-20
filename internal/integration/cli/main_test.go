@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestMain(m *testing.M) {

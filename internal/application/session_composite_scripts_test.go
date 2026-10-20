@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/builtin"
-	"actionlint.kjanat.dev/internal/tools/adapters"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
-	"actionlint.kjanat.dev/internal/workspace"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestCompositeActionRuleSelection(t *testing.T) {

@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/examples/plugins/pinnedactions"
-	"actionlint.kjanat.dev/internal/plugins/component"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/examples/plugins/pinnedactions"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {

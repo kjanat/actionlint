@@ -10,8 +10,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Generate creates the repository configuration without producing terminal output.
@@ -46,11 +46,16 @@ func Generate(root string, skipConfig bool, version string) (string, error) {
 var defaultConfigTemplate string
 
 func WriteDefaultFile(path, version string) error {
-	info, _ := debug.ReadBuildInfo()
-	ref := buildinfo.SourceRef(version, info)
-	b := []byte(strings.Replace(defaultConfigTemplate, "/HEAD/actionlint.schema.json", "/"+ref+"/actionlint.schema.json", 1))
+	b := DefaultDocument(version)
 	if err := os.WriteFile(path, b, 0644); err != nil {
 		return fmt.Errorf("could not write default configuration file at %q: %w", path, err)
 	}
 	return nil
+}
+
+// DefaultDocument returns the current configuration template without writing it.
+func DefaultDocument(version string) []byte {
+	info, _ := debug.ReadBuildInfo()
+	ref := buildinfo.SourceRef(version, info)
+	return []byte(strings.Replace(defaultConfigTemplate, "/HEAD/actionlint.schema.json", "/"+ref+"/actionlint.schema.json", 1))
 }

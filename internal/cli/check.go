@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 
-	"actionlint.kjanat.dev/internal/application"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fix"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/localapp"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/resolution"
+	"actionlint.kjanat.dev/v2/internal/application"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fix"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/resolution"
 )
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
@@ -90,11 +90,16 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
 		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
+	if err := c.pluginSelection().Migrate(ctx, workingDir, input, c.defaultPlugins(func(message string) {
+		_, _ = fmt.Fprintln(log, "warning: "+message)
+	})); err != nil {
+		return 0, err
+	}
 	plugins, err := c.pluginSelection().Resolve(ctx, workingDir, input)
 	if err != nil {
 		return 0, err
 	}
-	result, err := localapp.Check(ctx, options, input, plugins.Paths)
+	result, err := localapp.CheckSources(ctx, options, input, plugins)
 	if err != nil {
 		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok && len(c.Plugins) != 0 {
 			return 0, commandUsageError{err}
@@ -156,7 +161,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
-		result, err = localapp.Check(ctx, options, input, plugins.Paths)
+		result, err = localapp.CheckSources(ctx, options, input, plugins)
 		if err != nil {
 			return 0, err
 		}

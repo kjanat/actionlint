@@ -4,11 +4,11 @@ import (
 	"errors"
 	"reflect"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/tools/selection"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // Options selects Ruff's transport independently of workflow traversal.
@@ -48,6 +48,9 @@ func (o Options) Registration() tools.Registration {
 			return nil
 		},
 		WithBackend: func(backend analyzer.ScriptBackend) (tools.Registration, error) {
+			if o.Backend == nil && !processconfig.Enabled(o.Command, o.Process) {
+				return o.Registration(), nil
+			}
 			if o.Backend != nil || o.Process != nil && !reflect.DeepEqual(*o.Process, processconfig.Options{Optional: true}) || o.Command != "" && o.Command != "ruff" {
 				return tools.Registration{}, errors.New("ruff plugin conflicts with an explicitly selected Ruff backend or command")
 			}

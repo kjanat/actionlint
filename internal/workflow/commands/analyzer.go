@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Analyzer reports deprecated workflow commands in declared and invoked scripts

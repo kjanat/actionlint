@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestRuleSettingsAnalysis(t *testing.T) {

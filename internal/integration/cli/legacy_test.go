@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
@@ -102,6 +102,8 @@ jobs:
 			normalize := strings.NewReplacer(runtime.Version(), "GO_VERSION", runtime.GOOS+"/"+runtime.GOARCH, "GO_PLATFORM", root, "REPO_ROOT")
 			got := commandTranscript{status, normalize.Replace(stdout.String()), normalize.Replace(stderr.String())}
 			if strings.Contains(tc.name, "version") {
+				// The v1 transcript predates the v2 Go module identity.
+				got.Stdout = strings.Replace(got.Stdout, "actionlint.kjanat.dev/v2/v2 ", "actionlint.kjanat.dev ", 1)
 				got.Stdout = strings.Replace(got.Stdout, " "+buildinfo.Version()+"\n", " 1.16.0\n", 1)
 				got.Stdout = strings.Replace(got.Stdout, "\n"+buildinfo.InstalledFrom()+"\n", "\ncompatibility-test\n", 1)
 			}

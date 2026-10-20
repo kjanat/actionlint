@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
 
 func TestLocalActionSourceMappings(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/workspace"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestConfigOverlayEmptyAndNullMappings(t *testing.T) {
@@ -111,18 +111,20 @@ paths:
 	}
 	inspection := reports[0].Inspection
 	for pointer, want := range map[string]repoconfig.Origin{
-		"/self-hosted-runner/labels":              {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
-		"/config-variables":                       {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
-		"/assume-default-permissions":             {Source: "config", State: "value", Line: 4, Column: 29},
-		"/policy/cache-write-untrusted":           {Source: "input", Input: "policy", State: "null", Line: 1, Column: 24},
-		"/policy/require-job-timeout/min-minutes": {Source: "config", State: "value", Line: 8, Column: 38},
-		"/policy/cache-operation":                 {Source: "default", State: "missing"},
+		"/lint/rules/correctness/runner-label/options/labels":               {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
+		"/lint/rules/correctness/expression-reference/options/variables":    {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
+		"/lint/rules/correctness/workflow-call/options/default-permissions": {Source: "config", State: "value", Line: 4, Column: 29},
+		"/lint/rules/security/cache-write-untrusted/level":                  {Source: "input", Input: "policy", State: "null", Line: 1, Column: 24},
+		"/lint/rules/policy/require-job-timeout/options/min-minutes":        {Source: "config", State: "value", Line: 8, Column: 38},
 	} {
 		if got := inspection.Origins[pointer]; got != want {
 			t.Errorf("%s: got %+v, want %+v", pointer, got, want)
 		}
 	}
-	if inspection.Path != path || inspection.Origins["/policy/require-job-timeout/max-minutes"].Input != "config" {
+	if _, exists := inspection.Origins["/lint/rules/correctness/cache-operation/level"]; exists || !cfg.CachePolicyEnabled("cache-operation") {
+		t.Fatalf("unconfigured rule must retain its default without a fabricated origin: %+v", inspection)
+	}
+	if inspection.Path != path || inspection.Origins["/lint/rules/policy/require-job-timeout/options/max-minutes"].Input != "config" {
 		t.Errorf("lost file path or whole-config input: %+v", inspection)
 	}
 	serialized, err := repoconfig.EffectiveValues(cfg)

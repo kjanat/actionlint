@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/report"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/report"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestRendererRetainsRulesAcrossCalls(t *testing.T) {

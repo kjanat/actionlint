@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 
-	"actionlint.kjanat.dev/internal/cli"
-	ruffcheck "actionlint.kjanat.dev/internal/tools/ruff"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	ruffcheck "actionlint.kjanat.dev/v2/internal/tools/ruff"
 )
 
 func TestRuffDefaultAndPyflakesSelection(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fsread"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // ToolOptions asks providers which tools are possible for a resolved configuration.

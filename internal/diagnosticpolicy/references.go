@@ -3,8 +3,8 @@ package diagnosticpolicy
 import (
 	"strings"
 
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
 // InferReferences enriches completed findings from source indexes supplied by the caller.

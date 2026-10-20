@@ -4,8 +4,8 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 
-	"actionlint.kjanat.dev/analyzer"
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/analyzer"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 // ConfigureAnalyzers applies presets and per-rule settings to explicit registrations.

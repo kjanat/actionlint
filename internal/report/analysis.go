@@ -2,11 +2,11 @@
 package report
 
 import (
-	"actionlint.kjanat.dev/diagnostic"
-	documentmodel "actionlint.kjanat.dev/document"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/rule"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	documentmodel "actionlint.kjanat.dev/v2/document"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/rule"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 // Analysis is the completed or partial result of an analysis session. It contains

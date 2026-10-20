@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/projectpath"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
 // Source retains both diagnostic spelling and the actual input path.

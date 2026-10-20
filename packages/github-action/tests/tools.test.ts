@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { chmod, copyFile, link, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, link, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import { ruffVersion, runnerPlatform } from '#assets';
 import { capture, temporary } from '#native';
-import { executeNative, inspectTools, ruffBinary, shellcheckBinary } from '#tools';
+import { executeNative } from '#tools';
 
 async function withEnvironment(values: Record<string, string>, run: () => Promise<void>): Promise<void> {
 	const previous = new Map(Object.keys(values).map((name) => [name, process.env[name]]));
@@ -77,153 +75,6 @@ test('tool probes exclude the review token from explicit and inherited environme
 			], environment);
 			assert.equal(result.exitCode, 0, result.stderr);
 			assert.equal(result.stdout, 'absent');
-		}
-	});
-});
-
-test('native tools discovered on PATH report their version without changing selection', async (t) => {
-	const messages: string[] = [];
-	t.mock.method(console, 'log', (message: string) => messages.push(message));
-	await temporary(async (directory) => {
-		const extension = process.platform === 'win32' ? '.exe' : '';
-		const shellcheck = join(directory, `shellcheck${extension}`);
-		for (const executable of [shellcheck]) await copyFile(process.execPath, executable);
-		await withEnvironment({ PATH: directory, PATHEXT: '.EXE' }, async () => {
-			const platform = runnerPlatform(process.platform, process.arch);
-			assert.deepEqual(await shellcheckBinary(platform), { kind: 'existing', executable: shellcheck });
-			assert.deepEqual(messages, [
-				`::debug::ShellCheck: existing installation; version ${process.version}; ${shellcheck}`,
-			]);
-		});
-	});
-});
-
-test('failed version probes retain the selected PATH executable', async (t) => {
-	const messages: string[] = [];
-	t.mock.method(console, 'log', (message: string) => messages.push(message));
-	await temporary(async (directory) => {
-		const extension = process.platform === 'win32' ? '.exe' : '';
-		for (const name of ['shellcheck']) {
-			const executable = join(directory, name + extension);
-			await writeFile(executable, '#!/nonexistent/actionlint-test-interpreter\n');
-			await chmod(executable, 0o755);
-		}
-		await withEnvironment({ PATH: directory, PATHEXT: '.EXE' }, async () => {
-			const platform = runnerPlatform(process.platform, process.arch);
-			assert.deepEqual(await shellcheckBinary(platform), {
-				kind: 'existing',
-				executable: join(directory, `shellcheck${extension}`),
-			});
-		});
-	});
-	assert.equal(messages.length, 1);
-	for (const message of messages) assert.match(message, /existing installation; version unavailable \(.+\);/);
-});
-
-test('PATH version probes read tool banners without exposing the review token', {
-	skip: process.platform === 'win32',
-}, async (t) => {
-	const messages: string[] = [];
-	t.mock.method(console, 'log', (message: string) => messages.push(message));
-	await temporary(async (directory) => {
-		const shellcheck = join(directory, 'shellcheck');
-		const guard = '#!/bin/sh\n[ "$1" = "--version" ] || exit 90\n[ -z "$INPUT_TOKEN" ] || exit 91\n';
-		await writeFile(shellcheck, `${guard}printf 'ShellCheck - shell script analysis tool\\nversion: 0.11.0\\n'\n`);
-		await chmod(shellcheck, 0o755);
-		await withEnvironment({ PATH: directory, INPUT_TOKEN: 'fixture-review-token' }, async () => {
-			const platform = runnerPlatform(process.platform, process.arch);
-			await shellcheckBinary(platform);
-		});
-		assert.deepEqual(messages, [
-			`::debug::ShellCheck: existing installation; version 0.11.0; ${shellcheck}`,
-		]);
-	});
-});
-
-test('unsupported and timed-out version probes remain advisory', {
-	skip: process.platform === 'win32',
-}, async (t) => {
-	const messages: string[] = [];
-	t.mock.method(console, 'log', (message: string) => messages.push(message));
-	await temporary(async (directory) => {
-		const executable = join(directory, 'shellcheck');
-		for (
-			const { script, reason } of [
-				{ script: 'exit 7', reason: '--version exited 7' },
-				{ script: 'exit 0', reason: 'empty --version output' },
-				{ script: "printf 'custom wrapper\\n'", reason: 'unrecognized --version output' },
-				{ script: 'while :; do :; done', reason: 'timed out after 1000ms' },
-			]
-		) {
-			await writeFile(executable, `#!/bin/sh\n${script}\n`);
-			await chmod(executable, 0o755);
-			await withEnvironment({ PATH: directory }, async () => {
-				assert.deepEqual(await shellcheckBinary(runnerPlatform(process.platform, process.arch)), {
-					kind: 'existing',
-					executable,
-				});
-			});
-			assert.ok(messages.at(-1)?.includes(reason));
-		}
-	});
-});
-
-test('Ruff rejects unrelated PATH executables and validates its cached fallback', async () => {
-	await temporary(async (directory) => {
-		const platform = runnerPlatform(process.platform, process.arch);
-		const binary = process.platform === 'win32' ? 'ruff.exe' : 'ruff';
-		const pathTool = join(directory, binary);
-		await copyFile(process.execPath, pathTool);
-		const cache = join(directory, 'cache');
-		const root = join(cache, `actionlint-ruff-${platform.os}`, ruffVersion, platform.arch);
-		await mkdir(root, { recursive: true });
-		await writeFile(`${root}.complete`, '');
-		const executable = join(root, binary);
-		await withEnvironment({ PATH: directory, PATHEXT: '.EXE', RUNNER_TOOL_CACHE: cache }, async () => {
-			await assert.rejects(ruffBinary(platform), { code: 'ENOENT' });
-			await copyFile(process.execPath, executable);
-			assert.deepEqual(await ruffBinary(platform), { kind: 'standalone', executable });
-		});
-	});
-});
-
-test('Ruff PATH reuse requires a compatible stable baseline', async () => {
-	await temporary(async (directory) => {
-		const fixture = fileURLToPath(new URL('./fixtures/ruff-path-compatibility.ts', import.meta.url));
-		const result = await capture(process.execPath, ['--experimental-test-module-mocks', fixture], {
-			...process.env,
-			RUNNER_TEMP: directory,
-			RUNNER_TOOL_CACHE: join(directory, 'cache'),
-		}, { timeoutMS: 30_000 });
-		assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
-	});
-});
-
-test('Ruff downloads root-level Windows ZIP executables and reuses both architecture caches', async () => {
-	await temporary(async (directory) => {
-		const fixture = fileURLToPath(new URL('./fixtures/ruff-windows-download.ts', import.meta.url));
-		const result = await capture(process.execPath, ['--experimental-test-module-mocks', fixture], {
-			...process.env,
-			RUNNER_TEMP: directory,
-			RUNNER_TOOL_CACHE: join(directory, 'cache'),
-		}, { timeoutMS: 30_000 });
-		assert.equal(result.exitCode, 0, `${result.stdout}\n${result.stderr}`);
-	});
-});
-
-test('native tool plans support Ruff and safely tolerate older plans without it', {
-	skip: process.platform === 'win32',
-}, async () => {
-	await temporary(async (directory) => {
-		const executable = join(directory, 'native-plan');
-		for (const value of [true, false, undefined, 'invalid']) {
-			const plan = JSON.stringify({ schema_version: 1, shellcheck: false, ruff: value });
-			await writeFile(executable, `#!/bin/sh\nprintf '%s' '${plan}'\n`, { mode: 0o755 });
-			if (value === 'invalid') {
-				await assert.rejects(inspectTools(executable, {}), /unsupported tool plan/);
-			} else {
-				assert.deepEqual(await inspectTools(executable, {}), { shellcheck: false, ruff: value === true });
-			}
 		}
 	});
 });

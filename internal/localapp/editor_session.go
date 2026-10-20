@@ -3,12 +3,14 @@ package localapp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/application"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 // An editor session owns compiled plugins, never document or analysis state.
@@ -20,9 +22,14 @@ type editorSession struct {
 	options application.Options
 	plugins *loadedPlugins
 	engines *editorEngines
+	sources PluginSources
 }
 
 func newEditorSession(ctx context.Context, options application.Options, paths []string) (*editorSession, error) {
+	return newEditorSources(ctx, options, PluginSources{Paths: paths})
+}
+
+func newEditorSources(ctx context.Context, options application.Options, sources PluginSources) (*editorSession, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -30,11 +37,18 @@ func newEditorSession(ctx context.Context, options application.Options, paths []
 	if log == nil {
 		log = io.Discard
 	}
-	plugins, err := loadPlugins(ctx, paths, log, options.Debug)
+	if err := checkEditorPluginStatuses(ctx, sources, log); err != nil {
+		return nil, err
+	}
+	plugins, err := loadPlugins(ctx, sources.Paths, log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
 	options, err = plugins.configure(options)
+	if err != nil {
+		return nil, errors.Join(err, plugins.close(context.WithoutCancel(ctx)))
+	}
+	options, err = plugins.configureManaged(options, sources.managed)
 	if err != nil {
 		return nil, errors.Join(err, plugins.close(context.WithoutCancel(ctx)))
 	}
@@ -43,7 +57,22 @@ func newEditorSession(ctx context.Context, options application.Options, paths []
 		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug,
 	}
 	options.LoadScriptEngine = engines.load
-	return &editorSession{options: options, plugins: plugins, engines: engines}, nil
+	return &editorSession{options: options, plugins: plugins, engines: engines, sources: sources}, nil
+}
+
+func checkEditorPluginStatuses(ctx context.Context, sources PluginSources, log io.Writer) error {
+	if sources.lock == nil {
+		return nil
+	}
+	if log == nil {
+		log = io.Discard
+	}
+	if err := sources.lock.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) {
+		_, _ = fmt.Fprintln(log, "warning:", message)
+	}}); err != nil {
+		return &PluginLoadError{err}
+	}
+	return nil
 }
 
 // Serve waits for every analysis before this releases their shared resources.

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -100,9 +100,9 @@ func TestCachePolicySuppressionFilterPrecedence(t *testing.T) {
 			t.Chdir(t.TempDir())
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if tc.pathIgnore != "" {
-				if err := os.WriteFile(config, []byte(`paths:
-  'test.yaml':
-    ignore: ['`+tc.pathIgnore+"']\n"), 0o600); err != nil {
+				if err := os.WriteFile(config, []byte(`lint:
+  message-ignores:
+    'test.yaml': ['`+tc.pathIgnore+"']\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}

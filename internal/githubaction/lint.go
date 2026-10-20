@@ -11,19 +11,18 @@ import (
 	"strings"
 	"time"
 
-	documentmodel "actionlint.kjanat.dev/document"
-	"actionlint.kjanat.dev/internal/localapp"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/buildinfo"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 const lintTimeout = 300 * time.Second
@@ -32,21 +31,19 @@ const lintTimeout = 300 * time.Second
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
-	ruff               string
-	ruffOptions        *processconfig.Options
-	ctx                context.Context
-	shellcheckOptions  *processconfig.Options
-	shellcheckSettings *toolconfig.ShellcheckSettings
-	workingDir         string
-	workspaceDir       string
-	configFile         string
-	overlays           []repoconfig.Overlay
-	ignore             []string
-	shellcheck         string
-	format             outputFormat
-	sarif              bool
-	files              []string
-	hints              []string
+	ruff              string
+	ctx               context.Context
+	shellcheckOptions *processconfig.Options
+	workingDir        string
+	workspaceDir      string
+	configFile        string
+	overlays          []repoconfig.Overlay
+	ignore            []string
+	shellcheck        string
+	format            outputFormat
+	sarif             bool
+	files             []string
+	hints             []string
 }
 
 type lintOutcome struct {
@@ -67,7 +64,8 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	// The launcher provisions enabled Ruff before invoking this native entrypoint.
+	// The booleans control managed plugins; explicit native transports belong
+	// in the ordinary actionlint configuration.
 	ruff := env("INPUT_RUFF")
 	if ruff != "" {
 		enabled, err := parseBool("ruff", ruff)
@@ -78,19 +76,13 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 			req.ruff = "ruff"
 		}
 	}
-	if command := env("ACTIONLINT_RUFF_COMMAND"); req.ruff != "" && command != "" {
-		req.ruffOptions = &processconfig.Options{Executable: &command, AllowWasm: true}
-	}
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
-		overlay, err := repoconfig.ParseOverlay("config", []byte(value))
+		overlay, err := repoconfig.ParseOverlayBeforePlugins("config", []byte(value))
 		if err != nil {
 			return inputErrorf("%s", err)
 		}
 		req.overlays = append(req.overlays, overlay)
-	}
-	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
-		req.shellcheckOptions = &processconfig.Options{Executable: &command, AllowWasm: true}
 	}
 	return nil
 }
@@ -120,12 +112,11 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := application.Options{
-		LoadScriptEngine: localapp.ScriptEngineLoader(&logs, false),
-		IgnorePatterns:   req.ignore,
-		ConfigFile:       req.configFile,
-		ConfigOverlays:   req.overlays,
-		WorkingDir:       req.workingDir,
-		LogWriter:        &logs,
+		IgnorePatterns: req.ignore,
+		ConfigFile:     req.configFile,
+		ConfigOverlays: req.overlays,
+		WorkingDir:     req.workingDir,
+		LogWriter:      &logs,
 		OnConfigLoaded: func(report repoconfig.Report) {
 			result.configs = append(result.configs, report)
 		},
@@ -133,10 +124,10 @@ func runLinter(req *lintRequest) *lintResult {
 			result.fileCount = len(files)
 			result.fileCountKnown = true
 		}, Tools: adapters.Options{
-			Ruff: req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
-			ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
-			ShellcheckSettings: req.shellcheckSettings,
-			ShellCheck:         req.shellcheck,
+			Ruff:              req.ruff,
+			RuffOptions:       &processconfig.Options{Optional: true},
+			ShellcheckOptions: toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
+			ShellCheck:        req.shellcheck,
 		}.Registrations(),
 	}
 
@@ -147,9 +138,8 @@ func runLinter(req *lintRequest) *lintResult {
 	var analysis *application.Result
 	var err error
 	inputNames := make(map[string]string, len(req.files))
-	if len(req.files) == 0 {
-		analysis, err = application.Check(ctx, opts, application.Input{Kind: application.Repository, Directory: req.workingDir})
-	} else {
+	input := application.Input{Kind: application.Repository, Directory: req.workingDir}
+	if len(req.files) != 0 {
 		paths := make([]string, len(req.files))
 		for i, path := range req.files {
 			if !filepath.IsAbs(path) {
@@ -158,7 +148,22 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 			paths[i] = path
 		}
-		analysis, err = application.Check(ctx, opts, application.Input{Kind: application.Files, Paths: paths})
+		input = application.Input{Kind: application.Files, Paths: paths}
+	}
+	selection := req.pluginSelection()
+	selectionErr := selection.Migrate(ctx, req.workingDir, input, localapp.DefaultPluginOptions{
+		Shellcheck: req.shellcheck == "shellcheck" && req.shellcheckOptions == nil,
+		Ruff:       req.ruff == "ruff",
+		Warning:    func(message string) { _, _ = fmt.Fprintln(&logs, "warning: "+message) },
+	})
+	var selected localapp.PluginSources
+	if selectionErr == nil {
+		selected, selectionErr = selection.Resolve(ctx, req.workingDir, input)
+	}
+	if selectionErr != nil {
+		err = selectionErr
+	} else {
+		analysis, err = localapp.CheckSources(ctx, opts, input, selected)
 	}
 	// Absolute reads must retain the caller's relative spelling in Action output.
 	if analysis != nil {
@@ -270,7 +275,7 @@ func reportPath(workingDir, workspace, path string) string {
 }
 
 func toolOptionsInDirectory(options *processconfig.Options, directory string) *processconfig.Options {
-	configured := processconfig.Options{AllowWasm: true}
+	configured := processconfig.Options{Optional: true}
 	if options != nil {
 		configured = *options
 	}

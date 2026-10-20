@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerapi "actionlint.kjanat.dev/runner"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 func TestRuleRunnerLabelCheckLabels(t *testing.T) {

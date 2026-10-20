@@ -2,9 +2,9 @@
 
 [![Latest release](https://img.shields.io/github/v/release/kjanat/actionlint?logo=github&logoColor=white&label=release&labelColor=181717&color=black)](https://github.com/kjanat/actionlint/releases)
 
-The upcoming Node 24 Action runs the ordinary actionlint binary without Docker.
-Existing immutable releases keep their original implementation. Examples using
-new inputs require a release containing this change.
+The upcoming v2 Node 24 Action runs the ordinary actionlint binary without Docker.
+The examples target v2, which is not published yet. Existing immutable v1 releases
+keep their original implementation.
 
 ## Quick start
 
@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
-      - uses: kjanat/actionlint@v1
+      - uses: kjanat/actionlint@v2
 ```
 
 This discovers workflows, reports findings as annotations, and writes a compact
@@ -28,19 +28,17 @@ normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
 ## Install without running analysis
 
 ```yaml
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
   id: setup
   with:
     install-only: true
     version: 1.17.0
-    shellcheck: false
 - run: actionlint --version
 - run: actionlint .github/workflows/ci.yml
 ```
 
 `install-only` exports the selected binary for later steps without reading workflows
-or lint configuration. Enabled ShellCheck integration is also installed;
-disable it as above to install just actionlint. Keep `add-actionlint-to-path: true`
+or lint configuration. Keep `add-actionlint-to-path: true`
 (the default). Analysis and reporting inputs do not apply in this mode.
 
 Use `version-file: .tool-versions` instead of `version` to read a checked-in pin:
@@ -69,8 +67,13 @@ After setup, `result` is `success` and `exit-code` is `0`. No analysis occurred:
 Keep reusable settings in `.github/actionlint.yaml`, shared with the CLI:
 
 ```yaml
-self-hosted-runner:
-  labels: [ubuntu-24.04-custom]
+plugins: [shellcheck, ruff]
+lint:
+  rules:
+    correctness:
+      runner-label:
+        level: default
+        options: { labels: [ubuntu-24.04-custom] }
 tools:
   shellcheck:
     config:
@@ -84,10 +87,15 @@ The log identifies the selected file and any inline override.
 Use `config` for an invocation-specific overlay:
 
 ```yaml
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
   with:
     config: |
-      config-variables: [DEPLOY_ENV]
+      lint:
+        rules:
+          correctness:
+            expression-reference:
+              level: default
+              options: { variables: [DEPLOY_ENV] }
       tools:
         shellcheck:
           config:
@@ -97,7 +105,7 @@ Use `config` for an invocation-specific overlay:
 Or pass a repository variable containing YAML/JSON directly:
 
 ```yaml
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
   with:
     config: ${{ vars.ACTIONLINT_CONFIG }}
 ```
@@ -110,7 +118,7 @@ validation; editors generally treat `with.config` as a string.
 
 The overlay merges over the selected file. Maps merge recursively so changing one
 tool option preserves its neighbors; lists and scalars replace so removals are
-unambiguous. These examples start with `config-variables: [DEPLOY_ENV]` and
+unambiguous. These examples start with expression-reference `options.variables: [DEPLOY_ENV]` and
 `tools.shellcheck.config: {disable: [SC2086], enable: [all]}`:
 
 | Overlay                                                  | Effect                                                          |
@@ -118,8 +126,6 @@ unambiguous. These examples start with `config-variables: [DEPLOY_ENV]` and
 | Omitted or blank input                                   | Inherit the file.                                               |
 | `config: '{}'`                                           | Keep inherited settings.                                        |
 | `config: 'null'`                                         | Reset the complete config to defaults.                          |
-| `config: 'config-variables: []'`                         | Allow no variables.                                             |
-| `config: 'config-variables: null'`                       | Restore the default: no variable-name checking.                 |
 | `config: 'tools: {shellcheck: false}'`                   | Disable ShellCheck, retaining its settings for a later overlay. |
 | `config: 'tools: {shellcheck: {config: {disable: []}}}'` | Clear disabled codes; retain `enable: [all]`.                   |
 | `config: 'tools: {shellcheck: {config: .shellcheckrc}}'` | Replace the inline directive map with an rc path.               |
@@ -128,25 +134,24 @@ unambiguous. These examples start with `config-variables: [DEPLOY_ENV]` and
 An empty map inherits **a map**. Switching between an rc string and an inline
 mapping replaces the old form; `{}` after an rc string selects an empty mapping.
 Unknown inline keys fail with their location. Historically ignored file keys warn.
+For `lint.rules.correctness.expression-reference.options.variables`, `[]` allows
+no configured variables; `null` restores the default of no variable-name checking.
 
 `shellcheck: false` disables ShellCheck. The deprecated `pyflakes` input is ignored. The default
 `shellcheck: true` permits the tool; it does not override `tools.shellcheck: false`.
-For ShellCheck flags, explicit `shellcheck-args` overrides `SHELLCHECK_OPTS`.
-Scalar options use the last value; list options accumulate without duplicates.
-`shellcheck-rc` overrides rc-selection flags. Inline directives remain active when
-rc discovery is disabled. See [dialect precedence and directives](config.md#script-selection-and-directives).
+Configure plugin options in `tools.shellcheck.config`; see [plugin configuration](plugins.md).
 
 ### Path bases
 
-| Value                                               | Relative to                                                           |
-| --------------------------------------------------- | --------------------------------------------------------------------- |
-| `working-directory`                                 | `GITHUB_WORKSPACE`; absolute paths also work.                         |
-| `files`, `config-file`, `shellcheck-rc`, `--rcfile` | Action `working-directory`.                                           |
-| Rc path in the config file                          | Directory containing that config file.                                |
-| Rc path supplied through `config`                   | Action `working-directory`; inherited paths keep their original base. |
-| `${{ configdir }}` in config                        | Selected config file's directory.                                     |
-| Inline `source-path`                                | Analyzed step's effective working directory.                          |
-| `output-file`                                       | `GITHUB_WORKSPACE`, for compatibility.                                |
+| Value                             | Relative to                                                           |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `working-directory`               | `GITHUB_WORKSPACE`; absolute paths also work.                         |
+| `files`, `config-file`            | Action `working-directory`.                                           |
+| Rc path in the config file        | Directory containing that config file.                                |
+| Rc path supplied through `config` | Action `working-directory`; inherited paths keep their original base. |
+| `${{ configdir }}` in config      | Selected config file's directory.                                     |
+| Inline `source-path`              | Analyzed step's effective working directory.                          |
+| `output-file`                     | `GITHUB_WORKSPACE`, for compatibility.                                |
 
 For a checkout at `app`, use `working-directory: app` and
 `config-file: .github/actionlint.yaml`; `output-file: reports/lint.json` still
@@ -198,7 +203,7 @@ JSON, JSON Lines and SARIF console output remain machine-readable.
 Save reports even when findings fail the lint step:
 
 ```yaml
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
   id: lint
   with: { sarif: true }
 - uses: actions/upload-artifact@v7
@@ -251,7 +256,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with: { persist-credentials: false }
-      - uses: kjanat/actionlint@v1
+      - uses: kjanat/actionlint@v2
         with: { review: true }
 ```
 
@@ -261,74 +266,56 @@ source, limits and permission errors produce concise feedback; analysis files
 remain available. Use the ordinary `pull_request` event; fork PR tokens may lack
 write permission. Review failure is advisory and leaves the analysis outcome intact.
 
-## Tools and advanced ShellCheck
+## Plugins and binary installation
 
-Each invocation downloads the **selected ordinary binary**, verifies its
-checksum and executes it. It does not reuse a cached actionlint binary. ShellCheck and Ruff use a suitable PATH installation, then the tool cache, then a pinned,
-SHA-256-verified standalone download. Ruff does not require installing Python.
-With `ruff: true` (the default), Ruff checks Python steps; set `ruff: false` to disable it. The
-`tools.ruff` configuration controls Python target version and selected Ruff checks.
-Effective file configuration is inspected before provisioning. A workflow-only override can still require Ruff for referenced composite actions, whose metadata uses its own file configuration; planning conservatively retains the project baseline for those actions. Disabling Ruff project-wide without any enabling override avoids its lookup, download and PATH export. A required tool's download or verification failure fails the Action.
-`install-only: true` installs both enabled tools without inspecting workflows. Older native Action binaries whose tool plans omit Ruff do not request it during analysis.
-Tool source/version details appear in debug logs; enable runner step debugging.
+Each invocation downloads the selected actionlint binary, verifies its checksum,
+and executes it. `add-actionlint-to-path` makes that binary available in later
+steps. `install-only: true` performs only this installation.
 
-Each `add-*-to-path` switch independently exports that selected tool to subsequent
-steps, default on. Disabled integrations export nothing. Exports last for this job.
+Declare ShellCheck and Ruff Wasm plugins in the project's `plugins` list and
+commit the generated lockfile. The Action uses the same pinned artifacts as the
+CLI. `shellcheck: false` or `ruff: false` disables the corresponding checks;
+`true` permits configured checks. Plugin options belong in project configuration.
+See [installing and configuring plugins](plugins.md).
+
+`plugin-cache: true` restores and saves pinned Wasm artifacts through GitHub
+Actions cache. The Action reads the plugin plan before restoring the cache;
+analysis then hydrates missing artifacts and verifies their digests. The cache
+never contains plugin declarations, lockfiles, or the actionlint executable.
+After automatic config migration, a second read-only plan includes any newly
+locked defaults when saving the cache.
+
 Node 24 support is required from the runner. Linux, macOS and Windows x64/arm64
-are handled by the launcher; actual availability also depends on the corresponding
-release assets and optional tools. CI tests its configured hosted runner matrix.
-Native downloads require network access, including on reruns; existing optional
-tools do not make the Action offline. HTTP(S) proxy settings are honored by downloads.
-
-Common directives belong in `tools.shellcheck.config`. Advanced invocation options:
-
-```yaml
-- uses: kjanat/actionlint@v1
-  with:
-    shellcheck-rc: true
-    shellcheck-args: '["--severity=warning", "--enable=all"]'
-```
-
-Blank `shellcheck-rc` inherits rc selection. `true` searches upward from the Action
-working directory to the filesystem root, then checks user configuration:
-`~/.shellcheckrc` and `$XDG_CONFIG_HOME/shellcheckrc` (or `~/.config/shellcheckrc`)
-on Unix, or the user config directory's `shellcheckrc` on Windows. `false` disables rc loading;
-a path selects a readable file. Project config also accepts an rc directory.
-Arguments are a literal YAML/JSON string array, without shell expansion.
-Output-format/color flags are normalized because actionlint consumes ShellCheck
-JSON; use `format` for presentation. Help/version and filename operands prevent
-analysis and are rejected. The versioned directive schema describes supported
-settings; it does not pin the executable. [Source following and custom shells](config.md#source-resolution)
-remain available, including readable files outside the repository.
+are supported where the selected release supplies an asset. Binary downloads
+require network access, including reruns. HTTP(S) proxy settings are honored.
 
 ## Input/output reference
 
 All inputs are optional. Booleans accept `true`/`false`.
 
-| Input                                                                  | Default        | Meaning                                                                                                                               |
-| ---------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `version`                                                              | Action release | Exact binary release; overrides `version-file`.                                                                                       |
-| `version-file`                                                         | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.                                                              |
-| `install-only`                                                         | `false`        | Install tools on PATH without analysis or reporting.                                                                                  |
-| `files`                                                                | discover       | Literal newline-separated workflow paths.                                                                                             |
-| `format`                                                               | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.                                                            |
-| `ignore`                                                               | empty          | Newline-separated regular expressions.                                                                                                |
-| `config-file`                                                          | discover       | Explicit config file.                                                                                                                 |
-| `config`                                                               | inherit        | Inline YAML/JSON overlay.                                                                                                             |
-| `working-directory`                                                    | `.`            | Analysis directory.                                                                                                                   |
-| `shellcheck`                                                           | `true`         | Permit external analysis.                                                                                                             |
-| `ruff`                                                                 | `true`         | Permit Python analysis; provision Ruff when required.                                                                                 |
-| `shellcheck-rc`                                                        | inherit        | Rc selection: `true`, `false`, or path.                                                                                               |
-| `shellcheck-args`                                                      | `[]`           | Literal argument array.                                                                                                               |
-| `add-actionlint-to-path`, `add-shellcheck-to-path`, `add-ruff-to-path` | `true`         | Independent exports for later steps.                                                                                                  |
-| `output-file`                                                          | empty          | Workspace-relative legacy-format report.                                                                                              |
-| `fail-on-error`                                                        | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
-| `annotations`                                                          | `auto`         | Finding annotation control.                                                                                                           |
-| `summary`                                                              | `true`         | Compact job summary.                                                                                                                  |
-| `summary-title`                                                        | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
-| `sarif`                                                                | `false`        | Write additional SARIF file.                                                                                                          |
-| `review`                                                               | `false`        | Advisory PR review posting.                                                                                                           |
-| `token`                                                                | `github.token` | Used only by the review reporter.                                                                                                     |
+| Input                    | Default        | Meaning                                                                                                                               |
+| ------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                | Action release | Exact binary release; overrides `version-file`.                                                                                       |
+| `version-file`           | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.                                                              |
+| `install-only`           | `false`        | Install actionlint on PATH without analysis or reporting.                                                                             |
+| `plugin-cache`           | `true`         | Restore and save digest-verified plugin artifacts.                                                                                    |
+| `files`                  | discover       | Literal newline-separated workflow paths.                                                                                             |
+| `format`                 | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.                                                            |
+| `ignore`                 | empty          | Newline-separated regular expressions.                                                                                                |
+| `config-file`            | discover       | Explicit config file.                                                                                                                 |
+| `config`                 | inherit        | Inline YAML/JSON overlay.                                                                                                             |
+| `working-directory`      | `.`            | Analysis directory.                                                                                                                   |
+| `shellcheck`             | `true`         | Permit the configured ShellCheck Wasm checks.                                                                                         |
+| `ruff`                   | `true`         | Permit the configured Ruff Wasm checks.                                                                                               |
+| `add-actionlint-to-path` | `true`         | Export actionlint for later steps.                                                                                                    |
+| `output-file`            | empty          | Workspace-relative legacy-format report.                                                                                              |
+| `fail-on-error`          | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
+| `annotations`            | `auto`         | Finding annotation control.                                                                                                           |
+| `summary`                | `true`         | Compact job summary.                                                                                                                  |
+| `summary-title`          | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
+| `sarif`                  | `false`        | Write additional SARIF file.                                                                                                          |
+| `review`                 | `false`        | Advisory PR review posting.                                                                                                           |
+| `token`                  | `github.token` | Used only by the review reporter.                                                                                                     |
 
 | Output           | Meaning                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -344,14 +331,15 @@ All inputs are optional. Booleans accept `true`/`false`.
 
 ## Migration and troubleshooting
 
-Input and output names remain available, but **JSON and JSON Lines change shape**:
+The deprecated `pyflakes` input is ignored; use a configured Ruff plugin.
+**JSON and JSON Lines change shape**:
 JSON now returns the versioned result object instead of a diagnostic array; JSON
 Lines uses versioned canonical diagnostics. Update consumers using the
 [migration guide](results.md) before upgrading. The unified contract is
 the default; there is no separate legacy JSON mode. Coordinate affected consumers
 before promoting moving Action tags.
 
-New defaults add a compact summary and independent PATH exports; turn each off when
+New defaults add a compact summary and actionlint PATH export; turn either off when
 unwanted. JavaScript removes Docker's Linux/daemon requirement. Existing immutable
 Docker releases and digest pins remain untouched. Compatibility images continue
 as `action-X.Y.Z`, `action-vX.Y`, `action-vX`, and `action-latest`, using a thin

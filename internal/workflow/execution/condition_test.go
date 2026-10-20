@@ -3,8 +3,8 @@ package execution
 import (
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestStepCanRunAfterFailure(t *testing.T) {

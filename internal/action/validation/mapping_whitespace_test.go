@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actioncheck "actionlint.kjanat.dev/internal/action/validation"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestExpressionWhitespaceActionMappingBoundaries(t *testing.T) {

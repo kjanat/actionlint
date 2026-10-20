@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 )
 
 type upstreamBlock struct{ Name, Body string }

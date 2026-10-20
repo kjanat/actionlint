@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analysis"
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analysis"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 func TestInMemorySourcesRetainLocalReferenceContext(t *testing.T) {

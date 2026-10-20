@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/rule"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // Context supplies invocation-owned resources to a registered adapter.
@@ -24,6 +25,9 @@ type Context struct {
 	Warn                    func(error)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
+	DocumentPath         string
+	DocumentContent      []byte
+	Reference            func(string, []byte, diagnostic.Position) source.Reference
 }
 
 // Registration owns a tool's selection and construction policy. The host only
@@ -42,6 +46,9 @@ type Registration struct {
 	WithBackend       func(analyzer.ScriptBackend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(Script) (PreparedInput, error)
+	// WithAnalyzer replaces an engine with a document analyzer while retaining
+	// the tool's configuration and diagnostic policy.
+	WithAnalyzer func(analyzer.Analyzer) (Registration, error)
 }
 
 // PreparedInput preserves the original scalar's coordinates when an adapter
@@ -74,16 +81,17 @@ type Execution struct {
 
 // Script is a prepared snippet and its source map, not a workflow AST visitor.
 type Script struct {
-	Input      *analyzer.ScriptInput
-	Text       string
-	Source     *workflow.ScriptSource
-	Key, Value *workflow.Pos
-	Shell      *string
-	Config     *config.Config
-	Path       string
-	Content    []byte
-	Scope      *Scope
-	Execution  Execution
+	Input       *analyzer.ScriptInput
+	Declaration diagnostic.Position
+	Text        string
+	Source      *workflow.ScriptSource
+	Key, Value  *workflow.Pos
+	Shell       *string
+	Config      *config.Config
+	Path        string
+	Content     []byte
+	Scope       *Scope
+	Execution   Execution
 }
 type Batch struct {
 	Scopes  []*Scope

@@ -3,9 +3,9 @@ package execution
 import (
 	"context"
 
-	"actionlint.kjanat.dev/analyzer"
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/v2/analyzer"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 )
 
 type FactAnalyzer struct{ Analyzer analyzer.Analyzer }

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 func applyDiagnosticFix(t *testing.T, input string, fix DiagnosticFix) string {

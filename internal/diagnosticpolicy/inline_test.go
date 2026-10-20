@@ -3,9 +3,9 @@ package diagnosticpolicy
 import (
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 )
 
 func TestEveryRuleIsSuppressible(t *testing.T) {

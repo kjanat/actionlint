@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/sourceid"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
 func TestActionFactsDoNotBecomeWorkflowTraversalInputs(t *testing.T) {

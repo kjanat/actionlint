@@ -82,7 +82,7 @@ gh workflow run release-prepare.yml --ref master -f version=1.2.3
 ```
 
 Preparation builds a child commit containing the complete source tree, root `action.mjs`,
-`SHA256SUMS`, and `.pre-commit-hooks.yaml` with the Docker hook pinned to the release image.
+and `SHA256SUMS`. Pre-commit hooks are released from their dedicated repository.
 The candidate commit travels in a Git bundle; its version tag exists only inside the
 build job. The workflow builds archives and package manifests without publishing, tests the candidate
 on Linux, macOS and Windows, checks Nix, and tests both CLI and compatibility Action containers on
@@ -145,14 +145,10 @@ When a new file or a new line starts referring to a release version, add it to `
 [`targets.go`](./targets.go). Until it is declared, `-check` and `go test ./tools/release/bump-version`
 fail with the file and line of the undeclared reference.
 
-Version numbers which are not actionlint release versions, such as the minimum pre-commit version
-or an upstream specification version, are listed in the `unrelated` field of the target instead.
+Version numbers which are not actionlint release versions, such as an upstream specification version, are listed in the `unrelated` field of the target instead.
 The script requires each of those literals to still be present, so a stale declaration is reported
 rather than silently ignored.
 
 A rule whose pattern also accepts `nightly` lets a reference point at the development image.
 `-check` reports such a reference as `nightly (development)` and leaves it out of the release
-version decision; a bump leaves it unchanged. The pre-commit Docker image tag in
-`.pre-commit-hooks.yaml` is `nightly` on `master`; release preparation pins it to the release
-version in the candidate commit, which the version tag points at, so a release checkout declares
-the release version there.
+version decision; a bump leaves it unchanged.
