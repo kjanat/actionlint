@@ -33,6 +33,7 @@ const (
 
 func NewPluginRegistry(t *testing.T) *PluginRegistry {
 	t.Helper()
+	IsolateUserCache(t)
 	r := &PluginRegistry{Files: map[string][]byte{}, PluginID: "no-sudo"}
 	previous := http.DefaultTransport
 	http.DefaultTransport = r

@@ -131,8 +131,6 @@ func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	t.Setenv("LocalAppData", t.TempDir())
 	project, err := OpenPluginProject(t.Context(), pluginRepository(t), "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -208,8 +206,6 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	t.Setenv("LocalAppData", t.TempDir())
 	project, err := OpenPluginProject(t.Context(), pluginRepository(t), "", "")
 	if err != nil {
 		t.Fatal(err)

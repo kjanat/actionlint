@@ -99,8 +99,6 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	}
 	r := testutil.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", wasm)
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	t.Setenv("LocalAppData", t.TempDir())
 	client, err := pluginregistry.New(testutil.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)

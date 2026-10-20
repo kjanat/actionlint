@@ -13,13 +13,11 @@ import (
 
 	"actionlint.kjanat.dev/internal/application"
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/internal/testutil"
 )
 
 func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LOCALAPPDATA", cache)
-	t.Setenv("HOME", cache)
+	testutil.IsolateUserCache(t)
 	module, err := filepath.Abs("../plugins/core/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
