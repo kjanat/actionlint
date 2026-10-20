@@ -1,7 +1,7 @@
 ---
 name: CI
 on:
-  push: { branches: [master] }
+  push: { branches: [master, fuck-it] }
   pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -81,7 +81,7 @@ jobs:
               ".pre-commit-hooks.yaml", "tools/release/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
             ],
             "plugins": [
-              "plugins/**", "examples/plugins/**", "testdata/plugins/**", "testdata/runner-provider/**", "tools/runner-host/**", "plugin/**", "internal/plugins/**", "internal/application/**", "analysis/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "diagnostic/**", "go.mod", "go.sum", "Makefile", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"
+              "plugins/**", "examples/plugins/**", "testdata/plugins/**", "testdata/runner-provider/**", "tools/runner-host/**", "tools/plugin-contract/**", "plugin/**", "internal/plugins/**", "internal/application/**", "internal/localapp/**", "analysis/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "runner/**", "diagnostic/**", "go.mod", "go.sum", "Makefile", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"
             ]
           }
         }
@@ -152,7 +152,7 @@ jobs:
 
       - name: Dog fooding 🐶
         # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
-        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
+        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color --shellcheck='shellcheck -o all'
 
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with: { use_oidc: true }
@@ -299,6 +299,10 @@ jobs:
         run: cargo build --locked --manifest-path tools/runner-host/Cargo.toml
       - name: Build the plugin fixtures from source
         run: make -B plugins
+      - name: Verify generated plugin interfaces
+        run: |
+          go run -C tools/plugin-contract .
+          git diff --exit-code -- internal/plugins/component/contract_generated.go internal/plugins/component/runner_generated.go internal/plugins/component/script_engine_generated.go
       - name: Load the Rust, C and TinyGo examples
         run: >-
           go run ./cmd/actionlint --no-config --shellcheck= --ruff=
@@ -312,7 +316,7 @@ jobs:
         run: |
           test -x "${ACTIONLINT_RUNNER_HOST}"
           go test -count=1 -v ./internal/plugins/component ./internal/plugins/core ./plugin
-      - run: go test -count=1 -run "Plugin|Engine" ./internal/integration/cli
+      - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/localapp ./internal/integration/cli
   docker:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
@@ -371,7 +375,7 @@ jobs:
         with: { version-file: .tool-versions, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all'
+        run: go run ./cmd/actionlint --shellcheck='shellcheck -o all'
           .github/workflows/*.y*ml # **/action.y*ml
       - name: Prepare the ordinary binary and release action
         env:

@@ -201,8 +201,12 @@ test('plugin sources and Cargo inputs select the plugin checks', () => {
 			'tools/runner-host/src/main.rs',
 			'tools/runner-host/Cargo.toml',
 			'tools/runner-host/Cargo.lock',
+			'tools/plugin-contract/main.go',
+			'tools/plugin-contract/go.mod',
 			'analysis/analysis.go',
 			'internal/application/analysis_document.go',
+			'internal/localapp/plugins.go',
+			'internal/localapp/plugins_test.go',
 		]
 	) {
 		assert.equal(selectJobs(ci, [path]).plugins, true, path);
