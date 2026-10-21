@@ -247,8 +247,7 @@ Plugins requiring `dependencies` receive literal action and reusable-workflow
 references, including source ranges and owning node identities. Dynamic references
 remain unknown and are not sent as literal dependencies.
 
-Core script engines use the version 1 JSON ABI because they analyze sanitized
-snippets, not workflow documents.
+Core script engines use the version 1 JSON ABI to analyze sanitized snippets.
 `--plugin` accepts either binary kind and selects the appropriate host from its
 WebAssembly header. A failing component is never retried as a core module.
 
@@ -263,8 +262,8 @@ rule names are rejected before analysis.
 ## Configure registered rules
 
 Loading a document analyzer explicitly enables it by default. Configure it under
-`lint.rules.plugins`; semantic categories such as security remain metadata rather
-than configuration namespaces for third-party rules:
+`lint.rules.plugins`. Third-party rules share this configuration namespace. Their
+semantic categories, such as security, remain plugin metadata:
 
 ```yaml
 lint:
