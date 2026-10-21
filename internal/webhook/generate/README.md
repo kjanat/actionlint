@@ -18,7 +18,7 @@ with explicit `preserve_schema` exceptions for reviewed compatibility supplement
 Those exceptions preserve `image_version` activities and pull-request `stacked`
 from the strict workflow schema. Payload-only activities cannot use this policy.
 The pull-request table includes its pinned reusable Markdown fragment. This
-snapshot targets GitHub.com (fpt/ghec), not every historical GHES version.
+snapshot targets GitHub.com (fpt/ghec).
 For conditional table rows, GHES-only branches are skipped in favor of the
 GitHub.com `else` variant; unknown table conditions fail generation for review.
 The manifest distinguishes omitted-`types` defaults from permitted activities.

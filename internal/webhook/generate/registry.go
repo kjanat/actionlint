@@ -181,9 +181,8 @@ func documentedTriggers(src, pullRequest []byte) (map[string][]string, error) {
 		if event == "" || !strings.HasPrefix(line, "| ") {
 			continue
 		}
-		// This registry targets GitHub.com. A GHES-only row must not consume
-		// the event before its current else variant is reached. Unknown table
-		// conditions need explicit review when updating the pinned docs.
+		// Skip GHES-only rows to select the GitHub.com else variant.
+		// Reject unknown table conditions for review when updating pinned docs.
 		if strings.HasPrefix(line, "| {% ifversion ") {
 			if !enterpriseTable.MatchString(line) || skipEnterpriseTable {
 				return nil, fmt.Errorf("unsupported documentation table condition for %s: %s", event, line)
