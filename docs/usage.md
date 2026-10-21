@@ -323,8 +323,9 @@ check. `doctor` reports the selected config and resolves configured external-too
 commands without executing them. Its paths become clickable `file://` links when
 hyperlinks are enabled, with spaces and non-ASCII characters encoded in the target.
 Windows drive and UNC paths are supported. Missing optional tools are reported as unavailable;
-a malformed selected configuration returns exit status 3. Help, version, rules and
-completion do not load configuration or create a linter.
+a malformed selected configuration returns exit status 3. Help, version and
+completion do not load configuration or create a linter. Rules load selected plugin
+declarations without running analysis.
 
 ### Shell completion
 

@@ -174,7 +174,7 @@ func TestEnvironmentValidationByOperation(t *testing.T) {
 			t.Fatalf("unrelated environment blocked %v: %+v", args, got)
 		}
 	}
-	if got := testRunCommand("", "rules"); got.Status != 2 || !strings.Contains(got.Stderr, "plugin configuration does not exist") {
+	if got := testRunCommand("", "rules"); got.Status != 3 || !strings.Contains(got.Stderr, "plugin configuration does not exist") {
 		t.Fatalf("rules ignored its selected plugin configuration: %+v", got)
 	}
 	if got := testRunCommand("", "rules", "--no-config"); got.Status != 0 {
