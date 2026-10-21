@@ -781,7 +781,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "3a89b2d5504a957fce03250a0fb99249c0b8a41daabc77c7ee4b989fe05097bb"
+      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "c367e6685a2feba972a5e40329f0e893263303ac2750fd85114f0b00fd15a9a4"
     },
     "findings": [
       {
@@ -797,11 +797,9 @@
         "scope": "diagnostic",
         "diagnostic_indices": [
           6,
-          10,
-          11,
-          12
+          10
         ],
-        "rationale": "The pinned workflow schema permits stacked pull-request activity and milestoned/demilestoned pull_request_target activity. The trigger registry deliberately follows the pinned Actions documentation activity tables, which omit these activities. This is the recorded documentation/schema disagreement, not verified GitHub service rejection.",
+        "rationale": "The pinned workflow schema permits stacked activity for pull_request and pull_request_target. The current GitHub.com activity tables omit stacked; the trigger registry follows those tables. Both sources permit milestoned and demilestoned for pull_request_target. This is the recorded documentation/schema disagreement; live GitHub service rejection has not been verified.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-all.yml",
           "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request",
