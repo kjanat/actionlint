@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -52,5 +53,44 @@ func TestDoctorToolPresentation(t *testing.T) {
 	}
 	if len(report.Tools) != 2 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" || report.Tools[1].Status != "disabled" {
 		t.Fatalf("JSON lost tool status: %s", &data)
+	}
+}
+
+func TestDoctorResolverSelection(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, command, status string
+	}{
+		{"available", executable, "available"},
+		{"missing", filepath.Join(t.TempDir(), "missing-resolver"), "unavailable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out, stderr bytes.Buffer
+			command := Command{Stdout: &out, Stderr: &stderr}
+			args := []string{"actionlint", "doctor", "--no-config", "--no-ruff", "--no-shellcheck", "--json", "--resolve-with", tc.command, "--resolver-arg=argument with spaces", "--resolver-arg=--literal"}
+			if status := command.MainContext(t.Context(), args); status != 0 {
+				t.Fatalf("doctor failed: exit=%d stderr=%s", status, &stderr)
+			}
+			var report struct {
+				Tools []doctorTool `json:"tools"`
+			}
+			if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+				t.Fatal(err)
+			}
+			index := slices.IndexFunc(report.Tools, func(tool doctorTool) bool { return tool.Name == "resolver" })
+			if index < 0 {
+				t.Fatalf("resolver omitted: %s", &out)
+			}
+			tool := report.Tools[index]
+			if tool.Command != tc.command || tool.Status != tc.status || !slices.Equal(tool.Arguments, []string{"argument with spaces", "--literal"}) {
+				t.Fatalf("resolver selection changed: %+v", tool)
+			}
+			if tc.status == "unavailable" && tool.Error == "" || tc.status == "available" && tool.Path != executable {
+				t.Fatalf("resolver availability lost: %+v", tool)
+			}
+		})
 	}
 }

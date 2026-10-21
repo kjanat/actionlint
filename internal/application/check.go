@@ -77,7 +77,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		if factory, ok := options.Resolver.(resolver.SessionFactory); ok {
 			options.Resolver = factory.NewSession()
 		}
-		options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Analyzer: resolution.Analyzer{Resolver: options.Resolver}})
+		options.Analyzers = append(slices.Clone(options.Analyzers), analyzer.Registration{Analyzer: &resolution.Analyzer{Resolver: options.Resolver}})
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err

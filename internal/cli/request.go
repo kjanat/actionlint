@@ -49,6 +49,8 @@ func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 
 type doctorRequest struct {
 	Plugins           []string
+	ResolverCommand   string
+	ResolverArguments []string
 	Ruff              string
 	RuffOptions       *processconfig.Options
 	Config            repoconfig.Selection

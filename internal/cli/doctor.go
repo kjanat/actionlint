@@ -51,10 +51,18 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	for _, item := range []struct {
+	tools := []struct {
 		name, command string
 		options       *processconfig.Options
-	}{{"shellcheck", req.ShellCheck, req.ShellcheckOptions}, {"ruff", req.Ruff, req.RuffOptions}} {
+	}{
+		{"shellcheck", req.ShellCheck, req.ShellcheckOptions},
+		{"ruff", req.Ruff, req.RuffOptions},
+		{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}},
+	}
+	for _, item := range tools {
+		if item.name == "resolver" && item.command == "" {
+			continue
+		}
 		if item.options != nil && item.options.Executable != nil {
 			item.command = *item.options.Executable
 		}

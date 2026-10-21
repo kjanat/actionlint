@@ -167,7 +167,9 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationRules:
 		return rulesRequest{Name: inv.Rule, JSON: inv.JSON, Plugins: inv.Check.Plugins}, nil
 	case operationDoctor:
-		return doctorRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, ShellCheck: inv.Check.ShellCheck,
+		return doctorRequest{
+			ResolverCommand: inv.Check.ResolverCommand, ResolverArguments: inv.Check.ResolverArguments,
+			Config: inv.Check.Config, Plugins: inv.Check.Plugins, ShellCheck: inv.Check.ShellCheck,
 			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,
 			ShellcheckOptions: inv.Check.ShellcheckOptions,
 			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
