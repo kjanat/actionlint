@@ -58,9 +58,10 @@ func scalarScriptArguments(source, shell string) map[int]bool {
 		}
 		last := first + 3 + lexer.Offset()
 		expressions = append(expressions, span{first, last})
+		// Numeric masks preserve IO-number tokens before shell redirections.
 		for i := first; i < last; i++ {
 			if masked[i] != '\n' && masked[i] != '\r' {
-				masked[i] = '_'
+				masked[i] = '0'
 			}
 		}
 		offset = last
