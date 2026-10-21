@@ -7,7 +7,7 @@ import (
 )
 
 // EventVariant keeps an Actions trigger and activity correlated with its payload.
-// Empty discriminants are unknown and must not exclude a possible payload.
+// An empty event is unknown; a strict payload can establish an absent action.
 type EventVariant struct {
 	Event, Action string
 	Payload       *ObjectType
@@ -123,12 +123,20 @@ func eventGuardValue(node Node, variant EventVariant) (bool, bool) {
 		switch strings.ToLower(eventReference(ref)) {
 		case "github.event_name":
 			value = variant.Event
+			if value == "" {
+				return false, false
+			}
 		case "github.event.action":
 			value = variant.Action
+			if value == "" {
+				if variant.Event == "" || variant.Payload == nil || !variant.Payload.IsStrict() {
+					return false, false
+				}
+				if _, exists := variant.Payload.Props["action"]; exists {
+					return false, false
+				}
+			}
 		default:
-			return false, false
-		}
-		if value == "" {
 			return false, false
 		}
 		equal := strings.EqualFold(value, text.Value)
