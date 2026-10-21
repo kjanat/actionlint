@@ -35,7 +35,8 @@ function fixture(t) {
 			`#!/usr/bin/env bash\necho '${release.name} ${release.version}'\necho '${release.name}' >> "$EXECUTIONS"\n`,
 		);
 		chmodSync(`${root}/${base}/${release.name}`, 0o755);
-		const packed = spawnSync('tar', ['-czf', `${root}/${base}.tar.gz`, '-C', root, `${base}/${release.name}`], {
+		const packed = spawnSync('tar', ['-czf', `${base}.tar.gz`, `${base}/${release.name}`], {
+			cwd: root,
 			encoding: 'utf8',
 		});
 		assert.equal(packed.status, 0, packed.stderr);
