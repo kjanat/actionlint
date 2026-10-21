@@ -66,50 +66,72 @@ jobs:
 	}
 }
 
-func TestSchemaNestedImageVersionRejectsActivities(t *testing.T) {
-	src := `on:
+func TestSchemaNestedImageVersionActivities(t *testing.T) {
+	for _, tc := range []struct {
+		activity string
+		valid    bool
+	}{{"created", true}, {"ready", true}, {"deleted", true}, {"unsupported", false}} {
+		t.Run(tc.activity, func(t *testing.T) {
+			src := `on:
   image_version:
-    types: ready
+    types: ` + tc.activity + `
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - run: echo test
 `
-	w, errs := workflowlang.ParseDocument([]byte(src))
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
-	rule := builtin.NewRuleEvents()
-	if err := rule.VisitWorkflowPre(w); err != nil {
-		t.Fatal(err)
-	}
-	if errs := rule.Errs(); len(errs) != 1 || !strings.Contains(errs[0].Message, `"types" cannot be specified for "image_version"`) {
-		t.Fatalf("wanted invalid image activity diagnostic, got %v", errs)
+			w, errs := workflowlang.ParseDocument([]byte(src))
+			if len(errs) != 0 {
+				t.Fatal(errs)
+			}
+			rule := builtin.NewRuleEvents()
+			if err := rule.VisitWorkflowPre(w); err != nil {
+				t.Fatal(err)
+			}
+			if errs := rule.Errs(); tc.valid {
+				if len(errs) != 0 {
+					t.Fatalf("reviewed image activity rejected: %v", errs)
+				}
+			} else if len(errs) != 1 || !strings.Contains(errs[0].Message, `invalid activity type "unsupported"`) {
+				t.Fatalf("wanted invalid image activity diagnostic, got %v", errs)
+			}
+		})
 	}
 }
 
-func TestSchemaNestedUndocumentedStackedPullRequests(t *testing.T) {
-	w, errs := workflowlang.ParseDocument([]byte(`on:
+func TestSchemaNestedStackedPullRequests(t *testing.T) {
+	for _, tc := range []struct {
+		activity string
+		valid    bool
+	}{{"stacked", true}, {"unsupported", false}} {
+		t.Run(tc.activity, func(t *testing.T) {
+			w, errs := workflowlang.ParseDocument([]byte(`on:
   pull_request:
-    types: stacked
+    types: ` + tc.activity + `
   pull_request_target:
-    types: stacked
+    types: ` + tc.activity + `
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - run: echo test
 `))
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
-	rule := builtin.NewRuleEvents()
-	if err := rule.VisitWorkflowPre(w); err != nil {
-		t.Fatal(err)
-	}
-	if errs := rule.Errs(); len(errs) != 2 || !strings.Contains(errs[0].Message, `invalid activity type "stacked"`) || !strings.Contains(errs[1].Message, `invalid activity type "stacked"`) {
-		t.Fatalf("wanted documented-trigger diagnostics, got %v", errs)
+			if len(errs) != 0 {
+				t.Fatal(errs)
+			}
+			rule := builtin.NewRuleEvents()
+			if err := rule.VisitWorkflowPre(w); err != nil {
+				t.Fatal(err)
+			}
+			if errs := rule.Errs(); tc.valid {
+				if len(errs) != 0 {
+					t.Fatalf("reviewed pull request activity rejected: %v", errs)
+				}
+			} else if len(errs) != 2 || !strings.Contains(errs[0].Message, `invalid activity type "unsupported"`) || !strings.Contains(errs[1].Message, `invalid activity type "unsupported"`) {
+				t.Fatalf("wanted invalid pull request activity diagnostics, got %v", errs)
+			}
+		})
 	}
 }
 
