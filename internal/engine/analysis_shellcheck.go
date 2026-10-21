@@ -60,7 +60,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 	pending := []*externalCommand{analyzer.cmd}
 	for _, scope := range batch.scopes {
 		if err := ctx.Err(); err != nil {
-			failure = err
+			failure = errors.Join(failure, err)
 			break
 		}
 		if scope.config != nil && (diagnosticLevel(scope.config, "shellcheck") == "off" || scope.config.Tools.Shellcheck.Enabled != nil && !*scope.config.Tools.Shellcheck.Enabled) {

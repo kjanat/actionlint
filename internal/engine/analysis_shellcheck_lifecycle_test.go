@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -8,6 +9,22 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
+
+func TestShellcheckRetainsPreparationFailureOnCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	failure := errors.New("invalid ShellCheck configuration")
+	prepared := 0
+	checker := &shellcheckAnalyzer{forConfig: func(*Config) (*externalCommand, error) {
+		prepared++
+		cancel()
+		return nil, failure
+	}}
+	_, err := checker.AnalyzeScripts(ctx, scriptBatch{scopes: []*scriptScope{{}, {}}})
+	if prepared != 1 || !errors.Is(err, failure) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("preparation failure or cancellation lost: prepared=%d err=%v", prepared, err)
+	}
+}
 
 func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {
 	failure := errors.New("stop traversal")
