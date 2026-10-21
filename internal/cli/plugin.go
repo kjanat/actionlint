@@ -198,18 +198,15 @@ func requestedPlugin(name string, options pluginInvocation, existing []pluginref
 	if strings.Contains(name, "@") && options.Version != "" && ref.Version != options.Version {
 		return pluginref.Reference{}, commandUsageError{errors.New("plugin @version conflicts with --version")}
 	}
-	matches := 0
-	for _, old := range existing {
-		if old.Name == ref.Name && (options.Registry == "" || pluginregistry.SameRegistry(old.Registry, options.Registry)) {
-			matches++
-			ref.Registry = old.Registry
-			if !strings.Contains(name, "@") {
-				ref.Version = old.Version
-			}
-		}
+	index, err := requestedPluginIndex(ref, options.Registry, existing)
+	if err != nil {
+		return pluginref.Reference{}, err
 	}
-	if matches > 1 {
-		return pluginref.Reference{}, commandUsageError{fmt.Errorf("plugin %q is declared in multiple registries; select --registry", ref.Name)}
+	if index >= 0 {
+		ref.Registry = existing[index].Registry
+		if !strings.Contains(name, "@") {
+			ref.Version = existing[index].Version
+		}
 	}
 	if options.Version != "" {
 		ref.Version = options.Version
@@ -224,6 +221,32 @@ func requestedPlugin(name string, options pluginInvocation, existing []pluginref
 	return ref, nil
 }
 
+// A canonical repository can relocate its single existing declaration.
+// Aliases stay scoped to the registry that assigns them.
+func requestedPluginIndex(ref pluginref.Reference, registry string, existing []pluginref.Reference) (int, error) {
+	index, named, count := -1, -1, 0
+	for i, old := range existing {
+		if old.Name != ref.Name {
+			continue
+		}
+		named, count = i, count+1
+		if registry != "" && !pluginregistry.SameRegistry(old.Registry, registry) {
+			continue
+		}
+		if index >= 0 {
+			return -1, commandUsageError{fmt.Errorf("plugin %q is declared in multiple registries; select --registry", ref.Name)}
+		}
+		index = i
+	}
+	if index < 0 && registry != "" && !ref.IsAlias() {
+		if count > 1 {
+			return -1, commandUsageError{fmt.Errorf("plugin %q is declared in multiple registries; select an existing --registry", ref.Name)}
+		}
+		index = named
+	}
+	return index, nil
+}
+
 func (r pluginRegistryRequest) install(ctx context.Context, project *localapp.PluginProject, name string) error {
 	refs, err := project.Dependencies(name == "")
 	if err != nil {
@@ -234,9 +257,10 @@ func (r pluginRegistryRequest) install(ctx context.Context, project *localapp.Pl
 		if err != nil {
 			return err
 		}
-		index := slices.IndexFunc(refs, func(old pluginref.Reference) bool {
-			return old.Name == ref.Name && old.Registry == ref.Registry
-		})
+		index, err := requestedPluginIndex(ref, r.Options.Registry, refs)
+		if err != nil {
+			return err
+		}
 		if index < 0 {
 			refs = append(refs, ref)
 		} else {

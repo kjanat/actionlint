@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 )
@@ -15,6 +16,7 @@ import (
 func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	r := testutil.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	r.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	const mirror = "https://mirror.example/"
 	for url, data := range r.Files {
 		if relative, ok := strings.CutPrefix(url, testutil.FixtureRegistryURL); ok {
@@ -32,11 +34,11 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	lockPath := filepath.Join(".github", pluginregistry.LockName)
 	cfg, err := repoconfig.Load(configPath)
-	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry != mirror {
+	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Registry != mirror || cfg.Plugins[0].Version != "v1.0.0" {
 		t.Fatalf("registry declaration: %#v, %v", cfg, err)
 	}
 	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
-	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].Registry != mirror {
+	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].Registry != mirror || lock.Lock.Plugins[0].Selector != "v1.0.0" || lock.Lock.Plugins[0].Version != "v1.0.0" {
 		t.Fatalf("registry pin: %#v, %v", lock, err)
 	}
 	r.Offline = true
@@ -67,6 +69,53 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	}
 }
 
+func TestRegistryInstallDeclarationSelection(t *testing.T) {
+	const first = "https://first.example/"
+	const second = "https://second.example/"
+	const third = "https://third.example/"
+	for _, test := range []struct {
+		name, registry string
+		count, index   int
+		version        string
+		invalid        bool
+	}{
+		{"publisher/plugin", third, 1, 0, "v1", false},
+		{"publisher/plugin", "", 2, -1, "", true},
+		{"publisher/plugin", third, 2, -1, "", true},
+		{"publisher/plugin", second, 2, 1, "v2", false},
+		{"publisher/plugin", "https://second.example:443/", 2, 1, "v2", false},
+		{"check", third, 1, -1, "latest", false},
+		{"check", third, 2, -1, "latest", false},
+		{"check", second, 2, 1, "v2", false},
+		{"check", "https://second.example:443/", 2, 1, "v2", false},
+		{"check", "", 2, -1, "", true},
+	} {
+		t.Run(test.name+test.registry, func(t *testing.T) {
+			one, err := pluginref.New(test.name, "v1", first)
+			if err != nil {
+				t.Fatal(err)
+			}
+			two := one
+			two.Registry, two.Version = second, "v2"
+			refs := []pluginref.Reference{one, two}[:test.count]
+			ref, err := requestedPlugin(test.name, pluginInvocation{Registry: test.registry}, refs)
+			if test.invalid {
+				if err == nil {
+					t.Fatal("ambiguous declaration selected")
+				}
+				return
+			}
+			if err != nil || ref.Version != test.version || ref.Registry != test.registry {
+				t.Fatalf("selection: %+v, %v", ref, err)
+			}
+			index, err := requestedPluginIndex(ref, test.registry, refs)
+			if err != nil || index != test.index {
+				t.Fatalf("declaration index=%d, error=%v; want %d", index, err, test.index)
+			}
+		})
+	}
+}
+
 func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 	r := testutil.NewPluginRegistry(t)
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
@@ -76,5 +125,22 @@ func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 	}
 	if len(r.Requests) != 0 {
 		t.Fatalf("invalid endpoint reached transport: %v", r.Requests)
+	}
+}
+
+func TestRegistryInstallDirectURLDeclarationSelection(t *testing.T) {
+	const source = "https://plugins.example/check.wasm#sha256="
+	old, err := pluginref.Parse(source + strings.Repeat("1", 64))
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := source + strings.Repeat("2", 64)
+	ref, err := requestedPlugin(updated, pluginInvocation{}, []pluginref.Reference{old})
+	if err != nil || ref.DirectSource() != updated {
+		t.Fatalf("direct selection: %+v, %v", ref, err)
+	}
+	index, err := requestedPluginIndex(ref, "", []pluginref.Reference{old})
+	if err != nil || index != 0 {
+		t.Fatalf("direct replacement index=%d, error=%v", index, err)
 	}
 }
