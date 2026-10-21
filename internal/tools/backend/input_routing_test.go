@@ -252,3 +252,25 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 		t.Fatalf("native route calls=%d err=%v", calls, err)
 	}
 }
+
+func TestConfigureBindsLoaderOnce(t *testing.T) {
+	loads, nativeCalls := 0, 0
+	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, ConfiguredBackend: func(tools.Context) (analyzer.ScriptBackend, error) {
+		loads++
+		return routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+			t.Fatal("native adapter bypassed")
+			return nil, nil
+		}), nil
+	}, Build: func(tools.Context) (tools.Runner, error) {
+		return routingRunner(func(context.Context, tools.Batch) ([]tools.Finding, error) { nativeCalls++; return nil, nil }), nil
+	}}
+	registration = Configure(Configure(registration))
+	runner, err := registration.Build(tools.Context{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: "print(1)"}}})
+	if err != nil || loads != 1 || nativeCalls != 1 {
+		t.Fatalf("composition repeated: loads=%d native=%d err=%v", loads, nativeCalls, err)
+	}
+}

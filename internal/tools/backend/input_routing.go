@@ -12,6 +12,8 @@ import (
 
 // WithScriptInputs retains native run preparation and adds the engine's input-only route.
 func WithScriptInputs(registration tools.Registration, descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
+	// This registration already binds the selected backend and its complete catalogue.
+	registration.ConfiguredBackend = nil
 	descriptor.Rule = registration.Descriptor
 	shells, err := shellCatalogue(descriptor.Rule, descriptor.Shells)
 	if err != nil {
@@ -89,6 +91,16 @@ func restoreIndices(findings []tools.Finding, indices []int) []tools.Finding {
 		}
 	}
 	return findings
+}
+
+// Configure binds configured-engine routing once at an entrypoint composition root.
+func Configure(registration tools.Registration) tools.Registration {
+	load := registration.ConfiguredBackend
+	if load == nil {
+		return registration
+	}
+	registration.ConfiguredBackend = nil
+	return WithConfiguredEngine(registration, load)
 }
 
 // WithConfiguredEngine discovers routes through the same invocation-owned loader

@@ -122,9 +122,16 @@ func (s *editorEngines) close(ctx context.Context) error {
 }
 
 // application.Check owns per-analysis loaders. A borrowed backend deliberately
-// exposes no Close method while retaining optional configuration validation.
+// exposes no Close method while retaining validation and selector capabilities.
 type (
-	borrowedEditorEngine   struct{ analyzer.ScriptBackend }
+	borrowedEditorEngine  struct{ analyzer.ScriptBackend }
+	describedEditorEngine struct {
+		analyzer.DescribedScriptBackend
+	}
+	validatingDescribedEditorEngine struct {
+		analyzer.DescribedScriptBackend
+		analyzer.ScriptConfigValidator
+	}
 	validatingEditorEngine struct {
 		analyzer.ScriptBackend
 		analyzer.ScriptConfigValidator
@@ -132,6 +139,12 @@ type (
 )
 
 func borrowEditorEngine(backend analyzer.ScriptBackend) analyzer.ScriptBackend {
+	if described, ok := backend.(analyzer.DescribedScriptBackend); ok {
+		if validator, ok := backend.(analyzer.ScriptConfigValidator); ok {
+			return validatingDescribedEditorEngine{DescribedScriptBackend: described, ScriptConfigValidator: validator}
+		}
+		return describedEditorEngine{DescribedScriptBackend: described}
+	}
 	if validator, ok := backend.(analyzer.ScriptConfigValidator); ok {
 		return validatingEditorEngine{ScriptBackend: backend, ScriptConfigValidator: validator}
 	}

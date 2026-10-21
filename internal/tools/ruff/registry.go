@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/internal/processconfig"
 	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/internal/tools"
-	scriptbackend "actionlint.kjanat.dev/internal/tools/backend"
 	"actionlint.kjanat.dev/internal/tools/selection"
 )
 
@@ -59,12 +58,13 @@ func (o Options) Registration() tools.Registration {
 			return next.Registration(), nil
 		},
 	}
-	return scriptbackend.WithConfiguredEngine(registration, func(c tools.Context) (analyzer.ScriptBackend, error) {
+	registration.ConfiguredBackend = func(c tools.Context) (analyzer.ScriptBackend, error) {
 		if o.Backend != nil {
 			return o.Backend, nil
 		}
 		return selection.Load("ruff", o.Command, o.Process, c.Config, engineLoader(c))
-	})
+	}
+	return registration
 }
 
 func engineLoader(c tools.Context) func(string) (analyzer.ScriptBackend, error) {

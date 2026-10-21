@@ -204,7 +204,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					shell.Required = func(tools.Context) bool { return false }
 				}
 				loads := 0
-				_, err := application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{(ruff.Options{Backend: activeRuff}).Registration(), shell}, LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
+				_, err := application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{backend.Configure((ruff.Options{Backend: activeRuff}).Registration()), backend.Configure(shell)}, LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
 					loads++
 					if failure == "missing" {
 						return nil, errors.New("override module missing")

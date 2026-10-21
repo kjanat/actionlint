@@ -25,7 +25,10 @@ behavior, option validation and defaults. Missing options remain missing.
 Native TOML encoding, process restrictions and provisioning policy belong to
 `internal/tools/ruff`. The WebAssembly route receives JSON without passing through
 those process restrictions. Both routes retain the shared script scheduling,
-source mapping and diagnostic pipeline.
+source mapping and diagnostic pipeline. Native registrations expose a configured
+backend loader; `internal/tools/adapters` and `internal/localapp` bind its advertised
+routes to the native runner. The application consumes the resulting registrations.
+Native adapters do not import the generic script-engine implementation.
 
 The editor schema describes the wrapper without a release-specific Ruff catalog.
 Engine metadata supplies engine-specific schemas. Published schema snapshots

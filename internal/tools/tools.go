@@ -32,6 +32,7 @@ type Registration struct {
 	Descriptor        rule.Descriptor
 	ScriptInputs      []analyzer.ScriptInput
 	InputSelectors    func(Context) ([]analyzer.ScriptInput, error)
+	ConfiguredBackend func(Context) (analyzer.ScriptBackend, error)
 	RequiresExecution bool
 	NeedsProcess      func(*config.Config, *config.Config, bool) (bool, error)
 	Validate          func() error

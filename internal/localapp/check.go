@@ -82,6 +82,10 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 		}
 	}
 
+	options.Tools = slices.Clone(options.Tools)
+	for i, registration := range options.Tools {
+		options.Tools[i] = backend.Configure(registration)
+	}
 	options.Analyzers = slices.Concat(options.Analyzers, l.registrations())
 	options.Runners.Providers = slices.Concat(options.Runners.Providers, l.runnerProviders())
 	return options, nil

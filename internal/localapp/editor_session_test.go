@@ -19,6 +19,7 @@ import (
 	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/langserver"
 	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/rule"
 )
 
 type editorTestBackend struct {
@@ -321,5 +322,76 @@ func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
 	}
 	if err := session.close(t.Context()); err != nil {
 		t.Error(err)
+	}
+}
+
+type describedOnlyEditorBackend struct{ analyzer.ScriptBackend }
+
+func (describedOnlyEditorBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	return editorInputDescriptor()
+}
+
+type describedValidatingEditorBackend struct{ editorTestBackend }
+
+func (*describedValidatingEditorBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	return editorInputDescriptor()
+}
+func editorInputDescriptor() analyzer.ScriptEngineDescriptor {
+	return analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}
+}
+func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
+	for _, tc := range []struct {
+		name                  string
+		backend               analyzer.ScriptBackend
+		described, validating bool
+	}{
+		{"plain", pythonInputBackend{}, false, false},
+		{"validating", &editorTestBackend{}, false, true},
+		{"described", describedOnlyEditorBackend{ScriptBackend: pythonInputBackend{}}, true, false},
+		{"both", &describedValidatingEditorBackend{}, true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			borrowed := borrowEditorEngine(tc.backend)
+			_, described := borrowed.(analyzer.DescribedScriptBackend)
+			_, validating := borrowed.(analyzer.ScriptConfigValidator)
+			_, closing := borrowed.(interface{ Close(context.Context) error })
+			if described != tc.described || validating != tc.validating || closing {
+				t.Fatalf("borrowed capabilities changed: described=%t validating=%t close=%t", described, validating, closing)
+			}
+		})
+	}
+}
+func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
+	root := t.TempDir()
+	for name, source := range map[string]string{".git/HEAD": "ref: refs/heads/master\n", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n"} {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	engine := &describedValidatingEditorBackend{}
+	var loads atomic.Int32
+	session, err := newEditorSession(t.Context(), application.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: adapters.Options{Ruff: "ruff"}.Registrations(), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"first", "second"} {
+		workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/python@v1\n        with:\n          source: print('" + value + "')\n"
+		_, err := application.Check(t.Context(), session.options, application.Input{Kind: application.Stdin, Name: filepath.Join(root, ".github/workflows/ci.yml"), Reader: bytes.NewBufferString(workflow)})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if loads.Load() != 1 || engine.checks.Load() != 2 || engine.closes.Load() != 0 || engine.validates.Load() != 2 {
+		t.Errorf("borrowed input capabilities/lifecycle lost: loads=%d checks=%d closes=%d validates=%d", loads.Load(), engine.checks.Load(), engine.closes.Load(), engine.validates.Load())
+	}
+	if err := session.close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if engine.closes.Load() != 1 || engine.lastSource != "print('second')" {
+		t.Fatalf("session did not retain then close engine once: closes=%d source=%q", engine.closes.Load(), engine.lastSource)
 	}
 }
