@@ -21,17 +21,16 @@ func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
 	return &defaults.Run.Shell.Value
 }
 
-func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, path string, content []byte, jobShell, workflowShell *string) {
+func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, path string, content []byte, jobShell, workflowShell *string) error {
 	if !analysis.collectScripts {
-		return
+		return nil
 	}
 	if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
-		analysis.collectActionInputs(step, action, cfg, path, content)
-		return
+		return analysis.collectActionInputs(step, action, cfg, path, content)
 	}
 	run, ok := step.Exec.(*workflowlang.ExecRun)
 	if !ok || run.Run == nil {
-		return
+		return nil
 	}
 	shell := jobShell
 	if shell == nil {
@@ -59,22 +58,34 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 		}
 	}
 	analysis.scripts = append(analysis.scripts, unit)
+	return nil
 }
 
-func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, action *workflowlang.ExecAction, cfg *repoconfig.Config, path string, content []byte) {
+func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, action *workflowlang.ExecAction, cfg *repoconfig.Config, path string, content []byte) error {
 	if action.Uses == nil || action.Uses.ContainsExpression() {
-		return
+		return nil
 	}
 	name, _, pinned := strings.Cut(action.Uses.Value, "@")
 	if !pinned {
-		return
+		return nil
 	}
 	parts := strings.SplitN(name, "/", 3)
 	if len(parts) < 2 {
-		return
+		return nil
 	}
 	parts[0], parts[1] = strings.ToLower(parts[0]), strings.ToLower(parts[1])
 	name = strings.Join(parts, "/")
+	catalogue := analysis.scriptInputs
+	if analysis.scriptInputsForConfig != nil {
+		additional, err := analysis.scriptInputsForConfig(cfg)
+		if err != nil {
+			return err
+		}
+		catalogue, err = scriptInputCatalogue(additional)
+		if err != nil {
+			return err
+		}
+	}
 	inputs, _ := workflowlang.ActionInputNames(action)
 	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
 		input := inputs[inputName]
@@ -82,7 +93,7 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 			continue // Expression-created values have no physical script scalar.
 		}
 		var site analyzer.ScriptInput
-		for _, candidate := range analysis.scriptInputs {
+		for _, candidate := range catalogue {
 			if candidate.Action == name && candidate.Input == inputName {
 				site = candidate
 				break
@@ -97,4 +108,5 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 			Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope,
 		})
 	}
+	return nil
 }

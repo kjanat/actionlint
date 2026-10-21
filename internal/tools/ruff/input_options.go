@@ -3,6 +3,8 @@ package ruff
 import (
 	"encoding/json"
 
+	"actionlint.kjanat.dev/analyzer"
+
 	"actionlint.kjanat.dev/internal/tools"
 )
 
@@ -16,5 +18,13 @@ func prepareInput(script tools.Script) (tools.PreparedInput, error) {
 		return tools.PreparedInput{}, err
 	}
 	encoded, err := json.Marshal(options)
-	return tools.PreparedInput{Source: script.Text, Config: encoded}, err
+	if err != nil {
+		return tools.PreparedInput{}, err
+	}
+	masks := &templateMasks{identifiers: make(map[Position]int), parentheses: make(map[Position]Position), quoted: make(map[Position]string)}
+	source, valid, err := sanitize(script.Text, ruffExpressionEnd, masks)
+	if err != nil {
+		return tools.PreparedInput{}, err
+	}
+	return tools.PreparedInput{Source: source, Config: encoded, Skip: !valid, AcceptDiagnostic: func(d analyzer.ScriptDiagnostic) bool { return masks.accept(d) }}, nil
 }

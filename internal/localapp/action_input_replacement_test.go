@@ -115,7 +115,7 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 					if !strings.Contains(request.Source, "_") || len(request.Config) == 0 {
 						t.Fatalf("native preprocessing/configuration lost: %+v", request)
 					}
-				case "actionlint-script":
+				case "actionlint-input/javascript/example/execute/code.js":
 					if request.Source != "input_value" {
 						t.Fatalf("input was treated as a shell script: %+v", request)
 					}

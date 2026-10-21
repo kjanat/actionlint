@@ -30,7 +30,9 @@ jobs:
 	for _, id := range []string{"python", "bash"} {
 		job := workflow.Jobs[id]
 		collector.beginJob(job)
-		collector.collectScript(job.Steps[0], nil, "", nil, nil, nil)
+		if err := collector.collectScript(job.Steps[0], nil, "", nil, nil, nil); err != nil {
+			t.Fatal(err)
+		}
 		if got := collector.scripts[len(collector.scripts)-1].Execution.Shell.Name; got != id {
 			t.Fatalf("job %s resolved shell %q", id, got)
 		}

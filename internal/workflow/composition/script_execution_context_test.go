@@ -125,7 +125,9 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 				e.Shell = &workflowlang.String{Value: tc.step}
 			}
 			e.Run = &workflowlang.String{Value: "echo ok"}
-			collector.collectScript(&workflowlang.Step{Exec: e}, nil, "", nil, nil, nil)
+			if err := collector.collectScript(&workflowlang.Step{Exec: e}, nil, "", nil, nil, nil); err != nil {
+				t.Fatal(err)
+			}
 			if s := collector.scripts[0].Execution.Shell.Name; s != tc.want {
 				t.Fatalf("detected shell %q but wanted %q", s, tc.want)
 			}

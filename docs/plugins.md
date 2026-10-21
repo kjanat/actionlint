@@ -506,7 +506,15 @@ Makefile target demonstrate packaging metadata at the component root. Metadata i
 ignored.
 
 The host recognizes `actions/github-script`'s `script` input as JavaScript. Other sites come from registered engine
-declarations. Workflow and local composite inputs retain their declaring source maps and invocation identity;
+declarations. Input requests use the virtual filename
+`actionlint-input/<language>/<owner>/<repository>[/<subpath>]/<input>.<extension>`.
+Language and action/input segments retain the validated selector; Python, JavaScript
+and TypeScript use `py`, `js` and `ts` extensions; other languages use their own name.
+Guests can distinguish sites and select a parser without filesystem access or a new
+wire interface. Ordinary run requests retain their existing adapter filenames.
+Configured Wasm backends use the same selectors as explicitly loaded plugins, and
+disabled engines do not contribute selector conflicts for that effective configuration.
+Workflow and local composite inputs retain their declaring source maps and invocation identity;
 workflow expressions are masked before checking. Whole inputs created by object expressions have no physical
 script scalar and remain unavailable for this analysis. Ordinary action inputs and `run` scripts are not sent to
 an input-only engine. Action inputs have a language, never an inferred runner shell, and cannot opt into ShellCheck

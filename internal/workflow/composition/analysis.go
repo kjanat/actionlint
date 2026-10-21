@@ -26,6 +26,7 @@ import (
 type Options struct {
 	Runners                          *runnerlang.Knowledge
 	ScriptInputs                     []analyzer.ScriptInput
+	ScriptInputsForConfig            func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
 	Context                          context.Context
 	Actions                          *actionlocal.Resolver
 	Rules                            []workflowvisit.Rule
@@ -96,7 +97,8 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		runners:      options.Runners,
 		scriptConfig: options.Config, scriptPaths: options.Paths,
 		collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
-		scriptInputs: scriptInputs,
+		scriptInputs:          scriptInputs,
+		scriptInputsForConfig: options.ScriptInputsForConfig,
 	}
 	if options.ConfigForFile != nil {
 		c.configForFile = func(path string) (*repoconfig.Config, error) {

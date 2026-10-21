@@ -49,7 +49,7 @@ func (b *inputOptionsBackend) Check(_ context.Context, request analyzer.ScriptRe
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.requests = append(b.requests, request)
-	if request.Filename != "actionlint-script" {
+	if !strings.HasPrefix(request.Filename, "actionlint-input/") {
 		return nil, nil
 	}
 	marker := "root_input"
@@ -88,7 +88,7 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 			}
 			engine := &inputOptionsBackend{name: tc.name, validated: map[string]int{}}
 			plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: engine, descriptor: analyzer.ScriptEngineDescriptor{
-				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}},
+				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}},
 			}}}}
 			options, err := plugins.configure(application.Options{WorkingDir: root, Tools: []tools.Registration{tc.registration}})
 			if err != nil {
@@ -109,7 +109,7 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 				if strings.Contains(request.Source, "nested_") {
 					index = 1
 				}
-				if request.Filename == "actionlint-script" {
+				if strings.HasPrefix(request.Filename, "actionlint-input/") {
 					inputOptions[index] = string(request.Config)
 					if tc.name == "shellcheck" {
 						code := "SC2086"

@@ -147,7 +147,16 @@ func loadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, 
 		metadata := engine.Metadata()
 		_, _ = fmt.Fprintf(log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, engine.Path(), engine.Limits())
 	}
-	return engine, nil
+	return describedCore{engine}, nil
+}
+
+type describedCore struct{ *corewasm.Engine }
+
+func (e describedCore) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	m := e.Metadata()
+	return analyzer.ScriptEngineDescriptor{ID: m.ID, Version: m.PluginVersion, Name: m.Name,
+		Engine: m.Engine.Name, EngineVersion: m.Engine.Version, Shells: m.Capabilities.ScriptShells,
+		ScriptInputs: m.Capabilities.ScriptInputs, Rule: engineDescriptor(m)}
 }
 
 func engineCacheDir() string {

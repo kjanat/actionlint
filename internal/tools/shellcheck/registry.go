@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/internal/processconfig"
 	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/internal/tools"
+	scriptbackend "actionlint.kjanat.dev/internal/tools/backend"
 	"actionlint.kjanat.dev/internal/tools/selection"
 )
 
@@ -25,7 +26,7 @@ type Options struct {
 // Registration owns ShellCheck selection, transport construction and plugin replacement.
 func (o Options) Registration() tools.Registration {
 	descriptor, _ := rulecatalog.Find("shellcheck")
-	return tools.Registration{
+	registration := tools.Registration{
 		Descriptor: descriptor, RequiresExecution: true, PrepareInput: prepareInput,
 		Enabled: func(c tools.Context) bool {
 			return config.DiagnosticLevel(c.Config, "shellcheck") != "off" && (o.Backend != nil || o.Runner != nil || selection.AllowsModule("shellcheck", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (c.Config == nil || c.Config.Tools.Shellcheck.Enabled == nil || *c.Config.Tools.Shellcheck.Enabled)
@@ -73,4 +74,14 @@ func (o Options) Registration() tools.Registration {
 			return next.Registration(), nil
 		},
 	}
+	return scriptbackend.WithConfiguredEngine(registration, func(c tools.Context) (analyzer.ScriptBackend, error) {
+		if o.Backend != nil {
+			return o.Backend, nil
+		}
+		var load func(string) (analyzer.ScriptBackend, error)
+		if c.LoadEngine != nil {
+			load = func(path string) (analyzer.ScriptBackend, error) { return c.LoadEngine(c.Processes.Ctx, path) }
+		}
+		return selection.Load("shellcheck", o.Command, o.Process, c.Config, load)
+	})
 }

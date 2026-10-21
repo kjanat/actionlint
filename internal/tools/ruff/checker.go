@@ -162,26 +162,7 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		for _, d := range diagnostics {
-			if d.Code == "E501" && placeholders.lines[d.Location.Row] {
-				continue
-			}
-			// Opaque values, quoted annotations and exports may hide references.
-			// Comment-only templates add no masks; unrelated checks still apply.
-			if len(placeholders.identifiers) > 0 && requiresCompleteReferences(d.Code) {
-				continue
-			}
-			if placeholders.dynamicQuotedValue(d) {
-				continue
-			}
-			// A mask can manufacture undefined-name and useless-expression
-			// findings. Only its exact identifier range is excluded.
-			if width, ok := placeholders.identifiers[d.Location]; ok && (d.Code == "F821" || d.Code == "B018") &&
-				d.EndLocation == (Position{Row: d.Location.Row, Column: d.Location.Column + width}) {
-				continue
-			}
-			// UP034 can identify the wrapper added around an opaque value.
-			// Source parentheses extend outside this exact generated range.
-			if end, ok := placeholders.parentheses[d.Location]; ok && d.Code == "UP034" && d.EndLocation == end {
+			if !placeholders.accept(d) {
 				continue
 			}
 			report(d)
@@ -383,6 +364,32 @@ type templateMasks struct {
 	lines              map[int]bool
 	sourceLines        []string
 	percentConversions map[Position]bool
+}
+
+func (m *templateMasks) accept(d Diagnostic) bool {
+	if d.Code == "E501" && m.lines[d.Location.Row] {
+		return false
+	}
+	// Opaque values, quoted annotations and exports may hide references.
+	// Comment-only templates add no masks; unrelated checks still apply.
+	if len(m.identifiers) > 0 && requiresCompleteReferences(d.Code) {
+		return false
+	}
+	if m.dynamicQuotedValue(d) {
+		return false
+	}
+	// A mask can manufacture undefined-name and useless-expression
+	// findings. Only its exact identifier range is excluded.
+	if width, ok := m.identifiers[d.Location]; ok && (d.Code == "F821" || d.Code == "B018") &&
+		d.EndLocation == (Position{Row: d.Location.Row, Column: d.Location.Column + width}) {
+		return false
+	}
+	// UP034 can identify the wrapper added around an opaque value.
+	// Source parentheses extend outside this exact generated range.
+	if end, ok := m.parentheses[d.Location]; ok && d.Code == "UP034" && d.EndLocation == end {
+		return false
+	}
+	return true
 }
 
 func requiresCompleteReferences(code string) bool {

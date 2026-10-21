@@ -20,6 +20,13 @@ type ScriptBackend interface {
 	Check(context.Context, ScriptRequest) ([]ScriptDiagnostic, error)
 }
 
+// DescribedScriptBackend exposes the selectors of a configured engine before
+// script collection. Backends without this capability retain native run routing.
+type DescribedScriptBackend interface {
+	ScriptBackend
+	ScriptDescriptor() ScriptEngineDescriptor
+}
+
 // ScriptConfigValidator is an optional backend capability. The engine validates
 // its own configuration; the host does not maintain a second rule catalogue.
 type ScriptConfigValidator interface {

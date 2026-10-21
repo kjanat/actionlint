@@ -35,12 +35,16 @@ jobs:
 	for _, id := range []string{"first", "second"} {
 		job := workflow.Jobs[id]
 		for _, step := range job.Steps {
-			collector.collectScript(step, nil, "", nil, scriptDefaultShell(job.Defaults), collector.workflowScriptShell)
+			if err := collector.collectScript(step, nil, "", nil, scriptDefaultShell(job.Defaults), collector.workflowScriptShell); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	// Composite scripts have their own declared shell and never inherit callers.
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
-	collector.collectScript(&workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo composite", Pos: pos}, RunPos: pos}}, nil, "action.yml", nil, nil, nil)
+	if err := collector.collectScript(&workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo composite", Pos: pos}, RunPos: pos}}, nil, "action.yml", nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
 	for _, script := range collector.scripts {
 		shell := ""
 		if script.Shell != nil {

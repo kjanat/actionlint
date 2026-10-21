@@ -25,6 +25,7 @@ func backendOptions(dialect string, settings *ShellcheckSettings) (json.RawMessa
 }
 
 func prepareInput(script tools.Script) (tools.PreparedInput, error) {
+	script.Text = sanitizeExpressionsInScript(script.Text)
 	dialect := ""
 	if script.Input != nil {
 		switch script.Input.Language {

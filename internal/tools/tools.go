@@ -31,6 +31,7 @@ type Context struct {
 type Registration struct {
 	Descriptor        rule.Descriptor
 	ScriptInputs      []analyzer.ScriptInput
+	InputSelectors    func(Context) ([]analyzer.ScriptInput, error)
 	RequiresExecution bool
 	NeedsProcess      func(*config.Config, *config.Config, bool) (bool, error)
 	Validate          func() error
@@ -45,9 +46,11 @@ type Registration struct {
 // PreparedInput preserves the original scalar's coordinates when an adapter
 // inserts configuration directives. A nil OriginalLine leaves rows unchanged.
 type PreparedInput struct {
-	Source       string
-	Config       json.RawMessage
-	OriginalLine func(int) int
+	Source           string
+	Config           json.RawMessage
+	OriginalLine     func(int) int
+	AcceptDiagnostic func(analyzer.ScriptDiagnostic) bool
+	Skip             bool
 }
 
 type Runner interface {

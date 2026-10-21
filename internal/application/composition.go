@@ -3,6 +3,8 @@ package application
 import (
 	"fmt"
 
+	"actionlint.kjanat.dev/internal/config"
+
 	"actionlint.kjanat.dev/analyzer"
 
 	"actionlint.kjanat.dev/internal/builtin"
@@ -15,7 +17,7 @@ type documentChecks struct {
 	checks.Selection
 	scripts          scriptexecution.Service
 	resolveExecution bool
-	scriptInputs     []analyzer.ScriptInput
+	registeredTools  []tools.Registration
 }
 
 func (s *analysisSession) buildChecks(context builtin.Context, toolContext tools.Context, action bool) (documentChecks, error) {
@@ -36,13 +38,37 @@ func (s *analysisSession) buildChecks(context builtin.Context, toolContext tools
 			continue
 		}
 		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.Tool{Runner: adapter})
+		selected.registeredTools = append(selected.registeredTools, registration)
 		selected.ScriptInfo = append(selected.ScriptInfo, registration.Descriptor)
 		selected.resolveExecution = selected.resolveExecution || registration.RequiresExecution
-		selected.scriptInputs = append(selected.scriptInputs, registration.ScriptInputs...)
 	}
 	if s.onRulesCreated != nil && !action {
 		selected.Rules = s.onRulesCreated(selected.Rules)
 	}
 	checks.Prepare(selected.Rules, context.Config, s.debugWriter())
 	return selected, nil
+}
+
+func (d documentChecks) inputSelectors(c tools.Context, cfg *config.Config) ([]analyzer.ScriptInput, error) {
+	c.Config, c.ProjectConfig, c.ProjectRoot = cfg, nil, ""
+	if cfg != nil {
+		resolved := *cfg
+		resolved.Overrides = nil
+		c.Config = &resolved
+	}
+	var inputs []analyzer.ScriptInput
+	for _, registration := range d.registeredTools {
+		if config.DiagnosticLevel(cfg, registration.Descriptor.Name) == "off" || registration.Enabled != nil && !registration.Enabled(c) {
+			continue
+		}
+		inputs = append(inputs, registration.ScriptInputs...)
+		if registration.InputSelectors != nil {
+			additional, err := registration.InputSelectors(c)
+			if err != nil {
+				return nil, err
+			}
+			inputs = append(inputs, additional...)
+		}
+	}
+	return inputs, nil
 }

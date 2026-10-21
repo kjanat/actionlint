@@ -107,25 +107,25 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				continue
 			}
 		} else {
-			command, _, _ := strings.Cut(script.Execution.Shell, " ")
-			shell := strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
+			shell := scriptShell(script)
 			if _, supported := r.shells[shell]; !supported {
 				continue
 			}
 		}
 		var options json.RawMessage
-		prepared := tools.PreparedInput{Source: maskExpressions(script.Text)}
+		var prepared tools.PreparedInput
 		if r.prepareInput != nil && script.Input != nil {
-			input := script
-			input.Text = prepared.Source
 			var err error
-			prepared, err = r.prepareInput(input)
+			prepared, err = r.prepareInput(script)
 			if err != nil {
 				failures = errors.Join(failures, err)
 				continue
 			}
 			options = prepared.Config
-		} else if script.Config != nil {
+		} else {
+			prepared.Source = maskExpressions(script.Text)
+		}
+		if (r.prepareInput == nil || script.Input == nil) && script.Config != nil {
 			settings := script.Config.Lint.Rules.Plugins.Rules[r.descriptor.Name].Options
 			if settings != nil {
 				data, err := json.Marshal(settings)
@@ -134,6 +134,9 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				}
 				options = data
 			}
+		}
+		if prepared.Skip {
+			continue
 		}
 		if err := analyzerhost.ValidateOptions(r.descriptor.OptionsSchema, options); err != nil {
 			failures = errors.Join(failures, fmt.Errorf("tool %s options: %w", r.descriptor.Name, err))
@@ -146,11 +149,17 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 			}
 		}
 		request := analyzer.ScriptRequest{Source: prepared.Source, Filename: "actionlint-script", Config: options}
+		if script.Input != nil {
+			request.Filename = inputFilename(*script.Input)
+		}
 		diagnostics, err := r.backend.Check(ctx, request)
 		failures = errors.Join(failures, err)
 		for _, d := range diagnostics {
 			if d.Filename != "" && d.Filename != request.Filename {
 				failures = errors.Join(failures, fmt.Errorf("tool %s returned an unrelated source %q", r.descriptor.Name, d.Filename))
+				continue
+			}
+			if prepared.AcceptDiagnostic != nil && !prepared.AcceptDiagnostic(d) {
 				continue
 			}
 			if prepared.OriginalLine != nil {
@@ -183,6 +192,19 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 	return out, failures
 }
 
+func inputFilename(site analyzer.ScriptInput) string {
+	extension := site.Language
+	switch extension {
+	case "python":
+		extension = "py"
+	case "javascript":
+		extension = "js"
+	case "typescript":
+		extension = "ts"
+	}
+	return "actionlint-input/" + site.Language + "/" + site.Action + "/" + site.Input + "." + extension
+}
+
 func maskExpressions(text string) string {
 	var out strings.Builder
 	for {
@@ -207,4 +229,13 @@ func maskExpressions(text string) string {
 		}
 		text = text[end:]
 	}
+}
+
+func scriptShell(script tools.Script) string {
+	shell := script.Execution.Shell
+	if shell == "" && script.Shell != nil {
+		shell = *script.Shell
+	}
+	command, _, _ := strings.Cut(shell, " ")
+	return strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
 }
