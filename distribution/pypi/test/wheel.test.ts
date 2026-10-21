@@ -95,7 +95,7 @@ async function stage(): Promise<string> {
 		await mkdir(join(content, 'docs'), { recursive: true });
 		await writeFile(join(content, target.binary), binaries[target.asset] ?? stub, { mode: 0o755 });
 		await writeFile(join(content, 'LICENSE.txt'), license);
-		const archive = join(directory, archiveName(target.asset));
+		const archive = `../${archiveName(target.asset)}`;
 		const members = [target.binary, 'LICENSE.txt', 'docs'];
 		if (target.format === 'zip') {
 			const level = target.asset === 'windows_386' ? '-0' : '-9';
@@ -206,26 +206,70 @@ test('Windows wheels carry actionlint.exe and Linux tags share one payload', asy
 test('the installed console script execs the bundled binary and the Windows branch propagates its exit code', async () => {
 	const venv = join(root, 'venv');
 	execFileSync('python3', ['-m', 'venv', venv]);
-	const python = join(venv, 'bin', 'python');
-	const wheel = join(out, 'actionlint_kjanat-1.2.3-py3-none-manylinux_2_17_x86_64.whl');
+	const scripts = join(venv, process.platform === 'win32' ? 'Scripts' : 'bin');
+	const python = join(scripts, process.platform === 'win32' ? 'python.exe' : 'python');
+	const hostPlatform = new Map([
+		['win32-ia32', 'win32'],
+		['win32-x64', 'win_amd64'],
+		['win32-arm64', 'win_arm64'],
+		['darwin-x64', 'macosx_10_13_x86_64'],
+		['darwin-arm64', 'macosx_12_0_arm64'],
+		['linux-ia32', 'manylinux_2_17_i686'],
+		['linux-x64', 'manylinux_2_17_x86_64'],
+		['linux-arm64', 'manylinux_2_17_aarch64'],
+		['linux-arm', 'manylinux_2_17_armv7l'],
+	]).get(`${process.platform}-${process.arch}`);
+	assert.ok(hostPlatform, `unsupported test host ${process.platform}-${process.arch}`);
+	const wheel = join(out, `actionlint_kjanat-${version}-py3-none-${hostPlatform}.whl`);
 	execFileSync(python, ['-m', 'pip', 'install', '--quiet', '--no-index', '--no-deps', wheel]);
+	const location = 'import os, actionlint_kjanat; print(os.path.dirname(actionlint_kjanat.__file__))';
+	const bin = join(execFileSync(python, ['-c', location], { encoding: 'utf8' }).trim(), 'bin');
+	const executable = join(bin, process.platform === 'win32' ? 'actionlint.exe' : 'actionlint');
+	if (process.platform === 'win32') {
+		const source = join(root, 'stub.go');
+		await writeFile(
+			source,
+			`package main
+import ("fmt"; "os"; "strconv"; "strings")
+func main() {
+ fmt.Printf("actionlint ${version}\\nargs %s\\npid %d\\n", strings.Join(os.Args[1:], " "), os.Getpid())
+ code, _ := strconv.Atoi(os.Getenv("STUB_EXIT"))
+ os.Exit(code)
+}
+`,
+		);
+		await rm(executable);
+		execFileSync('go', ['build', '-o', executable, source], { env: { ...process.env, CGO_ENABLED: '0' } });
+	} else {
+		await writeFile(executable, stub, { mode: 0o755 });
+		await chmod(executable, 0o755);
+	}
+	const command = join(scripts, process.platform === 'win32' ? 'actionlint.exe' : 'actionlint');
 
-	const ok = spawnSync(join(venv, 'bin', 'actionlint'), ['-version'], { encoding: 'utf8' });
+	const ok = spawnSync(command, ['-version'], { encoding: 'utf8' });
 	assert.equal(ok.stderr, '');
 	assert.equal(ok.status, 0);
-	assert.equal(ok.stdout, `actionlint 1.2.3\nargs -version\npid ${ok.pid}\n`);
+	assert.match(ok.stdout, /^actionlint 1\.2\.3\nargs -version\npid (\d+)\n$/);
+	if (process.platform === 'win32') {
+		assert.notEqual(ok.stdout, `actionlint 1.2.3\nargs -version\npid ${ok.pid}\n`);
+	} else {
+		assert.equal(ok.stdout, `actionlint 1.2.3\nargs -version\npid ${ok.pid}\n`);
+	}
 
-	const failing = spawnSync(join(venv, 'bin', 'actionlint'), ['check', 'a.yml'], {
+	const failing = spawnSync(command, ['check', 'a.yml'], {
 		encoding: 'utf8',
 		env: { ...process.env, STUB_EXIT: '3' },
 	});
 	assert.equal(failing.status, 3);
-	assert.equal(failing.stdout, `actionlint 1.2.3\nargs check a.yml\npid ${failing.pid}\n`);
+	assert.match(failing.stdout, /^actionlint 1\.2\.3\nargs check a.yml\npid (\d+)\n$/);
+	if (process.platform !== 'win32') {
+		assert.equal(failing.stdout, `actionlint 1.2.3\nargs check a.yml\npid ${failing.pid}\n`);
+	}
 
-	const location = 'import os, actionlint_kjanat; print(os.path.dirname(actionlint_kjanat.__file__))';
-	const bin = join(execFileSync(python, ['-c', location], { encoding: 'utf8' }).trim(), 'bin');
-	await copyFile(join(bin, 'actionlint'), join(bin, 'actionlint.exe'));
-	await chmod(join(bin, 'actionlint.exe'), 0o755);
+	if (process.platform !== 'win32') {
+		await copyFile(executable, join(bin, 'actionlint.exe'));
+		await chmod(join(bin, 'actionlint.exe'), 0o755);
+	}
 	const windows = spawnSync(
 		python,
 		[
@@ -282,7 +326,7 @@ test('buildWheels rejects an archive whose bytes differ from its checksum', asyn
 
 test('buildWheels rejects an archive without the binary', async () => {
 	const assets = await stage();
-	execFileSync('tar', ['--format=ustar', '-czf', join(assets, archiveName('linux_amd64')), 'LICENSE.txt'], {
+	execFileSync('tar', ['--format=ustar', '-czf', `../${archiveName('linux_amd64')}`, 'LICENSE.txt'], {
 		cwd: join(assets, 'content-linux_amd64'),
 	});
 	await writeChecksums(assets);
