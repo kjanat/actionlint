@@ -240,12 +240,18 @@ test('Action smoke fixtures are re-included after the general testdata exclusion
 	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
 });
 
-test('Pandoc pins and installer select release and installation regression tests', () => {
+test('Pandoc pins and installer select both consumers and installation regression tests', () => {
 	for (const path of ['.github/actions/setup-pandoc/SHA256SUMS', '.github/actions/setup-pandoc/setup.bash']) {
 		const jobs = selectJobs(workflowFilters('ci'), [path]);
 		assert.equal(jobs.javascript, true);
 		assert.equal(jobs.release, true);
+		assert.equal(jobs.wasm, true);
 	}
+	const workflow = readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8');
+	const wasm = workflow.split('\n  wasm:\n')[1]?.split(/\n {2}\S/)[0];
+	assert.ok(wasm);
+	assert.match(wasm, /uses: \$\/\.github\/actions\/setup-pandoc/);
+	assert.doesNotMatch(wasm, /install_args:.*github:jgm\/pandoc/);
 });
 
 test('runner cache metadata and code select the installation regression tests', () => {
@@ -262,4 +268,14 @@ test('release snapshots cover every archived documentation input', () => {
 		assert.equal(selectJobs(ci, [path]).release, true, path);
 	}
 	assert.equal(selectJobs(ci, ['CONTRIBUTING.md']).release, false);
+});
+
+test('Windows matrix jobs serialize setup to avoid shared event payload writes', () => {
+	const workflow = readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8');
+	for (const job of ['unit-tests', 'action']) {
+		const body = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n {2}\S/)[0];
+		assert.ok(body, `${job} job must exist`);
+		assert.match(body, /windows-/);
+		assert.doesNotMatch(body, /^\s+- parallel:/m, `${job} steps share the runner event.json file`);
+	}
 });
