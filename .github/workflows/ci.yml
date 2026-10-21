@@ -1,7 +1,7 @@
 ---
 name: CI
 on:
-  push: { branches: [master, fuck-it] }
+  push: { branches: [master] }
   pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

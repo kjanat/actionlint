@@ -15,7 +15,52 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/analyzer"
+	"github.com/partite-ai/wacogo"
 )
+
+func TestScriptDescriptorShellValidation(t *testing.T) {
+	p := loadScriptFixture(t)
+	results, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := liftRecord(results[0], "script descriptor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	large := make([]wacogo.Val, 10000)
+	for i := range large {
+		large[i] = wacogo.ValString(fmt.Sprintf("shell-%d", i))
+	}
+	for _, tc := range []struct {
+		name   string
+		shells []wacogo.Val
+		valid  bool
+	}{
+		{"large catalogue", large, true},
+		{"duplicate", []wacogo.Val{wacogo.ValString("python"), wacogo.ValString("python")}, false},
+		{"empty name", []wacogo.Val{wacogo.ValString("")}, false},
+		{"wrong type", []wacogo.Val{wacogo.ValBool(true)}, false},
+		{"empty catalogue", nil, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			value := wacogo.NewValRecord(field("id", original.Field("id")), field("version", original.Field("version")),
+				field("name", original.Field("name")), field("engine", original.Field("engine")), field("engine-version", original.Field("engine-version")),
+				field("shells", wacogo.NewValListOf(tc.shells...)), field("rule", original.Field("rule")))
+			descriptor, err := liftScriptDescriptor(value)
+			if (err == nil) != tc.valid {
+				t.Fatalf("valid=%t: %v", tc.valid, err)
+			}
+			if tc.valid {
+				for i, shell := range descriptor.Shells {
+					if wacogo.ValString(shell) != tc.shells[i] {
+						t.Fatalf("shell order changed at %d", i)
+					}
+				}
+			}
+		})
+	}
+}
 
 func loadScriptFixture(t *testing.T) *Plugin {
 	t.Helper()

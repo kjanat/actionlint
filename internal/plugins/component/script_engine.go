@@ -245,11 +245,14 @@ func liftScriptDescriptor(value wacogo.Val) (analyzer.ScriptEngineDescriptor, er
 	if err != nil {
 		return d, err
 	}
+	seenShells := make(map[string]struct{}, list.Len())
 	for i := range list.Len() {
 		shell, ok := list.Get(i).(wacogo.ValString)
-		if !ok || shell == "" || slices.Contains(d.Shells, string(shell)) {
+		_, duplicate := seenShells[string(shell)]
+		if !ok || shell == "" || duplicate {
 			return d, errors.New("script descriptor contains an empty or duplicate shell")
 		}
+		seenShells[string(shell)] = struct{}{}
 		d.Shells = append(d.Shells, string(shell))
 	}
 	if len(d.Shells) == 0 {
