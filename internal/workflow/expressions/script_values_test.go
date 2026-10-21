@@ -24,6 +24,8 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 		{"unknown step insertion", "{VALUE: safe}", "{OTHER: safe}", "{'${{ insert }}': '${{ fromJSON(vars.ENV) }}'}", true},
 		{"unknown job mapping", "{VALUE: safe}", "'${{ fromJSON(vars.ENV) }}'", "{OTHER: safe}", true},
 		{"absent variable", "{OTHER: safe}", "{OTHER: safe}", "{OTHER: safe}", true},
+		{"aliased workflow env", "&defaults {VALUE: safe}", "{OTHER: safe}", "*defaults", false},
+		{"aliased env lacks variable", "&defaults {OTHER: safe}", "{OTHER: safe}", "*defaults", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := fmt.Sprintf("on: push\nenv: %s\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: %s\n    steps:\n      - env: %s\n        run: echo '${{ env.VALUE }}'\n", tc.workflowEnv, tc.jobEnv, tc.stepEnv)

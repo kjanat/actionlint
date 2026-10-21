@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: *runner
-      - run: echo ${{ env.R }}
+      - run: echo ${{ env.FOO1 }}
         env: *default_env
       - run: echo "$env:USER@$env:PASS"
         env: *cred_env
