@@ -248,7 +248,12 @@ func (m *PluginManifest) Save(ctx context.Context, refs []pluginref.Reference) (
 	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
-	temp, err := os.CreateTemp(filepath.Dir(m.Path), ".actionlint-config-*")
+	directory, err := os.OpenRoot(guard)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, directory.Close()) }()
+	temp, err := directory.OpenFile("content", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}

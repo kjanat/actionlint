@@ -55,6 +55,9 @@ func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 	}
 	rules, err := localapp.Rules(ctx, paths)
 	if err != nil {
+		if _, loadFailure := errors.AsType[*localapp.PluginLoadError](err); loadFailure && len(selection.Paths) > 0 {
+			return 0, commandUsageError{err}
+		}
 		return 0, err
 	}
 	return 0, writeRules(streams.Stdout, r.Name, r.JSON, rules)

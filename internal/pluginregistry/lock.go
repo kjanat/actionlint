@@ -256,7 +256,12 @@ func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 		f.original = nil
 		return nil
 	}
-	temp, err := os.CreateTemp(filepath.Dir(f.Path), ".actionlint-plugins-*")
+	directory, err := os.OpenRoot(guardPath)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, directory.Close()) }()
+	temp, err := directory.OpenFile("content", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}

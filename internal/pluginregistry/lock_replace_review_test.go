@@ -78,11 +78,7 @@ func TestLockReplacementRechecksConcurrentEdits(t *testing.T) {
 					return
 				}
 				if !remove {
-					entries, err := filepath.Glob(filepath.Join(filepath.Dir(file.Path), ".actionlint-plugins-*"))
-					if err != nil || len(entries) != 1 {
-						t.Fatalf("replacement not staged: %v %v", entries, err)
-					}
-					staged, err := os.ReadFile(entries[0])
+					staged, err := os.ReadFile(filepath.Join(file.Path+".writing", "content"))
 					if err != nil || len(staged) == 0 {
 						t.Fatalf("replacement not written: %q %v", staged, err)
 					}
