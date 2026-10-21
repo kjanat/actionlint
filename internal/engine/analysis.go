@@ -186,8 +186,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		}
 	}
 	workflows := NewLocalReusableWorkflowCacheFactory(cwd, engine.debugWriter())
-	reader := fsread.New(ctx, request.ReadFile, inputs.add)
-	engine.workingDir, engine.reader = absPath(cwd), reader
+	engine.workingDir = absPath(cwd)
 	engine.gitModes = &gitModes{}
 	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
 	sourceContents := map[string][]byte{}
@@ -203,6 +202,18 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		sourceContents[filepath.Clean(path)] = source.Content
 		sourcePaths = append(sourcePaths, filepath.Clean(path))
 	}
+	baseReader := fsread.New(ctx, request.ReadFile, nil)
+	reader := fsread.New(ctx, func(path string) ([]byte, error) {
+		fullPath := path
+		if !filepath.IsAbs(fullPath) {
+			fullPath = filepath.Join(engine.workingDir, fullPath)
+		}
+		if content, ok := sourceContents[filepath.Clean(fullPath)]; ok {
+			return content, nil
+		}
+		return baseReader.ReadFile(path)
+	}, inputs.add)
+	engine.reader = reader
 	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, Reader: reader, Load: func(path string) (string, bool, error) {
 		if err := ctx.Err(); err != nil {
 			return "", false, err

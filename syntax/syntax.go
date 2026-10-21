@@ -29,6 +29,8 @@ type (
 	ImageVersionEvent              = workflowlang.ImageVersionEvent
 	PermissionScope                = workflowlang.PermissionScope
 	Permissions                    = workflowlang.Permissions
+	CacheModeKind                  = workflowlang.CacheModeKind
+	CacheMode                      = workflowlang.CacheMode
 	DefaultsRun                    = workflowlang.DefaultsRun
 	Defaults                       = workflowlang.Defaults
 	Concurrency                    = workflowlang.Concurrency
@@ -71,6 +73,11 @@ type (
 )
 
 const (
+	CacheModeInvalid                          = workflowlang.CacheModeInvalid
+	CacheModeNone                             = workflowlang.CacheModeNone
+	CacheModeRead                             = workflowlang.CacheModeRead
+	CacheModeWrite                            = workflowlang.CacheModeWrite
+	CacheModeWriteOnly                        = workflowlang.CacheModeWriteOnly
 	WorkflowDispatchEventInputTypeNone        = workflowlang.WorkflowDispatchEventInputTypeNone
 	WorkflowDispatchEventInputTypeString      = workflowlang.WorkflowDispatchEventInputTypeString
 	WorkflowDispatchEventInputTypeNumber      = workflowlang.WorkflowDispatchEventInputTypeNumber

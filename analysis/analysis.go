@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/document"
 	"actionlint.kjanat.dev/internal/engine"
 	"context"
+	"path/filepath"
 )
 
 // Source is an in-memory workflow or action manifest with optional configuration.
@@ -38,7 +39,9 @@ type Tool struct {
 // Options controls configuration, external tools and filesystem access.
 // ReadFile must support concurrent calls. It does not sandbox external tools.
 type Options struct {
-	Analyzers      []analyzer.Registration
+	Analyzers []analyzer.Registration
+	// WorkingDir roots source paths, config selection and local references.
+	// Empty uses the process working directory; Analyze does not discover config.
 	WorkingDir     string
 	ReadFile       func(string) ([]byte, error)
 	ShellCheck     Tool
@@ -75,16 +78,21 @@ type Result struct {
 
 // Analyze checks already-loaded sources. It does not perform source discovery.
 func Analyze(ctx context.Context, request Request) (*Result, error) {
+	root, err := filepath.Abs(request.Options.WorkingDir)
+	if err != nil {
+		return nil, err
+	}
+	project := engine.NewProjectContext(root)
 	sources := make([]engine.SourceUnit, len(request.Sources))
 	for i, source := range request.Sources {
-		sources[i] = engine.SourceUnit{Path: source.Path, Content: source.Content, Config: source.Config}
+		sources[i] = engine.SourceUnit{Path: source.Path, Content: source.Content, Config: source.Config, Project: project}
 	}
 	ignore, err := engine.CompileIgnorePatterns(request.Options.IgnorePatterns)
 	if err != nil {
 		return nil, err
 	}
 	result, err := engine.Analyze(ctx, engine.AnalysisRequest{
-		Analyzers: request.Options.Analyzers, Sources: sources, WorkingDir: request.Options.WorkingDir, ReadFile: request.Options.ReadFile,
+		Analyzers: request.Options.Analyzers, Sources: sources, WorkingDir: root, ReadFile: request.Options.ReadFile,
 		ShellcheckOptions: backendProcessOptions(request.Options.ShellCheck), RuffOptions: backendProcessOptions(request.Options.Ruff),
 		RuffBackend: request.Options.Ruff.Backend, ShellcheckBackend: request.Options.ShellCheck.Backend,
 		RulePresets: request.Options.Presets, IgnorePatterns: ignore,
@@ -94,7 +102,11 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 
 // Files checks explicit paths with project discovery and configuration loading.
 func Files(ctx context.Context, paths []string, options FileOptions) (*Result, error) {
-	session, err := engine.NewAnalysisSession(sessionOptions(ctx, options))
+	settings, err := sessionOptions(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	session, err := engine.NewAnalysisSession(settings)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +116,11 @@ func Files(ctx context.Context, paths []string, options FileOptions) (*Result, e
 
 // Repository discovers and checks workflows and actions under a repository.
 func Repository(ctx context.Context, directory string, options FileOptions) (*Result, error) {
-	session, err := engine.NewAnalysisSession(sessionOptions(ctx, options))
+	settings, err := sessionOptions(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	session, err := engine.NewAnalysisSession(settings)
 	if err != nil {
 		return nil, err
 	}
@@ -116,14 +132,21 @@ func toolOptions(tool Process) *engine.ExternalCommandOptions {
 	return &engine.ExternalCommandOptions{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
 }
 
-func sessionOptions(ctx context.Context, options FileOptions) engine.AnalysisOptions {
+func sessionOptions(ctx context.Context, options FileOptions) (engine.AnalysisOptions, error) {
+	root, err := filepath.Abs(options.WorkingDir)
+	if err != nil {
+		return engine.AnalysisOptions{}, err
+	}
+	if options.ConfigFile != "" && !filepath.IsAbs(options.ConfigFile) {
+		options.ConfigFile = filepath.Join(root, options.ConfigFile)
+	}
 	return engine.AnalysisOptions{
-		Analyzers: options.Analyzers, Context: ctx, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile,
+		Analyzers: options.Analyzers, Context: ctx, WorkingDir: root, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck),
 		RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend, ShellcheckBackend: options.ShellCheck.Backend, RulePresets: options.Presets,
 		IgnorePatterns: options.IgnorePatterns, QuietSelection: true,
-	}
+	}, nil
 }
 
 func resultView(result *engine.AnalysisResult) *Result {

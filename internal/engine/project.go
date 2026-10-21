@@ -79,6 +79,12 @@ func NewProject(root string) (*Project, error) {
 	return newProject(root, fsread.Disk)
 }
 
+// NewProjectContext supplies an absolute repository root without loading config.
+// Callers supply configuration independently for each analysis source.
+func NewProjectContext(root string) *Project {
+	return &Project{root: root}
+}
+
 func newProject(root string, readFile func(string) ([]byte, error)) (*Project, error) {
 	c, path, err := repoconfig.LoadRepository(root, readFile)
 	if err != nil {
