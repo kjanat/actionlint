@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/diagnostic"
 )
 
-// Term preserves unresolved expressions instead of treating them as label names.
+// Term distinguishes literal labels from unresolved expressions.
 type (
 	Term       interface{ runnerTerm() }
 	Literal    string
