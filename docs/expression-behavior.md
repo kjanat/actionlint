@@ -34,8 +34,8 @@ owner login can be a reserved word, so `github.repository_owner` needs the same
 position check. Matrix alternatives retain their weakest applicable proof.
 
 Misspelled contexts and functions receive a correction only when one close name
-is available at that workflow location. Ambiguous names receive no guess; dynamic
-property maps remain open rather than inventing undeclared names.
+is available at that workflow location. Ambiguous names receive no guess. Dynamic
+property maps accept undeclared keys without correction suggestions.
 
 ### Condition source is different from a computed string
 

@@ -88,7 +88,7 @@ func SafeScriptWord(value string) bool {
 // Callers omit it when a specific secret or untrusted-input finding exists.
 func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, scalarArgument bool, safeReference func(Node) bool) []*Error {
 	if _, stringValue := ty.(StringType); stringValue && sema.IsScriptScalar(expr) {
-		// toJSON of a primitive retains scalar syntax, not a position guarantee.
+		// toJSON of a primitive retains scalar syntax; its position still needs proof.
 		if scalarArgument {
 			return nil
 		}
