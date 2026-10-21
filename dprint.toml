@@ -33,7 +33,7 @@ excludes    = [
 cwd = "${configDir}"
 
 [[exec.commands]]
-command       = "mise exec --no-deps --silent --quiet github:tombi-toml/tombi -- tombi format - --stdin-filename {{file_path}}"
+command       = "tombi format - --stdin-filename {{file_path}}"
 exts          = ["toml"]
 cacheKeyFiles = ["tombi.toml"]
 

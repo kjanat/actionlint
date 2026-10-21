@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test pinned formatter installation and workflow provisioning"
+run         = "node --test setup.test.mjs"

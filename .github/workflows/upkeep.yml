@@ -87,6 +87,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
+      - uses: $/.github/actions/setup-shellcheck
       - name: Keep mise metadata with cached tools
         shell: bash
         run: |
@@ -101,7 +102,9 @@ jobs:
           cache_save_post: true
           cache_key: >-
             actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: github:koalaman/shellcheck github:kjanat/actionlint github:rhysd/actionlint
+          install_args: github:kjanat/actionlint github:rhysd/actionlint
+        # The verified helper already supplies this transitive dependency.
+        env: { MISE_DISABLE_TOOLS: "shellcheck,github:koalaman/shellcheck,rshellcheck,github:kjanat/shellcheck-rs" }
       - run: go run ./scripts/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes

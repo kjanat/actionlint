@@ -62,7 +62,9 @@ jobs:
         with:
           cache: true
           auto_update: true
-          install_args: go node npm github:kjanat/runner github:jgm/pandoc
+          install_args: go node npm
+      - uses: $/.github/actions/setup-runner
+      - uses: $/.github/actions/setup-pandoc
       - parallel:
           - name: Install JavaScript dependencies
             run: runner install --pm npm --no-tools --frozen

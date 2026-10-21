@@ -279,3 +279,42 @@ test('Windows matrix jobs serialize setup to avoid shared event payload writes',
 		assert.doesNotMatch(body, /^\s+- parallel:/m, `${job} steps share the runner event.json file`);
 	}
 });
+
+test('pinned formatter helper and workflow changes select installer tests', () => {
+	for (const name of ['action.yml', 'setup.bash', 'pins.tsv', 'mise.toml']) {
+		assert.equal(
+			selectJobs(workflowFilters('ci'), [`.github/actions/setup-formatters/${name}`]).javascript,
+			true,
+			name,
+		);
+	}
+	const root = new URL('../../', import.meta.url);
+	const read = (/** @type {string} */ path) => readFileSync(new URL(path, root), 'utf8');
+	const autofix = read('.github/workflows/autofix.yml');
+	assert.match(autofix, /uses: \$\/\.github\/actions\/setup-formatters/);
+	assert.doesNotMatch(autofix, /install_args:.*(?:dprint|tombi)/);
+	assert.doesNotMatch(autofix, /uses: kjanat\/install-dprint/);
+	assert.match(read('dprint.toml'), /command\s*= "tombi format - --stdin-filename \{\{file_path\}\}"/);
+	assert.match(read('package.json'), /\/\/\.github\/actions\/setup-formatters:test/);
+	assert.match(read('.mise.toml'), /"\.github\/actions\/setup-formatters"/);
+	const pages = read('.github/workflows/pages.yml');
+	assert.match(pages, /uses: \$\/\.github\/actions\/setup-runner/);
+	assert.match(pages, /uses: \$\/\.github\/actions\/setup-pandoc/);
+	assert.doesNotMatch(pages, /install_args:.*(?:runner|pandoc)/);
+	const upkeep = read('.github/workflows/upkeep.yml');
+	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-shellcheck/);
+	assert.match(
+		upkeep,
+		/MISE_DISABLE_TOOLS: "shellcheck,github:koalaman\/shellcheck,rshellcheck,github:kjanat\/shellcheck-rs"/,
+	);
+	assert.doesNotMatch(upkeep, /install_args:.*koalaman\/shellcheck/);
+});
+
+test('preview and npm builds select the go.mod toolchain', () => {
+	const preview = readFileSync(new URL('../workflows/annotation-preview.yml', import.meta.url), 'utf8');
+	assert.match(preview, /GOTOOLCHAIN: local/);
+	assert.match(preview, /with: \{ go-version-file: go.mod \}\n\s*#[^\n]*\n\s*env: \{ GOTOOLCHAIN: auto \}/);
+	const npm = readFileSync(new URL('../workflows/npm-release.yml', import.meta.url), 'utf8');
+	assert.match(npm, /with: \{ go-version-file: go.mod \}/);
+	assert.doesNotMatch(npm, /env\.GO|GO: "1\.27"/);
+});
