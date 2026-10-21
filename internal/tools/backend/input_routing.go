@@ -15,7 +15,7 @@ func WithScriptInputs(registration tools.Registration, descriptor analyzer.Scrip
 		return registration, nil
 	}
 	descriptor.Shells = nil
-	inputs, err := registerEngine(descriptor, backend, registration.Enabled)
+	inputs, err := registerEngine(descriptor, backend, registration.Enabled, registration.PrepareInput)
 	if err != nil {
 		return tools.Registration{}, err
 	}

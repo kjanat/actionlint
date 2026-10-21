@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/analyzer"
@@ -74,6 +75,42 @@ type routingBackend func(context.Context, analyzer.ScriptRequest) ([]analyzer.Sc
 
 func (b routingBackend) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 	return b(ctx, request)
+}
+
+func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
+	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
+	registration := tools.Registration{
+		Descriptor: rule.Descriptor{Name: "tool"},
+		PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
+			return tools.PreparedInput{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), OriginalLine: func(line int) int { return line - 1 }}, nil
+		},
+		Build: func(tools.Context) (tools.Runner, error) {
+			return routingRunner(func(context.Context, tools.Batch) ([]tools.Finding, error) {
+				return []tools.Finding{{Message: "native"}}, nil
+			}), nil
+		},
+	}
+	engine := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+		if request.Source != "# options\ninput" || string(request.Config) != `{"shell":"sh"}` {
+			t.Fatalf("prepared request changed: %+v", request)
+		}
+		return []analyzer.ScriptDiagnostic{
+			{Message: "bad configuration", Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 2}},
+			{Message: "input", Location: analyzer.ScriptPosition{Row: 2, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 2, Column: 2}},
+		}, nil
+	})
+	registration, err := WithScriptInputs(registration, analyzer.ScriptEngineDescriptor{Rule: registration.Descriptor, ScriptInputs: []analyzer.ScriptInput{site}}, engine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := registration.Build(tools.Context{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Col: 7}}}})
+	if err == nil || !strings.Contains(err.Error(), "configuration diagnostic: bad configuration") || len(findings) != 2 || findings[0].Message != "native" || findings[1].Message != "input" {
+		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
+	}
 }
 
 func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {

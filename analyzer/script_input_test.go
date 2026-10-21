@@ -7,6 +7,11 @@ func TestScriptInputSelectors(t *testing.T) {
 	if err := ValidateScriptInputs([]ScriptInput{valid}); err != nil {
 		t.Fatal(err)
 	}
+	for _, action := range []string{"owner/repo/Foo", "owner/repo/Foo/Bar-v1"} {
+		if err := ValidateScriptInput(ScriptInput{Action: action, Input: "script", Language: "javascript"}); err != nil {
+			t.Fatalf("case-sensitive action path rejected: %v", err)
+		}
+	}
 	for _, input := range []ScriptInput{
 		{Action: "Actions/github-script", Input: "script", Language: "javascript"},
 		{Action: "actions/github-script@v7", Input: "script", Language: "javascript"},

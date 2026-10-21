@@ -496,7 +496,7 @@ Script engines can also declare action-input sites in static metadata:
 }
 ```
 
-Selectors use lowercase action names without `@ref`, an input name and an explicit language. Targets use exact
+Selectors use lowercase owner/repository names and case-sensitive subpaths without `@ref`, an input name and an explicit language. Targets use exact
 matching; wildcard selectors are rejected. Duplicate targets, conflicting languages and malformed selectors are
 rejected. Up to 256 selectors are allowed per engine. These declarations route snippets; they do not prove the
 guest understands a language. Input-only components may return an empty `shells` list from `describe`, but must
@@ -511,6 +511,10 @@ workflow expressions are masked before checking. Whole inputs created by object 
 script scalar and remain unavailable for this analysis. Ordinary action inputs and `run` scripts are not sent to
 an input-only engine. Action inputs have a language, never an inferred runner shell, and cannot opt into ShellCheck
 through a shell directive.
+
+Engines replacing Ruff or ShellCheck receive the corresponding `tools.ruff` or `tools.shellcheck` settings for both
+run scripts and declared inputs, including file overrides. ShellCheck's inline directives retain the input scalar's
+source mapping; they do not add runner startup commands.
 
 Go document analyzers requesting `analyzer.Scripts` receive these sites separately in `Input.ActionInputs`, with
 `Site`, spans and optional composite `Invocation`. Their shell and runtime fields remain empty. `Input.Scripts`

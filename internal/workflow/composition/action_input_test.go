@@ -5,7 +5,32 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/analyzer"
+	workflow "actionlint.kjanat.dev/internal/workflow"
 )
+
+func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
+	for _, tc := range []struct {
+		action, selector string
+		matches          bool
+	}{
+		{"Owner/Repo/foo@v1", "owner/repo/foo", true},
+		{"Owner/Repo/Foo@v1", "owner/repo/foo", false},
+		{"Owner/Repo/Foo@v1", "owner/repo/Foo", true},
+		{"OWNER/REPO/Foo/Bar@v1", "owner/repo/Foo/Bar", true},
+		{"owner/repo/Foo/bar@v1", "owner/repo/Foo/Bar", false},
+	} {
+		t.Run(tc.action+"/"+tc.selector, func(t *testing.T) {
+			analysis := compositeAnalyzer{scriptInputs: []analyzer.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}
+			action := &workflow.ExecAction{Uses: &workflow.String{Value: tc.action}, Inputs: map[string]*workflow.Input{
+				"code": {Name: &workflow.String{Value: "code"}, Value: &workflow.String{Value: "missing()"}, Source: &workflow.ScriptSource{}},
+			}}
+			analysis.collectActionInputs(&workflow.Step{}, action, nil, "workflow.yml", nil)
+			if (len(analysis.scripts) == 1) != tc.matches {
+				t.Fatalf("case-sensitive selector match=%t, want=%t", len(analysis.scripts) == 1, tc.matches)
+			}
+		})
+	}
+}
 
 func TestScriptInputCatalogueCombinesPerEngineLimits(t *testing.T) {
 	var all []analyzer.ScriptInput

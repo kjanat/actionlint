@@ -3,6 +3,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
@@ -37,6 +38,16 @@ type Registration struct {
 	Required          func(Context) bool
 	Build             func(Context) (Runner, error)
 	WithBackend       func(analyzer.ScriptBackend) (Registration, error)
+	// PrepareInput shares adapter configuration with advertised action-input routes.
+	PrepareInput func(Script) (PreparedInput, error)
+}
+
+// PreparedInput preserves the original scalar's coordinates when an adapter
+// inserts configuration directives. A nil OriginalLine leaves rows unchanged.
+type PreparedInput struct {
+	Source       string
+	Config       json.RawMessage
+	OriginalLine func(int) int
 }
 
 type Runner interface {

@@ -179,14 +179,7 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 	// - SC2043: Loop can be detected as only running once when the target of iteration is a placeholder. (#355)
 	//           e.g. `for foo in ${{ inputs.foo }}; do`
 	args := append([]string(nil), run.rcArgs...)
-	excluded := []string{"SC1091", "SC2194", "SC2050", "SC2153", "SC2154", "SC2157", "SC2043"}
-	if run.config != nil {
-		for _, code := range run.config.Exclude {
-			if !slices.Contains(excluded, code) {
-				excluded = append(excluded, code)
-			}
-		}
-	}
+	excluded := excludedChecks(run.config)
 	externalSources := true
 	if inline != nil && inline.ExternalSources != nil {
 		externalSources = *inline.ExternalSources
@@ -281,7 +274,7 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 		return nil
 	}
 	if run.backend != nil {
-		options, err := json.Marshal(map[string]any{"shell": dialect, "exclude": excluded, "external-sources": false})
+		options, err := backendOptions(dialect, run.config)
 		if err != nil {
 			return err
 		}

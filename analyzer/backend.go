@@ -40,7 +40,8 @@ type ScriptEngineDescriptor struct {
 }
 
 // ScriptInput identifies source code supplied to one action input, independently
-// of a runner shell. Action is an owner/repository[/path] without a ref.
+// of a runner shell. Action is a lowercase owner/repository and optional
+// case-sensitive subpath, without a ref.
 type ScriptInput struct {
 	Action   string `json:"action"`
 	Input    string `json:"input"`
@@ -72,9 +73,9 @@ func ValidateScriptInput(input ScriptInput) error {
 		return errors.New("script input selector exceeds action, input or language length limits")
 	}
 	parts := strings.Split(input.Action, "/")
-	valid := len(parts) >= 2 && selectorWord(input.Input) && selectorWord(input.Language)
-	for _, part := range parts {
-		valid = valid && selectorWord(part) && part != "." && part != ".."
+	valid := len(parts) >= 2 && selectorWord(input.Input, false) && selectorWord(input.Language, false)
+	for index, part := range parts {
+		valid = valid && selectorWord(part, index >= 2) && part != "." && part != ".."
 	}
 	if !valid {
 		return fmt.Errorf("invalid script input selector %+v", input)
@@ -82,13 +83,14 @@ func ValidateScriptInput(input ScriptInput) error {
 	return nil
 }
 
-func selectorWord(word string) bool {
+func selectorWord(word string, uppercase bool) bool {
 	if word == "" {
 		return false
 	}
 	for _, ch := range word {
 		switch {
 		case ch >= 'a' && ch <= 'z', ch >= '0' && ch <= '9', ch == '-', ch == '_', ch == '.':
+		case uppercase && ch >= 'A' && ch <= 'Z':
 		default:
 			return false
 		}

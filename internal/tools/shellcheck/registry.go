@@ -26,7 +26,7 @@ type Options struct {
 func (o Options) Registration() tools.Registration {
 	descriptor, _ := rulecatalog.Find("shellcheck")
 	return tools.Registration{
-		Descriptor: descriptor, RequiresExecution: true,
+		Descriptor: descriptor, RequiresExecution: true, PrepareInput: prepareInput,
 		Enabled: func(c tools.Context) bool {
 			return config.DiagnosticLevel(c.Config, "shellcheck") != "off" && (o.Backend != nil || o.Runner != nil || selection.AllowsModule("shellcheck", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (c.Config == nil || c.Config.Tools.Shellcheck.Enabled == nil || *c.Config.Tools.Shellcheck.Enabled)
 		},

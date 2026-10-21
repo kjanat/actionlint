@@ -26,10 +26,10 @@ func Register(descriptor rule.Descriptor, shells []string, backend analyzer.Scri
 
 // RegisterEngine routes both shell snippets and declared action-input sites.
 func RegisterEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
-	return registerEngine(descriptor, backend, nil)
+	return registerEngine(descriptor, backend, nil, nil)
 }
 
-func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend, enabled func(tools.Context) bool) (tools.Registration, error) {
+func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend, enabled func(tools.Context) bool, prepareInput func(tools.Script) (tools.PreparedInput, error)) (tools.Registration, error) {
 	descriptor = descriptor.Clone()
 	if backend == nil {
 		return tools.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
@@ -49,7 +49,7 @@ func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer
 		inputs[input] = struct{}{}
 	}
 	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0, Build: func(c tools.Context) (tools.Runner, error) {
-		return runner{descriptor: descriptor.Rule, shells: selectors, inputs: inputs, backend: backend, enabled: enabled, context: c}, nil
+		return runner{descriptor: descriptor.Rule, shells: selectors, inputs: inputs, backend: backend, enabled: enabled, context: c, prepareInput: prepareInput}, nil
 	}}, nil
 }
 
@@ -68,12 +68,13 @@ func shellCatalogue(descriptor rule.Descriptor, shells []string) (map[string]str
 }
 
 type runner struct {
-	descriptor rule.Descriptor
-	shells     map[string]struct{}
-	inputs     map[analyzer.ScriptInput]struct{}
-	backend    analyzer.ScriptBackend
-	enabled    func(tools.Context) bool
-	context    tools.Context
+	descriptor   rule.Descriptor
+	shells       map[string]struct{}
+	inputs       map[analyzer.ScriptInput]struct{}
+	backend      analyzer.ScriptBackend
+	enabled      func(tools.Context) bool
+	context      tools.Context
+	prepareInput func(tools.Script) (tools.PreparedInput, error)
 }
 
 func (r runner) scriptEnabled(cfg *config.Config) bool {
@@ -113,7 +114,18 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 			}
 		}
 		var options json.RawMessage
-		if script.Config != nil {
+		prepared := tools.PreparedInput{Source: maskExpressions(script.Text)}
+		if r.prepareInput != nil && script.Input != nil {
+			input := script
+			input.Text = prepared.Source
+			var err error
+			prepared, err = r.prepareInput(input)
+			if err != nil {
+				failures = errors.Join(failures, err)
+				continue
+			}
+			options = prepared.Config
+		} else if script.Config != nil {
 			settings := script.Config.Lint.Rules.Plugins.Rules[r.descriptor.Name].Options
 			if settings != nil {
 				data, err := json.Marshal(settings)
@@ -133,13 +145,21 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				continue
 			}
 		}
-		request := analyzer.ScriptRequest{Source: maskExpressions(script.Text), Filename: "actionlint-script", Config: options}
+		request := analyzer.ScriptRequest{Source: prepared.Source, Filename: "actionlint-script", Config: options}
 		diagnostics, err := r.backend.Check(ctx, request)
 		failures = errors.Join(failures, err)
 		for _, d := range diagnostics {
 			if d.Filename != "" && d.Filename != request.Filename {
 				failures = errors.Join(failures, fmt.Errorf("tool %s returned an unrelated source %q", r.descriptor.Name, d.Filename))
 				continue
+			}
+			if prepared.OriginalLine != nil {
+				d.Location.Row = prepared.OriginalLine(d.Location.Row)
+				d.EndLocation.Row = prepared.OriginalLine(d.EndLocation.Row)
+				if d.Location.Row == 0 || d.EndLocation.Row == 0 {
+					failures = errors.Join(failures, fmt.Errorf("tool %s configuration diagnostic: %s", r.descriptor.Name, d.Message))
+					continue
+				}
 			}
 			start, ok := script.Source.Position(d.Location.Row, d.Location.Column)
 			end, endOK := script.Source.EndPos(d.EndLocation.Row, d.EndLocation.Column)

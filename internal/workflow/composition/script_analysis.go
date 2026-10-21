@@ -69,7 +69,12 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 	if !pinned {
 		return
 	}
-	name = strings.ToLower(name)
+	parts := strings.SplitN(name, "/", 3)
+	if len(parts) < 2 {
+		return
+	}
+	parts[0], parts[1] = strings.ToLower(parts[0]), strings.ToLower(parts[1])
+	name = strings.Join(parts, "/")
 	inputs, _ := workflowlang.ActionInputNames(action)
 	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
 		input := inputs[inputName]
