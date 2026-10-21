@@ -63,7 +63,7 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			cfg := &repoconfig.Config{}
-			request := application.Options{WorkingDir: t.TempDir()}
+			request := application.Options{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
 			var requestSources []workspace.Source
 			shell := "python"
 			if name == "ruff" {
