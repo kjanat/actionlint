@@ -114,6 +114,9 @@ func (s *editorEngines) load(ctx context.Context, source string) (analyzer.Scrip
 	if s.customLoad != nil {
 		backend, err = s.customLoad(ctx, source)
 	} else {
+		if err := pluginartifact.RequireRemotePin(source); err != nil {
+			return nil, err
+		}
 		artifact, resolveErr := pluginartifact.Resolve(ctx, source, artifactOptions())
 		if resolveErr != nil {
 			return nil, resolveErr

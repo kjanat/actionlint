@@ -21,6 +21,7 @@ type DefaultPluginOptions struct {
 	Shellcheck bool
 	Ruff       bool
 	Warning    func(string)
+	Overlays   []config.Overlay
 }
 
 // DefaultPluginReferences supplies the v2 defaults only when plugins was omitted.
@@ -71,7 +72,7 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err := migration.CheckUnchanged(); err != nil {
 		return nil, err
 	}
-	resolved, err := config.ResolveBeforePlugins(project.Manifest.node, nil)
+	resolved, err := config.ResolveBeforePlugins(project.Manifest.node, options.Overlays)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +159,7 @@ func (s PluginSelection) Migrate(ctx context.Context, directory string, input ap
 	if s.Disabled || len(s.Paths) != 0 || s.LockFile != "" {
 		return nil
 	}
+	options.Overlays = s.Overlays
 	if s.ConfigFile != "" {
 		return MigrateConfig(ctx, s.ConfigFile, options)
 	}
