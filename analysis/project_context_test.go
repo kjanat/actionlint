@@ -134,6 +134,7 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 				}
 				workingDir := root
 				if relativeRoot {
+					t.Chdir(filepath.Dir(root))
 					cwd, err := os.Getwd()
 					if err != nil {
 						t.Fatal(err)
