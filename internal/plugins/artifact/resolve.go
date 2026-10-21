@@ -207,7 +207,7 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 	if err != nil {
 		return nil, errors.New("invalid plugin request")
 	}
-	// Keep checksums tied to the published file, not transparent HTTP decoding.
+	// Verify checksums against the published bytes by disabling HTTP decoding.
 	req.Header.Set("Accept-Encoding", "identity")
 	resp, err := client.Do(req)
 	if err != nil {

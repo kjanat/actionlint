@@ -65,7 +65,7 @@ func Resolve(exe string) (string, []string, error) {
 		return c, nil, nil
 	}
 
-	// Try to parse the string as a command line instead of a single executable file path.
+	// Parse command-line arguments when executable lookup fails.
 	if a, err := shellwords.Parse(exe); err == nil && len(a) > 0 {
 		if c, err := execabs.LookPath(a[0]); err == nil {
 			return c, a[1:], nil
