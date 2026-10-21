@@ -166,6 +166,10 @@ func (p *Plugin) load(ctx context.Context, data []byte) error {
 	if descriptor.Name == "" {
 		return errors.New("plugin describes itself with an empty name")
 	}
+	if strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, ",\r\n") ||
+		strings.Contains(descriptor.Name, " -- ") || strings.HasSuffix(descriptor.Name, " --") {
+		return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", descriptor.Name)
+	}
 	p.descriptor = descriptor
 	return nil
 }
@@ -302,7 +306,13 @@ func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (res
 		return nil, p.failure(ctx, fmt.Errorf("instantiate: %w", err))
 	}
 	defer func() {
-		_ = guest.Close(ctx)
+		if closeErr := guest.Close(ctx); closeErr != nil {
+			p.discardImports(ctx)
+			// Guest destructors use the call deadline; runtime teardown runs no Wasm.
+			closeErr = errors.Join(closeErr, p.engine.Close(context.WithoutCancel(ctx)))
+			p.engine = nil
+			err = errors.Join(err, p.failure(ctx, fmt.Errorf("close component: %w", closeErr)))
+		}
 		if err != nil {
 			p.discardImports(ctx)
 		}

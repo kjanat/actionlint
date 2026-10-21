@@ -372,7 +372,17 @@ func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 	if !result.OK {
 		return nil, e.engineError(result.Errors)
 	}
-	return result.Diagnostics, nil
+	valid := result.Diagnostics[:0]
+	for i, finding := range result.Diagnostics {
+		start, end := finding.Location, finding.EndLocation
+		if start.Row < 1 || start.Column < 1 || end != (analyzer.ScriptPosition{}) &&
+			(end.Row < 1 || end.Column < 1 || end.Row < start.Row || end.Row == start.Row && end.Column < start.Column) {
+			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d has invalid range %v-%v", e.name(), i, start, end))
+			continue
+		}
+		valid = append(valid, finding)
+	}
+	return valid, err
 }
 
 // ValidateConfig asks the engine to validate an options object. Engines that
