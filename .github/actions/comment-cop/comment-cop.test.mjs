@@ -22,6 +22,99 @@ test('flags a long implementation comment', () => {
 	assert.deepEqual(groups.map(group => group.reasons), [['3 lines']]);
 });
 
+test('Go directives separate prose in complete and partial patches', () => {
+	for (
+		const directive of [
+			'//go:generate go run generator.go',
+			'//go:generate\tgo run generator.go',
+			'//go:build linux && amd64',
+			'//go:embed assets/*',
+			'\t//go:embed assets/*',
+			'//go:noinline',
+			'//line generated.go:12',
+			'//line generated.go:12:3',
+		]
+	) {
+		const lines = [directive, '// Name generated files explicitly; directory walks skip them.', directive];
+		const source = ['package fixture', '', ...lines].join('\n');
+		for (
+			const patch of [
+				`@@ -0,0 +1,${source.split('\n').length} @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`,
+				`@@ -2,1 +2,4 @@\n \n${lines.map(line => `+${line}`).join('\n')}`,
+			]
+		) {
+			for (const contents of [undefined, source]) {
+				assert.deepEqual(groupsFromPatch('generate.go', patch, contents), [], directive);
+			}
+		}
+	}
+});
+
+test('directive-adjacent prose retains style and length findings', () => {
+	const source = [
+		'//go:generate echo "robust rather than elegant"',
+		'// Use the cache rather than parsing twice.',
+		'//go:generate go run generator.go',
+		'// Parse the value.',
+		'// Keep its position.',
+		'// Return its diagnostics.',
+		'//go:generate gofmt generated.go',
+	].join('\n');
+	const patches = [
+		`@@ -0,0 +1,7 @@\n${source.split('\n').map(line => `+${line}`).join('\n')}`,
+		`@@ -1,1 +1,7 @@\n ${source.split('\n')[0]}\n${source.split('\n').slice(1).map(line => `+${line}`).join('\n')}`,
+	];
+	for (const patch of patches) {
+		for (const contents of [undefined, source]) {
+			assert.deepEqual(
+				groupsFromPatch('generate.go', patch, contents).map(group => ({
+					start: group.start,
+					end: group.end,
+					reasons: group.reasons,
+				})),
+				[
+					{ start: 2, end: 2, reasons: ['"X rather than Y"'] },
+					{ start: 4, end: 6, reasons: ['3 lines'] },
+				],
+			);
+		}
+	}
+});
+
+test('ordinary directive-like comments remain prose', () => {
+	for (
+		const line of [
+			'// go:generate source files.',
+			'//go: generate source files.',
+			'//go:generate',
+			'\t//go:generate go run generator.go',
+			'//line generated.go:unknown',
+			'\t//line generated.go:12',
+		]
+	) {
+		const patch = `@@ -0,0 +1,3 @@\n${
+			[line, '// Read the input.', '// Preserve its range.'].map(line => `+${line}`).join('\n')
+		}`;
+		assert.deepEqual(groupsFromPatch('generate.go', patch).map(group => group.reasons), [['3 lines']], line);
+	}
+	const patch = '@@ -0,0 +1,3 @@\n+//go:embed assets/*\n+// Read the input.\n+// Preserve its range.';
+	assert.deepEqual(groupsFromPatch('generate.js', patch).map(group => group.reasons), [['3 lines']]);
+});
+
+test('Go directives preserve adjacent declaration documentation', () => {
+	const source = [
+		'// Parse reads the input.',
+		'// It preserves source positions.',
+		'// It returns every diagnostic.',
+		'//go:noinline',
+		'func Parse() {}',
+	].join('\n');
+	const patch = `@@ -1,2 +1,5 @@\n${
+		source.split('\n').slice(0, 3).map(line => `+${line}`).join('\n')
+	}\n //go:noinline\n func Parse() {}`;
+	assert.deepEqual(groupsFromPatch('parse.go', patch, source), []);
+});
+
 test('scans prose around commented YAML examples without counting example lines', () => {
 	const source = [
 		'# Tools are discovered on PATH.',
