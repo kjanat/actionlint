@@ -77,12 +77,12 @@ providers require `--runner-provider`. Configuration labels stay configuration, 
 Results distinguish resolved candidates, no match, unknown and not applicable. Operational errors remain separate;
 independent checks still run, while runner-dependent inference stays unknown. No match produces a `runner-label`
 finding only with fresh, complete evidence. Stale, missing or incomplete evidence cannot prove an invalid label or a default shell.
-Explicit shells and container defaults retain precedence. Providers contribute knowledge, not diagnostic policy.
+Explicit shells and container defaults retain precedence. Providers contribute knowledge; the host controls diagnostic policy.
 
 ### Offline Buildkite example
 
 [`examples/plugins/buildkite-runners.rs`](../examples/plugins/buildkite-runners.rs) resolves an explicit queue mapping
-snapshot. It is an offline example, not a live Agent API client or a claim of GitHub image/toolchain parity.
+snapshot. This offline example uses supplied queue data without live Agent API calls or guarantees of GitHub image/toolchain parity.
 Each queue declares its name, labels, optional group, OS, architecture and default shell. All labels and the requested
 group must match the same queue. The catalogue's completeness refers to the selected scope.
 
@@ -119,7 +119,7 @@ Provider trust is selected by the host; the Wasm sandbox does not prove answers 
 
 ### Cross-runtime verification
 
-[`tools/runner-host`](../tools/runner-host) is a finite Wasmtime parity probe, not a full Rust actionlint port.
+[`tools/runner-host`](../tools/runner-host) is a finite Wasmtime parity probe scoped to the runner-provider interface.
 It uses the unchanged WIT and the exact same component bytes as the Go host. Build and compare normalized answers,
 source positions, candidate guarantees, evidence and artifact digest:
 
