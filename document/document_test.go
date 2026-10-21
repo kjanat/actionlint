@@ -28,3 +28,30 @@ func TestReportsDecodeWithoutAnalysis(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestActionOutlinesWithoutRuntimeRoundTrip(t *testing.T) {
+	input := document.Action{Path: "action.yml"}
+	data, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []string{string(data), `{"kind":"action","path":"action.yml"}`, `{"kind":"action","path":"action.yml","runs": null }`} {
+		var action document.Action
+		if err := json.Unmarshal([]byte(source), &action); err != nil {
+			t.Fatalf("%s: %v", source, err)
+		}
+		if !reflect.DeepEqual(action, input) {
+			t.Fatalf("round trip changed action: %+v", action)
+		}
+		var outlines document.Outlines
+		if err := json.Unmarshal([]byte("["+source+"]"), &outlines); err != nil || len(outlines) != 1 || !reflect.DeepEqual(outlines[0], input) {
+			t.Fatalf("outlines=%+v err=%v", outlines, err)
+		}
+	}
+	for _, source := range []string{`{"kind":"action","runs":{}}`, `{"kind":"action","runs":{"kind":"typo"}}`} {
+		var action document.Action
+		if err := json.Unmarshal([]byte(source), &action); err == nil {
+			t.Fatalf("accepted invalid runtime: %s", source)
+		}
+	}
+}

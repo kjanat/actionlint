@@ -110,7 +110,14 @@ func Files(ctx context.Context, paths []string, options FileOptions) (*Result, e
 	if err != nil {
 		return nil, err
 	}
-	result, err := session.Files(paths, nil)
+	resolvedPaths := make([]string, len(paths))
+	for i, path := range paths {
+		resolvedPaths[i] = path
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			resolvedPaths[i] = filepath.Join(settings.WorkingDir, path)
+		}
+	}
+	result, err := session.Files(resolvedPaths, nil)
 	return resultView(result), err
 }
 

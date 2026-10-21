@@ -1,6 +1,7 @@
 package report
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -172,6 +173,9 @@ func (r UnknownRuns) MarshalJSON() ([]byte, error) {
 }
 
 func decodeActionRuns(data json.RawMessage) (ActionRuns, error) {
+	if len(data) == 0 || bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil, nil
+	}
 	var header struct {
 		Kind string `json:"kind"`
 	}

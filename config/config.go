@@ -1,7 +1,10 @@
 // Package config loads and describes actionlint configuration.
 package config
 
-import "actionlint.kjanat.dev/internal/repoconfig"
+import (
+	"actionlint.kjanat.dev/internal/repoconfig"
+	"actionlint.kjanat.dev/internal/toolconfig"
+)
 
 type Config = repoconfig.Config
 type Inspection = repoconfig.Inspection
@@ -34,6 +37,12 @@ type ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
 type ShellcheckToolConfig = repoconfig.ShellcheckToolConfig
 type SuppressionsPolicy = repoconfig.SuppressionsPolicy
 type ToolsConfig = repoconfig.ToolsConfig
+
+// ToolBackend selects the configured transport for an external tool.
+type ToolBackend = toolconfig.Backend
+
+// ToolCommand describes a literal executable, arguments and environment.
+type ToolCommand = toolconfig.Command
 
 const (
 	DefaultPermissionsAssumptionUnset      = repoconfig.DefaultPermissionsAssumptionUnset
