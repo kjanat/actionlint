@@ -107,10 +107,9 @@ func safeScriptExpression(expr Node, safeReference func(Node) bool) bool {
 	if safeScriptStatusReference(expr) {
 		return true
 	}
-	// These contexts have fixed identifier, numeric, hash or enum domains in
-	// GitHub's context contract. Branch names, workflow names and user outputs
-	// remain arbitrary strings. Actor names are not included: bot logins can
-	// contain brackets, which have shell glob syntax.
+	// These GitHub contexts have fixed identifier, numeric, hash or enum values.
+	// Branch names, workflow names and user outputs allow arbitrary strings.
+	// Actor names are excluded because bot-login brackets have shell glob syntax.
 	switch strings.ToLower(eventReference(expr)) {
 	case "github.sha", "github.run_id", "github.run_number", "github.run_attempt",
 		"github.repository_id", "github.repository_owner_id", "github.actor_id",
