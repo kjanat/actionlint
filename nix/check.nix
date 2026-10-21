@@ -66,7 +66,7 @@ runCommand "actionlint-nix-integration"
     ${actionlint}/bin/actionlint config validate
 
     set +e
-    PATH= ${actionlint}/bin/actionlint -no-color -oneline > diagnostics.txt 2>&1
+    PATH= ${actionlint}/bin/actionlint --allow-config-processes -no-color -oneline > diagnostics.txt 2>&1
     status=$?
     set -e
     if ! test "$status" -eq 1 ||
