@@ -50,12 +50,34 @@ func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {
 		`[null]`,
 		`[{"kind":"unexpected"}]`,
 		`[{"kind":"action","runs":{"kind":"unexpected"}}]`,
-		`[{"kind":"action","runs":null}]`,
-		`[{"kind":"action"}]`,
+		`[{"kind":"action","runs":{}}]`,
+		`[{"kind":"action","runs":[]}]`,
+		`[{"kind":"action","runs":"node24"}]`,
 	} {
 		var documents DocumentOutlines
 		if err := json.Unmarshal([]byte(input), &documents); err == nil {
 			t.Fatalf("accepted unsupported document/runtime: %s", input)
 		}
+	}
+}
+
+func TestDocumentOutlinesAcceptMissingRuntime(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		input string
+	}{
+		{"null", `[{"kind":"action","path":"action.yml","runs":null}]`},
+		{"absent", `[{"kind":"action","path":"action.yml"}]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var documents DocumentOutlines
+			if err := json.Unmarshal([]byte(tc.input), &documents); err != nil {
+				t.Fatal(err)
+			}
+			want := DocumentOutlines{ActionOutline{Path: "action.yml"}}
+			if !reflect.DeepEqual(documents, want) {
+				t.Fatalf("missing runtime changed action: got %#v, want %#v", documents, want)
+			}
+		})
 	}
 }
