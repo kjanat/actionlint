@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 type countedPluginBackend struct{ calls atomic.Int32 }
@@ -84,7 +85,10 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 		for _, enabled := range []bool{false, true} {
 			t.Run(engine+"/"+map[bool]string{false: "disabled", true: "enabled"}[enabled], func(t *testing.T) {
 				backend := &countedPluginBackend{}
-				plugins := &loadedPlugins{engines: []scriptEngineRegistration{{backend: backend, descriptor: analyzer.ScriptEngineDescriptor{Engine: engine}}}}
+				plugins := &loadedPlugins{engines: []scriptEngineRegistration{{backend: backend, descriptor: analyzer.ScriptEngineDescriptor{
+					Engine: engine, Rule: rule.Descriptor{Name: engine},
+					ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
+				}}}}
 				var adaptersOptions adapters.Options
 				shell := "bash"
 				if engine == "ruff" {
@@ -103,13 +107,13 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				if err != nil || needed[engine] {
 					t.Fatalf("plugin replacement requested native tool: %v %v", needed, err)
 				}
-				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n        shell: " + shell + "\n"
+				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n        shell: " + shell + "\n      - uses: example/execute@v1\n        with:\n          code: input_value\n"
 				if _, err := application.Check(t.Context(), options, application.Input{Kind: application.Stdin, Reader: strings.NewReader(workflow)}); err != nil {
 					t.Fatal(err)
 				}
 				want := int32(0)
 				if enabled {
-					want = 1
+					want = 2
 				}
 				if backend.calls.Load() != want {
 					t.Fatalf("backend calls = %d, want %d", backend.calls.Load(), want)

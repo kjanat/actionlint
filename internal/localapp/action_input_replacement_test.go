@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/ruff"
 	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
@@ -26,8 +27,8 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 		name         string
 		registration tools.Registration
 	}{
-		{"ruff", (ruff.Options{}).Registration()},
-		{"shellcheck", (shellcheck.Options{}).Registration()},
+		{"ruff", (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()},
+		{"shellcheck", (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -78,8 +79,8 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 		name, shell, source, filename string
 		registration                  tools.Registration
 	}{
-		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", (ruff.Options{}).Registration()},
-		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", (shellcheck.Options{}).Registration()},
+		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()},
+		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			backend := &inputReplacementBackend{}
