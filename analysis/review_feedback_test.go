@@ -53,10 +53,8 @@ func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
 		t.Fatal(err)
 	}
 	options := analysis.FileOptions{
-		Options: analysis.Options{
-			WorkingDir: root,
-			Analyzers:  []analyzer.Registration{{Analyzer: namedFindingAnalyzer("observed")}},
-		},
+		WorkingDir:        root,
+		Analyzers:         []analyzer.Registration{{Analyzer: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
 	baseline, err := analysis.Files(t.Context(), []string{path}, options)
