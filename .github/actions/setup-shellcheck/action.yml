@@ -34,7 +34,7 @@ runs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.prepare.outputs.cache-dir }}
-        key: actionlint-shellcheck-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.tag }}
+        key: actionlint-shellcheck-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.tag }}-${{ hashFiles('.github/actions/setup-shellcheck/pinned-release.json') }}
     - name: Verify and install ShellCheck
       id: install
       shell: bash

@@ -3,7 +3,16 @@ import test from 'node:test';
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	chmodSync,
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,13 +28,17 @@ function fixture(t) {
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	const bin = `${directory}/bin`;
 	mkdirSync(bin);
+	for (const name of ['setup.bash', 'retry.bash', 'pinned-release.json']) {
+		copyFileSync(`${action}/${name}`, `${directory}/${name}`);
+	}
 	writeFileSync(
 		`${bin}/gh`,
 		`#!/usr/bin/env bash
 set -eu
 printf '%s\\n' "$*" >> "$CALLS"
 if [[ "\${GH_FAIL:-}" == true ]]; then exit 42; fi
-if [[ "$1" == api ]]; then cat "$RELEASE"; exit; fi
+if [[ -n "\${GH_HEADERS:-}" ]]; then printf '%b\\n\\n' "$GH_HEADERS"; exit 1; fi
+if [[ "$1" == api ]]; then printf 'HTTP/2.0 200 OK\\n\\n'; cat "$RELEASE"; exit; fi
 exit 1
 `,
 	);
@@ -35,7 +48,7 @@ exit 1
 		`#!/usr/bin/env bash
 set -eu
 printf 'curl %s\\n' "$*" >> "$CALLS"
-if [[ "\${GH_FAIL:-}" == true ]]; then exit 42; fi
+if [[ "\${NETWORK_FAIL:-}" == true ]]; then exit 42; fi
 while (($#)); do
   if [[ "$1" == --output ]]; then cp "$ARCHIVE" "$2"; exit; fi
   shift
@@ -45,11 +58,11 @@ exit 1
 	);
 	chmodSync(`${bin}/curl`, 0o755);
 	// Retry delays are irrelevant to these offline installation scenarios.
-	writeFileSync(`${bin}/sleep`, '#!/usr/bin/env bash\nexit 0\n');
+	writeFileSync(`${bin}/sleep`, '#!/usr/bin/env bash\nprintf "%s\\n" "$1" >> "$SLEEPS"\n');
 	chmodSync(`${bin}/sleep`, 0o755);
 	const environment = {
 		...process.env,
-		GITHUB_ACTION_PATH: action,
+		GITHUB_ACTION_PATH: directory,
 		RUNNER_TEMP: directory,
 		RUNNER_OS: 'Linux',
 		RUNNER_ARCH: 'X64',
@@ -60,6 +73,7 @@ exit 1
 		ARCHIVE: `${directory}/release.tar.gz`,
 		GITHUB_OUTPUT: `${directory}/output`,
 		GITHUB_PATH: `${directory}/path`,
+		SLEEPS: `${directory}/sleeps`,
 	};
 	/** @param {string} tag */
 	const release = tag => {
@@ -80,10 +94,12 @@ exit 1
 		writeFileSync(
 			environment.RELEASE,
 			JSON.stringify({
+				repository: 'koalaman/shellcheck',
 				tag_name: tag,
 				assets: [{ name: `shellcheck-${tag}.linux.x86_64.tar.gz`, digest: `sha256:${digest}` }],
 			}),
 		);
+		if (tag === 'v0.11.0') copyFileSync(environment.RELEASE, `${directory}/pinned-release.json`);
 	};
 	/** @param {'prepare' | 'install'} phase @param {Record<string, string>} extra */
 	const run = (phase, extra) => {
@@ -136,10 +152,10 @@ test('cold install verifies the release; normalized pinned warm install works wi
 	const installed = f.run('install', cold);
 	assert.equal(installed.status, 0, installed.stdout + installed.stderr);
 	assert.match(installed.stdout, /version: 0\.11\.0/);
-	assert.equal(f.calls().length, 2);
-	assert.equal(f.calls().filter(call => call.startsWith('api ')).length, 1);
+	assert.equal(f.calls().length, 1);
+	assert.equal(f.calls().filter(call => call.startsWith('api ')).length, 0);
 	assert.match(
-		f.calls()[1],
+		f.calls()[0],
 		/https:\/\/github\.com\/koalaman\/shellcheck\/releases\/download\/v0\.11\.0\/shellcheck-v0\.11\.0\.linux\.x86_64\.tar\.gz/,
 	);
 	assert.ok(existsSync(f.outputs()['shellcheck-path']));
@@ -147,10 +163,10 @@ test('cold install verifies the release; normalized pinned warm install works wi
 	assert.ok(pathBefore.includes(basename(dirname(f.outputs()['shellcheck-path']))));
 	const warm = f.prepare('v0.11.0', { GH_FAIL: 'true' });
 	assert.equal(warm.CACHE_DIR, cold.CACHE_DIR);
-	const reused = f.run('install', { ...warm, GH_FAIL: 'true', UPDATE_PATH: 'false' });
+	const reused = f.run('install', { ...warm, GH_FAIL: 'true', NETWORK_FAIL: 'true', UPDATE_PATH: 'false' });
 	assert.equal(reused.status, 0, reused.stdout + reused.stderr);
 	assert.match(reused.stdout, /version: 0\.11\.0/);
-	assert.equal(f.calls().length, 2);
+	assert.equal(f.calls().length, 1);
 	assert.equal(readFileSync(f.environment.GITHUB_PATH, 'utf8'), pathBefore);
 });
 
@@ -164,7 +180,7 @@ test('corrupt cached bytes are replaced only by a verified release archive', t =
 	assert.equal(repaired.status, 0, repaired.stdout + repaired.stderr);
 	assert.match(repaired.stdout, /Discarding corrupt ShellCheck cache/);
 	assert.match(repaired.stdout, /version: 0\.11\.0/);
-	assert.equal(f.calls().length, 4);
+	assert.equal(f.calls().length, 2);
 });
 
 test('checksum mismatch fails before caching or executing the download', t => {
@@ -198,7 +214,10 @@ test('platform caches stay separate and invalid inputs fail before network acces
 	const f = fixture(t);
 	const linux = f.prepare('0.11.0');
 	for (
-		const [RUNNER_OS, RUNNER_ARCH] of [['Linux', 'ARM64'], ['macOS', 'X64'], ['macOS', 'ARM64'], ['Windows', 'X64']]
+		const [RUNNER_OS, RUNNER_ARCH] of [['Linux', 'ARM64'], ['macOS', 'X64'], ['macOS', 'ARM64'], ['Windows', 'X64'], [
+			'Windows',
+			'ARM64',
+		]]
 	) {
 		assert.notEqual(f.prepare('0.11.0', { RUNNER_OS, RUNNER_ARCH }).CACHE_DIR, linux.CACHE_DIR);
 	}
@@ -208,4 +227,72 @@ test('platform caches stay separate and invalid inputs fail before network acces
 		assert.notEqual(f.run('prepare', { VERSION: '0.11.0', ...extra }).status, 0);
 	}
 	assert.deepEqual(f.calls(), []);
+});
+
+test('a forged cached digest cannot replace the reviewed release pin', t => {
+	const f = fixture(t);
+	f.release('v0.11.0');
+	const prepared = f.prepare('0.11.0', { GH_FAIL: 'true' });
+	assert.equal(f.run('install', prepared).status, 0);
+	writeFileSync(`${prepared.CACHE_DIR}/archive`, 'forged cache');
+	writeFileSync(`${prepared.CACHE_DIR}/sha256`, createHash('sha256').update('forged cache').digest('hex'));
+	const repaired = f.run('install', f.prepare('0.11.0', { GH_FAIL: 'true' }));
+	assert.equal(repaired.status, 0, repaired.stderr);
+	assert.match(repaired.stdout, /Discarding corrupt ShellCheck cache/);
+});
+
+test('an unpinned version uses the requested release metadata', t => {
+	const f = fixture(t);
+	f.release('v0.12.0');
+	const result = f.run('install', f.prepare('v0.12.0'));
+	assert.equal(result.status, 0, result.stderr);
+	assert.match(f.calls()[0], /releases\/tags\/v0\.12\.0/);
+});
+
+test('dynamic API retry respects Retry-After instead of short exponential retries', t => {
+	const f = fixture(t);
+	const result = f.run('prepare', { VERSION: 'latest', GH_HEADERS: 'HTTP/2.0 429 Too Many Requests\nRetry-After: 17' });
+	assert.notEqual(result.status, 0);
+	assert.equal(f.calls().length, 3);
+	assert.equal(readFileSync(f.environment.SLEEPS, 'utf8'), '17\n17\n');
+});
+
+test('exhausted primary quota fails without requests before reset', t => {
+	const f = fixture(t);
+	const reset = Math.floor(Date.now() / 1000) + 3600;
+	const result = f.run('prepare', {
+		VERSION: 'latest',
+		GH_HEADERS: `HTTP/2.0 403 Forbidden\nX-RateLimit-Remaining: 0\nX-RateLimit-Reset: ${reset}`,
+	});
+	assert.notEqual(result.status, 0);
+	assert.equal(f.calls().length, 1);
+	assert.equal(existsSync(f.environment.SLEEPS), false);
+	assert.match(result.stderr, /retry after the reset/);
+});
+
+test('reviewed pins cover every supported platform asset', () => {
+	const release = JSON.parse(readFileSync(`${action}/pinned-release.json`, 'utf8'));
+	assert.equal(release.repository, 'koalaman/shellcheck');
+	assert.equal(release.tag_name, 'v0.11.0');
+	assert.deepEqual(release.assets.map(asset => asset.name).sort(), [
+		'shellcheck-v0.11.0.darwin.aarch64.tar.gz',
+		'shellcheck-v0.11.0.darwin.x86_64.tar.gz',
+		'shellcheck-v0.11.0.linux.aarch64.tar.gz',
+		'shellcheck-v0.11.0.linux.x86_64.tar.gz',
+		'shellcheck-v0.11.0.zip',
+	]);
+	for (const asset of release.assets) assert.match(asset.digest, /^sha256:[a-f0-9]{64}$/);
+});
+
+test('primary reset takes precedence over a shorter Retry-After', t => {
+	const f = fixture(t);
+	const reset = Math.floor(Date.now() / 1000) + 90;
+	const result = f.run('prepare', {
+		VERSION: 'latest',
+		GH_HEADERS: `HTTP/2.0 403 Forbidden\nRetry-After: 1\nX-RateLimit-Remaining: 0\nX-RateLimit-Reset: ${reset}`,
+	});
+	assert.notEqual(result.status, 0);
+	for (const delay of readFileSync(f.environment.SLEEPS, 'utf8').trim().split('\n').map(Number)) {
+		assert.ok(delay >= 80 && delay <= 91, `retry delay ${delay} ignored reset`);
+	}
 });

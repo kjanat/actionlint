@@ -40,7 +40,7 @@ prepare() {
 	local tag release_file
 	release_file="$(mktemp "${runner_temp//\\//}/shellcheck-release.XXXXXXXX")"
 	if [[ "${version}" == latest ]]; then
-		retry gh api "repos/${gh_repo}/releases/latest" >"${release_file}"
+		github_api "repos/${gh_repo}/releases/latest" >"${release_file}"
 		tag="$(jq -r '.tag_name' "${release_file}")"
 	elif [[ "${version}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 		tag="v${version#v}"
@@ -52,6 +52,11 @@ prepare() {
 		echo '::error::The release does not have a stable ShellCheck version tag.'
 		exit 1
 	fi
+	if jq -e --arg repo "${gh_repo}" --arg tag "${tag}" '.repository == $repo and .tag_name == $tag' "${action_path}/pinned-release.json" >/dev/null; then
+		cp "${action_path}/pinned-release.json" "${release_file}"
+	elif [[ ! -s "${release_file}" ]]; then
+		github_api "repos/${gh_repo}/releases/tags/${tag}" >"${release_file}"
+	fi
 	printf 'tag=%s\nrelease-file=%s\ncache-dir=%s/actionlint-shellcheck/%s/%s\n' \
 		"${tag}" "${release_file}" "${runner_temp//\\//}" "${tag}" "${platform}" >>"${github_output}"
 }
@@ -60,11 +65,11 @@ checksum=(sha256sum)
 if [[ "${runner_os}" == macOS ]]; then checksum=(shasum -a 256); fi
 
 verified_archive() {
-	local digest actual
+	local expected=$1 digest actual
 	cache_valid=false
 	if [[ -f "${cache_dir}/archive" && -f "${cache_dir}/sha256" ]]; then
 		digest="$(cat "${cache_dir}/sha256")"
-		if [[ "${digest}" =~ ^[0-9a-f]{64}$ ]]; then
+		if [[ "${digest}" == "${expected}" ]]; then
 			actual="$("${checksum[@]}" "${cache_dir}/archive")"
 			if [[ "${actual%% *}" == "${digest}" ]]; then cache_valid=true; fi
 		fi
@@ -78,37 +83,33 @@ install_shellcheck() {
 		assets=("shellcheck-${tag}.zip")
 		binary=shellcheck.exe
 	fi
-	verified_archive
+	release="$(cat "${release_file}")"
+	release_tag="$(jq -r '.tag_name' <<<"${release}")"
+	if [[ "${release_tag}" != "${tag}" ]]; then
+		echo '::error::The release does not match the requested ShellCheck version.'
+		exit 1
+	fi
+	for asset in "${assets[@]}"; do
+		metadata="$(jq -c --arg name "${asset}" '.assets[] | select(.name == $name)' <<<"${release}")"
+		if [[ -n "${metadata}" ]]; then break; fi
+	done
+	if [[ -z "${metadata}" ]]; then
+		echo "::error::No ShellCheck release asset is available for ${platform} in ${tag}."
+		exit 1
+	fi
+	digest="$(jq -r '.digest' <<<"${metadata}")"
+	if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+		echo "::error::The release asset ${asset} is missing a valid SHA-256 checksum."
+		exit 1
+	fi
+	verified_archive "${digest#sha256:}"
 	if [[ "${cache_valid}" == false ]]; then
 		if [[ -e "${cache_dir}/archive" || -e "${cache_dir}/sha256" ]]; then
 			echo '::warning::Discarding corrupt ShellCheck cache; downloading a verified archive.'
 		fi
-		if [[ -s "${release_file}" ]]; then
-			release="$(cat "${release_file}")"
-		else
-			release="$(retry gh api "repos/${gh_repo}/releases/tags/${tag}")"
-		fi
-		release_tag="$(jq -r '.tag_name' <<<"${release}")"
-		if [[ "${release_tag}" != "${tag}" ]]; then
-			echo '::error::The release does not match the requested ShellCheck version.'
-			exit 1
-		fi
-		for asset in "${assets[@]}"; do
-			metadata="$(jq -c --arg name "${asset}" '.assets[] | select(.name == $name)' <<<"${release}")"
-			if [[ -n "${metadata}" ]]; then break; fi
-		done
-		if [[ -z "${metadata}" ]]; then
-			echo "::error::No ShellCheck release asset is available for ${platform} in ${tag}."
-			exit 1
-		fi
-		digest="$(jq -r '.digest' <<<"${metadata}")"
-		if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-			echo "::error::The release asset ${asset} is missing a valid SHA-256 checksum."
-			exit 1
-		fi
 		archive="$(mktemp "${runner_temp//\\//}/shellcheck-archive.XXXXXXXX")"
 		# This is a public release: avoid gh release download's second metadata request.
-		retry curl --fail --location --silent --show-error --output "${archive}" \
+		retry curl --fail --location --silent --show-error --proto '=https' --proto-redir '=https' --output "${archive}" \
 			"https://github.com/${gh_repo}/releases/download/${tag}/${asset}"
 		actual="$("${checksum[@]}" "${archive}")"
 		if [[ "${actual%% *}" != "${digest#sha256:}" ]]; then
