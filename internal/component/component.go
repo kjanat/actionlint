@@ -39,6 +39,8 @@ const (
 	// DefaultMemoryPages bounds a plugin instance's linear memory in 64 KiB pages.
 	DefaultMemoryPages uint32 = 1024
 	maxComponentBytes         = 128 * 1024 * 1024
+	maxLiftBytes              = 8 * 1024 * 1024
+	maxLiftValues             = 262144
 )
 
 var grantedImportPrefixes = []string{"wasi:cli/", "wasi:clocks/", "wasi:io/", "wasi:random/", "wasi:filesystem/"}
@@ -103,7 +105,10 @@ func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
 		WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesExtendedConst).
 		WithCloseOnContextDone(true).
 		WithMemoryLimitPages(limits.MemoryPages)
-	engine := wacogo.NewEngine(ctx, wacogo.WithRuntimeConfig(config))
+	engine := wacogo.NewEngine(ctx,
+		wacogo.WithRuntimeConfig(config),
+		wacogo.WithLiftLimits(wacogo.LiftLimits{MaxBytes: maxLiftBytes, MaxValues: maxLiftValues}),
+	)
 	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1)}
 	if err := p.load(ctx, data); err != nil {
 		_ = p.Close(context.WithoutCancel(ctx))

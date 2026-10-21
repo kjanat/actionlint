@@ -2,12 +2,30 @@ package component_test
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/component"
 	"github.com/partite-ai/wacogo"
 )
+
+func TestLoadBoundsCanonicalDescriptorAllocations(t *testing.T) {
+	for _, name := range []string{"oversized-descriptor-values", "oversized-descriptor-bytes"} {
+		t.Run(name, func(t *testing.T) {
+			plugin, err := component.Load(t.Context(), filepath.Join("testdata", "wat", name+".wasm"), component.Options{})
+			if err == nil {
+				_ = plugin.Close(context.Background())
+				t.Fatal("loaded a descriptor exceeding host allocation limits")
+			}
+			if !errors.Is(err, wacogo.ErrLiftLimit) {
+				t.Fatalf("expected canonical lifting limit, got %v", err)
+			}
+		})
+	}
+}
 
 // The canonical ABI checks only alignment and bounds on a realloc result, so a
 // null pointer is valid for a zero-size request, which TinyGo's cabi_realloc

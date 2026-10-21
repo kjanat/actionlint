@@ -23,6 +23,12 @@ Every analysis call runs in a fresh instance with 64 MiB of memory and 10 second
 exhausted limit or a cancelled run fails the analysis of that document with an error that names the plugin and its
 limits. The run then continues with the next document and actionlint exits with status 3.
 
+Component results and host-import arguments also have per-call budgets of 262,144 values and 8 MiB of accounted
+string and collection storage. Nested values and repeated aliases count toward these budgets; validation runs
+before host allocations and string encoding conversions.
+The pinned [`kjanat/wacogo`](https://github.com/kjanat/wacogo/tree/b54ae498a6fa22b3fb53c88e2aa34c54d7f21bd1)
+runtime adds these allocation checks to wacogo.
+
 The host grants these imports and nothing else:
 
 | Interface                        | What the plugin gets                                              |
@@ -79,7 +85,7 @@ contract and TinyGo's bundled WASI definitions, then builds with:
 ```
 
 TinyGo's `cabi_realloc` returns null for a zero-size request, which the canonical ABI allows. wacogo accepts it since
-https://github.com/partite-ai/wacogo/pull/12, and actionlint's `go.mod` requires that version.
+https://github.com/partite-ai/wacogo/pull/12. The pinned runtime includes this fix.
 
 ### Other toolchains
 

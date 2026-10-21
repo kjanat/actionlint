@@ -32,7 +32,14 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
+	go.bytecodealliance.org v0.7.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 )
+
+replace github.com/partite-ai/wacogo => github.com/kjanat/wacogo v0.0.0-20261021080112-b54ae498a6fa
+
+tool github.com/partite-ai/wacogo/cmd/wacogo-witgen
