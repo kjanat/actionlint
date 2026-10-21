@@ -29,8 +29,7 @@ export function parsePluginPlan(value: unknown): PluginPlan {
 		|| !('artifacts' in value) || !Array.isArray(value.artifacts)
 	) throw new Error('actionlint returned an invalid plugin cache plan');
 	const directory = value.directory;
-	// Restrict plans to the native artifact cache. Toolkit glob compatibility is
-	// checked separately so a legal filesystem path cannot disable analysis.
+	// Validate native cache locations; check toolkit glob support separately.
 	if (
 		!isAbsolute(directory) || normalize(directory) !== directory
 		|| basename(directory) !== 'artifacts' || basename(dirname(directory)) !== 'actionlint'
