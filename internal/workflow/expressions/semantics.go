@@ -1,8 +1,10 @@
 package expressions
 
 import (
+	"slices"
 	"strings"
 
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -56,6 +58,9 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 }
 
 func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
+	if rule.compositeScript && err.Rule != "script-injection" && err.Rule != "script-interpolation" {
+		return // Metadata validation owns composite syntax, context and call errors.
+	}
 	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
 	var end *workflowlang.Pos
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
@@ -106,11 +111,22 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 		c.SetWorkflowKeyAvailability(workflowKey)
 	}
 
+	if rule.compositeScript {
+		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
+	}
 	ty, errs := c.Check(expr)
+	if rule.compositeScript && slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule != "script-injection" }) {
+		// A bad expression must not erase independent script findings before or after it.
+		return ty, false
+	}
 	if checkUntrusted && len(errs) == 0 {
-		findings := exprlang.CheckScriptInterpolation(expr, ty, func(node exprlang.Node) bool {
+		scalarArgument := rule.scriptScalarArgs[rule.expressionOffset-3]
+		findings := c.CheckScriptInterpolation(expr, ty, scalarArgument, func(node exprlang.Node) bool {
 			path := exprlang.StaticReference(node)
-			if c.IsScriptSafeScalar(node) || safeMatrixScriptReference(node, rule.matrixScriptSafe) {
+			if c.IsScriptScalar(node) {
+				return scalarArgument
+			}
+			if safeMatrixScriptReference(node, rule.matrixScriptSafe) {
 				return true
 			}
 			if name, ok := strings.CutPrefix(path, "env."); ok {

@@ -166,6 +166,7 @@ func (rule *Checker) VisitWorkflowPost(n *workflowlang.Workflow) error {
 // VisitJobPre is callback when visiting Job node before visiting its children.
 func (rule *Checker) VisitJobPre(n *workflowlang.Job) error {
 	rule.jobEnv = n.Env
+	rule.scriptJob = n
 	rule.matrixScriptSafe = nil
 	// Type of needs must be resolved before resolving type of matrix because `needs` context can
 	// be used in matrix configuration.
@@ -254,7 +255,7 @@ func (rule *Checker) VisitJobPre(n *workflowlang.Job) error {
 
 // VisitJobPost is callback when visiting Job node after visiting its children
 func (rule *Checker) VisitJobPost(n *workflowlang.Job) error {
-	defer func() { rule.jobEnv = nil }()
+	defer func() { rule.jobEnv, rule.scriptJob = nil, nil }()
 	// Snapshot conditions run after the job's steps, so their outputs are available.
 	rule.checkSnapshot(n.Snapshot)
 	// 'environment' and 'outputs' sections are evaluated after all steps are run
@@ -286,7 +287,7 @@ func (rule *Checker) VisitStep(n *workflowlang.Step) error {
 	var spec *workflowlang.String
 	switch e := n.Exec.(type) {
 	case *workflowlang.ExecRun:
-		rule.checkScriptString(e.Run, "jobs.<job_id>.steps.run")
+		rule.checkScriptString(e.Run, "jobs.<job_id>.steps.run", rule.scriptShell(e))
 		rule.checkString(e.Shell, "")
 		rule.checkString(e.WorkingDirectory, "jobs.<job_id>.steps.working-directory")
 	case *workflowlang.ExecAction:

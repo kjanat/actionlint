@@ -36,6 +36,9 @@ type Checker struct {
 	eventTy          *exprlang.ObjectType
 	expressionSource *workflowlang.ScriptSource
 	expressionOffset int
+	scriptScalarArgs map[int]bool
+	scriptJob        *workflowlang.Job
+	compositeScript  bool
 }
 
 // Options selects expression diagnostics without repository configuration.

@@ -27,7 +27,7 @@ func TestScriptSafeScalarReferences(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if safe := checker.IsScriptSafeScalar(node); safe != tc.safe {
+		if safe := checker.IsScriptScalar(node); safe != tc.safe {
 			t.Errorf("%s: safe=%t, want %t", tc.input, safe, tc.safe)
 		}
 	}
@@ -92,7 +92,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := CheckScriptInterpolation(node, tc.typeOf, func(ref Node) bool {
+			findings := NewChecker(false, nil).CheckScriptInterpolation(node, tc.typeOf, true, func(ref Node) bool {
 				name := eventReference(ref)
 				return name == "matrix.target"
 			})

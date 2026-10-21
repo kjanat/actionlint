@@ -386,11 +386,17 @@ func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) [
 	return ts
 }
 
-func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey string) {
+func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey string, shell ...string) {
 	if str == nil {
 		return
 	}
 
+	previous := rule.scriptScalarArgs
+	rule.scriptScalarArgs = nil
+	if len(shell) > 0 {
+		rule.scriptScalarArgs = scalarScriptArguments(str.Value, shell[0])
+	}
+	defer func() { rule.scriptScalarArgs = previous }()
 	ts, ok := rule.checkExprsIn(str.Value, str.Pos, str.Quoted, true, workflowKey)
 	if !ok {
 		return

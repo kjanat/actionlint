@@ -9,8 +9,10 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	workflowexpr "actionlint.kjanat.dev/v2/internal/workflow/expressions"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleExpression connects workflow expression checking to host lookups and options.
@@ -18,6 +20,21 @@ type RuleExpression struct {
 	*workflowexpr.Checker
 	ruleLogger
 	Configuration
+	compositeScripts bool
+}
+
+func (r *RuleExpression) ForComposite(Invocation) (workflowvisit.Rule, error) {
+	child := &RuleExpression{Checker: workflowexpr.New(workflowexpr.Dependencies{}, workflowExpressionOptions(r.Config())), compositeScripts: true}
+	child.SetConfig(r.Config())
+	return child, nil
+}
+
+func (r *RuleExpression) VisitStep(step *workflowlang.Step) error {
+	if r.compositeScripts {
+		r.CheckCompositeScript(step)
+		return nil
+	}
+	return r.Checker.VisitStep(step)
 }
 
 func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *RuleExpression {

@@ -2,9 +2,8 @@ package expression
 
 import "strings"
 
-// IsScriptSafeScalar resolves reference types without rerunning semantic checks
-// or changing diagnostics. Boolean, number and null values have bounded syntax.
-func (sema *Checker) IsScriptSafeScalar(node Node) bool {
+// IsScriptScalar resolves bounded scalar syntax without proving its script position safe.
+func (sema *Checker) IsScriptScalar(node Node) bool {
 	if call, ok := node.(*FuncCallNode); ok && strings.EqualFold(call.Callee, "toJSON") && len(call.Args) == 1 {
 		// JSON adds no quoting to primitive non-string scalars. Do not recurse:
 		// toJSON(toJSON(true)) serializes a string and introduces quote syntax.
@@ -75,26 +74,47 @@ func SafeScriptLiteral(value string) bool {
 	return true
 }
 
-// CheckScriptInterpolation checks direct template values, including trusted inputs.
-// safeReference must prove safe characters for every possible reference value.
-// Callers omit this finding when a specific secret or untrusted-input finding exists.
-func CheckScriptInterpolation(expr Node, ty Type, safeReference func(Node) bool) []*Error {
+// CheckScriptInterpolation needs separate character and scalar-argument position proofs.
+// Callers omit it when a specific secret or untrusted-input finding exists.
+func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, scalarArgument bool, safeReference func(Node) bool) []*Error {
+	if _, stringValue := ty.(StringType); stringValue && sema.IsScriptScalar(expr) {
+		// toJSON of a primitive retains scalar syntax, not a position guarantee.
+		if scalarArgument {
+			return nil
+		}
+		return unsafeScalarScriptInterpolation(expr)
+	}
 	switch ty.(type) {
-	case BoolType, NumberType, NullType, *ObjectType, *ArrayType:
+	case NullType, *ObjectType, *ArrayType:
+		// Template type validation already rejects these values in every position.
+		return nil
+	case BoolType, NumberType:
+		if scalarArgument {
+			return nil
+		}
+		return unsafeScalarScriptInterpolation(expr)
+	}
+	if safeScriptExpression(expr, scalarArgument, safeReference) {
 		return nil
 	}
-	if safeScriptExpression(expr, safeReference) {
-		return nil
-	}
+	return unsafeScriptInterpolation(expr)
+}
+
+func unsafeScalarScriptInterpolation(expr Node) []*Error {
+	return []*Error{errorfAtExpr(findingKind{"script-interpolation", "unknown-script-value"}, expr,
+		"interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead")}
+}
+
+func unsafeScriptInterpolation(expr Node) []*Error {
 	return []*Error{errorfAtExpr(findingKind{"script-interpolation", "unknown-script-value"}, expr,
 		"interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution")}
 }
 
-func safeScriptExpression(expr Node, safeReference func(Node) bool) bool {
+func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Node) bool) bool {
 	if value, known := ConditionConstantValue(expr); known {
 		switch value := value.(type) {
 		case nil, bool, float64:
-			return true
+			return scalarArgument
 		case string:
 			return SafeScriptLiteral(value)
 		default:
@@ -119,28 +139,31 @@ func safeScriptExpression(expr Node, safeReference func(Node) bool) bool {
 	}
 	switch n := expr.(type) {
 	case *CompareOpNode, *NotOpNode:
-		return true
+		return scalarArgument
 	case *LogicalOpNode:
 		if value, known := ConditionConstantValue(n.Left); known {
 			if ExpressionTruthy(value) != (n.Kind == LogicalOpNodeKindOr) {
-				return safeScriptExpression(n.Right, safeReference)
+				return safeScriptExpression(n.Right, scalarArgument, safeReference)
 			}
-			return safeScriptExpression(n.Left, safeReference)
+			return safeScriptExpression(n.Left, scalarArgument, safeReference)
 		}
-		return (n.Kind == LogicalOpNodeKindAnd || safeScriptExpression(n.Left, safeReference)) && safeScriptExpression(n.Right, safeReference)
+		return (n.Kind == LogicalOpNodeKindAnd || safeScriptExpression(n.Left, scalarArgument, safeReference)) && safeScriptExpression(n.Right, scalarArgument, safeReference)
 	case *FuncCallNode:
-		if isSafeFuncCall(n) || strings.EqualFold(n.Callee, "hashFiles") {
+		if isSafeFuncCall(n) {
+			return scalarArgument
+		}
+		if strings.EqualFold(n.Callee, "hashFiles") {
 			return true
 		}
 		if strings.EqualFold(n.Callee, "toJSON") && len(n.Args) == 1 {
 			switch n.Args[0].(type) {
 			case *CompareOpNode, *NotOpNode:
-				return true
+				return scalarArgument
 			}
 		}
 		switch strings.ToLower(n.Callee) {
 		case "success", "failure", "cancelled", "always":
-			return true
+			return scalarArgument
 		}
 		if strings.EqualFold(n.Callee, "case") && len(n.Args) >= 3 && len(n.Args)%2 == 1 {
 			for i := 0; i < len(n.Args)-1; i += 2 {
@@ -148,13 +171,13 @@ func safeScriptExpression(expr Node, safeReference func(Node) bool) bool {
 					if !ExpressionTruthy(value) {
 						continue
 					}
-					return safeScriptExpression(n.Args[i+1], safeReference)
+					return safeScriptExpression(n.Args[i+1], scalarArgument, safeReference)
 				}
-				if !safeScriptExpression(n.Args[i+1], safeReference) {
+				if !safeScriptExpression(n.Args[i+1], scalarArgument, safeReference) {
 					return false
 				}
 			}
-			return safeScriptExpression(n.Args[len(n.Args)-1], safeReference)
+			return safeScriptExpression(n.Args[len(n.Args)-1], scalarArgument, safeReference)
 		}
 	}
 	return false

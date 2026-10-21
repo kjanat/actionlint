@@ -704,7 +704,7 @@ jobs:
 
 ## script-interpolation
 
-Detect template values that may change script syntax. Unknown string values are checked independently of attacker control; boolean, numeric and provably safe literal values are accepted.
+Detect template values that may change script syntax. Unknown string values are checked independently of attacker control. Boolean and numeric values require a proved script data position; constrained literal strings have a separate character-based check.
 
 Pass dynamic values through environment variables and read them as data in the script. Quoting a template expression does not prevent substitution before script parsing.
 

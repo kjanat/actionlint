@@ -709,6 +709,16 @@ func (sema *Checker) checkVariable(n *VariableNode) Type {
 			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
 			return AnyType{}
 		}
+		available := make([]string, 0, len(sema.availableContexts))
+		for _, name := range sema.availableContexts {
+			if _, exists := sema.vars[name]; exists {
+				available = append(available, name)
+			}
+		}
+		if suggestion := CloseName(n.Name, available); suggestion != "" {
+			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+			return AnyType{}
+		}
 		ss := make([]string, 0, len(sema.vars))
 		for n := range sema.vars {
 			ss = append(ss, n)
@@ -1160,6 +1170,19 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 	callee := strings.ToLower(n.Callee)
 	sigs, ok := sema.funcs[callee]
 	if !ok {
+		candidates := make([]string, 0, len(sema.funcs))
+		for name, signatures := range sema.funcs {
+			if _, special := contextspec.SpecialFunctionNames[name]; special && !slices.Contains(sema.availableSpecialFuncs, name) {
+				continue
+			}
+			if len(signatures) > 0 {
+				candidates = append(candidates, signatures[0].Name)
+			}
+		}
+		if suggestion := CloseName(callee, candidates); suggestion != "" {
+			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
+			return AnyType{}
+		}
 		ss := make([]string, 0, len(sema.funcs))
 		for n := range sema.funcs {
 			ss = append(ss, n)

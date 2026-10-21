@@ -70,6 +70,21 @@ func adjacentTypo(a, b string) bool {
 	return len(x) != len(y)
 }
 
+// CloseName suggests only a unique, single-edit candidate, independent of order.
+func CloseName(name string, candidates []string) string {
+	suggestion := ""
+	for _, candidate := range candidates {
+		if !adjacentTypo(strings.ToLower(name), strings.ToLower(candidate)) {
+			continue
+		}
+		if suggestion != "" && !strings.EqualFold(suggestion, candidate) {
+			return ""
+		}
+		suggestion = candidate
+	}
+	return suggestion
+}
+
 // copyEventObject isolates dispatch-input updates from shared payload shapes.
 func copyEventObject(event *ObjectType) *ObjectType {
 	return &ObjectType{Props: maps.Clone(event.Props), Mapped: event.Mapped, DisplayName: event.DisplayName, PropertyNames: maps.Clone(event.PropertyNames), EventVariants: event.EventVariants}
