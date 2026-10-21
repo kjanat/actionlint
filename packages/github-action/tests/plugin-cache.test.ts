@@ -221,6 +221,55 @@ test('empty artifact plans do not contact the cache service', async () => {
 	});
 });
 
+test('legal glob characters in cache directories preserve native execution', async () => {
+	await temporary(async (root) => {
+		const directory = join(root, 'runner[1]', 'actionlint', 'artifacts');
+		const plan = await inspectPlugins('actionlint', {}, async () => ({
+			exitCode: 0,
+			stdout: JSON.stringify({ directory, artifacts: [digest] }),
+			stderr: '',
+		}));
+		let executed = false;
+		const client: PluginCache = {
+			restore: async () => assert.fail('glob-bearing path must not reach toolkit restore'),
+			save: async () => assert.fail('glob-bearing path must not reach toolkit save'),
+		};
+		assert.equal(
+			await cachePlugins(plan, async () => {
+				executed = true;
+				await mkdir(directory, { recursive: true });
+				await writeFile(join(directory, digest), bytes);
+				return 1;
+			}, client),
+			1,
+		);
+		assert.equal(executed, true);
+		await assert.rejects(
+			cachePlugins(plan, async () => {
+				throw new Error('native failure');
+			}, client),
+			/native failure/,
+		);
+	});
+});
+
+test('a refreshed glob-bearing cache directory is never uploaded', async () => {
+	await fixture(async (plan) => {
+		let executed = false;
+		assert.equal(
+			await cachePlugins({ ...plan, artifacts: [] }, async () => {
+				executed = true;
+				return 1;
+			}, {
+				restore: async () => assert.fail('empty plan must not restore'),
+				save: async () => assert.fail('refreshed glob-bearing path must not be saved'),
+			}, async () => ({ ...plan, directory: join(plan.directory, '[new]', 'actionlint', 'artifacts') })),
+			1,
+		);
+		assert.equal(executed, true);
+	});
+});
+
 test('cache plans reject path traversal, glob expansion and malformed digests', async () => {
 	await fixture(async (plan) => {
 		for (

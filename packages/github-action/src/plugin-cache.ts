@@ -29,12 +29,11 @@ export function parsePluginPlan(value: unknown): PluginPlan {
 		|| !('artifacts' in value) || !Array.isArray(value.artifacts)
 	) throw new Error('actionlint returned an invalid plugin cache plan');
 	const directory = value.directory;
-	// The toolkit treats paths as globs. Never permit an expansion or a directory
-	// outside the native artifact cache, even if the native response is malformed.
+	// Restrict plans to the native artifact cache. Toolkit glob compatibility is
+	// checked separately so a legal filesystem path cannot disable analysis.
 	if (
 		!isAbsolute(directory) || normalize(directory) !== directory
 		|| basename(directory) !== 'artifacts' || basename(dirname(directory)) !== 'actionlint'
-		|| /[\r\n*?![\]{}]/.test(directory)
 	) throw new Error('actionlint returned an unsafe plugin cache directory');
 	const artifacts: string[] = [];
 	for (const digest of value.artifacts) {
@@ -44,6 +43,10 @@ export function parsePluginPlan(value: unknown): PluginPlan {
 		artifacts.push(digest);
 	}
 	return { directory, artifacts: [...new Set(artifacts)].sort() };
+}
+
+function cacheable(plan: PluginPlan): boolean {
+	return !/[\r\n*?![\]{}]/.test(plan.directory);
 }
 
 export function pluginCacheKey(plan: PluginPlan, platform = process.platform): string {
@@ -100,6 +103,7 @@ export async function cachePlugins(
 	client: PluginCache,
 	inspectAfter?: () => Promise<PluginPlan>,
 ): Promise<number> {
+	if (!cacheable(plan)) return run();
 	const paths = plan.artifacts.map((digest) => join(plan.directory, digest));
 	const key = pluginCacheKey(plan);
 	let hit: string | undefined;
@@ -127,7 +131,7 @@ export async function cachePlugins(
 			}
 		}
 		const currentKey = pluginCacheKey(current);
-		if (current.artifacts.length > 0 && hit !== currentKey && await verifiedArtifacts(current)) {
+		if (cacheable(current) && current.artifacts.length > 0 && hit !== currentKey && await verifiedArtifacts(current)) {
 			try {
 				await client.save(current.artifacts.map((digest) => join(current.directory, digest)), currentKey);
 			} catch (error) {
