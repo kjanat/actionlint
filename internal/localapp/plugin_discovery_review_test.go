@@ -17,7 +17,7 @@ func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
 	}
 	path := filepath.Join(directory, "actionlint.yml")
 	writeManifestTest(t, path, "plugins: []\n")
-	project, err := openSelectedPluginProject(t.Context(), root, "")
+	project, err := OpenPluginProject(t.Context(), root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
