@@ -36,7 +36,7 @@ const HostInterface = hostbind.InterfaceName
 const (
 	// DefaultTimeout bounds one analyze call.
 	DefaultTimeout = 10 * time.Second
-	// DefaultMemoryPages bounds a plugin instance's linear memory in 64 KiB pages.
+	// DefaultMemoryPages bounds all live core memories in a plugin runtime.
 	DefaultMemoryPages uint32 = 1024
 	maxComponentBytes         = 128 * 1024 * 1024
 	maxLiftBytes              = 8 * 1024 * 1024
@@ -79,6 +79,7 @@ type Plugin struct {
 	host   *host.ComponentInstance
 	world  *wasi.World
 	output *lineWriter
+	memory *memoryBudget
 }
 
 // Load reads and validates a component and asks it to describe itself.
@@ -109,7 +110,7 @@ func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
 		wacogo.WithRuntimeConfig(config),
 		wacogo.WithLiftLimits(wacogo.LiftLimits{MaxBytes: maxLiftBytes, MaxValues: maxLiftValues}),
 	)
-	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1)}
+	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1), memory: &memoryBudget{limit: uint64(limits.MemoryPages) << 16}}
 	if err := p.load(ctx, data); err != nil {
 		_ = p.Close(context.WithoutCancel(ctx))
 		return nil, fmt.Errorf("plugin %s: %w", path, err)
@@ -261,6 +262,19 @@ func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (res
 	if p.engine == nil {
 		return nil, fmt.Errorf("plugin %s is closed", p.path)
 	}
+	ctx = experimental.WithMemoryAllocator(ctx, p.memory)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			recoveredError, ok := recovered.(error)
+			if !ok || !errors.Is(recoveredError, errMemoryBudget) {
+				panic(recovered)
+			}
+			cleanup := context.WithoutCancel(ctx)
+			p.discardImports(cleanup)
+			results, err = nil, p.failure(ctx, errors.Join(errMemoryBudget, p.engine.Close(cleanup)))
+			p.engine = nil
+		}
+	}()
 	if err := p.prepareImports(ctx); err != nil {
 		return nil, p.failure(ctx, err)
 	}

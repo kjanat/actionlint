@@ -19,7 +19,8 @@ the host does not grant, or does not export the analyzer at all.
 
 ## Limits and capabilities
 
-Every analysis call runs in a fresh instance with 64 MiB of memory and 10 seconds of time. A trap, a panic, an exit, an
+Every analysis call runs in a fresh instance with a shared 64 MiB limit across all live core memories in its plugin
+runtime and 10 seconds of time. A trap, a panic, an exit, an
 exhausted limit or a cancelled run fails the analysis of that document with an error that names the plugin and its
 limits. The run then continues with the next document and actionlint exits with status 3.
 

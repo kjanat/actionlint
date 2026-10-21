@@ -36,7 +36,7 @@ func (b *Backend) UnmarshalYAML(n *yaml.Node) error {
 type Module struct {
 	// Path is the raw or gzip-compressed module file. Relative paths resolve
 	// from the declaring config file; inline configs use the analysis directory.
-	Path string `yaml:"path" jsonschema:"required"`
+	Path string `yaml:"path" jsonschema:"required,minLength=1"`
 }
 
 func (m *Module) UnmarshalYAML(n *yaml.Node) error {

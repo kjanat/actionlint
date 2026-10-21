@@ -94,6 +94,26 @@ func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
 	}
 }
 
+func TestScriptEnginesRejectsNilSuccessfulLoad(t *testing.T) {
+	loads := 0
+	engines := NewScriptEngines(func(context.Context, string) (analyzer.ScriptBackend, error) {
+		loads++
+		return nil, nil
+	})
+	for range 2 {
+		backend, err := engines.Load(t.Context(), "missing.wasm")
+		if backend != nil || err == nil || !strings.Contains(err.Error(), "missing.wasm") || !strings.Contains(err.Error(), "nil backend") {
+			t.Fatalf("backend=%v err=%v", backend, err)
+		}
+	}
+	if loads != 1 || len(engines.loaded) != 0 || len(engines.failed) != 1 {
+		t.Fatalf("loads=%d loaded=%d failed=%d", loads, len(engines.loaded), len(engines.failed))
+	}
+	if err := engines.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestScriptEnginesCannotReopenAfterClose(t *testing.T) {
 	loads := 0
 	engines := NewScriptEngines(func(context.Context, string) (analyzer.ScriptBackend, error) {

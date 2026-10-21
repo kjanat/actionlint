@@ -49,6 +49,9 @@ func (s *ScriptEngines) Load(ctx context.Context, path string) (analyzer.ScriptB
 		return nil, fmt.Errorf("WebAssembly engine session limit of %d distinct module paths exceeded", maxScriptEngines)
 	}
 	backend, err := s.load(ctx, path)
+	if err == nil && backend == nil {
+		err = fmt.Errorf("WebAssembly engine loader returned a nil backend for %q", path)
+	}
 	if err != nil {
 		s.failed[path] = err
 		return nil, err

@@ -442,6 +442,11 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"ruff wasm path", `tools: {ruff: {backend: {wasm: {path: ruff.wasm}}}}`, true, true},
+		{"ruff empty wasm path", `tools: {ruff: {backend: {wasm: {path: ""}}}}`, false, false},
+		{"shellcheck wasm path", `tools: {shellcheck: {backend: {wasm: {path: shellcheck.wasm}}}}`, true, true},
+		{"shellcheck empty wasm path", `tools: {shellcheck: {backend: {wasm: {path: ""}}}}`, false, false},
+		{"override empty wasm path", `overrides: [{includes: ['**'], tools: {ruff: {backend: {wasm: {path: ""}}}}}]`, false, false},
 		{"ignore policy itself", `ignores: [{rule: disallow-suppressions, file: '**'}]`, false, false},
 		{"ignore blank job", `ignores: [{rule: expression, job: ' '}]`, false, false},
 		{"ignore blank step", `ignores: [{rule: expression, step: "\t\n"}]`, false, false},

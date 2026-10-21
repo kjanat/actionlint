@@ -157,6 +157,21 @@ func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 	}
 }
 
+func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
+	root, workflows := writeScriptEngineRepository(t)
+	session, err := NewAnalysisSession(AnalysisOptions{
+		Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true,
+		LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return nil, nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close(t.Context())
+	if _, err := session.Files(workflows[:1], nil); err == nil || !strings.Contains(err.Error(), "could not initialize Ruff") || !strings.Contains(err.Error(), "nil backend") {
+		t.Fatalf("configured Wasm analysis silently fell back: %v", err)
+	}
+}
+
 func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	loads := 0
