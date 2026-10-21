@@ -1,15 +1,12 @@
 name: Setup cached runner cli
-description: Reuse a pinned runner installation after checking its verification receipt and binary hashes.
+description: Install pinned runner bytes using bundled signed provenance and reuse authenticated binary hashes.
 inputs:
   version-file:
     description: File containing an exact runner version pin.
     default: .tool-versions
   verify:
-    description: Upstream provenance policy, auto or require.
+    description: Provenance policy, auto or require. Reviewed pins always have verified provenance.
     default: auto
-  token:
-    description: GitHub token used by the upstream installer for provenance verification.
-    default: ${{ github.token }}
 outputs:
   version:
     description: Installed runner version.
@@ -48,20 +45,11 @@ runs:
     - name: Install and verify runner
       id: install
       if: steps.inspect.outputs.hit != 'true'
-      uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # v0.28.0
-      with:
-        version: ${{ steps.prepare.outputs.version }}
-        verify: ${{ inputs.verify }}
-        token: ${{ inputs.token }}
-    - name: Record verified runner installation
-      if: steps.inspect.outputs.hit != 'true'
       shell: bash
       env:
         VERSION_FILE: ${{ inputs.version-file }}
         VERIFY_MODE: ${{ inputs.verify }}
-        INSTALLED_BIN_DIR: ${{ steps.install.outputs.bin-dir }}
-        INSTALLED_VERSION: ${{ steps.install.outputs.version }}
-      run: node "${GITHUB_ACTION_PATH//\\//}/setup.mjs" seal
+      run: node "${GITHUB_ACTION_PATH//\\//}/setup.mjs" install
     - name: Save verified runner installation
       if: steps.inspect.outputs.hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
