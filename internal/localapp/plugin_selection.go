@@ -81,8 +81,7 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 			starts = append(starts, filepath.Dir(path))
 		}
 	} else if input.Kind == application.Stdin {
-		// Match workspace.Session.Content: unnamed and nonexistent stdin paths
-		// have no project configuration, so they cannot activate project plugins.
+		// Match workspace.Session.Content by discovering project plugins for named, existing stdin paths.
 		if input.Name == "" || input.Name == "<stdin>" {
 			return PluginSources{}, nil
 		}
