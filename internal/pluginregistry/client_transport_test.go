@@ -62,6 +62,11 @@ func TestCatalogueRedirectHostCasing(t *testing.T) {
 		name, base, target string
 		allowed            bool
 	}{
+		{name: "default port omitted", base: "https://EXAMPLE.org:443/catalogue/", target: "https://example.org/catalogue/index.json", allowed: true},
+		{name: "default port explicit", base: "https://example.org/catalogue/", target: "https://EXAMPLE.org:443/catalogue/index.json", allowed: true},
+		{name: "IPv6 default port", base: "https://[::1]:443/catalogue/", target: "https://[::1]/catalogue/index.json", allowed: true},
+		{name: "default to custom port", base: "https://example.org:443/catalogue/", target: "https://example.org:8443/catalogue/index.json"},
+		{name: "default port downgrade", base: "https://example.org:443/catalogue/", target: "http://example.org:443/catalogue/index.json"},
 		{name: "lowercase", target: "https://example.org:8443/catalogue/index.json", allowed: true},
 		{name: "mixed case", target: "https://eXaMpLe.OrG:8443/catalogue/index.json", allowed: true},
 		{name: "other port", target: "https://example.org:9443/catalogue/index.json"},

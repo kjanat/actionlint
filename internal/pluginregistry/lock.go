@@ -211,8 +211,8 @@ func (f *LockFile) Save(ctx context.Context) (err error) {
 	return f.replace(ctx, data)
 }
 
-// Restore rolls back this instance's last write, but only while its written bytes
-// are still present. It never overwrites an intervening edit by another writer.
+// Restore rolls back this instance's last write after checking its written bytes.
+// Edits observed before the final filesystem operation abort the rollback.
 func (f *LockFile) Restore(ctx context.Context, previous *LockFile) error {
 	if f.Path != previous.Path {
 		return errors.New("cannot restore a different plugin lock")
@@ -247,6 +247,9 @@ func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
+		if err := f.CheckUnchanged(ctx); err != nil {
+			return err
+		}
 		if err := os.Remove(f.Path); err != nil {
 			return err
 		}
@@ -258,10 +261,23 @@ func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 		return err
 	}
 	defer func() {
+		// A copied read-only mode must not prevent cleanup of our temporary file.
+		if e := os.Chmod(temp.Name(), 0o600); e != nil && !errors.Is(e, os.ErrNotExist) {
+			err = errors.Join(err, e)
+		}
 		if e := os.Remove(temp.Name()); !errors.Is(e, os.ErrNotExist) {
 			err = errors.Join(err, e)
 		}
 	}()
+	if current != nil {
+		info, err := os.Lstat(f.Path)
+		if err != nil {
+			return errors.Join(err, temp.Close())
+		}
+		if err := temp.Chmod(info.Mode().Perm()); err != nil {
+			return errors.Join(err, temp.Close())
+		}
+	}
 	if _, err := temp.Write(data); err != nil {
 		return errors.Join(err, temp.Close())
 	}
@@ -271,10 +287,10 @@ func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 	if err := temp.Close(); err != nil {
 		return err
 	}
-	if err := safePath(f.Path); err != nil {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := ctx.Err(); err != nil {
+	if err := f.CheckUnchanged(ctx); err != nil {
 		return err
 	}
 	if err := os.Rename(temp.Name(), f.Path); err != nil {

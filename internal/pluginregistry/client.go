@@ -57,7 +57,13 @@ func (c *Client) contains(u *url.URL) bool {
 }
 
 func sameRegistryHost(a, b *url.URL) bool {
-	if a.Port() != b.Port() {
+	port := func(u *url.URL) string {
+		if p := u.Port(); p != "" {
+			return p
+		}
+		return "443"
+	}
+	if port(a) != port(b) {
 		return false
 	}
 	if address, err := netip.ParseAddr(a.Hostname()); err == nil {

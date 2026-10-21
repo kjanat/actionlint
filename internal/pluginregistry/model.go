@@ -143,8 +143,7 @@ func SameRegistry(left, right string) bool {
 	if err != nil {
 		return false
 	}
-	a.Host, b.Host = strings.ToLower(a.Host), strings.ToLower(b.Host)
-	return a.String() == b.String()
+	return a.Scheme == b.Scheme && sameRegistryHost(a, b) && a.Path == b.Path
 }
 
 func numericID(value string) bool {
