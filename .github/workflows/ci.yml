@@ -44,7 +44,7 @@ jobs:
             "javascript": [
               "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**"
+              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**"
             ],
             "release": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
@@ -81,6 +81,7 @@ jobs:
               ".pre-commit-hooks.yaml", "scripts/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
             ],
             "plugins": [
+              ".github/actions/setup-wasm-toolchain/**",
               "plugins/**", "plugin/**", "internal/component/**", "internal/corewasm/**", "analyzer/**", "diagnostic/**", "go.mod", "go.sum", "Makefile"
             ]
           }
@@ -292,10 +293,7 @@ jobs:
       - *ActCheckNocred
       - parallel:
           - *Go
-          - uses: bytecodealliance/actions/wasm-tools/setup@9152e710e9f7182e4c29ad218e4f335a7b203613 # v1.1.3
-            with: { version: "1.258.0" }
-          - uses: bytecodealliance/actions/wit-bindgen/setup@9152e710e9f7182e4c29ad218e4f335a7b203613 # v1.1.3
-            with: { version: "0.62.0" }
+          - uses: $/.github/actions/setup-wasm-toolchain
           - name: Install TinyGo
             uses: *SetupMise
             with: { cache: true, auto_update: true, install_args: tinygo }

@@ -74,6 +74,7 @@ config_roots = [
   ".github/actions/setup-pandoc",
   ".github/actions/setup-runner",
   ".github/actions/setup-shellcheck",
+  ".github/actions/setup-wasm-toolchain",
   ".github/actions/shellcheck-versions",
   ".github/ci",
   "scripts",

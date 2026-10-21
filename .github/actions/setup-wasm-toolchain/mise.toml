@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test verified WebAssembly toolchain installation and caching"
+run         = "node --test setup.test.mjs"
