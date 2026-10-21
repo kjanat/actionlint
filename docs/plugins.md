@@ -34,8 +34,7 @@ The host grants these imports and nothing else:
 
 `wasi:sockets`, `wasi:http` and custom interfaces are refused at load.
 
-The Go API offers the same loader as `internal/component` for programs built from this module and exposes the limits
-through `Options` and `Limits`.
+The public Go package `actionlint.kjanat.dev/plugin` provides `plugin.Load`, `plugin.Options` and `plugin.Limits`.
 
 ## Write a plugin
 
@@ -100,8 +99,9 @@ Run it against a workflow:
 actionlint --no-config --plugin ./plugin.wasm .github/workflows/ci.yml
 ```
 
-From Go, load it with `component.Load` and pass it in `analysis.Options.Analyzers`; `internal/component/component_test.go`
-does this for both examples, including a composite action call. The Rust crate under
+From Go, load it with `plugin.Load` from `actionlint.kjanat.dev/plugin`, wrap it in `analyzer.Registration` and pass it
+in `analysis.Options.Analyzers`. [`plugin/example_test.go`](../plugin/example_test.go) demonstrates the public API.
+The internal integration tests also cover composite action calls. The Rust crate under
 `internal/component/testdata/misbehave` shows how traps, panics, exits, allocation beyond the limit, hangs and denied
 file access are reported.
 
@@ -123,7 +123,8 @@ tools:
 
 The host checks the ABI version, the export signatures and the advertised operation versions when it loads the module,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
-limit. Raw and gzip-expanded modules must fit within 128 MiB before compilation.
+limit. Raw and gzip-expanded modules must fit within 128 MiB before compilation. Every response, including metadata
+and configuration validation, must fit within 8 MiB before the host reads, copies or decodes it.
 A trap or an exceeded limit discards that instance and fails the document's analysis. From Go, call
 `plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the
 repository configuration.

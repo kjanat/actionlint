@@ -67,8 +67,9 @@ func Parse(source []byte, registeredRules ...string) (*Config, error) {
 }
 
 // ParseOverlay validates a complete config document or one named configuration input.
-func ParseOverlay(input string, source []byte) (Overlay, error) {
-	return repoconfig.ParseOverlay(input, source)
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func ParseOverlay(input string, source []byte, registeredRules ...string) (Overlay, error) {
+	return repoconfig.ParseOverlay(input, source, registeredRules...)
 }
 
 // Load reads a configuration file and resolves its inheritance.

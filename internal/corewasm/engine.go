@@ -32,6 +32,7 @@ const (
 	DefaultMemoryPages    uint32 = 4096
 	defaultCompileTimeout        = time.Minute
 	defaultMaxInputBytes         = 8 * 1024 * 1024
+	maxResponseBytes             = 8 * 1024 * 1024
 	maxModuleBytes               = 128 * 1024 * 1024
 	maxInstances                 = 4
 	transport                    = "wasm-core-json"
@@ -472,6 +473,9 @@ func (e *Engine) invoke(ctx context.Context, instance api.Module, operation stri
 	}
 	pointer, length := uint32(results[0]>>32), uint32(results[0])
 	defer func() { _, _ = instance.ExportedFunction("dealloc").Call(ctx, uint64(pointer)) }()
+	if length > maxResponseBytes {
+		return nil, fmt.Errorf("engine returned %d bytes, exceeding the host response limit of %d bytes", length, maxResponseBytes)
+	}
 	raw, ok := instance.Memory().Read(pointer, length)
 	if !ok {
 		return nil, fmt.Errorf("engine returned %d bytes at %d outside its memory", length, pointer)
