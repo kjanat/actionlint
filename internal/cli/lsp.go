@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"actionlint.kjanat.dev/internal/application"
@@ -19,9 +20,12 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, err
 	}
 	c := r.Check
+	if len(c.Plugins) != 0 && c.PluginLock != "" {
+		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
+	}
 	plugins, err := c.pluginSelection().Resolve(ctx, cwd, application.Input{Kind: application.Repository})
 	if err != nil {
-		return 0, commandUsageError{err}
+		return 0, err
 	}
 	runners, err := c.runners()
 	if err != nil {

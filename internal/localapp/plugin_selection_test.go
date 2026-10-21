@@ -23,6 +23,35 @@ func pluginRepository(t *testing.T) string {
 	return root
 }
 
+func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
+	root := pluginRepository(t)
+	if err := os.Mkdir(filepath.Join(root, ".github"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := filepath.Join(root, ".github", "actionlint.yaml")
+	if err := os.WriteFile(config, []byte("plugins: ["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"", "<stdin>", "missing.yml", filepath.Join(root, "missing.yml")} {
+		selected, err := (PluginSelection{}).Resolve(t.Context(), root, application.Input{Kind: application.Stdin, Name: name})
+		if err != nil || len(selected.Paths) != 0 || selected.LockFile != "" {
+			t.Fatalf("stdin %q without a project selected plugins: %+v, %v", name, selected, err)
+		}
+	}
+	path := filepath.Join(root, "workflow.yml")
+	if err := os.WriteFile(path, []byte("on: push\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"workflow.yml", path} {
+		if _, err := (PluginSelection{}).Resolve(t.Context(), root, application.Input{Kind: application.Stdin, Name: name}); err == nil {
+			t.Fatalf("existing stdin %q did not load its project configuration", name)
+		}
+	}
+	if _, err := (PluginSelection{ConfigFile: config}).Resolve(t.Context(), root, application.Input{Kind: application.Stdin}); err == nil {
+		t.Fatal("explicit configuration ignored for unnamed stdin")
+	}
+}
+
 func TestPluginSelectionScopes(t *testing.T) {
 	root, other := pluginRepository(t), pluginRepository(t)
 	input := application.Input{Kind: application.Repository}

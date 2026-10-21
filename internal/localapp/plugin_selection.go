@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 
@@ -79,10 +80,18 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 			}
 			starts = append(starts, filepath.Dir(path))
 		}
-	} else if input.Kind == application.Stdin && input.Name != "" && input.Name != "<stdin>" {
+	} else if input.Kind == application.Stdin {
+		// Match workspace.Session.Content: unnamed and nonexistent stdin paths
+		// have no project configuration, so they cannot activate project plugins.
+		if input.Name == "" || input.Name == "<stdin>" {
+			return PluginSources{}, nil
+		}
 		path := input.Name
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(directory, path)
+		}
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return PluginSources{}, nil
 		}
 		starts = []string{filepath.Dir(path)}
 	}
