@@ -320,27 +320,39 @@ func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 // version, even if the registry starts serving a different artifact for it.
 // Artifact format and filename may evolve across versions of the same plugin.
 func (f *LockFile) Set(pin Pin) error {
-	return f.set(pin, "")
+	if err := f.checkReplacement(pin, ""); err != nil {
+		return err
+	}
+	return f.set(pin)
 }
 
 // SetResolved accepts a registry change selected by the dependency declaration.
 // Publisher identity and accepted immutable artifacts remain protected.
 func (f *LockFile) SetResolved(pin Pin, ref pluginref.Reference) error {
+	if err := f.CheckResolved(pin, ref); err != nil {
+		return err
+	}
+	return f.set(pin)
+}
+
+// CheckResolved verifies a selected pin against the original lock entries.
+// Project resolution validates the final selection's uniqueness separately.
+func (f *LockFile) CheckResolved(pin Pin, ref pluginref.Reference) error {
 	selected, err := pluginref.New(ref.Name, ref.Version, ref.Registry)
 	if err != nil {
 		return err
 	}
-	if !strings.EqualFold(pin.Name, selected.Name) || pin.Selector != selected.Version || !SameRegistry(pin.Registry, selected.Registry) {
+	if !pin.Matches(selected) || pin.Selector != selected.Version {
 		return fmt.Errorf("resolved pin does not match selected dependency %s", selected.String())
 	}
-	return f.set(pin, selected.Registry)
+	return f.checkReplacement(pin, selected.Registry)
 }
 
-func (f *LockFile) set(pin Pin, selectedRegistry string) error {
+func (f *LockFile) checkReplacement(pin Pin, selectedRegistry string) error {
 	if err := pin.Validate(); err != nil {
 		return err
 	}
-	for i, old := range f.Lock.Plugins {
+	for _, old := range f.Lock.Plugins {
 		if pin.Alias != "" && old.Alias == pin.Alias && SameRegistry(old.Registry, pin.Registry) && !strings.EqualFold(old.Name, pin.Name) {
 			return fmt.Errorf("registry alias %q changed from %s to %s; remove explicitly before switching", pin.Alias, old.Name, pin.Name)
 		}
@@ -358,8 +370,16 @@ func (f *LockFile) set(pin Pin, selectedRegistry string) error {
 		if pin.Selector == "latest" && semver.IsValid(previous) && semver.Compare(next, previous) < 0 {
 			return fmt.Errorf("latest would downgrade %s from %s to %s; select an exact --version to downgrade", pin.Name, old.Version, pin.Version)
 		}
-		f.Lock.Plugins[i] = pin
-		return f.Lock.Validate()
+	}
+	return nil
+}
+
+func (f *LockFile) set(pin Pin) error {
+	for i, old := range f.Lock.Plugins {
+		if strings.EqualFold(old.Name, pin.Name) {
+			f.Lock.Plugins[i] = pin
+			return f.Lock.Validate()
+		}
 	}
 	f.Lock.Plugins = append(f.Lock.Plugins, pin)
 	return f.Lock.Validate()

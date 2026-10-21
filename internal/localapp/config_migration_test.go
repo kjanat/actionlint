@@ -189,3 +189,47 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 		t.Fatalf("existing config not protected: %v", err)
 	}
 }
+
+func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
+	for _, name := range []string{testutil.FixturePluginName, "ruff"} {
+		t.Run(name, func(t *testing.T) {
+			registry := testutil.NewDefaultPluginRegistry(t)
+			registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+			url := testutil.FixtureRegistryURL
+			if name == "ruff" {
+				url = pluginregistry.DefaultURL
+			}
+			client, err := pluginregistry.New(url)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pin, err := client.Resolve(t.Context(), name, "v1.0.0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			root := pluginRepository(t)
+			project, err := OpenPluginProject(t.Context(), root, "", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := project.Lock.Set(pin); err != nil {
+				t.Fatal(err)
+			}
+			if err := project.Lock.Save(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			path, err := InitializeConfig(t.Context(), root, "2.0.0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := config.Load(path)
+			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name != name || cfg.Plugins[0].Version != pin.Selector || cfg.Plugins[0].Registry != pin.Registry {
+				t.Fatalf("locked selection changed: %+v, %v", cfg, err)
+			}
+			lock, err := pluginregistry.OpenLock(t.Context(), project.Lock.Path)
+			if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0] != pin {
+				t.Fatalf("locked bytes changed: %+v, %v", lock, err)
+			}
+		})
+	}
+}

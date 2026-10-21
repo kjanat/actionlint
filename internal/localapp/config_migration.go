@@ -230,7 +230,13 @@ func InitializeConfig(ctx context.Context, root, version string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	refs := []pluginref.Reference(cfg.Plugins)
+	refs, err := project.Dependencies(true)
+	if err != nil {
+		return "", err
+	}
+	if len(refs) == 0 {
+		refs = []pluginref.Reference(cfg.Plugins)
+	}
 	if err := project.Resolve(ctx, refs, nil); err != nil {
 		return "", err
 	}

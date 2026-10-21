@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
@@ -133,11 +132,6 @@ func (p *PluginProject) SelectedLock() (pluginregistry.Lock, error) {
 // Resolve acquires missing dependencies and refreshes the specified declarations.
 // Existing immutable identity checks still apply to every replacement.
 func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Reference) error {
-	p.Lock.Lock.Plugins = slices.DeleteFunc(p.Lock.Lock.Plugins, func(pin pluginregistry.Pin) bool {
-		return !slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
-			return pin.Matches(ref) || !ref.IsAlias() && strings.EqualFold(pin.Name, ref.Name)
-		})
-	})
 	selected := make([]pluginregistry.Pin, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
@@ -164,7 +158,7 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 			if err != nil {
 				return err
 			}
-			if err := p.Lock.SetResolved(pin, ref); err != nil {
+			if err := p.Lock.CheckResolved(pin, ref); err != nil {
 				return err
 			}
 		}
