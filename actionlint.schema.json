@@ -2,6 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Generated from internal/config/config.go by go generate -run generate-config-schema. DO NOT EDIT.",
   "title": "actionlint configuration",
+  "description": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or `.github/actionlint.toml`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
+  "markdownDescription": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or `.github/actionlint.toml`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "type": "object",
   "properties": {
     "$schema": {
@@ -12,6 +14,8 @@
     },
     "extends": {
       "title": "extends",
+      "description": "Loads local YAML/JSON files, relative to this config, in order. Later bases override earlier bases; this file wins over all bases. No URLs.",
+      "markdownDescription": "Loads local YAML/JSON files, relative to this config, in order. Later bases override earlier bases; this file wins over all bases. No URLs.",
       "oneOf": [
         {
           "type": "array",
@@ -26,6 +30,8 @@
     },
     "files": {
       "title": "files",
+      "description": "Selects repository-relative inputs shared by analysis features.",
+      "markdownDescription": "Selects repository-relative inputs shared by analysis features.",
       "oneOf": [
         {
           "type": "object",
@@ -72,6 +78,8 @@
     },
     "ignores": {
       "title": "ignores",
+      "description": "Suppresses a rule for matching files, actions, jobs, or steps. Every specified selector must match. Later config files replace the list.",
+      "markdownDescription": "Suppresses a rule for matching files, actions, jobs, or steps. Every specified selector must match. Later config files replace the list.",
       "oneOf": [
         {
           "type": "array",
@@ -210,12 +218,16 @@
     },
     "lint": {
       "title": "lint",
+      "description": "Configures rule selection separately from repository policy.",
+      "markdownDescription": "Configures rule selection separately from repository policy.",
       "oneOf": [
         {
           "type": "object",
           "properties": {
             "enabled": {
               "title": "enabled",
+              "description": "Controls lint diagnostics only, leaving other features independent.",
+              "markdownDescription": "Controls lint diagnostics only, leaving other features independent.",
               "oneOf": [
                 {
                   "default": true,
@@ -228,6 +240,8 @@
             },
             "message-ignores": {
               "title": "message-ignores",
+              "description": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
+              "markdownDescription": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
               "oneOf": [
                 {
                   "type": "object",
@@ -252,6 +266,8 @@
             },
             "rules": {
               "title": "rules",
+              "description": "Selects diagnostic groups, individual levels and options.",
+              "markdownDescription": "Selects diagnostic groups, individual levels and options.",
               "oneOf": [
                 {
                   "type": "object",
@@ -1049,10 +1065,14 @@
                                               "type": "object"
                                             },
                                             {
+                                              "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
+                                              "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
                                               "type": "object",
                                               "properties": {
                                                 "secrets": {
                                                   "title": "secrets",
+                                                  "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                  "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
                                                   "oneOf": [
                                                     {
                                                       "type": "array",
@@ -1067,6 +1087,8 @@
                                                 },
                                                 "variables": {
                                                   "title": "variables",
+                                                  "description": "Lists configured variable names; null disables checking and [] allows none.",
+                                                  "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
                                                   "oneOf": [
                                                     {
                                                       "type": "array",
@@ -1958,10 +1980,14 @@
                                               "type": "object"
                                             },
                                             {
+                                              "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
+                                              "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
                                               "type": "object",
                                               "properties": {
                                                 "labels": {
                                                   "title": "labels",
+                                                  "description": "Lists additional accepted runner labels or Go path.Match patterns.",
+                                                  "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
                                                   "oneOf": [
                                                     {
                                                       "type": "array",
@@ -2265,10 +2291,14 @@
                                               "type": "object"
                                             },
                                             {
+                                              "description": "Sets repository assumptions for reusable workflow checks.",
+                                              "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
                                               "type": "object",
                                               "properties": {
                                                 "default-permissions": {
                                                   "title": "default-permissions",
+                                                  "description": "Assumes restricted (default) or permissive repository token permissions.",
+                                                  "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
                                                   "oneOf": [
                                                     {
                                                       "default": "restricted",
@@ -3161,10 +3191,14 @@
                                               "type": "object"
                                             },
                                             {
+                                              "description": "Selects exceptions to immutable action references.",
+                                              "markdownDescription": "Selects exceptions to immutable action references.",
                                               "type": "object",
                                               "properties": {
                                                 "exclude": {
                                                   "title": "exclude",
+                                                  "description": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
+                                                  "markdownDescription": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
                                                   "oneOf": [
                                                     {
                                                       "type": "array",
@@ -3472,6 +3506,8 @@
                                               "type": "object"
                                             },
                                             {
+                                              "description": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
+                                              "markdownDescription": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
                                               "type": "object",
                                               "required": [
                                                 "actions"
@@ -3479,6 +3515,8 @@
                                               "properties": {
                                                 "actions": {
                                                   "title": "actions",
+                                                  "description": "Contains action names or action/ref glob patterns required by this repository.",
+                                                  "markdownDescription": "Contains action names or action/ref glob patterns required by this repository.",
                                                   "type": "array",
                                                   "items": {
                                                     "type": "string"
@@ -4226,6 +4264,8 @@
     },
     "local-actions": {
       "title": "local-actions",
+      "description": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root, using ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
+      "markdownDescription": "Maps generated action directories to checked-in source directories. Both paths are relative to the repository root, using ./ or $/ prefixes. Known checkout placements are removed before matching. Sources resolve once to actual directories; mappings do not chain.",
       "oneOf": [
         {
           "type": "object",
@@ -4240,10 +4280,14 @@
     },
     "overrides": {
       "title": "overrides",
+      "description": "Applies per-file lint settings in declaration order. Later matching settings win; mappings merge and arrays replace. Paths are repository-relative.",
+      "markdownDescription": "Applies per-file lint settings in declaration order. Later matching settings win; mappings merge and arrays replace. Paths are repository-relative.",
       "oneOf": [
         {
           "type": "array",
           "items": {
+            "description": "Scopes settings to selected files. Other feature sections can share this scope when formatting and language-server support are introduced.",
+            "markdownDescription": "Scopes settings to selected files. Other feature sections can share this scope when formatting and language-server support are introduced.",
             "type": "object",
             "required": [
               "includes"
@@ -4251,6 +4295,8 @@
             "properties": {
               "excludes": {
                 "title": "excludes",
+                "description": "Removes files from this override; exclusions always win.",
+                "markdownDescription": "Removes files from this override; exclusions always win.",
                 "oneOf": [
                   {
                     "type": "array",
@@ -4265,6 +4311,8 @@
               },
               "includes": {
                 "title": "includes",
+                "description": "Contains repository-relative file paths or doublestar globs. At least one positive pattern is required. Prefix a pattern with ! to exclude matches from this entry; exclusions win regardless of pattern order.",
+                "markdownDescription": "Contains repository-relative file paths or doublestar globs. At least one positive pattern is required. Prefix a pattern with ! to exclude matches from this entry; exclusions win regardless of pattern order.",
                 "type": "array",
                 "minItems": 1,
                 "items": {
@@ -4273,12 +4321,16 @@
               },
               "lint": {
                 "title": "lint",
+                "description": "Overlays only explicitly supplied lint fields. Null resets lint defaults.",
+                "markdownDescription": "Overlays only explicitly supplied lint fields. Null resets lint defaults.",
                 "oneOf": [
                   {
                     "type": "object",
                     "properties": {
                       "enabled": {
                         "title": "enabled",
+                        "description": "Controls lint diagnostics only, leaving other features independent.",
+                        "markdownDescription": "Controls lint diagnostics only, leaving other features independent.",
                         "oneOf": [
                           {
                             "default": true,
@@ -4291,6 +4343,8 @@
                       },
                       "message-ignores": {
                         "title": "message-ignores",
+                        "description": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
+                        "markdownDescription": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
                         "oneOf": [
                           {
                             "type": "object",
@@ -4315,6 +4369,8 @@
                       },
                       "rules": {
                         "title": "rules",
+                        "description": "Selects diagnostic groups, individual levels and options.",
+                        "markdownDescription": "Selects diagnostic groups, individual levels and options.",
                         "oneOf": [
                           {
                             "type": "object",
@@ -5112,10 +5168,14 @@
                                                         "type": "object"
                                                       },
                                                       {
+                                                        "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
+                                                        "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
                                                         "type": "object",
                                                         "properties": {
                                                           "secrets": {
                                                             "title": "secrets",
+                                                            "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                            "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
                                                             "oneOf": [
                                                               {
                                                                 "type": "array",
@@ -5130,6 +5190,8 @@
                                                           },
                                                           "variables": {
                                                             "title": "variables",
+                                                            "description": "Lists configured variable names; null disables checking and [] allows none.",
+                                                            "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
                                                             "oneOf": [
                                                               {
                                                                 "type": "array",
@@ -6021,10 +6083,14 @@
                                                         "type": "object"
                                                       },
                                                       {
+                                                        "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
+                                                        "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
                                                         "type": "object",
                                                         "properties": {
                                                           "labels": {
                                                             "title": "labels",
+                                                            "description": "Lists additional accepted runner labels or Go path.Match patterns.",
+                                                            "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
                                                             "oneOf": [
                                                               {
                                                                 "type": "array",
@@ -6328,10 +6394,14 @@
                                                         "type": "object"
                                                       },
                                                       {
+                                                        "description": "Sets repository assumptions for reusable workflow checks.",
+                                                        "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
                                                         "type": "object",
                                                         "properties": {
                                                           "default-permissions": {
                                                             "title": "default-permissions",
+                                                            "description": "Assumes restricted (default) or permissive repository token permissions.",
+                                                            "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
                                                             "oneOf": [
                                                               {
                                                                 "default": "restricted",
@@ -7224,10 +7294,14 @@
                                                         "type": "object"
                                                       },
                                                       {
+                                                        "description": "Selects exceptions to immutable action references.",
+                                                        "markdownDescription": "Selects exceptions to immutable action references.",
                                                         "type": "object",
                                                         "properties": {
                                                           "exclude": {
                                                             "title": "exclude",
+                                                            "description": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
+                                                            "markdownDescription": "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref.",
                                                             "oneOf": [
                                                               {
                                                                 "type": "array",
@@ -7535,6 +7609,8 @@
                                                         "type": "object"
                                                       },
                                                       {
+                                                        "description": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
+                                                        "markdownDescription": "Configures exact actions or action/ref glob patterns. An empty selection requires nothing; presets never invent an action list.",
                                                         "type": "object",
                                                         "required": [
                                                           "actions"
@@ -7542,6 +7618,8 @@
                                                         "properties": {
                                                           "actions": {
                                                             "title": "actions",
+                                                            "description": "Contains action names or action/ref glob patterns required by this repository.",
+                                                            "markdownDescription": "Contains action names or action/ref glob patterns required by this repository.",
                                                             "type": "array",
                                                             "items": {
                                                               "type": "string"
@@ -8289,6 +8367,8 @@
               },
               "local-actions": {
                 "title": "local-actions",
+                "description": "Overlays generated action source mappings for matching files.",
+                "markdownDescription": "Overlays generated action source mappings for matching files.",
                 "oneOf": [
                   {
                     "type": "object",
@@ -8303,12 +8383,16 @@
               },
               "tools": {
                 "title": "tools",
+                "description": "Overlays external checker settings for the selected files.",
+                "markdownDescription": "Overlays external checker settings for the selected files.",
                 "oneOf": [
                   {
                     "type": "object",
                     "properties": {
                       "ruff": {
                         "title": "ruff",
+                        "description": "Configures checking of embedded Python scripts.",
+                        "markdownDescription": "Configures checking of embedded Python scripts.",
                         "properties": {
                           "backend": {
                             "title": "backend",
@@ -8318,10 +8402,14 @@
                             "properties": {
                               "process": {
                                 "title": "process",
+                                "description": "Configures native executable invocation.",
+                                "markdownDescription": "Configures native executable invocation.",
                                 "type": "object",
                                 "properties": {
                                   "args": {
                                     "title": "args",
+                                    "description": "Are literal arguments prepended to actionlint's analysis arguments.",
+                                    "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
                                     "oneOf": [
                                       {
                                         "type": "array",
@@ -8336,6 +8424,8 @@
                                   },
                                   "env": {
                                     "title": "env",
+                                    "description": "Overrides named variables in the child process only.",
+                                    "markdownDescription": "Overrides named variables in the child process only.",
                                     "oneOf": [
                                       {
                                         "type": "object",
@@ -8350,6 +8440,8 @@
                                   },
                                   "executable": {
                                     "title": "executable",
+                                    "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string"
                                   }
                                 },
@@ -8357,6 +8449,8 @@
                               },
                               "wasm": {
                                 "title": "wasm",
+                                "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
                                 "type": "object",
                                 "required": [
                                   "path"
@@ -8364,6 +8458,8 @@
                                 "properties": {
                                   "path": {
                                     "title": "path",
+                                    "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string",
                                     "minLength": 1
                                   }
@@ -8494,6 +8590,8 @@
                       },
                       "shellcheck": {
                         "title": "shellcheck",
+                        "description": "Configures checking of embedded shell scripts.",
+                        "markdownDescription": "Configures checking of embedded shell scripts.",
                         "properties": {
                           "backend": {
                             "title": "backend",
@@ -8503,10 +8601,14 @@
                             "properties": {
                               "process": {
                                 "title": "process",
+                                "description": "Configures native executable invocation.",
+                                "markdownDescription": "Configures native executable invocation.",
                                 "type": "object",
                                 "properties": {
                                   "args": {
                                     "title": "args",
+                                    "description": "Are literal arguments prepended to actionlint's analysis arguments.",
+                                    "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
                                     "oneOf": [
                                       {
                                         "type": "array",
@@ -8521,6 +8623,8 @@
                                   },
                                   "env": {
                                     "title": "env",
+                                    "description": "Overrides named variables in the child process only.",
+                                    "markdownDescription": "Overrides named variables in the child process only.",
                                     "oneOf": [
                                       {
                                         "type": "object",
@@ -8535,6 +8639,8 @@
                                   },
                                   "executable": {
                                     "title": "executable",
+                                    "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string"
                                   }
                                 },
@@ -8542,6 +8648,8 @@
                               },
                               "wasm": {
                                 "title": "wasm",
+                                "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
                                 "type": "object",
                                 "required": [
                                   "path"
@@ -8549,6 +8657,8 @@
                                 "properties": {
                                   "path": {
                                     "title": "path",
+                                    "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string",
                                     "minLength": 1
                                   }
@@ -8665,6 +8775,8 @@
     },
     "plugins": {
       "title": "plugins",
+      "description": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
+      "markdownDescription": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
       "oneOf": [
         {
           "type": "array",
@@ -8722,12 +8834,16 @@
     },
     "tools": {
       "title": "tools",
+      "description": "Configures external linters for both the CLI and GitHub Action.",
+      "markdownDescription": "Configures external linters for both the CLI and GitHub Action.",
       "oneOf": [
         {
           "type": "object",
           "properties": {
             "ruff": {
               "title": "ruff",
+              "description": "Configures checking of embedded Python scripts.",
+              "markdownDescription": "Configures checking of embedded Python scripts.",
               "properties": {
                 "backend": {
                   "title": "backend",
@@ -8737,10 +8853,14 @@
                   "properties": {
                     "process": {
                       "title": "process",
+                      "description": "Configures native executable invocation.",
+                      "markdownDescription": "Configures native executable invocation.",
                       "type": "object",
                       "properties": {
                         "args": {
                           "title": "args",
+                          "description": "Are literal arguments prepended to actionlint's analysis arguments.",
+                          "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
                           "oneOf": [
                             {
                               "type": "array",
@@ -8755,6 +8875,8 @@
                         },
                         "env": {
                           "title": "env",
+                          "description": "Overrides named variables in the child process only.",
+                          "markdownDescription": "Overrides named variables in the child process only.",
                           "oneOf": [
                             {
                               "type": "object",
@@ -8769,6 +8891,8 @@
                         },
                         "executable": {
                           "title": "executable",
+                          "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string"
                         }
                       },
@@ -8776,6 +8900,8 @@
                     },
                     "wasm": {
                       "title": "wasm",
+                      "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
                       "type": "object",
                       "required": [
                         "path"
@@ -8783,6 +8909,8 @@
                       "properties": {
                         "path": {
                           "title": "path",
+                          "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string",
                           "minLength": 1
                         }
@@ -8913,6 +9041,8 @@
             },
             "shellcheck": {
               "title": "shellcheck",
+              "description": "Configures checking of embedded shell scripts.",
+              "markdownDescription": "Configures checking of embedded shell scripts.",
               "properties": {
                 "backend": {
                   "title": "backend",
@@ -8922,10 +9052,14 @@
                   "properties": {
                     "process": {
                       "title": "process",
+                      "description": "Configures native executable invocation.",
+                      "markdownDescription": "Configures native executable invocation.",
                       "type": "object",
                       "properties": {
                         "args": {
                           "title": "args",
+                          "description": "Are literal arguments prepended to actionlint's analysis arguments.",
+                          "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
                           "oneOf": [
                             {
                               "type": "array",
@@ -8940,6 +9074,8 @@
                         },
                         "env": {
                           "title": "env",
+                          "description": "Overrides named variables in the child process only.",
+                          "markdownDescription": "Overrides named variables in the child process only.",
                           "oneOf": [
                             {
                               "type": "object",
@@ -8954,6 +9090,8 @@
                         },
                         "executable": {
                           "title": "executable",
+                          "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string"
                         }
                       },
@@ -8961,6 +9099,8 @@
                     },
                     "wasm": {
                       "title": "wasm",
+                      "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
                       "type": "object",
                       "required": [
                         "path"
@@ -8968,6 +9108,8 @@
                       "properties": {
                         "path": {
                           "title": "path",
+                          "description": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "Is a raw or gzip-compressed module path, file URI, or HTTP(S) URL. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string",
                           "minLength": 1
                         }
