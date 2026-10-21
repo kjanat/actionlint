@@ -10,13 +10,12 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/rule"
 )
 
 type namedFindingAnalyzer string
 
 func (a namedFindingAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Descriptor: rule.Descriptor{Name: string(a)}}
+	return analyzer.Descriptor{Name: string(a)}
 }
 
 func (namedFindingAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
