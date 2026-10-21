@@ -26,6 +26,10 @@ func Register(descriptor rule.Descriptor, shells []string, backend analyzer.Scri
 
 // RegisterEngine routes both shell snippets and declared action-input sites.
 func RegisterEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
+	return registerEngine(descriptor, backend, nil)
+}
+
+func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend, enabled func(tools.Context) bool) (tools.Registration, error) {
 	descriptor = descriptor.Clone()
 	if backend == nil {
 		return tools.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
@@ -44,8 +48,8 @@ func RegisterEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer
 	for _, input := range descriptor.ScriptInputs {
 		inputs[input] = struct{}{}
 	}
-	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0, Build: func(tools.Context) (tools.Runner, error) {
-		return runner{descriptor: descriptor.Rule, shells: selectors, inputs: inputs, backend: backend}, nil
+	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0, Build: func(c tools.Context) (tools.Runner, error) {
+		return runner{descriptor: descriptor.Rule, shells: selectors, inputs: inputs, backend: backend, enabled: enabled, context: c}, nil
 	}}, nil
 }
 
@@ -68,6 +72,23 @@ type runner struct {
 	shells     map[string]struct{}
 	inputs     map[analyzer.ScriptInput]struct{}
 	backend    analyzer.ScriptBackend
+	enabled    func(tools.Context) bool
+	context    tools.Context
+}
+
+func (r runner) scriptEnabled(cfg *config.Config) bool {
+	if r.enabled == nil {
+		return true
+	}
+	c := r.context
+	c.Config, c.ProjectConfig, c.ProjectRoot = cfg, nil, ""
+	if cfg != nil {
+		resolved := *cfg
+		// The prepared script already has its file overrides applied.
+		resolved.Overrides = nil
+		c.Config = &resolved
+	}
+	return r.enabled(c)
 }
 
 func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -77,7 +98,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if err := ctx.Err(); err != nil {
 			return out, errors.Join(failures, err)
 		}
-		if config.DiagnosticLevel(script.Config, r.descriptor.Name) == "off" {
+		if !r.scriptEnabled(script.Config) || config.DiagnosticLevel(script.Config, r.descriptor.Name) == "off" {
 			continue
 		}
 		if script.Input != nil {

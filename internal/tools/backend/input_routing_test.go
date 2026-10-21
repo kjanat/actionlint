@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/tools"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 	"actionlint.kjanat.dev/rule"
@@ -16,6 +17,57 @@ type routingRunner func(context.Context, tools.Batch) ([]tools.Finding, error)
 
 func (r routingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
 	return r(ctx, batch)
+}
+
+func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
+	disabled, enabled := &config.Config{}, &config.Config{}
+	disabled.Overrides = []config.Override{{Includes: []string{"other/**"}}}
+	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
+	registration := tools.Registration{
+		Descriptor: rule.Descriptor{Name: "tool"},
+		Enabled: func(c tools.Context) bool {
+			if c.ProjectRoot != "" || c.ProjectConfig != nil || len(c.Config.Overrides) != 0 {
+				t.Fatal("input eligibility used project planning instead of resolved script configuration")
+			}
+			return c.Config.Tools.Ruff.Enabled == nil
+		},
+		Build: func(tools.Context) (tools.Runner, error) {
+			return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+				if len(batch.Scripts) != 3 || batch.Scripts[0].Config != disabled {
+					t.Fatal("native batch changed")
+				}
+				return nil, nil
+			}), nil
+		},
+	}
+	disabled.Tools.Ruff.Enabled = new(false)
+	calls := 0
+	backend := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+		calls++
+		if request.Source != "enabled" {
+			t.Fatalf("disabled source reached backend: %q", request.Source)
+		}
+		return []analyzer.ScriptDiagnostic{{Message: "input", Location: analyzer.ScriptPosition{Row: 1, Column: 1}}}, nil
+	})
+	registration, err := WithScriptInputs(registration, analyzer.ScriptEngineDescriptor{Rule: registration.Descriptor, ScriptInputs: []analyzer.ScriptInput{site}}, backend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := registration.Build(tools.Context{ProjectRoot: "repository", ProjectConfig: enabled})
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
+		{Input: &site, Text: "disabled", Config: disabled},
+		{Text: "unrelated run", Config: enabled},
+		{Input: &site, Text: "enabled", Config: enabled, Key: &workflowlang.Pos{Line: 9, Col: 5}},
+	}})
+	if err != nil || calls != 1 || len(findings) != 1 || findings[0].Script != 2 {
+		t.Fatalf("eligibility changed input routing/indices: calls=%d findings=%+v err=%v", calls, findings, err)
+	}
+	if len(disabled.Overrides) != 1 {
+		t.Fatal("eligibility mutated caller configuration")
+	}
 }
 
 type routingBackend func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error)

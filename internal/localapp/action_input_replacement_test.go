@@ -2,6 +2,8 @@ package localapp
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +19,51 @@ import (
 type inputReplacementBackend struct {
 	mu       sync.Mutex
 	requests []analyzer.ScriptRequest
+}
+
+func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		registration tools.Registration
+	}{
+		{"ruff", (ruff.Options{}).Registration()},
+		{"shellcheck", (shellcheck.Options{}).Registration()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			files := map[string]string{
+				".git/HEAD":               "ref: refs/heads/master\n",
+				".github/actionlint.yaml": "overrides:\n  - includes: [nested/**]\n    tools:\n      " + tc.name + ":\n        enabled: false\n  - includes: [other/**]\n    tools:\n      " + tc.name + ":\n        enabled: true\n",
+				"workflow.yml":            "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: enabled_input\n      - uses: ./nested\n",
+				"nested/action.yml":       "name: nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - uses: example/execute@v1\n      with:\n        code: disabled_input\n",
+			}
+			for name, content := range files {
+				path := filepath.Join(root, filepath.FromSlash(name))
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			engine := &inputReplacementBackend{}
+			plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: engine, descriptor: analyzer.ScriptEngineDescriptor{
+				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
+			}}}}
+			options, err := plugins.configure(application.Options{WorkingDir: root, Tools: []tools.Registration{tc.registration}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}); err != nil {
+				t.Fatal(err)
+			}
+			engine.mu.Lock()
+			defer engine.mu.Unlock()
+			if len(engine.requests) != 1 || engine.requests[0].Source != "enabled_input" {
+				t.Fatalf("disabled composite reached replacement backend: %+v", engine.requests)
+			}
+		})
+	}
 }
 
 func (b *inputReplacementBackend) Check(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
