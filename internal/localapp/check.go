@@ -105,7 +105,7 @@ func (l *loadedPlugins) configureManaged(options application.Options, managed ma
 			if err != nil {
 				return options, &PluginLoadError{err}
 			}
-			options.Tools[i], found = next, true
+			options.Tools[i], found = backend.Configure(next), true
 			break
 		}
 		if !found {

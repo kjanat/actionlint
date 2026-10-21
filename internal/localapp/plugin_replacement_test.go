@@ -2,6 +2,9 @@ package localapp
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -120,6 +123,84 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				}
 				if backend.calls.Load() != want {
 					t.Fatalf("backend calls = %d, want %d", backend.calls.Load(), want)
+				}
+			})
+		}
+	}
+}
+
+func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
+	plugin, err := filepath.Abs("../plugins/component/testdata/plugins/no-sudo.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entrypoint := range []string{"check", "editor"} {
+		for _, runs := range []bool{false, true} {
+			name := "input-only"
+			if runs {
+				name = "runs-and-inputs"
+			}
+			t.Run(entrypoint+"/"+name, func(t *testing.T) {
+				root := t.TempDir()
+				for name, content := range map[string]string{
+					".git/HEAD":               "ref: refs/heads/master\n",
+					".github/actionlint.yaml": "overrides:\n  - includes: [nested/**]\n    tools:\n      shellcheck:\n        backend:\n          wasm: {path: nested.wasm}\n",
+					"workflow.yml":            "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo default\n      - uses: ./nested\n",
+					"nested/action.yml":       "name: nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - run: echo nested_run\n      shell: bash\n    - uses: example/execute@v1\n      with:\n        code: echo nested_input\n",
+				} {
+					path := filepath.Join(root, filepath.FromSlash(name))
+					if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				engine := &selectedInputBackend{descriptor: analyzer.ScriptEngineDescriptor{
+					Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"},
+					ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: "bash"}},
+				}}
+				if runs {
+					engine.descriptor.Shells = []string{"bash"}
+				}
+				options := application.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations(), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
+					return engine, nil
+				}}
+				sources := PluginSources{Paths: []string{plugin}, managed: map[string]string{plugin: "shellcheck"}}
+				input := application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}
+				var result *application.Result
+				if entrypoint == "editor" {
+					session, openErr := newEditorSources(t.Context(), options, sources)
+					if openErr != nil {
+						t.Fatal(openErr)
+					}
+					defer func() {
+						if err := session.close(context.WithoutCancel(t.Context())); err != nil {
+							t.Error(err)
+						}
+					}()
+					result, err = application.Check(t.Context(), session.options, input)
+				} else {
+					result, err = CheckSources(t.Context(), options, input, sources)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || filepath.Base(result.Diagnostics[0].Path) != "workflow.yml" {
+					t.Fatalf("managed default analyzer changed: %+v", result.Diagnostics)
+				}
+				var actual []string
+				for _, request := range engine.requests {
+					actual = append(actual, strings.TrimSpace(request.Source))
+				}
+				slices.Sort(actual)
+				want := []string{"echo nested_input"}
+				if runs {
+					want = append(want, "# shellcheck external-sources=false\nset -e -o pipefail\necho nested_run")
+					slices.Sort(want)
+				}
+				if !slices.Equal(actual, want) {
+					t.Fatalf("configured composite routes = %q, want %q", actual, want)
 				}
 			})
 		}
