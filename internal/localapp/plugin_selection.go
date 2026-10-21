@@ -35,6 +35,7 @@ type PluginSources struct {
 	lock      *pluginregistry.Lock
 	configs   []*config.Config
 	managed   map[string]string
+	overlays  []config.Overlay
 }
 
 type pluginSelectionMode uint8
@@ -113,7 +114,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		return selected, err
 	}
 	if s.ConfigFile != "" {
-		project, err := openSelectedPluginProject(ctx, directory, s.ConfigFile)
+		project, err := openPluginSelectionProjectMode(ctx, directory, s.ConfigFile, mode)
 		if err != nil {
 			return PluginSources{}, err
 		}
@@ -159,7 +160,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		if root == "" {
 			continue
 		}
-		project, err := openSelectedPluginProject(ctx, root, "")
+		project, err := openPluginSelectionProjectMode(ctx, root, "", mode)
 		if err != nil {
 			return PluginSources{}, err
 		}
@@ -175,20 +176,20 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		if project.Lock.Exists() {
 			inputs = append(inputs, project.Lock.Path)
 		}
-		if len(pins.Plugins) != 0 {
+		if len(pins.Plugins) != 0 || len(project.DirectSources()) != 0 {
 			selected = PluginSources{LockFile: project.Lock.Path, root: root, automatic: true}
 			selectedProject = project
 		}
 	}
-	if selected.LockFile == "" {
+	if selectedProject == nil {
 		if len(configs) != 0 {
-			return PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: configs}, nil
+			return PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: configs, overlays: slices.Clone(s.Overlays)}, nil
 		}
 		resolved, err := config.ResolveBeforePlugins(nil, s.Overlays)
 		if err != nil {
 			return PluginSources{}, err
 		}
-		selected := PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: []*config.Config{resolved.Config}}
+		selected := PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: []*config.Config{resolved.Config}, overlays: slices.Clone(s.Overlays)}
 		for _, ref := range resolved.Config.Plugins {
 			source := ref.DirectSource()
 			if source == "" {
@@ -211,6 +212,15 @@ func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config,
 	}
 	project.Manifest.References = resolved.Config.Plugins
 	project.Manifest.Declared = resolved.Config.Plugins != nil
+	if len(project.Manifest.References) != 0 {
+		// Check the complete source graph only after overlays determine whether
+		// this invocation activates plugins. Ordinary config reads allow links.
+		for path := range project.Manifest.snapshots {
+			if err := safePluginManifestPath(path); err != nil {
+				return nil, err
+			}
+		}
+	}
 	return resolved.Config, nil
 }
 
@@ -235,6 +245,7 @@ func (s PluginSelection) sourcesFromProject(project *PluginProject, root string)
 		selected.Inputs = []string{project.Lock.Path}
 	}
 	selected.configs = []*config.Config{prepared}
+	selected.overlays = slices.Clone(s.Overlays)
 	for _, ref := range project.Manifest.References {
 		if source := ref.DirectSource(); source != "" {
 			selected.Paths = append(selected.Paths, source)
@@ -280,15 +291,18 @@ func (s PluginSources) ValidateScope(paths []string) error {
 			if root == "" {
 				continue
 			}
-			project, err := openSelectedPluginProject(context.Background(), root, "")
+			project, err := openPluginSelectionProject(context.Background(), root, "")
 			if err != nil {
+				return err
+			}
+			if _, err := (PluginSelection{Overlays: s.overlays}).prepareProject(project); err != nil {
 				return err
 			}
 			pins, err := project.SelectedLock()
 			if err != nil {
 				return err
 			}
-			if len(pins.Plugins) == 0 {
+			if len(pins.Plugins) == 0 && len(project.DirectSources()) == 0 {
 				continue
 			}
 		}

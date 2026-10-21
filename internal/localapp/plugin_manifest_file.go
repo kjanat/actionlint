@@ -40,15 +40,6 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 	return openPluginManifest(ctx, path, readPluginManifest)
 }
 
-func openSelectedPluginManifest(ctx context.Context, path string) (*PluginManifest, error) {
-	manifest, err := openPluginManifest(ctx, path, readPluginManifestSource)
-	if err != nil || len(manifest.References) == 0 {
-		return manifest, err
-	}
-	// Activating plugins still requires the checked, immutable source graph.
-	return OpenPluginManifest(ctx, path)
-}
-
 func openPluginManifest(ctx context.Context, path string, read func(context.Context, string) ([]byte, error)) (*PluginManifest, error) {
 	return openPluginManifestMode(ctx, path, read, pluginAnalysis)
 }

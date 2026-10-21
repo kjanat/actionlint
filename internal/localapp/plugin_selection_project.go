@@ -6,7 +6,8 @@ import (
 )
 
 // openPluginSelectionProject preserves normal configuration read semantics.
-// A symlinked config may be read, but installation/editing still uses the stricter
+// A symlinked config may be read; prepareProject checks source paths after
+// overlays determine plugin activation. Installation/editing uses the stricter
 // OpenPluginProject path. Lockfiles retain their existing path checks.
 func openPluginSelectionProject(ctx context.Context, directory, configPath string) (*PluginProject, error) {
 	return openPluginSelectionProjectMode(ctx, directory, configPath, pluginAnalysis)
