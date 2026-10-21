@@ -50,8 +50,11 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 	if options.Target == "" {
 		options.Target = "github"
 	}
+	hasSnapshot := options.Snapshot != (runnerapi.Snapshot{})
 	switch options.Snapshot.Freshness {
-	case "", runnerapi.Fresh, runnerapi.Stale, runnerapi.Missing:
+	case "":
+		options.Snapshot.Freshness = runnerapi.Missing
+	case runnerapi.Fresh, runnerapi.Stale, runnerapi.Missing:
 	default:
 		return k, errors.New("invalid runner snapshot freshness")
 	}
@@ -60,7 +63,6 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 	if options.Scope != "" {
 		scope = options.Scope
 	}
-	hasSnapshot := options.Snapshot != (runnerapi.Snapshot{})
 	if hasSnapshot && options.Snapshot.Scope != scope {
 		return k, errors.New("runner snapshot scope does not match requested scope")
 	}
@@ -135,9 +137,6 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 		}
 		if hasSnapshot {
 			freshness := options.Snapshot.Freshness
-			if freshness == "" {
-				freshness = runnerapi.Missing
-			}
 			if freshness != runnerapi.Fresh {
 				a.Evidence.Freshness = freshness
 			}
@@ -201,6 +200,9 @@ func joinAnswers(job *workflowlang.Job, answers []runnerapi.Answer) (JobKnowledg
 			}
 			candidates = append(candidates, result.Candidates...)
 		case runnerapi.NoMatch:
+			if len(result.Rejections) == 0 {
+				return k, errors.New("no-match runner answer has no rejections")
+			}
 			if !answer.Evidence.Complete {
 				uncertain = true
 				continue

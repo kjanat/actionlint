@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -77,6 +78,82 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 				t.Fatalf("uncertain answer inferred platform: %v", job.Platform)
 			}
 		})
+	}
+}
+
+func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		snapshot runnerapi.Snapshot
+		fresh    runnerapi.Freshness
+		known    bool
+	}{
+		{"absent", runnerapi.Snapshot{}, runnerapi.Missing, true},
+		{"metadata only", runnerapi.Snapshot{Scope: "scope", ObtainedAt: "2026-10-21T00:00:00Z"}, runnerapi.Missing, false},
+		{"fresh", runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}, runnerapi.Fresh, true},
+		{"stale", runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Stale, Complete: true}, runnerapi.Stale, false},
+		{"missing", runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Missing}, runnerapi.Missing, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := runnerWorkflow(t, "queue")
+			p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
+				if r.Snapshot.Freshness != tc.fresh {
+					t.Errorf("request freshness = %q, want %q", r.Snapshot.Freshness, tc.fresh)
+				}
+				return []runnerapi.Answer{{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "bundled", OS: runnerapi.Windows, DefaultShell: "pwsh", CaseSensitivity: runnerapi.CaseInsensitive}}}, Evidence: runnerapi.Evidence{Dataset: "bundled", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
+			}}
+			options := runnerapi.Options{Target: "buildkite", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p}}}
+			k, err := Prepare(t.Context(), w, nil, options, "scope")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := k.Job(w.Jobs["test"]); got.PathsKnown != tc.known || (got.Shell == "pwsh") != tc.known {
+				t.Fatalf("snapshot knowledge = %#v, want known=%t", got, tc.known)
+			}
+			if k.Report.Snapshot != p.request.Snapshot.Identity() {
+				t.Fatal("report does not identify the snapshot supplied to the provider")
+			}
+			if tc.snapshot != (runnerapi.Snapshot{}) {
+				options.Snapshot.Freshness = tc.fresh
+				normalized, err := Prepare(t.Context(), w, nil, options, "scope")
+				if err != nil || normalized.Report.Identity != k.Report.Identity {
+					t.Fatalf("equivalent snapshot freshness changed cache identity: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
+	w := runnerWorkflow(t, "ubuntu-latest")
+	k, err := Prepare(t.Context(), w, nil, runnerapi.Options{}, "scope")
+	if err != nil {
+		t.Fatal(err)
+	}
+	job := k.Job(w.Jobs["test"])
+	if !job.PathsKnown || job.Platform != MacOrLinux || job.Shell != "bash" || len(job.Answers) != 1 || job.Answers[0].Evidence.Freshness != runnerapi.Fresh {
+		t.Fatalf("absent host snapshot weakened bundled catalogue: %#v", job)
+	}
+}
+
+func TestProviderEmptyNoMatch(t *testing.T) {
+	for _, freshness := range []runnerapi.Freshness{runnerapi.Fresh, runnerapi.Stale, runnerapi.Missing} {
+		for _, complete := range []bool{false, true} {
+			t.Run(string(freshness)+"/complete="+strconv.FormatBool(complete), func(t *testing.T) {
+				w := runnerWorkflow(t, "queue")
+				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
+					return []runnerapi.Answer{{Resolution: runnerapi.NoMatch{}, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: freshness, Complete: complete}}}, nil
+				}}
+				k, err := Prepare(t.Context(), w, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
+				if freshness == runnerapi.Fresh {
+					if err == nil || !strings.Contains(err.Error(), "no rejections") {
+						t.Fatalf("empty no-match must fail provider validation: %v", err)
+					}
+				} else if err != nil || len(k.Job(w.Jobs["test"]).Findings) != 0 {
+					t.Fatalf("uncertain no-match became a definitive rejection: %v %#v", err, k.Job(w.Jobs["test"]))
+				}
+			})
+		}
 	}
 }
 
