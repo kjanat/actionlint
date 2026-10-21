@@ -38,6 +38,12 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 		valid  bool
 	}{
 		{"large catalogue", large, true},
+		{"canonical names", []wacogo.Val{wacogo.ValString("python"), wacogo.ValString("bash"), wacogo.ValString("python3.14")}, true},
+		{"uppercase", []wacogo.Val{wacogo.ValString("Python")}, false},
+		{"case aliases", []wacogo.Val{wacogo.ValString("python"), wacogo.ValString("Python")}, false},
+		{"executable suffix", []wacogo.Val{wacogo.ValString("python.exe")}, false},
+		{"path", []wacogo.Val{wacogo.ValString("/usr/bin/python")}, false},
+		{"arguments", []wacogo.Val{wacogo.ValString("python -u")}, false},
 		{"duplicate", []wacogo.Val{wacogo.ValString("python"), wacogo.ValString("python")}, false},
 		{"empty name", []wacogo.Val{wacogo.ValString("")}, false},
 		{"wrong type", []wacogo.Val{wacogo.ValBool(true)}, false},
@@ -265,6 +271,18 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			err = p.verifyScriptMetadata(data)
 			if (err == nil) != (key == "") {
 				t.Fatalf("metadata %q: %v", key, err)
+			}
+		})
+	}
+	for _, shells := range [][]string{{"python"}, {"Python"}, {"python.exe"}, {"python", "Python"}} {
+		t.Run("shells="+strings.Join(shells, ","), func(t *testing.T) {
+			metadata["capabilities"] = map[string][]string{"script_shells": shells}
+			data, err := json.Marshal(metadata)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := p.verifyScriptMetadata(data); (err == nil) != slices.Equal(shells, d.Shells) {
+				t.Fatalf("metadata shells=%v: %v", shells, err)
 			}
 		})
 	}
