@@ -121,7 +121,7 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			cfg := &Config{}
-			request := AnalysisRequest{WorkingDir: t.TempDir()}
+			request := AnalysisRequest{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
 			shell := "python"
 			if name == "ruff" {
 				cfg.Tools.Ruff.Backend = process

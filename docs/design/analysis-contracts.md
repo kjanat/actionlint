@@ -78,7 +78,7 @@ or working-directory defaults.
 Built-in script analyzers and public analyzers use the same bounded task executor. It preserves registration order and
 partial results and waits for every started task. Each external checker owns and joins its callbacks before returning,
 including on cancellation or an error. Callbacks write to separate per-script result slots. Rendering retains rule
-metadata instead of retaining executable rule objects. The Playground supplies an embedded ShellCheck runner directly.
+metadata. The Playground supplies an embedded ShellCheck runner directly.
 
 Composite analysis still requests capabilities for the remaining visitor adapters: checkout state, metadata validation,
 child construction and result joining. Configuration for action inputs is projected to applicable rules before overrides
@@ -86,8 +86,8 @@ are merged. Workflow-only option constraints cannot invalidate an action's scrip
 and analysis use the same selected-input scope.
 
 Mapping resolution provides one key contract: canonical value, source provenance, evaluated-data provenance and
-known/unknown/invalid state. Consumers must retain uncertainty instead of turning runtime names into closed object
-shapes, and must not parse expression-looking text returned as data a second time.
+known/unknown/invalid state. Runtime names keep their object shapes open. Consumers must preserve that uncertainty
+and treat expression-looking text returned as data as a literal value.
 
 ## Tradeoffs and limits
 
@@ -102,7 +102,7 @@ shapes, and must not parse expression-looking text returned as data a second tim
   extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
   rule has been rewritten as a fact consumer.
 - Script facts describe declarations. They do not promise complete effective runtime environments or resolved default
-  shells. Mapping completeness describes static knowledge, not runtime coverage.
+  shells. Mapping completeness describes static knowledge.
 - Existing CLI behavior remains covered by its own tests. Removed library symbols have explicit migration guidance;
   there is no root compatibility layer re-exporting the old implementation.
 
@@ -146,7 +146,7 @@ Existing CLI Pyflakes compatibility remains an adapter concern; it does not defi
 ShellCheck can use the same backend contract for hermetic snippets. Its native path still has additional
 source-file and fix capabilities. Those are not silently promised to injected engines: external-source
 and rc-file requests fail until an explicit resource capability exists. Extending that contract needs source
-identity, content, dependencies and edit provenance, not a process working directory disguised as a backend.
+identity, content, dependencies and edit provenance.
 
 Backend completion is synchronous and diagnostics can accompany failure. The host bounds concurrent work,
 waits for every started operation, and rejects diagnostics that refer to a different virtual input. Caller-owned
@@ -186,11 +186,11 @@ numeric coercion and ternary findings belong to this language layer; the matrix 
 Workflow parsing returns a recovered tree and syntax findings. A finding contains its message, rule and source position;
 it has no suppression state, action-cache identity, renderer state or executable rule. The analysis adapter adds host
 diagnostic state after parsing. The public `syntax.Parse` API projects parser findings directly into the shared
-diagnostic contract. The parser and host share token-range calculation so that this boundary preserves diagnostic spans.
+diagnostic contract. The parser and host share token-range calculation to preserve diagnostic spans.
 
 The workflow layer also owns inserted mapping resolution and decoded source maps. It depends on the expression layer
 to interpret statically known expressions. The reverse dependency is forbidden. YAML scalar grammar is a separate leaf
-shared by the parser and expression numeric conversion, rather than being owned by an expression visitor rule.
+shared by the parser and expression numeric conversion.
 Generated workflow context availability has its own package and generation target.
 
 The existing language tests move with their implementations. Workflow/rule integration tests remain with the host.

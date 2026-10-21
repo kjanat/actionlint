@@ -419,6 +419,12 @@ settings. Legacy `-ruff COMMAND` and `-shellcheck COMMAND` still accept separate
 values on the root. The older `=false` and empty values also remain supported.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
+Repository configuration can select native executables through
+`tools.<name>.backend.process`. Authorize these selections with
+`--allow-config-processes` only when you trust the complete configuration,
+including inherited files and overrides. Explicit CLI and environment commands
+already authorize their own executable.
+
 The deprecated `-pyflakes COMMAND` option selects Ruff's Pyflakes (`F`) rules
 when no Ruff option is supplied. The command value is never executed.
 An empty value or `false` disables Python linting. Explicit Ruff options take precedence.

@@ -240,6 +240,12 @@ on the root. Uses isolated, read-only checks with Ruff's default rule selection.
 **--no-ruff**
 : Disable Ruff, overriding any selected command or environment settings.
 
+**--allow-config-processes**
+: Authorize native executables selected by trusted repository configuration,
+including inherited files and file overrides. Without this flag, selecting
+`tools.<name>.backend.process` reports an error before the executable is launched.
+Explicit CLI and environment tool selections authorize their own executable.
+
 The older `--ruff=false`, `--shellcheck=false`, and empty command values remain
 supported. A disable flag takes precedence when both forms are supplied.
 

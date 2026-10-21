@@ -20,11 +20,13 @@ import (
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
 type AnalysisOptions struct {
-	Context       context.Context
-	Analyzers     []analyzer.Registration
-	WorkingDir    string
-	StdinFileName string
-	ConfigFile    string
+	// AllowConfigProcesses authorizes repository-selected executable invocations.
+	AllowConfigProcesses bool
+	Context              context.Context
+	Analyzers            []analyzer.Registration
+	WorkingDir           string
+	StdinFileName        string
+	ConfigFile           string
 	// ConfigOverlays apply in order over the selected file.
 	ConfigOverlays []ConfigOverlay
 	// OnConfigLoaded reports selected files and overlays.
@@ -121,7 +123,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected,
 		readFile:       opts.ReadFile,
 		logSelection:   !opts.QuietSelection,
-		request:        AnalysisRequest{Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, RuffBackend: opts.RuffBackend, ShellcheckBackend: opts.ShellcheckBackend, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
+		request:        AnalysisRequest{AllowConfigProcesses: opts.AllowConfigProcesses, Analyzers: opts.Analyzers, Ruff: opts.Ruff, RuffOptions: opts.RuffOptions, RuffBackend: opts.RuffBackend, ShellcheckBackend: opts.ShellcheckBackend, ShellCheck: opts.Shellcheck, ShellcheckRunner: opts.ShellcheckRunner, ShellcheckOptions: opts.ShellcheckOptions, ShellcheckSettings: opts.ShellcheckSettings, OnRulesCreated: opts.OnRulesCreated},
 		analysisLogger: analysisLogger{logOut: opts.LogWriter},
 	}
 	if err := a.request.validateBackends(); err != nil {

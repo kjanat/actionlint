@@ -1,28 +1,38 @@
 package engine
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 
 	"actionlint.kjanat.dev/internal/toolconfig"
 )
 
-func projectToolOptions(name, requested string, explicit *ExternalCommandOptions, cfg *Config, cwd string) *ExternalCommandOptions {
+func (c ruleContext) requireConfigProcessOptIn(name, requested string, explicit *ExternalCommandOptions, cfg *Config) error {
+	if !c.allowConfigProcesses && projectToolCommand(name, requested, explicit, cfg) != nil {
+		return fmt.Errorf("tools.%s.backend.process requires host opt-in; use --allow-config-processes for trusted repository configuration", name)
+	}
+	return nil
+}
+
+func projectToolCommand(name, requested string, explicit *ExternalCommandOptions, cfg *Config) *toolconfig.Command {
 	// An empty command is an explicit disable. Application/CLI/env choices win
 	// over repository invocation settings, including an explicit default name.
 	if requested != name || cfg == nil || explicit != nil && (explicit.IgnoreConfig || !explicit.Optional) {
-		return explicit
+		return nil
 	}
-	var command *toolconfig.Command
+	backend := cfg.Tools.Shellcheck.Backend
 	if name == "ruff" {
-		if cfg.Tools.Ruff.Backend != nil {
-			command = cfg.Tools.Ruff.Backend.Process
-		}
-	} else {
-		if cfg.Tools.Shellcheck.Backend != nil {
-			command = cfg.Tools.Shellcheck.Backend.Process
-		}
+		backend = cfg.Tools.Ruff.Backend
 	}
+	if backend == nil {
+		return nil
+	}
+	return backend.Process
+}
+
+func projectToolOptions(name, requested string, explicit *ExternalCommandOptions, cfg *Config, cwd string) *ExternalCommandOptions {
+	command := projectToolCommand(name, requested, explicit, cfg)
 	if command == nil {
 		return explicit
 	}

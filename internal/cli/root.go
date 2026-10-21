@@ -196,7 +196,8 @@ func (a *commandApp) toolFlags(f *pflag.FlagSet) {
 	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "Check shell scripts")
 	f.BoolVar(&a.opts.noRuff, "no-ruff", false, "Disable Python script linting")
 	f.BoolVar(&a.opts.noShellCheck, "no-shellcheck", false, "Disable shell script linting")
-	for _, name := range []string{"ruff", "shellcheck", "no-ruff", "no-shellcheck"} {
+	f.BoolVar(&a.inv.Check.AllowConfigProcesses, "allow-config-processes", false, "Allow trusted repository configuration to select native executables")
+	for _, name := range []string{"ruff", "shellcheck", "no-ruff", "no-shellcheck", "allow-config-processes"} {
 		annotateFlag(f, name, "External linters")
 	}
 	for _, name := range []string{"ruff", "shellcheck"} {

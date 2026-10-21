@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 
 	"actionlint.kjanat.dev/internal/render"
@@ -120,12 +121,7 @@ func compareErrors(lhs, rhs *Error) int {
 }
 
 func equalsErrors(lhs, rhs *Error) bool {
-	return lhs.Filepath == rhs.Filepath &&
-		lhs.Line == rhs.Line &&
-		lhs.Column == rhs.Column &&
-		lhs.endColumn == rhs.endColumn &&
-		lhs.Message == rhs.Message &&
-		lhs.severity == rhs.severity
+	return lhs.endColumn == rhs.endColumn && reflect.DeepEqual(lhs.diagnostic(nil), rhs.diagnostic(nil))
 }
 
 // ErrorTemplateFields holds all fields to format one error message.

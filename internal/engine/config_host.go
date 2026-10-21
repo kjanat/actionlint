@@ -84,6 +84,9 @@ func ruleSetting(cfg *Config, d ruleDescriptor, p RulePresets) RuleSetting {
 
 func diagnosticLevel(cfg *Config, name string) RuleLevel {
 	if cfg != nil {
+		if cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled {
+			return "off"
+		}
 		if level, ok := cfg.Lint.Rules.ResolvedLevel(name); ok {
 			return level
 		}

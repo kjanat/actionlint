@@ -22,21 +22,22 @@ type invocation struct {
 
 // checkInvocation contains analysis inputs. It carries no command-framework state.
 type checkInvocation struct {
-	Paths             []string
-	Config            actionlint.ConfigSelection
-	StdinFilename     string
-	IgnoreRegex       []string
-	ShellCheck        string
-	Ruff              string
-	RuffOptions       *actionlint.ExternalCommandOptions
-	Pyflakes          string
-	ShellcheckOptions *actionlint.ExternalCommandOptions
-	Verbose           bool
-	Debug             bool
-	Strict            bool
-	Experimental      bool
-	ExperimentalSet   bool
-	PreCommit         bool
+	AllowConfigProcesses bool
+	Paths                []string
+	Config               actionlint.ConfigSelection
+	StdinFilename        string
+	IgnoreRegex          []string
+	ShellCheck           string
+	Ruff                 string
+	RuffOptions          *actionlint.ExternalCommandOptions
+	Pyflakes             string
+	ShellcheckOptions    *actionlint.ExternalCommandOptions
+	Verbose              bool
+	Debug                bool
+	Strict               bool
+	Experimental         bool
+	ExperimentalSet      bool
+	PreCommit            bool
 }
 
 // renderOptions controls result presentation without changing analysis.

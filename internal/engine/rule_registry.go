@@ -34,6 +34,7 @@ type ruleDescriptor struct {
 	enabled                 func(ruleContext) bool
 }
 type ruleContext struct {
+	allowConfigProcesses    bool
 	workflowNames           *workflownames.Index
 	ruffBackend             analyzer.ScriptBackend
 	shellcheckBackend       analyzer.ScriptBackend

@@ -33,6 +33,9 @@ func newShellcheckAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 		}, nil
 	}
 	commandFor := func(cfg *Config) (*externalCommand, error) {
+		if err := c.requireConfigProcessOptIn("shellcheck", c.shellcheck, c.shellcheckOptions, cfg); err != nil {
+			return nil, err
+		}
 		options := projectToolOptions("shellcheck", c.shellcheck, c.shellcheckOptions, cfg, c.workingDir)
 		return c.process.configuredCommandRunner(c.shellcheck, options, false)
 	}

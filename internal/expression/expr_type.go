@@ -274,8 +274,7 @@ func (ty *ObjectType) String() string {
 	return b.String()
 }
 
-// Assignable returns if other Type can be Assignable to the Type.
-// In other words, rhs Type is more Strict than lhs (receiver) Type.
+// Assignable reports whether the other object's properties satisfy this type.
 func (ty *ObjectType) Assignable(other Type) bool {
 	switch other := other.(type) {
 	case AnyType:

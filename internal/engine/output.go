@@ -65,7 +65,10 @@ func (e *Error) diagnostic(source []byte) Diagnostic {
 func legacyDiagnosticError(d Diagnostic) *Error {
 	e := &Error{
 		Kind: d.Rule, Message: d.Message, Filepath: d.Path, Line: d.Start.Line, Column: d.Start.Column,
-		endPosition: &workflowlang.Pos{Line: d.End.Line, Col: d.End.Column}, code: d.Code, severity: d.Severity, fixes: d.Fixes,
+		code: d.Code, severity: d.Severity, fixes: d.Fixes,
+	}
+	if d.End.Line > 0 && d.End.Column > 0 {
+		e.endPosition = &workflowlang.Pos{Line: d.End.Line, Col: d.End.Column}
 	}
 	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
 		e.endColumn = d.End.Column - 1

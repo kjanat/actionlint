@@ -32,7 +32,7 @@ non-nil result may still contain useful findings and document outlines. Always i
 
 `result.FileCount` includes clean documents. `result.Documents` uses `document.Outlines`. The `document` package can
 encode and decode workflow/action outlines and parse `uses` references without importing the parser or execution engine.
-Outlines are selected declarations, not a complete semantic graph.
+Outlines contain selected declarations.
 Positions are one-based Unicode character positions; range ends are exclusive. The library result can be marshalled to
 JSON, but it is not the CLI's versioned result envelope.
 
@@ -48,6 +48,11 @@ result, err := analysis.Files(ctx, paths, analysis.FileOptions{
 `analysis.Repository(ctx, directory, options)` discovers workflows and action manifests. `FileOptions` adds configuration
 selection, overlays and `SkipProjectConfig` to the shared analysis options. These discovery settings do not appear in
 in-memory requests.
+
+Construct invocation overlays with `config.ParseOverlay("config", source)` for a complete document, or
+`config.ParseOverlay("tools", source)` for one configuration section. Assign them to `FileOptions.ConfigOverlays`.
+`config.DisallowSuppressions("all", "expression")` constructs an enabled policy for
+`Config.Policy.DisallowSuppressions`; it validates the report mode and selected rules.
 
 `Options.ReadFile` supplies a concurrent-safe file reader for files read by actionlint. It does not sandbox external tools.
 External tools are disabled by default in the library. Enable them explicitly with `Options.ShellCheck` or `Options.Ruff`:
@@ -72,7 +77,7 @@ type Analyzer interface {
 
 A descriptor names the analyzer and declares required facts: source content, declared run scripts, resolved mapping
 names, scripts invoked through composite action calls, or runtime execution facts. Each registration can supply JSON options. The host rejects unsupported or unavailable facts before invocation.
-Scripts expose their declared shell, not an inferred runner default. Mapping entries distinguish known, unknown and
+Scripts expose their declared shell; omitted declarations remain unknown. Mapping entries distinguish known, unknown and
 invalid keys and retain source text and evaluated-data provenance. `Complete` indicates whether all mapping names are
 statically known. A partial parse can supply partial facts; check `Input.ParseStatus` when completeness matters.
 
@@ -122,7 +127,7 @@ The architecture decision and remaining implementation boundaries are recorded i
 
 `analysis.Tool` selects either `Process` or an `analyzer.ScriptBackend`. Supplying both is an error;
 leaving both absent disables the tool. `Process.Arguments` is a literal launcher prefix, for example
-`mise exec -- ruff`; configure Ruff rules through `tools.ruff.config` instead of command flags.
+`mise exec -- ruff`. Configure Ruff rules through `tools.ruff.config`.
 Environment overrides and working directories belong to the process adapter.
 
 A backend implements `Check(context.Context, analyzer.ScriptRequest)` and returns script diagnostics
@@ -138,6 +143,6 @@ source includes resolved inline directives and runner startup options. That back
 source or rc-file capability: requests for those features fail explicitly. Native ShellCheck retains its
 filesystem-aware integration, including sourced-file diagnostics and fixes.
 
-These Go types are a host API, not a stable wire ABI. A core-WASM adapter can translate them to a versioned
+These Go types define the in-process host API. A core-WASM adapter can translate them to a versioned
 plugin operation; a future component adapter can use WIT types without imitating process arguments.
 No WASM runtime or component loader is included by this API change.

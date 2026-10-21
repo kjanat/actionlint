@@ -47,7 +47,7 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 }
 
 // Expression semantics must remain usable without workflow ASTs, execution or
-// repository configuration. These are architectural boundaries, not file names.
+// repository configuration. Import dependencies enforce these boundaries.
 func TestExpressionDependencyDirection(t *testing.T) {
 	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/internal/expression").Output()
 	if err != nil {

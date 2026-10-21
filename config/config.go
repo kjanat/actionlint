@@ -44,6 +44,11 @@ const (
 // Parse decodes a standalone configuration document. Use Load to resolve extends.
 func Parse(source []byte) (*Config, error) { return repoconfig.Parse(source) }
 
+// ParseOverlay validates a complete config document or one named configuration input.
+func ParseOverlay(input string, source []byte) (Overlay, error) {
+	return repoconfig.ParseOverlay(input, source)
+}
+
 // Load reads a configuration file and resolves its inheritance.
 func Load(path string) (*Config, error) { return repoconfig.Load(path) }
 
@@ -60,4 +65,9 @@ func RequireJobTimeoutRange(minMinutes, maxMinutes float64) (*JobTimeoutPolicy, 
 }
 func RequirePermissions(scope string) (*PermissionsPolicy, error) {
 	return repoconfig.RequirePermissions(scope)
+}
+
+// DisallowSuppressions constructs an enabled suppression policy for the selected rules.
+func DisallowSuppressions(report string, rules ...string) (*SuppressionsPolicy, error) {
+	return repoconfig.DisallowSuppressions(report, rules...)
 }

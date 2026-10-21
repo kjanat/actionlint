@@ -27,7 +27,7 @@ func Keys() []string {
 }
 
 // Overlay is a validated, immutable configuration override. Construct it
-// with ParseConfigOverlay; the original YAML nodes preserve null, false and [].
+// with ParseOverlay; the original YAML nodes preserve null, false and [].
 type Overlay struct {
 	name string
 	node *yaml.Node

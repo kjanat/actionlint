@@ -10,6 +10,7 @@ import (
 func builtinFactory(request AnalysisRequest, logger analysisLogger) func(ruleContext, bool) (builtinAnalyzers, error) {
 	compatibility := &ruff.Compatibility{}
 	return func(c ruleContext, action bool) (builtinAnalyzers, error) {
+		c.allowConfigProcesses = request.AllowConfigProcesses
 		c.shellcheckRunner, c.debug = request.ShellcheckRunner, logger.debug
 		c.shellcheck, c.shellcheckOptions, c.shellcheckSettings = request.ShellCheck, request.ShellcheckOptions, request.ShellcheckSettings
 		c.ruff, c.ruffOptions, c.ruffCompatibility = request.Ruff, request.RuffOptions, compatibility

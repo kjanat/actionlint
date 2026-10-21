@@ -58,8 +58,8 @@ rc paths retain the directory of their declaring configuration.
 
 Only local files are supported: no remote downloads, package resolution, or
 commands. Missing bases, cycles, invalid base settings, and chains deeper than
-32 levels are errors. `ReadConfigFile` and file-based CLI configuration resolve
-inheritance. In-memory `ParseConfig` and inline Action overlays cannot resolve
+32 levels are errors. `config.Load` and file-based CLI configuration resolve
+inheritance. In-memory `config.Parse` and inline Action overlays cannot resolve
 `extends`; select a configuration file instead.
 
 ## File selection
@@ -128,7 +128,7 @@ lint:
 
 Every catalog rule accepts `off`, `on` (retain its native severity), `info`, `warn`,
 or `error`. Use `default` to reset a rule or group override to the applicable
-preset/group baseline. `true` is an alias for `on`, and `false` for `off`; a group also accepts `all` as shorthand for `{preset: all}`. `options: null` resets a rule’s options. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
+preset/group baseline. `true` is an alias for `on`, and `false` for `off`; a group also accepts `all` as shorthand for `{preset: all}`. `options: null` resets a rule's options. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
 the rule supports them. Unknown groups, rules, levels and option keys are rejected.
 For example, `require-permissions` accepts `{scope: job}`; `require-job-timeout`
 accepts timeout bounds. The generated schema describes each rule's own options.
@@ -248,7 +248,7 @@ lint:
       ruff: error
 ```
 
-Ruff uses its own default rule selection. `config` accepts Ruff’s native options, including nested `lint` settings and rule-specific options. The selected Ruff engine validates them. Omitted or null options retain engine defaults.
+Ruff uses its own default rule selection. `config` accepts Ruff's native options, including nested `lint` settings and rule-specific options. The selected Ruff engine validates them. Omitted or null options retain engine defaults.
 
 The legacy flat `select` and `ignore`
 accept Ruff codes or prefixes matching stable rules; preview-only selectors are
@@ -313,6 +313,12 @@ working directory. Bare names use `PATH`. Arguments are literal launcher argumen
 prepended to the engine invocation; they are never shell source. Environment entries
 affect the child only. Explicit CLI, environment or library invocation settings take
 precedence over repository process settings. An explicit disable remains disabled.
+
+Repository-selected native executables require `--allow-config-processes`. Enable
+this flag only for trusted configuration, including its inherited files and file
+overrides. Without host opt-in, actionlint reports the selected process backend as
+an operational error before launching it. Explicit CLI, environment and library
+process selections already authorize their own executable.
 
 The pinning rule supports scoped exceptions without suppressing other action checks:
 

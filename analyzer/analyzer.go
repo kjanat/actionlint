@@ -98,8 +98,7 @@ type Invocation struct {
 
 // Runtime carries the shell and working directory the runner would use.
 // ShellKnown and DirectoryKnown report whether static analysis determined the
-// value. ShellImplicit marks a shell supplied by the runner or platform rather
-// than by a declaration.
+// value. ShellImplicit marks a shell supplied by the runner or platform.
 type Runtime struct {
 	Shell          string
 	ShellKnown     bool

@@ -43,6 +43,9 @@ func newRuffChecker(c ruleContext) (*ruff.Checker, error) {
 	if c.ruffBackend != nil {
 		return ruff.NewBackend(c.process.ctx, c.ruffBackend, ruffExpressionEnd), nil
 	}
+	if err := c.requireConfigProcessOptIn("ruff", c.ruff, c.ruffOptions, c.config); err != nil {
+		return nil, err
+	}
 	c.ruffOptions = projectToolOptions("ruff", c.ruff, c.ruffOptions, c.config, c.workingDir)
 	cmd, err := c.process.configuredCommandRunner(c.ruff, c.ruffOptions, false)
 	if err != nil {
@@ -88,7 +91,7 @@ func (r *ruffAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([
 	pending := []*ruff.Checker{r.checker}
 	for i, script := range scripts {
 		if err := ctx.Err(); err != nil {
-			failure = err
+			failure = errors.Join(failure, err)
 			break
 		}
 		if diagnosticLevel(script.config, "ruff") == "off" {
@@ -142,7 +145,7 @@ func (r *ruffAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([
 			results[i] = append(results[i], finding)
 		})
 		if err != nil {
-			failure = err
+			failure = errors.Join(failure, err)
 			break
 		}
 	}

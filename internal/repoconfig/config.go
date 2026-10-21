@@ -555,7 +555,7 @@ func Parse(b []byte) (*Config, error) {
 		return nil, err
 	}
 	if len(resolved.Config.Extends) > 0 {
-		return nil, errors.New("extends requires a file origin; use ReadConfigFile")
+		return nil, errors.New("extends requires a file origin; use config.Load")
 	}
 	return resolved.Config, nil
 }

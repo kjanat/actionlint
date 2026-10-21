@@ -65,9 +65,8 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 			return nil, fmt.Errorf("invalid Ruff engine config: %w", err)
 		}
 	}
-	// Lift the historical scalar selectors back into flags so repeatable CLI
-	// selections retain their union/precedence contract. Other engine settings
-	// remain Ruff-native inline configuration.
+	// Scalar selectors use repeatable flags to retain union/precedence semantics.
+	// Other engine settings remain Ruff-native inline configuration.
 	if target, ok := config.Native["target-version"].(string); ok {
 		config.TargetVersion = target
 		delete(config.Native, "target-version")
