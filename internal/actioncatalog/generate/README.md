@@ -20,6 +20,21 @@ Generate the bundled catalogue:
 go run ./internal/actioncatalog/generate -f json ./internal/actioncatalog/popular_actions.json
 ```
 
+Resolve registry refs to immutable commits before refreshing metadata:
+
+```sh
+go run ./internal/actioncatalog/generate -pin ./internal/actioncatalog/generate/popular_actions.json
+go run ./internal/actioncatalog/generate -f json ./internal/actioncatalog/popular_actions.json
+```
+
+`-pin` uses Git's public remote refs, peeling annotated tags and caching each
+repository lookup for actions in subdirectories. Failure leaves the output
+registry untouched. Review the resolved commits before regenerating. Each pinned
+entry fetches metadata at that commit and emits exact tag and SHA references from
+the same bytes. Unknown SHAs stay unknown; actionlint never substitutes a moving
+tag's metadata for an arbitrary commit. Unpinned custom registry entries remain
+supported and contribute only their exact requested reference.
+
 Detect new releases on GitHub:
 
 ```sh
@@ -37,6 +52,7 @@ of each action registry. Each registry is a JSON object containing the following
 | -------------- | --------------------------------------------------------------- | -------------------------- | --------- |
 | `slug`         | GitHub repository slug                                          | `"actions/checkout"`       | Yes       |
 | `tags`         | Known release tags                                              | `["v1", "v2", "v3", "v4"]` | Yes       |
+| `pins`         | Verified tag-to-full-commit mapping used for immutable metadata | `{ "v4": "<40 hex>" }`     | No        |
 | `next`         | The next release tag. Empty means new version won't be detected | `"v5"`                     | No        |
 | `path`         | Absolute path to the action from the repository root            | `"/path/to/action"`        | No        |
 | `skip_inputs`  | Skipping checking inputs of this action or not                  | `true`                     | No        |

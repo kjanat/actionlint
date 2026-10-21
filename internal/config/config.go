@@ -457,7 +457,8 @@ func (shellcheckInlineConfig) shellcheckConfigValue() {}
 type ShellcheckConfig struct {
 	// Disable lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].
 	Disable []string `yaml:"disable" jsonschema:"nullable,pattern=^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"`
-	// Enable lists optional check names, or all. ShellCheck validates available names.
+	// Enable selects optional check names. Scalar all or true expands to [all].
+	// This selection does not change the tool enabled setting.
 	Enable []string `yaml:"enable" jsonschema:"nullable,pattern=^[a-zA-Z-]+$"`
 	// Shell overrides the inferred dialect of scripts selected for ShellCheck.
 	Shell *string `yaml:"shell" jsonschema:"nullable,enum=sh,enum=bash,enum=dash,enum=ksh,enum=busybox"`

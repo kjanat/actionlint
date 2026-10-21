@@ -38,11 +38,12 @@ type actionOutput struct {
 }
 
 type registry struct {
-	Slug    string   `json:"slug"`
-	Path    string   `json:"path"`
-	Tags    []string `json:"tags"`
-	Next    string   `json:"next"`
-	FileExt string   `json:"file_ext"`
+	Slug    string            `json:"slug"`
+	Path    string            `json:"path"`
+	Tags    []string          `json:"tags"`
+	Pins    map[string]string `json:"pins,omitempty"`
+	Next    string            `json:"next"`
+	FileExt string            `json:"file_ext"`
 	// slugs not to check inputs. Some actions allow to specify inputs which are not defined in action.yml.
 	// In such cases, actionlint no longer can check the inputs, but it can still check outputs. (#16)
 	SkipInputs bool `json:"skip_inputs"`
@@ -87,11 +88,16 @@ type gen struct {
 	log         *log.Logger
 	rawRegistry []byte
 	client      *http.Client
+	retired     map[string]bool
 }
 
 func newGen(stdout, stderr, dbgout io.Writer) *gen {
 	l := log.New(dbgout, "", log.LstdFlags)
-	return &gen{stdout, stderr, l, defaultPopularActionsJSON, &http.Client{Timeout: 30 * time.Second}}
+	return &gen{stdout, stderr, l, defaultPopularActionsJSON, &http.Client{Timeout: 30 * time.Second}, map[string]bool{}}
+}
+
+func (g *gen) outdated(spec, runtime string) bool {
+	return g.retired[spec] || isOutdated(spec, runtime)
 }
 
 func (g *gen) get(ctx context.Context, method, url string) (*http.Response, error) {
@@ -107,6 +113,13 @@ func (g *gen) registry() ([]*registry, error) {
 	if err := json.Unmarshal(g.rawRegistry, &a); err != nil {
 		return nil, fmt.Errorf("could not parse the local action registry file as JSON: %w", err)
 	}
+	for _, action := range a {
+		for tag, pin := range action.Pins {
+			if !slices.Contains(action.Tags, tag) || !commitHash(pin) {
+				return nil, fmt.Errorf("invalid immutable pin %q for %s@%s", pin, action.Slug, tag)
+			}
+		}
+	}
 	return a, nil
 }
 
@@ -118,6 +131,7 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 
 	type fetched struct {
 		spec string
+		pin  string
 		meta *actionmeta.Metadata
 		err  error
 	}
@@ -137,7 +151,11 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 	defer cancel()
 
 	fetch := func(req *request) *fetched {
-		url := req.action.rawURL(req.tag)
+		ref := req.tag
+		if pin := req.action.Pins[ref]; pin != "" {
+			ref = pin
+		}
+		url := req.action.rawURL(ref)
 		g.log.Println("Start fetching", url)
 		res, err := g.get(ctx, http.MethodGet, url)
 		if err != nil {
@@ -162,7 +180,7 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 		if req.action.SkipOutputs {
 			meta.SkipOutputs = true
 		}
-		return &fetched{spec: spec, meta: &meta}
+		return &fetched{spec: spec, pin: req.action.Pins[req.tag], meta: &meta}
 	}
 
 	for range 5 {
@@ -207,9 +225,8 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 			return nil, f.err
 		}
 
-		// Workaround for #416.
-		// Once this PR is merged, remove this `if` statement and regenerate popular_actions.go.
-		// https://github.com/dorny/paths-filter/pull/236
+		// #416: supply predicate-quantifier until the pinned metadata declares it.
+		// Upstream report: https://github.com/dorny/paths-filter/pull/236
 		if f.spec == "dorny/paths-filter@v3" {
 			f.meta.Inputs["predicate-quantifier"] = &actionmeta.Input{
 				Name:     "predicate-quantifier",
@@ -229,6 +246,13 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 		}
 
 		ret[f.spec] = f.meta
+		if f.pin != "" {
+			action, _, _ := strings.Cut(f.spec, "@")
+			ret[action+"@"+f.pin] = f.meta
+			if isOutdated(f.spec, f.meta.Runs.Using) {
+				g.retired[action+"@"+f.pin] = true
+			}
+		}
 	}
 
 	close(done)
@@ -253,7 +277,7 @@ func onlyUnknownInputFields(err error) bool {
 func (g *gen) writeJSONL(out io.Writer, actions map[string]*actionmeta.Metadata) error {
 	enc := json.NewEncoder(out)
 	for spec, meta := range actions {
-		j := actionOutput{spec, meta, isOutdated(spec, meta.Runs.Using)}
+		j := actionOutput{spec, meta, g.outdated(spec, meta.Runs.Using)}
 		if err := enc.Encode(&j); err != nil {
 			return fmt.Errorf("could not encode action %q data into JSON: %w", spec, err)
 		}
@@ -267,7 +291,7 @@ func (g *gen) writeGo(out io.Writer, actions map[string]*actionmeta.Metadata) er
 	const chunkSize = 50
 	active := 0
 	for spec, meta := range actions {
-		if !isOutdated(spec, meta.Runs.Using) {
+		if !g.outdated(spec, meta.Runs.Using) {
 			active++
 		}
 	}
@@ -305,7 +329,7 @@ package engine
 	written := 0
 	for _, spec := range specs {
 		meta := actions[spec]
-		if isOutdated(spec, meta.Runs.Using) {
+		if g.outdated(spec, meta.Runs.Using) {
 			outdated = append(outdated, spec)
 			continue
 		}
@@ -418,6 +442,9 @@ func (g *gen) readJSONL(file string) (map[string]*actionmeta.Metadata, error) {
 			return nil, fmt.Errorf("could not parse line as JSON for action metadata in file %s: %w", file, err)
 		}
 		ret[j.Spec] = j.Meta
+		if j.Outdated {
+			g.retired[j.Spec] = true
+		}
 	}
 }
 
@@ -525,6 +552,7 @@ func (g *gen) run(args []string) int {
 	var format string
 	var quiet bool
 	var detect bool
+	var pin bool
 	var registry string
 
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
@@ -532,6 +560,7 @@ func (g *gen) run(args []string) int {
 	flags.StringVar(&format, "f", "go", `output format: "go", "json" (compact catalogue), or "jsonl"`)
 	flags.StringVar(&registry, "r", "", "registry of actions as local JSON file path. when this flag is not given, the default popular actions registry will be used")
 	flags.BoolVar(&detect, "d", false, "detect new version of actions are released")
+	flags.BoolVar(&pin, "pin", false, "resolve registry tags to immutable commits and write the pinned registry")
 	flags.BoolVar(&quiet, "q", false, "disable log output to stderr")
 	flags.SetOutput(g.stderr)
 	flags.Usage = func() {
@@ -581,6 +610,34 @@ Flags:`)
 
 	g.log.Println("Start generate-popular-actions script")
 
+	if pin {
+		if detect || source != "" {
+			fmt.Fprintln(g.stderr, "-pin cannot be combined with -d or -s")
+			return 1
+		}
+		actions, err := g.registry()
+		if err == nil {
+			err = pinRegistry(context.Background(), actions, gitRemoteRefs)
+		}
+		if err != nil {
+			fmt.Fprintln(g.stderr, err)
+			return 1
+		}
+		data, err := json.MarshalIndent(actions, "", "  ")
+		if err == nil {
+			data = append(data, '\n')
+			if flags.NArg() == 1 {
+				err = os.WriteFile(flags.Arg(0), data, 0o644)
+			} else {
+				_, err = g.stdout.Write(data)
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(g.stderr, err)
+			return 1
+		}
+		return 0
+	}
 	if detect {
 		urls, err := g.detectNewReleaseURLs()
 		if err != nil {

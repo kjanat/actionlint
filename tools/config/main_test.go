@@ -97,7 +97,7 @@ func TestRuffEditorCompletions(t *testing.T) {
 	if err != nil {
 		t.Skip("Node.js is not installed")
 	}
-	if _, err := os.Stat(filepath.Join("..", "..", "..", "node_modules", "yaml-language-server", "package.json")); err != nil {
+	if _, err := os.Stat(filepath.Join("..", "..", "node_modules", "yaml-language-server", "package.json")); err != nil {
 		t.Skip("run npm ci first: yaml-language-server is not installed")
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
@@ -449,6 +449,10 @@ func TestSchemaValidation(t *testing.T) {
 		{"ShellCheck invalid rc type", `tools: {shellcheck: {config: false}}`, false, false},
 		{"ShellCheck nullable", `tools: {shellcheck: {enabled: null, config: null}}`, true, true},
 		{"ShellCheck directives", `tools: {shellcheck: {config: {disable: [SC2086, SC3000-SC4000, all], enable: [all], shell: bash, external-sources: false, extended-analysis: true, source-path: ['my scripts']}}}`, true, true},
+		{"ShellCheck all optional", `tools: {shellcheck: {config: {enable: all}}}`, true, true},
+		{"ShellCheck true optional", `tools: {shellcheck: {enabled: false, config: {enable: true}}}`, true, true},
+		{"ShellCheck false optional", `tools: {shellcheck: {config: {enable: false}}}`, false, false},
+		{"ShellCheck quoted true optional", `tools: {shellcheck: {config: {enable: 'true'}}}`, false, false},
 		{"ShellCheck empty source path", `tools: {shellcheck: {config: {source-path: [""]}}}`, false, false},
 		{"ShellCheck multiline source path", `tools: {shellcheck: {config: {source-path: ["first\nsecond"]}}}`, false, false},
 		{"ShellCheck trailing newline source path", `tools: {shellcheck: {config: {source-path: ["file\n"]}}}`, false, false},

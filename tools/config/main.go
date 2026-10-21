@@ -391,6 +391,17 @@ func generateShellcheckSchema() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.ShellcheckConfig{})
+	enable, _ := s.Properties.Get("enable")
+	enable.OneOf = append(enable.OneOf, &jsonschema.Schema{Type: "string", Enum: []any{"all"}}, &jsonschema.Schema{Type: "boolean", Enum: []any{true}})
+	enable.Description = enable.OneOf[0].Description
+	enable.OneOf[0].Description = ""
+	if description, ok := enable.OneOf[0].Extras["markdownDescription"]; ok {
+		if enable.Extras == nil {
+			enable.Extras = map[string]any{}
+		}
+		enable.Extras["markdownDescription"] = description
+		delete(enable.OneOf[0].Extras, "markdownDescription")
+	}
 	sourcePath, _ := s.Properties.Get("source-path")
 	// Match shellcheckDirectivePath: a directive cannot contain line breaks or
 	// NUL. Both quote types require an unquoted path with no space/tab or leading quote.

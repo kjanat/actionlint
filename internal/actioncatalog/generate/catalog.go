@@ -16,7 +16,7 @@ func (g *gen) writeCatalog(out io.Writer, actions map[string]*actionmeta.Metadat
 	identities := map[string]string{}
 	for _, spec := range slices.Sorted(maps.Keys(actions)) {
 		m := actions[spec]
-		if isOutdated(spec, m.Runs.Using) {
+		if g.outdated(spec, m.Runs.Using) {
 			c.Retired = append(c.Retired, spec)
 			continue
 		}

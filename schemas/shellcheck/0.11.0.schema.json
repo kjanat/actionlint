@@ -25,8 +25,8 @@
     },
     "enable": {
       "title": "enable",
-      "description": "Lists optional check names, or all. ShellCheck validates available names.",
-      "markdownDescription": "Lists optional check names, or all. ShellCheck validates available names.",
+      "description": "Selects optional check names. Scalar all or true expands to [all]. This selection does not change the tool enabled setting.",
+      "markdownDescription": "Selects optional check names. Scalar all or true expands to [all]. This selection does not change the tool enabled setting.",
       "oneOf": [
         {
           "type": "array",
@@ -37,6 +37,18 @@
         },
         {
           "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "all"
+          ]
+        },
+        {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
         }
       ]
     },

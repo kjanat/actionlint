@@ -49,6 +49,11 @@ ignore = ["shellcheck reported issue in this script: SC2086:.+"]
 Errors and warnings name the line and column in the file as written.
 
 The [schema](../actionlint.schema.json) provides editor completion and validation.
+The YAML language service completes quoted property names after a prefix is
+entered. YAML LS 2.0.0 omits completions for empty quoted keys, and accepting its
+suggestions inside empty quoted values leaves a trailing quote. Remove the quotes
+or enter a prefix before completing these entries. YAML uses nested mappings: `lint.rules.security` is a literal key, not a nested path.
+Use TOML when dotted property paths are preferred.
 An installed npm package also supplies it at
 `../node_modules/@kjanat/actionlint/actionlint.schema.json` from a `.github/` config;
 see [schema distribution](../distribution/npm/facade/README.md#configuration-schema).
@@ -321,7 +326,7 @@ tools:
         args: [exec, --silent, --quiet, "github:kjanat/shellcheck-rs@latest", --, rshellcheck]
         env: { SHELLCHECK_OPTS: "" }
     config:
-      enable: [all]
+      enable: all # true and [all] have the same effect
   ruff:
     backend:
       wasm:
@@ -329,6 +334,10 @@ tools:
     config:
       lint: { extend-select: [B, S] }
 ```
+
+`tools.shellcheck.config.enable` selects optional checks: use `all`, `true`, or `[all]`
+for every optional check, or a list of check names. Use `[]` to clear inherited
+optional checks. `tools.shellcheck.enabled` controls whether the tool runs.
 
 Executable paths are literal. Relative paths resolve from the declaring config
 file, including inherited files and file overrides; inline configs use the analysis

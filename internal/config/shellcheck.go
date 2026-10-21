@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strconv"
@@ -213,16 +214,33 @@ func (config *ToolsConfig) UnmarshalYAML(node *yaml.Node) error {
 
 // UnmarshalYAML validates native directive values before analysis starts.
 func (config *ShellcheckConfig) UnmarshalYAML(node *yaml.Node) error {
+	var values map[string]yaml.Node
+	if err := node.Decode(&values); err != nil {
+		return err
+	}
+	if value, ok := values["enable"]; ok {
+		for value.Kind == yaml.AliasNode {
+			value = *value.Alias
+		}
+		if value.Kind == yaml.ScalarNode && (value.Tag == "!!str" && value.Value == "all" || value.Tag == "!!bool" && strings.EqualFold(value.Value, "true")) {
+			value.Kind, value.Tag, value.Value = yaml.SequenceNode, "!!seq", ""
+			value.Content = []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!str", Value: "all"}}
+			values["enable"] = value
+			normalized := *node
+			normalized.Content = nil
+			for _, key := range slices.Sorted(maps.Keys(values)) {
+				entry := values[key]
+				normalized.Content = append(normalized.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key, Line: entry.Line, Column: entry.Column}, &entry)
+			}
+			node = &normalized
+		}
+	}
 	type plain ShellcheckConfig
 	var decoded plain
 	if err := node.Load(&decoded, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
 	}
 	if err := validateShellcheckBooleans(node, "extended-analysis", "external-sources"); err != nil {
-		return err
-	}
-	var values map[string]yaml.Node
-	if err := node.Decode(&values); err != nil {
 		return err
 	}
 	for _, key := range []string{"disable", "enable", "source-path"} {
