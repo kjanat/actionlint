@@ -20,7 +20,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version-file: .node-version, registry-url: https://registry.npmjs.org/, package-manager-cache: false }
-      - uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4 # v0.28.0
+      - uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
       - name: Install dependencies, check types and test the changelog package
         run: runner i --no-tools -fs @kjlint/changelog-rss:typecheck @kjlint/changelog-rss:test

@@ -44,7 +44,7 @@ jobs:
             "javascript": [
               "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**"
+              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**"
             ],
             "release": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
@@ -213,7 +213,7 @@ jobs:
       - parallel:
           - &Go { uses: *SetupGo, with: *GoMod }
           - { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
-          - &Runner { uses: kjanat/runner@b32ea932a1813ae0be44e755c16df9f9f5ca86a4, with: { version-file: .tool-versions } } # v0.28.0
+          - &Runner { uses: $/.github/actions/setup-runner, with: { version-file: .tool-versions } }
           - name: Install syft for SBOM generation
             uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
           - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

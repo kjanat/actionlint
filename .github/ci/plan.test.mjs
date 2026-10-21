@@ -240,6 +240,12 @@ test('Action smoke fixtures are re-included after the general testdata exclusion
 	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
 });
 
+test('runner cache metadata and code select the installation regression tests', () => {
+	for (const path of ['action.yml', 'setup.mjs', 'setup.test.mjs', 'mise.toml']) {
+		assert.equal(selectJobs(workflowFilters('ci'), [`.github/actions/setup-runner/${path}`]).javascript, true, path);
+	}
+});
+
 test('release snapshots cover every archived documentation input', () => {
 	const ci = workflowFilters('ci');
 	for (
