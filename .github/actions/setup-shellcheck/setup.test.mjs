@@ -9,6 +9,9 @@ import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const action = dirname(fileURLToPath(import.meta.url)).replaceAll('\\', '/');
+const msysTemporaryDirectory = process.platform === 'win32'
+	? spawnSync('bash', ['-c', 'cygpath -m /tmp'], { encoding: 'utf8' }).stdout.trim()
+	: '';
 
 /** @param {import('node:test').TestContext} t */
 function fixture(t) {
@@ -108,8 +111,8 @@ bash "$GITHUB_ACTION_PATH/setup.bash" "$1"
 			readFileSync(environment.GITHUB_OUTPUT, 'utf8').trim().split('\n').filter(Boolean).map(line => {
 				const separator = line.indexOf('=');
 				const value = line.slice(separator + 1);
-				const native = process.platform === 'win32' && value.startsWith('/')
-					? spawnSync('bash', ['-c', 'cygpath -m "$1"', 'test', value], { encoding: 'utf8' }).stdout.trim()
+				const native = process.platform === 'win32'
+					? value.replace(/^\/tmp(?=\/|$)/, msysTemporaryDirectory).replace(/^\/([A-Za-z])\//, '$1:/')
 					: value;
 				return [line.slice(0, separator), native];
 			}),
