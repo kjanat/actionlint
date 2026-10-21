@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/syntax"
 
-	actionlint "actionlint.kjanat.dev/v2/v2"
+	actionlint "actionlint.kjanat.dev/v2"
 )
 
 const workflow = `on: push

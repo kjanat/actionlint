@@ -348,14 +348,14 @@ func requireOneBackend(mapping *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	if err := r.AddGoComments("actionlint.kjanat.dev/v2/v2", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
+	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
-	if err := r.AddGoComments("actionlint.kjanat.dev/v2/v2", "internal/config/tools/command.go", jsonschema.WithFullComment()); err != nil {
+	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/tools/command.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
 	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "knowledge_options.go"} {
-		if err := r.AddGoComments("actionlint.kjanat.dev/v2/v2", filepath.Join("internal", "config", file), jsonschema.WithFullComment()); err != nil {
+		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "config", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
 	}
