@@ -247,7 +247,7 @@ func TestCompressedRegistryArtifact(t *testing.T) {
 
 func TestGitLabCorePin(t *testing.T) {
 	p := pluginregistry.Pin{
-		Registry: pluginregistry.DefaultURL, Name: "gitlab.com/group/subgroup/plugin",
+		Registry: pluginregistry.DefaultURL, Name: "gitlab.com/backend.services/team.tools/plugin",
 		RepositoryID: "10", OwnerID: "5", PluginID: "vendor/engine", Selector: "v1.0.0", Version: "v1.0.0",
 		Kind: artifact.Core, Asset: "plugin.wasm", SHA256: strings.Repeat("a", 64), Contract: "wasm-core-json/9",
 		URL: "https://gitlab.com/api/v4/projects/10/packages/generic/actionlint-plugin/v1.0.0/plugin.wasm",
@@ -257,7 +257,7 @@ func TestGitLabCorePin(t *testing.T) {
 	}
 	// Future ABI admission is independent of this host's support; unrelated
 	// component-field names can carry arbitrary vendor metadata in a core file.
-	info := artifact.Info{Kind: artifact.Core, SHA256: p.SHA256, Metadata: json.RawMessage(`{"metadata_version":1,"id":"vendor/engine","plugin_version":"1.0.0","repository":"https://gitlab.com/group/subgroup/plugin","transport":"wasm-core-json","abi_version":9,"interface":{"vendor":"extension"},"contract_sha256":false}`)}
+	info := artifact.Info{Kind: artifact.Core, SHA256: p.SHA256, Metadata: json.RawMessage(`{"metadata_version":1,"id":"vendor/engine","plugin_version":"1.0.0","repository":"https://gitlab.com/backend.services/team.tools/plugin","transport":"wasm-core-json","abi_version":9,"interface":{"vendor":"extension"},"contract_sha256":false}`)}
 	if err := p.Verify(info); err != nil {
 		t.Fatal(err)
 	}

@@ -15,9 +15,38 @@ import (
 const DefaultRegistry = "https://plugins.actionlint.kjanat.dev/"
 
 var (
-	repositoryPattern = regexp.MustCompile(`^(github\.com|gitlab\.com)/[a-z0-9][a-z0-9_-]*(/[a-z0-9][a-z0-9._-]*)+$`)
-	versionPattern    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
+	githubRepositoryPattern = regexp.MustCompile(`^github\.com/[A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	gitlabSegmentPattern    = regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_.-]*$`)
+	versionPattern          = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
 )
+
+// ValidRepository validates forge-qualified repository paths for declarations
+// and catalogue identities. Callers retain their existing case normalization.
+func ValidRepository(name string) bool {
+	if len(name) > 523 {
+		return false
+	}
+	if strings.HasPrefix(name, "github.com/") {
+		return githubRepositoryPattern.MatchString(name)
+	}
+	pathname, ok := strings.CutPrefix(name, "gitlab.com/")
+	if !ok || !strings.Contains(pathname, "/") {
+		return false
+	}
+	segments := strings.Split(pathname, "/")
+	for i, segment := range segments {
+		lower := strings.ToLower(segment)
+		if !gitlabSegmentPattern.MatchString(segment) || segment == "." || segment == ".." ||
+			strings.HasSuffix(lower, ".git") || strings.HasSuffix(lower, ".atom") {
+			return false
+		}
+		// GitLab namespaces cannot end in a dot; project paths may.
+		if i < len(segments)-1 && strings.HasSuffix(segment, ".") {
+			return false
+		}
+	}
+	return true
+}
 
 // Reference declares a repository, requested release, and catalogue.
 // Version is "latest" or an exact release tag, never a resolved artifact.
@@ -44,8 +73,7 @@ func New(name, version, registry string) (Reference, error) {
 	if strings.Count(name, "/") == 1 {
 		name = "github.com/" + name
 	}
-	if len(name) > 523 || !repositoryPattern.MatchString(name) ||
-		(strings.HasPrefix(name, "github.com/") && strings.Count(name, "/") != 2) {
+	if !ValidRepository(name) {
 		return Reference{}, fmt.Errorf("invalid plugin repository %q: use owner/repo, github.com/owner/repo, or gitlab.com/group/repo", name)
 	}
 	if version == "" {

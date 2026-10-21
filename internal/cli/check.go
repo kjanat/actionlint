@@ -96,7 +96,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	result, err := localapp.Check(ctx, options, input, plugins.Paths)
 	if err != nil {
-		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok {
+		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok && len(c.Plugins) != 0 {
 			return 0, commandUsageError{err}
 		}
 		if result != nil {

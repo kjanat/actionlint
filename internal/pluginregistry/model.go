@@ -14,16 +14,16 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/internal/pluginref"
 	"actionlint.kjanat.dev/internal/plugins/artifact"
 )
 
 const DefaultURL = "https://plugins.actionlint.kjanat.dev/"
 
 var (
-	namePattern       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
-	idPattern         = regexp.MustCompile(`^[A-Za-z0-9._/-]{1,128}$`)
-	digestPattern     = regexp.MustCompile(`^[a-f0-9]{64}$`)
-	repositoryPattern = regexp.MustCompile(`^(github\.com|gitlab\.com)/[A-Za-z0-9][A-Za-z0-9_-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+$`)
+	namePattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
+	idPattern     = regexp.MustCompile(`^[A-Za-z0-9._/-]{1,128}$`)
+	digestPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 )
 
 type Catalog struct {
@@ -152,8 +152,7 @@ func numericID(value string) bool {
 }
 
 func canonicalName(name string) bool {
-	return len(name) <= 523 && repositoryPattern.MatchString(name) &&
-		(!strings.HasPrefix(name, "github.com/") || strings.Count(name, "/") == 2)
+	return pluginref.ValidRepository(name)
 }
 
 func (p Pin) Validate() error {
