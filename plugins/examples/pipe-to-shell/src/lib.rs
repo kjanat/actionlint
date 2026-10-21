@@ -42,7 +42,9 @@ fn check_script(script: &Script, findings: &mut Vec<Diagnostic>) {
                 rule: String::new(),
                 code: String::new(),
                 severity: "warning".to_string(),
-                message: format!("script pipes a download into {shell}, which runs unverified remote code"),
+                message: format!(
+                    "script pipes a download into {shell}, which runs unverified remote code"
+                ),
                 path: script.path.clone(),
                 start,
                 end,
@@ -50,6 +52,13 @@ fn check_script(script: &Script, findings: &mut Vec<Diagnostic>) {
             });
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Separator {
+    Pipe,
+    LogicalOr,
+    End,
 }
 
 fn pipes_into_shell(line: &str) -> Vec<(u32, String)> {
@@ -61,21 +70,21 @@ fn pipes_into_shell(line: &str) -> Vec<(u32, String)> {
     while i < chars.len() {
         if chars[i] == '|' {
             if i + 1 < chars.len() && chars[i + 1] == '|' {
-                segments.push((segment_start, i));
+                segments.push((segment_start, i, Separator::LogicalOr));
                 i += 2;
                 segment_start = i;
                 continue;
             }
-            segments.push((segment_start, i));
+            segments.push((segment_start, i, Separator::Pipe));
             i += 1;
             segment_start = i;
             continue;
         }
         i += 1;
     }
-    segments.push((segment_start, chars.len()));
+    segments.push((segment_start, chars.len(), Separator::End));
     let mut previous_downloads = false;
-    for (start, end) in segments {
+    for (start, end, separator) in segments {
         let words = command_words(&chars[start..end], start);
         let Some((word_column, word)) = words.first() else {
             previous_downloads = false;
@@ -84,7 +93,7 @@ fn pipes_into_shell(line: &str) -> Vec<(u32, String)> {
         if previous_downloads && SHELLS.contains(&word.as_str()) {
             findings.push((*word_column + 1, word.clone()));
         }
-        previous_downloads = DOWNLOADERS.contains(&word.as_str());
+        previous_downloads = separator == Separator::Pipe && DOWNLOADERS.contains(&word.as_str());
     }
     findings
 }
@@ -121,7 +130,8 @@ fn position(script: &Script, line: u32, column: u32, exclusive: bool) -> Option<
             continue;
         }
         let inside = if exclusive {
-            column > span.start && column <= span.end || span.start == span.end && column == span.start
+            column > span.start && column <= span.end
+                || span.start == span.end && column == span.start
         } else {
             column >= span.start && column < span.end
         };
@@ -143,3 +153,26 @@ fn position(script: &Script, line: u32, column: u32, exclusive: bool) -> Option<
 }
 
 export!(Plugin);
+
+#[cfg(test)]
+mod tests {
+    use super::pipes_into_shell;
+
+    #[test]
+    fn logical_or_does_not_pipe_downloads() {
+        assert!(pipes_into_shell("curl URL || bash").is_empty());
+        assert!(pipes_into_shell("curl URL || echo ignored | bash").is_empty());
+        assert_eq!(
+            pipes_into_shell("curl URL | bash"),
+            vec![(12, "bash".to_string())]
+        );
+        assert_eq!(
+            pipes_into_shell("false || curl URL | bash"),
+            vec![(21, "bash".to_string())]
+        );
+        assert_eq!(
+            pipes_into_shell("curl URL | bash || wget URL | sh"),
+            vec![(12, "bash".to_string()), (31, "sh".to_string())]
+        );
+    }
+}

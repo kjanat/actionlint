@@ -35,13 +35,29 @@ impl Guest for Plugin {
                 Ok(content) => Err(format!("read host file: {content}")),
                 Err(error) => Err(format!("filesystem denied: {error}")),
             },
-            "environment" => Err(format!("environment: {:?}", std::env::vars().collect::<Vec<_>>())),
+            "environment" => Err(format!(
+                "environment: {:?}",
+                std::env::vars().collect::<Vec<_>>()
+            )),
             "log" => {
                 log(&format!("analyzing {}", input.path));
                 println!("stdout line");
                 eprintln!("stderr line");
                 Ok(Vec::new())
             }
+            "rule-identities" => Ok(["", "undeclared-check", "misbehave", "shellcheck", ""]
+                .into_iter()
+                .map(|rule| Diagnostic {
+                    rule: rule.to_string(),
+                    code: "MB001".to_string(),
+                    severity: "warning".to_string(),
+                    message: format!("rule {rule:?}"),
+                    path: input.path.clone(),
+                    start: Position { line: 1, column: 1 },
+                    end: Position { line: 1, column: 3 },
+                    fixes: Vec::new(),
+                })
+                .collect()),
             "error" => Err("analysis failed on purpose".to_string()),
             _ => Ok(vec![Diagnostic {
                 rule: String::new(),

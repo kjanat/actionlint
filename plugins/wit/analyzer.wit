@@ -131,9 +131,9 @@ interface analyzer {
         edits: list<edit>,
     }
 
-    /// A finding. An empty `rule` takes the plugin name; an empty `path` takes the
-    /// analyzed document. `code` and `severity` carry the plugin's own identifier
-    /// and level when it has them.
+    /// A finding. `rule` must be empty or equal the descriptor name; `code`
+    /// carries a plugin-specific check identifier. An empty `rule` or `path`
+    /// takes the plugin name or analyzed document. `severity` carries its level.
     record diagnostic {
         rule: string,
         code: string,

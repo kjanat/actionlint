@@ -271,3 +271,41 @@ func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
 		t.Fatalf("workflow finding=%+v", workflow)
 	}
 }
+
+func TestComponentRejectsUndeclaredRulesAndRetainsValidFindings(t *testing.T) {
+	plugin := loadPlugin(t, "misbehave", component.Options{})
+	findings, err := misbehave(t, plugin, "rule-identities")
+	if err == nil || !strings.Contains(err.Error(), `undeclared diagnostic rule "undeclared-check"`) || !strings.Contains(err.Error(), `undeclared diagnostic rule "shellcheck"`) {
+		t.Fatalf("findings=%+v err=%v", findings, err)
+	}
+	if len(findings) != 3 {
+		t.Fatalf("valid findings lost: %+v", findings)
+	}
+	for i, want := range []string{"", "misbehave", ""} {
+		if findings[i].Rule != want || findings[i].Code != "MB001" {
+			t.Fatalf("finding %d=%+v", i, findings[i])
+		}
+	}
+}
+
+func TestRustPluginDistinguishesLogicalOrFromPipes(t *testing.T) {
+	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
+	for _, tt := range []struct {
+		script string
+		want   int
+	}{
+		{"curl URL || bash", 0},
+		{"curl URL | bash", 1},
+		{"false || curl URL | bash", 1},
+		{"curl URL || echo ignored | bash", 0},
+		{"curl URL | bash || wget URL | sh", 2},
+	} {
+		t.Run(tt.script, func(t *testing.T) {
+			root := writeRepository(t, map[string]string{".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + tt.script + "\n"})
+			result := analyzeRepository(t, root, plugin)
+			if len(result.Diagnostics) != tt.want {
+				t.Fatalf("diagnostics=%+v, want %d", result.Diagnostics, tt.want)
+			}
+		})
+	}
+}

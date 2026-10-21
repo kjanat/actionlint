@@ -49,8 +49,10 @@ needs. `analyze` receives the document path and content, declared scripts, scrip
 mapping names and the JSON options the host registered, and returns a list of diagnostics or an error message.
 
 Script text comes with spans that map each line and column back to the declaring document. The WIT comment on `span`
-gives the lookup. A diagnostic with an empty `rule` takes the plugin name, and an empty `path` means the analyzed
-document, so findings in a composite action copy `script.path`.
+gives the lookup. A diagnostic `rule` must be empty or equal the plugin name; use `code` for check identifiers.
+Findings with other rule names are rejected as incomplete analysis while valid findings remain available.
+An empty `rule` takes the plugin name, and an empty `path` means the analyzed document, so findings in a composite
+action copy `script.path`.
 
 ### Rust
 

@@ -225,10 +225,18 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 		return nil, err
 	}
 	diagnostics, err := liftAnalysis(results[0])
-	if err != nil {
-		return nil, p.failure(ctx, err)
+	valid := diagnostics[:0]
+	for _, finding := range diagnostics {
+		if finding.Rule != "" && finding.Rule != p.descriptor.Name {
+			err = errors.Join(err, fmt.Errorf("undeclared diagnostic rule %q; use code for plugin-specific check identifiers", finding.Rule))
+			continue
+		}
+		valid = append(valid, finding)
 	}
-	return diagnostics, nil
+	if err != nil {
+		return valid, p.failure(ctx, err)
+	}
+	return valid, nil
 }
 
 func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
