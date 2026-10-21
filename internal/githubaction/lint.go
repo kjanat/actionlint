@@ -271,7 +271,11 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
+	withTimeout := a.withTimeout
+	if withTimeout == nil {
+		withTimeout = context.WithTimeout
+	}
+	ctx, cancel := withTimeout(context.Background(), a.timeout)
 	defer cancel()
 	request := *req
 	request.ctx = ctx
