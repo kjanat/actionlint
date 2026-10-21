@@ -88,10 +88,11 @@ func (config *ShellcheckToolConfig) UnmarshalYAML(node *yaml.Node) error {
 // UnmarshalYAML selects a path or an inline mapping without conflating their fields.
 func (config *ShellcheckConfigSource) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind == yaml.ScalarNode && node.Tag == "!!str" {
-		if node.Value == "" || strings.ContainsAny(node.Value, "\x00\r\n") {
-			return errors.New("tools.shellcheck.config: expected a nonempty single-line path")
+		selection, err := ShellcheckConfigPath(node.Value)
+		if err != nil {
+			return err
 		}
-		config.value = shellcheckConfigPath(node.Value)
+		config.value = selection.value
 		return nil
 	}
 	if node.Kind != yaml.MappingNode {
@@ -103,6 +104,38 @@ func (config *ShellcheckConfigSource) UnmarshalYAML(node *yaml.Node) error {
 	}
 	config.value = shellcheckInlineConfig{inline}
 	return nil
+}
+
+// ShellcheckConfigPath selects an rc file or directory without reading it.
+// It rejects empty paths and paths containing newlines or NUL bytes.
+func ShellcheckConfigPath(path string) (*ShellcheckConfigSource, error) {
+	if path == "" || strings.ContainsAny(path, "\x00\r\n") {
+		return nil, errors.New("tools.shellcheck.config: expected a nonempty single-line path")
+	}
+	return &ShellcheckConfigSource{value: shellcheckConfigPath(path)}, nil
+}
+
+// ShellcheckConfigInline validates inline settings and owns a copy of their values.
+func ShellcheckConfigInline(settings ShellcheckConfig) (*ShellcheckConfigSource, error) {
+	if err := settings.validate(); err != nil {
+		return nil, err
+	}
+	settings.Disable = slices.Clone(settings.Disable)
+	settings.Enable = slices.Clone(settings.Enable)
+	settings.SourcePath = slices.Clone(settings.SourcePath)
+	if settings.Shell != nil {
+		shell := *settings.Shell
+		settings.Shell = &shell
+	}
+	if settings.ExtendedAnalysis != nil {
+		enabled := *settings.ExtendedAnalysis
+		settings.ExtendedAnalysis = &enabled
+	}
+	if settings.ExternalSources != nil {
+		enabled := *settings.ExternalSources
+		settings.ExternalSources = &enabled
+	}
+	return &ShellcheckConfigSource{value: shellcheckInlineConfig{settings}}, nil
 }
 
 // MarshalYAML preserves the selected path or inline mapping in resolved output.
@@ -177,25 +210,33 @@ func (config *ShellcheckConfig) UnmarshalYAML(node *yaml.Node) error {
 			}
 		}
 	}
-	for _, code := range decoded.Disable {
+	validated := ShellcheckConfig(decoded)
+	if err := validated.validate(); err != nil {
+		return err
+	}
+	*config = validated
+	return nil
+}
+
+func (config *ShellcheckConfig) validate() error {
+	for _, code := range config.Disable {
 		if !shellcheckCodeSelector.MatchString(code) {
 			return fmt.Errorf("tools.shellcheck.config.disable: invalid code selector %q", code)
 		}
 	}
-	for _, name := range decoded.Enable {
+	for _, name := range config.Enable {
 		if !shellcheckOptionalName.MatchString(name) {
 			return fmt.Errorf("tools.shellcheck.config.enable: invalid check name %q", name)
 		}
 	}
-	if decoded.Shell != nil && !slices.Contains([]string{"sh", "bash", "dash", "ksh", "busybox"}, *decoded.Shell) {
-		return fmt.Errorf("tools.shellcheck.config.shell: unknown dialect %q", *decoded.Shell)
+	if config.Shell != nil && !slices.Contains([]string{"sh", "bash", "dash", "ksh", "busybox"}, *config.Shell) {
+		return fmt.Errorf("tools.shellcheck.config.shell: unknown dialect %q", *config.Shell)
 	}
-	for _, path := range decoded.SourcePath {
+	for _, path := range config.SourcePath {
 		if _, err := shellcheckDirectivePath(path); err != nil {
 			return err
 		}
 	}
-	*config = ShellcheckConfig(decoded)
 	return nil
 }
 

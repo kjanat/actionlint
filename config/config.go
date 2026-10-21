@@ -2,6 +2,7 @@
 package config
 
 import (
+	"actionlint.kjanat.dev/internal/lintconfig"
 	"actionlint.kjanat.dev/internal/repoconfig"
 	"actionlint.kjanat.dev/internal/toolconfig"
 )
@@ -10,6 +11,9 @@ type Config = repoconfig.Config
 type Inspection = repoconfig.Inspection
 type Origin = repoconfig.Origin
 type Overlay = repoconfig.Overlay
+
+// OverlayError identifies individually valid inputs whose merged configuration is invalid.
+type OverlayError = repoconfig.OverlayError
 type ConfigOverride = repoconfig.Override
 type Report = repoconfig.Report
 type Selection = repoconfig.Selection
@@ -31,6 +35,12 @@ type RuleLevel = repoconfig.Level
 type RulePreset = repoconfig.Preset
 type Presets = repoconfig.Presets
 type RuleSetting = repoconfig.Setting
+
+// RequiredActionsOptions selects action names or action/ref patterns required by a rule.
+type RequiredActionsOptions = repoconfig.RequiredActionsOptions
+
+// CommitHashOptions selects exceptions to immutable action references.
+type CommitHashOptions = lintconfig.CommitHashOptions
 type SelfHostedRunnerConfig = repoconfig.SelfHostedRunnerConfig
 type ShellcheckConfig = repoconfig.ShellcheckConfig
 type ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
@@ -79,4 +89,14 @@ func RequirePermissions(scope string) (*PermissionsPolicy, error) {
 // DisallowSuppressions constructs an enabled suppression policy for the selected rules.
 func DisallowSuppressions(report string, rules ...string) (*SuppressionsPolicy, error) {
 	return repoconfig.DisallowSuppressions(report, rules...)
+}
+
+// ShellcheckConfigPath selects a nonempty, single-line rc file or directory path.
+func ShellcheckConfigPath(path string) (*ShellcheckConfigSource, error) {
+	return repoconfig.ShellcheckConfigPath(path)
+}
+
+// ShellcheckConfigInline validates inline settings and owns a copy of their values.
+func ShellcheckConfigInline(settings ShellcheckConfig) (*ShellcheckConfigSource, error) {
+	return repoconfig.ShellcheckConfigInline(settings)
 }
