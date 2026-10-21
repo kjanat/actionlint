@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ const (
 	DefaultTimeout = 10 * time.Second
 	// DefaultMemoryPages bounds a plugin instance's linear memory in 64 KiB pages.
 	DefaultMemoryPages uint32 = 1024
+	maxComponentBytes         = 128 * 1024 * 1024
 )
 
 var grantedImportPrefixes = []string{"wasi:cli/", "wasi:clocks/", "wasi:io/", "wasi:random/", "wasi:filesystem/"}
@@ -81,7 +83,7 @@ func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
 	if options.MemoryPages > 65536 {
 		return nil, fmt.Errorf("plugin %s: memory limit %d exceeds WebAssembly maximum of 65536 pages", path, options.MemoryPages)
 	}
-	data, err := fsread.New(ctx, nil, nil).ReadFile(path)
+	data, err := readComponentFile(ctx, path, maxComponentBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +109,31 @@ func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
 		return nil, fmt.Errorf("plugin %s: %w", path, err)
 	}
 	return p, nil
+}
+
+func readComponentFile(ctx context.Context, path string, limit int64) ([]byte, error) {
+	file, err := fsread.New(ctx, nil, nil).Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	stop := context.AfterFunc(ctx, func() { _ = file.Close() })
+	defer stop()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, errors.Join(err, ctx.Err())
+	}
+	if info.Size() > limit {
+		return nil, fmt.Errorf("component exceeds size limit of %d bytes", limit)
+	}
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err = errors.Join(err, ctx.Err()); err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("component exceeds size limit of %d bytes", limit)
+	}
+	return data, nil
 }
 
 func (p *Plugin) load(ctx context.Context, data []byte) error {
