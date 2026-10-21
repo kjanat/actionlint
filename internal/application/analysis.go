@@ -295,7 +295,12 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 		})
 	}
 	err = group.Wait()
-	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int { return strings.Compare(a.Path, b.Path) })
+	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int {
+		if order := strings.Compare(a.Path, b.Path); order != 0 {
+			return order
+		}
+		return strings.Compare(a.Identity, b.Identity)
+	})
 	result.RunnerEvidence = session.runnerReports
 	if err == nil {
 		err = ctx.Err()

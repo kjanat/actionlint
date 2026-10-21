@@ -129,6 +129,11 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 	}
 	for i := range answers {
 		a := &answers[i]
+		resolution, err := resolutionValue(a.Resolution)
+		if err != nil {
+			return k, err
+		}
+		a.Resolution = resolution
 		if a.Evidence.Scope != scope {
 			return k, errors.New("runner answer scope does not match requested scope")
 		}
@@ -178,6 +183,32 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 	}
 	k.jobs = jobs
 	return k, nil
+}
+
+// Value-receiver markers permit native providers to return pointers too. Keep
+// downstream validation and report identity independent of that Go spelling.
+func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, error) {
+	switch value := resolution.(type) {
+	case runnerapi.Resolved, runnerapi.NoMatch, runnerapi.Unknown, runnerapi.NotApplicable:
+		return value, nil
+	case *runnerapi.Resolved:
+		if value != nil {
+			return *value, nil
+		}
+	case *runnerapi.NoMatch:
+		if value != nil {
+			return *value, nil
+		}
+	case *runnerapi.Unknown:
+		if value != nil {
+			return *value, nil
+		}
+	case *runnerapi.NotApplicable:
+		if value != nil {
+			return *value, nil
+		}
+	}
+	return nil, errors.New("invalid runner resolution")
 }
 
 func joinAnswers(job *workflowlang.Job, answers []runnerapi.Answer) (JobKnowledge, error) {
@@ -271,14 +302,15 @@ func builtinJob(job *workflowlang.Job) JobKnowledge {
 	}
 	k.CaseInsensitive = k.Platform == Windows
 	labels := Labels(job.RunsOn)
-	mac, ubuntu := len(labels) != 0, k.Ephemeral
+	mac, ubuntu, macOS := k.Ephemeral, k.Ephemeral, false
 	for _, label := range labels {
 		name := strings.ToLower(label.Value)
 		mac = mac && (strings.HasPrefix(name, "macos-") || strings.HasPrefix(name, "xcode-"))
 		ubuntu = ubuntu && strings.HasPrefix(name, "ubuntu-")
+		macOS = macOS || defaultRunnerOSCompats[name]&defaultRunnerOSCompats["macos"] != 0
 	}
 	k.CaseInsensitive = k.CaseInsensitive || mac
 	k.ShIsDash = ubuntu
-	k.PathsKnown = k.Platform != Any
+	k.PathsKnown = k.Platform != Any && (!macOS || k.Ephemeral)
 	return k
 }
