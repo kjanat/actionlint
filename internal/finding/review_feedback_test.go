@@ -8,7 +8,7 @@ import (
 )
 
 func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
-	base := Finding{Diagnostic: diagnostic.Diagnostic{Rule: "first", Path: "ci.yml", Message: "same", Start: diagnostic.Position{Line: 1, Column: 1}}}
+	base := Finding{Rule: "first", Path: "ci.yml", Message: "same", Start: diagnostic.Position{Line: 1, Column: 1}}
 	for _, change := range []struct {
 		name string
 		edit func(*Finding)
