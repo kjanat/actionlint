@@ -599,10 +599,6 @@ test.yaml:15:24: interpolated value may contain characters that change script sy
    |
 15 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:17:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-   |
-17 |       - run: echo '${{ steps.get_value.conclusion }}'
-   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~
 test.yaml:22:24: property "get_value" is not defined in steps [expression-reference]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
