@@ -1,4 +1,3 @@
 test.yaml:10:24: property "get_value" is not defined in steps [expression-reference]
 test.yaml:15:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-test.yaml:17:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
 test.yaml:22:24: property "get_value" is not defined in steps [expression-reference]
