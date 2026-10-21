@@ -111,11 +111,14 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 	for range 2 {
 		root, workflows := writeScriptEngineRepository(t)
 		loaded := map[string]bool{}
+		var loadedMu sync.Mutex
 		session, err := NewAnalysisSession(AnalysisOptions{
 			Context: t.Context(), WorkingDir: root, Ruff: "ruff", QuietSelection: true,
 			RuffOptions: &ExternalCommandOptions{Optional: true}, ConfigOverlays: []ConfigOverlay{overlay},
 			LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
+				loadedMu.Lock()
 				loaded[path] = true
+				loadedMu.Unlock()
 				return &recordingEngine{}, nil
 			},
 		})

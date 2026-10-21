@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -310,11 +311,12 @@ func liftAnalysis(v wacogo.Val) ([]diagnostic.Diagnostic, error) {
 	}
 	diagnostics := make([]diagnostic.Diagnostic, 0, list.Len())
 	for i := range list.Len() {
-		d, err := liftDiagnostic(list.Get(i))
-		if err != nil {
-			return nil, err
+		d, diagnosticErr := liftDiagnostic(list.Get(i))
+		if diagnosticErr != nil {
+			err = errors.Join(err, fmt.Errorf("diagnostic %d: %w", i, diagnosticErr))
+			continue
 		}
 		diagnostics = append(diagnostics, d)
 	}
-	return diagnostics, nil
+	return diagnostics, err
 }

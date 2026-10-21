@@ -48,7 +48,7 @@ func (req *lintRequest) configureShellcheck(env func(string) string) error {
 	req.shellcheckSettings = &flags.settings
 	req.hints = append(req.hints, flags.hints...)
 	if req.shellcheckOptions == nil {
-		req.shellcheckOptions = &actionlint.ExternalCommandOptions{}
+		req.shellcheckOptions = &actionlint.ExternalCommandOptions{AllowWasm: true}
 	}
 	req.shellcheckOptions.Arguments = append(req.shellcheckOptions.Arguments, flags.arguments()...)
 	// Pass the validated defaults once, before the explicit input arguments.

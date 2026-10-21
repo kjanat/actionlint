@@ -29,9 +29,12 @@ func (e *admissionEngine) Close(ctx context.Context) error {
 
 func TestScriptEnginesBoundsConcurrentDistinctAdmissions(t *testing.T) {
 	var loaded []*admissionEngine
+	var loadedMu sync.Mutex
 	engines := NewScriptEngines(func(context.Context, string) (analyzer.ScriptBackend, error) {
 		backend := &admissionEngine{}
+		loadedMu.Lock()
 		loaded = append(loaded, backend)
+		loadedMu.Unlock()
 		return backend, nil
 	})
 	var wg sync.WaitGroup

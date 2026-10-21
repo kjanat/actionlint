@@ -253,7 +253,7 @@ func reportPath(workingDir, workspace, path string) string {
 }
 
 func toolOptionsInDirectory(options *actionlint.ExternalCommandOptions, directory string) *actionlint.ExternalCommandOptions {
-	configured := actionlint.ExternalCommandOptions{}
+	configured := actionlint.ExternalCommandOptions{AllowWasm: true}
 	if options != nil {
 		configured = *options
 	}
