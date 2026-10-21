@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/runner"
 	"github.com/partite-ai/wacogo"
 )
@@ -227,7 +228,7 @@ func liftRunnerAnswer(value wacogo.Val) (runner.Answer, error) {
 			if err != nil {
 				return answer, err
 			}
-			pos, err := liftPosition(r.Field("position"))
+			pos, err := liftRunnerPosition(r.Field("position"))
 			if err != nil {
 				return answer, err
 			}
@@ -244,6 +245,15 @@ func liftRunnerAnswer(value wacogo.Val) (runner.Answer, error) {
 		answer.Resolution = runner.NotApplicable{}
 	}
 	return answer, nil
+}
+
+func liftRunnerPosition(value wacogo.Val) (diagnostic.Position, error) {
+	// Runner rejections may address the containing job. This sentinel is not
+	// valid for analyzer diagnostics; all other coordinates use their checks.
+	if record, ok := value.(*wacogo.ValRecord); ok && record.Field("line") == wacogo.ValU32(0) && record.Field("column") == wacogo.ValU32(0) {
+		return diagnostic.Position{}, nil
+	}
+	return liftPosition(value)
 }
 
 func liftRunnerCandidate(value wacogo.Val) (runner.Candidate, error) {

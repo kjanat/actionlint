@@ -34,7 +34,7 @@ func (v Expression) MarshalJSON() ([]byte, error) {
 }
 
 // Constraint carries a host-owned source location; returned rejections must
-// refer to one of the supplied constraints.
+// refer to one of the supplied constraints or use (0, 0) for the containing job.
 type Constraint struct {
 	Value    Term
 	Position diagnostic.Position
