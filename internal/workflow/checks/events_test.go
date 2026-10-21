@@ -33,6 +33,9 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 		{"merge_group", "destroyed", false},
 		{"check_suite", "requested", false},
 		{"issue_comment", "pinned", false},
+		{"pull_request_target", "milestoned", true},
+		{"pull_request_target", "demilestoned", true},
+		{"pull_request_target", "stacked", false},
 	} {
 		t.Run(tc.event+"/"+tc.activity, func(t *testing.T) {
 			rule := &eventsCheck{name: "events"}

@@ -28,7 +28,7 @@ var AllWebhookTypes = map[string][]string{
 	"pull_request":                {"assigned", "auto_merge_disabled", "auto_merge_enabled", "closed", "converted_to_draft", "demilestoned", "dequeued", "edited", "enqueued", "labeled", "locked", "milestoned", "opened", "ready_for_review", "reopened", "review_request_removed", "review_requested", "synchronize", "unassigned", "unlabeled", "unlocked"},
 	"pull_request_review":         {"dismissed", "edited", "submitted"},
 	"pull_request_review_comment": {"created", "deleted", "edited"},
-	"pull_request_target":         {"assigned", "auto_merge_disabled", "auto_merge_enabled", "closed", "converted_to_draft", "dequeued", "edited", "enqueued", "labeled", "locked", "opened", "ready_for_review", "reopened", "review_request_removed", "review_requested", "synchronize", "unassigned", "unlabeled", "unlocked"},
+	"pull_request_target":         {"assigned", "auto_merge_disabled", "auto_merge_enabled", "closed", "converted_to_draft", "demilestoned", "dequeued", "edited", "enqueued", "labeled", "locked", "milestoned", "opened", "ready_for_review", "reopened", "review_request_removed", "review_requested", "synchronize", "unassigned", "unlabeled", "unlocked"},
 	"push":                        {},
 	"registry_package":            {"published", "updated"},
 	"release":                     {"created", "deleted", "edited", "prereleased", "published", "released", "unpublished"},

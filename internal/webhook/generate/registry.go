@@ -163,18 +163,38 @@ func documentedTriggers(src, pullRequest []byte) (map[string][]string, error) {
 	text := strings.ReplaceAll(string(src), "{% data reusables.actions.workflow-triggers-pull-request-activity-types %}", strings.TrimSpace(string(pullRequest)))
 	heading := regexp.MustCompile("^## `([^`]+)`$")
 	code := regexp.MustCompile("`([^`]+)`")
+	enterpriseTable := regexp.MustCompile(`^\| {% ifversion ghes(?: (?:<|<=|>|>=|==) [0-9]+(?:\.[0-9]+)*)? %} \|$`)
 	event := ""
+	skipEnterpriseTable := false
 	result := map[string][]string{}
 	for line := range strings.SplitSeq(text, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "## ") {
 			event = ""
+			skipEnterpriseTable = false
 			if match := heading.FindStringSubmatch(line); match != nil {
 				event = match[1]
 			}
 			continue
 		}
 		if event == "" || !strings.HasPrefix(line, "| ") {
+			continue
+		}
+		// This registry targets GitHub.com. A GHES-only row must not consume
+		// the event before its current else variant is reached. Unknown table
+		// conditions need explicit review when updating the pinned docs.
+		if strings.HasPrefix(line, "| {% ifversion ") {
+			if !enterpriseTable.MatchString(line) || skipEnterpriseTable {
+				return nil, fmt.Errorf("unsupported documentation table condition for %s: %s", event, line)
+			}
+			skipEnterpriseTable = true
+			continue
+		}
+		if line == "| {% else %} |" || line == "| {% endif %} |" {
+			skipEnterpriseTable = false
+			continue
+		}
+		if skipEnterpriseTable {
 			continue
 		}
 		cells := strings.Split(line, "|")

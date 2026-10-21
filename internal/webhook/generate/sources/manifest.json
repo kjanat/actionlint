@@ -42,18 +42,6 @@
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
       "production_verified": false
     },
-    "schema-activity-only:pull_request_target:milestoned": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
-      "reason": "Activity exists in schema but is absent from the pinned Actions event activity table. Docs take precedence pending documented support.",
-      "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
-    },
-    "schema-activity-only:pull_request_target:demilestoned": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
-      "reason": "Activity exists in schema but is absent from the pinned Actions event activity table. Docs take precedence pending documented support.",
-      "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
-    },
     "no-payload:image_version": {
       "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
       "reason": "Pinned webhook catalogue has no image_version payload. Keep payload open until a schema is available.",
@@ -169,18 +157,6 @@
       "production_verified": false
     },
     "payload-activity-only:pull_request_target:stacked": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
-      "reason": "Payload activity is absent from the Actions event activity table; never promote webhook-only observations into trigger validation.",
-      "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
-    },
-    "payload-activity-only:pull_request_target:milestoned": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
-      "reason": "Payload activity is absent from the Actions event activity table; never promote webhook-only observations into trigger validation.",
-      "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
-    },
-    "payload-activity-only:pull_request_target:demilestoned": {
       "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
       "reason": "Payload activity is absent from the Actions event activity table; never promote webhook-only observations into trigger validation.",
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",

@@ -16,6 +16,8 @@ through the referenced `one-of`, `mapping`, and `sequence` definitions.
 The pinned Actions documentation activity tables take precedence on conflicts.
 The pull-request table includes its pinned reusable Markdown fragment. This
 snapshot targets GitHub.com (fpt/ghec), not every historical GHES version.
+For conditional table rows, GHES-only branches are skipped in favor of the
+GitHub.com `else` variant; unknown table conditions fail generation for review.
 The manifest distinguishes omitted-`types` defaults from permitted activities.
 Its default source is the documentation's pull-request and pull-request-target
 sections; both select opened, synchronize and reopened. Other events select all

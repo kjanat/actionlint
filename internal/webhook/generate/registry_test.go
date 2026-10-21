@@ -62,6 +62,45 @@ func TestDocumentationParserRejectsUnknownActivityCell(t *testing.T) {
 	}
 }
 
+func TestDocumentationParserSelectsCurrentTableVariant(t *testing.T) {
+	src := "## `pull_request_target`\n" +
+		"| Webhook event payload | Activity types | SHA |\n" +
+		"| --- | --- | --- |\n" +
+		"| {% ifversion ghes < 3.20 %} |\n" +
+		"| payload | `opened`, `legacy_only` | sha |\n" +
+		"| {% else %} |\n" +
+		"| payload | `opened`, `milestoned`, `demilestoned` | sha |\n" +
+		"| {% endif %} |\n"
+	got, err := documentedTriggers([]byte(src), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"demilestoned", "milestoned", "opened"}; !slices.Equal(got["pull_request_target"], want) {
+		t.Fatalf("current activities = %v; want %v", got["pull_request_target"], want)
+	}
+}
+
+func TestPinnedPullRequestTargetActivities(t *testing.T) {
+	registry, _, err := loadRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range []string{"pull_request", "pull_request_target"} {
+		for _, activity := range []string{"milestoned", "demilestoned"} {
+			if !slices.Contains(registry[event].Activities, activity) {
+				t.Errorf("current documentation permits %s.%s", event, activity)
+			}
+		}
+	}
+}
+
+func TestDocumentationParserRejectsUnknownTableCondition(t *testing.T) {
+	src := "## `pull_request_target`\n| {% ifversion unknown-product %} |\n| payload | `opened` | sha |\n"
+	if _, err := documentedTriggers([]byte(src), nil); err == nil || !strings.Contains(err.Error(), "unsupported documentation table condition") {
+		t.Fatalf("unknown table variant accepted: %v", err)
+	}
+}
+
 func TestReconciliationRequiresReviewedCurrentExceptions(t *testing.T) {
 	for _, tc := range []struct{ name, want string }{
 		{"missing", "unreviewed difference: payload-activity-only:merge_group:destroyed"},
