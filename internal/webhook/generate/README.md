@@ -13,7 +13,10 @@ following `workflow-root-strict` -> `on-strict` -> `on-mapping-strict`. The perm
 schema is never used. Event configuration keys and activity enums are resolved
 through the referenced `one-of`, `mapping`, and `sequence` definitions.
 
-The pinned Actions documentation activity tables take precedence on conflicts.
+The pinned Actions documentation activity tables take precedence on conflicts,
+with explicit `preserve_schema` exceptions for reviewed compatibility supplements.
+Those exceptions preserve `image_version` activities and pull-request `stacked`
+from the strict workflow schema. Payload-only activities cannot use this policy.
 The pull-request table includes its pinned reusable Markdown fragment. This
 snapshot targets GitHub.com (fpt/ghec), not every historical GHES version.
 For conditional table rows, GHES-only branches are skipped in favor of the

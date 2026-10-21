@@ -781,7 +781,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "c367e6685a2feba972a5e40329f0e893263303ac2750fd85114f0b00fd15a9a4"
+      "languageservices/workflow-parser/testdata/reader/events-mapping-all.yml": "9195162d4974d9a199e47ece1866eb3122f7be3034114baab6a93f728fb9b366"
     },
     "findings": [
       {
@@ -790,21 +790,6 @@
         "rationale": "Reader fixture versus lint checks: combined include/exclude filters, retired events, one-minute schedules, and required inputs with defaults produce additional diagnostics.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-all.yml"
-        ]
-      },
-      {
-        "category": "contract-difference",
-        "scope": "diagnostic",
-        "diagnostic_indices": [
-          6,
-          10
-        ],
-        "rationale": "The pinned workflow schema permits stacked activity for pull_request and pull_request_target. The current GitHub.com activity tables omit stacked; the trigger registry follows those tables. Both sources permit milestoned and demilestoned for pull_request_target. This is the recorded documentation/schema disagreement; live GitHub service rejection has not been verified.",
-        "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/events-mapping-all.yml",
-          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request",
-          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
-          "source:internal/webhook/generate/sources/manifest.json"
         ]
       }
     ]
@@ -2141,40 +2126,6 @@
           "fixture:languageservices/workflow-parser/testdata/reader/job-strategy.yml",
           "source:internal/expression/script_interpolation.go",
           "source:internal/workflow/expressions/script_values.go"
-        ]
-      }
-    ]
-  },
-  {
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-names.yml": "4c77b6f06ed9291e8848d79bfa6bf2179973965310353c69ef2b16c2614511da"
-    },
-    "findings": [
-      {
-        "category": "contract-difference",
-        "scope": "feature",
-        "rationale": "The pinned reader fixture accepts image_version.types: [ready], while the pinned Actions documentation marks activity types Not applicable and documents names/versions filters only. The trigger registry intentionally follows that documentation exception. Actual GitHub service rejection has not been verified.",
-        "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/on-event-config-image-version-names.yml",
-          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
-          "source:internal/webhook/generate/sources/manifest.json"
-        ]
-      }
-    ]
-  },
-  {
-    "cases": {
-      "languageservices/workflow-parser/testdata/reader/on-event-config-image-version-versions.yml": "56ffc8383e7ff1fc00cb985669390ddb9ae4378c107cc2c32df9f0bfaa7a4a57"
-    },
-    "findings": [
-      {
-        "category": "contract-difference",
-        "scope": "feature",
-        "rationale": "The pinned reader fixture accepts image_version.types: [ready], while the pinned Actions documentation marks activity types Not applicable and documents names/versions filters only. The trigger registry intentionally follows that documentation exception. Actual GitHub service rejection has not been verified.",
-        "evidence": [
-          "fixture:languageservices/workflow-parser/testdata/reader/on-event-config-image-version-versions.yml",
-          "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
-          "source:internal/webhook/generate/sources/manifest.json"
         ]
       }
     ]

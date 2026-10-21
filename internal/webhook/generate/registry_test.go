@@ -16,7 +16,7 @@ func TestPinnedTriggerReconciliation(t *testing.T) {
 		t.Fatal(err)
 	}
 	for event, forbidden := range map[string]string{
-		"merge_group": "destroyed", "check_suite": "requested", "issue_comment": "pinned", "image_version": "created",
+		"merge_group": "destroyed", "check_suite": "requested", "issue_comment": "pinned",
 	} {
 		if slices.Contains(registry[event].Activities, forbidden) {
 			t.Errorf("webhook-only activity admitted: %s.%s", event, forbidden)
@@ -25,8 +25,29 @@ func TestPinnedTriggerReconciliation(t *testing.T) {
 	if !slices.Equal(registry["merge_group"].Activities, []string{"checks_requested"}) {
 		t.Fatal("merge_group lost its supported activity")
 	}
-	if !slices.Equal(registry["image_version"].Fields, []string{"names", "versions"}) {
+	if !slices.Equal(registry["image_version"].Fields, []string{"names", "types", "versions"}) {
 		t.Fatal("documentation override lost image_version filters")
+	}
+}
+
+func TestReviewedSchemaActivitySupplements(t *testing.T) {
+	registry, _, err := loadRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for event, activities := range map[string][]string{
+		"image_version":       {"created", "ready", "deleted"},
+		"pull_request":        {"stacked"},
+		"pull_request_target": {"stacked"},
+	} {
+		for _, activity := range activities {
+			if !slices.Contains(registry[event].Activities, activity) {
+				t.Errorf("reviewed schema activity lost: %s.%s", event, activity)
+			}
+		}
+		if !slices.Contains(registry[event].Fields, "types") {
+			t.Errorf("reviewed types filter lost: %s", event)
+		}
 	}
 }
 
@@ -107,6 +128,7 @@ func TestReconciliationRequiresReviewedCurrentExceptions(t *testing.T) {
 		{"stale", "stale exception: payload-activity-only:merge_group:invented"},
 		{"incomplete", "incomplete exception: payload-activity-only:merge_group:destroyed"},
 		{"digest", "pinned source digest mismatch"},
+		{"payload supplement", "schema supplement requires a schema activity"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := fstest.MapFS{}
@@ -138,6 +160,10 @@ func TestReconciliationRequiresReviewedCurrentExceptions(t *testing.T) {
 				manifest.Exceptions[key] = exception
 			case "digest":
 				files["sources/workflow-v1.0.json"].Data = []byte(`{}`)
+			case "payload supplement":
+				exception := manifest.Exceptions[key]
+				exception.PreserveSchema = true
+				manifest.Exceptions[key] = exception
 			}
 			b, err := json.Marshal(manifest)
 			if err != nil {

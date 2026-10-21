@@ -54,6 +54,7 @@ type sourceManifest struct {
 		Source             string `json:"source"`
 		Scope              string `json:"scope"`
 		ProductionVerified *bool  `json:"production_verified"`
+		PreserveSchema     bool   `json:"preserve_schema,omitempty"`
 	} `json:"exceptions"`
 }
 
@@ -271,9 +272,14 @@ func loadRegistryFiles(files fs.FS) (map[string]trigger, sourceManifest, error) 
 			delete(registry, event)
 			continue
 		}
+		permitted := slices.Clone(activities)
 		for _, activity := range trigger.Activities {
 			if !slices.Contains(activities, activity) {
-				differences["schema-activity-only:"+event+":"+activity] = true
+				key := "schema-activity-only:" + event + ":" + activity
+				differences[key] = true
+				if manifest.Exceptions[key].PreserveSchema {
+					permitted = append(permitted, activity)
+				}
 			}
 		}
 		for _, activity := range activities {
@@ -284,8 +290,9 @@ func loadRegistryFiles(files fs.FS) (map[string]trigger, sourceManifest, error) 
 		if (activities == nil) != (trigger.Activities == nil) {
 			differences["custom-activities:"+event] = true
 		}
-		trigger.Activities = activities
-		if len(activities) == 0 && activities != nil {
+		slices.Sort(permitted)
+		trigger.Activities = permitted
+		if len(permitted) == 0 && permitted != nil {
 			trigger.Fields = slices.DeleteFunc(trigger.Fields, func(s string) bool { return s == "types" })
 		}
 		registry[event] = trigger
@@ -333,6 +340,9 @@ func loadRegistryFiles(files fs.FS) (map[string]trigger, sourceManifest, error) 
 		}
 	}
 	for difference := range manifest.Exceptions {
+		if manifest.Exceptions[difference].PreserveSchema && !strings.HasPrefix(difference, "schema-activity-only:") {
+			failures = append(failures, "schema supplement requires a schema activity: "+difference)
+		}
 		if !differences[difference] {
 			failures = append(failures, "stale exception: "+difference)
 		}

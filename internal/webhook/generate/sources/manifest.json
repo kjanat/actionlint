@@ -13,34 +13,39 @@
   },
   "exceptions": {
     "schema-activity-only:image_version:created": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
-      "reason": "Docs mark activity types Not applicable; retain names/versions filters and reject schema-only types.",
+      "source": "https://github.com/actions/languageservices/blob/4043eda158e16579cc5fb1b0b07a4bce2a76f0b5/workflow-parser/src/workflow-v1.0.json",
+      "reason": "Preserve the reviewed image_version activity supplement accepted by both pinned workflow schemas and shipped in v1.17.0; the prose table omits activity types.",
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
+      "production_verified": false,
+      "preserve_schema": true
     },
     "schema-activity-only:image_version:deleted": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
-      "reason": "Docs mark activity types Not applicable; retain names/versions filters and reject schema-only types.",
+      "source": "https://github.com/actions/languageservices/blob/4043eda158e16579cc5fb1b0b07a4bce2a76f0b5/workflow-parser/src/workflow-v1.0.json",
+      "reason": "Preserve the reviewed image_version activity supplement accepted by both pinned workflow schemas and shipped in v1.17.0; the prose table omits activity types.",
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
+      "production_verified": false,
+      "preserve_schema": true
     },
     "schema-activity-only:image_version:ready": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
-      "reason": "Docs mark activity types Not applicable; retain names/versions filters and reject schema-only types.",
+      "source": "https://github.com/actions/languageservices/blob/4043eda158e16579cc5fb1b0b07a4bce2a76f0b5/workflow-parser/src/workflow-v1.0.json",
+      "reason": "Preserve the reviewed image_version activity supplement accepted by both pinned workflow schemas and shipped in v1.17.0; the prose table omits activity types.",
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
+      "production_verified": false,
+      "preserve_schema": true
     },
     "schema-activity-only:pull_request:stacked": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request",
-      "reason": "Activity exists in schema but is absent from the pinned Actions event activity table. Docs take precedence pending documented support.",
+      "source": "https://github.com/actions/languageservices/blob/4043eda158e16579cc5fb1b0b07a4bce2a76f0b5/workflow-parser/src/workflow-v1.0.json",
+      "reason": "Preserve the reviewed stacked activity supplement from the strict workflow schema, announced in actions/languageservices PR384 and shipped in v1.17.0; the prose table omits it.",
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
+      "production_verified": false,
+      "preserve_schema": true
     },
     "schema-activity-only:pull_request_target:stacked": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
-      "reason": "Activity exists in schema but is absent from the pinned Actions event activity table. Docs take precedence pending documented support.",
+      "source": "https://github.com/actions/languageservices/blob/4043eda158e16579cc5fb1b0b07a4bce2a76f0b5/workflow-parser/src/workflow-v1.0.json",
+      "reason": "Preserve the reviewed stacked activity supplement from the strict workflow schema, announced in actions/languageservices PR384 and shipped in v1.17.0; the prose table omits it.",
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
+      "production_verified": false,
+      "preserve_schema": true
     },
     "no-payload:image_version": {
       "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#image_version",
@@ -146,18 +151,6 @@
     },
     "payload-activity-only:merge_group:destroyed": {
       "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#merge_group",
-      "reason": "Payload activity is absent from the Actions event activity table; never promote webhook-only observations into trigger validation.",
-      "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
-    },
-    "payload-activity-only:pull_request:stacked": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request",
-      "reason": "Payload activity is absent from the Actions event activity table; never promote webhook-only observations into trigger validation.",
-      "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
-      "production_verified": false
-    },
-    "payload-activity-only:pull_request_target:stacked": {
-      "source": "https://github.com/github/docs/blob/dae83f7d28f3b8e10015bd6b6d8b72267cedceca/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md#pull_request_target",
       "reason": "Payload activity is absent from the Actions event activity table; never promote webhook-only observations into trigger validation.",
       "scope": "GitHub.com (fpt/ghec), pinned source revisions; GHES support not asserted",
       "production_verified": false
