@@ -82,7 +82,7 @@ func (p builtinProvider) ResolveRunners(ctx context.Context, request runnerapi.R
 			case MacOrLinux:
 				candidate.OS = runnerapi.Linux
 				for _, label := range labels {
-					if strings.HasPrefix(strings.ToLower(label.Value), "macos") || strings.HasPrefix(strings.ToLower(label.Value), "xcode-") {
+					if defaultRunnerOSCompats[strings.ToLower(label.Value)]&defaultRunnerOSCompats["macos"] != 0 {
 						candidate.OS = runnerapi.MacOS
 					}
 				}

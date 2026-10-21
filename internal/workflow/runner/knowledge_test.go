@@ -35,6 +35,34 @@ func runnerWorkflow(t *testing.T, selection string) *workflowlang.Workflow {
 	return w
 }
 
+func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
+	for _, tc := range []struct {
+		selection string
+		custom    []string
+		want      runnerapi.OS
+	}{
+		{"[self-hosted, linux, macos-cache]", []string{"macos-cache"}, runnerapi.Linux},
+		{"[self-hosted, macos-cache, linux]", []string{"macos-cache"}, runnerapi.Linux},
+		{"[self-hosted, linux, xcode-build]", []string{"xcode-*"}, runnerapi.Linux},
+		{"[self-hosted, linux, MACOS-cache]", []string{"MACOS-cache"}, runnerapi.Linux},
+		{"[self-hosted, macos, linux-cache]", []string{"linux-cache"}, runnerapi.MacOS},
+		{"macos-latest", nil, runnerapi.MacOS},
+		{"xcode-27", nil, runnerapi.MacOS},
+	} {
+		t.Run(tc.selection, func(t *testing.T) {
+			workflow := runnerWorkflow(t, tc.selection)
+			knowledge, err := Prepare(t.Context(), workflow, tc.custom, runnerapi.Options{}, "scope")
+			if err != nil || len(knowledge.Report.Answers) != 1 {
+				t.Fatalf("knowledge=%+v err=%v", knowledge, err)
+			}
+			resolved, ok := knowledge.Report.Answers[0].Resolution.(runnerapi.Resolved)
+			if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != tc.want {
+				t.Fatalf("resolution=%+v, want OS=%s", knowledge.Report.Answers[0].Resolution, tc.want)
+			}
+		})
+	}
+}
+
 func TestProviderKnowledgeUncertainty(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
