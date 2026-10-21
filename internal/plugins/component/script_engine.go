@@ -280,8 +280,8 @@ func liftScriptDescriptor(value wacogo.Val) (analyzer.ScriptEngineDescriptor, er
 		if !ok || shell == "" || duplicate {
 			return d, errors.New("script descriptor contains an empty or duplicate shell")
 		}
-		// Runtime selection uses a lowercase executable basename without .exe.
-		// Reject aliases rather than rewriting the component's declared metadata.
+		// Shell metadata must use canonical runtime selectors:
+		// lowercase executable basenames without the .exe suffix.
 		name := string(shell)
 		if strings.ContainsAny(name, " /\\\t\r\n") || name != strings.TrimSuffix(strings.ToLower(name), ".exe") {
 			return d, fmt.Errorf("script descriptor contains noncanonical shell %q", name)
