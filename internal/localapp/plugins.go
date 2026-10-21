@@ -107,7 +107,9 @@ func (l *loadedPlugins) close(ctx context.Context) error {
 	return err
 }
 
-func scriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {
+// ScriptEngineLoader loads configured core modules and script-engine components
+// with the same artifact verification and lifecycle for every native entrypoint.
+func ScriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {
 	return func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
 		artifact, err := pluginartifact.Resolve(ctx, path, artifactOptions())
 		if err != nil {

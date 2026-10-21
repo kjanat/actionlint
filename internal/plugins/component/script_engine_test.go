@@ -136,27 +136,27 @@ func TestScriptEngineResultLimits(t *testing.T) {
 
 func TestScriptEngineUniversalNewlines(t *testing.T) {
 	p := loadScriptFixture(t)
-	for _, source := range []string{
-		"é = missing\rmissing",
-		"é = missing\r\nmissing",
-		"é = missing\nmissing",
-		"é = missing\r\nmissing\rmissing\nmissing\r",
+	for _, tc := range []struct {
+		source string
+		starts []analyzer.ScriptPosition
+	}{
+		{"é = missing\rmissing", []analyzer.ScriptPosition{{Row: 1, Column: 5}, {Row: 1, Column: 13}}},
+		{"é = missing\r\nmissing", []analyzer.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
+		{"é = missing\nmissing", []analyzer.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
+		{"é = missing\r\nmissing\rmissing\nmissing\r", []analyzer.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}, {Row: 2, Column: 9}, {Row: 3, Column: 1}}},
 	} {
-		t.Run(fmt.Sprintf("%q", source), func(t *testing.T) {
-			found, err := p.Check(t.Context(), analyzer.ScriptRequest{Source: source, Filename: "script.py"})
+		t.Run(fmt.Sprintf("%q", tc.source), func(t *testing.T) {
+			found, err := p.Check(t.Context(), analyzer.ScriptRequest{Source: tc.source, Filename: "script.py"})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(found) != strings.Count(source, "missing") {
+			if len(found) != len(tc.starts) {
 				t.Fatalf("findings: %#v", found)
 			}
 			for i, finding := range found {
-				column := 1
-				if i == 0 {
-					column = 5
-				}
-				if finding.Location != (analyzer.ScriptPosition{Row: i + 1, Column: column}) ||
-					finding.EndLocation != (analyzer.ScriptPosition{Row: i + 1, Column: column + 7}) {
+				start := tc.starts[i]
+				if finding.Location != start ||
+					finding.EndLocation != (analyzer.ScriptPosition{Row: start.Row, Column: start.Column + 7}) {
 					t.Fatalf("finding %d: %#v", i, finding)
 				}
 			}

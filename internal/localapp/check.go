@@ -39,7 +39,7 @@ func Check(ctx context.Context, options application.Options, input application.I
 		return nil, err
 	}
 	if options.LoadScriptEngine == nil {
-		options.LoadScriptEngine = scriptEngineLoader(log, options.Debug)
+		options.LoadScriptEngine = ScriptEngineLoader(log, options.Debug)
 	}
 	return application.Check(ctx, options, input)
 }

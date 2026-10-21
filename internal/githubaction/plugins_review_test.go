@@ -144,3 +144,23 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 		})
 	}
 }
+
+func TestActionRunsConfiguredScriptComponent(t *testing.T) {
+	module, err := filepath.Abs(filepath.Join("..", "plugins", "component", "testdata", "plugins", "script-engine.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := fmt.Sprintf("tools:\n  shellcheck: false\n  ruff:\n    backend:\n      wasm: {path: %q}\n", filepath.ToSlash(module))
+	root := workspaceWith(t, map[string]string{
+		".git": "", ".github/actionlint.yaml": config,
+		".github/workflows/ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
+	})
+	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON, ruff: "ruff", ruffOptions: &processconfig.Options{Optional: true}}
+	result := runLinter(req)
+	if result.code != render.ExitSuccessProblemFound || len(result.diagnostics) != 1 || result.diagnostics[0].Code != "ECHO001" {
+		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.diagnostics)
+	}
+	if result.diagnostics[0].Start.Line != 6 || result.diagnostics[0].Start.Column != 20 {
+		t.Fatalf("component finding lost source location: %+v", result.diagnostics[0])
+	}
+}

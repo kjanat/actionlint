@@ -13,10 +13,27 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/application"
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 	"actionlint.kjanat.dev/internal/testutil"
 )
+
+func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
+	module, err := filepath.Abs("../plugins/component/testdata/plugins/script-engine.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"print(0)\\rmissing\"\n        shell: python\n"
+	result, err := Check(t.Context(), application.Options{}, application.Input{Kind: application.Stdin, Reader: strings.NewReader(input)}, []string{module})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Start != (diagnostic.Position{Line: 6, Column: 25}) ||
+		result.Diagnostics[0].End != (diagnostic.Position{Line: 6, Column: 32}) {
+		t.Fatalf("escaped CR lost token coordinates: %+v", result.Diagnostics)
+	}
+}
 
 func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	module, err := filepath.Abs("../plugins/component/testdata/plugins/script-engine.wasm")
@@ -48,7 +65,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "multiple plugins provide script engine") {
 		t.Fatalf("duplicate core/component engine accepted: %v", err)
 	}
-	loaded, err := scriptEngineLoader(io.Discard, false)(t.Context(), module)
+	loaded, err := ScriptEngineLoader(io.Discard, false)(t.Context(), module)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +82,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if err != nil || len(findings) != 1 || findings[0].Code != "ECHO001" {
 		t.Fatalf("configured component backend: %#v, %v", findings, err)
 	}
-	if _, err := scriptEngineLoader(io.Discard, false)(t.Context(), "../plugins/component/testdata/plugins/no-sudo.wasm"); err == nil {
+	if _, err := ScriptEngineLoader(io.Discard, false)(t.Context(), "../plugins/component/testdata/plugins/no-sudo.wasm"); err == nil {
 		t.Fatal("analyzer-only component accepted as configured script engine")
 	}
 }

@@ -124,6 +124,7 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 		return nil, errors.New("script engine result exceeds 8 MiB")
 	}
 	lines := scriptLineWidths(request.Source)
+	starts := scriptLineStarts(request.Source)
 	diagnostics := make([]analyzer.ScriptDiagnostic, 0, list.Len())
 	for i := range list.Len() {
 		finding, err := liftScriptDiagnostic(list.Get(i))
@@ -142,6 +143,10 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 			finding.EndLocation.Row == finding.Location.Row && finding.EndLocation.Column < finding.Location.Column {
 			return nil, errors.New("script engine returned an invalid filename, diagnostic or source range")
 		}
+		// Guests recognize universal newlines; the workflow source mapper uses
+		// LF rows. Preserve the exact decoded-source coordinates across lone CRs.
+		finding.Location = scriptSourcePosition(starts, finding.Location)
+		finding.EndLocation = scriptSourcePosition(starts, finding.EndLocation)
 		diagnostics = append(diagnostics, finding)
 	}
 	if failure != nil {
@@ -164,6 +169,29 @@ func scriptLineWidths(source string) []int {
 		}
 	}
 	return widths
+}
+
+func scriptLineStarts(source string) []analyzer.ScriptPosition {
+	position := analyzer.ScriptPosition{Row: 1, Column: 1}
+	starts := []analyzer.ScriptPosition{position}
+	for i, character := range source {
+		if character == '\n' {
+			position.Row++
+			position.Column = 1
+			starts = append(starts, position)
+		} else {
+			position.Column++
+			if character == '\r' && (i+1 == len(source) || source[i+1] != '\n') {
+				starts = append(starts, position)
+			}
+		}
+	}
+	return starts
+}
+
+func scriptSourcePosition(starts []analyzer.ScriptPosition, position analyzer.ScriptPosition) analyzer.ScriptPosition {
+	start := starts[position.Row-1]
+	return analyzer.ScriptPosition{Row: start.Row, Column: start.Column + position.Column - 1}
 }
 
 func validScriptPosition(lines []int, position analyzer.ScriptPosition) bool {
