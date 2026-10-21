@@ -102,6 +102,9 @@ jobs:
 					if edit.Path != diagnostic.Path {
 						t.Errorf("same-file fix path %q differs from diagnostic %q", edit.Path, diagnostic.Path)
 					}
+					if diagnostic.Fixes[0].Revisions[edit.Path] == "" {
+						t.Errorf("fix edit %q has no matching source revision: %+v", edit.Path, diagnostic.Fixes[0].Revisions)
+					}
 				}
 				var document struct {
 					Runs []struct {

@@ -167,6 +167,12 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	// Absolute reads must retain the caller's relative spelling in Action output.
 	if analysis != nil {
+		restorePath := func(path string) string {
+			if original, ok := inputNames[filepath.Clean(path)]; ok {
+				return original
+			}
+			return path
+		}
 		for i := range analysis.Documents {
 			if path, ok := inputNames[analysis.Documents[i].DocumentPath()]; ok {
 				analysis.Documents[i] = analysis.Documents[i].WithPath(path)
@@ -176,18 +182,7 @@ func runLinter(req *lintRequest) *lintResult {
 		result.fileCount = analysis.FileCount
 		result.fileCountKnown = true
 		for i := range analysis.Diagnostics {
-			diagnostic := &analysis.Diagnostics[i]
-			if path, ok := inputNames[diagnostic.Path]; ok {
-				for j := range diagnostic.Fixes {
-					for k := range diagnostic.Fixes[j].Edits {
-						edit := &diagnostic.Fixes[j].Edits[k]
-						if filepath.Clean(edit.Path) == filepath.Clean(diagnostic.Path) {
-							edit.Path = path
-						}
-					}
-				}
-				diagnostic.Path = path
-			}
+			analysis.Diagnostics[i] = diagnosticPaths(analysis.Diagnostics[i], restorePath)
 		}
 		result.diagnostics = analysis.Diagnostics
 	}
@@ -236,18 +231,37 @@ func workspaceReportAnalysis(analysis *application.Result, workingDir, workspace
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {
-		diagnostic := &result.Diagnostics[i]
-		diagnostic.Path = reportPath(workingDir, workspace, diagnostic.Path)
-		diagnostic.Fixes = slices.Clone(diagnostic.Fixes)
-		for j := range diagnostic.Fixes {
-			fix := &diagnostic.Fixes[j]
-			fix.Edits = slices.Clone(fix.Edits)
-			for k := range fix.Edits {
-				fix.Edits[k].Path = reportPath(workingDir, workspace, fix.Edits[k].Path)
-			}
-		}
+		result.Diagnostics[i] = diagnosticPaths(result.Diagnostics[i], func(path string) string {
+			return reportPath(workingDir, workspace, path)
+		})
 	}
 	return &result
+}
+
+// Rewrite every diagnostic path together, preserving revision-to-edit bindings.
+// References retain their original source identities.
+func diagnosticPaths(finding diagnostic.Diagnostic, rewrite func(string) string) diagnostic.Diagnostic {
+	finding.Path = rewrite(finding.Path)
+	finding.Related = slices.Clone(finding.Related)
+	for i := range finding.Related {
+		finding.Related[i].Path = rewrite(finding.Related[i].Path)
+	}
+	finding.Fixes = slices.Clone(finding.Fixes)
+	for i := range finding.Fixes {
+		fix := &finding.Fixes[i]
+		fix.Edits = slices.Clone(fix.Edits)
+		for j := range fix.Edits {
+			fix.Edits[j].Path = rewrite(fix.Edits[j].Path)
+		}
+		if fix.Revisions != nil {
+			revisions := make(map[string]string, len(fix.Revisions))
+			for path, revision := range fix.Revisions {
+				revisions[rewrite(path)] = revision
+			}
+			fix.Revisions = revisions
+		}
+	}
+	return finding
 }
 
 // Reports use workspace-relative paths where possible. Files on another Windows

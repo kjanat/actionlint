@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/internal/fix"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/localapp"
+	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 	"actionlint.kjanat.dev/internal/render"
 	"actionlint.kjanat.dev/internal/resolution"
 )
@@ -93,7 +94,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, err
 	}
 	inputs := append([]string{c.Config.Path, r.TemplateFile}, result.Inputs...)
-	inputs = append(inputs, c.Plugins...)
+	for _, source := range c.Plugins {
+		_, local, err := pluginartifact.NormalizeSource(source, workingDir)
+		if err != nil {
+			return 0, commandUsageError{err}
+		}
+		if local != "" {
+			inputs = append(inputs, local)
+		}
+	}
 	inputs = append(inputs, c.Paths...)
 	if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		inputs = append(inputs, c.StdinFilename)

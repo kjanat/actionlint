@@ -86,6 +86,10 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 			}
 			start, ok := script.Source.Position(d.Location.Row, d.Location.Column)
 			end, endOK := script.Source.EndPos(d.EndLocation.Row, d.EndLocation.Column)
+			if ok && endOK && (end.Line < start.Line || end.Line == start.Line && end.Col < start.Col) {
+				failures = errors.Join(failures, fmt.Errorf("tool %s returned a reversed range", r.descriptor.Name))
+				continue
+			}
 			if !ok || !endOK {
 				start, end = script.Key, nil
 			}
