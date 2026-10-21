@@ -26,13 +26,14 @@ import (
 const (
 	// ABIVersion is the core module ABI this host implements.
 	ABIVersion uint32 = 1
-	// DefaultTimeout bounds one engine call.
+	// DefaultTimeout bounds one engine call, including admission and initialization.
 	DefaultTimeout = 10 * time.Second
 	// DefaultMemoryPages bounds an engine instance's linear memory in 64 KiB pages.
 	DefaultMemoryPages    uint32 = 4096
 	defaultCompileTimeout        = time.Minute
 	defaultMaxInputBytes         = 8 * 1024 * 1024
 	maxModuleBytes               = 128 * 1024 * 1024
+	maxInstances                 = 4
 	transport                    = "wasm-core-json"
 )
 
@@ -101,8 +102,8 @@ type Capabilities struct {
 }
 
 // Engine is a loaded core module. It implements analyzer.ScriptBackend and
-// analyzer.ScriptConfigValidator, pools instances across concurrent calls and
-// discards an instance after a trap or an exceeded limit.
+// analyzer.ScriptConfigValidator, pools at most four instances across concurrent
+// calls and discards an instance after a trap or an exceeded limit.
 type Engine struct {
 	path     string
 	limits   Limits
@@ -118,6 +119,8 @@ type Engine struct {
 	mu     sync.Mutex
 	idle   []api.Module
 	closed bool
+	active chan struct{}
+	done   chan struct{}
 }
 
 // Load reads a raw or gzip-compressed core module, checks the version 1
@@ -127,7 +130,7 @@ func Load(ctx context.Context, path string, options Options) (*Engine, error) {
 	if options.MemoryPages > 65536 {
 		return nil, fmt.Errorf("engine %s: memory limit %d exceeds WebAssembly maximum of 65536 pages", path, options.MemoryPages)
 	}
-	data, err := fsread.New(ctx, nil, nil).ReadFile(path)
+	data, err := readModuleFile(ctx, path, maxModuleBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -150,12 +153,37 @@ func Load(ctx context.Context, path string, options Options) (*Engine, error) {
 		}
 		config = config.WithCompilationCache(cache)
 	}
-	e := &Engine{path: path, limits: limits, runtime: wazero.NewRuntimeWithConfig(ctx, config), cache: cache, maxInput: defaultMaxInputBytes}
+	e := &Engine{path: path, limits: limits, runtime: wazero.NewRuntimeWithConfig(ctx, config), cache: cache, maxInput: defaultMaxInputBytes, active: make(chan struct{}, maxInstances), done: make(chan struct{})}
 	if err := e.load(ctx, data); err != nil {
 		_ = e.Close(context.WithoutCancel(ctx))
 		return nil, fmt.Errorf("engine %s: %w", path, err)
 	}
 	return e, nil
+}
+
+func readModuleFile(ctx context.Context, path string, limit int64) ([]byte, error) {
+	file, err := fsread.New(ctx, nil, nil).Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	stop := context.AfterFunc(ctx, func() { _ = file.Close() })
+	defer stop()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, errors.Join(err, ctx.Err())
+	}
+	if info.Size() > limit {
+		return nil, fmt.Errorf("module exceeds size limit of %d bytes", limit)
+	}
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err = errors.Join(err, ctx.Err()); err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("module exceeds size limit of %d bytes", limit)
+	}
+	return data, nil
 }
 
 func readModule(data []byte, limit int64) ([]byte, error) {
@@ -383,12 +411,20 @@ func (e *Engine) call(ctx context.Context, operation string, body []byte) (*resp
 	if len(body) > e.maxInput {
 		return nil, fmt.Errorf("engine %s: request of %d bytes exceeds the engine limit of %d bytes", e.name(), len(body), e.maxInput)
 	}
+	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
+	defer cancel()
+	select {
+	case e.active <- struct{}{}:
+	case <-ctx.Done():
+		return nil, e.failure(ctx, ctx.Err())
+	case <-e.done:
+		return nil, fmt.Errorf("engine %s is closed", e.name())
+	}
+	defer func() { <-e.active }()
 	instance, err := e.acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
-	defer cancel()
 	raw, err := e.invoke(ctx, instance, operation, body)
 	if err != nil {
 		_ = instance.Close(context.WithoutCancel(ctx))
@@ -449,16 +485,19 @@ func (e *Engine) instantiate(ctx context.Context) (api.Module, error) {
 
 func (e *Engine) acquire(ctx context.Context) (api.Module, error) {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	if e.closed {
+		e.mu.Unlock()
 		return nil, fmt.Errorf("engine %s is closed", e.name())
 	}
 	if n := len(e.idle); n > 0 {
 		instance := e.idle[n-1]
 		e.idle = e.idle[:n-1]
+		e.mu.Unlock()
 		return instance, nil
 	}
-	instance, err := e.instantiate(ctx)
+	runtime, compiled := e.runtime, e.compiled
+	e.mu.Unlock()
+	instance, err := runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().WithName(""))
 	if err != nil {
 		return nil, e.failure(ctx, err)
 	}
@@ -467,31 +506,36 @@ func (e *Engine) acquire(ctx context.Context) (api.Module, error) {
 
 func (e *Engine) release(instance api.Module) {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	if e.closed {
+		e.mu.Unlock()
 		_ = instance.Close(context.Background())
 		return
 	}
 	e.idle = append(e.idle, instance)
+	e.mu.Unlock()
 }
 
 // Close releases every instance and the runtime. The engine cannot be used afterwards.
 func (e *Engine) Close(ctx context.Context) error {
 	e.mu.Lock()
-	defer e.mu.Unlock()
+	if e.closed {
+		e.mu.Unlock()
+		return nil
+	}
 	e.closed = true
+	close(e.done)
+	idle, runtime, cache := e.idle, e.runtime, e.cache
+	e.idle, e.runtime, e.cache = nil, nil, nil
+	e.mu.Unlock()
 	var errs []error
-	for _, instance := range e.idle {
+	for _, instance := range idle {
 		errs = append(errs, instance.Close(ctx))
 	}
-	e.idle = nil
-	if e.runtime != nil {
-		errs = append(errs, e.runtime.Close(ctx))
-		e.runtime = nil
+	if runtime != nil {
+		errs = append(errs, runtime.Close(ctx))
 	}
-	if e.cache != nil {
-		errs = append(errs, e.cache.Close(ctx))
-		e.cache = nil
+	if cache != nil {
+		errs = append(errs, cache.Close(ctx))
 	}
 	return errors.Join(errs...)
 }

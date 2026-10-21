@@ -3,6 +3,8 @@ package corewasm
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +36,38 @@ func TestModuleSizeLimitIncludesDecompressedBytes(t *testing.T) {
 				t.Fatalf("oversized module accepted: compressed=%v bytes=%d err=%v", compressed, len(module), err)
 			}
 		}
+	}
+}
+
+func TestRawModuleReadStopsAtBound(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "large.wasm")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(maxModuleBytes + 1); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if engine, err := Load(t.Context(), path, Options{}); engine != nil || err == nil || !strings.Contains(err.Error(), "module exceeds size limit") {
+		t.Fatalf("oversized raw file reached compilation: engine=%v err=%v", engine, err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := readModuleFile(ctx, path, 4096); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled module read: %v", err)
+	}
+}
+
+func TestRawModuleReadBoundsUnendingDevice(t *testing.T) {
+	if _, err := os.Stat("/dev/zero"); err != nil {
+		t.Skip("requires /dev/zero")
+	}
+	if data, err := readModuleFile(t.Context(), "/dev/zero", 4096); data != nil || err == nil || !strings.Contains(err.Error(), "size limit") {
+		t.Fatalf("unending device escaped read bound: bytes=%d err=%v", len(data), err)
 	}
 }
 
