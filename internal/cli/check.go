@@ -87,9 +87,12 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		input.Kind, input.Reader, input.Name, input.NormalizePath = application.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
+	if len(c.Plugins) != 0 && c.PluginLock != "" {
+		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
+	}
 	plugins, err := c.pluginSelection().Resolve(ctx, workingDir, input)
 	if err != nil {
-		return 0, commandUsageError{err}
+		return 0, err
 	}
 	result, err := localapp.Check(ctx, options, input, plugins.Paths)
 	if err != nil {

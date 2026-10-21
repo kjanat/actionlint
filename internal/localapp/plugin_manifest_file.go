@@ -36,6 +36,19 @@ type PluginManifest struct {
 // OpenPluginManifest reads only plugin declarations. Plugin rule configuration
 // cannot be validated until the plugins supplying those rules have been loaded.
 func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, error) {
+	return openPluginManifest(ctx, path, readPluginManifest)
+}
+
+func openSelectedPluginManifest(ctx context.Context, path string) (*PluginManifest, error) {
+	manifest, err := openPluginManifest(ctx, path, readPluginManifestFile)
+	if err != nil || len(manifest.References) == 0 {
+		return manifest, err
+	}
+	// Activating plugins still requires the checked, immutable source graph.
+	return OpenPluginManifest(ctx, path)
+}
+
+func openPluginManifest(ctx context.Context, path string, read func(context.Context, string) ([]byte, error)) (*PluginManifest, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -45,7 +58,7 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 		return nil, err
 	}
 	manifest := &PluginManifest{Path: absolute, snapshots: map[string][]byte{}}
-	data, err := readPluginManifest(ctx, absolute)
+	data, err := read(ctx, absolute)
 	if errors.Is(err, os.ErrNotExist) {
 		manifest.snapshots[absolute] = nil
 		return manifest, nil
@@ -59,7 +72,7 @@ func OpenPluginManifest(ctx context.Context, path string) (*PluginManifest, erro
 		if err != nil {
 			return nil, err
 		}
-		content, err := readPluginManifest(ctx, name)
+		content, err := read(ctx, name)
 		if err == nil {
 			manifest.snapshots[name] = content
 		}
@@ -158,6 +171,10 @@ func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
 	if err := safePluginManifestPath(path); err != nil {
 		return nil, err
 	}
+	return readPluginManifestFile(ctx, path)
+}
+
+func readPluginManifestFile(ctx context.Context, path string) ([]byte, error) {
 	reader := fsread.New(ctx, nil, nil)
 	file, err := reader.Open(path)
 	if err != nil {

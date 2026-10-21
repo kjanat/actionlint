@@ -39,19 +39,19 @@ func TestPluginSelectionScopes(t *testing.T) {
 		t.Fatal(err)
 	}
 	foreign := filepath.Join(other, "workflow.yml")
-	if err := empty.ValidateScope([]string{foreign}); err == nil {
-		t.Fatal("foreign lock silently ignored")
+	if err := empty.ValidateScope([]string{foreign}); err != nil {
+		t.Fatalf("empty foreign lock restricted scope: %v", err)
 	}
 	selected, err := (PluginSelection{}).Resolve(t.Context(), other, input)
-	if err != nil || selected.LockFile == "" {
+	if err != nil || selected.LockFile != "" {
 		t.Fatalf("selection: %+v %v", selected, err)
 	}
-	if err := selected.ValidateScope([]string{filepath.Join(root, "workflow.yml")}); err == nil {
-		t.Fatal("foreign document inherited plugin scope")
+	if err := selected.ValidateScope([]string{filepath.Join(root, "workflow.yml")}); err != nil {
+		t.Fatalf("empty selection restricted scope: %v", err)
 	}
 	mixed := application.Input{Kind: application.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
-	if _, err := (PluginSelection{}).Resolve(t.Context(), root, mixed); err == nil {
-		t.Fatal("mixed lock scopes accepted")
+	if _, err := (PluginSelection{}).Resolve(t.Context(), root, mixed); err != nil {
+		t.Fatalf("plugin-free repositories rejected: %v", err)
 	}
 	for _, s := range []PluginSelection{{Disabled: true}, {Paths: []string{"explicit.wasm"}}, {ConfigFile: filepath.Join(root, "config.yaml")}} {
 		got, err := s.Resolve(t.Context(), other, mixed)
@@ -132,6 +132,22 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	selected, err := (PluginSelection{}).Resolve(t.Context(), root, application.Input{Kind: application.Repository})
 	if err != nil {
 		t.Fatal(err)
+	}
+	other := pluginRepository(t)
+	foreign := filepath.Join(other, "workflow.yml")
+	if err := selected.ValidateScope([]string{foreign}); err == nil {
+		t.Fatal("active plugins escaped their repository")
+	}
+	empty, err := (PluginSelection{}).Resolve(t.Context(), other, application.Input{Kind: application.Repository})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := empty.ValidateScope([]string{filepath.Join(root, "workflow.yml")}); err == nil {
+		t.Fatal("foreign active plugins were ignored")
+	}
+	mixed := application.Input{Kind: application.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
+	if _, err := (PluginSelection{}).Resolve(t.Context(), root, mixed); err == nil {
+		t.Fatal("mixed active plugin scope accepted")
 	}
 	session, err := newEditorSession(t.Context(), application.Options{WorkingDir: root}, selected.Paths)
 	if err != nil {

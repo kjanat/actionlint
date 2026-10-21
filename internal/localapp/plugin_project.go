@@ -34,6 +34,14 @@ func pluginConfigPath(directory string) (string, error) {
 }
 
 func OpenPluginProject(ctx context.Context, directory, lockPath, configPath string) (*PluginProject, error) {
+	return openPluginProject(ctx, directory, lockPath, configPath, OpenPluginManifest)
+}
+
+func openSelectedPluginProject(ctx context.Context, directory, configPath string) (*PluginProject, error) {
+	return openPluginProject(ctx, directory, "", configPath, openSelectedPluginManifest)
+}
+
+func openPluginProject(ctx context.Context, directory, lockPath, configPath string, openManifest func(context.Context, string) (*PluginManifest, error)) (*PluginProject, error) {
 	lock, err := OpenPluginLock(ctx, directory, lockPath, configPath)
 	if err != nil {
 		return nil, err
@@ -44,7 +52,7 @@ func OpenPluginProject(ctx context.Context, directory, lockPath, configPath stri
 			return nil, err
 		}
 	}
-	manifest, err := OpenPluginManifest(ctx, configPath)
+	manifest, err := openManifest(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}

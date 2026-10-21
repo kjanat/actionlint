@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 
@@ -65,7 +64,7 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 		return sourcesFromLock(ctx, f, "")
 	}
 	if s.ConfigFile != "" {
-		project, err := OpenPluginProject(ctx, directory, "", s.ConfigFile)
+		project, err := openSelectedPluginProject(ctx, directory, s.ConfigFile)
 		if err != nil {
 			return PluginSources{}, err
 		}
@@ -99,11 +98,15 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 		if root == "" {
 			continue
 		}
-		project, err := OpenPluginProject(ctx, root, "", "")
+		project, err := openSelectedPluginProject(ctx, root, "")
 		if err != nil {
 			return PluginSources{}, err
 		}
-		if project.Lock.Exists() || project.Manifest.Declared {
+		pins, err := project.SelectedLock()
+		if err != nil {
+			return PluginSources{}, err
+		}
+		if len(pins.Plugins) != 0 {
 			selected = PluginSources{LockFile: project.Lock.Path, root: root, automatic: true}
 			selectedProject = project
 		}
@@ -127,7 +130,7 @@ func sourcesFromProject(ctx context.Context, project *PluginProject, root string
 		return PluginSources{}, err
 	}
 	path := project.Lock.Path
-	if !project.Lock.Exists() && !project.Manifest.Declared {
+	if len(lock.Plugins) == 0 {
 		path = ""
 	}
 	return sourcesFromPins(ctx, path, lock, root)
@@ -155,25 +158,20 @@ func (s PluginSources) ValidateScope(paths []string) error {
 		if root == s.root {
 			continue
 		}
-		if s.LockFile == "" {
+		if len(s.Paths) == 0 {
 			if root == "" {
 				continue
 			}
-			_, err := os.Lstat(filepath.Join(root, ".github", pluginregistry.LockName))
-			if errors.Is(err, os.ErrNotExist) {
-				configPath, err := pluginConfigPath(filepath.Join(root, ".github"))
-				if err != nil {
-					return err
-				}
-				manifest, err := OpenPluginManifest(context.Background(), configPath)
-				if err != nil {
-					return err
-				}
-				if len(manifest.References) == 0 {
-					continue
-				}
-			} else if err != nil {
+			project, err := openSelectedPluginProject(context.Background(), root, "")
+			if err != nil {
 				return err
+			}
+			pins, err := project.SelectedLock()
+			if err != nil {
+				return err
+			}
+			if len(pins.Plugins) == 0 {
+				continue
 			}
 		}
 		if root != s.root {
