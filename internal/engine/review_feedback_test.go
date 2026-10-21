@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,31 @@ func TestFindingEqualityRetainsDiagnosticIdentity(t *testing.T) {
 				t.Fatalf("distinct %s incorrectly deduplicated", change.name)
 			}
 		})
+	}
+}
+
+func TestActionMetadataFailureHasOneOwningRule(t *testing.T) {
+	root := t.TempDir()
+	writeShellcheckFixture(t, root, "broken/action.yml", "runs: [")
+	source := []byte(`on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./broken
+        id: broken
+      - run: echo '${{ steps.broken.outputs.result }}'
+`)
+	linter, err := NewLinter(io.Discard, &LinterOptions{WorkingDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := linter.Lint("ci.yml", source, &Project{root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].Kind != "action" || findings[0].Line != 6 {
+		t.Fatalf("metadata failure should belong to action rule at uses: %v", findings)
 	}
 }
 

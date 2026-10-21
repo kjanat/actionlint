@@ -31,11 +31,9 @@ type SourceUnit struct {
 
 // AnalysisRequest contains resolved sources and analysis settings.
 type AnalysisRequest struct {
-	// AllowConfigProcesses authorizes repository-selected executable invocations.
-	AllowConfigProcesses bool
-	Sources              []SourceUnit
-	Analyzers            []analyzer.Registration
-	ShellCheck           string
+	Sources    []SourceUnit
+	Analyzers  []analyzer.Registration
+	ShellCheck string
 	// Deprecated: Pyflakes integration was removed. This field is ignored.
 	Pyflakes           string
 	ShellcheckOptions  *ExternalCommandOptions
@@ -58,6 +56,8 @@ type AnalysisRequest struct {
 	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
 	ShellcheckRunner func([]string, string) ([]byte, error)
+	// AllowConfigProcesses authorizes repository-selected executable invocations.
+	AllowConfigProcesses bool
 }
 
 // AnalysisResult contains findings, their sources, and every local input read during analysis.

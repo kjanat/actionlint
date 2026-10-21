@@ -20,13 +20,11 @@ import (
 
 // AnalysisOptions controls source discovery and analysis without selecting an output format.
 type AnalysisOptions struct {
-	// AllowConfigProcesses authorizes repository-selected executable invocations.
-	AllowConfigProcesses bool
-	Context              context.Context
-	Analyzers            []analyzer.Registration
-	WorkingDir           string
-	StdinFileName        string
-	ConfigFile           string
+	Context       context.Context
+	Analyzers     []analyzer.Registration
+	WorkingDir    string
+	StdinFileName string
+	ConfigFile    string
 	// ConfigOverlays apply in order over the selected file.
 	ConfigOverlays []ConfigOverlay
 	// OnConfigLoaded reports selected files and overlays.
@@ -61,6 +59,8 @@ type AnalysisOptions struct {
 	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
 	ShellcheckRunner func([]string, string) ([]byte, error)
+	// AllowConfigProcesses authorizes repository-selected executable invocations.
+	AllowConfigProcesses bool
 }
 
 // AnalysisSession resolves local inputs before handing them to Analyze.

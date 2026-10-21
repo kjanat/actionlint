@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 
@@ -370,12 +369,8 @@ func (rule *RuleExpression) getActionOutputsType(spec *workflowlang.String) *exp
 	if strings.HasPrefix(localSpec, "./") {
 		meta, _, err := rule.localActions.FindMetadata(spec.Value)
 		if err != nil {
-			// The action rule reports path and mapping failures at every uses reference.
-			_, unresolved := errors.AsType[unresolvedLocalActionError](err)
-			_, mapping := errors.AsType[localActionMappingError](err)
-			if !unresolved && !mapping {
-				rule.Error(spec.Pos, err.Error())
-			}
+			// The action rule owns metadata failures; outputs remain unknown.
+			rule.Debug("Could not infer action outputs: %v", err)
 			return exprlang.NewMapObjectType(exprlang.StringType{})
 		}
 		if meta == nil {
@@ -407,7 +402,8 @@ func (rule *RuleExpression) getWorkflowCallOutputsType(call *workflowlang.Workfl
 
 	m, err := rule.localWorkflows.findMetadataForCall(call.Uses.Value)
 	if err != nil {
-		rule.Error(call.Uses.Pos, err.Error())
+		// The workflow-call rule owns metadata failures; outputs remain unknown.
+		rule.Debug("Could not infer workflow outputs: %v", err)
 		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}
 	if m == nil {
@@ -623,7 +619,8 @@ func (rule *RuleExpression) checkWorkflowCall(c *workflowlang.WorkflowCall) {
 
 	m, err := rule.localWorkflows.findMetadataForCall(c.Uses.Value)
 	if err != nil {
-		rule.Error(c.Uses.Pos, err.Error())
+		// The workflow-call rule reports metadata failures at the uses value.
+		rule.Debug("Could not infer workflow input types: %v", err)
 	}
 
 	for n, i := range c.Inputs {

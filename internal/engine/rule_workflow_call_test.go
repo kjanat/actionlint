@@ -49,7 +49,7 @@ jobs:
 					if err != nil {
 						t.Fatal(err)
 					}
-					if len(errs) != 1 || errs[0].Line != 4 || errs[0].Column != 11 {
+					if len(errs) != 1 || errs[0].Kind != "workflow-call" || errs[0].Line != 4 || errs[0].Column != 11 {
 						t.Fatalf("%s: want one failure at the uses value, got %v", pass, errs)
 					}
 					if !strings.Contains(errs[0].Message, fmt.Sprintf("%q", uses)) {
