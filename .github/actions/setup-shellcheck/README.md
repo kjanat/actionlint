@@ -11,5 +11,4 @@ cannot authorize different bytes. Changing the pins selects a new cache key.
 For updates, verify the downloaded archives against upstream release metadata,
 then review the version and checksums together. Other version inputs and `latest`
 still resolve dynamically. That path honors GitHub's Retry-After and primary quota
-reset headers; waits exceeding five minutes fail with reset guidance rather than
-repeatedly calling an exhausted API.
+reset headers. Waits exceeding five minutes fail with reset guidance.

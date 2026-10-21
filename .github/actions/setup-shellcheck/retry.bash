@@ -18,7 +18,7 @@ retry() {
 }
 
 # Dynamic versions need metadata. Honor GitHub's quota headers before retrying;
-# long primary-limit waits fail explicitly rather than hammering an exhausted token.
+# fail when the requested wait exceeds the bounded retry window.
 github_api() {
 	local response status http retry_after reset remaining delay attempt
 	for attempt in 1 2 3; do
