@@ -262,22 +262,30 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 }
 
 func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
-	const timeout = 100 * time.Millisecond
-	var delay sync.Once
-	// Delay cold compilation to verify it cannot consume the guest execution budget.
+	const timeout = corewasm.DefaultTimeout
+	var compiledAt, initializedDeadline time.Time
+	var initialized sync.Once
 	ctx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
-		delay.Do(func() { time.Sleep(2 * timeout) })
-		return nil
+		compiledAt = time.Now()
+		return experimental.FunctionListenerFunc(func(ctx context.Context, _ api.Module, _ api.FunctionDefinition, _ []uint64, _ experimental.StackIterator) {
+			initialized.Do(func() { initializedDeadline, _ = ctx.Deadline() })
+		})
 	}))
 	engine, err := corewasm.Load(ctx, enginePath("echo"), corewasm.Options{Timeout: timeout})
 	if err != nil {
-		t.Fatalf("compilation consumed guest initialization budget: %v", err)
+		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		if err := engine.Close(context.Background()); err != nil {
 			t.Error(err)
 		}
 	})
+	if compiledAt.IsZero() || initializedDeadline.IsZero() {
+		t.Fatal("compilation and guest initialization were not observed")
+	}
+	if initializedDeadline.Before(compiledAt.Add(timeout)) {
+		t.Fatalf("guest deadline %s includes compilation time observed at %s", initializedDeadline, compiledAt)
+	}
 	findings, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 	if err != nil || len(findings) != 1 || findings[0].Code != "F821" {
 		t.Fatalf("compiled engine failed: findings=%+v err=%v", findings, err)
