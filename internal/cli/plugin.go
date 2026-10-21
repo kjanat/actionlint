@@ -198,6 +198,9 @@ func (r pluginRegistryRequest) install(ctx context.Context, project *localapp.Pl
 			refs[index] = ref
 		}
 	}
+	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 {
+		return nil
+	}
 	if err := project.Resolve(ctx, refs, ""); err != nil {
 		return err
 	}

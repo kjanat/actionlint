@@ -261,5 +261,5 @@ func TestRegistryInstallDoesNotExecutePlugin(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &saved); err != nil || len(saved.Plugins) != 1 {
 		t.Fatalf("%s: %v", output, err)
 	}
-	pluginCommandTest(t, 2, "rules", "--plugin-lock", lock)
+	pluginCommandTest(t, 3, "rules", "--plugin-lock", lock)
 }

@@ -40,6 +40,8 @@ func TestPluginSelectionFailureExitStatus(t *testing.T) {
 			args[0] = "lsp"
 			args = append(args[:3], args[4:]...)
 			pluginCommandTest(t, want, args...)
+			args = append([]string{"rules"}, args[3:]...)
+			pluginCommandTest(t, want, args...)
 		})
 	}
 }
