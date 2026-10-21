@@ -264,9 +264,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 	const timeout = 100 * time.Millisecond
 	var delay sync.Once
-	// Listener construction is part of compilation, before guest execution.
-	// Make a cold compilation outlast the call budget without a large fixture
-	// or dependence on the compiler's speed.
+	// Delay cold compilation to verify it cannot consume the guest execution budget.
 	ctx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
 		delay.Do(func() { time.Sleep(2 * timeout) })
 		return nil
