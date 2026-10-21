@@ -60,7 +60,11 @@ config-variable: [TYPO]
 }
 
 func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
-	testutil.NewDefaultPluginRegistry(t)
+	wasm, err := os.ReadFile("internal/plugins/component/testdata/plugins/no-sudo.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testutil.NewDefaultPluginRegistryWithArtifact(t, wasm)
 	commandTestRepo(t)
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
 		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)

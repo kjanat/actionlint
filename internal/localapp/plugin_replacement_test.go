@@ -85,14 +85,17 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 		for _, enabled := range []bool{false, true} {
 			t.Run(engine+"/"+map[bool]string{false: "disabled", true: "enabled"}[enabled], func(t *testing.T) {
 				backend := &countedPluginBackend{}
-				plugins := &loadedPlugins{engines: []scriptEngineRegistration{{backend: backend, descriptor: analyzer.ScriptEngineDescriptor{
-					Engine: engine, Rule: rule.Descriptor{Name: engine},
-					ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
-				}}}}
-				var adaptersOptions adapters.Options
 				shell := "bash"
 				if engine == "ruff" {
 					shell = "python"
+				}
+				plugins := &loadedPlugins{engines: []scriptEngineRegistration{{backend: backend, descriptor: analyzer.ScriptEngineDescriptor{
+					Engine: engine, Rule: rule.Descriptor{Name: engine},
+					Shells:       []string{shell},
+					ScriptInputs: []analyzer.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
+				}}}}
+				var adaptersOptions adapters.Options
+				if engine == "ruff" {
 					if enabled {
 						adaptersOptions.Ruff = "ruff"
 					}

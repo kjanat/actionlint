@@ -132,6 +132,13 @@ func (r *PluginRegistry) Publish(t *testing.T, versions ...string) {
 // guest execution. The minimal component envelopes test installation, not linting.
 func NewDefaultPluginRegistry(t *testing.T) *PluginRegistry {
 	t.Helper()
+	return NewDefaultPluginRegistryWithArtifact(t, []byte{0, 97, 115, 109, 13, 0, 1, 0})
+}
+
+// NewDefaultPluginRegistryWithArtifact serves both default identities with the
+// supplied component, allowing config inspection to load its rule descriptors.
+func NewDefaultPluginRegistryWithArtifact(t *testing.T, wasm []byte) *PluginRegistry {
+	t.Helper()
 	r := NewPluginRegistry(t)
 	const base = "https://plugins.actionlint.kjanat.dev/"
 	entries := make([]json.RawMessage, 0, 2)
@@ -140,7 +147,7 @@ func NewDefaultPluginRegistry(t *testing.T) *PluginRegistry {
 			Files: map[string][]byte{}, BaseURL: base,
 			Name: "github.com/kjanat/actionlint-plugin-" + name, Aliases: []string{name}, RepositoryID: 10 + i, PluginID: name,
 		}
-		part.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+		part.Add(t, "v1.0.0", wasm)
 		maps.Copy(r.Files, part.Files)
 		var catalog struct {
 			Plugins []json.RawMessage `json:"plugins"`
