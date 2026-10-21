@@ -450,7 +450,13 @@ func (e *Engine) failure(ctx context.Context, err error) error {
 	}
 }
 
-func (e *Engine) invoke(ctx context.Context, instance api.Module, operation string, body []byte) ([]byte, error) {
+func (e *Engine) invoke(ctx context.Context, instance api.Module, operation string, body []byte) (output []byte, err error) {
+	free := func(pointer uint32) {
+		_, cleanupErr := instance.ExportedFunction("dealloc").Call(ctx, uint64(pointer))
+		if cleanupErr != nil {
+			err = errors.Join(err, fmt.Errorf("dealloc: %w", cleanupErr))
+		}
+	}
 	var args []uint64
 	if body != nil {
 		allocated, err := instance.ExportedFunction("alloc").Call(ctx, uint64(len(body)))
@@ -461,7 +467,7 @@ func (e *Engine) invoke(ctx context.Context, instance api.Module, operation stri
 		if pointer == 0 {
 			return nil, fmt.Errorf("engine refused to allocate %d bytes", len(body))
 		}
-		defer func() { _, _ = instance.ExportedFunction("dealloc").Call(ctx, uint64(pointer)) }()
+		defer free(pointer)
 		if !instance.Memory().Write(pointer, body) {
 			return nil, fmt.Errorf("engine memory write of %d bytes at %d failed", len(body), pointer)
 		}
@@ -472,7 +478,7 @@ func (e *Engine) invoke(ctx context.Context, instance api.Module, operation stri
 		return nil, err
 	}
 	pointer, length := uint32(results[0]>>32), uint32(results[0])
-	defer func() { _, _ = instance.ExportedFunction("dealloc").Call(ctx, uint64(pointer)) }()
+	defer free(pointer)
 	if length > maxResponseBytes {
 		return nil, fmt.Errorf("engine returned %d bytes, exceeding the host response limit of %d bytes", length, maxResponseBytes)
 	}
