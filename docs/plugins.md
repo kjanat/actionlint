@@ -14,6 +14,10 @@ Each `--plugin` loads one component. Findings carry the plugin name as their rul
 suppressions and configured ignores apply to them like built-in rules. `--log-level debug` prints the plugin's limits
 when it loads and forwards its log lines, stdout and stderr.
 
+Pass the same `--plugin` arguments to `config show`, `config validate` or `doctor` when the configuration names plugin
+rules. These commands load the descriptors to validate rule IDs without running document analysis; unknown rules
+remain errors.
+
 The host refuses a component at load when it exports another version of the analyzer interface, imports an interface
 the host does not grant, or does not export the analyzer at all.
 
@@ -132,7 +136,10 @@ tools:
 
 The host checks the ABI version, the export signatures and the advertised operation versions when it loads the module,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
-limit. Raw and gzip-expanded modules must fit within 128 MiB before compilation. Every response, including metadata
+limit. Defined tables require finite maxima; conservative reservations for their maximum size and growth buffers share
+that memory budget with linear memory. Components charge each core instance, including repeated and nested modules;
+imported table aliases are charged to their defining instance only. Raw and gzip-expanded modules must fit within
+128 MiB before compilation. Every response, including metadata
 and configuration validation, must fit within 8 MiB before the host reads, copies or decodes it.
 A trap or an exceeded limit discards that instance and fails the document's analysis. From Go, call
 `plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the

@@ -41,6 +41,7 @@ func (r rulesRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type doctorRequest struct {
+	Plugins           []string
 	Ruff              string
 	RuffOptions       *actionlint.ExternalCommandOptions
 	Config            actionlint.ConfigSelection
@@ -65,20 +66,22 @@ func (r configPathRequest) run(_ context.Context, streams Command) (int, error) 
 
 type configShowRequest struct {
 	Config       actionlint.ConfigSelection
+	Plugins      []string
 	JSON, Origin bool
 }
 
-func (r configShowRequest) run(_ context.Context, streams Command) (int, error) {
-	return 0, writeConfigShow(streams.Stdout, r)
+func (r configShowRequest) run(ctx context.Context, streams Command) (int, error) {
+	return 0, writeConfigShow(ctx, streams.Stdout, r)
 }
 
 type configValidateRequest struct {
-	Config actionlint.ConfigSelection
-	JSON   bool
+	Config  actionlint.ConfigSelection
+	Plugins []string
+	JSON    bool
 }
 
-func (r configValidateRequest) run(_ context.Context, streams Command) (int, error) {
-	return 0, writeConfigValidation(streams.Stdout, r)
+func (r configValidateRequest) run(ctx context.Context, streams Command) (int, error) {
+	return 0, writeConfigValidation(ctx, streams.Stdout, r)
 }
 
 type configInitRequest struct {

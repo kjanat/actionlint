@@ -27,11 +27,17 @@ type doctorTool struct {
 }
 
 func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	config, configErr := actionlint.InspectConfig(req.Config, false)
+	config, configErr := inspectConfig(ctx, req.Config, req.Plugins, false)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	report := struct {
 		Build          commandBuildInfo `json:"build"`
 		Directory      string           `json:"directory"`

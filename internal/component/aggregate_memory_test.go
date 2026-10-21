@@ -3,9 +3,9 @@ package component
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -36,7 +36,7 @@ func TestPluginRejectsAggregateInitialMemory(t *testing.T) {
 	if _, err = plugin.call(t.Context(), "describe"); err == nil {
 		t.Fatal("instantiated two one-page memories under a one-page plugin limit")
 	}
-	if !strings.Contains(err.Error(), "aggregate linear memory limit") {
+	if !errors.Is(err, errMemoryBudget) {
 		t.Fatalf("want aggregate memory failure, got %v", err)
 	}
 	if plugin.engine != nil || plugin.memory.used != 0 {

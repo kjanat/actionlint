@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/component"
 	"actionlint.kjanat.dev/internal/corewasm"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 type synchronizedLogWriter struct {
@@ -65,6 +66,25 @@ func (l *loadedPlugins) close(ctx context.Context) {
 		_ = plugin.Close(ctx)
 	}
 	l.plugins = nil
+}
+
+func inspectConfig(ctx context.Context, selection actionlint.ConfigSelection, paths []string, origins bool) (actionlint.ConfigInspection, error) {
+	if err := ctx.Err(); err != nil {
+		return actionlint.ConfigInspection{}, err
+	}
+	plugins, err := loadPlugins(ctx, paths, io.Discard, false)
+	if err != nil {
+		return actionlint.ConfigInspection{}, err
+	}
+	defer plugins.close(ctx)
+	rules := make([]string, 0, len(plugins.plugins))
+	for _, plugin := range plugins.plugins {
+		rules = append(rules, plugin.Descriptor().Name)
+	}
+	if err := ctx.Err(); err != nil {
+		return actionlint.ConfigInspection{}, err
+	}
+	return actionlint.InspectConfig(selection, origins, rules...)
 }
 
 func scriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {

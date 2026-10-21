@@ -36,7 +36,7 @@ const HostInterface = hostbind.InterfaceName
 const (
 	// DefaultTimeout bounds one analyze call.
 	DefaultTimeout = 10 * time.Second
-	// DefaultMemoryPages bounds all live core memories in a plugin runtime.
+	// DefaultMemoryPages bounds live linear memory and reserved core tables.
 	DefaultMemoryPages uint32 = 1024
 	maxComponentBytes         = 128 * 1024 * 1024
 	maxLiftBytes              = 8 * 1024 * 1024
@@ -267,6 +267,7 @@ func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (res
 		return nil, fmt.Errorf("plugin %s is closed", p.path)
 	}
 	ctx = experimental.WithMemoryAllocator(ctx, p.memory)
+	ctx = wacogo.WithCoreTableAllocator(ctx, p.memory.allocateTables)
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			recoveredError, ok := recovered.(error)

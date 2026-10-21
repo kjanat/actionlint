@@ -67,8 +67,8 @@ func SelectedConfigPath(selection ConfigSelection) (string, error) {
 }
 
 // InspectConfig validates settings and optionally records their YAML origins.
-func InspectConfig(selection ConfigSelection, withOrigin bool) (ConfigInspection, error) {
-	return repoconfig.Inspect(selection, withOrigin)
+func InspectConfig(selection ConfigSelection, withOrigin bool, registeredRules ...string) (ConfigInspection, error) {
+	return repoconfig.Inspect(selection, withOrigin, registeredRules...)
 }
 
 // RequireJobTimeout enables the job timeout policy with an optional upper bound.

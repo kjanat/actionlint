@@ -105,6 +105,9 @@ func newCommandApp(streams *Command) *commandApp {
 		{"validate", "Validate the selected configuration using actionlint's loader"},
 	} {
 		c := &cobra.Command{Use: item.name, Short: item.description, Args: cobra.NoArgs, RunE: a.capture(operation("config " + item.name))}
+		if item.name == "show" || item.name == "validate" {
+			a.pluginFlags(c.Flags())
+		}
 		if item.name == "show" {
 			c.Flags().BoolVar(&a.inv.Origin, "origin", false, "Include the source of each setting")
 			annotateFlag(c.Flags(), "origin", "Input")
@@ -128,6 +131,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.commonFlags(doctor, doctor.Flags())
 	a.configFlags(doctor.Flags())
 	a.toolFlags(doctor.Flags())
+	a.pluginFlags(doctor.Flags())
 	completion := &cobra.Command{
 		Use: "completion <shell>", Aliases: []string{"completions"}, Short: "Generate shell completions",
 		Long:    "Supported shells: bash, zsh, fish, powershell (alias: pwsh).\nUse auto to detect your shell, or pass its executable path.",
@@ -209,18 +213,22 @@ func (a *commandApp) toolFlags(f *pflag.FlagSet) {
 	annotateFlag(f, "pyflakes", "External linters")
 }
 
+func (a *commandApp) pluginFlags(f *pflag.FlagSet) {
+	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly component plugin from `PATH` (repeatable)")
+	annotateFlag(f, "plugin", "Rule selection")
+}
+
 func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	f := c.Flags()
 	a.commonFlags(c, f)
 	a.configFlags(f)
 	a.toolFlags(f)
+	a.pluginFlags(f)
 	f.BoolVar(&a.inv.Check.Strict, "strict", false, "Enable all stable rules")
 	f.BoolVar(&a.inv.Check.Experimental, "experimental", false, "Enable nursery rules")
 	annotateFlag(f, "strict", "Rule selection")
 	annotateFlag(f, "experimental", "Rule selection")
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use `FILE` as the stdin filename")
-	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly component plugin from `PATH` (repeatable)")
-	annotateFlag(f, "plugin", "Rule selection")
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
 	f.StringVarP(&a.opts.output, "output-format", "o", "text", "Output mode: text, oneline, json, jsonl, sarif or github")

@@ -19,6 +19,8 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/wasmbudget"
+	"github.com/partite-ai/wacogo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -28,7 +30,7 @@ const (
 	ABIVersion uint32 = 1
 	// DefaultTimeout bounds one engine call, including admission and initialization.
 	DefaultTimeout = 10 * time.Second
-	// DefaultMemoryPages bounds an engine instance's linear memory in 64 KiB pages.
+	// DefaultMemoryPages bounds linear memory and reserved tables per instance.
 	DefaultMemoryPages    uint32 = 4096
 	defaultCompileTimeout        = time.Minute
 	defaultMaxInputBytes         = 8 * 1024 * 1024
@@ -146,7 +148,19 @@ func Load(ctx context.Context, path string, options Options) (*Engine, error) {
 	if limits.MemoryPages == 0 {
 		limits.MemoryPages = DefaultMemoryPages
 	}
-	config := wazero.NewRuntimeConfig().WithCloseOnContextDone(true).WithMemoryLimitPages(limits.MemoryPages)
+	tables, err := wacogo.CoreModuleTables(data)
+	if err != nil {
+		return nil, fmt.Errorf("engine %s: table declarations: %w", path, err)
+	}
+	tableBytes, err := wasmbudget.Tables(tables, uint64(limits.MemoryPages)<<16)
+	if err != nil {
+		return nil, fmt.Errorf("engine %s: %w", path, err)
+	}
+	// Reserve the complete table maxima before allocating any instance. Wasm's
+	// own table maxima then bound growth; every pooled instance has this same
+	// reduced linear-memory limit.
+	tablePages := uint32((tableBytes + (1 << 16) - 1) >> 16)
+	config := wazero.NewRuntimeConfig().WithCloseOnContextDone(true).WithMemoryLimitPages(limits.MemoryPages - tablePages)
 	var cache wazero.CompilationCache
 	if options.CacheDir != "" {
 		if cache, err = wazero.NewCompilationCacheWithDir(options.CacheDir); err != nil {

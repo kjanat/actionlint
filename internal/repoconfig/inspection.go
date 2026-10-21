@@ -61,7 +61,7 @@ func SelectedPath(selection Selection) (string, error) {
 }
 
 // Inspect validates settings and optionally records their YAML origins.
-func Inspect(selection Selection, withOrigin bool) (Inspection, error) {
+func Inspect(selection Selection, withOrigin bool, registeredRules ...string) (Inspection, error) {
 	path, err := SelectedPath(selection)
 	if err != nil {
 		return Inspection{}, err
@@ -69,13 +69,13 @@ func Inspect(selection Selection, withOrigin bool) (Inspection, error) {
 	var resolved Resolved
 	if path != "" {
 		var source *Loaded
-		source, err = Read(path, fsread.Disk)
+		source, err = Read(path, fsread.Disk, registeredRules...)
 		if err != nil {
 			return Inspection{Path: path}, err
 		}
 		resolved = source.Resolved
 	} else {
-		resolved, err = ResolveDocument(nil)
+		resolved, err = ResolveDocument(nil, registeredRules...)
 	}
 	if err != nil {
 		return Inspection{Path: path}, fmt.Errorf("could not parse config file %q: %w", path, err)

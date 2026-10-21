@@ -40,6 +40,6 @@ require (
 	golang.org/x/tools v0.51.0 // indirect
 )
 
-replace github.com/partite-ai/wacogo => github.com/kjanat/wacogo v0.0.0-20261021173645-f20041172cdb
+replace github.com/partite-ai/wacogo => github.com/kjanat/wacogo v0.0.0-20261021204442-5e1c0d4aa136
 
 tool github.com/partite-ai/wacogo/cmd/wacogo-witgen

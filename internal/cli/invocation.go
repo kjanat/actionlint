@@ -155,16 +155,16 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationRules:
 		return rulesRequest{Name: inv.Rule, JSON: inv.JSON}, nil
 	case operationDoctor:
-		return doctorRequest{Config: inv.Check.Config, ShellCheck: inv.Check.ShellCheck,
+		return doctorRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, ShellCheck: inv.Check.ShellCheck,
 			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,
 			ShellcheckOptions: inv.Check.ShellcheckOptions,
 			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationConfigPath:
 		return configPathRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case operationConfigShow:
-		return configShowRequest{Config: inv.Check.Config, JSON: inv.JSON, Origin: inv.Origin}, nil
+		return configShowRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, JSON: inv.JSON, Origin: inv.Origin}, nil
 	case operationConfigValidate:
-		return configValidateRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil
+		return configValidateRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, JSON: inv.JSON}, nil
 	case operationConfigInit:
 		if inv.Legacy {
 			return legacyConfigInitRequest{ConfigPath: inv.Check.Config.Path, IgnoreRegex: inv.Check.IgnoreRegex,

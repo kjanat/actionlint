@@ -80,8 +80,9 @@ func Load(path string, registeredRules ...string) (*Config, error) {
 }
 
 // Inspect reports effective configuration and optionally its origins.
-func Inspect(selection Selection, origins bool) (Inspection, error) {
-	return repoconfig.Inspect(selection, origins)
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func Inspect(selection Selection, origins bool, registeredRules ...string) (Inspection, error) {
+	return repoconfig.Inspect(selection, origins, registeredRules...)
 }
 
 func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {

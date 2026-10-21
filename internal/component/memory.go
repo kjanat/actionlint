@@ -4,12 +4,15 @@ import (
 	"errors"
 	"sync"
 
+	"actionlint.kjanat.dev/internal/wasmbudget"
+	"github.com/partite-ai/wacogo"
 	"github.com/tetratelabs/wazero/experimental"
 )
 
-var errMemoryBudget = errors.New("aggregate linear memory limit exceeded")
+var errMemoryBudget = errors.New("aggregate plugin memory limit exceeded")
 
-// memoryBudget accounts for all live core memories, including nested instances.
+// memoryBudget accounts for live linear memories and reserved table maxima,
+// including repeated and nested core instances.
 // CoreFeaturesV2 excludes shared memory; these buffers may move when they grow.
 type memoryBudget struct {
 	mu          sync.Mutex
@@ -18,6 +21,25 @@ type memoryBudget struct {
 
 func (b *memoryBudget) Allocate(_ uint64, maximum uint64) experimental.LinearMemory {
 	return &budgetMemory{budget: b, maximum: maximum}
+}
+
+func (b *memoryBudget) allocateTables(tables []wacogo.CoreTable) (func(), error) {
+	reserved, err := wasmbudget.Tables(tables, b.limit)
+	if err != nil {
+		return nil, err
+	}
+	b.mu.Lock()
+	if reserved > b.limit-b.used {
+		b.mu.Unlock()
+		return nil, errMemoryBudget
+	}
+	b.used += reserved
+	b.mu.Unlock()
+	return sync.OnceFunc(func() {
+		b.mu.Lock()
+		b.used -= reserved
+		b.mu.Unlock()
+	}), nil
 }
 
 type budgetMemory struct {
