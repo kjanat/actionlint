@@ -1,0 +1,60 @@
+<svg viewBox="0 0 760 192"
+     fill="none"
+     aria-labelledby="title desc" role="img"
+     xmlns="http://www.w3.org/2000/svg">
+  <metadata>
+    <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/"
+             xmlns:dcterms="http://purl.org/dc/terms/"
+             xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+      <rdf:Description rdf:about="">
+        <dc:title>
+          actionlint logo for dark backgrounds
+        </dc:title>
+        <dc:creator>
+          Kaj Kowalski
+        </dc:creator>
+        <dc:date>
+          2026-10-18
+        </dc:date>
+        <dc:format>
+          image/svg+xml
+        </dc:format>
+        <dc:source rdf:resource="https://github.com/kjanat/actionlint" />
+        <dc:rights>
+          Copyright (c) 2026 Kaj Kowalski
+        </dc:rights>
+        <dcterms:license rdf:resource="https://creativecommons.org/licenses/by/4.0/" />
+      </rdf:Description>
+    </rdf:RDF>
+  </metadata>
+  <title id="title">
+    actionlint
+  </title>
+  <desc id="desc">
+    A light vermilion calligraphic monogram beside the custom lowercase actionlint wordmark.
+  </desc>
+  <g transform="translate(0 4) scale(.7)" fill="#F07860">
+    <path d="M167 73 C153 54 127 51 103 60 C57 77 28 126 34 163 C40 201 77 215 112 194
+             C132 182 149 160 161 132 L180 79 L167 73 Z M144 89 C128 76 109 84 93 103
+             C76 123 66 151 71 168 C77 187 94 185 111 169 C130 150 145 117 149 98
+             C150 94 148 91 144 89 Z"
+          fill-rule="evenodd" />
+    <path d="M197 38 L234 24 L187 164 C181 181 181 190 188 190 C197 190 209 178 219 164 L226 170
+             C213 192 191 215 171 215 C149 215 142 199 150 175 L197 38 Z" />
+  </g>
+  <g transform="translate(210 43) scale(1.15)"
+     stroke="#F5F0E6" stroke-width="9" stroke-linejoin="round">
+    <path d="M46 34V80M46 45C41 37 35 33 26 33C12 33 4 43 4 57C4 71 12 81 26 81C35 81 41 77 46 69" />
+    <path d="M103 39C98 35 93 33 86 33C72 33 63 43 63 57C63 71 72 81 86 81C93 81 98 79 103 75" />
+    <path d="M125 13V65C125 76 129 81 139 81C143 81 146 80 149 78M113 34H148" />
+    <path d="M167 34V81" />
+    <path d="M235 57 C235 43 226 33 212 33 C198 33 189 43 189 57 C189 71 198 81 212 81
+             C226 81 235 71 235 57 Z" />
+    <path d="M254 34V81M254 47C259 38 266 33 275 33C287 33 293 41 293 54V81" />
+    <path d="M316 9V67C316 77 320 81 328 81" />
+    <path d="M347 34V81" />
+    <path d="M370 34V81M370 47C375 38 382 33 391 33C403 33 409 41 409 54V81" />
+    <path d="M434 13V65C434 76 438 81 448 81C452 81 455 80 458 78M422 34H457" />
+    <path d="M167 8V18M347 8V18" stroke-width="10" />
+  </g>
+</svg>
