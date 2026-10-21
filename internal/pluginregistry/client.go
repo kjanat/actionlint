@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"path"
 	"slices"
@@ -52,7 +53,18 @@ func New(raw string) (*Client, error) {
 }
 
 func (c *Client) contains(u *url.URL) bool {
-	return u.Scheme == c.base.Scheme && u.Host == c.base.Host && u.User == nil && u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" && !strings.Contains(u.Path, "\\") && strings.HasPrefix(path.Clean(u.Path), c.base.Path)
+	return u.Scheme == c.base.Scheme && sameRegistryHost(u, c.base) && u.User == nil && u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" && !strings.Contains(u.Path, "\\") && strings.HasPrefix(path.Clean(u.Path), c.base.Path)
+}
+
+func sameRegistryHost(a, b *url.URL) bool {
+	if a.Port() != b.Port() {
+		return false
+	}
+	if address, err := netip.ParseAddr(a.Hostname()); err == nil {
+		other, err := netip.ParseAddr(b.Hostname())
+		return err == nil && address == other
+	}
+	return strings.EqualFold(a.Hostname(), b.Hostname())
 }
 
 func get[T *Catalog | *manifest | *record](ctx context.Context, c *Client, path string, target T) error {

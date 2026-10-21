@@ -24,8 +24,10 @@ type PluginSelection struct {
 }
 
 type PluginSources struct {
-	Paths     []string
-	LockFile  string
+	Paths    []string
+	LockFile string
+	// Inputs retains observed locks independently of plugin activation.
+	Inputs    []string
 	root      string
 	automatic bool
 }
@@ -97,6 +99,7 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 	roots := map[string]bool{}
 	var selected PluginSources
 	var selectedProject *PluginProject
+	var inputs []string
 	for _, start := range starts {
 		root := pluginProjectRoot(start)
 		if roots[root] {
@@ -114,13 +117,16 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 		if err != nil {
 			return PluginSources{}, err
 		}
+		if project.Lock.Exists() {
+			inputs = append(inputs, project.Lock.Path)
+		}
 		if len(pins.Plugins) != 0 {
 			selected = PluginSources{LockFile: project.Lock.Path, root: root, automatic: true}
 			selectedProject = project
 		}
 	}
 	if selected.LockFile == "" {
-		return PluginSources{root: pluginProjectRoot(directory), automatic: true}, nil
+		return PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true}, nil
 	}
 	if len(roots) != 1 {
 		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
@@ -129,7 +135,11 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 }
 
 func sourcesFromLock(ctx context.Context, f *pluginregistry.LockFile, root string) (PluginSources, error) {
-	return sourcesFromPins(ctx, f.Path, f.Lock, root)
+	selected, err := sourcesFromPins(ctx, f.Path, f.Lock, root)
+	if err == nil && f.Exists() {
+		selected.Inputs = []string{f.Path}
+	}
+	return selected, err
 }
 
 func sourcesFromProject(ctx context.Context, project *PluginProject, root string) (PluginSources, error) {
@@ -141,7 +151,11 @@ func sourcesFromProject(ctx context.Context, project *PluginProject, root string
 	if len(lock.Plugins) == 0 {
 		path = ""
 	}
-	return sourcesFromPins(ctx, path, lock, root)
+	selected, err := sourcesFromPins(ctx, path, lock, root)
+	if err == nil && project.Lock.Exists() {
+		selected.Inputs = []string{project.Lock.Path}
+	}
+	return selected, err
 }
 
 func sourcesFromPins(ctx context.Context, path string, lock pluginregistry.Lock, root string) (PluginSources, error) {

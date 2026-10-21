@@ -24,7 +24,7 @@ type PluginProject struct {
 func pluginConfigPath(directory string) (string, error) {
 	for _, name := range repoconfig.RepositoryConfigNames {
 		path := filepath.Join(directory, name)
-		if _, err := os.Lstat(path); err == nil {
+		if _, err := os.Stat(path); err == nil {
 			return path, nil
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return "", err

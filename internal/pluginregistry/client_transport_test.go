@@ -56,3 +56,49 @@ func TestCatalogueTransportLimits(t *testing.T) {
 		t.Fatalf("cancellation: %v", err)
 	}
 }
+
+func TestCatalogueRedirectHostCasing(t *testing.T) {
+	for _, tc := range []struct {
+		name, base, target string
+		allowed            bool
+	}{
+		{name: "lowercase", target: "https://example.org:8443/catalogue/index.json", allowed: true},
+		{name: "mixed case", target: "https://eXaMpLe.OrG:8443/catalogue/index.json", allowed: true},
+		{name: "other port", target: "https://example.org:9443/catalogue/index.json"},
+		{name: "omitted port", target: "https://example.org/catalogue/index.json"},
+		{name: "credentials", target: "https://user@example.org:8443/catalogue/index.json"},
+		{name: "other host", target: "https://other.example:8443/catalogue/index.json"},
+		{name: "other path", target: "https://example.org:8443/outside/index.json"},
+		{name: "path prefix", target: "https://example.org:8443/catalogue-other/index.json"},
+		{name: "escaped path", target: "https://example.org:8443/catalogue/%2e%2e/outside/index.json"},
+		{name: "address case", base: "https://[FE80::1%25Ethernet]:8443/catalogue/", target: "https://[fe80::1%25Ethernet]:8443/catalogue/index.json", allowed: true},
+		{name: "address scope", base: "https://[fe80::1%25Ethernet]:8443/catalogue/", target: "https://[fe80::1%25ethernet]:8443/catalogue/index.json"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := tc.base
+			if base == "" {
+				base = "https://EXAMPLE.ORG:8443/catalogue/"
+			}
+			client, err := New(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			client.http.Transport = responseTransport(func(request *http.Request) (*http.Response, error) {
+				calls++
+				if calls == 1 {
+					return &http.Response{StatusCode: http.StatusFound, Header: http.Header{"Location": []string{tc.target}}, Body: io.NopCloser(strings.NewReader("")), Request: request}, nil
+				}
+				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"schema_version":1,"plugins":[]}`)), Request: request}, nil
+			})
+			_, err = client.Search(t.Context(), "")
+			if tc.allowed {
+				if err != nil || calls != 2 {
+					t.Fatalf("same-origin redirect: %d requests, %v", calls, err)
+				}
+			} else if err == nil || calls != 1 {
+				t.Fatalf("redirect escaped catalogue: %d requests, %v", calls, err)
+			}
+		})
+	}
+}

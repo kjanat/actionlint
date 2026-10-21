@@ -3,12 +3,40 @@ package localapp
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/pluginregistry"
 )
+
+func TestPluginSelectionRetainsObservedLocksAcrossRepositories(t *testing.T) {
+	roots := []string{pluginRepository(t), pluginRepository(t)}
+	var paths, locks []string
+	for _, root := range roots {
+		path := filepath.Join(root, ".github", pluginregistry.LockName)
+		lock, err := pluginregistry.OpenLock(t.Context(), path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := lock.Save(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		locks = append(locks, lock.Path)
+		paths = append(paths, filepath.Join(root, "workflow.yml"))
+	}
+	selected, err := (PluginSelection{}).Resolve(t.Context(), roots[0], application.Input{Kind: application.Files, Paths: paths})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected.Paths) != 0 || selected.LockFile != "" || !slices.Equal(selected.Inputs, locks) {
+		t.Fatalf("observed empty locks changed activation: %+v, want inputs %v", selected, locks)
+	}
+	if err := selected.ValidateScope(paths); err != nil {
+		t.Fatalf("empty lock restricted scope: %v", err)
+	}
+}
 
 func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
 	for _, declaration := range []string{"plugins: []\n", "plugins: null\n"} {

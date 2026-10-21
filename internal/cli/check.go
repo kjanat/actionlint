@@ -104,7 +104,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}
 		return 0, err
 	}
-	inputs := append([]string{c.Config.Path, r.TemplateFile, c.RunnerSnapshot, plugins.LockFile}, result.Inputs...)
+	inputs := append([]string{c.Config.Path, r.TemplateFile, c.RunnerSnapshot}, result.Inputs...)
+	inputs = append(inputs, plugins.Inputs...)
 	for _, source := range c.Plugins {
 		_, local, err := pluginartifact.NormalizeSource(source, workingDir)
 		if err != nil {
@@ -160,9 +161,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, err
 		}
 	}
-	if plugins.LockFile != "" {
-		result.Inputs = append(result.Inputs, plugins.LockFile)
-	}
+	result.Inputs = append(result.Inputs, plugins.Inputs...)
 	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, render.Prepare(*result)); err != nil {
 		return 0, err
 	}
