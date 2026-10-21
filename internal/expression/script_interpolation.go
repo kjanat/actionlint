@@ -75,10 +75,9 @@ func SafeScriptLiteral(value string) bool {
 	return true
 }
 
-// CheckScriptInterpolation checks direct template values independently of
-// attacker control. safeReference proves every possible value of a reference
-// has safe characters, for example a static matrix axis. Callers should retain
-// more specific secret and untrusted-input findings instead of duplicating them.
+// CheckScriptInterpolation checks direct template values, including trusted inputs.
+// safeReference must prove safe characters for every possible reference value.
+// Callers omit this finding when a specific secret or untrusted-input finding exists.
 func CheckScriptInterpolation(expr Node, ty Type, safeReference func(Node) bool) []*Error {
 	switch ty.(type) {
 	case BoolType, NumberType, NullType, *ObjectType, *ArrayType:
