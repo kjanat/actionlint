@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
+
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -13,7 +15,6 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const action = dirname(fileURLToPath(import.meta.url));
