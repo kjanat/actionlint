@@ -31,7 +31,9 @@ graph and enum discriminants are generated with `go generate ./internal/plugins/
 ## Limits and capabilities
 
 Every analysis call runs in a fresh instance with a shared 64 MiB limit across live linear memory and reserved core
-tables in its plugin runtime and 10 seconds of time. A trap, a panic, an exit, an
+tables in its plugin runtime. Its 10-second timeout starts after queue
+admission and covers instance setup and guest execution. Queue waiting honors the caller's cancellation and
+deadline; it has no separate timeout. A trap, a panic, an exit, an
 exhausted limit or a cancelled run fails the analysis of that document with an error that names the plugin and its
 limits. The run then continues with the next document and actionlint exits with status 3.
 
