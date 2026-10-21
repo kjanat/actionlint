@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/pluginref"
 	"actionlint.kjanat.dev/internal/plugins/artifact"
 	"golang.org/x/mod/semver"
 )
@@ -308,11 +309,31 @@ func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 // Set preserves publisher identity and refuses replacement of an accepted
 // version, even if the registry starts serving a different digest for it.
 func (f *LockFile) Set(pin Pin) error {
+	return f.set(pin, "")
+}
+
+// SetResolved accepts a registry change selected by the dependency declaration.
+// Publisher identity and accepted immutable artifacts remain protected.
+func (f *LockFile) SetResolved(pin Pin, ref pluginref.Reference) error {
+	selected, err := pluginref.New(ref.Name, ref.Version, ref.Registry)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(pin.Name, selected.Name) || pin.Selector != selected.Version || !SameRegistry(pin.Registry, selected.Registry) {
+		return fmt.Errorf("resolved pin does not match selected dependency %s", selected.String())
+	}
+	return f.set(pin, selected.Registry)
+}
+
+func (f *LockFile) set(pin Pin, selectedRegistry string) error {
+	if err := pin.Validate(); err != nil {
+		return err
+	}
 	for i, old := range f.Lock.Plugins {
 		if !strings.EqualFold(old.Name, pin.Name) {
 			continue
 		}
-		if !SameRegistry(old.Registry, pin.Registry) || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID || old.Kind != pin.Kind || old.Asset != pin.Asset {
+		if (!SameRegistry(old.Registry, pin.Registry) && !SameRegistry(selectedRegistry, pin.Registry)) || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID || old.Kind != pin.Kind || old.Asset != pin.Asset {
 			return fmt.Errorf("publisher or artifact identity changed for %s; remove explicitly before switching", pin.Name)
 		}
 		if old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || old.Contract != pin.Contract) {

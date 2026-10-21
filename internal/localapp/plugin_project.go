@@ -135,7 +135,7 @@ func (p *PluginProject) Resolve(ctx context.Context, refs []pluginref.Reference,
 			if err != nil {
 				return err
 			}
-			if err := p.Lock.Set(pin); err != nil {
+			if err := p.Lock.SetResolved(pin, ref); err != nil {
 				return err
 			}
 		}
