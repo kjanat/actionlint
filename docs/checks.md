@@ -479,7 +479,7 @@ test.yaml:9:24: property "events" is not defined in github; did you mean "event"
   |
 9 |       - run: echo '${{ github.events }}'
   |                        ^~~~~~~~~~~~~
-test.yaml:11:24: undefined function "startWith". available functions are "always", "cancelled", "case", "contains", "endswith", "failure", "format", "fromjson", "hashfiles", "join", "startswith", "success", "tojson" [expression-reference]
+test.yaml:11:24: undefined function "startWith"; did you mean "startsWith"? [expression-reference]
    |
 11 |       - run: echo "${{ startWith('hello, world', 'lo,') }}"
    |                        ^~~~~~~~~
@@ -775,6 +775,14 @@ test.yaml:21:24: property "dev" is not defined in matrix.package [expression-ref
    |
 21 |       - run: echo '${{ matrix.package.dev }}'
    |                        ^~~~~~~~~~~~~~~~~~
+test.yaml:25:35: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+   |
+25 |           echo 'node version: ${{ matrix.node }}'
+   |                                   ^~~~~~~~~~~
+test.yaml:26:67: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+   |
+26 |           echo 'package: ${{ matrix.package.name }} (optional=${{ matrix.package.optional }})'
+   |                                                                   ^~~~~~~~~~~~~~~~~~~~~~~
 test.yaml:34:24: property "os" is not defined in matrix [expression-reference]
    |
 34 |       - run: echo '${{ matrix.os }}'
@@ -1251,6 +1259,10 @@ test.yaml:22:31: object filter extracts potentially untrusted properties "github
    |
 22 |         run: echo '${{ toJSON(github.event.*.body) }}'
    |                               ^~~~~~~~~~~~~~~~~~~
+test.yaml:25:24: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+   |
+25 |         run: if [ "${{ contains(github.event.pull_request.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi
+   |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
 [Playground](https://kjanat.github.io/actionlint/#eNqMkUFrGzEQhe/+FY+lYKdkt+2xCoUcWkobSALJzZggyxNL9a5mqxk5lLD/vWg3mLjFtCcxzJv3PZ6i7cjgnkRnHA2WfW7bh0Q/M4meo8/iV7PZD16LmQFKouUFUo5Sl4O8zlFz3dqyG1ei1MukAmpMgNsUoqKY48UcGrSlF9loaEDOM+Zvnp+xDerzuqE9RW1eZ2rGMwzD/EDIQmJgnQaO8k7UtnS5//D+YP0U1JvDBCTquVbeUTQoLCGXSKW5v7n6co1heCUdzeo+1R2J2C0Z/F84PFmBa1locyLm5FGLS6HXy/3Hk2knhYHjKNxS0/J28XdFnuzmwXHXBW1sVs+pKcWXns7++IqvpChKiiqn6lf+fndzvThCvG3WvPl1dlT95PiZIdyR+hC3Y344T25XJtmF/hgSHrFEVSCOo9oQZfGPPs8xX95dfbtdzQu8widUmjJVWF1APcUpd1VQ1QUew+8BALAe5HM=)
@@ -2703,6 +2715,10 @@ test.yaml:20:23: property "uri" is not defined in inputs; did you mean "url"? [e
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
    |                       ^~~~~~~~~~
+test.yaml:20:44: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+   |
+20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
+   |                                            ^~~~~~~~~~~~~~~~~~~
 test.yaml:23:22: property "credentials" is not defined in secrets; did you mean "credential"? [expression-reference]
    |
 23 |           TOKEN: ${{ secrets.credentials }}
