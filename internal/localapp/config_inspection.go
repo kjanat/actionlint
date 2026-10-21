@@ -4,16 +4,31 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 
+	"actionlint.kjanat.dev/internal/application"
 	"actionlint.kjanat.dev/internal/config"
 )
 
-// InspectConfig validates settings against the explicitly selected plugin rules.
+// InspectConfig validates rule names against explicitly selected or project plugins.
 func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool) (inspection config.Inspection, err error) {
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	plugins, err := loadPlugins(ctx, paths, io.Discard, false)
+	path, err := config.SelectedPath(selection)
+	if err != nil {
+		return inspection, err
+	}
+	inspection.Path = path
+	directory, err := os.Getwd()
+	if err != nil {
+		return inspection, err
+	}
+	sources, err := (PluginSelection{Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled}).Resolve(ctx, directory, application.Input{Kind: application.Repository})
+	if err != nil {
+		return inspection, err
+	}
+	plugins, err := loadPlugins(ctx, sources.Paths, io.Discard, false)
 	if err != nil {
 		return inspection, err
 	}

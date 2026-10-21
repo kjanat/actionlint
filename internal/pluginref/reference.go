@@ -91,7 +91,11 @@ func New(name, version, registry string) (Reference, error) {
 		strings.Contains(u.Path, "\\") || strings.Contains(registry, "#") {
 		return Reference{}, errors.New("plugin registry must be an HTTPS directory URL without credentials, query or fragment")
 	}
-	u.Host = strings.ToLower(u.Host)
+	host, zone, scoped := strings.Cut(u.Host, "%")
+	u.Host = strings.ToLower(host)
+	if scoped {
+		u.Host += "%" + zone
+	}
 	u.Path = strings.TrimSuffix(path.Clean("/"+strings.TrimPrefix(u.Path, "/")), "/") + "/"
 	u.RawPath = ""
 	return Reference{Name: name, Version: version, Registry: u.String()}, nil

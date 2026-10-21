@@ -1,6 +1,9 @@
 package pluginref
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParse(t *testing.T) {
 	for _, tc := range []struct {
@@ -59,6 +62,22 @@ func TestRegistry(t *testing.T) {
 	} {
 		if _, err := New("owner/repo", "", registry); err == nil {
 			t.Errorf("accepted registry %q", registry)
+		}
+	}
+}
+
+func TestRegistryPreservesIPv6Zone(t *testing.T) {
+	for _, source := range []string{
+		"https://[FE80::1%25Ethernet]/",
+		"https://[FE80::1%25Ethernet]:443/catalog/",
+	} {
+		ref, err := New("owner/repo", "v1", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := strings.Replace(source, "FE80", "fe80", 1)
+		if ref.Registry != want {
+			t.Fatalf("registry=%q, want %q", ref.Registry, want)
 		}
 	}
 }
