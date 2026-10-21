@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
@@ -63,6 +64,9 @@ func MigrateDocument(path string, content []byte) (Migration, error) {
 	if field(root, "policy") != nil {
 		result.Notes = append(result.Notes, "Migrated policy levels are explicit: presets and --strict no longer override explicit disables.")
 	}
+	if legacyExpressionControls(root) {
+		result.Notes = append(result.Notes, "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.")
+	}
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".json", ".toml":
 		var value map[string]any
@@ -93,6 +97,33 @@ func MigrateDocument(path string, content []byte) (Migration, error) {
 		result.Content = bytes.ReplaceAll(result.Content, []byte("\n"), []byte("\r\n"))
 	}
 	return result, nil
+}
+
+// The valid v2 expression selector cannot distinguish old broad intent from a
+// deliberate field-value selection. Warn during legacy conversion; do not alias it.
+func legacyExpressionControls(root *yaml.Node) bool {
+	rules := field(field(root, "lint"), "rules")
+	if field(field(rules, "correctness"), "expression") != nil {
+		return true
+	}
+	if disabled := field(rules, "disable"); disabled != nil {
+		for _, item := range disabled.Content {
+			if item.Value == "expression" {
+				return true
+			}
+		}
+	}
+	if ignores := field(root, "ignores"); ignores != nil {
+		for _, item := range ignores.Content {
+			if selected := field(item, "rule"); selected != nil && selected.Value == "expression" {
+				return true
+			}
+		}
+	}
+	if overrides := field(root, "overrides"); overrides != nil {
+		return slices.ContainsFunc(overrides.Content, legacyExpressionControls)
+	}
+	return false
 }
 
 func field(node *yaml.Node, key string) *yaml.Node {

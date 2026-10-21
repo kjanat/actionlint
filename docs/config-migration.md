@@ -69,3 +69,34 @@ silently. Inherited documents retain their order, mappings merge, and lists
 replace. Regex message filters retain their original final filtering semantics;
 typed `ignores` remains the preferred form for rule- and location-specific
 exceptions.
+
+## Expression rule split
+
+V2 gives expression checks independent diagnostic IDs. `expression` now selects
+field-value checks only. It is not an alias for the whole expression checker.
+The same exact-ID selection applies to severity settings, `lint.rules.disable`,
+configured `ignores`, and inline suppression comments, including overrides.
+
+| Diagnostic                           | Rule ID                |
+| ------------------------------------ | ---------------------- |
+| Field values                         | `expression`           |
+| Parsing                              | `expression-syntax`    |
+| Undefined names and properties       | `expression-reference` |
+| Invalid types                        | `expression-type`      |
+| Function arguments and calls         | `expression-call`      |
+| Context availability                 | `context-availability` |
+| Event payload properties             | `event-payload`        |
+| Known untrusted script interpolation | `script-injection`     |
+
+Review each desired severity or suppression under its reported ID. For example,
+an old broad `disable: [expression]` must list the relevant IDs above to keep
+those checks disabled. A configured ignore needs one entry per selected ID;
+inline comments accept comma-separated IDs. To suppress only an undefined name,
+use `# actionlint:ignore expression-reference -- reviewed name`.
+
+Automatic syntax migration reports this change when a legacy document contains
+an `expression` control. It retains that selection and never expands it silently:
+the same setting can intentionally select field-value checks in a new config.
+Workflow comments are not rewritten. The separately introduced
+`script-interpolation` rule adds checks for unknown string values and should be
+configured independently; it is not an old rule renamed by migration.
