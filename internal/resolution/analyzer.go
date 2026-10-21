@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/document"
 	"actionlint.kjanat.dev/resolver"
 )
 
@@ -25,15 +26,13 @@ func (*Analyzer) Descriptor() analyzer.Descriptor {
 func (a *Analyzer) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	var findings []diagnostic.Diagnostic
 	for _, dep := range input.Dependencies {
-		if strings.HasPrefix(dep.Uses, "./") || strings.HasPrefix(dep.Uses, "docker://") {
+		target, ok := document.ParseReference(dep.Uses).(document.RepositoryReference)
+		if !ok || target.HostSource != "default" {
 			continue
 		}
-		name, ref, ok := strings.Cut(dep.Uses, "@")
-		parts := strings.Split(name, "/")
-		if !ok || len(parts) < 2 {
-			continue
-		}
-		request := resolver.Request{Version: 1, Repository: strings.Join(parts[:2], "/"), Ref: ref, Kind: dep.Kind}
+		name := strings.TrimSuffix(dep.Uses, "@"+target.Ref)
+		ref := target.Ref
+		request := resolver.Request{Version: 1, Repository: target.Owner + "/" + target.Repo, Ref: ref, Kind: dep.Kind}
 		result, err := a.resolve(ctx, request)
 		if err != nil {
 			return findings, fmt.Errorf("resolve %s: %w", dep.Uses, err)

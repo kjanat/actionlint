@@ -3,6 +3,7 @@ package resolution
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -144,5 +145,40 @@ func TestRepositoryIdentityConcurrentFirstResults(t *testing.T) {
 	}
 	if succeeded != 1 || rejected != 1 || findings != 1 {
 		t.Fatalf("concurrent identities mixed: successes=%d rejected=%d findings=%d", succeeded, rejected, findings)
+	}
+}
+
+func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
+	for _, uses := range []string{
+		"owner/@v1", "https://host/owner/repo@v1", "owner/repo@", "/repo@v1",
+		"owner/repo", "owner//repo@v1", "owner/repo/../action@v1", "owner/repo@${{ inputs.ref }}",
+		"./local", "$/action@v1", "docker://alpine:3", "self:owner/repo@v1",
+	} {
+		t.Run(uses, func(t *testing.T) {
+			provider := &fakeResolver{err: errors.New("unsupported reference reached provider")}
+			rule := Analyzer{Resolver: provider}
+			findings, err := rule.Analyze(t.Context(), analyzer.Input{Dependencies: []analyzer.Dependency{{Uses: uses, Kind: "action"}}})
+			if err != nil || len(findings) != 0 || len(provider.requests) != 0 {
+				t.Fatalf("unsupported reference resolved: requests=%v findings=%v error=%v", provider.requests, findings, err)
+			}
+		})
+	}
+}
+
+func TestConsumerPreservesSubpathAndRef(t *testing.T) {
+	for _, kind := range []string{"action", "workflow"} {
+		t.Run(kind, func(t *testing.T) {
+			provider := &fakeResolver{}
+			rule := Analyzer{Resolver: provider}
+			uses := "Owner/Repo/.github/workflows/build.yml@feature/release"
+			findings, err := rule.Analyze(t.Context(), analyzer.Input{Dependencies: []analyzer.Dependency{{Uses: uses, Kind: kind}}})
+			if err != nil || len(findings) != 1 || len(provider.requests) != 1 {
+				t.Fatalf("valid reference not resolved: %v %v %+v", findings, err, provider.requests)
+			}
+			want := resolver.Request{Version: 1, Repository: "Owner/Repo", Ref: "feature/release", Kind: kind}
+			if provider.requests[0] != want {
+				t.Fatalf("request = %+v, want %+v", provider.requests[0], want)
+			}
+		})
 	}
 }
