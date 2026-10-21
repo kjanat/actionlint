@@ -103,6 +103,38 @@ func TestConfiguredScriptEngineLoadsOncePerSession(t *testing.T) {
 	}
 }
 
+func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
+	overlay, err := ParseConfigOverlay("config", []byte("tools:\n  ruff:\n    backend:\n      wasm: {path: engines/overlay.wasm}\noverrides:\n  - includes: ['**/night.yml']\n    tools:\n      ruff:\n        backend:\n          wasm: {path: engines/night.wasm}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		root, workflows := writeScriptEngineRepository(t)
+		loaded := map[string]bool{}
+		session, err := NewAnalysisSession(AnalysisOptions{
+			Context: t.Context(), WorkingDir: root, Ruff: "ruff", QuietSelection: true,
+			RuffOptions: &ExternalCommandOptions{Optional: true}, ConfigOverlays: []ConfigOverlay{overlay},
+			LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
+				loaded[path] = true
+				return &recordingEngine{}, nil
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := session.Files(workflows, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Diagnostics) != 2 || len(loaded) != 2 || !loaded[filepath.Join(root, "engines", "overlay.wasm")] || !loaded[filepath.Join(root, "engines", "night.wasm")] {
+			t.Fatalf("root=%s loaded=%v diagnostics=%+v", root, loaded, result.Diagnostics)
+		}
+		if err := session.Close(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	session, err := NewAnalysisSession(AnalysisOptions{Context: t.Context(), WorkingDir: root, Ruff: "ruff", RuffOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true})

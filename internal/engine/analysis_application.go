@@ -190,6 +190,13 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	if err != nil {
 		return nil, err
 	}
+	for i, overlay := range a.configState.overlays {
+		bound, err := overlay.BindPaths(a.cwd)
+		if err != nil {
+			return nil, err
+		}
+		a.configState.overlays[i] = bound
+	}
 	if a.stdin == "" {
 		a.stdin = "<stdin>"
 	}

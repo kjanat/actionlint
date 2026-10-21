@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/internal/configtree"
+	"actionlint.kjanat.dev/internal/toolconfig"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -125,6 +126,16 @@ func MarkInput(node *yaml.Node, input string, inputs map[*yaml.Node]Input) {
 
 // Name returns the input that supplied this overlay.
 func (o Overlay) Name() string { return o.name }
+
+// BindPaths returns a copy whose relative tool paths resolve from directory.
+func (o Overlay) BindPaths(directory string) (Overlay, error) {
+	node, err := configtree.Expand(o.node, make(map[*yaml.Node]bool))
+	if err != nil {
+		return Overlay{}, err
+	}
+	toolconfig.NormalizePaths(node, directory)
+	return Overlay{o.name, node}, nil
+}
 
 // Overlaid merges parsed overlays over a loaded source and resolves the result.
 // Without overlays it returns the supplied configuration and the source's document.
