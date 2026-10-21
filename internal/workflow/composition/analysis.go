@@ -133,26 +133,21 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 
 func scriptInputCatalogue(additional []analyzer.ScriptInput) ([]analyzer.ScriptInput, error) {
 	// Multiple engines may analyze the same site, provided they agree on its language.
-	seen := map[analyzer.ScriptInput]bool{}
-	unique := make([]analyzer.ScriptInput, 0, len(additional))
-	for _, input := range additional {
-		if !seen[input] {
-			unique = append(unique, input)
-			seen[input] = true
-		}
-	}
-	if err := analyzer.ValidateScriptInputs(unique); err != nil {
-		return nil, err
-	}
 	known := analyzer.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}
 	inputs := []analyzer.ScriptInput{known}
-	for _, input := range unique {
-		if input.Action == known.Action && input.Input == known.Input {
-			if input.Language != known.Language {
-				return nil, fmt.Errorf("script input %s/%s has conflicting languages %q and %q", input.Action, input.Input, known.Language, input.Language)
+	languages := map[[2]string]string{{known.Action, known.Input}: known.Language}
+	for _, input := range additional {
+		if err := analyzer.ValidateScriptInput(input); err != nil {
+			return nil, err
+		}
+		key := [2]string{input.Action, input.Input}
+		if language, found := languages[key]; found {
+			if input.Language != language {
+				return nil, fmt.Errorf("script input %s/%s has conflicting languages %q and %q", input.Action, input.Input, language, input.Language)
 			}
 			continue
 		}
+		languages[key] = input.Language
 		inputs = append(inputs, input)
 	}
 	return inputs, nil

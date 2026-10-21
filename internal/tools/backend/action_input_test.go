@@ -1,12 +1,24 @@
 package backend
 
 import (
+	"fmt"
 	"testing"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/tools"
 	"actionlint.kjanat.dev/rule"
 )
+
+func TestInputRegistrationRetainsPerEngineLimit(t *testing.T) {
+	inputs := make([]analyzer.ScriptInput, 257)
+	for i := range inputs {
+		inputs[i] = analyzer.ScriptInput{Action: "owner/action", Input: fmt.Sprintf("input-%d", i), Language: "javascript"}
+	}
+	descriptor := analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "input"}, ScriptInputs: inputs}
+	if _, err := RegisterEngine(descriptor, &selectorBackend{}); err == nil {
+		t.Fatal("oversized per-engine catalogue accepted")
+	}
+}
 
 func TestInputRegistrationUsesImmutableTypedSelectors(t *testing.T) {
 	site := analyzer.ScriptInput{Action: "owner/repository", Input: "source", Language: "javascript"}

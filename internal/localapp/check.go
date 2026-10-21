@@ -65,6 +65,10 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 			if err != nil {
 				return options, &PluginLoadError{err}
 			}
+			replacement, err = backend.WithScriptInputs(replacement, metadata, engine.backend)
+			if err != nil {
+				return options, &PluginLoadError{err}
+			}
 			options.Tools[i] = replacement
 			found = true
 			break

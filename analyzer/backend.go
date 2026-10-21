@@ -54,19 +54,30 @@ func ValidateScriptInputs(inputs []ScriptInput) error {
 	}
 	seen := make(map[[2]string]bool, len(inputs))
 	for _, input := range inputs {
-		if len(input.Action) > 4096 || len(input.Input) > 128 || len(input.Language) > 64 {
-			return errors.New("script input selector exceeds action, input or language length limits")
-		}
-		parts := strings.Split(input.Action, "/")
-		valid := len(parts) >= 2 && selectorWord(input.Input) && selectorWord(input.Language)
-		for _, part := range parts {
-			valid = valid && selectorWord(part) && part != "." && part != ".."
+		if err := ValidateScriptInput(input); err != nil {
+			return err
 		}
 		key := [2]string{input.Action, input.Input}
-		if !valid || seen[key] {
+		if seen[key] {
 			return fmt.Errorf("invalid or duplicate script input selector %+v", input)
 		}
 		seen[key] = true
+	}
+	return nil
+}
+
+// ValidateScriptInput checks one routing declaration without imposing an engine's catalogue limit.
+func ValidateScriptInput(input ScriptInput) error {
+	if len(input.Action) > 4096 || len(input.Input) > 128 || len(input.Language) > 64 {
+		return errors.New("script input selector exceeds action, input or language length limits")
+	}
+	parts := strings.Split(input.Action, "/")
+	valid := len(parts) >= 2 && selectorWord(input.Input) && selectorWord(input.Language)
+	for _, part := range parts {
+		valid = valid && selectorWord(part) && part != "." && part != ".."
+	}
+	if !valid {
+		return fmt.Errorf("invalid script input selector %+v", input)
 	}
 	return nil
 }
