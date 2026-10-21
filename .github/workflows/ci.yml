@@ -159,17 +159,20 @@ jobs:
       - &PrepareMiseCache
         name: Keep mise metadata with cached tools
         shell: bash
-        run: printf 'MISE_CACHE_DIR=%s/mise/cache\n' "${RUNNER_TEMP//\\//}" >> "${GITHUB_ENV}"
+        run: |
+          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
+          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
+          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - name: Install project tools
         uses: &SetupMise jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         with:
           cache: true
           auto_update: true
-          mise_dir: ${{ runner.temp }}/mise
+          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
           # Keep task-only edits from invalidating cached tools.
           cache_key: &MiseCacheKey >-
-            actionlint-mise-v2-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
           install_args: go node npm github:kjanat/runner github:jgm/pandoc
       - name: Install JavaScript dependencies
         run: runner install --pm npm --no-tools --frozen
@@ -192,7 +195,7 @@ jobs:
         with:
           cache: true
           auto_update: true
-          mise_dir: ${{ runner.temp }}/mise
+          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
           cache_key: *MiseCacheKey
           install_args: node npm github:kjanat/runner
@@ -314,7 +317,7 @@ jobs:
               install: false
               env: false
               add_shims_to_path: false
-              mise_dir: ${{ runner.temp }}/mise
+              mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
               cache_key: *MiseCacheKey
           - { uses: *SetupNode, with: { node-version: "24", package-manager-cache: false } }
           - name: Install ShellCheck

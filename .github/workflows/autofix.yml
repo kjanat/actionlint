@@ -61,6 +61,7 @@ jobs:
       # Without this action, dprint has to recompile the wasm plugins each time the action runs,
       # which is often, and wastes time, energy, and sanity.
       - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
+        with: { version: 0.59.0-kjanat, cache-binary: true }
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
@@ -74,16 +75,19 @@ jobs:
         run: bash scripts/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Keep mise metadata with cached tools
-        run: printf 'MISE_CACHE_DIR=%s/mise/cache\n' "${RUNNER_TEMP//\\//}" >> "${GITHUB_ENV}"
+        run: |
+          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
+          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
+          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         with:
           cache: true
           auto_update: true
-          mise_dir: ${{ runner.temp }}/mise
+          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
           cache_key: >-
-            actionlint-mise-v2-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
-          install_args: github:kjanat/dprint
+            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+          install_args: go github:tombi-toml/tombi github:kjanat/dprint
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'
