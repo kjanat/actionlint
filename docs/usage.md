@@ -987,7 +987,6 @@ source, Action-channel, and development tags remain in the host repository.
 Review the selected release and commit the updated revision. A frozen revision pins
 the hook installation; `actionlint.plugins.lock.json` separately pins the project's plugins.
 
-
 ### VS Code
 
 > [!NOTE]
