@@ -127,6 +127,9 @@ func Repository(ctx context.Context, directory string, options FileOptions) (*Re
 	if err != nil {
 		return nil, err
 	}
+	if directory != "" && !filepath.IsAbs(directory) {
+		directory = filepath.Join(settings.WorkingDir, directory)
+	}
 	session, err := engine.NewAnalysisSession(settings)
 	if err != nil {
 		return nil, err
