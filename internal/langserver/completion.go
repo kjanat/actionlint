@@ -2,6 +2,7 @@ package langserver
 
 import (
 	"context"
+	"strings"
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/diagnostic"
@@ -32,7 +33,11 @@ func completionItemFor(text string, c Completion) completionItem {
 func positionAtOffset(text string, offset int) position {
 	offset = max(0, min(offset, len(text)))
 	line, column := 1, 1
-	for at := 0; at < offset; {
+	start := 0
+	if strings.HasPrefix(text, "\ufeff") {
+		start = len("\ufeff")
+	}
+	for at := start; at < offset; {
 		r, n := utf8.DecodeRuneInString(text[at:])
 		at += n
 		if r == '\r' && at < len(text) && text[at] == '\n' {

@@ -149,7 +149,11 @@ func byteOffset(text string, p position) (int, error) {
 		return 0, errors.New("negative editor position")
 	}
 	line, units := 0, 0
-	for offset := 0; ; {
+	start := 0
+	if strings.HasPrefix(text, "\ufeff") {
+		start = len("\ufeff")
+	}
+	for offset := start; ; {
 		if line == p.Line && units == p.Character {
 			return offset, nil
 		}
