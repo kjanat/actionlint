@@ -21,7 +21,7 @@ var builtinDataset = func() string {
 		Version                       string
 		Hosted, OSLabels, OtherLabels []string
 		Compatibility                 map[string]runnerOSCompat
-	}{"2", allGitHubHostedRunnerLabels, selfHostedRunnerPresetOSLabels, selfHostedRunnerPresetOtherLabels, defaultRunnerOSCompats})
+	}{"3", allGitHubHostedRunnerLabels, selfHostedRunnerPresetOSLabels, selfHostedRunnerPresetOtherLabels, defaultRunnerOSCompats})
 	return fmt.Sprintf("github:%x", sha256.Sum256(data))
 }()
 

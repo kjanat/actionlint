@@ -48,6 +48,10 @@ func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
 		{"[self-hosted, macos, linux-cache]", []string{"linux-cache"}, runnerapi.MacOS},
 		{"macos-latest", nil, runnerapi.MacOS},
 		{"xcode-27", nil, runnerapi.MacOS},
+		{"xcode-cache", []string{"xcode-cache"}, runnerapi.UnknownOS},
+		{"macos-cache", []string{"macos-cache"}, runnerapi.UnknownOS},
+		{"ubuntu-cache", []string{"ubuntu-cache"}, runnerapi.UnknownOS},
+		{"[self-hosted, xcode-cache]", []string{"xcode-*"}, runnerapi.UnknownOS},
 	} {
 		t.Run(tc.selection, func(t *testing.T) {
 			workflow := runnerWorkflow(t, tc.selection)
@@ -58,6 +62,12 @@ func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
 			resolved, ok := knowledge.Report.Answers[0].Resolution.(runnerapi.Resolved)
 			if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != tc.want {
 				t.Fatalf("resolution=%+v, want OS=%s", knowledge.Report.Answers[0].Resolution, tc.want)
+			}
+			if tc.want == runnerapi.UnknownOS {
+				candidate := resolved.Candidates[0]
+				if candidate.DefaultShell != "" || candidate.CaseSensitivity != runnerapi.UnknownCase || candidate.ShIsDash || candidate.Ephemeral {
+					t.Fatalf("custom label invented execution facts: %+v", candidate)
+				}
 			}
 		})
 	}

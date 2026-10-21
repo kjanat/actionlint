@@ -32,7 +32,7 @@ func PlatformOf(runner *workflowlang.Runner) Platform {
 		l := strings.ToLower(label.Value)
 		if windowsLabel(l) {
 			k = Windows
-		} else if strings.HasPrefix(l, "macos-") || strings.HasPrefix(l, "ubuntu-") || strings.HasPrefix(l, "xcode-") || l == "macos" || l == "linux" {
+		} else if defaultRunnerOSCompats[l]&(defaultRunnerOSCompats["macos"]|defaultRunnerOSCompats["linux"]) != 0 {
 			k = MacOrLinux
 		}
 
