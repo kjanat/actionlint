@@ -21,7 +21,15 @@ func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if project.Manifest.Path != path || !project.Manifest.Declared {
+	want, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.Stat(project.Manifest.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(got, want) || !project.Manifest.Declared {
 		t.Fatalf("lower-priority declarations ignored: %+v", project.Manifest)
 	}
 }
