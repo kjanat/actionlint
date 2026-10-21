@@ -349,7 +349,7 @@ test('mise setup limits environment resolution to explicitly installed tools', (
 				body.push(following);
 			}
 			const step = body.join('\n');
-			const args = /install_args: (.+)/.exec(step)?.[1];
+			const args = /install_args: ([^,}\n]+)/.exec(step)?.[1];
 			if (args) {
 				const enabled = /MISE_ENABLE_TOOLS: "([^"]+)"/.exec(step)?.[1];
 				assert.equal(enabled, args.trim().replaceAll(/\s+/g, ','), `${name} selected tool environment`);
