@@ -1124,25 +1124,35 @@ func (sema *Checker) checkExpressionBranch(node Node, skipped bool) Type {
 
 func (sema *Checker) checkCaseCall(n *FuncCallNode) Type {
 	sema.checkSpecialFunctionAvailability(n)
-	remaining := true
-	for i := 0; i < len(n.Args)-1; i += 2 {
-		ty := sema.checkExpressionBranch(n.Args[i], !remaining)
-		if remaining && !sema.skipEvaluation {
-			switch ty.(type) {
-			case BoolType, AnyType:
-			default:
-				sema.errorf(operandType, n.Args[i], "case() predicate must be boolean but found %s", ty.String())
-			}
-		}
-		value, known := ConditionConstantValue(n.Args[i])
-		predicate, boolean := value.(bool)
-		sema.checkExpressionBranch(n.Args[i+1], !remaining || known && boolean && !predicate)
-		if known && boolean && predicate {
-			remaining = false
+	return sema.checkCaseBranches(n.Args, true)
+}
+
+func (sema *Checker) checkCaseBranches(args []Node, remaining bool) Type {
+	if len(args) == 1 {
+		sema.checkExpressionBranch(args[0], !remaining)
+		return AnyType{}
+	}
+	ty := sema.checkExpressionBranch(args[0], !remaining)
+	if remaining && !sema.skipEvaluation {
+		switch ty.(type) {
+		case BoolType, AnyType:
+		default:
+			sema.errorf(operandType, args[0], "case() predicate must be boolean but found %s", ty.String())
 		}
 	}
-	sema.checkExpressionBranch(n.Args[len(n.Args)-1], !remaining)
-	return AnyType{}
+	value, known := ConditionConstantValue(args[0])
+	predicate, boolean := value.(bool)
+	sema.withEventGuard(args[0], true, func() Type {
+		return sema.checkExpressionBranch(args[1], !remaining || known && boolean && !predicate)
+	})
+	if known && boolean && predicate {
+		remaining = false
+	}
+	// Later predicates and the default are reachable only when this predicate
+	// is false. Keep those guards nested so all earlier exclusions apply.
+	return sema.withEventGuard(args[0], false, func() Type {
+		return sema.checkCaseBranches(args[2:], remaining)
+	})
 }
 
 func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {

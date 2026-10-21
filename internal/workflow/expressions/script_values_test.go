@@ -69,6 +69,15 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 		{"unknown nested value", `{target: [{name: linux, extra: "${{ inputs.extra }}"}]}`, nil},
 		{"nested object", `{target: [{name: linux, version: 1}, {name: windows, version: 2}]}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
 		{"nested dangerous alternate", `{target: [{name: linux}, {name: 'bad"value'}]}`, nil},
+		{"absent nested member", `{target: [{name: linux}, {version: 1}]}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
+		{"absent member before safe value", `{target: [{version: 1}, {name: linux}]}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
+		{"absent member does not erase unsafe value", `{target: [{name: linux}, {version: 1}, {name: 'bad"value'}]}`, []string{"matrix.target.version"}},
+		{"unsafe value before absent member", `{target: [{name: 'bad"value'}, {version: 1}, {name: linux}]}`, []string{"matrix.target.version"}},
+		{"absent nested array index", `{target: [[linux], [linux, windows]]}`, []string{"matrix.target[0]", "matrix.target[1]", "matrix.target[*]"}},
+		{"unsafe nested array index", `{target: [[linux, 'bad"value'], [linux]]}`, []string{"matrix.target[0]"}},
+		{"nested include alternatives", `{include: [{target: {name: linux}}, {target: {version: 1}}]}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
+		{"absent JSON member", `{target: "${{ fromJSON('[{\"name\":\"linux\"},{\"version\":1}]') }}"}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
+		{"JSON case collision cannot prove member safe", `{target: ["${{ fromJSON('{\"name\":\"linux\"}') }}", "${{ fromJSON('{\"name\":\"linux\",\"NAME\":\"bad value\"}') }}"]}`, nil},
 		{"dotted key cannot certify another path", `{target: [{"item.name": linux, item: {name: 'bad"value'}}]}`, nil},
 		{"dotted axis cannot certify another path", `{"target.name": [linux], target: [{name: 'bad"value'}]}`, nil},
 		{"exclude does not manufacture proof", `{target: [linux, 'bad"value'], exclude: [{target: 'bad"value'}]}`, nil},
@@ -119,5 +128,40 @@ func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
 		if got := safeMatrixScriptReference(node, proofs); got != tc.want {
 			t.Errorf("%s: safe=%t, want %t", tc.expression, got, tc.want)
 		}
+	}
+}
+
+func TestNestedMatrixScriptInterpolation(t *testing.T) {
+	for _, tc := range []struct {
+		name, matrix string
+		unsafe       bool
+	}{
+		{"absent member", `{target: [{name: linux}, {version: 1}]}`, false},
+		{"absent member first", `{target: [{version: 1}, {name: linux}]}`, false},
+		{"unsafe member", `{target: [{name: linux}, {version: 1}, {name: 'bad"value'}]}`, true},
+		{"unsafe member first", `{target: [{name: 'bad"value'}, {version: 1}, {name: linux}]}`, true},
+		{"include alternatives", `{include: [{target: {name: linux}}, {target: {version: 1}}]}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo '${{ matrix.target.name }}'\n"
+			workflow, errors := workflowlang.Parse([]byte(source))
+			if len(errors) != 0 {
+				t.Fatal(errors)
+			}
+			rule := newTestChecker()
+			job := workflow.Jobs["test"]
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			unsafe := false
+			for _, finding := range rule.Findings() {
+				unsafe = unsafe || finding.Rule == "script-interpolation"
+			}
+			if unsafe != tc.unsafe {
+				t.Fatalf("unsafe=%t, want %t: %+v", unsafe, tc.unsafe, rule.Findings())
+			}
+		})
 	}
 }

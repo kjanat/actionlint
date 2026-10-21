@@ -29,6 +29,14 @@ func TestEventGuardNarrowing(t *testing.T) {
 		{"(github.event_name == 'issues' && github.event.action == 'opened' && github.event.title) || github.event.label", 0},
 		// Unknown predicates cannot discard a possible event.
 		{"env.DYNAMIC && github.event.label", 0},
+		{"case(github.event_name == 'push', github.event.label, '')", 1},
+		{"case(github.event_name == 'issues', github.event.label, '')", 0},
+		{"case(github.event_name == 'issues', '', github.event.label)", 1},
+		{"case(github.event_name == 'push', '', github.event.action == 'opened', github.event.label, '')", 1},
+		{"case(github.event_name == 'push', '', github.event.action == 'opened', '', github.event.title)", 1},
+		{"case(github.event_name == 'push', '', github.event.action == 'opened', github.event.title, github.event.label)", 0},
+		{"case(github.event_name == 'issues', case(github.event.action == 'opened', github.event.label, ''), '')", 1},
+		{"case(env.DYNAMIC == 'yes', github.event.label, '')", 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			checker := NewChecker(false, nil)

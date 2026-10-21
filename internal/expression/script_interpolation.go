@@ -105,6 +105,9 @@ func safeScriptExpression(expr Node, safeReference func(Node) bool) bool {
 	if safeReference != nil && safeReference(expr) {
 		return true
 	}
+	if safeScriptStatusReference(expr) {
+		return true
+	}
 	// These contexts have fixed identifier, numeric, hash or enum domains in
 	// GitHub's context contract. Branch names, workflow names and user outputs
 	// remain arbitrary strings. Actor names are not included: bot logins can
@@ -158,4 +161,44 @@ func safeScriptExpression(expr Node, safeReference func(Node) bool) bool {
 		}
 	}
 	return false
+}
+
+// Step outcomes/conclusions and dependency results are fixed status enums,
+// regardless of how the step or job is selected. Outputs remain arbitrary.
+func safeScriptStatusReference(node Node) bool {
+	var receiver Node
+	var property string
+	switch node := node.(type) {
+	case *ObjectDerefNode:
+		receiver, property = node.Receiver, node.Property
+	case *IndexAccessNode:
+		key, ok := node.Index.(*StringNode)
+		if !ok {
+			return false
+		}
+		receiver, property = node.Operand, key.Value
+	default:
+		return false
+	}
+	var context Node
+	switch receiver := receiver.(type) {
+	case *ObjectDerefNode:
+		context = receiver.Receiver
+	case *IndexAccessNode:
+		context = receiver.Operand
+	default:
+		return false
+	}
+	variable, ok := context.(*VariableNode)
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(variable.Name) {
+	case "steps":
+		return strings.EqualFold(property, "conclusion") || strings.EqualFold(property, "outcome")
+	case "needs":
+		return strings.EqualFold(property, "result")
+	default:
+		return false
+	}
 }

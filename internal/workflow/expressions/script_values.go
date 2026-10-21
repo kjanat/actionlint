@@ -56,10 +56,11 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]bool {
 			return false
 		}
 		if previous, exists := axes[name]; exists {
-			for path := range previous {
-				if !paths[path] {
-					delete(previous, path)
-				}
+			// Missing members evaluate to an empty string. Only a present unsafe
+			// value invalidates a proof from another alternative.
+			for path, safe := range paths {
+				before, present := previous[path]
+				previous[path] = safe && (!present || before)
 			}
 		} else {
 			axes[name] = paths
@@ -89,8 +90,10 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]bool {
 	}
 	result := map[string]bool{}
 	for _, paths := range axes {
-		for path := range paths {
-			result[path] = true
+		for path, safe := range paths {
+			if safe {
+				result[path] = true
+			}
 		}
 	}
 	return result
@@ -104,9 +107,9 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 			if !known {
 				return false
 			}
-			matrixScriptLiteralPaths(path, literal, safe)
+			return matrixScriptLiteralPaths(path, literal, safe)
 		} else {
-			matrixScriptLiteralPaths(path, value.ScalarValue(), safe)
+			return matrixScriptLiteralPaths(path, value.ScalarValue(), safe)
 		}
 	case *workflowlang.RawYAMLObject:
 		allSafe := true
@@ -123,9 +126,7 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
 			}
 		}
-		if allSafe {
-			safe[path+"[*]"] = true
-		}
+		safe[path+"[*]"] = allSafe
 	case *workflowlang.RawYAMLArray:
 		allSafe := true
 		for index, element := range value.Elems {
@@ -135,19 +136,15 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 			}
 			allSafe = allSafe && safe[child]
 		}
-		if allSafe {
-			safe[path+"[*]"] = true
-		}
+		safe[path+"[*]"] = allSafe
 	}
 	return true
 }
 
-func matrixScriptLiteralPaths(path string, value any, safe map[string]bool) {
+func matrixScriptLiteralPaths(path string, value any, safe map[string]bool) bool {
 	switch value := value.(type) {
 	case string:
-		if exprlang.SafeScriptLiteral(value) {
-			safe[path] = true
-		}
+		safe[path] = exprlang.SafeScriptLiteral(value)
 	case nil, bool, float64:
 		safe[path] = true
 	case map[string]any:
@@ -157,38 +154,39 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]bool) {
 			if names[key] {
 				// Differently cased JSON keys must not create conflicting proofs
 				// for the same case-insensitive expression reference.
-				return
+				return false
 			}
 			names[key] = true
 		}
 		allSafe := true
 		for name, property := range value {
 			paths := map[string]bool{}
-			matrixScriptLiteralPaths("", property, paths)
+			if !matrixScriptLiteralPaths("", property, paths) {
+				return false
+			}
 			allSafe = allSafe && paths[""]
 			if scriptPathName(name) {
 				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
 			}
 		}
-		if allSafe {
-			safe[path+"[*]"] = true
-		}
+		safe[path+"[*]"] = allSafe
 	case []any:
 		allSafe := true
 		for index, element := range value {
 			child := path + "[" + strconv.Itoa(index) + "]"
-			matrixScriptLiteralPaths(child, element, safe)
+			if !matrixScriptLiteralPaths(child, element, safe) {
+				return false
+			}
 			allSafe = allSafe && safe[child]
 		}
-		if allSafe {
-			safe[path+"[*]"] = true
-		}
+		safe[path+"[*]"] = allSafe
 	}
+	return true
 }
 
 func copyScriptPaths(prefix string, paths, destination map[string]bool) {
-	for suffix := range paths {
-		destination[prefix+suffix] = true
+	for suffix, safe := range paths {
+		destination[prefix+suffix] = safe
 	}
 }
 
