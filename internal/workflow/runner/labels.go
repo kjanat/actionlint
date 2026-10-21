@@ -328,6 +328,9 @@ func (rule *checker) verifyRunnerLabel(label *workflowlang.String) runnerOSCompa
 			return compatInvalid
 		}
 		if m {
+			if windowsLabel(l) {
+				return defaultRunnerOSCompats["windows"]
+			}
 			return compatInvalid
 		}
 	}

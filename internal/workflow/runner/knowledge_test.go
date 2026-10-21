@@ -63,6 +63,46 @@ func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
 	}
 }
 
+func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
+	for _, label := range []string{"self-32vcpu-windows-2022", "buildjet-8vcpu-windows-2022", "namespace-profile-8x16-windows", "my-WINDOWS-box"} {
+		t.Run(label, func(t *testing.T) {
+			workflow := runnerWorkflow(t, label)
+			knowledge, err := Prepare(t.Context(), workflow, []string{label}, runnerapi.Options{}, "scope")
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := knowledge.Job(workflow.Jobs["test"])
+			if job.Platform != Windows || job.Shell != "pwsh" || !job.PathsKnown || !job.CaseInsensitive || len(job.Findings) != 0 {
+				t.Fatalf("configured Windows label lost execution facts: %#v", job)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		selection string
+		custom    []string
+		findings  int
+	}{
+		{"self-32vcpu-windows-2022", nil, 1},
+		{"mywindows-box", []string{"mywindows-box"}, 0},
+		{"my-windowsish-box", []string{"my-windowsish-box"}, 0},
+		{"[linux, my-windows-box]", []string{"my-windows-box"}, 1},
+		{"[my-windows-box, linux]", []string{"my-windows-box"}, 1},
+		{"[macos, my-windows-box]", []string{"my-windows-box"}, 1},
+	} {
+		t.Run(tc.selection, func(t *testing.T) {
+			workflow := runnerWorkflow(t, tc.selection)
+			knowledge, err := Prepare(t.Context(), workflow, tc.custom, runnerapi.Options{}, "scope")
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := knowledge.Job(workflow.Jobs["test"])
+			if job.Platform != Any || job.Shell != "" || job.PathsKnown || len(job.Findings) != tc.findings {
+				t.Fatalf("unproven or contradictory label inferred execution facts: %#v", job)
+			}
+		})
+	}
+}
+
 func TestProviderKnowledgeUncertainty(t *testing.T) {
 	for _, tc := range []struct {
 		name         string

@@ -14,6 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/analysis"
 	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/runner"
 	"github.com/google/go-cmp/cmp"
@@ -139,6 +140,30 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 				t.Fatal("missing provider provenance")
 			}
 		})
+	}
+}
+
+func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
+	observer := &runtimeObserver{}
+	label := "self-32vcpu-windows-2022"
+	result, err := analysis.Analyze(t.Context(), analysis.Request{Sources: []analysis.Source{{
+		Path:    "workflow.yml",
+		Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
+		Config:  &config.Config{SelfHostedRunner: config.SelfHostedRunnerConfig{Labels: []string{label}}},
+	}}, Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: observer}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range result.Diagnostics {
+		if d.Rule == "runner-label" || d.Rule == "shell-name" {
+			t.Fatal(d)
+		}
+	}
+	if len(observer.scripts) != 1 || observer.scripts[0].Runtime == nil {
+		t.Fatalf("missing shared execution facts: %#v", observer.scripts)
+	}
+	if runtime := observer.scripts[0].Runtime; runtime.Shell != "pwsh" || !runtime.ShellKnown {
+		t.Fatalf("Windows runner lost its default shell: %#v", runtime)
 	}
 }
 

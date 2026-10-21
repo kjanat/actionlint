@@ -79,6 +79,18 @@ independent checks still run, while runner-dependent inference stays unknown. No
 finding only with fresh, complete evidence. Stale, missing or incomplete evidence cannot prove an invalid label or a default shell.
 Explicit shells and container defaults retain precedence. Providers contribute knowledge; the host controls diagnostic policy.
 
+Configured self-hosted labels remain an allowlist. A literal label matching that list with `windows` as a complete,
+case-insensitive hyphen-separated segment supplies Windows and the `pwsh` default, including vendor-prefixed names.
+This convention does not accept an unconfigured label or infer an OS from arbitrary substrings. Contradictory OS
+labels produce a runner conflict and leave execution facts unknown.
+
+For custom environments that do not follow that convention, select a runner provider and supply its snapshot.
+The provider returns each candidate's explicit `os` and `default-shell`; these shared facts drive shell validation,
+script analysis and path interpretation. The snapshot format belongs to that provider, as the queue example below
+illustrates. The built-in GitHub provider does not interpret another provider's snapshot. A runner's OS does not
+select a script linter: script engines declare the shells they analyze. Missing or stale provider evidence leaves
+the default shell unknown; an explicit workflow shell still takes precedence.
+
 ### Offline Buildkite example
 
 [`examples/plugins/buildkite-runners.rs`](../examples/plugins/buildkite-runners.rs) resolves an explicit queue mapping
