@@ -71,11 +71,11 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 		}
 		for _, rule := range builtinRuleDescriptors() {
 			if rule.Name == "ruff" {
-				possible, err := ruffProjectConfigMayEnable(config, projectConfig, project != nil)
+				possible, err := ruffProjectConfigMayNeedProcess(config, projectConfig, project != nil, c.ruff, c.ruffOptions)
 				if err != nil {
 					return needed, err
 				}
-				needed.Ruff = needed.Ruff || (externalCommandEnabled(c.ruff, c.ruffOptions) && possible && configuredScriptModule("ruff", c.ruff, c.ruffOptions, config) == nil)
+				needed.Ruff = needed.Ruff || (externalCommandEnabled(c.ruff, c.ruffOptions) && possible)
 				continue
 			}
 			if diagnosticLevel(config, rule.Name) == "off" {
@@ -97,17 +97,53 @@ func ruffProjectConfigMayEnable(config, projectConfig *Config, project bool) (bo
 	if possible || err != nil || !project || projectConfig == nil || len(projectConfig.Overrides) == 0 {
 		return possible, err
 	}
+	return ruffConfigMayEnable(projectConfig)
+}
+
+func ruffProjectConfigMayNeedProcess(config, projectConfig *Config, project bool, requested string, explicit *ExternalCommandOptions) (bool, error) {
+	if config != nil && config.Lint.Enabled != nil && !*config.Lint.Enabled {
+		return false, nil
+	}
+	possible, err := ruffConfigMayNeedProcess(config, requested, explicit)
+	if possible || err != nil || !project || projectConfig == nil || len(projectConfig.Overrides) == 0 {
+		return possible, err
+	}
 	// A workflow-only override does not apply to a referenced action.yml. Keep
 	// the baseline available without inventing a second composite graph here.
-	return ruffConfigMayEnable(projectConfig)
+	return ruffConfigMayNeedProcess(projectConfig, requested, explicit)
+}
+
+func ruffConfigMayNeedProcess(config *Config, requested string, explicit *ExternalCommandOptions) (bool, error) {
+	candidates, err := ruffConfigCandidates(config)
+	if err != nil {
+		return false, err
+	}
+	for _, candidate := range candidates {
+		if ruffConfigEnabled(candidate) && configuredScriptModule("ruff", requested, explicit, candidate) == nil {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // A composite's path can match different overrides than its calling workflow.
 // Tool planning intentionally avoids reading workflows, so preserve a checker
 // when an override could enable it. Disabling-only overrides do not turn it on.
 func ruffConfigMayEnable(config *Config) (bool, error) {
+	candidates, err := ruffConfigCandidates(config)
+	if err != nil {
+		return false, err
+	}
+	return slices.ContainsFunc(candidates, ruffConfigEnabled), nil
+}
+
+func ruffConfigEnabled(config *Config) bool {
+	return config == nil || diagnosticLevel(config, "ruff") != "off" && (config.Tools.Ruff.Enabled == nil || *config.Tools.Ruff.Enabled)
+}
+
+func ruffConfigCandidates(config *Config) ([]*Config, error) {
 	if config == nil {
-		return true, nil
+		return []*Config{nil}, nil
 	}
 	// Keep baseline and possible overlay configurations without discovering files.
 	// Apply catch-all overrides to every candidate in order.
@@ -129,7 +165,7 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 			candidate.Overrides = []ConfigOverride{override}
 			resolved, err := repoconfig.ForFile(&candidate, "action.yml", "")
 			if err != nil {
-				return false, err
+				return nil, err
 			}
 			candidates[i] = resolved
 		}
@@ -145,17 +181,13 @@ func ruffConfigMayEnable(config *Config) (bool, error) {
 		}
 		candidates = unique
 	}
-	for _, candidate := range candidates {
-		if diagnosticLevel(candidate, "ruff") != "off" && (candidate.Tools.Ruff.Enabled == nil || *candidate.Tools.Ruff.Enabled) {
-			return true, nil
-		}
-	}
-	return false, nil
+	return candidates, nil
 }
 
 type ruffGateState struct {
 	tool, lint, disabled, explicit, resolved bool
 	toolSet, lintSet                         bool
+	wasm                                     bool
 	preset, groupPreset                      RulePreset
 	group, rule, resolution                  RuleLevel
 }
@@ -168,6 +200,7 @@ func ruffGateConfig(config *Config) ruffGateState {
 		tool:    config.Tools.Ruff.Enabled == nil || *config.Tools.Ruff.Enabled,
 		lint:    config.Lint.Enabled == nil || *config.Lint.Enabled,
 		toolSet: config.Tools.Ruff.Enabled != nil, lintSet: config.Lint.Enabled != nil,
+		wasm:     config.Tools.Ruff.Backend != nil && config.Tools.Ruff.Backend.Wasm != nil,
 		disabled: slices.Contains(rules.Disable, "ruff"), explicit: explicit, resolved: resolved,
 		preset: rules.Preset, groupPreset: rules.External.Preset,
 		group: rules.External.Level, rule: rule.Level, resolution: resolution,

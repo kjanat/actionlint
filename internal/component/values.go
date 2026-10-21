@@ -174,6 +174,13 @@ func liftPosition(v wacogo.Val) (diagnostic.Position, error) {
 	return diagnostic.Position{Line: int(line), Column: int(column)}, nil
 }
 
+func validateRange(start, end diagnostic.Position) error {
+	if end.Line < start.Line || end.Line == start.Line && end.Column < start.Column {
+		return fmt.Errorf("range end precedes start: %d:%d to %d:%d", start.Line, start.Column, end.Line, end.Column)
+	}
+	return nil
+}
+
 func liftDescriptor(v wacogo.Val) (analyzer.Descriptor, error) {
 	record, err := liftRecord(v, "descriptor")
 	if err != nil {
@@ -220,6 +227,9 @@ func liftEdits(v wacogo.Val) ([]diagnostic.Edit, error) {
 			return nil, err
 		}
 		if edit.End, err = liftPosition(record.Field("end")); err != nil {
+			return nil, err
+		}
+		if err := validateRange(edit.Start, edit.End); err != nil {
 			return nil, err
 		}
 		if edit.Replacement, err = liftString(record, "replacement"); err != nil {
@@ -271,6 +281,9 @@ func liftDiagnostic(v wacogo.Val) (diagnostic.Diagnostic, error) {
 		return diagnostic.Diagnostic{}, err
 	}
 	if d.End, err = liftPosition(record.Field("end")); err != nil {
+		return diagnostic.Diagnostic{}, err
+	}
+	if err := validateRange(d.Start, d.End); err != nil {
 		return diagnostic.Diagnostic{}, err
 	}
 	if d.Fixes, err = liftFixes(record.Field("fixes")); err != nil {
