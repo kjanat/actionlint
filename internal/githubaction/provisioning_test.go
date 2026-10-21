@@ -15,6 +15,11 @@ func TestToolPlanUsesEffectiveConfiguration(t *testing.T) {
 		shellcheck bool
 	}{
 		{name: "defaults", shellcheck: true},
+		{name: "composite process under workflow wasm", files: map[string]string{
+			".github/workflows/clean.yml": "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/shell-action}]}}\n",
+			"shell-action/action.yml":     "name: Shell\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo hello}]}\n",
+			".github/actionlint.yaml":     "tools: {shellcheck: {backend: {wasm: {path: never-load.wasm}}}}\noverrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {process: {executable: shellcheck}}}}}]\n",
+		}, inputs: map[string]string{"INPUT_FILES": ".github/workflows/clean.yml"}, shellcheck: true},
 		{name: "discovered includes", files: map[string]string{".github/actionlint.yaml": "files: {includes: ['.github/workflows/*.yml']}"}, shellcheck: true},
 		{name: "discovered excludes", files: map[string]string{".github/actionlint.yaml": "files: {excludes: ['.github/workflows/*.yml']}"}},
 		{name: "discovered override", files: map[string]string{".github/actionlint.yaml": "overrides: [{includes: ['**/*.yml'], lint: {rules: {external: {shellcheck: off}}}}]"}},
