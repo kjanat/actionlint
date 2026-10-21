@@ -221,6 +221,8 @@ func TestRegistryManagementArgumentErrors(t *testing.T) {
 		{"install", "--version", "v1"},
 		{"install", "--registry", testutil.FixtureRegistryURL},
 		{"update", "--version", "v1"},
+		{"search", "--registry", "http://example.com"},
+		{"versions", "publisher/plugin", "--registry", "http://example.com"},
 	} {
 		pluginCommandTest(t, 2, append([]string{"plugin"}, args...)...)
 	}

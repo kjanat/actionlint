@@ -222,6 +222,9 @@ func (r pluginRegistryRequest) update(ctx context.Context, project *localapp.Plu
 		refs[index] = ref
 		update = ref.Name
 	}
+	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 {
+		return nil
+	}
 	if err := project.Resolve(ctx, refs, update); err != nil {
 		return err
 	}
@@ -251,7 +254,7 @@ func removePlugin(ctx context.Context, project *localapp.PluginProject, name str
 func (r pluginRegistryRequest) discover(ctx context.Context, streams Command, registry, name string) error {
 	client, err := pluginregistry.New(registry)
 	if err != nil {
-		return err
+		return commandUsageError{err}
 	}
 	if r.Operation == operationPluginSearch {
 		plugins, err := client.Search(ctx, name)
