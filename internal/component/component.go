@@ -382,8 +382,8 @@ type lineWriter struct {
 	err     error
 }
 
-// Bound both retained partial lines and total output per invocation. The budget
-// applies even when the guest handles an I/O error instead of propagating it.
+// Output limits cover retained partial lines and total bytes per call,
+// including guest-handled I/O failures.
 const (
 	maxPluginOutput = 1 << 20
 	maxPluginLine   = 64 << 10
