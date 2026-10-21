@@ -48,7 +48,18 @@ func TestScalarScriptPositions(t *testing.T) {
 		{"echo '${{ inputs.count }}'", "pwsh", false},
 		{"echo '${{ inputs.count }}'", "cmd", false},
 		{"echo '${{ inputs.count }}'", "python", false},
-		{"echo '${{ inputs.count }}'", "bash {0}", false},
+		{"echo '${{ inputs.count }}'", "bash {0}", true},
+		{"echo '${{ inputs.count }}'", "bash --noprofile --norc -e {0}", true},
+		{"echo '${{ inputs.count }}'", "/bin/bash --noprofile --norc -e {0}", true},
+		{"echo '${{ inputs.count }}'", "sh -e {0}", true},
+		{"echo '${{ inputs.count }}'", "bash -euo pipefail {0}", true},
+		{"echo '${{ inputs.count }}'", "bash -- {0}", true},
+		{"echo '${{ inputs.count }}'", "bash -c 'python3 {0}'", false},
+		{"echo '${{ inputs.count }}'", "bash -ec 'python3 {0}'", false},
+		{"echo '${{ inputs.count }}'", "sh -lc 'node {0}'", false},
+		{"echo '${{ inputs.count }}'", "bash wrapper.sh {0}", false},
+		{"echo '${{ inputs.count }}'", "bash -s {0}", false},
+		{"echo '${{ inputs.count }}'", "bash ${{ inputs.options }} {0}", false},
 		{"echo '${{ inputs.count }}'", "", false},
 	} {
 		t.Run(tc.shell+"/"+tc.script, func(t *testing.T) {
@@ -79,6 +90,8 @@ func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
 			{name: "step shell", script: "echo '%s'", shell: "pwsh", runner: "ubuntu-latest", unsafe: true},
 			{name: "workflow shell", script: "echo '%s'", defaults: "defaults: {run: {shell: python}}\n", runner: "ubuntu-latest", unsafe: true},
 			{name: "bash overrides Windows", script: "echo '%s'", shell: "bash", runner: "windows-latest"},
+			{name: "custom Bash template", script: "echo '%s'", shell: "bash --noprofile --norc -e {0}", runner: "ubuntu-latest"},
+			{name: "custom Bash command", script: "%s", shell: "bash --noprofile --norc -e {0}", runner: "ubuntu-latest", unsafe: true},
 		} {
 			t.Run(expression+"/"+tc.name, func(t *testing.T) {
 				script := fmt.Sprintf(tc.script, "${{ "+expression+" }}")

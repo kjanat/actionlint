@@ -92,7 +92,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := NewChecker(false, nil).CheckScriptInterpolation(node, tc.typeOf, true, func(ref Node) bool {
+			findings := NewChecker(false, nil).CheckScriptInterpolation(node, tc.typeOf, ScriptShellArgument, func(ref Node) bool {
 				name := eventReference(ref)
 				return name == "matrix.target"
 			})

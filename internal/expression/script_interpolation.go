@@ -84,9 +84,19 @@ func SafeScriptWord(value string) bool {
 	return SafeScriptLiteral(value) && !shellsyntax.IsKeyword(value) && value != "elif"
 }
 
+// ScriptPosition identifies the syntax proved by the script's language and parser.
+type ScriptPosition uint8
+
+const (
+	ScriptUnknownPosition ScriptPosition = iota
+	ScriptShellWord
+	ScriptShellArgument
+)
+
 // CheckScriptInterpolation needs separate character and scalar-argument position proofs.
 // Callers omit it when a specific secret or untrusted-input finding exists.
-func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, scalarArgument bool, safeReference func(Node) bool) []*Error {
+func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, position ScriptPosition, safeReference func(Node) bool) []*Error {
+	scalarArgument := position == ScriptShellArgument
 	if _, stringValue := ty.(StringType); stringValue && sema.IsScriptScalar(expr) {
 		// toJSON of a primitive retains scalar syntax; its position still needs proof.
 		if scalarArgument {
@@ -103,6 +113,9 @@ func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, scalarArgument
 			return nil
 		}
 		return unsafeScalarScriptInterpolation(expr)
+	}
+	if position == ScriptUnknownPosition {
+		return unsafeScriptInterpolation(expr)
 	}
 	if safeScriptExpression(expr, scalarArgument, safeReference) {
 		return nil

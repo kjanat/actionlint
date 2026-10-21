@@ -37,6 +37,7 @@ type Checker struct {
 	expressionSource *workflowlang.ScriptSource
 	expressionOffset int
 	scriptScalarArgs map[int]bool
+	scriptPosition   exprlang.ScriptPosition
 	scriptJob        *workflowlang.Job
 	compositeScript  bool
 }

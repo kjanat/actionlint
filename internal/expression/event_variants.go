@@ -135,12 +135,12 @@ func eventGuardValue(node Node, variant EventVariant) (bool, bool) {
 				if _, exists := variant.Payload.Props["action"]; exists {
 					return false, false
 				}
+				return CompareConditionValues(n.Kind, nil, text.Value)
 			}
 		default:
 			return false, false
 		}
-		equal := strings.EqualFold(value, text.Value)
-		return equal == (n.Kind == CompareOpNodeKindEq), true
+		return CompareConditionValues(n.Kind, value, text.Value)
 	}
 	return false, false
 }

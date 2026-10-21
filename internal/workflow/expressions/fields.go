@@ -391,12 +391,16 @@ func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey str
 		return
 	}
 
-	previous := rule.scriptScalarArgs
+	previous, previousPosition := rule.scriptScalarArgs, rule.scriptPosition
 	rule.scriptScalarArgs = nil
+	rule.scriptPosition = exprlang.ScriptUnknownPosition
 	if len(shell) > 0 {
 		rule.scriptScalarArgs = scalarScriptArguments(str.Value, shell[0])
+		if _, ok := scriptShellVariant(shell[0]); ok {
+			rule.scriptPosition = exprlang.ScriptShellWord
+		}
 	}
-	defer func() { rule.scriptScalarArgs = previous }()
+	defer func() { rule.scriptScalarArgs, rule.scriptPosition = previous, previousPosition }()
 	ts, ok := rule.checkExprsIn(str.Value, str.Pos, str.Quoted, true, workflowKey)
 	if !ok {
 		return

@@ -121,7 +121,11 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 	}
 	if checkUntrusted && len(errs) == 0 {
 		scalarArgument := rule.scriptScalarArgs[rule.expressionOffset-3]
-		findings := c.CheckScriptInterpolation(expr, ty, scalarArgument, func(node exprlang.Node) bool {
+		position := rule.scriptPosition
+		if scalarArgument {
+			position = exprlang.ScriptShellArgument
+		}
+		findings := c.CheckScriptInterpolation(expr, ty, position, func(node exprlang.Node) bool {
 			path := exprlang.StaticReference(node)
 			if c.IsScriptScalar(node) {
 				return scalarArgument

@@ -1,6 +1,7 @@
 package expressions
 
 import (
+	"path"
 	"sort"
 	"strings"
 
@@ -32,15 +33,57 @@ func (rule *Checker) scriptShell(run *workflowlang.ExecRun) string {
 	return execution.ResolveShell(run, jobShell, workflowShell, runnerShell).Name
 }
 
+func scriptShellVariant(shell string) (syntax.LangVariant, bool) {
+	words := strings.Fields(shell)
+	if len(words) == 0 || strings.Contains(shell, "${{") {
+		return syntax.LangBash, false
+	}
+	if len(words) > 1 && !directShellScript(words[1:]) {
+		return syntax.LangBash, false
+	}
+	switch path.Base(strings.ReplaceAll(words[0], "\\", "/")) {
+	case "bash", "bash.exe":
+		return syntax.LangBash, true
+	case "sh", "sh.exe":
+		return syntax.LangPOSIX, true
+	default:
+		return syntax.LangBash, false
+	}
+}
+
+func directShellScript(arguments []string) bool {
+	for i := 0; i < len(arguments); i++ {
+		argument := arguments[i]
+		switch argument {
+		case "{0}", "'{0}'", `"{0}"`:
+			return true
+		case "--":
+			return i+1 < len(arguments) && directShellScript(arguments[i+1:i+2])
+		case "--noprofile", "--norc", "--posix", "--restricted", "--verbose", "--login", "--noediting":
+			continue
+		}
+		if len(argument) < 2 || argument[0] != '-' && argument[0] != '+' {
+			return false
+		}
+		for j, option := range argument[1:] {
+			if option == 'o' || option == 'O' {
+				if j != len(argument)-2 || i+1 == len(arguments) || strings.ContainsAny(arguments[i+1], "{}+-") {
+					return false
+				}
+				i++
+			} else if !strings.ContainsRune("aefhkmnptuvxBCEHPTilr", option) {
+				return false
+			}
+		}
+	}
+	return false
+}
+
 // Scalar exceptions cover echo/printf data arguments in parsed POSIX shells.
 // This proves lexical position, not runtime command identity or argument semantics.
 func scalarScriptArguments(source, shell string) map[int]bool {
-	variant := syntax.LangBash
-	switch shell {
-	case "bash":
-	case "sh":
-		variant = syntax.LangPOSIX
-	default:
+	variant, ok := scriptShellVariant(shell)
+	if !ok {
 		return nil
 	}
 	masked := []byte(source)
