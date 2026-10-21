@@ -1,3 +1,5 @@
 test.yaml:19:24: property "platform" is not defined in matrix [expression-reference]
 test.yaml:21:24: property "dev" is not defined in matrix.package [expression-reference]
+test.yaml:25:35: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
+test.yaml:26:67: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
 test.yaml:34:24: property "os" is not defined in matrix [expression-reference]

@@ -21,5 +21,5 @@ jobs:
         # ERROR: Accessing untrusted inputs via `.*` object filter; bodies of comment, review, and review_comment
         run: echo '${{ toJSON(github.event.*.body) }}'
       - name: Do something with checking skip
-        # OK: This placeholder uses an untrusted input, but the input cannot be injected to the script
+        # The boolean result avoids untrusted text, but this condition is not a proved script data argument
         run: if [ "${{ contains(github.event.pull_request.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi

@@ -39,12 +39,15 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 				metadata := "name: inner\ndescription: test\ninputs:\n  custom_name:\n    description: custom\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      " + tc.declaration + "\n"
 				testutil.WriteFixture(t, root, "inner/action.yml", strings.ReplaceAll(metadata, "\n", ending))
 				result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
-				count := 1
-				if tc.name == "repeated" {
-					count = 2
+				suggestion := 0
+				if tc.name == "later-expression" {
+					if len(result.Diagnostics) != 2 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].Code != "unknown-script-value" || result.Diagnostics[0].Start != (diagmodel.Position{Line: 10, Column: 21}) {
+						t.Fatalf("first expression must retain its independent script finding: %+v", result.Diagnostics)
+					}
+					suggestion = 1
 				}
-				if len(result.Diagnostics) != count || !strings.Contains(result.Diagnostics[0].Message, "did you mean") {
-					t.Fatalf("expected %d suggestions: %+v", count, result.Diagnostics)
+				if len(result.Diagnostics) != suggestion+1 || result.Diagnostics[suggestion].Rule != "action" || !strings.Contains(result.Diagnostics[suggestion].Message, "did you mean") {
+					t.Fatalf("expected one action suggestion: %+v", result.Diagnostics)
 				}
 				var want diagmodel.Position
 				for i, line := range strings.Split(metadata, "\n") {
@@ -62,8 +65,8 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 						break
 					}
 				}
-				if got := result.Diagnostics[0].Start; got != want {
-					t.Fatalf("want %+v got %+v: %+v", want, got, result.Diagnostics[0])
+				if got := result.Diagnostics[suggestion].Start; got != want {
+					t.Fatalf("want %+v got %+v: %+v", want, got, result.Diagnostics[suggestion])
 				}
 			})
 		}

@@ -579,7 +579,7 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-interpolation"
               },
               "fullDescription": {
-                "text": "Detect template values that may change script syntax. Unknown string values are checked independently of attacker control; boolean, numeric and provably safe literal values are accepted."
+                "text": "Detect template values that may change script syntax. Unknown string values are checked independently of attacker control. Boolean and numeric values require a proved script data position; constrained literal strings have a separate character-based check."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-interpolation",
               "help": {

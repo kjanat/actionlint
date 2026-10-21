@@ -52,8 +52,8 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 			testutil.WriteFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\ninputs:\n  github_repository:\n    description: repository\nruns:\n  using: composite\n  steps:\n    - run: echo '"+tc.expression+"'\n      shell: bash\n")
 			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
 			if tc.want == "" {
-				if len(result.Diagnostics) != 0 {
-					t.Fatalf("qualified input reported: %+v", result.Diagnostics)
+				if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].Code != "unknown-script-value" {
+					t.Fatalf("qualified input must retain its independent script finding: %+v", result.Diagnostics)
 				}
 			} else if len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, tc.want) {
 				t.Fatalf("want %s, got %+v", tc.want, result.Diagnostics)
