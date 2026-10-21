@@ -739,7 +739,7 @@ jobs:
         run: echo "${MESSAGE}"
 ```
 
-Best when logging untrusted text: keep the environment binding and suspend workflow-command processing around the output. Use a fresh unpredictable token for each invocation, keep shell tracing disabled, and register any secret masks before stopping commands. The EXIT trap resumes commands even if printing fails. This protects the log command channel; it does not sanitize shell source, hide secrets, or escape terminal control characters. If raw text is unnecessary, use a serializer or escaping routine for the intended output format instead of ad hoc replacements. See [GitHub's stop-commands guidance](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#stopping-and-starting-workflow-commands).
+Best when logging untrusted text: keep the environment binding and suspend workflow-command processing around the output. Use a fresh unpredictable token for each invocation, keep shell tracing disabled, and register any secret masks before stopping commands. The EXIT trap resumes commands even if printing fails. This protects the log command channel; it does not sanitize shell source, hide secrets, or escape terminal control characters. If raw text is unnecessary, use a serializer or escaping routine for the intended output format. See [GitHub's stop-commands guidance](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#stopping-and-starting-workflow-commands).
 
 ```yaml
 # best: untrusted log output cannot issue workflow commands
