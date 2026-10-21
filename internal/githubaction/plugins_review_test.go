@@ -8,8 +8,11 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
@@ -84,7 +87,18 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 				"INPUT_FILES": ".github/workflows/ci.yml",
 			}
 			lookup := func(key string) string { return env[key] }
-			needed, err := requiredTools(lookup)
+			plan, err := provisioningRequest(lookup)
+			if err != nil {
+				t.Fatal(err)
+			}
+			selected, err := plan.pluginSelection().Resolve(t.Context(), plan.workingDir, plan.pluginInput())
+			if err != nil {
+				t.Fatal(err)
+			}
+			needed, err := localapp.RequiredToolsSources(t.Context(), application.Options{
+				WorkingDir: plan.workingDir, ConfigFile: plan.configFile, ConfigOverlays: plan.overlays,
+				IgnorePatterns: plan.ignore, Tools: adapters.Options{ShellCheck: plan.shellcheck, Ruff: plan.ruff}.Registrations(),
+			}, plan.files, selected)
 			if err != nil || needed["ruff"] || needed["shellcheck"] {
 				t.Fatalf("needed=%+v err=%v", needed, err)
 			}

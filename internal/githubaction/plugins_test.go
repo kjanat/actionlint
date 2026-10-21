@@ -178,8 +178,8 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 			}
 			result := runLinter(req)
 			if configured {
-				if result.code != 3 || !strings.Contains(result.stderr, "missing-ruff") {
-					t.Fatalf("explicit native backend silently skipped: %+v", result.lintOutcome)
+				if result.code != 3 || !strings.Contains(result.stderr, "tools.ruff.backend.process requires host opt-in") {
+					t.Fatalf("repository process was not rejected before execution: %+v", result.lintOutcome)
 				}
 			} else if result.code != 0 {
 				t.Fatalf("enabled Ruff required a native executable: %+v", result.lintOutcome)
