@@ -25,6 +25,13 @@ type Process struct {
 	Timeout    time.Duration
 	mu         sync.Mutex
 	cache      map[resolver.Request]resolver.Result
+	pending    map[resolver.Request]*pendingResolution
+}
+
+type pendingResolution struct {
+	done   chan struct{}
+	result resolver.Result
+	err    error
 }
 type boundedOutput struct {
 	bytes.Buffer
@@ -44,11 +51,49 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 	}
 	p.mu.Lock()
 	cached, exists := p.cache[request]
-	p.mu.Unlock()
 	if exists {
+		p.mu.Unlock()
 		cached.Evidence = slices.Clone(cached.Evidence)
 		return cached, nil
 	}
+	if call, exists := p.pending[request]; exists {
+		p.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return resolver.Result{}, ctx.Err()
+		case <-call.done:
+			if err := ctx.Err(); err != nil {
+				return resolver.Result{}, err
+			}
+			result := call.result
+			result.Evidence = slices.Clone(result.Evidence)
+			return result, call.err
+		}
+	}
+	if p.pending == nil {
+		p.pending = make(map[resolver.Request]*pendingResolution)
+	}
+	call := &pendingResolution{done: make(chan struct{})}
+	p.pending[request] = call
+	p.mu.Unlock()
+
+	result, err := p.resolve(ctx, request)
+	p.mu.Lock()
+	call.result, call.err = result, err
+	call.result.Evidence = slices.Clone(result.Evidence)
+	if err == nil {
+		if p.cache == nil {
+			p.cache = make(map[resolver.Request]resolver.Result)
+		}
+		p.cache[request] = call.result
+	}
+	delete(p.pending, request)
+	close(call.done)
+	p.mu.Unlock()
+	return result, err
+}
+
+func (p *Process) resolve(ctx context.Context, request resolver.Request) (resolver.Result, error) {
 	if request.Version != 1 || (request.Kind != "action" && request.Kind != "workflow") {
 		return resolver.Result{}, errors.New("unsupported resolution request")
 	}
@@ -80,14 +125,6 @@ func (p *Process) Resolve(ctx context.Context, request resolver.Request) (resolv
 		return result, err
 	}
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.cache == nil {
-		p.cache = map[resolver.Request]resolver.Result{}
-	}
-	cached = result
-	cached.Evidence = slices.Clone(result.Evidence)
-	p.cache[request] = cached
 	return result, nil
 }
 

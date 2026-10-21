@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/url"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -95,11 +96,16 @@ func filePath(uri string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if u.Scheme != "file" || u.Host != "" && u.Host != "localhost" || u.RawQuery != "" || u.Fragment != "" || u.Path == "" {
+	if u.Scheme != "file" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path == "" {
 		return "", errors.New("expected local file URI")
 	}
 	path := u.Path
-	if len(path) > 2 && path[0] == '/' && path[2] == ':' {
+	if u.Host != "" && !strings.EqualFold(u.Host, "localhost") {
+		if runtime.GOOS != "windows" || u.Host != u.Hostname() {
+			return "", errors.New("expected local file URI")
+		}
+		path = "//" + u.Host + path
+	} else if len(path) > 2 && path[0] == '/' && path[2] == ':' {
 		path = path[1:]
 	}
 	path = filepath.FromSlash(path)
@@ -112,6 +118,10 @@ func filePath(uri string) (string, error) {
 // FileURI converts an absolute local path to an editor URI, including drive paths.
 func FileURI(path string) string {
 	path = filepath.ToSlash(path)
+	if runtime.GOOS == "windows" && strings.HasPrefix(path, "//") {
+		host, rest, _ := strings.Cut(path[2:], "/")
+		return (&url.URL{Scheme: "file", Host: host, Path: "/" + rest}).String()
+	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
