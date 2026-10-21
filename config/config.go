@@ -61,7 +61,10 @@ const (
 )
 
 // Parse decodes a standalone configuration document. Use Load to resolve extends.
-func Parse(source []byte) (*Config, error) { return repoconfig.Parse(source) }
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func Parse(source []byte, registeredRules ...string) (*Config, error) {
+	return repoconfig.Parse(source, registeredRules...)
+}
 
 // ParseOverlay validates a complete config document or one named configuration input.
 func ParseOverlay(input string, source []byte) (Overlay, error) {
@@ -69,7 +72,10 @@ func ParseOverlay(input string, source []byte) (Overlay, error) {
 }
 
 // Load reads a configuration file and resolves its inheritance.
-func Load(path string) (*Config, error) { return repoconfig.Load(path) }
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func Load(path string, registeredRules ...string) (*Config, error) {
+	return repoconfig.Load(path, registeredRules...)
+}
 
 // Inspect reports effective configuration and optionally its origins.
 func Inspect(selection Selection, origins bool) (Inspection, error) {

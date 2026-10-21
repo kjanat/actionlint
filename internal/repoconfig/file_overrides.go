@@ -216,6 +216,9 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 	if err := yaml.Unmarshal(content, &next.Lint); err != nil {
 		return nil, err
 	}
+	if err := validateLintRuleNames(node, config.registeredRules); err != nil {
+		return nil, err
+	}
 	return &next, nil
 }
 

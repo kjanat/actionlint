@@ -128,7 +128,7 @@ func (p *SuppressionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 					return suppressionConfigError(value, "rules must be a nonempty list of suppressible rule IDs")
 				}
 				for _, rule := range value.Content {
-					if rule.Kind != yaml.ScalarNode || rule.Tag != "!!str" || !Suppressible(rule.Value) {
+					if rule.Kind != yaml.ScalarNode || rule.Tag != "!!str" || rule.Value == "" {
 						return suppressionConfigError(rule, fmt.Sprintf("unknown suppressible rule %q", rule.Value))
 					}
 					if !slices.Contains(next.rules, rule.Value) {

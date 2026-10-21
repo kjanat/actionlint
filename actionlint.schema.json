@@ -159,10 +159,9 @@
               },
               "rule": {
                 "title": "rule",
-                "description": "Diagnostic rule to suppress.",
-                "markdownDescription": "Diagnostic rule to suppress.",
-                "type": "string",
-                "enum": [
+                "description": "Built-in or registered plugin diagnostic rule to suppress. Registration is validated when loading configuration.",
+                "markdownDescription": "Built-in or registered plugin diagnostic rule to suppress. Registration is validated when loading configuration.",
+                "examples": [
                   "workflow-run-names",
                   "unsound-ternary",
                   "ruff",
@@ -199,7 +198,11 @@
                   "cache-operation",
                   "shellcheck"
                 ],
-                "minLength": 1
+                "type": "string",
+                "minLength": 1,
+                "not": {
+                  "const": "disallow-suppressions"
+                }
               },
               "step": {
                 "title": "step",
@@ -1873,8 +1876,7 @@
                       "description": "Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none.",
                       "markdownDescription": "Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none.",
                       "items": {
-                        "type": "string",
-                        "enum": [
+                        "examples": [
                           "workflow-run-names",
                           "unsound-ternary",
                           "ruff",
@@ -1911,7 +1913,9 @@
                           "cache-call-unrestricted",
                           "cache-operation",
                           "shellcheck"
-                        ]
+                        ],
+                        "type": "string",
+                        "minLength": 1
                       },
                       "oneOf": [
                         {
@@ -2333,8 +2337,7 @@
                                                       "type": "array",
                                                       "minItems": 1,
                                                       "items": {
-                                                        "type": "string",
-                                                        "enum": [
+                                                        "examples": [
                                                           "action",
                                                           "cache-call-unrestricted",
                                                           "cache-operation",
@@ -2371,7 +2374,9 @@
                                                           "unsound-ternary",
                                                           "workflow-call",
                                                           "workflow-run-names"
-                                                        ]
+                                                        ],
+                                                        "type": "string",
+                                                        "minLength": 1
                                                       }
                                                     }
                                                   },
@@ -5180,8 +5185,7 @@
                                 "description": "Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none.",
                                 "markdownDescription": "Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none.",
                                 "items": {
-                                  "type": "string",
-                                  "enum": [
+                                  "examples": [
                                     "workflow-run-names",
                                     "unsound-ternary",
                                     "ruff",
@@ -5218,7 +5222,9 @@
                                     "cache-call-unrestricted",
                                     "cache-operation",
                                     "shellcheck"
-                                  ]
+                                  ],
+                                  "type": "string",
+                                  "minLength": 1
                                 },
                                 "oneOf": [
                                   {
@@ -5640,8 +5646,7 @@
                                                                 "type": "array",
                                                                 "minItems": 1,
                                                                 "items": {
-                                                                  "type": "string",
-                                                                  "enum": [
+                                                                  "examples": [
                                                                     "action",
                                                                     "cache-call-unrestricted",
                                                                     "cache-operation",
@@ -5678,7 +5683,9 @@
                                                                     "unsound-ternary",
                                                                     "workflow-call",
                                                                     "workflow-run-names"
-                                                                  ]
+                                                                  ],
+                                                                  "type": "string",
+                                                                  "minLength": 1
                                                                 }
                                                               }
                                                             },
@@ -7414,8 +7421,7 @@
                           "type": "array",
                           "minItems": 1,
                           "items": {
-                            "type": "string",
-                            "enum": [
+                            "examples": [
                               "action",
                               "cache-call-unrestricted",
                               "cache-operation",
@@ -7452,7 +7458,9 @@
                               "unsound-ternary",
                               "workflow-call",
                               "workflow-run-names"
-                            ]
+                            ],
+                            "type": "string",
+                            "minLength": 1
                           }
                         }
                       },

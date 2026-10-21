@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -343,8 +344,9 @@ type SelfHostedRunnerConfig struct {
 // Save as `.github/actionlint.yaml` or `.github/actionlint.yml`, or select a file with `-config-file`.
 // Every setting is optional; normal workflow correctness checks run without a configuration file.
 type Config struct {
-	filename    string
-	configFiles []string
+	filename        string
+	configFiles     []string
+	registeredRules []string
 	// Extends loads local YAML/JSON files, relative to this config, in order.
 	// Later bases override earlier bases; this file wins over all bases. No URLs.
 	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
@@ -549,8 +551,8 @@ func (cfg *Config) RequiredActions() []string {
 
 // Parse parses the given bytes as an actionlint config file. When deserializing the YAML file
 // or the config validation fails, this function returns an error.
-func Parse(b []byte) (*Config, error) {
-	resolved, err := ResolveDocument(b)
+func Parse(b []byte, registeredRules ...string) (*Config, error) {
+	resolved, err := ResolveDocument(b, registeredRules...)
 	if err != nil {
 		return nil, err
 	}
@@ -570,7 +572,7 @@ type Resolved struct {
 	Warnings []Warning
 }
 
-func ResolveDocument(b []byte) (Resolved, error) {
+func ResolveDocument(b []byte, registeredRules ...string) (Resolved, error) {
 	var document yaml.Node
 	if err := yaml.Unmarshal(b, &document); err != nil {
 		return Resolved{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
@@ -579,10 +581,10 @@ func ResolveDocument(b []byte) (Resolved, error) {
 	if len(document.Content) > 0 {
 		root = document.Content[0]
 	}
-	return ResolveNode(root, nil)
+	return ResolveNode(root, nil, registeredRules...)
 }
 
-func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input) (Resolved, error) {
+func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, registeredRules ...string) (Resolved, error) {
 	if inputs == nil {
 		expanded, err := configtree.Expand(root, make(map[*yaml.Node]bool))
 		if err != nil {
@@ -596,9 +598,13 @@ func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input) (Resolved, error)
 			return Resolved{}, errors.New(strings.ReplaceAll(err.Error(), "\n", " "))
 		}
 	}
+	if err := validateSuppressionRuleNames(root, registeredRules); err != nil {
+		return Resolved{}, err
+	}
+	c.registeredRules = slices.Clone(registeredRules)
 
 	for _, ignore := range c.Ignores {
-		if err := ignore.Validate(); err != nil {
+		if err := ignore.Validate(registeredRules...); err != nil {
 			return Resolved{}, err
 		}
 	}
@@ -629,18 +635,18 @@ func ResolveNode(root *yaml.Node, inputs map[*yaml.Node]Input) (Resolved, error)
 }
 
 // Load reads the actionlint config file (actionlint.yaml) from the given file path.
-func Load(path string) (*Config, error) {
-	source, err := Read(path, fsread.Disk)
+func Load(path string, registeredRules ...string) (*Config, error) {
+	source, err := Read(path, fsread.Disk, registeredRules...)
 	if err != nil {
 		return nil, err
 	}
 	return source.Config, nil
 }
 
-func Read(path string, readFile func(string) ([]byte, error)) (*Loaded, error) {
+func Read(path string, readFile func(string) ([]byte, error), registeredRules ...string) (*Loaded, error) {
 	warningsByFile := map[string][]Warning{}
 	loaded, err := configtree.Load(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
-		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin)
+		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin, registeredRules...)
 		warningsByFile[origin] = warnings
 		return normalized, err
 	})
@@ -656,7 +662,7 @@ func Read(path string, readFile func(string) ([]byte, error)) (*Loaded, error) {
 			inputs[node] = Input{File: file}
 		}
 	}
-	resolved, err := ResolveNode(loaded.Node, inputs)
+	resolved, err := ResolveNode(loaded.Node, inputs, registeredRules...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
@@ -671,10 +677,10 @@ func Read(path string, readFile func(string) ([]byte, error)) (*Loaded, error) {
 
 // LoadRepository reads the config file from the repository's .github/actionlint.yml or
 // .github/actionlint.yaml.
-func LoadRepository(root string, readFile func(string) ([]byte, error)) (*Loaded, string, error) {
+func LoadRepository(root string, readFile func(string) ([]byte, error), registeredRules ...string) (*Loaded, string, error) {
 	for _, f := range []string{"actionlint.yaml", "actionlint.yml"} {
 		p := filepath.Join(root, ".github", f)
-		c, err := Read(p, readFile)
+		c, err := Read(p, readFile, registeredRules...)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			continue

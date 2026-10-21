@@ -52,11 +52,6 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
 	}
-	for _, name := range next.Disable {
-		if !Suppressible(name) {
-			return fmt.Errorf("yaml: unknown diagnostic rule %q in lint.rules.disable", name)
-		}
-	}
 	for category, group := range (*LintRulesConfig)(&next).Groups() {
 		for name, setting := range group.Rules {
 			d, ok := FindRule(name)

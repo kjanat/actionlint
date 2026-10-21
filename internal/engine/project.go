@@ -85,8 +85,8 @@ func NewProjectContext(root string) *Project {
 	return &Project{root: root}
 }
 
-func newProject(root string, readFile func(string) ([]byte, error)) (*Project, error) {
-	c, path, err := repoconfig.LoadRepository(root, readFile)
+func newProject(root string, readFile func(string) ([]byte, error), registeredRules ...string) (*Project, error) {
+	c, path, err := repoconfig.LoadRepository(root, readFile, registeredRules...)
 	if err != nil {
 		return nil, err
 	}
@@ -126,10 +126,11 @@ func (p *Project) Config() *Config {
 // and reuses them.
 // Create a new instance after changing repository boundaries or loaded configuration.
 type Projects struct {
-	known      []*Project
-	roots      map[string]string
-	skipConfig bool
-	readFile   func(string) ([]byte, error)
+	known           []*Project
+	roots           map[string]string
+	skipConfig      bool
+	readFile        func(string) ([]byte, error)
+	registeredRules []string
 }
 
 // NewProjects creates new Projects instance.
@@ -162,7 +163,7 @@ func (ps *Projects) At(path string) (*Project, error) {
 	p := &Project{root: root}
 	if !ps.skipConfig {
 		var err error
-		p, err = newProject(root, readFile)
+		p, err = newProject(root, readFile, ps.registeredRules...)
 		if err != nil {
 			return nil, err
 		}

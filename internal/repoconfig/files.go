@@ -43,9 +43,9 @@ func RepositoryRelativePath(path, root string) string {
 	return path
 }
 
-func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool) (*yaml.Node, []Warning, error) {
+func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, registeredRules ...string) (*yaml.Node, []Warning, error) {
 	// Validate each source independently, so overridden bad settings still fail.
-	resolved, err := ResolveNode(node, nil)
+	resolved, err := ResolveNode(node, nil, registeredRules...)
 	if err != nil {
 		return nil, nil, err
 	}

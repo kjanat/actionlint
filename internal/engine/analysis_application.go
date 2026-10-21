@@ -145,6 +145,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.readFile = fsread.Disk
 	}
 	a.projects.readFile = a.readFile
+	a.projects.registeredRules = analyzerRuleNames(opts.Analyzers)
 	a.request.ReadFile = opts.ReadFile
 	a.request.RulePresets = opts.RulePresets
 	if a.logOut == nil {
@@ -157,7 +158,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	var err error
 	if opts.ConfigFile != "" {
-		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile)
+		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile, a.projects.registeredRules...)
 		err = loadErr
 		if err != nil {
 			return nil, err
@@ -170,6 +171,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.configState = &analysisConfigState{}
 	}
 	a.configState.overlays = slices.Clone(opts.ConfigOverlays)
+	a.configState.registeredRules = a.projects.registeredRules
 	a.configState.onLoaded = opts.OnConfigLoaded
 	a.configState.loaded = make(map[*Project]*Config)
 	a.configState.reports = make(map[*Project]ConfigReport)

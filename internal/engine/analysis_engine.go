@@ -42,6 +42,7 @@ func (l *analysisEngine) check(
 	localReusableWorkflows *LocalReusableWorkflowCache,
 	usedRules *[]RuleInfo,
 ) (findings []*Error, outline DocumentOutline, resultErr error) {
+	registeredRules := analyzerRuleNames(l.analyzers)
 	proc = proc.fork()
 	joined := false
 	defer func() {
@@ -271,8 +272,8 @@ func (l *analysisEngine) check(
 			}
 		}
 	} else {
-		all = filterInlineSuppressions(content, all, suppressionPolicy)
-		all = filterConfigIgnores(configPath, root, content, all, cfg, false, diagnosticLevels(cfg))
+		all = filterInlineSuppressions(content, all, suppressionPolicy, registeredRules...)
+		all = filterConfigIgnores(configPath, root, content, all, cfg, false, diagnosticLevels(cfg), registeredRules...)
 	}
 	var projectDir string
 	if project != nil {
@@ -345,8 +346,8 @@ func (l *analysisEngine) check(
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions
 			}
-			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy)
-			findings = filterConfigIgnores(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel)
+			findings = filterForeignInlineSuppressions(sourcePath, source, findings, policy, registeredRules...)
+			findings = filterConfigIgnores(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, registeredRules...)
 		}
 		findings = slices.DeleteFunc(findings, func(e *Error) bool {
 			switch diagnosticLevel(e.Kind) {
