@@ -32,6 +32,7 @@ const (
 	DefaultMemoryPages    uint32 = 4096
 	defaultCompileTimeout        = time.Minute
 	defaultMaxInputBytes         = 8 * 1024 * 1024
+	maxModuleBytes               = 128 * 1024 * 1024
 	transport                    = "wasm-core-json"
 )
 
@@ -123,18 +124,16 @@ type Engine struct {
 // exports, negotiates the operation versions it advertises and keeps one
 // instance ready.
 func Load(ctx context.Context, path string, options Options) (*Engine, error) {
+	if options.MemoryPages > 65536 {
+		return nil, fmt.Errorf("engine %s: memory limit %d exceeds WebAssembly maximum of 65536 pages", path, options.MemoryPages)
+	}
 	data, err := fsread.New(ctx, nil, nil).ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
-		reader, err := gzip.NewReader(bytes.NewReader(data))
-		if err != nil {
-			return nil, fmt.Errorf("engine %s: %w", path, err)
-		}
-		if data, err = io.ReadAll(reader); err != nil {
-			return nil, fmt.Errorf("engine %s: %w", path, err)
-		}
+	data, err = readModule(data, maxModuleBytes)
+	if err != nil {
+		return nil, fmt.Errorf("engine %s: %w", path, err)
 	}
 	limits := Limits{Timeout: options.Timeout, MemoryPages: options.MemoryPages}
 	if limits.Timeout <= 0 {
@@ -157,6 +156,28 @@ func Load(ctx context.Context, path string, options Options) (*Engine, error) {
 		return nil, fmt.Errorf("engine %s: %w", path, err)
 	}
 	return e, nil
+}
+
+func readModule(data []byte, limit int64) ([]byte, error) {
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("module exceeds size limit of %d bytes", limit)
+	}
+	if len(data) < 2 || data[0] != 0x1f || data[1] != 0x8b {
+		return data, nil
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	module, err := io.ReadAll(io.LimitReader(reader, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(module)) > limit {
+		return nil, fmt.Errorf("decompressed module exceeds size limit of %d bytes", limit)
+	}
+	return module, nil
 }
 
 func (e *Engine) load(ctx context.Context, data []byte) error {
@@ -243,6 +264,9 @@ func (e *Engine) negotiate(raw []byte) error {
 	var metadata Metadata
 	if err := json.Unmarshal(raw, &metadata); err != nil {
 		return fmt.Errorf("metadata: %w", err)
+	}
+	if metadata.MetadataVersion != 0 && metadata.MetadataVersion != 1 {
+		return fmt.Errorf("metadata reports document version %d; this host supports version 1 and legacy unversioned metadata", metadata.MetadataVersion)
 	}
 	if metadata.ABIVersion != int(ABIVersion) {
 		return fmt.Errorf("metadata reports ABI version %d; this host implements %d", metadata.ABIVersion, ABIVersion)

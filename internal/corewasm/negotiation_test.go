@@ -15,7 +15,7 @@ import (
 )
 
 // Build small guests directly so timeout tests need no external compiler.
-func negotiationFixture(t *testing.T, check, encoding, hang string) string {
+func negotiationFixture(t *testing.T, check, encoding, hang string, versions ...int) string {
 	t.Helper()
 	u := func(n int) []byte { return binary.AppendUvarint(nil, uint64(n)) }
 	name := func(s string) []byte { return append(u(len(s)), s...) }
@@ -30,8 +30,13 @@ func negotiationFixture(t *testing.T, check, encoding, hang string) string {
 			result = append(result, b|128)
 		}
 	}
+	version := 0
+	if len(versions) > 0 {
+		version = versions[0]
+	}
 	metadata, err := json.Marshal(corewasm.Metadata{
-		ABIVersion: 1, Interfaces: map[string][]corewasm.Interface{"check": {{Version: 1, Export: check}}},
+		MetadataVersion: version,
+		ABIVersion:      1, Interfaces: map[string][]corewasm.Interface{"check": {{Version: 1, Export: check}}},
 		Capabilities: corewasm.Capabilities{PositionEncoding: encoding},
 	})
 	if err != nil {
@@ -110,6 +115,28 @@ func TestRejectsUnsupportedPositionEncoding(t *testing.T) {
 	_, err := corewasm.Load(t.Context(), negotiationFixture(t, "check", "utf16", ""), corewasm.Options{})
 	if err == nil || !strings.Contains(err.Error(), "unsupported position encoding") {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestMetadataDocumentVersions(t *testing.T) {
+	for _, version := range []int{-1, 0, 1, 2} {
+		engine, err := corewasm.Load(t.Context(), negotiationFixture(t, "check", "unicode", "", version), corewasm.Options{})
+		if version == 0 || version == 1 {
+			if err != nil {
+				t.Fatalf("version %d: %v", version, err)
+			}
+			if err := engine.Close(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "document version") {
+			t.Fatalf("unsupported version %d accepted: %v", version, err)
+		}
+	}
+}
+
+func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
+	if _, err := corewasm.Load(t.Context(), "not-opened.wasm", corewasm.Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
+		t.Fatalf("invalid memory limit was not rejected: %v", err)
 	}
 }
 

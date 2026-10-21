@@ -123,7 +123,8 @@ tools:
 
 The host checks the ABI version, the export signatures and the advertised operation versions when it loads the module,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
-limit. A trap or an exceeded limit discards that instance and fails the document's analysis. From Go, call
+limit. Raw and gzip-expanded modules must fit within 128 MiB before compilation.
+A trap or an exceeded limit discards that instance and fails the document's analysis. From Go, call
 `plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the
 repository configuration.
 

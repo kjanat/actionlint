@@ -167,6 +167,10 @@ func liftPosition(v wacogo.Val) (diagnostic.Position, error) {
 	if !ok {
 		return diagnostic.Position{}, liftError{"position column", record.Field("column")}
 	}
+	maxInt := uint64(^uint(0) >> 1)
+	if line == 0 || column == 0 || uint64(line) > maxInt || uint64(column) > maxInt {
+		return diagnostic.Position{}, fmt.Errorf("position coordinates must be one-based and fit the host integer range: line %d, column %d", line, column)
+	}
 	return diagnostic.Position{Line: int(line), Column: int(column)}, nil
 }
 

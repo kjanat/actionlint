@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"actionlint.kjanat.dev/analyzer"
@@ -24,6 +23,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental"
+	"golang.org/x/sync/semaphore"
 )
 
 // AnalyzerInterface is the exported interface every plugin must implement.
@@ -71,13 +71,16 @@ type Plugin struct {
 	component *wacogo.Component
 	factory   *hostbind.Factory
 
-	mu    sync.Mutex
+	gate  *semaphore.Weighted
 	host  *host.ComponentInstance
 	world *wasi.World
 }
 
 // Load reads and validates a component and asks it to describe itself.
 func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
+	if options.MemoryPages > 65536 {
+		return nil, fmt.Errorf("plugin %s: memory limit %d exceeds WebAssembly maximum of 65536 pages", path, options.MemoryPages)
+	}
 	data, err := fsread.New(ctx, nil, nil).ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -98,9 +101,9 @@ func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
 		WithCloseOnContextDone(true).
 		WithMemoryLimitPages(limits.MemoryPages)
 	engine := wacogo.NewEngine(ctx, wacogo.WithRuntimeConfig(config))
-	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine}
+	p := &Plugin{path: path, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1)}
 	if err := p.load(ctx, data); err != nil {
-		_ = p.Close(ctx)
+		_ = p.Close(context.WithoutCancel(ctx))
 		return nil, fmt.Errorf("plugin %s: %w", path, err)
 	}
 	return p, nil
@@ -208,13 +211,15 @@ func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
 }
 
 func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	if err := p.gate.Acquire(ctx, 1); err != nil {
+		return nil, p.failure(ctx, err)
+	}
+	defer p.gate.Release(1)
+	ctx, cancel := context.WithTimeout(ctx, p.limits.Timeout)
+	defer cancel()
 	if p.engine == nil {
 		return nil, fmt.Errorf("plugin %s is closed", p.path)
 	}
-	ctx, cancel := context.WithTimeout(ctx, p.limits.Timeout)
-	defer cancel()
 	if err := p.prepareImports(ctx); err != nil {
 		return nil, p.failure(ctx, err)
 	}
@@ -303,8 +308,10 @@ func (p *Plugin) failure(ctx context.Context, err error) error {
 
 // Close releases the runtime. The plugin cannot be used afterwards.
 func (p *Plugin) Close(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	if err := p.gate.Acquire(ctx, 1); err != nil {
+		return err
+	}
+	defer p.gate.Release(1)
 	p.discardImports(ctx)
 	var errs []error
 	if p.factory != nil {
