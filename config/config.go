@@ -47,6 +47,7 @@ type ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
 type ShellcheckToolConfig = repoconfig.ShellcheckToolConfig
 type SuppressionsPolicy = repoconfig.SuppressionsPolicy
 type ToolsConfig = repoconfig.ToolsConfig
+type ToolModule = toolconfig.Module
 
 // ToolBackend selects the configured transport for an external tool.
 type ToolBackend = toolconfig.Backend

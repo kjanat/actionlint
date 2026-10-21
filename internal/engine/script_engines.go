@@ -61,8 +61,12 @@ func (s *ScriptEngines) Close(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
+func configuredScriptSelectionEnabled(name, requested string, explicit *ExternalCommandOptions) bool {
+	return requested == name && (explicit == nil || !explicit.IgnoreConfig && (explicit.Optional || explicit.AllowWasm))
+}
+
 func configuredScriptModule(name, requested string, explicit *ExternalCommandOptions, cfg *Config) *toolconfig.Module {
-	if requested != name || cfg == nil || explicit != nil && (explicit.IgnoreConfig || !explicit.Optional && !explicit.AllowWasm) {
+	if cfg == nil || !configuredScriptSelectionEnabled(name, requested, explicit) {
 		return nil
 	}
 	backend := cfg.Tools.Shellcheck.Backend

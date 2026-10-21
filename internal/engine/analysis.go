@@ -109,11 +109,15 @@ func (f *inputFiles) list() []string {
 	return paths
 }
 
-func (f *inputFiles) addConfig(config *Config, project *Project) {
+func (f *inputFiles) addConfig(config *Config, project *Project, workingDir string) {
 	if config != nil {
 		for _, backend := range []*toolconfig.Backend{config.Tools.Ruff.Backend, config.Tools.Shellcheck.Backend} {
 			if backend != nil && backend.Wasm != nil {
-				f.add(backend.Wasm.Path)
+				path := backend.Wasm.Path
+				if !filepath.IsAbs(path) {
+					path = filepath.Join(workingDir, path)
+				}
+				f.add(path)
 			}
 		}
 		for _, path := range config.Sources() {
@@ -155,7 +159,7 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	selected := make([]SourceUnit, 0, len(request.Sources))
 	for _, source := range request.Sources {
 		// Selection itself consumes configuration, even when no source survives.
-		inputs.addConfig(source.Config, source.Project)
+		inputs.addConfig(source.Config, source.Project, request.WorkingDir)
 		root := request.WorkingDir
 		if source.Project != nil {
 			root = source.Project.RootDir()
@@ -179,6 +183,11 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 	logger := analysisLogger{log, level}
 	if load := request.LoadScriptEngine; load != nil {
 		request.LoadScriptEngine = func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(request.WorkingDir, path)
+			} else {
+				path = filepath.Clean(path)
+			}
 			inputs.add(path)
 			return load(ctx, path)
 		}

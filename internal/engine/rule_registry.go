@@ -78,7 +78,7 @@ func ruleBehaviours() map[string]ruleBehaviour {
 			return c.ruffBackend != nil || configuredScriptModule("ruff", c.ruff, c.ruffOptions, c.config) != nil || options == nil || !options.Optional
 		}, buildScripts: newRuffAnalyzer, enabled: func(c ruleContext) bool {
 			possible, err := ruffProjectConfigMayEnable(c.config, c.projectConfig, c.projectRoot != "")
-			return (c.ruffBackend != nil || externalCommandEnabled(c.ruff, c.ruffOptions)) && (possible || err != nil)
+			return (c.ruffBackend != nil || configuredScriptModule("ruff", c.ruff, c.ruffOptions, c.config) != nil || c.scriptEngine != nil && configuredScriptSelectionEnabled("ruff", c.ruff, c.ruffOptions) || externalCommandEnabled(c.ruff, c.ruffOptions)) && (possible || err != nil)
 		}},
 		"disallow-suppressions": {enabled: func(c ruleContext) bool { return c.config != nil && c.config.Policy.DisallowSuppressions.Enabled() }},
 		"matrix":                {build: func(c ruleContext) (Rule, error) { return NewRuleMatrix(), nil }},
@@ -113,7 +113,7 @@ func ruleBehaviours() map[string]ruleBehaviour {
 			options := projectToolOptions("shellcheck", c.shellcheck, c.shellcheckOptions, c.config, c.workingDir)
 			return c.shellcheckBackend != nil || configuredScriptModule("shellcheck", c.shellcheck, c.shellcheckOptions, c.config) != nil || options != nil && !options.Optional
 		}, skipWhenDisabled: true, requiresScriptExecution: true, buildScripts: newShellcheckAnalyzer, enabled: func(c ruleContext) bool {
-			return (c.shellcheckBackend != nil || c.shellcheckRunner != nil || externalCommandEnabled(c.shellcheck, c.shellcheckOptions)) &&
+			return (c.shellcheckBackend != nil || c.shellcheckRunner != nil || configuredScriptModule("shellcheck", c.shellcheck, c.shellcheckOptions, c.config) != nil || c.scriptEngine != nil && configuredScriptSelectionEnabled("shellcheck", c.shellcheck, c.shellcheckOptions) || externalCommandEnabled(c.shellcheck, c.shellcheckOptions)) &&
 				(c.config == nil || c.config.Tools.Shellcheck.Enabled == nil || *c.config.Tools.Shellcheck.Enabled)
 		}},
 	}

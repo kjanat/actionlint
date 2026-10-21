@@ -26,6 +26,11 @@ func newShellcheckAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 	if err != nil {
 		return nil, err
 	}
+	if initial == nil {
+		// Retain per-composite selection even when the calling workflow has no
+		// engine. The empty invocation never executes a native command.
+		initial = &shellcheckAnalyzer{debug: c.debug}
+	}
 	if c.shellcheckBackend == nil && c.shellcheckRunner == nil {
 		initial.forConfig = func(cfg *Config) (*shellcheckAnalyzer, error) {
 			if cfg == c.config {
@@ -56,6 +61,9 @@ func newShellcheckInvocation(c ruleContext) (*shellcheckAnalyzer, error) {
 			settings: &ShellcheckSettings{Config: ShellcheckRCDisabled, ExternalSources: &externalSources},
 			debug:    c.debug, embedded: true,
 		}, nil
+	}
+	if !externalCommandEnabled(c.shellcheck, c.shellcheckOptions) {
+		return nil, nil
 	}
 	commandFor := func(cfg *Config) (*externalCommand, error) {
 		if err := c.requireConfigProcessOptIn("shellcheck", c.shellcheck, c.shellcheckOptions, cfg); err != nil {
@@ -98,10 +106,13 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 					continue
 				}
 				invocations[scope.config] = active
-				if active.cmd != nil && active.cmd != analyzer.cmd {
+				if active != nil && active.cmd != nil && active.cmd != analyzer.cmd {
 					pending = append(pending, active.cmd)
 				}
 			}
+		}
+		if active == nil || active.backend == nil && active.cmd == nil {
+			continue
 		}
 		if active.backend != nil {
 			run := &shellcheckRun{backend: active.backend, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug, rcArgs: []string{}}

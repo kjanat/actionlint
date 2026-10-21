@@ -353,7 +353,7 @@ func (a *AnalysisSession) Empty() (*AnalysisResult, error) {
 			return nil, err
 		}
 		a.configState.Lock()
-		inputs.addConfig(a.configState.loaded[project], project)
+		inputs.addConfig(a.configState.loaded[project], project, a.cwd)
 		result.Configurations = append(result.Configurations, a.configState.reports[project])
 		a.configState.Unlock()
 	}
@@ -478,7 +478,7 @@ func (a *AnalysisSession) analyze(sources []SourceUnit, configProjects ...*Proje
 	for _, project := range projects {
 		if !seen[project] {
 			seen[project] = true
-			inputs.addConfig(a.configState.loaded[project], project)
+			inputs.addConfig(a.configState.loaded[project], project, a.cwd)
 			result.Configurations = append(result.Configurations, a.configState.reports[project])
 		}
 	}

@@ -49,6 +49,9 @@ func newRuffChecker(c ruleContext) (*ruff.Checker, error) {
 		}
 		return ruff.NewBackend(c.process.ctx, engine, ruffExpressionEnd), nil
 	}
+	if !externalCommandEnabled(c.ruff, c.ruffOptions) {
+		return nil, nil
+	}
 	if err := c.requireConfigProcessOptIn("ruff", c.ruff, c.ruffOptions, c.config); err != nil {
 		return nil, err
 	}
