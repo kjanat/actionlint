@@ -16,8 +16,11 @@ type Analyzer = component.Plugin
 // Options configures a component analyzer.
 type Options = component.Options
 
-// Limits reports the bounds an analyzer or engine runs under.
+// Limits reports the bounds a component analyzer runs under.
 type Limits = component.Limits
+
+// EngineLimits reports the bounds a core script engine runs under.
+type EngineLimits = corewasm.Limits
 
 // Load loads a component analyzer from a file.
 func Load(ctx context.Context, path string, options Options) (*Analyzer, error) {

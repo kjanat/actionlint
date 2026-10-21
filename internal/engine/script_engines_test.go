@@ -17,15 +17,26 @@ type recordingEngine struct {
 	mu       sync.Mutex
 	requests []analyzer.ScriptRequest
 	closed   bool
+	code     string
 }
 
 func (e *recordingEngine) Check(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 	e.mu.Lock()
 	e.requests = append(e.requests, request)
 	e.mu.Unlock()
+	code := e.code
+	if code == "" {
+		code = "F821"
+	}
+	row, column := 1, 7
+	if code == "SC2086" {
+		before, _, _ := strings.Cut(request.Source, "missing")
+		row = strings.Count(before, "\n") + 1
+		column = len(before) - strings.LastIndex(before, "\n")
+	}
 	return []analyzer.ScriptDiagnostic{{
-		Filename: request.Filename, Code: "F821", Message: "Undefined name `missing`", Severity: "error",
-		Location: analyzer.ScriptPosition{Row: 1, Column: 7}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 14},
+		Filename: request.Filename, Code: code, Message: "Undefined name `missing`", Severity: "error",
+		Location: analyzer.ScriptPosition{Row: row, Column: column}, EndLocation: analyzer.ScriptPosition{Row: row, Column: column + 7},
 	}}, nil
 }
 
@@ -135,5 +146,46 @@ func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
 	}
 	if result, err := explicit.Files(workflows[:1], nil); err != nil || len(result.Diagnostics) != 1 || loads != 0 || len(injected.requests) != 1 {
 		t.Fatalf("explicit: result=%+v err=%v loads=%d", result, err, loads)
+	}
+}
+
+func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
+	root, workflows := writeScriptEngineRepository(t)
+	config := "tools:\n  shellcheck:\n    backend:\n      wasm: {path: first.wasm}\noverrides:\n  - includes: ['**/night.yml']\n    tools:\n      shellcheck:\n        backend:\n          wasm: {path: second.wasm}\n"
+	if err := os.WriteFile(filepath.Join(root, ".github", "actionlint.yaml"), []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range workflows {
+		if err := os.WriteFile(path, []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $missing\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var mu sync.Mutex
+	loaded := map[string]*recordingEngine{}
+	session, err := NewAnalysisSession(AnalysisOptions{
+		Context: t.Context(), WorkingDir: root, Shellcheck: "shellcheck", ShellcheckOptions: &ExternalCommandOptions{Optional: true}, QuietSelection: true,
+		LoadScriptEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			backend := &recordingEngine{code: "SC2086"}
+			loaded[filepath.Base(path)] = backend
+			return backend, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close(t.Context())
+	result, err := session.Files(workflows, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 2 || len(loaded) != 2 {
+		t.Fatalf("diagnostics=%+v engines=%v", result.Diagnostics, loaded)
+	}
+	for name, backend := range loaded {
+		if len(backend.requests) != 1 {
+			t.Fatalf("%s requests=%+v", name, backend.requests)
+		}
 	}
 }

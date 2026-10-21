@@ -18,10 +18,28 @@ type shellcheckAnalyzer struct {
 	settings  *ShellcheckSettings
 	debug     func(string, ...any)
 	embedded  bool
-	forConfig func(*Config) (*externalCommand, error)
+	forConfig func(*Config) (*shellcheckAnalyzer, error)
 }
 
 func newShellcheckAnalyzer(c ruleContext) (scriptAnalyzer, error) {
+	initial, err := newShellcheckInvocation(c)
+	if err != nil {
+		return nil, err
+	}
+	if c.shellcheckBackend == nil && c.shellcheckRunner == nil {
+		initial.forConfig = func(cfg *Config) (*shellcheckAnalyzer, error) {
+			if cfg == c.config {
+				return initial, nil
+			}
+			invocation := c
+			invocation.config = cfg
+			return newShellcheckInvocation(invocation)
+		}
+	}
+	return initial, nil
+}
+
+func newShellcheckInvocation(c ruleContext) (*shellcheckAnalyzer, error) {
 	if c.shellcheckBackend != nil {
 		return &shellcheckAnalyzer{backend: c.shellcheckBackend, debug: c.debug}, nil
 	}
@@ -50,12 +68,7 @@ func newShellcheckAnalyzer(c ruleContext) (scriptAnalyzer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &shellcheckAnalyzer{cmd: cmd, settings: c.shellcheckSettings, debug: c.debug, forConfig: func(cfg *Config) (*externalCommand, error) {
-		if cfg == c.config {
-			return cmd, nil
-		}
-		return commandFor(cfg)
-	}}, nil
+	return &shellcheckAnalyzer{cmd: cmd, settings: c.shellcheckSettings, debug: c.debug}, nil
 }
 
 func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch scriptBatch) ([]*Error, error) {
@@ -63,7 +76,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 	var failure, deferred error
 	var deferredScope *scriptScope
 	compositePrepared := false
-	commands := map[*Config]*externalCommand{}
+	invocations := map[*Config]*shellcheckAnalyzer{}
 	pending := []*externalCommand{analyzer.cmd}
 	for _, scope := range batch.scopes {
 		if err := ctx.Err(); err != nil {
@@ -73,8 +86,25 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 		if scope.config != nil && (diagnosticLevel(scope.config, "shellcheck") == "off" || scope.config.Tools.Shellcheck.Enabled != nil && !*scope.config.Tools.Shellcheck.Enabled) {
 			continue
 		}
-		if analyzer.backend != nil {
-			run := &shellcheckRun{backend: analyzer.backend, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug, rcArgs: []string{}}
+		active := analyzer
+		if analyzer.forConfig != nil {
+			var ok bool
+			active, ok = invocations[scope.config]
+			if !ok {
+				var err error
+				active, err = analyzer.forConfig(scope.config)
+				if err != nil {
+					failure = errors.Join(failure, err)
+					continue
+				}
+				invocations[scope.config] = active
+				if active.cmd != nil && active.cmd != analyzer.cmd {
+					pending = append(pending, active.cmd)
+				}
+			}
+		}
+		if active.backend != nil {
+			run := &shellcheckRun{backend: active.backend, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug, rcArgs: []string{}}
 			if scope.config != nil && scope.config.Tools.Shellcheck.Config.Path() != "" {
 				failure = errors.Join(failure, errors.New("ShellCheck backend needs inline configuration; rc-file access requires a process backend"))
 				continue
@@ -90,25 +120,8 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 			prepared[scope] = run
 			continue
 		}
-		cmd := analyzer.cmd
-		if analyzer.forConfig != nil {
-			var ok bool
-			cmd, ok = commands[scope.config]
-			if !ok {
-				var err error
-				cmd, err = analyzer.forConfig(scope.config)
-				if err != nil {
-					failure = errors.Join(failure, err)
-					continue
-				}
-				commands[scope.config] = cmd
-				if cmd != analyzer.cmd {
-					pending = append(pending, cmd)
-				}
-			}
-		}
-		run := &shellcheckRun{cmd: cmd, config: analyzer.settings, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug}
-		if analyzer.embedded {
+		run := &shellcheckRun{cmd: active.cmd, config: active.settings, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: active.debug}
+		if active.embedded {
 			run.paths.analysis = "/"
 		}
 		if err := run.prepareConfigPath(); err != nil {

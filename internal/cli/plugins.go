@@ -6,11 +6,23 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/component"
 	"actionlint.kjanat.dev/internal/corewasm"
 )
+
+type synchronizedLogWriter struct {
+	mu  sync.Mutex
+	out io.Writer
+}
+
+func (w *synchronizedLogWriter) Write(data []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.out.Write(data)
+}
 
 type loadedPlugins struct {
 	plugins []*component.Plugin

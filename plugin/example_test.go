@@ -42,7 +42,8 @@ func ExampleLoadEngine() {
 		return
 	}
 	defer engine.Close(ctx)
-	fmt.Println("loaded", engine.Metadata().ID, "with", engine.Limits())
+	var limits plugin.EngineLimits = engine.Limits()
+	fmt.Println("loaded", engine.Metadata().ID, "with", limits)
 	diagnostics, err := engine.Check(ctx, analyzer.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
 		fmt.Println("check:", err)

@@ -192,7 +192,7 @@ types this contract uses. `internal/component` loads a component, checks that it
 the component anew under a per-call deadline and a memory limit, with an empty environment, no preopened directories
 and stdio routed to the host log. Calls on one plugin are serialized. A trap, an exit through `wasi:cli/exit`, a
 failed allocation, a deadline or a cancellation returns an error that names the plugin and its limits; the document's
-analysis fails instead of reporting a clean result. The engine and the public `analysis` package do not import the
+analysis reports the failure with its partial findings. The engine and the public `analysis` package do not import the
 runtime; the CLI loads plugins from `--plugin` and registers them as analyzers.
 
 Verification uses a Rust example built with `wit-bindgen` for `wasm32-wasip2`, a C example built with `wit-bindgen c`

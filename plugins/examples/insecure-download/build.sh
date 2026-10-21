@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Builds the insecure-download plugin component. Usage: build.sh [output.wasm]
-# Requires tinygo, wasm-tools and go. TinyGo needs the WASI imports in the
-# compiled world, so a composed world is assembled next to the contract.
+# Requires tinygo, wasm-tools and go; composes TinyGo's WASI imports with the plugin world.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"

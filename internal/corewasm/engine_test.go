@@ -160,7 +160,7 @@ func TestConcurrentChecks(t *testing.T) {
 func TestLoadRefusesIncompatibleModules(t *testing.T) {
 	for name, want := range map[string]string{
 		"imports":        "module imports env.host; a core engine must not import",
-		"missing-export": "module does not export check",
+		"missing-export": "metadata advertises no check version this host supports (version 1)",
 		"signature":      "export abi_version has signature [] -> [i64]; ABI version 1 needs [] -> [i32]",
 		"abi-version":    "module reports ABI version 2; this host implements 1",
 		"no-check":       "metadata advertises no check version this host supports (version 1)",

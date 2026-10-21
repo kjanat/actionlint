@@ -75,14 +75,14 @@ func (a *AnalysisSession) RequiredTools(paths []string) (ExternalToolRequirement
 				if err != nil {
 					return needed, err
 				}
-				needed.Ruff = needed.Ruff || (externalCommandEnabled(c.ruff, c.ruffOptions) && possible)
+				needed.Ruff = needed.Ruff || (externalCommandEnabled(c.ruff, c.ruffOptions) && possible && configuredScriptModule("ruff", c.ruff, c.ruffOptions, config) == nil)
 				continue
 			}
 			if diagnosticLevel(config, rule.Name) == "off" {
 				continue
 			}
 			if rule.Name == "shellcheck" {
-				needed.Shellcheck = needed.Shellcheck || rule.enabled(c)
+				needed.Shellcheck = needed.Shellcheck || rule.enabled(c) && configuredScriptModule("shellcheck", c.shellcheck, c.shellcheckOptions, config) == nil
 			}
 		}
 	}

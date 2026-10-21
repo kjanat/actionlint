@@ -29,9 +29,10 @@ const (
 	// DefaultTimeout bounds one engine call.
 	DefaultTimeout = 10 * time.Second
 	// DefaultMemoryPages bounds an engine instance's linear memory in 64 KiB pages.
-	DefaultMemoryPages   uint32 = 4096
-	defaultMaxInputBytes        = 8 * 1024 * 1024
-	transport                   = "wasm-core-json"
+	DefaultMemoryPages    uint32 = 4096
+	defaultCompileTimeout        = time.Minute
+	defaultMaxInputBytes         = 8 * 1024 * 1024
+	transport                    = "wasm-core-json"
 )
 
 var requiredExports = map[string]struct{ params, results []api.ValueType }{
@@ -152,18 +153,34 @@ func Load(ctx context.Context, path string, options Options) (*Engine, error) {
 	}
 	e := &Engine{path: path, limits: limits, runtime: wazero.NewRuntimeWithConfig(ctx, config), cache: cache, maxInput: defaultMaxInputBytes}
 	if err := e.load(ctx, data); err != nil {
-		_ = e.Close(ctx)
+		_ = e.Close(context.WithoutCancel(ctx))
 		return nil, fmt.Errorf("engine %s: %w", path, err)
 	}
 	return e, nil
 }
 
 func (e *Engine) load(ctx context.Context, data []byte) error {
-	compiled, err := e.runtime.CompileModule(ctx, data)
+	compileCtx, compileCancel := context.WithTimeout(ctx, defaultCompileTimeout)
+	defer compileCancel()
+	compiled, err := e.runtime.CompileModule(compileCtx, data)
+	e.compiled = compiled
+	if ctxErr := compileCtx.Err(); ctxErr != nil {
+		err = errors.Join(err, ctxErr)
+	}
 	if err != nil {
 		return err
 	}
-	e.compiled = compiled
+	compileCancel()
+	ctx, cancel := context.WithTimeout(ctx, e.limits.Timeout)
+	defer cancel()
+	if err := e.initialize(ctx); err != nil {
+		return e.failure(ctx, err)
+	}
+	return nil
+}
+
+func (e *Engine) initialize(ctx context.Context) error {
+	compiled := e.compiled
 	for _, imported := range compiled.ImportedFunctions() {
 		module, name, _ := imported.Import()
 		return fmt.Errorf("module imports %s.%s; a core engine must not import", module, name)
@@ -173,6 +190,9 @@ func (e *Engine) load(ctx context.Context, data []byte) error {
 	}
 	exports := compiled.ExportedFunctions()
 	for _, name := range slices.Sorted(maps.Keys(requiredExports)) {
+		if name == "check" || name == "validate_config" {
+			continue
+		}
 		signature := requiredExports[name]
 		definition, ok := exports[name]
 		if !ok {
@@ -229,6 +249,9 @@ func (e *Engine) negotiate(raw []byte) error {
 	}
 	if metadata.Transport != "" && metadata.Transport != transport {
 		return fmt.Errorf("metadata reports transport %q; this host implements %q", metadata.Transport, transport)
+	}
+	if encoding := metadata.Capabilities.PositionEncoding; encoding != "" && encoding != "unicode" {
+		return fmt.Errorf("metadata reports unsupported position encoding %q; this host requires unicode scalar columns", encoding)
 	}
 	if metadata.Interfaces == nil {
 		metadata.Interfaces = map[string][]Interface{"check": {{1, "check"}}, "validate_config": {{1, "validate_config"}}, "metadata": {{1, "metadata"}}}

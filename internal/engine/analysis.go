@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/analyzer"
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/toolconfig"
 	"actionlint.kjanat.dev/internal/workflownames"
 	"golang.org/x/sync/errgroup"
 )
@@ -110,6 +111,11 @@ func (f *inputFiles) list() []string {
 
 func (f *inputFiles) addConfig(config *Config, project *Project) {
 	if config != nil {
+		for _, backend := range []*toolconfig.Backend{config.Tools.Ruff.Backend, config.Tools.Shellcheck.Backend} {
+			if backend != nil && backend.Wasm != nil {
+				f.add(backend.Wasm.Path)
+			}
+		}
 		for _, path := range config.Sources() {
 			f.add(path)
 		}
@@ -171,6 +177,12 @@ func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level 
 		log = &analysisLogWriter{out: log}
 	}
 	logger := analysisLogger{log, level}
+	if load := request.LoadScriptEngine; load != nil {
+		request.LoadScriptEngine = func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
+			inputs.add(path)
+			return load(ctx, path)
+		}
+	}
 	engine := &analysisEngine{
 		analyzers: request.Analyzers, ctx: ctx,
 		buildRules: builtinFactory(request, logger), rulePresets: request.RulePresets,

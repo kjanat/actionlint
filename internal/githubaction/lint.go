@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/corewasm"
 	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
@@ -18,6 +20,10 @@ const lintTimeout = 300 * time.Second
 
 // Allow canceled analysis to drain callbacks and hand back its partial result.
 const lintCancellationGrace = time.Second
+
+func loadScriptEngine(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
+	return corewasm.Load(ctx, path, corewasm.Options{})
+}
 
 type lintRequest struct {
 	ruff               string
@@ -108,7 +114,8 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := actionlint.AnalysisOptions{
-		Ruff: req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
+		LoadScriptEngine: loadScriptEngine,
+		Ruff:             req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
 		Context:            req.ctx,
 		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
 		ShellcheckSettings: req.shellcheckSettings,
@@ -132,6 +139,7 @@ func runLinter(req *lintRequest) *lintResult {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
 		return result
 	}
+	defer session.Close(context.Background())
 
 	var analysis *actionlint.AnalysisResult
 	inputNames := make(map[string]string, len(req.files))
