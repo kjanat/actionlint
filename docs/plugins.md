@@ -496,13 +496,14 @@ Script engines can also declare action-input sites in static metadata:
 }
 ```
 
-Selectors use lowercase action names without `@ref`, an input name and an explicit language. Targets are exact,
-not globs. Duplicate targets, conflicting languages and malformed selectors are rejected. Up to 256 selectors are
-allowed per engine. These declarations route snippets; they do not prove the guest understands a language.
-Input-only components may return an empty `shells` list from `describe`, but must provide valid input selectors
-in their root `actionlint.plugin` section. The existing script-engine WIT and core ABI remain unchanged.
-[`action-input.metadata.json`](../examples/plugins/action-input.metadata.json) and its Makefile target demonstrate
-packaging metadata at the component root rather than inside its embedded core module.
+Selectors use lowercase action names without `@ref`, an input name and an explicit language. Targets use exact
+matching; wildcard selectors are rejected. Duplicate targets, conflicting languages and malformed selectors are
+rejected. Up to 256 selectors are allowed per engine. These declarations route snippets; they do not prove the
+guest understands a language. Input-only components may return an empty `shells` list from `describe`, but must
+provide valid input selectors in their root `actionlint.plugin` section. The existing script-engine WIT and core
+ABI remain unchanged. [`action-input.metadata.json`](../examples/plugins/action-input.metadata.json) and its
+Makefile target demonstrate packaging metadata at the component root. Metadata inside embedded core modules is
+ignored.
 
 The host recognizes `actions/github-script`'s `script` input as JavaScript. Other sites come from registered engine
 declarations. Workflow and local composite inputs retain their declaring source maps and invocation identity;
