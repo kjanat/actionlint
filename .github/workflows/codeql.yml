@@ -2,7 +2,7 @@ name: CodeQL
 
 on:
   push: { branches: [master] }
-  pull_request: { branches: [master] }
+  pull_request:
   schedule:
     # Every Saturday 6:41 in JST
     - cron: "41 21 * * 5"
