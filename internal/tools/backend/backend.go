@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/analyzer"
@@ -22,21 +21,33 @@ import (
 // Register uses advertised shell selectors, never an engine-name switch. Backends
 // with language-specific preparation can instead supply their own registration.
 func Register(descriptor rule.Descriptor, shells []string, backend analyzer.ScriptBackend) (tools.Registration, error) {
-	if descriptor.Name == "" || len(shells) == 0 || backend == nil {
+	if backend == nil {
 		return tools.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
 	}
-	shells = slices.Clone(shells)
+	selectors, err := shellCatalogue(descriptor, shells)
+	if err != nil {
+		return tools.Registration{}, err
+	}
+	return tools.Registration{Descriptor: descriptor, RequiresExecution: true, Build: func(tools.Context) (tools.Runner, error) { return runner{descriptor, selectors, backend}, nil }}, nil
+}
+
+func shellCatalogue(descriptor rule.Descriptor, shells []string) (map[string]struct{}, error) {
+	if descriptor.Name == "" || len(shells) == 0 {
+		return nil, errors.New("script engine requires a rule, shell selectors and a backend")
+	}
+	selectors := make(map[string]struct{}, len(shells))
 	for _, shell := range shells {
 		if shell == "" || strings.ContainsAny(shell, " /\\\t\r\n") {
-			return tools.Registration{}, fmt.Errorf("invalid script shell selector %q", shell)
+			return nil, fmt.Errorf("invalid script shell selector %q", shell)
 		}
+		selectors[shell] = struct{}{}
 	}
-	return tools.Registration{Descriptor: descriptor, RequiresExecution: true, Build: func(tools.Context) (tools.Runner, error) { return runner{descriptor, shells, backend}, nil }}, nil
+	return selectors, nil
 }
 
 type runner struct {
 	descriptor rule.Descriptor
-	shells     []string
+	shells     map[string]struct{}
 	backend    analyzer.ScriptBackend
 }
 
@@ -52,7 +63,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		}
 		command, _, _ := strings.Cut(script.Execution.Shell, " ")
 		shell := strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
-		if !slices.Contains(r.shells, shell) {
+		if _, supported := r.shells[shell]; !supported {
 			continue
 		}
 		var options json.RawMessage
