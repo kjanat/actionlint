@@ -179,7 +179,7 @@ No WASM runtime or component loader is included by this API change.
 `analysis.Rules(analyzers...)` returns sorted built-in and extension descriptors and
 rejects duplicate names. `rule.Descriptor` includes category/subcategory, maturity,
 provider, defaults, explanations, help, documentation, options schema and examples.
-A script backend implements its host rule rather than registering another rule name.
+A script backend implements its host rule under that rule's registered name.
 
 Facts and findings carry `source.Reference`: document identity, content digest, node
 identity and structural address. Named job/step IDs survive content edits; anonymous
