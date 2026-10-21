@@ -331,6 +331,8 @@ test('pinned formatter helper and workflow changes select installer tests', () =
 	assert.match(pages, /uses: \$\/\.github\/actions\/setup-pandoc/);
 	assert.doesNotMatch(pages, /install_args:.*(?:runner|pandoc)/);
 	const upkeep = read('.github/workflows/upkeep.yml');
+	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-formatters/);
+	assert.doesNotMatch(upkeep, /uses: kjanat\/install-dprint/);
 	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-shellcheck/);
 	assert.match(
 		upkeep,
