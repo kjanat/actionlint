@@ -103,6 +103,9 @@ func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 			failure = errors.Join(failure, err)
 			break
 		}
+		if script.Input != nil {
+			continue
+		}
 		if config.DiagnosticLevel(script.Config, "ruff") == "off" {
 			continue
 		}

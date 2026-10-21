@@ -45,6 +45,9 @@ serde_json            = "1"
 sha2                  = "0.10"
 wit-bindgen.workspace = true
 
+[features]
+action-input-fixture = []
+
 [profile.wasm]
 inherits      = "release"
 opt-level     = "s"

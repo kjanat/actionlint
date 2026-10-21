@@ -3,6 +3,8 @@ package application
 import (
 	"fmt"
 
+	"actionlint.kjanat.dev/analyzer"
+
 	"actionlint.kjanat.dev/internal/builtin"
 	"actionlint.kjanat.dev/internal/checks"
 	"actionlint.kjanat.dev/internal/tools"
@@ -13,6 +15,7 @@ type documentChecks struct {
 	checks.Selection
 	scripts          scriptexecution.Service
 	resolveExecution bool
+	scriptInputs     []analyzer.ScriptInput
 }
 
 func (s *analysisSession) buildChecks(context builtin.Context, toolContext tools.Context, action bool) (documentChecks, error) {
@@ -35,6 +38,7 @@ func (s *analysisSession) buildChecks(context builtin.Context, toolContext tools
 		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.Tool{Runner: adapter})
 		selected.ScriptInfo = append(selected.ScriptInfo, registration.Descriptor)
 		selected.resolveExecution = selected.resolveExecution || registration.RequiresExecution
+		selected.scriptInputs = append(selected.scriptInputs, registration.ScriptInputs...)
 	}
 	if s.onRulesCreated != nil && !action {
 		selected.Rules = s.onRulesCreated(selected.Rules)

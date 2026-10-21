@@ -479,6 +479,42 @@ options and severity. They advertise `capabilities.script_shells`, for example
 these shell names and registers the engine's rule descriptor in the catalogue.
 Local paths and remote artifact URLs use the same registration path.
 
+Script engines can also declare action-input sites in static metadata:
+
+```json
+{
+  "capabilities": {
+    "script_shells": [],
+    "script_inputs": [
+      {
+        "action": "actions/github-script",
+        "input": "script",
+        "language": "javascript"
+      }
+    ]
+  }
+}
+```
+
+Selectors use lowercase action names without `@ref`, an input name and an explicit language. Targets are exact,
+not globs. Duplicate targets, conflicting languages and malformed selectors are rejected. Up to 256 selectors are
+allowed per engine. These declarations route snippets; they do not prove the guest understands a language.
+Input-only components may return an empty `shells` list from `describe`, but must provide valid input selectors
+in their root `actionlint.plugin` section. The existing script-engine WIT and core ABI remain unchanged.
+[`action-input.metadata.json`](../examples/plugins/action-input.metadata.json) and its Makefile target demonstrate
+packaging metadata at the component root rather than inside its embedded core module.
+
+The host recognizes `actions/github-script`'s `script` input as JavaScript. Other sites come from registered engine
+declarations. Workflow and local composite inputs retain their declaring source maps and invocation identity;
+workflow expressions are masked before checking. Whole inputs created by object expressions have no physical
+script scalar and remain unavailable for this analysis. Ordinary action inputs and `run` scripts are not sent to
+an input-only engine. Action inputs have a language, never an inferred runner shell, and cannot opt into ShellCheck
+through a shell directive.
+
+Go document analyzers requesting `analyzer.Scripts` receive these sites separately in `Input.ActionInputs`, with
+`Site`, spans and optional composite `Invocation`. Their shell and runtime fields remain empty. `Input.Scripts`
+and `Input.Invoked`, including the existing portable analyzer WIT, continue to contain only `run` scripts.
+
 The internal tool contract supplies prepared snippets, source maps and execution
 context to a registered runner. A runner returns findings with their originating
 snippet index. Native process providers can use the same JSON request/result

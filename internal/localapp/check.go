@@ -70,7 +70,7 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 			break
 		}
 		if !found {
-			registration, err := backend.Register(metadata.Rule, metadata.Shells, engine.backend)
+			registration, err := backend.RegisterEngine(metadata, engine.backend)
 			if err != nil {
 				return options, &PluginLoadError{err}
 			}

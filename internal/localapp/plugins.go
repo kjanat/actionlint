@@ -44,7 +44,7 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 			loaded.engines = append(loaded.engines, scriptEngineRegistration{engine, analyzer.ScriptEngineDescriptor{
 				ID: metadata.ID, Version: metadata.PluginVersion, Name: metadata.Name,
 				Engine: metadata.Engine.Name, EngineVersion: metadata.Engine.Version,
-				Shells: metadata.Capabilities.ScriptShells, Rule: engineDescriptor(metadata),
+				Shells: metadata.Capabilities.ScriptShells, ScriptInputs: metadata.Capabilities.ScriptInputs, Rule: engineDescriptor(metadata),
 			}})
 
 			continue

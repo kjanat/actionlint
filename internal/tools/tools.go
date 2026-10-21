@@ -29,6 +29,7 @@ type Context struct {
 // consumes capabilities; adding a provider does not change its control flow.
 type Registration struct {
 	Descriptor        rule.Descriptor
+	ScriptInputs      []analyzer.ScriptInput
 	RequiresExecution bool
 	NeedsProcess      func(*config.Config, *config.Config, bool) (bool, error)
 	Validate          func() error
@@ -58,6 +59,7 @@ type Execution struct {
 
 // Script is a prepared snippet and its source map, not a workflow AST visitor.
 type Script struct {
+	Input      *analyzer.ScriptInput
 	Text       string
 	Source     *workflow.ScriptSource
 	Key, Value *workflow.Pos

@@ -289,9 +289,6 @@ func liftScriptDescriptor(value wacogo.Val) (analyzer.ScriptEngineDescriptor, er
 		seenShells[string(shell)] = struct{}{}
 		d.Shells = append(d.Shells, string(shell))
 	}
-	if len(d.Shells) == 0 {
-		return d, errors.New("script descriptor needs supported shells")
-	}
 	d.Rule, err = liftScriptRule(r.Field("rule"))
 	if err != nil {
 		return d, err
@@ -345,6 +342,9 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 
 func (p *Plugin) verifyScriptMetadata(data []byte) error {
 	if data == nil {
+		if len(p.scriptDescriptor.Shells) == 0 {
+			return errors.New("script descriptor needs shell or static action-input selectors")
+		}
 		return nil
 	}
 	var declared struct {
@@ -362,9 +362,10 @@ func (p *Plugin) verifyScriptMetadata(data []byte) error {
 			Version string `json:"version"`
 		} `json:"engine"`
 		Capabilities struct {
-			ScriptShells []string `json:"script_shells"`
-			Fixes        bool     `json:"fixes"`
-			Format       bool     `json:"format"`
+			ScriptShells []string               `json:"script_shells"`
+			ScriptInputs []analyzer.ScriptInput `json:"script_inputs"`
+			Fixes        bool                   `json:"fixes"`
+			Format       bool                   `json:"format"`
 		} `json:"capabilities"`
 	}
 	if err := jsonv2.Unmarshal(data, &declared); err != nil {
@@ -392,6 +393,14 @@ func (p *Plugin) verifyScriptMetadata(data []byte) error {
 	if !reflect.DeepEqual(declaredRule, runtimeRule) {
 		return errors.New("script engine static rule metadata disagrees with its typed descriptor")
 	}
+	if err := analyzer.ValidateScriptInputs(declared.Capabilities.ScriptInputs); err != nil {
+		return fmt.Errorf("script engine static input selectors: %w", err)
+	}
+	if len(d.Shells)+len(declared.Capabilities.ScriptInputs) == 0 {
+		return errors.New("script descriptor needs shell or static action-input selectors")
+	}
+	// Routing is host metadata, not an additional runtime WIT operation.
+	p.scriptDescriptor.ScriptInputs = slices.Clone(declared.Capabilities.ScriptInputs)
 	return nil
 }
 

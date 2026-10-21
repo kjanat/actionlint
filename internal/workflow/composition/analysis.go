@@ -5,7 +5,10 @@ package composition
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+
+	"actionlint.kjanat.dev/analyzer"
 
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
@@ -22,6 +25,7 @@ import (
 
 type Options struct {
 	Runners                          *runnerlang.Knowledge
+	ScriptInputs                     []analyzer.ScriptInput
 	Context                          context.Context
 	Actions                          *actionlocal.Resolver
 	Rules                            []workflowvisit.Rule
@@ -78,6 +82,10 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 			err = errors.Join(err, join())
 		}
 	}()
+	scriptInputs, err := scriptInputCatalogue(options.ScriptInputs)
+	if err != nil {
+		return result, err
+	}
 	passes := make([]workflowvisit.Pass, len(options.Rules))
 	for i, r := range options.Rules {
 		passes[i] = r
@@ -88,6 +96,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		runners:      options.Runners,
 		scriptConfig: options.Config, scriptPaths: options.Paths,
 		collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
+		scriptInputs: scriptInputs,
 	}
 	if options.ConfigForFile != nil {
 		c.configForFile = func(path string) (*repoconfig.Config, error) {
@@ -120,4 +129,31 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		}
 	}
 	return Result{Findings: findings, Batch: batch, CollectScripts: c.collectScripts, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), Configs: configs}, err
+}
+
+func scriptInputCatalogue(additional []analyzer.ScriptInput) ([]analyzer.ScriptInput, error) {
+	// Multiple engines may analyze the same site, provided they agree on its language.
+	seen := map[analyzer.ScriptInput]bool{}
+	unique := make([]analyzer.ScriptInput, 0, len(additional))
+	for _, input := range additional {
+		if !seen[input] {
+			unique = append(unique, input)
+			seen[input] = true
+		}
+	}
+	if err := analyzer.ValidateScriptInputs(unique); err != nil {
+		return nil, err
+	}
+	known := analyzer.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}
+	inputs := []analyzer.ScriptInput{known}
+	for _, input := range unique {
+		if input.Action == known.Action && input.Input == known.Input {
+			if input.Language != known.Language {
+				return nil, fmt.Errorf("script input %s/%s has conflicting languages %q and %q", input.Action, input.Input, known.Language, input.Language)
+			}
+			continue
+		}
+		inputs = append(inputs, input)
+	}
+	return inputs, nil
 }

@@ -15,7 +15,11 @@ impl Guest for Plugin {
             name: "Echo component".into(),
             engine: "echo".into(),
             engine_version: "1.0.0".into(),
-            shells: vec!["python".into()],
+            shells: if cfg!(feature = "action-input-fixture") {
+                Vec::new()
+            } else {
+                vec!["python".into()]
+            },
             rule: RuleDescriptor {
                 name: "echo".into(),
                 description: "Find a missing value".into(),

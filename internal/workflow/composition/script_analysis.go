@@ -1,6 +1,11 @@
 package composition
 
 import (
+	"maps"
+	"slices"
+	"strings"
+
+	"actionlint.kjanat.dev/analyzer"
 	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
@@ -18,6 +23,10 @@ func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
 
 func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, path string, content []byte, jobShell, workflowShell *string) {
 	if !analysis.collectScripts {
+		return
+	}
+	if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
+		analysis.collectActionInputs(step, action, cfg, path, content)
 		return
 	}
 	run, ok := step.Exec.(*workflowlang.ExecRun)
@@ -50,4 +59,37 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 		}
 	}
 	analysis.scripts = append(analysis.scripts, unit)
+}
+
+func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, action *workflowlang.ExecAction, cfg *repoconfig.Config, path string, content []byte) {
+	if action.Uses == nil || action.Uses.ContainsExpression() {
+		return
+	}
+	name, _, pinned := strings.Cut(action.Uses.Value, "@")
+	if !pinned {
+		return
+	}
+	name = strings.ToLower(name)
+	inputs, _ := workflowlang.ActionInputNames(action)
+	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
+		input := inputs[inputName]
+		if input.Value == nil || input.Source == nil {
+			continue // Expression-created values have no physical script scalar.
+		}
+		var site analyzer.ScriptInput
+		for _, candidate := range analysis.scriptInputs {
+			if candidate.Action == name && candidate.Input == inputName {
+				site = candidate
+				break
+			}
+		}
+		if site.Language == "" {
+			continue
+		}
+		analysis.scripts = append(analysis.scripts, scriptexecution.Unit{
+			Input:  &scriptexecution.ActionInput{Site: site, Value: input},
+			Config: cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step),
+			Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope,
+		})
+	}
 }

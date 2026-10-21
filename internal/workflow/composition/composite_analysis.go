@@ -3,6 +3,8 @@ package composition
 import (
 	"context"
 
+	"actionlint.kjanat.dev/analyzer"
+
 	checks "actionlint.kjanat.dev/internal/checks"
 	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
 
@@ -19,6 +21,7 @@ import (
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,
 // leaving Visitor responsible for the workflow's ordinary pass lifecycle.
 type compositeAnalyzer struct {
+	scriptInputs                      []analyzer.ScriptInput
 	runners                           *runnerlang.Knowledge
 	resolveScriptExecution            bool
 	scripts                           []scriptexecution.Unit

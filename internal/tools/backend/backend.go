@@ -21,18 +21,36 @@ import (
 // Register uses advertised shell selectors, never an engine-name switch. Backends
 // with language-specific preparation can instead supply their own registration.
 func Register(descriptor rule.Descriptor, shells []string, backend analyzer.ScriptBackend) (tools.Registration, error) {
+	return RegisterEngine(analyzer.ScriptEngineDescriptor{Rule: descriptor, Shells: shells}, backend)
+}
+
+// RegisterEngine routes both shell snippets and declared action-input sites.
+func RegisterEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
+	descriptor = descriptor.Clone()
 	if backend == nil {
 		return tools.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
 	}
-	selectors, err := shellCatalogue(descriptor, shells)
+	if err := analyzer.ValidateScriptInputs(descriptor.ScriptInputs); err != nil {
+		return tools.Registration{}, err
+	}
+	if descriptor.Rule.Name == "" || len(descriptor.Shells)+len(descriptor.ScriptInputs) == 0 {
+		return tools.Registration{}, errors.New("script engine requires a rule and script selectors")
+	}
+	selectors, err := shellCatalogue(descriptor.Rule, descriptor.Shells)
 	if err != nil {
 		return tools.Registration{}, err
 	}
-	return tools.Registration{Descriptor: descriptor, RequiresExecution: true, Build: func(tools.Context) (tools.Runner, error) { return runner{descriptor, selectors, backend}, nil }}, nil
+	inputs := make(map[analyzer.ScriptInput]struct{}, len(descriptor.ScriptInputs))
+	for _, input := range descriptor.ScriptInputs {
+		inputs[input] = struct{}{}
+	}
+	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0, Build: func(tools.Context) (tools.Runner, error) {
+		return runner{descriptor: descriptor.Rule, shells: selectors, inputs: inputs, backend: backend}, nil
+	}}, nil
 }
 
 func shellCatalogue(descriptor rule.Descriptor, shells []string) (map[string]struct{}, error) {
-	if descriptor.Name == "" || len(shells) == 0 {
+	if descriptor.Name == "" {
 		return nil, errors.New("script engine requires a rule, shell selectors and a backend")
 	}
 	selectors := make(map[string]struct{}, len(shells))
@@ -48,6 +66,7 @@ func shellCatalogue(descriptor rule.Descriptor, shells []string) (map[string]str
 type runner struct {
 	descriptor rule.Descriptor
 	shells     map[string]struct{}
+	inputs     map[analyzer.ScriptInput]struct{}
 	backend    analyzer.ScriptBackend
 }
 
@@ -61,10 +80,16 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if config.DiagnosticLevel(script.Config, r.descriptor.Name) == "off" {
 			continue
 		}
-		command, _, _ := strings.Cut(script.Execution.Shell, " ")
-		shell := strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
-		if _, supported := r.shells[shell]; !supported {
-			continue
+		if script.Input != nil {
+			if _, supported := r.inputs[*script.Input]; !supported {
+				continue
+			}
+		} else {
+			command, _, _ := strings.Cut(script.Execution.Shell, " ")
+			shell := strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
+			if _, supported := r.shells[shell]; !supported {
+				continue
+			}
 		}
 		var options json.RawMessage
 		if script.Config != nil {

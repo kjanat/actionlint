@@ -47,7 +47,7 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 		{"duplicate", []wacogo.Val{wacogo.ValString("python"), wacogo.ValString("python")}, false},
 		{"empty name", []wacogo.Val{wacogo.ValString("")}, false},
 		{"wrong type", []wacogo.Val{wacogo.ValBool(true)}, false},
-		{"empty catalogue", nil, false},
+		{"input-only catalogue validated by static metadata", nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			value := wacogo.NewValRecord(field("id", original.Field("id")), field("version", original.Field("version")),

@@ -20,7 +20,16 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 		prepared.Scopes = append(prepared.Scopes, item)
 	}
 	for _, s := range batch.Scripts {
-		prepared.Scripts = append(prepared.Scripts, tools.Script{Text: s.Run.Run.Value, Source: s.Run.Source, Key: s.Run.RunPos, Value: s.Run.Run.Pos, Shell: s.Shell, Config: s.Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}})
+		script := tools.Script{Shell: s.Shell, Config: s.Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}}
+		if input := s.Input; input != nil {
+			site := input.Site
+			script.Input, script.Text, script.Source = &site, input.Value.Value.Value, input.Value.Source
+			script.Key, script.Value = input.Value.Name.Pos, input.Value.Value.Pos
+		} else {
+			script.Text, script.Source = s.Run.Run.Value, s.Run.Source
+			script.Key, script.Value = s.Run.RunPos, s.Run.Run.Pos
+		}
+		prepared.Scripts = append(prepared.Scripts, script)
 	}
 	findings, err := tool.Runner.Analyze(ctx, prepared)
 	out := make([]*findingmodel.Finding, 0, len(findings))

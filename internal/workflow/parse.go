@@ -1447,7 +1447,7 @@ func (p *Parser) parseActionInputMapping(n *yaml.Node, allowEmpty bool, docker *
 			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
 		case p.parseDockerInput(e, docker):
 		default:
-			mapping.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
+			mapping.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSource(e.val)}
 		}
 	}
 	return mapping
@@ -1534,7 +1534,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						continue
 					}
 					if !p.parseDockerInput(e, ret) {
-						ret.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
+						ret.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSource(e.val)}
 					}
 				}
 			} else {
@@ -1543,7 +1543,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, nil))
 						continue
 					}
-					ret.Inputs[e.id] = &Input{e.key, p.parseString(e.val, true)}
+					ret.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSource(e.val)}
 				}
 			}
 		case "id", "if", "name", "env", "continue-on-error", "timeout-minutes", "background":

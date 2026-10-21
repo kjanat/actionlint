@@ -13,6 +13,9 @@ type FactAnalyzer struct{ Analyzer analyzer.Analyzer }
 func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmodel.Finding, error) {
 	var findings []*findingmodel.Finding
 	for _, unit := range batch.Scripts {
+		if unit.Input != nil {
+			continue
+		}
 		if err := ctx.Err(); err != nil {
 			return findings, err
 		}

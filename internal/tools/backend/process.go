@@ -18,6 +18,9 @@ import (
 // envelope as a core-WASM engine. Native CLI-specific protocols need an adapter.
 func Process(descriptor rule.Descriptor, shells []string, executable string, options *processconfig.Options) tools.Registration {
 	selectors, selectorErr := shellCatalogue(descriptor, shells)
+	if len(shells) == 0 {
+		selectorErr = errors.New("process script engine requires shell selectors")
+	}
 	return tools.Registration{
 		Descriptor: descriptor, RequiresExecution: true,
 		NeedsProcess: func(_ *config.Config, _ *config.Config, _ bool) (bool, error) { return true, nil },
@@ -30,7 +33,7 @@ func Process(descriptor rule.Descriptor, shells []string, executable string, opt
 				return nil, err
 			}
 			command.RequireSuccess = true
-			return runner{descriptor, selectors, processBackend{command}}, nil
+			return runner{descriptor: descriptor, shells: selectors, backend: processBackend{command}}, nil
 		},
 	}
 }

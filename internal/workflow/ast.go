@@ -596,6 +596,8 @@ type Input struct {
 	Name *String
 	// Value is a value of the Input.
 	Value *String
+	// Source maps the decoded input back to its declaring YAML scalar.
+	Source *ScriptSource
 }
 
 // ActionInputMapping is a literal or expression-valued action Input mapping.
