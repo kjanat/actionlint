@@ -118,3 +118,16 @@ func TestSafeScriptLiteral(t *testing.T) {
 		}
 	}
 }
+
+func TestScriptKeywordWordProof(t *testing.T) {
+	for _, word := range []string{"case", "coproc", "do", "done", "else", "elif", "esac", "fi", "for", "function", "if", "in", "select", "then", "time", "until", "while"} {
+		if !SafeScriptLiteral(word) || SafeScriptWord(word) {
+			t.Errorf("keyword must retain only its character proof: %q", word)
+		}
+	}
+	for _, word := range []string{"", "echo", "linux-x64", "org/repo", "fi-linux", "https://github.com/org/repo"} {
+		if !SafeScriptWord(word) {
+			t.Errorf("ordinary literal lost its word proof: %q", word)
+		}
+	}
+}

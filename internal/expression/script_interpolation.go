@@ -1,6 +1,10 @@
 package expression
 
-import "strings"
+import (
+	"strings"
+
+	shellsyntax "mvdan.cc/sh/v3/syntax"
+)
 
 // IsScriptScalar resolves bounded scalar syntax without proving its script position safe.
 func (sema *Checker) IsScriptScalar(node Node) bool {
@@ -74,6 +78,12 @@ func SafeScriptLiteral(value string) bool {
 	return true
 }
 
+// SafeScriptWord additionally excludes Bash/POSIX reserved words from literal proofs.
+func SafeScriptWord(value string) bool {
+	// IsKeyword omits elif, which the parser handles as conditional syntax.
+	return SafeScriptLiteral(value) && !shellsyntax.IsKeyword(value) && value != "elif"
+}
+
 // CheckScriptInterpolation needs separate character and scalar-argument position proofs.
 // Callers omit it when a specific secret or untrusted-input finding exists.
 func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, scalarArgument bool, safeReference func(Node) bool) []*Error {
@@ -116,7 +126,7 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 		case nil, bool, float64:
 			return scalarArgument
 		case string:
-			return SafeScriptLiteral(value)
+			return scalarArgument && SafeScriptLiteral(value) || SafeScriptWord(value)
 		default:
 			return false
 		}
@@ -130,9 +140,11 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 	// Fixed identifier, numeric, hash and enum contexts qualify; branch/workflow names and user outputs remain arbitrary.
 	// Actor names are excluded because bot-login brackets have shell glob syntax.
 	switch strings.ToLower(eventReference(expr)) {
+	case "github.repository_owner":
+		return scalarArgument
 	case "github.sha", "github.run_id", "github.run_number", "github.run_attempt",
 		"github.repository_id", "github.repository_owner_id", "github.actor_id",
-		"github.repository", "github.repository_owner", "github.repositoryurl",
+		"github.repository", "github.repositoryurl",
 		"github.event_name", "github.ref_type", "github.repository_visibility",
 		"runner.os", "runner.arch", "runner.environment", "job.status":
 		return true

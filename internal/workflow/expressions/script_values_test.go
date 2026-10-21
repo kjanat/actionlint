@@ -100,7 +100,11 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 			for _, path := range tc.paths {
 				want[path] = true
 			}
-			if got := safeMatrixScriptReferences(workflow.Jobs["test"].Strategy.Matrix); !maps.Equal(got, want) {
+			got := map[string]bool{}
+			for path, proof := range safeMatrixScriptReferences(workflow.Jobs["test"].Strategy.Matrix) {
+				got[path] = proof != scriptUnsafe
+			}
+			if !maps.Equal(got, want) {
 				t.Fatalf("safe references = %v, want %v", got, want)
 			}
 		})
@@ -108,7 +112,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 }
 
 func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
-	proofs := map[string]bool{"matrix.container[*]": true, "matrix.nested[0][0]": true, "matrix.target.name": true}
+	proofs := map[string]scriptValueProof{"matrix.container[*]": scriptLiteralWord, "matrix.nested[0][0]": scriptLiteralWord, "matrix.target.name": scriptLiteralWord}
 	for _, tc := range []struct {
 		expression string
 		want       bool
@@ -125,7 +129,7 @@ func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := safeMatrixScriptReference(node, proofs); got != tc.want {
+		if got := safeMatrixScriptReference(node, proofs, false); got != tc.want {
 			t.Errorf("%s: safe=%t, want %t", tc.expression, got, tc.want)
 		}
 	}

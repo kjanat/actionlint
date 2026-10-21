@@ -28,6 +28,11 @@ Use environment variables and the interpreter's data-access mechanism elsewhere.
 Unknown string values still warn inside quotes. Separately, constrained strings
 such as `github.repository` retain their character-based proof.
 
+Bash/POSIX reserved words such as `fi` also require a proved data argument.
+This applies to constants and known environment or matrix values. A repository
+owner login can be a reserved word, so `github.repository_owner` needs the same
+position check. Matrix alternatives retain their weakest applicable proof.
+
 Misspelled contexts and functions receive a correction only when one close name
 is available at that workflow location. Ambiguous names receive no guess; dynamic
 property maps remain open rather than inventing undeclared names.

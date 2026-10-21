@@ -126,11 +126,11 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 			if c.IsScriptScalar(node) {
 				return scalarArgument
 			}
-			if safeMatrixScriptReference(node, rule.matrixScriptSafe) {
+			if safeMatrixScriptReference(node, rule.matrixScriptSafe, scalarArgument) {
 				return true
 			}
 			if name, ok := strings.CutPrefix(path, "env."); ok {
-				return rule.safeScriptEnv(name)
+				return rule.safeScriptEnv(name, scalarArgument)
 			}
 			return false
 		})

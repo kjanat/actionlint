@@ -9,7 +9,29 @@ import (
 	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
 )
 
-func (rule *Checker) safeScriptEnv(name string) bool {
+type scriptValueProof uint8
+
+const (
+	scriptUnsafe scriptValueProof = iota
+	scriptArgumentOnly
+	scriptLiteralWord
+)
+
+func (proof scriptValueProof) safe(argument bool) bool {
+	return proof == scriptLiteralWord || argument && proof == scriptArgumentOnly
+}
+
+func scriptLiteralProof(value string) scriptValueProof {
+	if exprlang.SafeScriptWord(value) {
+		return scriptLiteralWord
+	}
+	if exprlang.SafeScriptLiteral(value) {
+		return scriptArgumentOnly
+	}
+	return scriptUnsafe
+}
+
+func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
 	var workflowEnv *workflowlang.Env
 	if rule.workflow != nil {
 		workflowEnv = rule.workflow.Env
@@ -25,7 +47,7 @@ func (rule *Checker) safeScriptEnv(name string) bool {
 		}
 		if _, present := names[strings.ToLower(name)]; present {
 			value, known := workflowlang.InputResolver.Value(mapping, name)
-			return known && exprlang.SafeScriptLiteral(value)
+			return known && scriptLiteralProof(value).safe(argument)
 		}
 	}
 	return false
@@ -34,7 +56,7 @@ func (rule *Checker) safeScriptEnv(name string) bool {
 // safeMatrixScriptReferences proves individual paths across all declared axis
 // values and include assignments, without expanding the Cartesian product.
 // Exclusions can only remove values, so ignoring them keeps the proof conservative.
-func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]bool {
+func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptValueProof {
 	if matrix == nil {
 		return nil
 	}
@@ -46,21 +68,24 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]bool {
 	if !complete {
 		return nil
 	}
-	axes := map[string]map[string]bool{}
+	axes := map[string]map[string]scriptValueProof{}
 	add := func(name string, value workflowlang.RawYAMLValue, expressions bool) bool {
 		if !scriptPathName(name) {
 			return true
 		}
-		paths := map[string]bool{}
+		paths := map[string]scriptValueProof{}
 		if !matrixScriptValuePaths("matrix."+name, value, expressions, paths) {
 			return false
 		}
 		if previous, exists := axes[name]; exists {
 			// Missing members evaluate to an empty string. Only a present unsafe
 			// value invalidates a proof from another alternative.
-			for path, safe := range paths {
+			for path, proof := range paths {
 				before, present := previous[path]
-				previous[path] = safe && (!present || before)
+				if present {
+					proof = min(proof, before)
+				}
+				previous[path] = proof
 			}
 		} else {
 			axes[name] = paths
@@ -88,18 +113,18 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]bool {
 			}
 		}
 	}
-	result := map[string]bool{}
+	result := map[string]scriptValueProof{}
 	for _, paths := range axes {
-		for path, safe := range paths {
-			if safe {
-				result[path] = true
+		for path, proof := range paths {
+			if proof != scriptUnsafe {
+				result[path] = proof
 			}
 		}
 	}
 	return result
 }
 
-func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expressions bool, safe map[string]bool) bool {
+func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expressions bool, safe map[string]scriptValueProof) bool {
 	switch value := value.(type) {
 	case *workflowlang.RawYAMLString:
 		if expressions && exprlang.ContainsExpression(value.Value) {
@@ -112,41 +137,41 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 			return matrixScriptLiteralPaths(path, value.ScalarValue(), safe)
 		}
 	case *workflowlang.RawYAMLObject:
-		allSafe := true
+		allSafe := scriptLiteralWord
 		for name, property := range value.Props {
 			if expressions && exprlang.ContainsExpression(name) {
 				return false
 			}
-			paths := map[string]bool{}
+			paths := map[string]scriptValueProof{}
 			if !matrixScriptValuePaths("", property, expressions, paths) {
 				return false
 			}
-			allSafe = allSafe && paths[""]
+			allSafe = min(allSafe, paths[""])
 			if scriptPathName(name) {
 				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
 			}
 		}
 		safe[path+"[*]"] = allSafe
 	case *workflowlang.RawYAMLArray:
-		allSafe := true
+		allSafe := scriptLiteralWord
 		for index, element := range value.Elems {
 			child := path + "[" + strconv.Itoa(index) + "]"
 			if !matrixScriptValuePaths(child, element, expressions, safe) {
 				return false
 			}
-			allSafe = allSafe && safe[child]
+			allSafe = min(allSafe, safe[child])
 		}
 		safe[path+"[*]"] = allSafe
 	}
 	return true
 }
 
-func matrixScriptLiteralPaths(path string, value any, safe map[string]bool) bool {
+func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValueProof) bool {
 	switch value := value.(type) {
 	case string:
-		safe[path] = exprlang.SafeScriptLiteral(value)
+		safe[path] = scriptLiteralProof(value)
 	case nil, bool, float64:
-		safe[path] = true
+		safe[path] = scriptArgumentOnly
 	case map[string]any:
 		names := map[string]bool{}
 		for name := range value {
@@ -158,46 +183,46 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]bool) bool
 			}
 			names[key] = true
 		}
-		allSafe := true
+		allSafe := scriptLiteralWord
 		for name, property := range value {
-			paths := map[string]bool{}
+			paths := map[string]scriptValueProof{}
 			if !matrixScriptLiteralPaths("", property, paths) {
 				return false
 			}
-			allSafe = allSafe && paths[""]
+			allSafe = min(allSafe, paths[""])
 			if scriptPathName(name) {
 				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
 			}
 		}
 		safe[path+"[*]"] = allSafe
 	case []any:
-		allSafe := true
+		allSafe := scriptLiteralWord
 		for index, element := range value {
 			child := path + "[" + strconv.Itoa(index) + "]"
 			if !matrixScriptLiteralPaths(child, element, safe) {
 				return false
 			}
-			allSafe = allSafe && safe[child]
+			allSafe = min(allSafe, safe[child])
 		}
 		safe[path+"[*]"] = allSafe
 	}
 	return true
 }
 
-func copyScriptPaths(prefix string, paths, destination map[string]bool) {
+func copyScriptPaths(prefix string, paths, destination map[string]scriptValueProof) {
 	for suffix, safe := range paths {
 		destination[prefix+suffix] = safe
 	}
 }
 
-func safeMatrixScriptReference(node exprlang.Node, proofs map[string]bool) bool {
+func safeMatrixScriptReference(node exprlang.Node, proofs map[string]scriptValueProof, argument bool) bool {
 	path := matrixScriptReferencePath(node)
-	if path != "" && proofs[path] {
+	if path != "" && proofs[path].safe(argument) {
 		return true
 	}
 	if index, ok := node.(*exprlang.IndexAccessNode); ok {
 		base := matrixScriptReferencePath(index.Operand)
-		return base != "" && proofs[base+"[*]"]
+		return base != "" && proofs[base+"[*]"].safe(argument)
 	}
 	return false
 }
