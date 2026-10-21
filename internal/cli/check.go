@@ -159,7 +159,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, err
 	}
 	defer func() {
-		if closeErr := app.Close(ctx); err == nil {
+		if closeErr := app.Close(context.WithoutCancel(ctx)); err == nil {
 			err = closeErr
 		}
 	}()

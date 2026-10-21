@@ -1,11 +1,34 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/analyzer"
 )
+
+func TestLoadedPluginsCloseAfterCommandCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	loaded, err := loadPlugins(ctx, []string{pluginFixture("pipe-to-shell")}, io.Discard, false)
+	if err != nil {
+		cancel()
+		t.Fatal(err)
+	}
+	plugin := loaded.plugins[0]
+	t.Cleanup(func() { _ = plugin.Close(t.Context()) })
+	cancel()
+	loaded.close(ctx)
+	if _, err := plugin.Analyze(t.Context(), analyzer.Input{}); err == nil || !strings.Contains(err.Error(), "closed") {
+		t.Fatalf("component remains usable after canceled command cleanup: %v", err)
+	}
+	if len(loaded.plugins) != 0 {
+		t.Fatal("closed components retained")
+	}
+}
 
 const pluginWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\n      - run: wget --no-check-certificate https://example.com/x.sh\n"
 

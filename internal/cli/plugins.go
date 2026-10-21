@@ -60,6 +60,7 @@ func (l *loadedPlugins) registrations() []analyzer.Registration {
 }
 
 func (l *loadedPlugins) close(ctx context.Context) {
+	ctx = context.WithoutCancel(ctx)
 	for _, plugin := range l.plugins {
 		_ = plugin.Close(ctx)
 	}

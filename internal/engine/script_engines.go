@@ -3,18 +3,22 @@ package engine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/toolconfig"
 )
 
-// ScriptEngines loads each configured WebAssembly engine once and closes them together.
+const maxScriptEngines = 4
+
+// ScriptEngines retains at most four distinct module paths, including failed loads.
 type ScriptEngines struct {
 	mu     sync.Mutex
 	load   func(context.Context, string) (analyzer.ScriptBackend, error)
 	loaded map[string]analyzer.ScriptBackend
 	failed map[string]error
+	closed bool
 }
 
 // NewScriptEngines wraps a loader. A nil loader rejects every configured engine.
@@ -29,11 +33,20 @@ func (s *ScriptEngines) Load(ctx context.Context, path string) (analyzer.ScriptB
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.closed {
+		return nil, errors.New("WebAssembly engine session is closed")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if backend, ok := s.loaded[path]; ok {
 		return backend, nil
 	}
 	if err, ok := s.failed[path]; ok {
 		return nil, err
+	}
+	if len(s.loaded)+len(s.failed) >= maxScriptEngines {
+		return nil, fmt.Errorf("WebAssembly engine session limit of %d distinct module paths exceeded", maxScriptEngines)
 	}
 	backend, err := s.load(ctx, path)
 	if err != nil {
@@ -44,13 +57,15 @@ func (s *ScriptEngines) Load(ctx context.Context, path string) (analyzer.ScriptB
 	return backend, nil
 }
 
-// Close releases every loaded engine that can be closed.
+// Close releases every loaded engine that can be closed and rejects further loads.
 func (s *ScriptEngines) Close(ctx context.Context) error {
 	if s == nil {
 		return nil
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.closed = true
+	clear(s.failed)
 	var errs []error
 	for path, backend := range s.loaded {
 		if closer, ok := backend.(interface{ Close(context.Context) error }); ok {
