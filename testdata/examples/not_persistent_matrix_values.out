@@ -1,2 +1,3 @@
 test.yaml:18:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+test.yaml:20:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
 test.yaml:22:19: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type array<any> [expression]

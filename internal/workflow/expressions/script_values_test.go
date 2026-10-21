@@ -69,6 +69,11 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 		{"unknown nested value", `{target: [{name: linux, extra: "${{ inputs.extra }}"}]}`, nil},
 		{"nested object", `{target: [{name: linux, version: 1}, {name: windows, version: 2}]}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
 		{"nested dangerous alternate", `{target: [{name: linux}, {name: 'bad"value'}]}`, nil},
+		{"scalar becomes object", `{target: [{name: linux}, {name: {nested: value}}]}`, []string{"matrix.target.name.nested", "matrix.target.name[*]"}},
+		{"object becomes scalar", `{target: [{name: {nested: value}}, {name: linux}]}`, []string{"matrix.target.name.nested", "matrix.target.name[*]"}},
+		{"scalar becomes array", `{target: [{name: linux}, {name: [value]}]}`, []string{"matrix.target.name[0]", "matrix.target.name[*]"}},
+		{"evaluated scalar becomes object", `{target: "${{ fromJSON('[{\"name\":\"linux\"},{\"name\":{\"nested\":\"value\"}}]') }}"}`, []string{"matrix.target.name.nested", "matrix.target.name[*]"}},
+		{"evaluated scalar becomes array", `{target: "${{ fromJSON('[{\"name\":\"linux\"},{\"name\":[\"value\"]}]') }}"}`, []string{"matrix.target.name[0]", "matrix.target.name[*]"}},
 		{"absent nested member", `{target: [{name: linux}, {version: 1}]}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
 		{"absent member before safe value", `{target: [{version: 1}, {name: linux}]}`, []string{"matrix.target.name", "matrix.target.version", "matrix.target[*]"}},
 		{"absent member does not erase unsafe value", `{target: [{name: linux}, {version: 1}, {name: 'bad"value'}]}`, []string{"matrix.target.version"}},
@@ -144,6 +149,8 @@ func TestNestedMatrixScriptInterpolation(t *testing.T) {
 		{"absent member first", `{target: [{version: 1}, {name: linux}]}`, false},
 		{"unsafe member", `{target: [{name: linux}, {version: 1}, {name: 'bad"value'}]}`, true},
 		{"unsafe member first", `{target: [{name: 'bad"value'}, {version: 1}, {name: linux}]}`, true},
+		{"scalar becomes object", `{target: [{name: linux}, {name: {nested: value}}]}`, true},
+		{"scalar becomes array", `{target: [{name: linux}, {name: [value]}]}`, true},
 		{"include alternatives", `{include: [{target: {name: linux}}, {target: {version: 1}}]}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

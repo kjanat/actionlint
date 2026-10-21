@@ -137,6 +137,7 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 			return matrixScriptLiteralPaths(path, value.ScalarValue(), safe)
 		}
 	case *workflowlang.RawYAMLObject:
+		safe[path] = scriptUnsafe
 		allSafe := scriptLiteralWord
 		for name, property := range value.Props {
 			if expressions && exprlang.ContainsExpression(name) {
@@ -153,6 +154,7 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 		}
 		safe[path+"[*]"] = allSafe
 	case *workflowlang.RawYAMLArray:
+		safe[path] = scriptUnsafe
 		allSafe := scriptLiteralWord
 		for index, element := range value.Elems {
 			child := path + "[" + strconv.Itoa(index) + "]"
@@ -173,6 +175,7 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValu
 	case nil, bool, float64:
 		safe[path] = scriptArgumentOnly
 	case map[string]any:
+		safe[path] = scriptUnsafe
 		names := map[string]bool{}
 		for name := range value {
 			key := strings.ToLower(name)
@@ -196,6 +199,7 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValu
 		}
 		safe[path+"[*]"] = allSafe
 	case []any:
+		safe[path] = scriptUnsafe
 		allSafe := scriptLiteralWord
 		for index, element := range value {
 			child := path + "[" + strconv.Itoa(index) + "]"
