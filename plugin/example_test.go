@@ -10,6 +10,8 @@ import (
 	"actionlint.kjanat.dev/plugin"
 )
 
+var _ interface{ Limits() plugin.EngineLimits } = (*plugin.Engine)(nil)
+
 func ExampleLoad() {
 	ctx := context.Background()
 	component, err := plugin.Load(ctx, filepath.Join("..", "internal", "component", "testdata", "plugins", "pipe-to-shell.wasm"), plugin.Options{})
@@ -42,7 +44,7 @@ func ExampleLoadEngine() {
 		return
 	}
 	defer engine.Close(ctx)
-	var limits plugin.EngineLimits = engine.Limits()
+	limits := engine.Limits()
 	fmt.Println("loaded", engine.Metadata().ID, "with", limits)
 	diagnostics, err := engine.Check(ctx, analyzer.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
