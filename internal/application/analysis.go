@@ -26,6 +26,7 @@ import (
 	exprlang "actionlint.kjanat.dev/internal/expression"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	"actionlint.kjanat.dev/internal/fsread"
+	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 	"actionlint.kjanat.dev/internal/report"
 	"actionlint.kjanat.dev/internal/rulecatalog"
 	"actionlint.kjanat.dev/internal/tools"
@@ -172,13 +173,12 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 	logger := analysisLogger{log, level}
 	if load := request.LoadScriptEngine; load != nil {
 		request.LoadScriptEngine = func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
-			if !filepath.IsAbs(path) {
-				path = filepath.Join(request.WorkingDir, path)
-			} else {
-				path = filepath.Clean(path)
+			reference, local, err := pluginartifact.NormalizeSource(path, request.WorkingDir)
+			if err != nil {
+				return nil, err
 			}
-			inputs.add(path)
-			return load(ctx, path)
+			inputs.add(local)
+			return load(ctx, reference)
 		}
 	}
 	session := &analysisSession{

@@ -1,12 +1,12 @@
 package workspace
 
 import (
-	"path/filepath"
 	"slices"
 	"sync"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 )
 
 type Inputs struct {
@@ -41,11 +41,10 @@ func (f *Inputs) AddConfig(config *repoconfig.Config, project *Project, workingD
 	if config != nil {
 		for _, backend := range []*toolconfig.Backend{config.Tools.Ruff.Backend, config.Tools.Shellcheck.Backend} {
 			if backend != nil && backend.Wasm != nil {
-				path := backend.Wasm.Path
-				if !filepath.IsAbs(path) {
-					path = filepath.Join(workingDir, path)
+				_, local, err := pluginartifact.NormalizeSource(backend.Wasm.Path, workingDir)
+				if err == nil {
+					f.Add(local)
 				}
-				f.Add(path)
 			}
 		}
 		for _, path := range config.Sources() {

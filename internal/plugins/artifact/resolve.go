@@ -30,6 +30,26 @@ type Options struct {
 	MaxBytes int64
 }
 
+// NormalizeSource roots filesystem paths in directory while preserving URI
+// identity, including queries and digest pins. local is empty for remote URLs;
+// otherwise it identifies the local file consumed by the artifact resolver.
+// It validates the location without reading files or making network requests.
+func NormalizeSource(source, directory string) (reference, local string, err error) {
+	u, local, _, err := parseSource(source)
+	if err != nil {
+		return "", "", err
+	}
+	if u != nil {
+		return source, local, nil
+	}
+	if !filepath.IsAbs(local) {
+		local = filepath.Join(directory, local)
+	} else {
+		local = filepath.Clean(local)
+	}
+	return local, local, nil
+}
+
 // Resolve accepts paths, absolute file URIs and HTTP(S) URLs. A URI fragment of
 // #sha256=<hex> pins the distributed bytes. Unpinned URLs are always fetched.
 func Resolve(ctx context.Context, source string, options Options) (*Artifact, error) {

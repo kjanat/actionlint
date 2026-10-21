@@ -28,6 +28,38 @@ func custom(name string, value []byte) []byte {
 	return append(section, payload...)
 }
 
+func TestNormalizeSource(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "engine.wasm")
+	uriPath := filepath.ToSlash(file)
+	if !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath
+	}
+	fileURI := (&url.URL{Scheme: "file", Path: uriPath}).String()
+	pin := "#sha256=" + strings.Repeat("a", 64)
+	for _, tc := range []struct {
+		name, source, reference, local string
+	}{
+		{"relative", filepath.Join("engines", "..", "engine.wasm"), file, file},
+		{"absolute", file, file, file},
+		{"http", "http://example.com/engine?version=1" + pin, "http://example.com/engine?version=1" + pin, ""},
+		{"https", "https://example.com/engine?version=1" + pin, "https://example.com/engine?version=1" + pin, ""},
+		{"file", fileURI + pin, fileURI + pin, file},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reference, local, err := NormalizeSource(tc.source, root)
+			if err != nil || reference != tc.reference || local != tc.local {
+				t.Fatalf("NormalizeSource(%q) = (%q, %q, %v), want (%q, %q, nil)", tc.source, reference, local, err, tc.reference, tc.local)
+			}
+		})
+	}
+	for _, source := range []string{"", "ftp://example.com/engine", "https://user:secret@example.com/engine", "https://example.com/engine#sha256=invalid"} {
+		if _, _, err := NormalizeSource(source, root); err == nil {
+			t.Errorf("accepted invalid source %q", source)
+		}
+	}
+}
+
 func module(metadata string) []byte {
 	data := []byte("\x00asm\x01\x00\x00\x00")
 	if metadata != "" {
