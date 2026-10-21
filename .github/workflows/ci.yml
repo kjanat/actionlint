@@ -44,11 +44,11 @@ jobs:
             "javascript": [
               "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**"
+              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-pandoc/**"
             ],
             "release": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
-              ".goreleaser.yaml", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
+              ".goreleaser.yaml", ".github/actions/setup-pandoc/**", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
               "scripts/build-action-release.mjs", "scripts/release-*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
               "!scripts/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"

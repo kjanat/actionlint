@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test pinned Pandoc downloads and cache verification"
+run         = "node --test setup.test.mjs"

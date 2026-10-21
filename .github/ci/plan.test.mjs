@@ -240,6 +240,14 @@ test('Action smoke fixtures are re-included after the general testdata exclusion
 	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
 });
 
+test('Pandoc pins and installer select release and installation regression tests', () => {
+	for (const path of ['.github/actions/setup-pandoc/SHA256SUMS', '.github/actions/setup-pandoc/setup.bash']) {
+		const jobs = selectJobs(workflowFilters('ci'), [path]);
+		assert.equal(jobs.javascript, true);
+		assert.equal(jobs.release, true);
+	}
+});
+
 test('runner cache metadata and code select the installation regression tests', () => {
 	for (const path of ['action.yml', 'setup.mjs', 'setup.test.mjs', 'mise.toml']) {
 		assert.equal(selectJobs(workflowFilters('ci'), [`.github/actions/setup-runner/${path}`]).javascript, true, path);
