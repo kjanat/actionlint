@@ -44,6 +44,7 @@ func newRuffAnalyzer(c tools.Context, o Options, compatibility *Compatibility) (
 }
 
 func newRuffChecker(c tools.Context, o Options, compatibility *Compatibility) (*Checker, error) {
+	o = o.forConfig(c.Config)
 	if o.Backend != nil {
 		return NewBackend(c.Processes.Ctx, o.Backend, ruffExpressionEnd), nil
 	}

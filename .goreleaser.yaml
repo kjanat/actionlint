@@ -69,6 +69,8 @@ source:
   prefix_template: '{{ .ProjectName }}-{{ replace .Version "-" "_" }}/'
   files: [man/actionlint.1]
 
+# Beepboop publishes these release assets after Verify published candidate passes:
+# https://github.com/kjanat/beepboop/blob/master/routes.json
 homebrew_casks:
   - name: actionlint
     ids: [nix]

@@ -11,10 +11,24 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 
 	"go.yaml.in/yaml/v4"
 )
+
+func TestDefaultShellcheckWithoutExecutable(t *testing.T) {
+	workspace := workspaceWith(t, map[string]string{".git": "", "ci.yml": cleanWorkflow, ".github/actionlint.yaml": "plugins: []\n"})
+	t.Setenv("PATH", t.TempDir())
+	req := &lintRequest{workingDir: workspace, files: []string{"ci.yml"}, shellcheck: "shellcheck", format: formatJSON}
+	if result := runLinter(req); result.code != 0 {
+		t.Fatalf("default requires native ShellCheck: %s", result.stderr)
+	}
+	req.shellcheckOptions = &processconfig.Options{Executable: new("missing-explicit-shellcheck")}
+	if result := runLinter(req); result.code != render.ExitFailure || !strings.Contains(result.stderr, "missing-explicit-shellcheck") {
+		t.Fatalf("explicit missing executable was ignored: code=%d %s", result.code, result.stderr)
+	}
+}
 
 const cleanWorkflow = `on: push
 jobs:
