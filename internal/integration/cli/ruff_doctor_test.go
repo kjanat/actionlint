@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestDoctorRuffCompatibility(t *testing.T) {
+	unavailable := regexp.MustCompile(`(?m)^ruff:[ \t]+.+ \(unavailable: .+\)$`)
 	bin := t.TempDir()
 	tool := filepath.Join(bin, "ruff")
 	if runtime.GOOS == "windows" {
@@ -74,7 +76,7 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 			if text.Status != 0 || text.Stderr != "" {
 				t.Fatalf("text doctor failed: %+v", text)
 			}
-			if tc.status == "unavailable" && !strings.Contains(text.Stdout, ruff.Error) {
+			if tc.status == "unavailable" && (!unavailable.MatchString(text.Stdout) || !strings.Contains(text.Stdout, tc.reason)) {
 				t.Fatalf("text hid compatibility failure: %+v", text)
 			}
 			invocations, err := os.ReadFile(calls)
