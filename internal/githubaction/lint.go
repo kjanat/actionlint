@@ -73,7 +73,7 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 		}
 	}
 	if command := env("ACTIONLINT_RUFF_COMMAND"); req.ruff != "" && command != "" {
-		req.ruffOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+		req.ruffOptions = &actionlint.ExternalCommandOptions{Executable: &command, AllowWasm: true}
 	}
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
@@ -84,7 +84,7 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 		req.overlays = append(req.overlays, overlay)
 	}
 	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
-		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command, AllowWasm: true}
 	}
 	return nil
 }

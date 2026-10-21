@@ -62,7 +62,7 @@ func (s *ScriptEngines) Close(ctx context.Context) error {
 }
 
 func configuredScriptModule(name, requested string, explicit *ExternalCommandOptions, cfg *Config) *toolconfig.Module {
-	if requested != name || cfg == nil || explicit != nil && (explicit.IgnoreConfig || !explicit.Optional) {
+	if requested != name || cfg == nil || explicit != nil && (explicit.IgnoreConfig || !explicit.Optional && !explicit.AllowWasm) {
 		return nil
 	}
 	backend := cfg.Tools.Shellcheck.Backend

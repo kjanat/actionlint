@@ -80,7 +80,7 @@ func TestToolCommandsFromEnvironment(t *testing.T) {
 	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
 		t.Fatal(err)
 	}
-	if req.shellcheckOptions == nil || req.shellcheckOptions.Executable == nil || *req.shellcheckOptions.Executable != "/cache/shellcheck" {
+	if req.shellcheckOptions == nil || req.shellcheckOptions.Executable == nil || *req.shellcheckOptions.Executable != "/cache/shellcheck" || !req.shellcheckOptions.AllowWasm {
 		t.Errorf("want provisioned shellcheck, got %#v", req.shellcheckOptions)
 	}
 	disabled := &lintRequest{}
