@@ -67,6 +67,26 @@ jobs:
       - name: Regenerate the configuration schema
         id: schema
         run: bash scripts/autofix-step.bash go generate -run generate-config-schema
+      - name: Keep mise metadata with cached tools
+        if: steps.inputs.outputs.readme == 'true'
+        shell: bash
+        run: |
+          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
+          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
+          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
+      - name: Set up mise for the README generator
+        if: steps.inputs.outputs.readme == 'true'
+        uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          install: false
+          env: false
+          add_shims_to_path: false
+          working_directory: ${{ runner.temp }}
+          cache: true
+          auto_update: true
+          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_key: >-
+            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'

@@ -26,6 +26,10 @@ func TestMain(m *testing.M) {
 
 func runMiseHelper() {
 	args := os.Args[1:]
+	if os.Getenv("MISE_ENABLE_TOOLS") != forkTool+","+upstreamTool {
+		fmt.Fprintln(os.Stderr, "README probes must resolve only the compared release tools")
+		os.Exit(2)
+	}
 	file, err := os.OpenFile(os.Getenv("CHECK_README_MISE_CALLS"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -101,6 +105,7 @@ func miseGeneratorFixture(t *testing.T) (generator, string) {
 	}
 	capture := filepath.Join(root, "calls.jsonl")
 	t.Setenv("PATH", root+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("MISE_ENABLE_TOOLS", "node,npm")
 	t.Setenv(commandHelper, "mise")
 	t.Setenv("CHECK_README_MISE_CALLS", capture)
 	g := generator{ctx: t.Context(), root: root, log: log.New(io.Discard, "", 0)}

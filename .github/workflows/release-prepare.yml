@@ -45,7 +45,7 @@ jobs:
           - uses: $/.github/actions/setup-runner
             with: { version-file: .tool-versions }
           - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-            with: { install: false, env: false, add_shims_to_path: false }
+            with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
       - name: Check pinned rshellcheck version
         uses: $/.github/actions/shellcheck-versions
         with: { fail-on-outdated: true }

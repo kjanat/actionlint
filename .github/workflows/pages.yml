@@ -63,6 +63,8 @@ jobs:
           cache: true
           auto_update: true
           install_args: go node npm
+          add_shims_to_path: false
+        env: { MISE_ENABLE_TOOLS: "go,node,npm" }
       - uses: $/.github/actions/setup-runner
       - uses: $/.github/actions/setup-pandoc
       - parallel:

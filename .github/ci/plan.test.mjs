@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -308,6 +308,56 @@ test('pinned formatter helper and workflow changes select installer tests', () =
 		/MISE_DISABLE_TOOLS: "shellcheck,github:koalaman\/shellcheck,rshellcheck,github:kjanat\/shellcheck-rs"/,
 	);
 	assert.doesNotMatch(upkeep, /install_args:.*koalaman\/shellcheck/);
+});
+
+test('README autofix bootstraps mise without installing project tools', () => {
+	const workflow = readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8');
+	const steps = workflow.split(/\n {6}- /);
+	const bootstraps = steps.filter(step => /uses: jdx\/mise-action@/.test(step));
+	assert.equal(bootstraps.length, 1, 'README generation requires one explicit mise bootstrap');
+	const [bootstrap] = bootstraps;
+	assert.ok(bootstrap);
+	assert.match(bootstrap, /if: steps\.inputs\.outputs\.readme == 'true'/);
+	assert.match(bootstrap, /install: false/);
+	assert.match(bootstrap, /env: false/);
+	assert.match(bootstrap, /add_shims_to_path: false/);
+	assert.match(bootstrap, /working_directory: \$\{\{ runner\.temp \}\}/);
+	assert.match(bootstrap, /mise_dir: \$\{\{ env\.ACTIONLINT_MISE_DIR \}\}/);
+	assert.doesNotMatch(bootstrap, /install_args:/);
+	const readme = steps.findIndex(step => /id: readme\n/.test(step));
+	assert.ok(readme > steps.indexOf(bootstrap), 'mise must exist before the README generator runs');
+});
+
+test('mise setup limits environment resolution to explicitly installed tools', () => {
+	const directory = new URL('../workflows/', import.meta.url);
+	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
+		const lines = readFileSync(new URL(name, directory), 'utf8').split('\n');
+		for (const [index, line] of lines.entries()) {
+			if (!/uses: (?:&SetupMise )?(?:jdx\/mise-action@|\*SetupMise)/.test(line)) continue;
+			const indentation = line.indexOf('uses:');
+			const body = [];
+			for (const following of lines.slice(index + 1)) {
+				if (following.trim() && following.search(/\S/) < indentation) break;
+				body.push(following);
+			}
+			const step = body.join('\n');
+			const args = /install_args: (.+)/.exec(step)?.[1];
+			if (args) {
+				const enabled = /MISE_ENABLE_TOOLS: "([^"]+)"/.exec(step)?.[1];
+				assert.equal(enabled, args.trim().replaceAll(/\s+/g, ','), `${name} selected tool environment`);
+				assert.match(step, /add_shims_to_path: false/, `${name} must export concrete tool paths`);
+			} else {
+				assert.match(step, /install: false/, `${name} bootstrap must not install configured tools`);
+				assert.match(step, /env: false/, `${name} bootstrap must not resolve the project environment`);
+				assert.match(step, /add_shims_to_path: false/, `${name} bootstrap must not shadow installed tools`);
+				assert.match(
+					step,
+					/working_directory: ["']?\$\{\{ runner\.temp \}\}/,
+					`${name} bootstrap must not list project tools`,
+				);
+			}
+		}
+	}
 });
 
 test('preview and npm builds select the go.mod toolchain', () => {

@@ -151,6 +151,7 @@ func (g *generator) commandIn(dir string, allowExitOne bool, name string, args .
 		"MISE_YES=1",
 		"MISE_SILENT=1",
 		"MISE_SAFE=1",
+		"MISE_ENABLE_TOOLS="+forkTool+","+upstreamTool,
 		"MISE_TRUSTED_CONFIG_PATHS="+g.root,
 		// The fork releases faster than the age gate admits, and the gate would hold the
 		// comparison on the previous release.
