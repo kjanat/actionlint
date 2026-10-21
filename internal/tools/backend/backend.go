@@ -154,9 +154,12 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				continue
 			}
 			if prepared.OriginalLine != nil {
+				hasEnd := d.EndLocation != (analyzer.ScriptPosition{})
 				d.Location.Row = prepared.OriginalLine(d.Location.Row)
-				d.EndLocation.Row = prepared.OriginalLine(d.EndLocation.Row)
-				if d.Location.Row == 0 || d.EndLocation.Row == 0 {
+				if hasEnd {
+					d.EndLocation.Row = prepared.OriginalLine(d.EndLocation.Row)
+				}
+				if d.Location.Row == 0 || hasEnd && d.EndLocation.Row == 0 {
 					failures = errors.Join(failures, fmt.Errorf("tool %s configuration diagnostic: %s", r.descriptor.Name, d.Message))
 					continue
 				}

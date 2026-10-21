@@ -82,7 +82,12 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	registration := tools.Registration{
 		Descriptor: rule.Descriptor{Name: "tool"},
 		PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-			return tools.PreparedInput{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), OriginalLine: func(line int) int { return line - 1 }}, nil
+			return tools.PreparedInput{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), OriginalLine: func(line int) int {
+				if line < 2 {
+					return 0
+				}
+				return line - 1
+			}}, nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
 			return routingRunner(func(context.Context, tools.Batch) ([]tools.Finding, error) {
@@ -97,6 +102,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 		return []analyzer.ScriptDiagnostic{
 			{Message: "bad configuration", Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 2}},
 			{Message: "input", Location: analyzer.ScriptPosition{Row: 2, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 2, Column: 2}},
+			{Message: "input without end", Location: analyzer.ScriptPosition{Row: 2, Column: 1}},
 		}, nil
 	})
 	registration, err := WithScriptInputs(registration, analyzer.ScriptEngineDescriptor{Rule: registration.Descriptor, ScriptInputs: []analyzer.ScriptInput{site}}, engine)
@@ -108,7 +114,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Col: 7}}}})
-	if err == nil || !strings.Contains(err.Error(), "configuration diagnostic: bad configuration") || len(findings) != 2 || findings[0].Message != "native" || findings[1].Message != "input" {
+	if err == nil || !strings.Contains(err.Error(), "configuration diagnostic: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (diagnostic.Position{Line: 11, Column: 7}) {
 		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
 	}
 }
