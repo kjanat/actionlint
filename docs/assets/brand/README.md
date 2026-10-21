@@ -28,8 +28,8 @@ drawn separately, with quieter upright letters to balance the symbol.
   It shows the identity on light and dark backgrounds and at small sizes.
 
 The three logo SVGs have transparent backgrounds and contain only vector geometry.
-They do not load fonts, scripts, images, or external resources. The lettering is
-original path artwork, not live text.
+They do not load fonts, scripts, images, or external resources. The lettering
+consists of original vector paths.
 
 The colours are vermilion `#D5412E`, ink `#25251F`, and warm paper `#F5F0E6`.
 The dark version uses a lighter vermilion, `#F07860`, and paper-coloured lettering.
