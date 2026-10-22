@@ -1,0 +1,47 @@
+package backend
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/tools"
+	workflow "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/rule"
+)
+
+type rangeReviewBackend struct{ end analyzer.ScriptPosition }
+
+func (b rangeReviewBackend) Check(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+	return []analyzer.ScriptDiagnostic{
+		{Message: "valid", Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 2}},
+		{Message: "reversed", Location: analyzer.ScriptPosition{Row: 2, Column: 5}, EndLocation: b.end},
+	}, nil
+}
+
+func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
+	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo first\n          echo second\n")
+	parsed, failures := workflow.Parse(content)
+	if len(failures) != 0 {
+		t.Fatal(failures)
+	}
+	run, ok := parsed.Jobs["test"].Steps[0].Exec.(*workflow.ExecRun)
+	if !ok {
+		t.Fatal("fixture is not a run step")
+	}
+	for _, end := range []analyzer.ScriptPosition{{Row: 2, Column: 3}, {Row: 1, Column: 7}} {
+		registration, err := Register(rule.Descriptor{Name: "range-check"}, []string{"bash"}, rangeReviewBackend{end})
+		if err != nil {
+			t.Fatal(err)
+		}
+		checker, err := registration.Build(tools.Context{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		findings, err := checker.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: run.Source, Key: run.RunPos, Path: "ci.yml", Content: content, Execution: tools.Execution{Shell: "bash"}}}})
+		if err == nil || !strings.Contains(err.Error(), "reversed range") || len(findings) != 1 || findings[0].Message != "valid" {
+			t.Fatalf("invalid backend span escaped: findings=%+v err=%v", findings, err)
+		}
+	}
+}

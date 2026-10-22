@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/render"
+
 	"github.com/mattn/go-shellwords"
 )
 
@@ -64,7 +66,7 @@ func (a *commandApp) applyEnvironment() error {
 		return err
 	}
 	switch i.Operation {
-	case operationCheck, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate:
+	case "lsp", operationCheck, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate:
 		if !a.anySet("config", "config-file", "no-config") {
 			a.envString("ACTIONLINT_CONFIG", &i.Check.Config.Path)
 			if err := a.envBool("ACTIONLINT_NO_CONFIG", &i.Check.Config.Disabled); err != nil {
@@ -75,7 +77,7 @@ func (a *commandApp) applyEnvironment() error {
 	if i.Operation == operationConfigShow {
 		return a.envBool("ACTIONLINT_CONFIG_ORIGIN", &i.Origin, "origin")
 	}
-	if i.Operation != operationCheck && i.Operation != operationDoctor {
+	if i.Operation != operationCheck && i.Operation != operationDoctor && i.Operation != "lsp" {
 		return nil
 	}
 	var err error
@@ -91,7 +93,7 @@ func (a *commandApp) applyEnvironment() error {
 			return err
 		}
 		if i.Check.RuffOptions == nil {
-			i.Check.RuffOptions = &actionlint.ExternalCommandOptions{Optional: true}
+			i.Check.RuffOptions = &processconfig.Options{Optional: true}
 			if a.set["pyflakes"] {
 				if i.Check.Pyflakes == "" || strings.EqualFold(i.Check.Pyflakes, "false") {
 					i.Check.Ruff = ""
@@ -108,10 +110,10 @@ func (a *commandApp) applyEnvironment() error {
 		}
 	}
 	if a.set["shellcheck"] {
-		i.Check.ShellcheckOptions = &actionlint.ExternalCommandOptions{IgnoreConfig: true}
+		i.Check.ShellcheckOptions = &processconfig.Options{IgnoreConfig: true}
 	}
 	if a.set["ruff"] {
-		i.Check.RuffOptions = &actionlint.ExternalCommandOptions{IgnoreConfig: true}
+		i.Check.RuffOptions = &processconfig.Options{IgnoreConfig: true}
 	}
 	if i.Operation == operationDoctor {
 		return nil
@@ -136,7 +138,7 @@ func (a *commandApp) presentationEnvironment() error {
 				return commandUsageError{fmt.Errorf("ACTIONLINT_COLOR: %w", err)}
 			}
 			if os.Getenv("NO_COLOR") != "" {
-				color = actionlint.ColorOptionKindNever
+				color = render.ColorNever
 			}
 			a.inv.Render.Color = color
 		}
@@ -193,9 +195,9 @@ func (a *commandApp) checkEnvironment() error {
 	return nil
 }
 
-func externalToolEnvironment(tool string) (*actionlint.ExternalCommandOptions, error) {
+func externalToolEnvironment(tool string) (*processconfig.Options, error) {
 	prefix := "ACTIONLINT_" + tool
-	options := &actionlint.ExternalCommandOptions{}
+	options := &processconfig.Options{}
 	if bin, ok := os.LookupEnv(prefix + "_BIN"); ok {
 		if strings.ContainsRune(bin, 0) {
 			return nil, commandUsageError{fmt.Errorf("%s_BIN cannot contain NUL", prefix)}

@@ -3,14 +3,18 @@
 package analysis
 
 import (
+	"context"
+	"path/filepath"
+
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/config"
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/document"
-	"actionlint.kjanat.dev/internal/engine"
-	"context"
-	"errors"
-	"path/filepath"
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/resolver"
 )
 
 // Source is an in-memory workflow or action manifest with optional configuration.
@@ -40,6 +44,7 @@ type Tool struct {
 // Options controls configuration, external tools and filesystem access.
 // ReadFile must support concurrent calls. It does not sandbox external tools.
 type Options struct {
+	Resolver  resolver.Resolver
 	Analyzers []analyzer.Registration
 	// LoadScriptEngine authorizes configuration-selected Wasm engines. Nil disables
 	// them. Calls receive resolved paths and may be concurrent. Each analysis loads
@@ -54,6 +59,8 @@ type Options struct {
 	Ruff           Tool
 	Presets        config.Presets
 	IgnorePatterns []string
+	// AllowConfigProcesses authorizes repository-selected executable invocations.
+	AllowConfigProcesses bool
 }
 
 // FileOptions adds filesystem configuration selection to analysis options.
@@ -83,45 +90,26 @@ type Result struct {
 }
 
 // Analyze checks already-loaded sources. It does not perform source discovery.
-func Analyze(ctx context.Context, request Request) (result *Result, err error) {
-	engines := engine.NewScriptEngines(request.Options.LoadScriptEngine)
-	defer func() { err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
-	root, err := filepath.Abs(request.Options.WorkingDir)
+func Analyze(ctx context.Context, request Request) (*Result, error) {
+	options, err := fileOptions(FileOptions{Options: request.Options})
 	if err != nil {
 		return nil, err
 	}
-	project := engine.NewProjectContext(root)
-	sources := make([]engine.SourceUnit, len(request.Sources))
+	project := workspace.Identity(options.WorkingDir)
+	sources := make([]workspace.Source, len(request.Sources))
 	for i, source := range request.Sources {
-		sources[i] = engine.SourceUnit{Path: source.Path, Content: source.Content, Config: source.Config, Project: project}
+		sources[i] = workspace.Source{Path: source.Path, Content: source.Content, Config: source.Config, Project: project}
 	}
-	ignore, err := engine.CompileIgnorePatterns(request.Options.IgnorePatterns)
-	if err != nil {
-		return nil, err
-	}
-	analyzed, err := engine.Analyze(ctx, engine.AnalysisRequest{
-		Analyzers: request.Options.Analyzers, Sources: sources, WorkingDir: root, ReadFile: request.Options.ReadFile,
-		ShellcheckOptions: backendProcessOptions(request.Options.ShellCheck, request.Options.LoadScriptEngine != nil), RuffOptions: backendProcessOptions(request.Options.Ruff, request.Options.LoadScriptEngine != nil),
-		RuffBackend: request.Options.Ruff.Backend, ShellcheckBackend: request.Options.ShellCheck.Backend,
-		RulePresets: request.Options.Presets, IgnorePatterns: ignore,
-		Ruff:             configuredToolName("ruff", request.Options.Ruff, request.Options.LoadScriptEngine != nil),
-		ShellCheck:       configuredToolName("shellcheck", request.Options.ShellCheck, request.Options.LoadScriptEngine != nil),
-		LoadScriptEngine: engines.Load,
-	})
-	return resultView(analyzed), err
+	result, err := application.Analyze(ctx, options, sources)
+	return applicationResultView(result), err
 }
 
 // Files checks explicit paths with project discovery and configuration loading.
-func Files(ctx context.Context, paths []string, options FileOptions) (result *Result, err error) {
-	settings, err := sessionOptions(ctx, options)
+func Files(ctx context.Context, paths []string, options FileOptions) (*Result, error) {
+	settings, err := fileOptions(options)
 	if err != nil {
 		return nil, err
 	}
-	session, err := engine.NewAnalysisSession(settings)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { err = errors.Join(err, session.Close(context.WithoutCancel(ctx))) }()
 	resolvedPaths := make([]string, len(paths))
 	for i, path := range paths {
 		resolvedPaths[i] = path
@@ -129,60 +117,61 @@ func Files(ctx context.Context, paths []string, options FileOptions) (result *Re
 			resolvedPaths[i] = filepath.Join(settings.WorkingDir, path)
 		}
 	}
-	analyzed, err := session.Files(resolvedPaths, nil)
-	return resultView(analyzed), err
+	result, err := application.Check(ctx, settings, application.Input{Kind: application.Files, Paths: resolvedPaths})
+	return applicationResultView(result), err
 }
 
 // Repository discovers and checks workflows and actions under a repository.
-func Repository(ctx context.Context, directory string, options FileOptions) (result *Result, err error) {
-	settings, err := sessionOptions(ctx, options)
+func Repository(ctx context.Context, directory string, options FileOptions) (*Result, error) {
+	settings, err := fileOptions(options)
 	if err != nil {
 		return nil, err
 	}
 	if directory != "" && !filepath.IsAbs(directory) {
 		directory = filepath.Join(settings.WorkingDir, directory)
 	}
-	session, err := engine.NewAnalysisSession(settings)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { err = errors.Join(err, session.Close(context.WithoutCancel(ctx))) }()
-	analyzed, err := session.Repository(directory)
-	return resultView(analyzed), err
+	result, err := application.Check(ctx, settings, application.Input{Kind: application.Repository, Directory: directory})
+	return applicationResultView(result), err
 }
 
-func toolOptions(tool Process) *engine.ExternalCommandOptions {
-	return &engine.ExternalCommandOptions{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
+func toolOptions(tool Process) *processconfig.Options {
+	return &processconfig.Options{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
 }
 
-func sessionOptions(ctx context.Context, options FileOptions) (engine.AnalysisOptions, error) {
+func fileOptions(options FileOptions) (application.Options, error) {
 	root, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
-		return engine.AnalysisOptions{}, err
+		return application.Options{}, err
 	}
 	if options.ConfigFile != "" && !filepath.IsAbs(options.ConfigFile) {
 		options.ConfigFile = filepath.Join(root, options.ConfigFile)
 	}
-	return engine.AnalysisOptions{
-		Analyzers: options.Analyzers, Context: ctx, WorkingDir: root, ConfigFile: options.ConfigFile,
+	return application.Options{
+		Resolver: options.Resolver, Analyzers: options.Analyzers, WorkingDir: root, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck, options.LoadScriptEngine != nil),
-		RuffOptions: backendProcessOptions(options.Ruff, options.LoadScriptEngine != nil), RuffBackend: options.Ruff.Backend, ShellcheckBackend: options.ShellCheck.Backend, RulePresets: options.Presets,
-		IgnorePatterns: options.IgnorePatterns, QuietSelection: true,
-		Ruff:             configuredToolName("ruff", options.Ruff, options.LoadScriptEngine != nil),
-		Shellcheck:       configuredToolName("shellcheck", options.ShellCheck, options.LoadScriptEngine != nil),
-		LoadScriptEngine: options.LoadScriptEngine,
+		ReadFile:             options.ReadFile,
+		AllowConfigProcesses: options.AllowConfigProcesses,
+		LoadScriptEngine:     options.LoadScriptEngine,
+
+		Presets:        options.Presets,
+		IgnorePatterns: options.IgnorePatterns, Tools: adapters.Options{
+			ShellCheck:        configuredToolName("shellcheck", options.ShellCheck, options.LoadScriptEngine != nil),
+			Ruff:              configuredToolName("ruff", options.Ruff, options.LoadScriptEngine != nil),
+			ShellcheckOptions: backendProcessOptions(options.ShellCheck, options.LoadScriptEngine != nil),
+			RuffOptions:       backendProcessOptions(options.Ruff, options.LoadScriptEngine != nil), RuffBackend: options.Ruff.Backend,
+			ShellcheckBackend: options.ShellCheck.Backend,
+		}.Registrations(),
 	}, nil
 }
 
-func resultView(result *engine.AnalysisResult) *Result {
+func applicationResultView(result *application.Result) *Result {
 	if result == nil {
 		return nil
 	}
-	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount()}
+	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount}
 }
 
-func backendProcessOptions(tool Tool, configured bool) *engine.ExternalCommandOptions {
+func backendProcessOptions(tool Tool, configured bool) *processconfig.Options {
 	if tool.Process != nil {
 		return toolOptions(*tool.Process)
 	}

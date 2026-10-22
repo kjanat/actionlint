@@ -1,0 +1,8 @@
+[tasks.generate]
+description = "Regenerate .github/actionlint-matcher.json"
+dir         = "{{config_root}}/../.."
+run         = "node tools/matcher/main.mjs .github/actionlint-matcher.json"
+
+[tasks.test]
+description = "Test the problem matcher"
+run         = "node --test test.mjs"

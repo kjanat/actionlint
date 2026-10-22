@@ -14,7 +14,7 @@ node distribution/winget/src/cli.ts generate \
 
 `--checksums` is the GoReleaser checksums file of the release; the three Windows zips come from it. `--release-notes` is the Markdown body of the release; it is rendered to plain text, then cut at 10000 characters with a link to the release. `--release-date` defaults to today in UTC. `ManifestVersion` and the schema header are 1.12.0, the version `src/schema.ts` transcribes. Every flag also reads an environment variable: `VERSION`, `WINGET_CHECKSUMS`, `WINGET_RELEASE_NOTES`, `WINGET_OUT`, `WINGET_RELEASE_DATE`.
 
-The `winget` job of the release workflow runs this after the release is published, with the verified checksums and the published release body, and submits the files to winget-pkgs with `scripts/release-assets.mjs publish-winget`.
+The `winget` job of the release workflow runs this after the release is published, with the verified checksums and the published release body, and submits the files to winget-pkgs with `tools/release/release-assets.mjs publish-winget`.
 
 ## Validation
 

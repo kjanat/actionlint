@@ -1,0 +1,251 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+)
+
+const releaseJobURL = "https://github.com/kjanat/actionlint/actions/workflows/release-prepare.yml"
+
+const releaseTimeZone = "Europe/Amsterdam"
+
+type repo struct {
+	ctx  context.Context
+	root string
+	out  io.Writer
+}
+
+func (r *repo) git(args ...string) (string, error) {
+	cmd := exec.CommandContext(r.ctx, "git", args...)
+	cmd.Dir = r.root
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = strings.TrimSpace(stdout.String())
+		}
+		return "", fmt.Errorf("`git %s` failed: %s: %w", strings.Join(args, " "), msg, err)
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}
+
+func (r *repo) run(args ...string) error {
+	_, _ = fmt.Fprintf(r.out, "+ git %s\n", strings.Join(args, " "))
+	_, err := r.git(args...)
+	return err
+}
+
+func (r *repo) checkNix(args []string, stderr io.Writer) error {
+	args = append(args, "flake", "check", "--no-update-lock-file", "--print-build-logs")
+	_, _ = fmt.Fprintf(r.out, "+ %s\n", strings.Join(args, " "))
+	cmd := exec.CommandContext(r.ctx, args[0], args[1:]...)
+	cmd.Dir = r.root
+	cmd.Stdout = r.out
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("nix flake check failed; the updated files remain for review, and no commit or tag was created: %w", err)
+	}
+	return nil
+}
+
+func (r *repo) preflight(tag string) error {
+	top, err := r.git("rev-parse", "--show-toplevel")
+	if err != nil {
+		return err
+	}
+	abs, err := filepath.Abs(r.root)
+	if err != nil {
+		return err
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return err
+	}
+	topResolved, err := filepath.EvalSymlinks(top)
+	if err != nil {
+		return err
+	}
+	if resolved != topResolved {
+		return fmt.Errorf("this command must run at the repository root but %q is not %q", resolved, topResolved)
+	}
+
+	if out, err := r.git("status", "--porcelain", "--untracked-files=all"); err != nil {
+		return err
+	} else if out != "" {
+		return errors.New("the working tree is not clean. commit, stash, or remove all changed and untracked files before bumping the version")
+	}
+
+	branch, err := r.git("rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return err
+	}
+	if branch != "master" {
+		return fmt.Errorf("this command must run on the 'master' branch but the current branch is %q", branch)
+	}
+
+	if _, err := r.git("rev-parse", "--verify", "--quiet", "refs/tags/"+tag); err == nil {
+		return fmt.Errorf("tag %s already exists", tag)
+	}
+	out, err := r.git("ls-remote", "--tags", "origin", "refs/tags/"+tag)
+	if err != nil {
+		return fmt.Errorf("could not check origin for tag %s: %w", tag, err)
+	}
+	if strings.TrimSpace(out) != "" {
+		return fmt.Errorf("tag %s already exists on origin", tag)
+	}
+	return nil
+}
+
+func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
+	var check, commit, push bool
+	var root, notes, nix string
+
+	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
+	flags.BoolVar(&check, "check", false, "verify the declared version references and exit without modifying anything")
+	flags.StringVar(&notes, "notes", "", "print the changelog section of the given version tag and exit")
+	flags.BoolVar(&commit, "commit", false, "create the version bump commit after verification; no tag or publication")
+	flags.BoolVar(&push, "push", false, "push the source commit and dispatch draft release preparation, implies -commit")
+	flags.StringVar(&root, "root", ".", "repository root directory")
+	flags.StringVar(&nix, "nix-command", "", "override automatic Nix detection with an executable and optional launcher arguments")
+	flags.SetOutput(stderr)
+	flags.Usage = func() {
+		_, _ = fmt.Fprintln(stderr, "Usage: bump-version [FLAGS] VERSION\n\nFlags:")
+		flags.PrintDefaults()
+	}
+
+	if err := flags.Parse(args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+
+	if notes != "" {
+		if flags.NArg() != 0 {
+			return fmt.Errorf("-notes takes no argument but got %v", flags.Args())
+		}
+		text, err := ReleaseNotes(root, notes)
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(stdout, text)
+		return err
+	}
+
+	if check {
+		if flags.NArg() != 0 {
+			return fmt.Errorf("-check takes no argument but got %v", flags.Args())
+		}
+		declared, err := Check(root, targets, stdout)
+		if err != nil {
+			return err
+		}
+		if err := checkChangelog(root); err != nil {
+			return err
+		}
+		return CheckReleaseNotes(root, "v"+declared, stdout)
+	}
+
+	if flags.NArg() != 1 {
+		return fmt.Errorf("this command takes exactly one version argument such as 1.2.3 but got %v", flags.Args())
+	}
+	v, err := parseVersion(flags.Arg(0))
+	if err != nil {
+		return err
+	}
+	tag := "v" + v.String()
+
+	r := &repo{ctx: ctx, root: root, out: stdout}
+	if err := r.preflight(tag); err != nil {
+		return err
+	}
+	if err := CheckChangelogRelease(root, v, stdout); err != nil {
+		return err
+	}
+	if err := CheckReleaseNotes(root, tag, stdout); err != nil {
+		return err
+	}
+	nixArgs, err := r.nixCommand(nix)
+	if err != nil {
+		return err
+	}
+
+	_, _ = fmt.Fprintf(stdout, "Bumping the version to %s (tag: %s)\n", v, tag)
+	if err := Bump(root, targets, v, stdout); err != nil {
+		return err
+	}
+	zone, err := time.LoadLocation(releaseTimeZone)
+	if err != nil {
+		return err
+	}
+	if err := SectionizeChangelog(root, v, time.Now().In(zone).Format("2006-01-02"), stdout); err != nil {
+		return err
+	}
+	if err := r.checkNix(nixArgs, stderr); err != nil {
+		return err
+	}
+
+	if !commit && !push {
+		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To prepare a release draft, run:\n\n")
+		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(append(paths(targets), changelogFile), " "))
+		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
+		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
+		_, _ = fmt.Fprintf(stdout, "  gh workflow run release-prepare.yml --ref master -f version=%s\n", v)
+		return nil
+	}
+
+	if err := r.run(append([]string{"add"}, append(paths(targets), changelogFile)...)...); err != nil {
+		return err
+	}
+	if err := r.run("commit", "-m", "bump up version to "+tag); err != nil {
+		return err
+	}
+	if !push {
+		_, _ = fmt.Fprint(stdout, "\nThe source commit was created locally. No tag or release was created. To prepare the draft, run:\n\n")
+		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
+		_, _ = fmt.Fprintf(stdout, "  gh workflow run release-prepare.yml --ref master -f version=%s\n", v)
+		return nil
+	}
+
+	if err := r.run("push", "origin", "master"); err != nil {
+		return err
+	}
+	source, err := r.git("rev-parse", "HEAD")
+	if err != nil {
+		return err
+	}
+	cmd := exec.CommandContext(ctx, "gh", "workflow", "run", "release-prepare.yml", "--ref", "master", "-f", "version="+v.String(), "-f", "source="+source)
+	cmd.Dir = root
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("source commit pushed, but draft preparation was not dispatched; retry gh workflow run release-prepare.yml --ref master -f version=%s -f source=%s: %w", v, source, err)
+	}
+
+	_, _ = fmt.Fprintf(stdout, "\nCheck draft preparation at %s\nAfter it succeeds, promote the tested candidate with: node tools/release/release-candidate.mjs promote --version %s --run RUN_ID\n", releaseJobURL, v)
+	return nil
+}
+
+func main() {
+	// Interrupting the release flow must kill an in-flight `git push`, not orphan it.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := Main(ctx, os.Args, os.Stdout, os.Stderr)
+	stop()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}

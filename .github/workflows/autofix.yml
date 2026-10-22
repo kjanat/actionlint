@@ -11,6 +11,7 @@ on:
       - "**/*.toml"
       - "**/*.md"
       - "**/*.ts"
+      - "**/*.mts"
       - "**/*.tsx"
       - "**/*.js"
       - "**/*.mjs"
@@ -43,7 +44,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { fetch-depth: 0 }
       - name: Test autofix change tracking
-        run: bash scripts/test-autofix-step.bash
+        run: bash tools/ci/test-autofix-step.bash
       - name: Select generators affected by this change
         id: inputs
         env:
@@ -58,49 +59,55 @@ jobs:
           else
             base=${BASE_SHA}
           fi
-          bash scripts/autofix-inputs.bash "${base}" "${HEAD_SHA}"
+          bash tools/ci/autofix-inputs.bash "${base}" "${HEAD_SHA}"
       - uses: $/.github/actions/setup-formatters
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
-        run: bash scripts/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+        run: bash tools/ci/autofix-step.bash go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
       - name: Regenerate the configuration schema
         id: schema
-        run: bash scripts/autofix-step.bash go generate -run generate-config-schema
+        run: bash tools/ci/autofix-step.bash go generate -run generate-config-schema
       - name: Keep mise metadata with cached tools
-        if: steps.inputs.outputs.readme == 'true'
+        if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
         shell: bash
         run: |
           mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
           if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
           printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
-      - name: Set up mise for the README generator
-        if: steps.inputs.outputs.readme == 'true'
+      - name: Set up mise for the affected generators
+        if: steps.inputs.outputs.tables == 'true' || steps.inputs.outputs.readme == 'true'
         uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         with:
-          install: false
-          env: false
+          install: ${{ steps.inputs.outputs.tables == 'true' }}
+          env: ${{ steps.inputs.outputs.tables == 'true' }}
           add_shims_to_path: false
-          working_directory: ${{ runner.temp }}
+          working_directory: ${{ steps.inputs.outputs.tables == 'true' && github.workspace || runner.temp }}
           cache: true
           auto_update: true
           mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_save_post: true
           cache_key: >-
             actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+          install_args: node npm
+        env: { MISE_ENABLE_TOOLS: "node,npm" }
+      - name: Install catalogue generator dependencies
+        if: steps.inputs.outputs.tables == 'true'
+        run: npm ci --ignore-scripts
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'
-        run: bash scripts/autofix-step.bash go generate -skip generate-config-schema
+        run: bash tools/ci/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'
-        run: bash scripts/autofix-step.bash go run ./scripts/check-readme -fix ./README.md
+        run: bash tools/ci/autofix-step.bash go run ./internal/documentation/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: format the code
         id: format
         # autofix-ci will fail if the .github directory is touched
-        run: bash scripts/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
+        run: bash tools/ci/autofix-step.bash dprint fmt --allow-no-files --diff --excludes .github
       - name: Describe applied fixes
         id: fixes
         env:
@@ -122,8 +129,7 @@ jobs:
           fi
       - name: Check fixes for stacked pull requests
         if: github.event.pull_request.stack != null
-        run: |
-          git -c core.fileMode=false add --all
+        run: git -c core.fileMode=false add --all;
           git diff --cached --exit-code
       - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1
         if: github.event.pull_request.stack == null && steps.fixes.outputs.description != ''

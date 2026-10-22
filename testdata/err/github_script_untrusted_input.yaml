@@ -13,5 +13,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'Hello, ${{github.event.head_commit.author.name}}!'
+              body: 'Hello, ${{github.event.issue.title}}!'
             })

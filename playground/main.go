@@ -3,13 +3,17 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"io"
 	"syscall/js"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/internal/tools/adapters"
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
 // Set by the site build to reject catalogue/WASM deployment mismatches.
@@ -24,8 +28,8 @@ func fail(err error, when string) {
 	window.Call("showError", err.Error()+" on "+when)
 }
 
-func encodeErrorAsMap(err *actionlint.Error, src []byte) map[string]any {
-	f := err.GetTemplateFields(src)
+func encodeErrorAsMap(d diagnostic.Diagnostic, src []byte) map[string]any {
+	f := render.FindingOf(d, src).TemplateFields()
 	obj := make(map[string]any, 5)
 	obj["message"] = f.Message
 	obj["line"] = f.Line
@@ -63,15 +67,8 @@ func shellcheck(args []string, stdin string) ([]byte, error) {
 }
 
 func lint(source string, check uint64) {
-	opts := actionlint.LinterOptions{WorkingDir: "/", ShellcheckRunner: shellcheck}
-	linter, err := actionlint.NewLinter(io.Discard, &opts)
-	if err != nil {
-		fail(err, "creating linter instance")
-		return
-	}
-
 	src := []byte(source)
-	errs, err := linter.Lint("test.yaml", src, nil)
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: "/", Tools: adapters.Options{ShellcheckRunner: shellcheck}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src}})
 	if check != latestCheck {
 		return // An edit superseded this worker request.
 	}
@@ -80,8 +77,8 @@ func lint(source string, check uint64) {
 		return
 	}
 
-	ret := make([]any, 0, len(errs))
-	for _, err := range errs {
+	ret := make([]any, 0, len(result.Diagnostics))
+	for _, err := range result.Diagnostics {
 		ret = append(ret, encodeErrorAsMap(err, src))
 	}
 
@@ -107,7 +104,7 @@ func main() {
 		fail(errors.New("action catalogue does not match this playground build; reload the page"), "initializing action metadata")
 		return
 	}
-	if err := actionlint.LoadPopularActions(data); err != nil {
+	if err := application.LoadActionCatalog(data); err != nil {
 		fail(err, "initializing action metadata")
 		return
 	}

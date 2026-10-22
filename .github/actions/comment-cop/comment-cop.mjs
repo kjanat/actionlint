@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-import { yamlExampleLines } from '#internal/commentcop/yaml-examples.mjs';
+import { yamlExampleLines } from './yaml-examples.mjs';
 
 /** @typedef {'go' | 'js' | 'hash' | 'md'} Lang */
 /** @typedef {{path: string, start: number, end: number, text: string, reasons: string[]}} Group */

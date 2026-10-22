@@ -13,8 +13,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
-	"actionlint.kjanat.dev/internal/ruff"
+	"actionlint.kjanat.dev/internal/localapp"
+	"actionlint.kjanat.dev/internal/processconfig"
+
+	"actionlint.kjanat.dev/internal/tools/ruff"
 )
 
 type doctorTool struct {
@@ -34,7 +36,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if err != nil {
 		return err
 	}
-	config, configErr := inspectConfig(ctx, req.Config, req.Plugins, false)
+	config, configErr := localapp.InspectConfig(ctx, req.Config, req.Plugins, false)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -49,16 +51,24 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	for _, item := range []struct {
+	tools := []struct {
 		name, command string
-		options       *actionlint.ExternalCommandOptions
-	}{{"shellcheck", req.ShellCheck, req.ShellcheckOptions}, {"ruff", req.Ruff, req.RuffOptions}} {
+		options       *processconfig.Options
+	}{
+		{"shellcheck", req.ShellCheck, req.ShellcheckOptions},
+		{"ruff", req.Ruff, req.RuffOptions},
+		{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}},
+	}
+	for _, item := range tools {
+		if item.name == "resolver" && item.command == "" {
+			continue
+		}
 		if item.options != nil && item.options.Executable != nil {
 			item.command = *item.options.Executable
 		}
 		tool := doctorTool{Name: item.name, Command: item.command, Status: "disabled"}
 		if item.command != "" {
-			tool.Path, tool.Arguments, err = actionlint.ResolveExternalCommandOptions(item.command, item.options)
+			tool.Path, tool.Arguments, err = processconfig.ResolveOptions(item.command, item.options)
 			tool.Status = "available"
 			if err == nil && item.name == "ruff" && item.options != nil && item.options.Optional {
 				err = probeDoctorRuff(ctx, tool.Path, item.options)
@@ -107,7 +117,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	return configErr
 }
 
-func probeDoctorRuff(ctx context.Context, executable string, options *actionlint.ExternalCommandOptions) error {
+func probeDoctorRuff(ctx context.Context, executable string, options *processconfig.Options) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var result error

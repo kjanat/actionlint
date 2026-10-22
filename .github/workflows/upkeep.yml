@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           detector="$(mktemp)"
           trap 'rm -f "${detector}"' EXIT
-          go build -o "${detector}" ./scripts/generate-popular-actions
+          go build -o "${detector}" ./internal/actioncatalog/generate
           # Run directly: go run turns the detector's exit 2 into exit 1.
           status=0
           releases="$("${detector}" -d)" || status=$?
@@ -40,13 +40,18 @@ jobs:
           ## New major releases
 
           Move each version into the tags list and bump next in
-          scripts/generate-popular-actions/popular_actions.json.
+          internal/actioncatalog/generate/popular_actions.json.
 
           SUMMARY
             printf '%s\n' "${releases}" >> "${GITHUB_STEP_SUMMARY}"
           elif [[ "${status}" -ne 0 ]]; then
             exit "${status}"
           fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, package-manager-cache: false }
+      - uses: $/.github/actions/setup-formatters
+      - name: Install catalogue generator dependencies
+        run: npm ci --ignore-scripts
       - name: Refresh upstream action and workflow metadata
         run: go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
@@ -63,10 +68,11 @@ jobs:
           delete-branch: true
           add-paths: |
             internal/actioncatalog/popular_actions.json
-            internal/engine/all_webhooks.go
-            internal/workflowcontext/availability.go
-            internal/engine/action_metadata_availability.go
-            internal/engine/action_runtimes.go
+            internal/webhook/webhooks.go
+            internal/webhook/payload/catalogue.json
+            internal/expression/context/availability.go
+            internal/action/availability_generated.go
+            internal/action/runtimes_generated.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"
           body: |
@@ -108,7 +114,7 @@ jobs:
         env:
           MISE_ENABLE_TOOLS: "github:kjanat/actionlint,github:rhysd/actionlint"
           MISE_DISABLE_TOOLS: "shellcheck,github:koalaman/shellcheck,rshellcheck,github:kjanat/shellcheck-rs"
-      - run: go run ./scripts/check-readme -fix ./README.md
+      - run: go run ./internal/documentation/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
       - name: Read the versions the section now describes
         id: versions
@@ -136,7 +142,7 @@ jobs:
           commit-message: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
           title: "Refresh the README demo for fork ${{ steps.versions.outputs.fork }} and upstream ${{ steps.versions.outputs.upstream }}"
           body: |
-            `scripts/check-readme -fix` regenerated the demo section with fork `${{ steps.versions.outputs.fork }}` and upstream `${{ steps.versions.outputs.upstream }}`, the latest releases mise resolves.
+            `internal/documentation/check-readme -fix` regenerated the demo section with fork `${{ steps.versions.outputs.fork }}` and upstream `${{ steps.versions.outputs.upstream }}`, the latest releases mise resolves.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |
@@ -162,7 +168,7 @@ jobs:
         with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
       - name: Test synchronized toolchain updates
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }
-        run: run //scripts:test
+        run: run //tools/toolchain:test
       - name: Check the latest stable Go toolchain
         id: version
         env: { GH_TOKEN: "${{ github.token }}" }
@@ -173,7 +179,7 @@ jobs:
             echo "::error title=Invalid Go version::go.dev returned '${version}'"
             exit 1
           fi
-          node scripts/update-go-toolchain.mjs "${version}"
+          node tools/toolchain/update-go-toolchain.mjs "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
       - name: Warn when the pull request will carry no CI
         env: { UPKEEP_TOKEN: "${{ secrets.UPKEEP_TOKEN }}" }
@@ -231,7 +237,7 @@ jobs:
           add-paths: |
             .pre-commit-hooks.yaml
             docs/usage.md
-            scripts/bump-version/targets.go
+            tools/release/bump-version/targets.go
           commit-message: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-installer-version }}"
           title: "Bump rshellcheck to ${{ steps.versions.outputs.rshellcheck-installer-version }}"
           body: |

@@ -7,7 +7,6 @@ import (
 	"runtime/debug"
 
 	"actionlint.kjanat.dev/internal/buildinfo"
-	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func documentationRef(version string, info *debug.BuildInfo) string {
@@ -28,7 +27,7 @@ func commandBuild() commandBuildInfo {
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Path != "" {
 		name = info.Main.Path
 	}
-	return commandBuildInfo{name, actionlint.Version(), actionlint.InstalledFrom(), runtime.Version(), runtime.GOOS, runtime.GOARCH}
+	return commandBuildInfo{name, buildinfo.Version(), buildinfo.InstalledFrom(), runtime.Version(), runtime.GOOS, runtime.GOARCH}
 }
 
 func writeVersion(out io.Writer, asJSON, legacy bool) error {

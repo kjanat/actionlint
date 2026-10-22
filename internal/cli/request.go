@@ -3,7 +3,9 @@ package cli
 import (
 	"context"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	repoconfig "actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/internal/localapp"
+	"actionlint.kjanat.dev/internal/processconfig"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.
@@ -32,21 +34,28 @@ func (r versionRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type rulesRequest struct {
-	Name string
-	JSON bool
+	Plugins []string
+	Name    string
+	JSON    bool
 }
 
-func (r rulesRequest) run(_ context.Context, streams Command) (int, error) {
-	return 0, writeRules(streams.Stdout, r.Name, r.JSON)
+func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
+	rules, err := localapp.Rules(ctx, r.Plugins)
+	if err != nil {
+		return 0, commandUsageError{err}
+	}
+	return 0, writeRules(streams.Stdout, r.Name, r.JSON, rules)
 }
 
 type doctorRequest struct {
 	Plugins           []string
+	ResolverCommand   string
+	ResolverArguments []string
 	Ruff              string
-	RuffOptions       *actionlint.ExternalCommandOptions
-	Config            actionlint.ConfigSelection
+	RuffOptions       *processconfig.Options
+	Config            repoconfig.Selection
 	ShellCheck        string
-	ShellcheckOptions *actionlint.ExternalCommandOptions
+	ShellcheckOptions *processconfig.Options
 	JSON              bool
 	Hyperlinks        hyperlinkMode
 }
@@ -56,7 +65,7 @@ func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
 }
 
 type configPathRequest struct {
-	Config actionlint.ConfigSelection
+	Config repoconfig.Selection
 	JSON   bool
 }
 
@@ -65,7 +74,7 @@ func (r configPathRequest) run(_ context.Context, streams Command) (int, error) 
 }
 
 type configShowRequest struct {
-	Config       actionlint.ConfigSelection
+	Config       repoconfig.Selection
 	Plugins      []string
 	JSON, Origin bool
 }
@@ -75,7 +84,7 @@ func (r configShowRequest) run(ctx context.Context, streams Command) (int, error
 }
 
 type configValidateRequest struct {
-	Config  actionlint.ConfigSelection
+	Config  repoconfig.Selection
 	Plugins []string
 	JSON    bool
 }

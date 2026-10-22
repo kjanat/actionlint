@@ -10,11 +10,12 @@ import (
 	"strconv"
 	"time"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/internal/render"
 )
 
 func actionVersion() string {
-	return actionlint.Version()
+	return buildinfo.Version()
 }
 
 type action struct {
@@ -30,26 +31,26 @@ type action struct {
 }
 
 var results = map[int]string{
-	actionlint.ExitStatusSuccessNoProblem:     "success",
-	actionlint.ExitStatusSuccessProblemFound:  "problems-found",
-	actionlint.ExitStatusInvalidCommandOption: "invalid-options",
-	actionlint.ExitStatusFailure:              "failure",
+	render.ExitSuccessNoProblem:     "success",
+	render.ExitSuccessProblemFound:  "problems-found",
+	render.ExitInvalidCommandOption: "invalid-options",
+	render.ExitFailure:              "failure",
 }
 
 func (a *action) run() int {
 	code, err := a.execute()
 	if err != nil {
-		code = actionlint.ExitStatusFailure
+		code = render.ExitFailure
 		if _, ok := errors.AsType[*inputError](err); ok {
 			_, _ = fmt.Fprintf(a.stdout, "::error title=Invalid action input::%s\n", commandEscape(err.Error()))
-			code = actionlint.ExitStatusInvalidCommandOption
+			code = render.ExitInvalidCommandOption
 		} else {
 			_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint action failed::%s\n", commandEscape(err.Error()))
 		}
 	}
 	if persistErr := a.persistResult(code, err); persistErr != nil {
 		_, _ = fmt.Fprintf(a.stdout, "::error title=Could not save actionlint results::%s\n", commandEscape(persistErr.Error()))
-		return actionlint.ExitStatusFailure
+		return render.ExitFailure
 	}
 	return code
 }
@@ -100,7 +101,7 @@ func (a *action) execute() (int, error) {
 			return 0, err
 		}
 		rendered = output.String()
-		if outcome.code == actionlint.ExitStatusSuccessNoProblem || outcome.code == actionlint.ExitStatusSuccessProblemFound {
+		if outcome.code == render.ExitSuccessNoProblem || outcome.code == render.ExitSuccessProblemFound {
 			count = strconv.Itoa(len(lint.diagnostics))
 		}
 	} else {
@@ -119,7 +120,7 @@ func (a *action) execute() (int, error) {
 	err = a.appendOutputs([]namedOutput{
 		{"exit-code", strconv.Itoa(outcome.code)},
 		{"result", result},
-		{"problems-found", strconv.FormatBool(outcome.code == actionlint.ExitStatusSuccessProblemFound)},
+		{"problems-found", strconv.FormatBool(outcome.code == render.ExitSuccessProblemFound)},
 		{"problem-count", count},
 		{"output", rendered},
 		{"output-file", written},
@@ -127,15 +128,15 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if outcome.code >= actionlint.ExitStatusInvalidCommandOption && (in.format == formatJSON || in.format == formatJSONLines) {
+	if outcome.code >= render.ExitInvalidCommandOption && (in.format == formatJSON || in.format == formatJSONLines) {
 		a.emit(outcome.stderr, outcome.code, in.format)
 	} else {
 		a.emit(rendered, outcome.code, in.format)
 	}
 	a.emitConfiguration(lint, req.workingDir)
 
-	if outcome.code == actionlint.ExitStatusSuccessProblemFound && !in.failOnError {
-		return actionlint.ExitStatusSuccessNoProblem, nil
+	if outcome.code == render.ExitSuccessProblemFound && !in.failOnError {
+		return render.ExitSuccessNoProblem, nil
 	}
 	return outcome.code, nil
 }

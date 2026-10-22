@@ -5,10 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/internal/render"
+
+	"actionlint.kjanat.dev/internal/workspace"
 )
 
-func analysisForRender(t *testing.T, prefix string) *actionlint.AnalysisResult {
+func analysisForRender(t *testing.T, prefix string) *application.Result {
 	t.Helper()
 	source := prefix + `on: push
 jobs:
@@ -19,12 +23,9 @@ jobs:
 	return analysisForRenderSource(t, source)
 }
 
-func analysisForRenderSource(t *testing.T, source string) *actionlint.AnalysisResult {
+func analysisForRenderSource(t *testing.T, source string) *application.Result {
 	t.Helper()
-	result, err := actionlint.Analyze(context.Background(), actionlint.AnalysisRequest{
-		WorkingDir: t.TempDir(),
-		Sources:    []actionlint.SourceUnit{{Path: "workflow.yaml", Content: []byte(source)}},
-	})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,11 +39,11 @@ func analysisForRenderSource(t *testing.T, source string) *actionlint.AnalysisRe
 func TestRenderAnalysisPreservesUnicodeAndLegacyRanges(t *testing.T) {
 	for _, tc := range []struct {
 		name              string
-		end               actionlint.DiagnosticPosition
+		end               diagnostic.Position
 		column, indicator string
 	}{
-		{"single line", actionlint.DiagnosticPosition{Line: 4, Column: 17}, "16", "^~~~"},
-		{"multiple lines", actionlint.DiagnosticPosition{Line: 5, Column: 2}, "17", "^~~~~"},
+		{"single line", diagnostic.Position{Line: 4, Column: 17}, "16", "^~~~"},
+		{"multiple lines", diagnostic.Position{Line: 5, Column: 2}, "17", "^~~~~"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			analysis := analysisForRenderSource(t, `on: push
@@ -70,8 +71,13 @@ jobs:
 
 func TestCommandEscape(t *testing.T) {
 	for _, tc := range []struct{ in, want string }{
-		{"", ""}, {"plain", "plain"}, {"100%", "100%25"},
-		{"a\nb", "a%0Ab"}, {"a\r\nb", "a%0D%0Ab"}, {"a:b,c", "a:b,c"}, {"%0A", "%250A"},
+		{"", ""},
+		{"plain", "plain"},
+		{"100%", "100%25"},
+		{"a\nb", "a%0Ab"},
+		{"a\r\nb", "a%0D%0Ab"},
+		{"a:b,c", "a:b,c"},
+		{"%0A", "%250A"},
 	} {
 		if got := commandEscape(tc.in); got != tc.want {
 			t.Errorf("commandEscape(%q) = %q, wanted %q", tc.in, got, tc.want)
@@ -150,7 +156,7 @@ func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
 }
 
 func TestRenderAnalysisEmptyAndUnknownFormat(t *testing.T) {
-	analysis := &actionlint.AnalysisResult{}
+	analysis := &application.Result{}
 	for _, format := range []outputFormat{formatDefault, formatOneline, formatGitHub, formatMarkdown} {
 		got, err := renderAnalysis(format, analysis, ".", ".")
 		if err != nil || got != "" {
@@ -165,18 +171,18 @@ func TestRenderAnalysisEmptyAndUnknownFormat(t *testing.T) {
 func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
 	analysis := analysisForRender(t, "")
 	for _, serialized := range []string{"workflow.yaml:4:14: finding\n", "{\"runs\":[{\"results\":[{}]}]}\n"} {
-		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", actionlint.ExitStatusSuccessProblemFound}, diagnostics: analysis.Diagnostics}
+		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", render.ExitSuccessProblemFound}, diagnostics: analysis.Diagnostics}
 		o, count, rendered := renderOutcome(result)
-		if o.code != actionlint.ExitStatusSuccessProblemFound || count != "1" || rendered != serialized {
+		if o.code != render.ExitSuccessProblemFound || count != "1" || rendered != serialized {
 			t.Fatalf("typed finding count/rendered output changed: %+v, %q, %q", o, count, rendered)
 		}
 	}
 }
 
 func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
-	result := &lintResult{lintOutcome: &lintOutcome{"partial", "boom\n", actionlint.ExitStatusFailure}}
+	result := &lintResult{lintOutcome: &lintOutcome{"partial", "boom\n", render.ExitFailure}}
 	o, count, rendered := renderOutcome(result)
-	if o.code != actionlint.ExitStatusFailure || count != "" || rendered != "boom\npartial" {
+	if o.code != render.ExitFailure || count != "" || rendered != "boom\npartial" {
 		t.Fatalf("failure output changed: %+v, %q, %q", o, count, rendered)
 	}
 	result.stderr = ""

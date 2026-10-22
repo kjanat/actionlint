@@ -1,0 +1,52 @@
+package local
+
+import (
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/execution"
+	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+)
+
+// BeginJob resets checkout and persistent environment assumptions for a new job.
+func (c *Resolver) BeginJob(workflowEnv *workflowlang.Env, workflowShell execution.ShellValue, job *workflowlang.Job) {
+	c.setCheckout(execution.Directory{})
+	c.platform = runnerlang.PlatformOf(job.RunsOn)
+	c.caseInsensitive = c.platform == runnerlang.Windows || execution.MacOSRunner(job.RunsOn)
+	c.checkoutEnvUnknown = execution.CheckoutEnvironmentUnknown(workflowEnv, c.platform) || execution.CheckoutEnvironmentUnknown(job.Env, c.platform)
+	c.persistentEnvUnknown = false
+	c.shellEnvUnknown = c.shellEnvironmentUnknown(workflowEnv) || c.shellEnvironmentUnknown(job.Env)
+	runnerShell := execution.ShellValue{Kind: execution.ShellUnknown}
+	switch c.platform {
+	case runnerlang.Windows:
+		runnerShell = execution.ShellValueOf(&workflowlang.String{Value: "pwsh"})
+	case runnerlang.MacOrLinux:
+		runnerShell = execution.ShellValue{}
+	}
+	if container := execution.ContainerShell(job.Container); container.Kind != execution.ShellUnspecified {
+		runnerShell = container
+	}
+	c.checkoutShell = execution.ResolveShell(&workflowlang.ExecRun{}, execution.DefaultShell(job.Defaults), workflowShell, runnerShell)
+}
+
+// EnterComposite saves invocation-local assumptions and returns their branch join.
+// Call the returned function when the composite finishes, including on an error.
+func (c *Resolver) EnterComposite(call *workflowlang.Step) func() {
+	checkout := c.CheckoutState()
+	checkoutEnv := c.checkoutEnvUnknown
+	persistentEnv := c.persistentEnvUnknown
+	shellEnv, checkoutShell := c.shellEnvUnknown, c.checkoutShell
+	c.checkoutEnvUnknown = checkoutEnv || execution.CheckoutEnvironmentUnknown(call.Env, c.platform)
+	c.shellEnvUnknown = shellEnv || c.shellEnvironmentUnknown(call.Env)
+	c.checkoutShell = execution.Shell{}
+	return func() {
+		c.checkoutEnvUnknown = checkoutEnv
+		c.shellEnvUnknown, c.checkoutShell = shellEnv, checkoutShell
+		enabled, known := execution.Condition(call.If)
+		if known && !enabled {
+			c.persistentEnvUnknown = persistentEnv
+			c.restoreCheckout(checkout)
+		} else if (!known || execution.BoolMayBeTrue(call.ContinueOnError) || execution.BoolMayBeTrue(call.Background)) && checkout != c.CheckoutState() {
+			mayFail := execution.BoolMayBeTrue(call.ContinueOnError) || execution.BoolMayBeTrue(call.Background)
+			c.restoreCheckout(execution.MergeCheckoutBranches(checkout, c.CheckoutState(), mayFail))
+		}
+	}
+}

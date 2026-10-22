@@ -1,4 +1,4 @@
-on: push
+on: {workflow_run: {workflows: [Build]}}
 
 jobs:
   numbers:

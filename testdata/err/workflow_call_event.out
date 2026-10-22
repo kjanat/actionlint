@@ -11,4 +11,4 @@ test.yaml:35:11: expected scalar node for string value but found mapping node wi
 test.yaml:41:9: unexpected key "unknown" for "secrets" section. expected one of "description", "required" [syntax-check]
 test.yaml:42:7: key "secret1" is duplicated in "secrets" section. previously defined at line:39,col:7. note that this key is case insensitive [syntax-check]
 test.yaml:45:5: unexpected key "unknown" for "workflow_call" section. expected one of "inputs", "outputs", "secrets" [syntax-check]
-test.yaml:51:23: property "unknown_input" is not defined in object type {input0: any; input1: any; input2: string; input3: any; input4: any; input5: number; input6: number; input7: bool; input8: any} [expression]
+test.yaml:51:23: property "unknown_input" is not defined in object type {input0: any; input1: any; input2: string; input3: any; input4: any; input5: number; input6: number; input7: bool; input8: any} [expression-reference]

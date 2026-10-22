@@ -62,21 +62,21 @@ paths     = [
 ]
 
 [[linters.exclusions.rules]]
-path    = '_test\.go$|^(scripts|\.github|cmd|fuzz|playground)/|^internal/(cli|githubaction|conformance|fsread)/'
+path    = '_test\.go$|^(\.github|cmd|fuzz|playground|tools)/|^internal/(cli|githubaction|conformance|fsread)/|^internal/(actioncatalog/(generate|metadata)|expression/context/generate|webhook/generate|rulecatalog/check-docs|documentation/check-readme)/'
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/(engine/(project|analysis_application)|repoconfig/(config|inspection))\.go$'
+path    = '^internal/(workspace/(project|session)|config/(config|inspection))\.go$'
 text    = "fsread\\.Disk"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/workflownames/index\.go$'
+path    = '^internal/workflow/names/index\.go$'
 text    = "fsread\\.ProbeDir"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/genfile/write_new\.go$'
+path    = '^internal/(genfile/write_new|testutil/ruff)\.go$'
 text    = 'use of `os\.OpenFile`'
 linters = ["forbidigo"]
 

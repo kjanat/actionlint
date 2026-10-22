@@ -24,7 +24,7 @@ func (cmd *Command) Main(args []string) int {
 }
 
 // MainContext runs the CLI with a context that also controls external linters.
-// Cancellation returns actionlint.ExitStatusFailure. Args includes the executable name.
+// Cancellation returns exit status 3. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	app := newCommandApp(cmd)
 	// Root parsing must select an operation before errors can describe a check.
@@ -37,7 +37,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	}
 	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)
-		app.root.SetArgs(normalizeCommandArgs(app.root.Flags(), args))
+		app.root.SetArgs(normalizeCommandArgs(app.root, args))
 		if err := app.root.ExecuteContext(ctx); err != nil {
 			return app.reportError(commandUsageError{err})
 		}
@@ -66,6 +66,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 		if rest[0] == "pre-commit" {
 			app.inv.Operation = operationCheck
 		}
+		rest = normalizeCommandArgs(app.root, rest)
 		app.root.SetArgs(rest)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
 		if err := app.root.ExecuteContext(ctx); err != nil {

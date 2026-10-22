@@ -1,6 +1,7 @@
+import pkg from '../package.json';
 import { shellcheckOutput, shellcheckRequest } from './shellcheck-request';
 
-const cdn = 'https://cdn.jsdelivr.net/npm/@kjanat/rshellcheck-wasm@0.11.0';
+const cdn = `https://cdn.jsdelivr.net/npm/@kjanat/rshellcheck-wasm@${pkg.devDependencies['@kjanat/rshellcheck-wasm']}`;
 export const shellcheckAssets = {
 	wasm: `${cdn}/shellcheck_wasm.wasm`,
 	worker: `${cdn}/worker.mjs`,

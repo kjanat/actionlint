@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/rule"
 )
 
 func TestNativeSARIFUNCPaths(t *testing.T) {
@@ -16,11 +17,13 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 	}
 	for _, path := range []string{`\\server\share\my workflow.yml`, `//server/share/my workflow.yml`} {
 		t.Run(path, func(t *testing.T) {
-			finding := diagnostic.Diagnostic{Rule: "shellcheck", Message: "Quote", Path: path,
+			finding := diagnostic.Diagnostic{
+				Rule: "shellcheck", Message: "Quote", Path: path,
 				Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2},
 				Fixes: []diagnostic.Fix{{Description: "Quote", Edits: []diagnostic.Edit{
 					{Path: path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: `"$x"`},
-				}}}}
+				}}},
+			}
 			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -90,12 +93,14 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 		{"error", "error"}, {"warning", "warning"}, {"info", "note"}, {"style", "note"}, {"", "error"},
 	} {
 		t.Run(tc.severity, func(t *testing.T) {
-			finding := diagnostic.Diagnostic{Rule: "shellcheck", Code: "SC2086", Severity: tc.severity, Message: "Quote", Path: "dir/my workflow.yml",
+			finding := diagnostic.Diagnostic{
+				Rule: "shellcheck", Code: "SC2086", Severity: tc.severity, Message: "Quote", Path: "dir/my workflow.yml",
 				Start: diagnostic.Position{Line: 7, Column: 12}, End: diagnostic.Position{Line: 7, Column: 16},
 				Fixes: []diagnostic.Fix{{Description: "Quote variable", Edits: []diagnostic.Edit{
 					{Path: "dir/my workflow.yml", Start: diagnostic.Position{Line: 7, Column: 12}, End: diagnostic.Position{Line: 7, Column: 12}, Replacement: `"`},
 					{Path: "dir/my workflow.yml", Start: diagnostic.Position{Line: 7, Column: 16}, End: diagnostic.Position{Line: 7, Column: 16}, Replacement: `"`},
-				}}}}
+				}}},
+			}
 			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -109,7 +114,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 					ColumnKind string
 					Results    []struct {
 						Level      string
-						Properties struct{ ExternalCode string }
+						Properties struct{ DiagnosticCode string }
 						Fixes      []sarifFix
 						Locations  []struct {
 							PhysicalLocation struct{ ArtifactLocation sarifArtifactLocation }
@@ -122,7 +127,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 			}
 			run := document.Runs[0]
 			result := run.Results[0]
-			if run.ColumnKind != "unicodeCodePoints" || result.Level != tc.level || result.Properties.ExternalCode != finding.Code {
+			if run.ColumnKind != "unicodeCodePoints" || result.Level != tc.level || result.Properties.DiagnosticCode != finding.Code {
 				t.Fatalf("metadata lost: %s", out.String())
 			}
 			if result.Locations[0].PhysicalLocation.ArtifactLocation.URI != "dir/my%20workflow.yml" {
@@ -146,3 +151,33 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 }
 
 func testVersion() string { return "test" }
+
+func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
+	metadata := Rule{Name: "custom-rule", Description: "summary", Explanation: "explanation", Help: "repair instructions", DocumentationURL: "https://example.com/custom-rule", Examples: []rule.Example{{Description: "original example"}}}
+	renderer, err := New(FormatSARIF, "", false, testVersion, []Rule{metadata})
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata.Examples[0].Description = "mutated example"
+	if renderer.rules.sorted()[0].Examples[0].Description != "original example" {
+		t.Fatal("renderer retained caller-owned metadata")
+	}
+	var output bytes.Buffer
+	related := diagnostic.Related{Message: "previous declaration", Path: "other workflow.yml", Start: diagnostic.Position{Line: 2, Column: 3}, End: diagnostic.Position{Line: 2, Column: 7}}
+	err = renderer.Render(&output, Result{Diagnostics: []diagnostic.Diagnostic{{Rule: metadata.Name, Message: "duplicate", Path: "workflow.yml", Start: diagnostic.Position{Line: 3, Column: 1}, End: diagnostic.Position{Line: 3, Column: 4}, Related: []diagnostic.Related{related}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document sarifDocument
+	if err := json.Unmarshal(output.Bytes(), &document); err != nil {
+		t.Fatal(err)
+	}
+	info := document.Runs[0].Tool.Driver.Rules[0]
+	if info.HelpURI != metadata.DocumentationURL || info.FullDescription.Text != metadata.Explanation || info.Help == nil || info.Help.Text != metadata.Help {
+		t.Fatalf("rule metadata lost: %+v", info)
+	}
+	locations := document.Runs[0].Results[0].RelatedLocations
+	if len(locations) != 1 || locations[0].Message.Text != related.Message || locations[0].PhysicalLocation.ArtifactLocation.URI != "other%20workflow.yml" || locations[0].PhysicalLocation.Region.StartColumn != 3 {
+		t.Fatalf("related location lost: %+v", locations)
+	}
+}

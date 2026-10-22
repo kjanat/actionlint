@@ -239,19 +239,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:24: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression]
+test.yaml:7:24: got unexpected character '"' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' '. do you mean string literals? only single quotes are available for string delimiter [expression-syntax]
   |
 7 |       - run: echo '${{ "hello" }}'
   |                        ^
-test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression]
+test.yaml:9:26: got unexpected character '+' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]
   |
 9 |       - run: echo '${{ 1 + 1 }}'
   |                          ^
-test.yaml:11:65: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression]
+test.yaml:11:65: unexpected end of input while parsing arguments of function call. expecting ",", ")" [expression-syntax]
    |
 11 |       - run: echo "${{ toJson(hashFiles('**/lock', '**/cache/') }}"
    |                                                                 ^~
-test.yaml:13:38: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression]
+test.yaml:13:38: unexpected end of input while parsing object property dereference like 'a.b' or array element dereference like 'a.*'. expecting "IDENT", "*" [expression-syntax]
    |
 13 |       - run: echo '${{ github.event. }}'
    |                                      ^~
@@ -308,15 +308,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:28: property access of object must be type of string but got "number" [expression]
+test.yaml:7:28: property access of object must be type of string but got "number" [expression-type]
   |
 7 |       - run: echo '${{ env[0] }}'
   |                            ^
-test.yaml:9:24: property "os" is not defined in object type {id: string; network: string} [expression]
+test.yaml:9:24: property "os" is not defined in object type {id: string; network: string} [expression-reference]
   |
 9 |       - run: echo '${{ job.container.os }}'
   |                        ^~~~~~~~~~~~~~~~
-test.yaml:11:24: receiver of object dereference "owner" must be type of object but got "string" [expression]
+test.yaml:11:24: receiver of object dereference "owner" must be type of object but got "string" [expression-type]
    |
 11 |       - run: echo '${{ github.repository.owner }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~
@@ -448,7 +448,7 @@ short-circuit evaluation, but chooses the fallback when `value` is falsy.
 Example input:
 
 ```yaml
-on: push
+on: [push, issues]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -465,35 +465,35 @@ jobs:
       - run: echo "${{ startsWith('hello, world', github.event) }}"
       # Function overloads can be handled properly. contains() has string version and array version
       - run: echo "${{ contains('hello, world', 'lo,') }}"
-      - run: echo "${{ contains(github.event.labels.*.name, 'enhancement') }}"
+      - run: echo "${{ contains(github.event.issue.labels.*.name, 'enhancement') }}"
 ```
 
 Output:
 
 ```console
-test.yaml:7:24: undefined variable "unknown_context". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression]
+test.yaml:7:24: undefined variable "unknown_context". available variables are "env", "github", "inputs", "job", "matrix", "needs", "runner", "secrets", "steps", "strategy", "vars" [expression-reference]
   |
 7 |       - run: echo '${{ unknown_context }}'
   |                        ^~~~~~~~~~~~~~~
-test.yaml:9:24: property "events" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]
+test.yaml:9:24: property "events" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression-reference]
   |
 9 |       - run: echo '${{ github.events }}'
   |                        ^~~~~~~~~~~~~
-test.yaml:11:24: undefined function "startWith". available functions are "always", "cancelled", "case", "contains", "endswith", "failure", "format", "fromjson", "hashfiles", "join", "startswith", "success", "tojson" [expression]
+test.yaml:11:24: undefined function "startWith". available functions are "always", "cancelled", "case", "contains", "endswith", "failure", "format", "fromjson", "hashfiles", "join", "startswith", "success", "tojson" [expression-reference]
    |
 11 |       - run: echo "${{ startWith('hello, world', 'lo,') }}"
    |                        ^~~~~~~~~
-test.yaml:13:24: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression]
+test.yaml:13:24: number of arguments is wrong. function "startsWith(string, string) -> bool" takes 2 parameters but 1 arguments are given [expression-call]
    |
 13 |       - run: echo "${{ startsWith('hello, world') }}"
    |                        ^~~~~~~~~~
-test.yaml:15:51: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression]
+test.yaml:15:51: 2nd argument of function call is not assignable. "object" cannot be assigned to "string". called function type is "startsWith(string, string) -> bool" [expression-type]
    |
 15 |       - run: echo "${{ startsWith('hello, world', github.event) }}"
    |                                                   ^~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqckEFKxjAQhfc9xVCEqKQ5QC/iUpI6mGo6UzoTK5TcXWJB/OFvF11l8b7v5TFMPcxZYvPBQfoGQFG0vgBLJulqnkMmzV3yNfuNRHGWnQLoKtkDDpHBPGwbZPokXul1YFL8VijFHKHvo8YcHH4hqRyAbQVF/aIvo8ZHEzEltrDykt6MBZPYmicopT115Y58zbI3q0876gX8SHJh9J/6/zOXfMAk7tmRn9CCQYqeBpyQdK/7CQAA//9h6o/Y)
+[Playground](https://kjanat.github.io/actionlint/#eNqckdFKAzEQRd/7FZciRCWbD9gf8UFEsutgVtOZsjNjhbL/LmlBFNo+7FMe7jk3l0S4x/PetURMqk76svmQQfsNYKTWTmB21q6RPjibdzW37BSp0V7PFNA1sgeNRRDujkc4f7Ic+HUUNvo2LEu4hr5PVnxI9EVsegXcNlAtz/Y0WbkPhWqViIPM9S1EhCoxPGBZtjddvSCvs+K/1Tc72gvkiXXF6F/172Xp9Fup5oGqpsfEeUcRgbhkHmlHbOfSnwEAjzGVzw==)
 
 [Contexts][contexts-doc] and [built-in functions][funcs-doc] are strongly typed. Typos in property access of contexts and
 function names can be checked. And invalid function calls like wrong number of arguments or type mismatch at parameter also
@@ -515,7 +515,7 @@ In addition, actionlint performs special checks on some built-in functions.
 Example input:
 
 ```yaml
-on: push
+on: [push, issues]
 
 jobs:
   test:
@@ -534,25 +534,25 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:18: property "mac" is not defined in object type {linux: string; win: string} [expression]
+test.yaml:6:18: property "mac" is not defined in object type {linux: string; win: string} [expression-reference]
   |
 6 |     runs-on: ${{ fromJSON('{"win":"windows-latest","linux":"ubuntul-latest"}')['mac'] }}
   |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:9:24: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression]
+test.yaml:9:24: format string "{0}{1}" does not contain placeholder {2}. remove argument which is unused in the format string [expression-call]
   |
 9 |       - run: echo "${{ format('{0}{1}', 1, 2, 3) }}"
   |                        ^~~~~~
-test.yaml:11:24: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression]
+test.yaml:11:24: format string "{0}{1}{2}" contains placeholder {2} but only 2 arguments are given to format [expression-call]
    |
 11 |       - run: echo "${{ format('{0}{1}{2}', 1, 2) }}"
    |                        ^~~~~~
-test.yaml:14:31: broken JSON string is passed to fromJSON() at offset 23: unexpected end of JSON input [expression]
+test.yaml:14:31: broken JSON string is passed to fromJSON() at offset 23: unexpected end of JSON input [expression-call]
    |
 14 |         if: contains(fromJson('["main","release","dev"'), github.ref_name)
    |                               ^~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqMj0FL9DAQhu/7K95v+CAtZMVdb/kJHvSgt0Uk7aY20k5KJnGFkP8ure5R8DJzmPeZhzewwZJl3O3eQydmByQnad1AzCz7NfC/FAwxzPdPjw+NKnTxTGad53CR/WRXhDRNnvMnGcpd5pSn66Gq9qRm26sX1Lo9luQW+XYA+9Vj4PoxgDZTiLNNjSq3tRyq0jhoHDXuWtRKf4PK8cr9Bj2PXuAFFrK43tsJXbTcj/9+soAfDPrAyXqWZmsvgRt1otl6Jk3RTc6KI01n90Gq1XjzaczdTXTDK9vZtV8BAAD//8ITaRA=)
+[Playground](https://kjanat.github.io/actionlint/#eNqMj8FKxDAQhu99it9BSAupuOstj+BBD3ori6Td1EbapGQSVwh5d2l1j4KXmcP833z83il0a+JJwjInw6eq+vA9qwqIhuO2gZAct1v0NmeMwS+PL89Ptch0sY7UNs/+wu2sN4QkzdalL1KU+uRimq+HIppOLHoQJ5SyP+ZoVv5xAO3mUTDD5EG7yYdFx1rk+5IPRUgcJI4SDw1Kof9B+Xjl/oJeJ8uwDA1ezWD1jD5oN0w3v1nAjgqDd1Fbx/Xenr2rRUeLto4kBTMbzYYknc0niUbi3cYp9XfBjG9OL6b5HgDCamyw)
 
 GitHub Actions does not provide the syntax to create an array or object constant. It [is popular](https://github.com/search?q=fromJSON%28%27+lang%3Ayaml&type=code)
 to create such constants via `fromJSON()`.
@@ -591,11 +591,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:10:24: property "get_value" is not defined in object type {} [expression]
+test.yaml:10:24: property "get_value" is not defined in object type {} [expression-reference]
    |
 10 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:22:24: property "get_value" is not defined in object type {} [expression]
+test.yaml:22:24: property "get_value" is not defined in object type {} [expression-reference]
    |
 22 |       - run: echo '${{ steps.get_value.outputs.name }}'
    |                        ^~~~~~~~~~~~~~~
@@ -639,11 +639,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:23: property "cache" is not defined in object type {} [expression]
+test.yaml:8:23: property "cache" is not defined in object type {} [expression-reference]
   |
 8 |       - run: echo ${{ steps.cache.outputs.cache-hit }}
   |                       ^~~~~~~~~~~
-test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: string} [expression]
+test.yaml:18:23: property "cache_hit" is not defined in object type {cache-hit: string} [expression-reference]
    |
 18 |       - run: echo ${{ steps.cache.outputs.cache_hit }}
    |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -759,15 +759,15 @@ jobs:
 Output:
 
 ```console
-test.yaml:19:24: property "platform" is not defined in object type {node: number; npm: string; os: string; package: {name: string; optional: bool}} [expression]
+test.yaml:19:24: property "platform" is not defined in object type {node: number; npm: string; os: string; package: {name: string; optional: bool}} [expression-reference]
    |
 19 |       - run: echo '${{ matrix.platform }}'
    |                        ^~~~~~~~~~~~~~~
-test.yaml:21:24: property "dev" is not defined in object type {name: string; optional: bool} [expression]
+test.yaml:21:24: property "dev" is not defined in object type {name: string; optional: bool} [expression-reference]
    |
 21 |       - run: echo '${{ matrix.package.dev }}'
    |                        ^~~~~~~~~~~~~~~~~~
-test.yaml:34:24: property "os" is not defined in object type {} [expression]
+test.yaml:34:24: property "os" is not defined in object type {} [expression-reference]
    |
 34 |       - run: echo '${{ matrix.os }}'
    |                        ^~~~~~~~~
@@ -931,19 +931,19 @@ jobs:
 Output:
 
 ```console
-test.yaml:16:24: property "prepare" is not defined in object type {} [expression]
+test.yaml:16:24: property "prepare" is not defined in object type {} [expression-reference]
    |
 16 |       - run: echo '${{ needs.prepare.outputs.prepared }}'
    |                        ^~~~~~~~~~~~~
-test.yaml:26:24: property "foo" is not defined in object type {installed: string} [expression]
+test.yaml:26:24: property "foo" is not defined in object type {installed: string} [expression-reference]
    |
 26 |       - run: echo '${{ needs.install.outputs.foo }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:28:24: property "some_job" is not defined in object type {install: {outputs: {installed: string}; result: string}; prepare: {outputs: {prepared: string}; result: string}} [expression]
+test.yaml:28:24: property "some_job" is not defined in object type {install: {outputs: {installed: string}; result: string}; prepare: {outputs: {prepared: string}; result: string}} [expression-reference]
    |
 28 |       - run: echo '${{ needs.some_job }}'
    |                        ^~~~~~~~~~~~~~
-test.yaml:33:24: property "build" is not defined in object type {} [expression]
+test.yaml:33:24: property "build" is not defined in object type {} [expression-reference]
    |
 33 |       - run: echo '${{ needs.build.outputs.built }}'
    |                        ^~~~~~~~~~~
@@ -984,11 +984,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression]
+test.yaml:13:17: "object" value cannot be compared to "string" value with "==" operator [expression-type]
    |
 13 |         if: ${{ github.event == 'workflow_call' }}
    |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:16:17: "bool" value cannot be compared to "number" value with ">" operator [expression]
+test.yaml:16:17: "bool" value cannot be compared to "number" value with ">" operator [expression-type]
    |
 16 |         if: ${{ inputs.timeout > 60 }}
    |                 ^~~~~~~~~~~~~~~~~~~
@@ -1194,7 +1194,7 @@ Example input:
 
 ```yaml
 name: Test
-on: pull_request
+on: [pull_request, push]
 
 jobs:
   test:
@@ -1217,27 +1217,27 @@ jobs:
         run: echo '${{ toJSON(github.event.*.body) }}'
       - name: Do something with checking skip
         # OK: This placeholder uses an untrusted input, but the input cannot be injected to the script
-        run: if [ "${{ contains(github.event.pull_request.author.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi
+        run: if [ "${{ contains(github.event.pull_request.title, '[SKIP]') }}" = "true" ]; then echo "skip"; fi
 ```
 
 Output:
 
 ```console
-test.yaml:10:24: "github.event.pull_request.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
+test.yaml:10:24: "github.event.pull_request.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 10 |         run: echo '${{ github.event.pull_request.title }}'
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:19:36: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
+test.yaml:19:36: "github.event.head_commit.author.name" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 19 |           script: console.log('${{ github.event.head_commit.author.name }}')
    |                                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test.yaml:22:31: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
+test.yaml:22:31: object filter extracts potentially untrusted properties "github.event.comment.body", "github.event.discussion.body", "github.event.issue.body", "github.event.pull_request.body", "github.event.review.body", "github.event.review_comment.body". avoid using the value directly in inline scripts. instead, pass the value through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [script-injection]
    |
 22 |         run: echo '${{ toJSON(github.event.*.body) }}'
    |                               ^~~~~~~~~~~~~~~~~~~
 ```
 
-[Playground](https://kjanat.github.io/actionlint/#eNqEkUFr20AQhe/+FQ9RsFMqtT12QyGHltIGkkByCyGs1xPv1qsddWfWoQT/97KSMXGL6UmM5s33np6S7cngjkRnnAyGEuNjpl+lvpj95KWYGaAkWp9ALknaKizLkrS00dbduBKlQSYV0GIC3+SQdKRiT4UGjbSXjUADcp4xf/PygnVQX5YdbSlp9zpMN55ht5sfHIqQGFingZO8F7WRLrYfPxzQz0G9OUxApoFb5Q0lg+ol5DKpdHfXl1+vsNu9ko6wdshtTyJ2TdPB/8Ph2QpcZKHViZgToxWXw6AX208n004KA8dJOFIXeb34tyJPdvXouO+Ddrao59zV4mtPZ3/9im+kqEpKKqfqV/5xe321OLJ42y159fvsqPqJ+IUh3JP6kNZjfjhPblMn2YTh2CQ84R5NNXGc1IYki9N97j9lrPUd5ve3l99vHuY1Q4PPaDQXavBwDvWUpvhNdWzO8RT+BAAA//8/bORw)
+[Playground](https://kjanat.github.io/actionlint/#eNqMkUFrGzEQhe/+FY+lYKdkt+2xCoUcWkobSALJzZggyxNL9a5mqxk5lLD/vWg3mLjFtCcxzJv3PZ6i7cjgnkRnHA2WfW7bh0Q/M4meo8/iV7PZD16LmQFKouUFUo5Sl4O8zlFz3dqyG1ei1MukAmpMgNsUoqKY48UcGrSlF9loaEDOM+Zvnp+xDerzuqE9RW1eZ2rGMwzD/EDIQmJgnQaO8k7UtnS5//D+YP0U1JvDBCTquVbeUTQoLCGXSKW5v7n6co1heCUdzeo+1R2J2C0Z/F84PFmBa1locyLm5FGLS6HXy/3Hk2knhYHjKNxS0/J28XdFnuzmwXHXBW1sVs+pKcWXns7++IqvpChKiiqn6lf+fndzvThCvG3WvPl1dlT95PiZIdyR+hC3Y344T25XJtmF/hgSHrFEVSCOo9oQZfGPPs8xX95dfbtdzQu8widUmjJVWF1APcUpd1VQ1QUew+8BALAe5HM=)
 
 Since `${{ }}` placeholders are evaluated and replaced directly by GitHub Actions runtime, you need to use them carefully in
 inline scripts at `run:`. For example, if we have step as follows,
@@ -1545,7 +1545,7 @@ actionlint validates the Webhook configurations:
 | `tags`            | `push`                                                                       |
 | `tags-ignore`     | `push`                                                                       |
 
-The table of available Webhooks and their types are defined in [`all_webhooks.go`](../internal/engine/all_webhooks.go). It is generated
+The table of available Webhooks and their types are defined in [`webhooks.go`](../internal/webhook/webhooks.go). It is generated
 by [a script][generate-webhook-events] and kept to the latest by CI workflow triggered weekly.
 
 <a id="check-workflow-dispatch-events"></a>
@@ -1619,19 +1619,19 @@ test.yaml:26:18: type of "age" input is "number" but its default value "teen" ca
    |
 26 |         default: teen
    |                  ^~~~
-test.yaml:33:24: property "massage" is not defined in object type {age: number; id: any; kind: string; message: string; name: string; verbose: bool} [expression]
+test.yaml:33:24: property "massage" is not defined in object type {age: number; id: any; kind: string; message: string; name: string; verbose: bool} [expression-reference]
    |
 33 |       - run: echo "${{ inputs.massage }}"
    |                        ^~~~~~~~~~~~~~
-test.yaml:35:28: property access of object must be type of string but got "bool" [expression]
+test.yaml:35:28: property access of object must be type of string but got "bool" [expression-type]
    |
 35 |       - run: echo "${{ env[inputs.verbose] }}"
    |                            ^~~~~~~~~~~~~~
-test.yaml:37:28: property access of object must be type of string but got "number" [expression]
+test.yaml:37:28: property access of object must be type of string but got "number" [expression-type]
    |
 37 |       - run: echo "${{ env[inputs.age] }}"
    |                            ^~~~~~~~~~
-test.yaml:39:24: property "massage" is not defined in object type {age: string; id: string; kind: string; message: string; name: string; verbose: string} [expression]
+test.yaml:39:24: property "massage" is not defined in github.event.inputs; did you mean "message"? [event-payload]
    |
 39 |       - run: echo "${{ github.event.inputs.massage }}"
    |                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2671,11 +2671,11 @@ jobs:
 Output:
 
 ```console
-test.yaml:20:23: property "uri" is not defined in object type {lucky_number: number; url: string} [expression]
+test.yaml:20:23: property "uri" is not defined in object type {lucky_number: number; url: string} [expression-reference]
    |
 20 |         run: curl ${{ inputs.uri }} -d ${{ inputs.lucky_number }}
    |                       ^~~~~~~~~~
-test.yaml:23:22: property "credentials" is not defined in object type {actions_runner_debug: string; actions_step_debug: string; credential: string; github_token: string} [expression]
+test.yaml:23:22: property "credentials" is not defined in object type {actions_runner_debug: string; actions_step_debug: string; credential: string; github_token: string} [expression-reference]
    |
 23 |           TOKEN: ${{ secrets.credentials }}
    |                      ^~~~~~~~~~~~~~~~~~~
@@ -2763,7 +2763,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:7:20: property "imagetag" is not defined in object type {image_tag: string} [expression]
+test.yaml:7:20: property "imagetag" is not defined in object type {image_tag: string} [expression-reference]
   |
 7 |         value: ${{ jobs.gen-image-version.outputs.imagetag }}
   |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3092,23 +3092,23 @@ jobs:
 Output:
 
 ```console
-test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:6:16: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
   |
 6 |     shell: ${{ env.SHELL }}
   |                ^~~
-test.yaml:16:17: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:16:17: context "runner" is not allowed here. available contexts are "github", "inputs", "needs", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 16 |           - ${{ runner.temp }}
    |                 ^~~~~~
-test.yaml:24:16: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:24:16: context "env" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 24 |       FOO: ${{ env.BAR }}
    |                ^~~
-test.yaml:30:20: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:30:20: context "env" is not allowed here. no context is available here. see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 30 |         shell: ${{ env.SHELL}}
    |                    ^~~
-test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
+test.yaml:32:33: calling function "success" is not allowed here. "success" is only available in "jobs.<job_id>.if", "jobs.<job_id>.steps.if", "jobs.<job_id>.snapshot.if". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [context-availability]
    |
 32 |         run: echo 'Success? ${{ success() }}'
    |                                 ^~~~~~~
@@ -3669,8 +3669,8 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [actions-cache]: https://github.com/actions/cache
 [permissions-doc]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 [perm-config-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
-[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/scripts/generate-webhook-events
-[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/scripts/generate-popular-actions
+[generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/webhook/generate
+[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/internal/actioncatalog/generate
 [issue-25]: https://github.com/rhysd/actionlint/issues/25
 [issue-40]: https://github.com/rhysd/actionlint/issues/40
 [security-doc]: https://docs.github.com/en/actions/reference/security/secure-use

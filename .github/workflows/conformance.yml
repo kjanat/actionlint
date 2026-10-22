@@ -20,7 +20,7 @@ jobs:
           "jobs": {
             "conformance": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**",
-              "scripts/fetch-conformance/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go",
+              "internal/conformance/fetch/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go",
               "internal/conformance/**", "!**/*.md"
             ]
           }
@@ -45,7 +45,7 @@ jobs:
           path: .cache/conformance/*.zip
           key: conformance-${{ runner.os }}-${{ hashFiles('internal/conformance/sources.json') }}
       - name: Fetch and verify pinned fixtures
-        run: go run ./scripts/fetch-conformance
+        run: go run ./internal/conformance/fetch
       - name: Compare actionlint with upstream expectations
         run: go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
         env: { ACTIONLINT_CONFORMANCE_REPORT: .cache/conformance/results.json }

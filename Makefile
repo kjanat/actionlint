@@ -2,10 +2,11 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go cmd/*/*.go internal/*/*.go)
-SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/engine/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
+GO_DIRS := $(shell go list -f '{{.Dir}}' ./...)
+GO_FILES := $(patsubst $(CURDIR)/%,%,$(wildcard $(addsuffix /*.go,$(GO_DIRS))))
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/actioncatalog/popular_actions.json internal/webhook/payload/catalogue.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
-TOOL := $(wildcard scripts/*/*.go)
+TOOL := $(wildcard tools/config/*.go internal/*/generate/*.go internal/*/metadata/*.go tools/release/bump-version/*.go internal/*/check-*/*.go)
 TESTDATA := $(wildcard \
 		testdata/examples/* \
 		testdata/err/* \
@@ -15,17 +16,17 @@ TESTDATA := $(wildcard \
 		testdata/projects/* \
 		testdata/reusable_workflow_metadata/* \
 	)
-GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard scripts/generate-popular-actions/*.go scripts/generate-action-metadata/*.go)) \
-				scripts/generate-popular-actions/popular_actions.json \
-				scripts/generate-webhook-events/main.go \
-				scripts/generate-availability/main.go
+GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
+				internal/actioncatalog/generate/popular_actions.json \
+				internal/webhook/generate/main.go \
+				internal/expression/context/generate/main.go
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
 	SHELL := powershell.exe
 	.SHELLFLAGS := -NoProfile -ExecutionPolicy Bypass -Command
 	TARGET = actionlint.exe
-	TOUCH = powershell -NoProfile -ExecutionPolicy Bypass scripts/touch.ps1
+	TOUCH = powershell -NoProfile -ExecutionPolicy Bypass tools/ci/touch.ps1
 	# It's hard to prepare C toolchain for CGO on Windows
 	RACE =
 else
@@ -77,7 +78,7 @@ test:
 
 .PHONY: conformance
 conformance:
-	go run ./scripts/fetch-conformance
+	go run ./internal/conformance/fetch
 	go test -tags conformance -run '^TestUpstreamConformance' -count=1 -timeout 2m ./internal/conformance
 
 coverage.out: $(TESTS) $(SRCS) $(TESTDATA) $(TOOL)
@@ -96,21 +97,21 @@ ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm golangci-lint run ./playground
 endif
 
-# Documentation examples also require Pyflakes; keep that dependency explicit.
+# Documentation examples use the configured external script checkers.
 .PHONY: lint-docs
 lint-docs:
-	go run ./scripts/check-checks -quiet ./docs/checks.md
+	go run ./internal/rulecatalog/check-docs -quiet ./docs/checks.md
 
-internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
+internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go
+	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go
 else
 	go generate
 endif
 
 GIT_DESCRIBE := $(shell git describe --tags 2>/dev/null)
 ifneq ($(GIT_DESCRIBE),)
-BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev/internal/engine.version=$(GIT_DESCRIBE)"
+BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=$(GIT_DESCRIBE)"
 endif
 
 # Creating or moving a tag changes the version stamp without touching a prerequisite.
@@ -142,51 +143,71 @@ man/actionlint.1.html: man/actionlint.1.md man/manual.css
 man: man/actionlint.1 man/actionlint.1.html
 
 bench:
-	go test -bench Lint -benchmem ./internal/engine
+	go test -run '^$$' -bench Lint -benchmem ./internal/application
 
-.github/actionlint-matcher.json: scripts/generate-actionlint-matcher/main.mjs scripts/generate-actionlint-matcher/object.mjs
-	node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json
+.github/actionlint-matcher.json: tools/matcher/main.mjs tools/matcher/object.mjs
+	node ./tools/matcher/main.mjs .github/actionlint-matcher.json
 
-scripts/generate-actionlint-matcher/testdata/escape.txt: $(TARGET)
-	./actionlint -color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/testdata/escape.txt || true
-scripts/generate-actionlint-matcher/testdata/no_escape.txt: $(TARGET)
-	./actionlint -no-color ./testdata/err/one_error.yaml > ./scripts/generate-actionlint-matcher/testdata/no_escape.txt || true
-scripts/generate-actionlint-matcher/testdata/want.json: $(TARGET)
-	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > scripts/generate-actionlint-matcher/testdata/want.json || true
+tools/matcher/testdata/escape.txt: $(TARGET)
+	./actionlint -color ./testdata/err/one_error.yaml > ./tools/matcher/testdata/escape.txt || true
+tools/matcher/testdata/no_escape.txt: $(TARGET)
+	./actionlint -no-color ./testdata/err/one_error.yaml > ./tools/matcher/testdata/no_escape.txt || true
+tools/matcher/testdata/want.json: $(TARGET)
+	./actionlint -format '{{json .}}' ./testdata/err/one_error.yaml > tools/matcher/testdata/want.json || true
 
-PLUGIN_FIXTURES := internal/component/testdata/plugins
-PLUGIN_WAT := $(wildcard internal/component/testdata/wat/*.wat internal/corewasm/testdata/wat/*.wat)
-ENGINE_FIXTURES := internal/corewasm/testdata/engines
+PLUGIN_FIXTURES := internal/plugins/component/testdata/plugins
+PLUGIN_WAT := $(wildcard internal/plugins/component/testdata/wat/*.wat internal/plugins/core/testdata/wat/*.wat)
+ENGINE_FIXTURES := internal/plugins/core/testdata/engines
+RUST_MANIFESTS := Cargo.toml $(wildcard testdata/plugins/*/Cargo.toml)
+RUST_BUILD_INPUTS := $(RUST_MANIFESTS) Cargo.lock rust-toolchain.toml
 
-.PHONY: plugins
-plugins: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
+.PHONY: plugins-check-native
+plugins-check-native:
+	cargo check --workspace --locked --all-targets
 
-$(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit plugins/examples/pipe-to-shell/Cargo.toml plugins/examples/pipe-to-shell/Cargo.lock $(wildcard plugins/examples/pipe-to-shell/src/*.rs)
-	cargo build --locked --release --target wasm32-wasip2 --manifest-path plugins/examples/pipe-to-shell/Cargo.toml
-	install -m 644 plugins/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm $@
+.PHONY: plugin-examples plugins
+plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm
 
-$(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit internal/component/testdata/misbehave/Cargo.toml internal/component/testdata/misbehave/Cargo.lock $(wildcard internal/component/testdata/misbehave/src/*.rs)
-	cargo build --locked --release --target wasm32-wasip2 --manifest-path internal/component/testdata/misbehave/Cargo.toml
-	install -m 644 internal/component/testdata/misbehave/target/wasm32-wasip2/release/actionlint_plugin_misbehave.wasm $@
+plugins: plugin-examples $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
-$(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit plugins/examples/no-sudo/build.sh $(wildcard plugins/examples/no-sudo/*.c)
-	plugins/examples/no-sudo/build.sh $(abspath $@)
+$(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
+	cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
+	install -m 644 target/wasm32-wasip2/wasm/examples/pipe_to_shell.wasm $@
 
-$(PLUGIN_FIXTURES)/insecure-download.wasm: plugins/wit/analyzer.wit plugins/examples/insecure-download/build.sh plugins/examples/insecure-download/go.mod $(wildcard plugins/examples/insecure-download/*.go)
-	plugins/examples/insecure-download/build.sh $(abspath $@)
+$(PLUGIN_FIXTURES)/pinned-actions.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pinned-actions.rs
+	cargo build --locked --profile wasm --target wasm32-wasip2 --example pinned-actions
+	install -m 644 target/wasm32-wasip2/wasm/examples/pinned_actions.wasm $@
 
-internal/component/testdata/wat/%.wasm: internal/component/testdata/wat/%.wat
+$(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/misbehave/src/*.rs)
+	cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-plugin-misbehave
+	install -m 644 target/wasm32-wasip2/wasm/actionlint_plugin_misbehave.wasm $@
+
+# Separate target directories keep feature variants independent under make -j.
+$(PLUGIN_FIXTURES)/oversized-descriptor-%.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/misbehave/src/*.rs)
+	cargo build --locked --release --target wasm32-wasip2 -p actionlint-plugin-misbehave --features oversized-descriptor-$* --target-dir target/plugin-fixtures/oversized-descriptor-$*
+	install -m 644 target/plugin-fixtures/oversized-descriptor-$*/wasm32-wasip2/release/actionlint_plugin_misbehave.wasm $@
+
+$(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit examples/plugins/no-sudo/build.sh $(wildcard examples/plugins/no-sudo/*.c)
+	examples/plugins/no-sudo/build.sh $(abspath $@)
+
+$(PLUGIN_FIXTURES)/insecure-download.wasm: plugins/wit/analyzer.wit examples/plugins/insecure-download/build.sh examples/plugins/insecure-download/go.mod $(wildcard examples/plugins/insecure-download/*.go)
+	examples/plugins/insecure-download/build.sh $(abspath $@)
+
+internal/plugins/component/testdata/wat/%.wasm: internal/plugins/component/testdata/wat/%.wat
 	wasm-tools parse $< -o $@
 
-internal/corewasm/testdata/wat/%.wasm: internal/corewasm/testdata/wat/%.wat
+internal/plugins/core/testdata/wat/%.wasm: internal/plugins/core/testdata/wat/%.wat
 	wasm-tools parse $< -o $@
 
-$(ENGINE_FIXTURES)/echo.wasm: internal/corewasm/testdata/echo/Cargo.toml internal/corewasm/testdata/echo/Cargo.lock $(wildcard internal/corewasm/testdata/echo/src/*.rs)
-	cargo build --locked --release --target wasm32-unknown-unknown --manifest-path internal/corewasm/testdata/echo/Cargo.toml
-	install -m 644 internal/corewasm/testdata/echo/target/wasm32-unknown-unknown/release/actionlint_engine_echo.wasm $@
+$(ENGINE_FIXTURES)/echo.wasm: $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/echo/src/*.rs)
+	cargo build --locked --profile wasm --target wasm32-unknown-unknown -p actionlint-engine-echo
+	install -m 644 target/wasm32-unknown-unknown/wasm/actionlint_engine_echo.wasm $@
 
-internal/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/component/generate.go
-	go generate ./internal/component
+internal/plugins/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/plugins/component/generate.go
+	go generate ./internal/plugins/component
+
+internal/plugins/component/contract_generated.go: plugins/wit/analyzer.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
+	go run -C tools/plugin-contract .
 
 CHANGELOG.md:
 	changelog-from-release > CHANGELOG.md

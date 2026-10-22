@@ -33,7 +33,7 @@ func (a *invocationAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([
 			continue
 		}
 		end, _ := script.Position(1, 11, true)
-		findings = append(findings, diagnostic.Diagnostic{Message: "invoked " + script.Invocation.Uses, Path: script.Path, Start: start, End: end})
+		findings = append(findings, diagnostic.Diagnostic{Reference: &script.Reference, Message: "invoked " + script.Invocation.Uses, Path: script.Path, Start: start, End: end})
 	}
 	return findings, nil
 }
@@ -60,7 +60,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	a := &invocationAnalyzer{}
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := analysis.Files(t.Context(), []string{workflow}, analysis.FileOptions{
-		Options: analysis.Options{WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: a}}}, SkipProjectConfig: true,
+		WorkingDir: root, Analyzers: []analyzer.Registration{{Analyzer: a}}, SkipProjectConfig: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -86,6 +86,9 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	if invoked.Invocation == nil || invoked.Invocation.Uses != "./.github/actions/greet" || invoked.Invocation.Caller != "" || invoked.Invocation.Step.Line != 6 || invoked.Invocation.Depth != 1 {
 		t.Fatalf("invocation=%+v", invoked.Invocation)
 	}
+	if invoked.Reference.Node == "" || invoked.Reference.Document == input.Reference.Document || invoked.Invocation.Reference.Document != input.Reference.Document || invoked.Invocation.Reference.Node == "" || invoked.Reference.Address != "runs.steps[0]" {
+		t.Fatalf("source and invocation identities were conflated: %+v %+v", invoked.Reference, invoked.Invocation.Reference)
+	}
 	if invoked.Runtime == nil || invoked.Runtime.Shell != "bash" || invoked.Runtime.ShellImplicit || !invoked.Runtime.DirectoryKnown || invoked.Runtime.Directory != resolved {
 		t.Fatalf("invoked runtime=%+v (root %s)", invoked.Runtime, resolved)
 	}
@@ -96,7 +99,37 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 		t.Fatalf("diagnostics=%+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Rule != "composite-scripts" || !strings.HasSuffix(filepath.ToSlash(finding.Path), ".github/actions/greet/action.yml") || finding.Start != (diagnostic.Position{Line: 6, Column: 17}) || finding.End != (diagnostic.Position{Line: 6, Column: 22}) {
+	if finding.Reference == nil || *finding.Reference != invoked.Reference || finding.Rule != "composite-scripts" || !strings.HasSuffix(filepath.ToSlash(finding.Path), ".github/actions/greet/action.yml") || finding.Start != (diagnostic.Position{Line: 6, Column: 17}) || finding.End != (diagnostic.Position{Line: 6, Column: 22}) {
 		t.Fatalf("finding=%+v", finding)
+	}
+}
+
+func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
+	root := t.TempDir()
+	for path, content := range map[string]string{
+		".git/HEAD":                "ref: refs/heads/main\n",
+		".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./outer\n",
+		"outer/action.yml":         "name: outer\ndescription: outer\nruns:\n  using: composite\n  steps:\n    - id: call-inner\n      uses: ./inner\n",
+		"inner/action.yml":         "name: inner\ndescription: inner\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n",
+	} {
+		full := filepath.Join(root, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	capture := &invocationAnalyzer{}
+	_, err := analysis.Files(t.Context(), []string{filepath.Join(root, ".github", "workflows", "ci.yml")}, analysis.FileOptions{WorkingDir: root, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Analyzer: capture}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(capture.inputs) != 1 || len(capture.inputs[0].Invoked) != 1 {
+		t.Fatalf("inputs: %+v", capture.inputs)
+	}
+	script := capture.inputs[0].Invoked[0]
+	if script.Invocation == nil || script.Invocation.Reference.Node == "" || !strings.HasSuffix(script.Invocation.Reference.Document, "/outer/action.yml") || script.Invocation.Reference.Address != "runs.steps[0]" || !strings.HasSuffix(script.Reference.Document, "/inner/action.yml") {
+		t.Fatalf("lost intermediate caller identity: %+v %+v", script.Reference, script.Invocation)
 	}
 }

@@ -1,0 +1,39 @@
+[package]
+name              = "actionlint-plugin-examples"
+version           = "0.1.0"
+edition.workspace = true
+publish           = false
+autoexamples      = false
+
+[workspace]
+resolver = "3"
+members  = ["testdata/plugins/*"]
+
+[workspace.package]
+edition = "2024"
+
+[workspace.dependencies]
+wit-bindgen = "0.63"
+
+[[example]]
+crate-type = ["cdylib"]
+name       = "pipe-to-shell"
+path       = "examples/plugins/pipe-to-shell.rs"
+test       = false
+
+[[example]]
+crate-type = ["cdylib"]
+name       = "pinned-actions"
+path       = "examples/plugins/pinned-actions.rs"
+test       = false
+
+[dev-dependencies]
+wit-bindgen.workspace = true
+
+[profile.wasm]
+inherits      = "release"
+opt-level     = "s"
+strip         = true
+lto           = true
+panic         = "abort"
+codegen-units = 1

@@ -1,0 +1,59 @@
+package calls_test
+
+import (
+	"strings"
+	"testing"
+
+	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/internal/workflow/calls"
+
+	"github.com/google/go-cmp/cmp"
+)
+
+func TestReusableWorkflowCacheModeMetadataParity(t *testing.T) {
+	src := []byte(`on: workflow_call
+cache-mode: &mode read
+jobs:
+  base: &job
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+  alias: *job
+  save:
+    cache-mode: write-only
+    uses: $/next.yaml
+  none:
+    cache-mode: none
+    uses: ./next.yaml
+  invalid:
+    cache-mode: null
+    uses: ./next.yaml
+  scalar-alias:
+    cache-mode: *mode
+    uses: ./next.yaml
+`)
+	fromFile, err := calls.ParseMetadata(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, errs := workflowlang.ParseDocument(src)
+	if len(errs) != 1 || !strings.Contains(errs[0].Message, "cache-mode") {
+		t.Fatalf("expected the invalid null declaration, got %v", errs)
+	}
+	root := t.TempDir()
+	cache := calls.NewCache(root, root, nil)
+	event, _ := w.FindWorkflowCallEvent()
+	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
+	fromAST, _, ok := cache.Lookup("./callee.yaml")
+	if !ok {
+		t.Fatal("no metadata was cached")
+	}
+	if diff := cmp.Diff(fromFile.JobCacheAccess, fromAST.JobCacheAccess); diff != "" {
+		t.Fatal(diff)
+	}
+	for id, want := range map[string]workflowlang.CacheModeKind{"base": workflowlang.CacheModeRead, "alias": workflowlang.CacheModeRead, "save": workflowlang.CacheModeWriteOnly, "none": workflowlang.CacheModeNone, "invalid": workflowlang.CacheModeInvalid, "scalar-alias": workflowlang.CacheModeRead} {
+		if mode := fromFile.JobCacheAccess[id].Mode; mode == nil || mode.Kind != want {
+			t.Errorf("%s: wanted %v, got %v", id, want, mode)
+		}
+	}
+}

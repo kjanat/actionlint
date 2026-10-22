@@ -20,69 +20,69 @@ jobs:
           ],
           "jobs": {
             "unit": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
-              "scripts/**/testdata/**", "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
-              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "scripts/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
+              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
+              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
             "race": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "fuzz/**", "scripts/**/*.go",
-              "scripts/**/testdata/**", "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
-              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "scripts/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "tools/**/*.go", "tools/**/testdata/**", "fuzz/**",
+              "testdata/**", "schemas/**", "actionlint.schema.json", "Makefile", ".pre-commit-hooks.yaml",
+              ".github/actions/setup-shellcheck/**", ".github/workflows/upkeep.yml", "tools/**/*.bash", "distribution/**/*.bash", "Dockerfile", "CONTRIBUTING.md", "flake.nix",
               "flake.lock"
             ],
             "nix": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
-              "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "scripts/check-packaged-cli.bash",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "nix/**",
+              "flake.nix", "flake.lock", "man/**", "schemas/**", "actionlint.schema.json", "tools/release/check-packaged-cli.bash",
               ".github/workflows/nix.yml", "!**/testdata/**"
             ],
             "wasm": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "playground/**", "man/**",
               "packages/changelog-feed/**", "!cmd/**", "!internal/cli/**", "!internal/githubaction/**", "!**/*_test.go", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "Makefile", ".github/actions/setup-pandoc/**"
             ],
             "javascript": [
-              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
+              "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/*.mts", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**"
+              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**", "tools/**/mise.toml", "distribution/**/mise.toml"
             ],
             "release": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
               ".goreleaser.yaml", ".github/actions/setup-pandoc/**", "man/**", "schemas/**", "actionlint.schema.json", "distribution/**", "packages/github-action/**",
-              "scripts/build-action-release.mjs", "scripts/release-*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
+              "tools/release/build-action-release.mjs", "tools/release/*.mjs", "action.yml", ".pre-commit-hooks.yaml", "package.json",
               "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json", "!packages/github-action/tests/**",
-              "!scripts/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
+              "!tools/**/*.test.mjs", "!**/testdata/**", "README.md", "LICENSE.txt", "docs/**"
             ],
             "modules": [
               ".github/actions/**", "distribution/**", "schemas/**", "actionlint.schema.json", "man/**", "README.md", "LICENSE.txt", "go.mod",
               "go.sum"
             ],
             "lint": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "**/*.go", ".golangci.toml",
-              "docs/checks.md", "scripts/*.bash", "Makefile", ".github/workflows/**", ".github/actions/**", ".github/actionlint.yaml",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "**/*.go", ".golangci.toml",
+              "docs/checks.md", "tools/**/*.bash", "distribution/**/*.bash", "Makefile", ".github/workflows/**", ".github/actions/**", ".github/actionlint.yaml",
               "!testdata/**", "!**/testdata/**"
             ],
             "docker": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Dockerfile",
-              ".dockerignore", "scripts/*docker*.bash", "scripts/docker-action-wrapper.bash", "action.yml", "!**/testdata/**"
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Dockerfile",
+              ".dockerignore", "distribution/docker/**", "action.yml", "!**/testdata/**"
             ],
             "action": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "scripts/*.mjs", ".pre-commit-hooks.yaml",
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "action.yml", "tools/action/**", "tools/release/*.mjs", ".pre-commit-hooks.yaml",
               ".goreleaser.yaml", "package.json", "package-lock.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
               "!**/testdata/**", "testdata/ok/minimal.yaml", "testdata/err/one_error.yaml"
             ],
             "action-tests": [
-              "packages/github-action/**", "distribution/npm/facade/types/**", "scripts/*.mjs", "action.yml", "package.json", "package-lock.json",
+              "packages/github-action/**", "distribution/npm/facade/types/**", "tools/action/**", "tools/release/*.mjs", "action.yml", "package.json", "package-lock.json",
               ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json"
             ],
             "precommit": [
-              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
-              ".pre-commit-hooks.yaml", "scripts/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
+              "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
+              ".pre-commit-hooks.yaml", "tools/release/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
             ],
             "plugins": [
               ".github/actions/setup-wasm-toolchain/**",
-              "plugins/**", "plugin/**", "internal/component/**", "internal/corewasm/**", "analyzer/**", "diagnostic/**", "go.mod", "go.sum", "Makefile"
+              "plugins/**", "examples/plugins/**", "testdata/plugins/**", "plugin/**", "internal/plugins/**", "analyzer/**", "rule/**", "source/**", "resolver/**", "diagnostic/**", "go.mod", "go.sum", "Makefile", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"
             ]
           }
         }
@@ -111,6 +111,26 @@ jobs:
       - uses: &SetupUv astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         if: env.CI_UNIT == 'true'
         with: &NoCache { enable-cache: false }
+      - &PrepareMiseCache
+        name: Keep mise metadata with cached tools
+        shell: bash
+        run: |
+          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
+          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
+          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
+      - name: Install the project Node.js and npm versions
+        if: env.CI_UNIT == 'true'
+        uses: &SetupMise jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with: &NodeTools
+          cache: true
+          auto_update: true
+          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_save_post: true
+          cache_key: &MiseCacheKey >-
+            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+          install_args: node npm
+          add_shims_to_path: false
+        env: &NodeToolsEnv { MISE_ENABLE_TOOLS: "node,npm" }
       - name: Install ShellCheck
         if: env.CI_UNIT == 'true'
         uses: $/.github/actions/setup-shellcheck
@@ -122,6 +142,9 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y --no-install-recommends zsh fish bash-completion
           zsh --version; fish --version
+      - name: Install the YAML language server for editor completion tests
+        if: env.CI_UNIT == 'true'
+        run: npm ci --ignore-scripts
       - if: env.CI_UNIT == 'true'
         run: go test -v ./...
       # Check build without CGO
@@ -139,7 +162,10 @@ jobs:
       - &GoGomod { uses: *SetupGo, with: *GoMod }
       - &InstallShellCheck { name: Install ShellCheck, uses: $/.github/actions/setup-shellcheck }
       - &Uv { uses: *SetupUv, with: *NoCache }
+      - *PrepareMiseCache
+      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
       - { name: Install Ruff for integration tests, run: uv tool install ruff==0.17.0 }
+      - { name: Install the YAML language server for editor completion tests, run: npm ci --ignore-scripts }
 
       - run: go test -v -race -coverpkg=./... -coverprofile coverage.txt -covermode=atomic ./...
       - run: go tool cover -func ./coverage.txt
@@ -149,7 +175,7 @@ jobs:
 
       - name: Dog fooding 🐶
         # actionlint passes --norc to shellcheck, ignoring .shellcheckrc.
-        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color -shellcheck 'shellcheck -o all'
+        run: echo "::add-matcher::.github/actionlint-matcher.json"; ./actionlint -color --shellcheck='shellcheck -o all'
 
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with: { use_oidc: true }
@@ -160,23 +186,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
-      - &PrepareMiseCache
-        name: Keep mise metadata with cached tools
-        shell: bash
-        run: |
-          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
-          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
-          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
+      - *PrepareMiseCache
       - name: Install project tools
-        uses: &SetupMise jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        uses: *SetupMise
         with:
           cache: true
           auto_update: true
           mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
           cache_save_post: true
-          # Keep task-only edits from invalidating cached tools.
-          cache_key: &MiseCacheKey >-
-            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
+          cache_key: *MiseCacheKey
           install_args: go node npm
           add_shims_to_path: false
         env: { MISE_ENABLE_TOOLS: "go,node,npm" }
@@ -226,18 +244,18 @@ jobs:
     steps:
       - uses: *ActionsCheckout
         with: { fetch-depth: 0, persist-credentials: false }
+      - *PrepareMiseCache
       - parallel:
           - &Go { uses: *SetupGo, with: *GoMod }
           - { name: Install Pandoc, uses: $/.github/actions/setup-pandoc }
           - &Runner { uses: $/.github/actions/setup-runner, with: { version-file: .tool-versions } }
           - name: Install syft for SBOM generation
             uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-          - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-            with: { node-version: "24", package-manager-cache: false }
+          - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
       - name: Build JavaScript Action release files outside the checkout
         run: npm ci --ignore-scripts;
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')";
-          node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
+          node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
       - run: run make:man/actionlint.1
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: release --snapshot --clean }
@@ -283,7 +301,7 @@ jobs:
       - run: run -s make:lint make:lint-docs
         env: *SkipGoGen
       - name: Lint bash scripts
-        run: shellcheck ./scripts/*.bash
+        run: shellcheck tools/ci/*.bash distribution/docker/*.bash tools/release/*.bash distribution/install/*.bash
   plugins:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
@@ -291,34 +309,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - *ActCheckNocred
+      - *PrepareMiseCache
       - parallel:
           - *Go
           - uses: $/.github/actions/setup-wasm-toolchain
           - name: Install TinyGo
             uses: *SetupMise
-            with: { cache: true, auto_update: true, install_args: tinygo, add_shims_to_path: false }
+            with:
+              cache: true
+              auto_update: true
+              mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+              cache_save_post: true
+              cache_key: *MiseCacheKey
+              install_args: tinygo
+              add_shims_to_path: false
             env: { MISE_ENABLE_TOOLS: "tinygo" }
-          - name: Install the Rust wasip2 target
-            run: rustup target add wasm32-wasip2 wasm32-unknown-unknown
+          - name: Install the pinned Rust toolchain and targets
+            run: rustup toolchain install
           - name: Install wasi-sdk
             run: |
               curl --silent --show-error --location --output "${RUNNER_TEMP}/wasi-sdk.tar.gz" https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz
               tar -xzf "${RUNNER_TEMP}/wasi-sdk.tar.gz" -C "${RUNNER_TEMP}"
               echo "WASI_SDK_PATH=${RUNNER_TEMP}/wasi-sdk-34.0-x86_64-linux" >> "${GITHUB_ENV}"
+      - name: Cache Cargo dependencies and workspace builds
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            target/
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', 'Cargo.toml', '**/Cargo.toml') }}
+          restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
+      - name: Check Rust plugins and fixtures on the native target
+        run: make plugins-check-native
       - name: Build the plugin fixtures from source
-        run: make plugins
-      - name: Build the examples outside the repository
-        run: |
-          stage="${RUNNER_TEMP}/plugin-stage"
-          mkdir -p "${stage}/examples"
-          cp -R plugins/wit "${stage}/wit"
-          cp -R plugins/examples/pipe-to-shell plugins/examples/no-sudo plugins/examples/insecure-download "${stage}/examples/"
-          cargo build --locked --release --target wasm32-wasip2 --manifest-path "${stage}/examples/pipe-to-shell/Cargo.toml"
-          "${stage}/examples/no-sudo/build.sh" "${stage}/no-sudo.wasm"
-          "${stage}/examples/insecure-download/build.sh" "${stage}/insecure-download.wasm"
-          go run ./cmd/actionlint --no-config --shellcheck= --ruff= --plugin "${stage}/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm" --plugin "${stage}/no-sudo.wasm" --plugin "${stage}/insecure-download.wasm" testdata/ok/minimal.yaml
-      - run: go test -count=1 ./internal/component ./internal/corewasm ./plugin
-      - run: go test -count=1 -run "Plugin|Engine" ./internal/cli
+        run: make -B plugins
+      - name: Load the Rust, C and TinyGo examples
+        run: >-
+          go run ./cmd/actionlint --no-config --shellcheck= --ruff=
+          --plugin internal/plugins/component/testdata/plugins/pipe-to-shell.wasm
+          --plugin internal/plugins/component/testdata/plugins/no-sudo.wasm
+          --plugin internal/plugins/component/testdata/plugins/insecure-download.wasm
+          testdata/ok/minimal.yaml
+      - run: go test -count=1 ./internal/plugins/component ./internal/plugins/core ./plugin
+      - run: go test -count=1 -run "Plugin|Engine" ./internal/integration/cli
   docker:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}
@@ -330,7 +364,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with: { load: true, push: false, tags: actionlint:test }
       - name: Check bundled Ruff
-        run: bash scripts/test-docker-ruff.bash actionlint:test
+        run: bash distribution/docker/test-docker-ruff.bash actionlint:test
       - name: Test Docker image
         run: docker container run
           --mount type=bind,source="${PWD}",target=/w
@@ -338,7 +372,7 @@ jobs:
       - name: Build Docker Action compatibility image
         run: docker build --target action -t actionlint:action-test .
       - name: Check Docker Action compatibility
-        run: bash scripts/test-docker-action.bash actionlint:action-test
+        run: bash distribution/docker/test-docker-action.bash actionlint:action-test
       - parallel:
           - name: Lint Dockerfile with hadolint
             run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3018 --strict-labels
@@ -363,15 +397,7 @@ jobs:
       # Parallel setup steps race while the runner rewrites event.json on Windows.
       - *GoGomod
       - *Runner
-      - uses: *SetupMise
-        with:
-          install: false
-          env: false
-          add_shims_to_path: false
-          working_directory: ${{ runner.temp }}
-          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
-          cache_key: *MiseCacheKey
-      - { uses: *SetupNode, with: { node-version: "24", package-manager-cache: false } }
+      - { name: Install the project Node.js and npm versions, uses: *SetupMise, with: *NodeTools, env: *NodeToolsEnv }
       - name: Install ShellCheck
         if: runner.os == 'Linux'
         uses: $/.github/actions/setup-shellcheck
@@ -381,14 +407,14 @@ jobs:
       - name: Test the JavaScript runtime and release packaging
         if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action-tests']) }}
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false", MSYS_NO_PATHCONV: "1" }
-        run: run -s actionlint-action:typecheck actionlint-action:test //scripts:test
+        run: run -s actionlint-action:typecheck actionlint-action:test //tools/release:test //tools/toolchain:test //distribution/docker:test //tools/action:test
       - name: Validate the staged release configuration
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with: { version-file: .tool-versions, args: check }
       - name: Validate release workflows with this checkout
         if: runner.os == 'Linux'
-        run: go run ./cmd/actionlint -shellcheck 'shellcheck -o all'
+        run: go run ./cmd/actionlint --shellcheck='shellcheck -o all'
           .github/workflows/*.y*ml # **/action.y*ml
       - name: Prepare the ordinary binary and release action
         env:
@@ -403,9 +429,9 @@ jobs:
           go build -o "${binary}" ./cmd/actionlint
           echo "ACTIONLINT_ACTION_BINARY=${binary}" >> "${GITHUB_ENV}"
           tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*')"
-          node scripts/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
+          node tools/release/build-action-release.mjs --out-dir "${RUNNER_TEMP}/actionlint-action" --version "${tag#v}"
           parent="$(git rev-parse HEAD)"
-          candidate="$(node scripts/build-action-release.mjs --commit --out-dir "${RUNNER_TEMP}/actionlint-action" \
+          candidate="$(node tools/release/build-action-release.mjs --commit --out-dir "${RUNNER_TEMP}/actionlint-action" \
             --version "${tag#v}" --parent "${parent}")"
           mkdir .actionlint-action-test
           git archive "${candidate}" | tar -x -C .actionlint-action-test
@@ -513,12 +539,12 @@ jobs:
           PROBLEM_COUNT: ${{ steps.smoke.outputs.problem-count }}
           OUTPUT: ${{ steps.smoke.outputs.output }}
         run: |
-          node scripts/check-action-outputs.mjs
+          node tools/action/check-action-outputs.mjs
           actionlint_path="$(command -v actionlint)"
           [[ "${actionlint_path}" == */actionlint-bin-*/actionlint* ]]
           actionlint -version
           shellcheck --version
-          node scripts/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
+          node tools/action/test-action.mjs "${RUNNER_TEMP}/actionlint-action/action" "${ACTIONLINT_ACTION_BINARY}"
       - name: Check exported tools from PowerShell
         if: runner.os == 'Windows'
         shell: pwsh
@@ -647,4 +673,4 @@ jobs:
           done
       - name: Run the deletion-only pre-commit integration test
         env: { ACTIONLINT_PRE_COMMIT_INTEGRATION: "1" }
-        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' ./internal/engine
+        run: go test -count=1 -run '^TestPreCommitDeletionOnlyIntegration$' ./internal/integration/cli

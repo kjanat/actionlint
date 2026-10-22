@@ -5,17 +5,17 @@ import (
 	"io"
 	"os"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	"actionlint.kjanat.dev/internal/render"
 )
 
-func parseColorMode(mode string) (actionlint.ColorOptionKind, error) {
+func parseColorMode(mode string) (render.Color, error) {
 	switch mode {
 	case "auto":
-		return actionlint.ColorOptionKindAuto, nil
+		return render.ColorAuto, nil
 	case "always":
-		return actionlint.ColorOptionKindAlways, nil
+		return render.ColorAlways, nil
 	case "never":
-		return actionlint.ColorOptionKindNever, nil
+		return render.ColorNever, nil
 	default:
 		return 0, fmt.Errorf("invalid color mode %q: choose auto, always or never", mode)
 	}
@@ -23,7 +23,7 @@ func parseColorMode(mode string) (actionlint.ColorOptionKind, error) {
 
 func (a *commandApp) prepareColor() error {
 	if a.opts.color {
-		a.inv.Render.Color = actionlint.ColorOptionKindAlways
+		a.inv.Render.Color = render.ColorAlways
 	}
 	if a.set["modern-color"] {
 		color, err := parseColorMode(a.opts.colorMode)
@@ -33,7 +33,7 @@ func (a *commandApp) prepareColor() error {
 		a.inv.Render.Color = color
 	}
 	if a.opts.noColor {
-		a.inv.Render.Color = actionlint.ColorOptionKindNever
+		a.inv.Render.Color = render.ColorNever
 	}
 	return nil
 }
@@ -52,15 +52,15 @@ func githubActionsColor(out io.Writer) bool {
 }
 
 func (r *renderOptions) resolveGitHubActionsColor(out io.Writer) {
-	if r.Color != actionlint.ColorOptionKindAuto || os.Getenv("GITHUB_ACTIONS") != "true" {
+	if r.Color != render.ColorAuto || os.Getenv("GITHUB_ACTIONS") != "true" {
 		return
 	}
-	r.Color = actionlint.ColorOptionKindNever
+	r.Color = render.ColorNever
 	if r.Template != "" || !githubActionsColor(out) {
 		return
 	}
 	switch r.Format {
-	case "", actionlint.OutputFormatText, actionlint.OutputFormatOneline:
-		r.Color = actionlint.ColorOptionKindAlways
+	case "", render.FormatText, render.FormatOneline:
+		r.Color = render.ColorAlways
 	}
 }

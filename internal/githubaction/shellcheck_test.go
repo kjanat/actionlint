@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/internal/engine"
+	toolconfig "actionlint.kjanat.dev/internal/config/tools"
 )
 
 func TestShellcheckArguments(t *testing.T) {
@@ -75,7 +75,7 @@ func TestActionShellcheckConfigPaths(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got, want := req.shellcheckSettings.Config, actionlint.ShellcheckRCFile(inputPath(workspace, config)); got != want {
+				if got, want := req.shellcheckSettings.Config, toolconfig.ShellcheckRCFile(inputPath(workspace, config)); got != want {
 					t.Errorf("config = %q, want %q", got, want)
 				}
 			})
@@ -112,7 +112,7 @@ func TestMergeShellcheckFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if flags.settings.Shell != "bash" || flags.settings.Config != actionlint.ShellcheckRCFile("custom config") {
+	if flags.settings.Shell != "bash" || flags.settings.Config != toolconfig.ShellcheckRCFile("custom config") {
 		t.Fatalf("effective shell/config: %+v", flags.settings)
 	}
 	if !reflect.DeepEqual(flags.settings.Exclude, []string{"SC2086", "SC2154", "SC2016"}) {

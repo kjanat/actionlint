@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
 
 type jobOrderPass struct {
-	RuleBase
+	workflowvisit.Base
 	jobs []*workflowlang.Job
 }
 

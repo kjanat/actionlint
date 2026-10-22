@@ -191,7 +191,8 @@ func (lex *Lexer) error(msg string) {
 			end += width
 		}
 		lex.lexErr = &Error{
-			Message:   msg,
+			Message: msg,
+			Rule:    syntax.rule, Code: syntax.code,
 			Offset:    p.Offset,
 			EndOffset: end,
 			Line:      p.Line,

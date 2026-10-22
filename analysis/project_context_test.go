@@ -145,13 +145,13 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 					}
 				}
 				options := analysis.FileOptions{
-					Options: analysis.Options{WorkingDir: workingDir, Analyzers: []analyzer.Registration{{Analyzer: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
+					WorkingDir: workingDir, Analyzers: []analyzer.Registration{{Analyzer: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
 						rel, err := filepath.Rel(root, path)
 						if err != nil || !filepath.IsAbs(path) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 							return nil, fmt.Errorf("read escaped analysis root: %s", path)
 						}
 						return os.ReadFile(path)
-					}},
+					},
 					ConfigFile: "settings/actionlint.yaml", SkipProjectConfig: true,
 				}
 				var result *analysis.Result

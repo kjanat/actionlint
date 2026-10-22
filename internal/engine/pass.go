@@ -9,28 +9,23 @@ import (
 	"time"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 )
-
-// Pass is an interface to traverse a workflow syntax tree
-type Pass interface {
-	// VisitStep is callback when visiting Step node. It returns internal error when it cannot continue the process
-	VisitStep(node *workflowlang.Step) error
-	// VisitJobPre is callback when visiting Job node before visiting its children. It returns internal error when it cannot continue the process
-	VisitJobPre(node *workflowlang.Job) error
-	// VisitJobPost is callback when visiting Job node after visiting its children. It returns internal error when it cannot continue the process
-	VisitJobPost(node *workflowlang.Job) error
-	// VisitWorkflowPre is callback when visiting Workflow node before visiting its children. It returns internal error when it cannot continue the process
-	VisitWorkflowPre(node *workflowlang.Workflow) error
-	// VisitWorkflowPost is callback when visiting Workflow node after visiting its children. It returns internal error when it cannot continue the process
-	VisitWorkflowPost(node *workflowlang.Workflow) error
-}
 
 // Visitor visits syntax tree from root in depth-first order
 type Visitor struct {
-	passes     []Pass
-	dbg        io.Writer
-	composites *compositeAnalyzer
-	jobID      string
+	passes []workflowvisit.Pass
+	dbg    io.Writer
+	Hooks  Hooks
+}
+
+// Hooks lets a caller observe document/job entry and own step expansion.
+// ParallelBoundary invalidates caller-owned assumptions between parallel branches.
+type Hooks struct {
+	Workflow         func(*workflowlang.Workflow)
+	Job              func(*workflowlang.Job)
+	Step             func(*workflowlang.Step) error
+	ParallelBoundary func()
 }
 
 // NewVisitor creates Visitor instance
@@ -39,7 +34,7 @@ func NewVisitor() *Visitor {
 }
 
 // AddPass adds new pass which is called on traversing a syntax tree
-func (v *Visitor) AddPass(p Pass) {
+func (v *Visitor) AddPass(p workflowvisit.Pass) {
 	v.passes = append(v.passes, p)
 }
 
@@ -60,8 +55,8 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 		t = time.Now()
 	}
 
-	if v.composites != nil {
-		v.composites.beginWorkflow(n)
+	if v.Hooks.Workflow != nil {
+		v.Hooks.Workflow(n)
 	}
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {
@@ -118,12 +113,8 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 }
 
 func (v *Visitor) visitJob(n *workflowlang.Job) error {
-	v.jobID = ""
-	if n.ID != nil {
-		v.jobID = n.ID.Value
-	}
-	if v.composites != nil {
-		v.composites.beginJob(n)
+	if v.Hooks.Job != nil {
+		v.Hooks.Job(n)
 	}
 	var t time.Time
 	if v.dbg != nil {
@@ -131,7 +122,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), func() error { return p.VisitJobPre(n) }); err != nil {
+		if err := p.VisitJobPre(n); err != nil {
 			return err
 		}
 	}
@@ -153,7 +144,7 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	for _, p := range v.passes {
-		if err := visitWithIgnoreOrigin(p, jobDiagnosticIgnoreOrigin(n), func() error { return p.VisitJobPost(n) }); err != nil {
+		if err := p.VisitJobPost(n); err != nil {
 			return err
 		}
 	}
@@ -171,13 +162,13 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 		t = time.Now()
 	}
 
-	if v.composites != nil {
-		if err := v.composites.visitStep(n); err != nil {
+	if v.Hooks.Step != nil {
+		if err := v.Hooks.Step(n); err != nil {
 			return err
 		}
 	} else {
 		for _, p := range v.passes {
-			if err := visitWithIgnoreOrigin(p, newDiagnosticIgnoreOrigin(v.jobID, n), func() error { return p.VisitStep(n) }); err != nil {
+			if err := p.VisitStep(n); err != nil {
 				return err
 			}
 		}
@@ -187,15 +178,15 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	if e, ok := n.Exec.(*workflowlang.ExecParallel); ok {
 		for _, s := range e.Steps {
-			if v.composites != nil {
-				v.composites.invalidateCheckout()
+			if v.Hooks.ParallelBoundary != nil {
+				v.Hooks.ParallelBoundary()
 			}
 			if err := v.visitStep(s); err != nil {
 				return err
 			}
 		}
-		if v.composites != nil {
-			v.composites.invalidateCheckout()
+		if v.Hooks.ParallelBoundary != nil {
+			v.Hooks.ParallelBoundary()
 		}
 	}
 

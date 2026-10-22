@@ -427,7 +427,7 @@
     ],
     "languageservices/workflow-parser/testdata/reader/bad-character.yml": [
       "<stdin>:12:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:16:43: got unexpected character '\\u00a0' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression]"
+      "<stdin>:16:43: got unexpected character '\\u00a0' while lexing expression, expecting 'a'..'z', 'A'..'Z', '_', '0'..'9', ''', '}', '(', ')', '[', ']', '.', '!', '<', '>', '=', '&', '|', '*', ',', ' ' [expression-syntax]"
     ],
     "languageservices/workflow-parser/testdata/reader/basic.yml": [
       "<stdin>:6:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
@@ -522,7 +522,7 @@
       "<stdin>:7:13: the runtime or service used by \"actions/setup-python@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
     ],
     "languageservices/workflow-parser/testdata/reader/insert.yml": [
-      "<stdin>:6:23: property \"set-matrix\" is not defined in object type {} [expression]"
+      "<stdin>:6:23: property \"set-matrix\" is not defined in object type {} [expression-reference]"
     ],
     "languageservices/workflow-parser/testdata/reader/is-partial-rerun.yml": [
       "<stdin>:9:11: reusable workflow call \".contoso/templates/.github/workflows/deploy.yml@v1\" at \"uses\" is not following the format \"owner/repo/path/to/workflow.yml@ref\", \"./path/to/workflow.yml\", nor \"$/path/to/workflow.yml\". see https://docs.github.com/en/actions/learn-github-actions/reusing-workflows for more details [workflow-call]"
@@ -536,17 +536,17 @@
     ],
     "languageservices/workflow-parser/testdata/reader/job-defaults.yml": [
       "<stdin>:7:16: shell name \"cmd\" is invalid on macOS or Linux. available names are \"bash\", \"pwsh\", \"python\", \"sh\" [shell-name]",
-      "<stdin>:8:31: property \"test\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]"
+      "<stdin>:8:31: property \"test\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression-reference]"
     ],
     "languageservices/workflow-parser/testdata/reader/job-environment.yml": [
       "<stdin>:9:18: string should not be empty [syntax-check]",
-      "<stdin>:21:22: property \"env\" is not defined in object type {} [expression]",
-      "<stdin>:27:17: property \"env\" is not defined in object type {} [expression]"
+      "<stdin>:21:22: property \"env\" is not defined in object type {} [expression-reference]",
+      "<stdin>:27:17: property \"env\" is not defined in object type {} [expression-reference]"
     ],
     "languageservices/workflow-parser/testdata/reader/job-if.yml": [
       "<stdin>:6:9: constant expression \"true\" in condition is always truthy. remove the if: section [if-cond]",
-      "<stdin>:16:13: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
-      "<stdin>:29:9: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]",
+      "<stdin>:16:13: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression-reference]",
+      "<stdin>:29:9: property \"foo\" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; artifacts: string; artifacts_list: string; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: string; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression-reference]",
       "<stdin>:44:9: constant expression \"false || (true && true)\" in condition is always truthy. remove the if: section [if-cond]"
     ],
     "languageservices/workflow-parser/testdata/reader/job-runs-on.yml": [
@@ -575,13 +575,14 @@
     ],
     "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": [
       "<stdin>:3:3: \"steps\" section is missing in job \"build\" [syntax-check]",
-      "<stdin>:4:18: property \"os\" is not defined in object type {} [expression]",
-      "<stdin>:5:28: property \"experimental\" is not defined in object type {} [expression]",
+      "<stdin>:4:18: property \"os\" is not defined in object type {} [expression-reference]",
+      "<stdin>:5:28: property \"experimental\" is not defined in object type {} [expression-reference]",
       "<stdin>:7:22: type of expression at \"float number value\" must be number but found type string [expression]",
-      "<stdin>:15:17: property \"step_id\" is not defined in object type {} [expression]",
-      "<stdin>:18:20: property \"step1\" is not defined in object type {} [expression]",
-      "<stdin>:19:20: property \"step2\" is not defined in object type {} [expression]",
-      "<stdin>:24:3: \"steps\" section is missing in job \"build2\" [syntax-check]"
+      "<stdin>:15:17: property \"step_id\" is not defined in object type {} [expression-reference]",
+      "<stdin>:18:20: property \"step1\" is not defined in object type {} [expression-reference]",
+      "<stdin>:19:20: property \"step2\" is not defined in object type {} [expression-reference]",
+      "<stdin>:24:3: \"steps\" section is missing in job \"build2\" [syntax-check]",
+      "<stdin>:36:29: property \"number\" is not defined in github.event for the configured workflow events [event-payload]"
     ],
     "languageservices/workflow-parser/testdata/reader/misc-steps.yml": [
       "<stdin>:7:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
@@ -603,7 +604,7 @@
       "<stdin>:5:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
       "<stdin>:10:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
       "<stdin>:15:22: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
-      "<stdin>:20:26: undefined variable \"NaN\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression]",
+      "<stdin>:20:26: undefined variable \"NaN\". available variables are \"env\", \"github\", \"inputs\", \"job\", \"matrix\", \"needs\", \"runner\", \"secrets\", \"steps\", \"strategy\", \"vars\" [expression-reference]",
       "<stdin>:33:26: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]",
       "<stdin>:39:26: expecting a single ${{...}} expression or float number literal, but found plain text node [syntax-check]"
     ],
@@ -630,10 +631,10 @@
       "<stdin>:14:13: constant expression \"0 || 1\" in condition is always truthy. remove the if: section [if-cond]",
       "<stdin>:18:13: constant expression \"0 || 1\" in condition is always truthy. remove the if: section [if-cond]",
       "<stdin>:28:13: constant expression \"true || 'success()'\" in condition is always truthy. remove the if: section [if-cond]",
-      "<stdin>:37:18: property \"build\" is not defined in object type {} [expression]"
+      "<stdin>:37:18: property \"build\" is not defined in object type {} [expression-reference]"
     ],
     "languageservices/workflow-parser/testdata/reader/step-run.yml": [
-      "<stdin>:8:23: property \"foo\" is not defined in object type {} [expression]"
+      "<stdin>:8:23: property \"foo\" is not defined in object type {} [expression-reference]"
     ],
     "languageservices/workflow-parser/testdata/reader/workflow-env.yml": [
       "<stdin>:6:14: label \"windows-2019\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
@@ -827,7 +828,7 @@
       "<stdin>:27:3: \"steps\" section is missing in job \"test\" [syntax-check]"
     ],
     "schemastore/src/test/github-workflow/defaults.yaml": [
-      "<stdin>:16:20: property \"shell\" is not defined in object type {} [expression]"
+      "<stdin>:16:20: property \"shell\" is not defined in object type {} [expression-reference]"
     ],
     "schemastore/src/test/github-workflow/env-from-json.yaml": [
       "<stdin>:11:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
@@ -892,17 +893,17 @@
       "<stdin>:610:15: the runtime or service used by \"actions/download-artifact@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
     ],
     "schemastore/src/test/github-workflow/matrix_from_json.yaml": [
-      "<stdin>:11:27: property \"job1\" is not defined in object type {} [expression]",
+      "<stdin>:11:27: property \"job1\" is not defined in object type {} [expression-reference]",
       "<stdin>:13:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
       "<stdin>:14:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
     ],
     "schemastore/src/test/github-workflow/matrix_include.yaml": [
       "<stdin>:25:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
       "<stdin>:26:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:28:29: property \"node-version\" is not defined in object type {experimental: bool; node: number; os: string} [expression]"
+      "<stdin>:28:29: property \"node-version\" is not defined in object type {experimental: bool; node: number; os: string} [expression-reference]"
     ],
     "schemastore/src/test/github-workflow/matrix_include_expression.yaml": [
-      "<stdin>:12:32: property \"job1\" is not defined in object type {} [expression]",
+      "<stdin>:12:32: property \"job1\" is not defined in object type {} [expression-reference]",
       "<stdin>:15:15: the runtime or service used by \"actions/checkout@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
       "<stdin>:16:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
     ],
@@ -956,7 +957,7 @@
     ],
     "schemastore/src/test/github-workflow/workflow_call_input_issue_2501.yaml": [
       "<stdin>:33:15: the runtime or service used by \"actions/labeler@v4\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:36:35: property \"config-path\" is not defined in object type {aws_env: string; aws_region: string; terraform_command: string; terraform_version: string; working_directory: string} [expression]"
+      "<stdin>:36:35: property \"config-path\" is not defined in object type {aws_env: string; aws_region: string; terraform_command: string; terraform_version: string; working_directory: string} [expression-reference]"
     ],
     "schemastore/src/test/github-workflow/workflow_dispatch-inputs.yaml": [
       "<stdin>:48:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"

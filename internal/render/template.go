@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+
+	"actionlint.kjanat.dev/rule"
 )
 
 // TemplateFields holds all fields to format one finding with a Go template.
@@ -30,10 +32,7 @@ type TemplateFields struct {
 }
 
 // Rule is the metadata a template may list through allKinds.
-type Rule struct {
-	Name        string
-	Description string
-}
+type Rule = rule.Descriptor
 
 func compareRules(lhs, rhs *Rule) int {
 	return strings.Compare(lhs.Name, rhs.Name)
@@ -56,7 +55,7 @@ func (s *ruleSet) register(rule Rule) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.rules[rule.Name]; !exists {
-		s.rules[rule.Name] = &Rule{rule.Name, rule.Description}
+		s.rules[rule.Name] = new(rule.Clone())
 	}
 }
 

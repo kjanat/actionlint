@@ -93,13 +93,13 @@ test('PR comparison uses the merge-base and latest head message, not the merge c
 	const repo = repository(t);
 	repo.git(['checkout', '--quiet', '-b', 'pr']);
 	repo.commit('internal/cli/check.go', 'First PR change\n\nCI-Skip: conformance');
-	const head = repo.commit('internal/cli/check_test.go', 'Latest PR change\n\nCI-Skip: nix');
+	const head = repo.commit('internal/integration/cli/check_test.go', 'Latest PR change\n\nCI-Skip: nix');
 	repo.git(['checkout', '--quiet', 'base']);
 	const base = repo.commit('unrelated.go', 'Base advanced');
 	repo.git(['merge', '--quiet', '--no-ff', 'pr', '-m', 'Synthetic merge\n\nCI: full']);
 	repo.event({ pull_request: { base: { sha: base }, head: { sha: head } } });
 	assert.deepEqual(changedInputs(repo.environment, repo.cwd), {
-		paths: ['internal/cli/check.go', 'internal/cli/check_test.go'],
+		paths: ['internal/cli/check.go', 'internal/integration/cli/check_test.go'],
 		trailers: { full: false, skip: ['nix'] },
 	});
 });
@@ -188,12 +188,29 @@ function workflowFilters(workflow) {
 	return JSON.parse(scalar);
 }
 
+test('plugin sources and Cargo inputs select the plugin checks', () => {
+	const ci = workflowFilters('ci');
+	for (
+		const path of [
+			'Cargo.toml',
+			'Cargo.lock',
+			'rust-toolchain.toml',
+			'examples/plugins/pipe-to-shell.rs',
+			'testdata/plugins/misbehave/src/lib.rs',
+		]
+	) {
+		assert.equal(selectJobs(ci, [path]).plugins, true, path);
+	}
+});
+
 test('test-only CLI changes keep Go coverage without rebuilding packages or running unrelated suites', () => {
-	const jobs = selectJobs(workflowFilters('ci'), ['internal/cli/usability_test.go']);
+	const jobs = selectJobs(workflowFilters('ci'), ['internal/integration/cli/usability_test.go']);
 	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), ['unit', 'race', 'lint']);
 	for (const workflow of ['codeql', 'conformance', 'expression-probe-tests', 'matcher']) {
 		assert.ok(
-			Object.values(selectJobs(workflowFilters(workflow), ['internal/cli/usability_test.go'])).every(run => !run),
+			Object.values(selectJobs(workflowFilters(workflow), ['internal/integration/cli/usability_test.go'])).every(run =>
+				!run
+			),
 		);
 	}
 });
@@ -207,7 +224,7 @@ test('action tests, probe results, mixed documentation and source changes select
 	assert.equal(selectJobs(ci, ['docs/usage.md', 'config.go']).unit, true);
 	assert.equal(
 		selectJobs(workflowFilters('expression-probe-tests'), [
-			'scripts/expression-probe/results/run.json',
+			'internal/expression/probe/results/run.json',
 		])['expression-probe'],
 		false,
 	);
@@ -228,6 +245,10 @@ test('action tests, probe results, mixed documentation and source changes select
 	assert.equal(selectJobs(workflowFilters('matcher'), ['internal/cli/check.go']).matcher, true);
 	assert.equal(selectJobs(ci, ['internal/cli/check.go'])['action-tests'], false);
 	assert.equal(selectJobs(ci, ['Dockerfile'])['action-tests'], false);
+	assert.equal(selectJobs(ci, ['tools/action/check-action-outputs.mjs'])['action-tests'], true);
+	assert.equal(selectJobs(ci, ['tools/config/main.go']).unit, true);
+	assert.equal(selectJobs(ci, ['tools/config/main.go']).lint, true);
+	assert.equal(selectJobs(ci, ['internal/webhook/payload/generate/main.mts']).javascript, true);
 	assert.equal(selectJobs(ci, ['.github/workflows/upkeep.yml']).unit, true);
 	assert.ok(Object.values(selectJobs(ci, ['.github/workflows/ci.yml'])).every(Boolean));
 });
@@ -310,6 +331,8 @@ test('pinned formatter helper and workflow changes select installer tests', () =
 	assert.match(pages, /uses: \$\/\.github\/actions\/setup-pandoc/);
 	assert.doesNotMatch(pages, /install_args:.*(?:runner|pandoc)/);
 	const upkeep = read('.github/workflows/upkeep.yml');
+	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-formatters/);
+	assert.doesNotMatch(upkeep, /uses: kjanat\/install-dprint/);
 	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-shellcheck/);
 	assert.match(
 		upkeep,
@@ -318,20 +341,25 @@ test('pinned formatter helper and workflow changes select installer tests', () =
 	assert.doesNotMatch(upkeep, /install_args:.*koalaman\/shellcheck/);
 });
 
-test('README autofix bootstraps mise without installing project tools', () => {
+test('autofix bootstraps mise for README and installs Node.js only for tables', () => {
 	const workflow = readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8');
 	const steps = workflow.split(/\n {6}- /);
 	const bootstraps = steps.filter(step => /uses: jdx\/mise-action@/.test(step));
 	assert.equal(bootstraps.length, 1, 'README generation requires one explicit mise bootstrap');
 	const [bootstrap] = bootstraps;
 	assert.ok(bootstrap);
-	assert.match(bootstrap, /if: steps\.inputs\.outputs\.readme == 'true'/);
-	assert.match(bootstrap, /install: false/);
-	assert.match(bootstrap, /env: false/);
+	assert.match(bootstrap, /if: steps\.inputs\.outputs\.tables == 'true' \|\| steps\.inputs\.outputs\.readme == 'true'/);
+	assert.match(bootstrap, /install: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \}\}/);
+	assert.match(bootstrap, /env: \$\{\{ steps\.inputs\.outputs\.tables == 'true' \}\}/);
 	assert.match(bootstrap, /add_shims_to_path: false/);
-	assert.match(bootstrap, /working_directory: \$\{\{ runner\.temp \}\}/);
+	assert.match(
+		bootstrap,
+		/working_directory: \$\{\{ steps\.inputs\.outputs\.tables == 'true' && github\.workspace \|\| runner\.temp \}\}/,
+	);
 	assert.match(bootstrap, /mise_dir: \$\{\{ env\.ACTIONLINT_MISE_DIR \}\}/);
-	assert.doesNotMatch(bootstrap, /install_args:/);
+	assert.match(bootstrap, /install_args: node npm/);
+	assert.match(bootstrap, /MISE_ENABLE_TOOLS: "node,npm"/);
+	assert.doesNotMatch(workflow, /uses: actions\/setup-node@/);
 	const readme = steps.findIndex(step => /id: readme\n/.test(step));
 	assert.ok(readme > steps.indexOf(bootstrap), 'mise must exist before the README generator runs');
 });
@@ -342,6 +370,10 @@ test('mise setup limits environment resolution to explicitly installed tools', (
 		const lines = readFileSync(new URL(name, directory), 'utf8').split('\n');
 		for (const [index, line] of lines.entries()) {
 			if (!/uses: (?:&SetupMise )?(?:jdx\/mise-action@|\*SetupMise)/.test(line)) continue;
+			if (/with: \*NodeTools/.test(line)) {
+				assert.match(line, /env: \*NodeToolsEnv/, `${name} shared Node.js setup must retain its tool scope`);
+				continue;
+			}
 			const indentation = line.indexOf('uses:');
 			const body = [];
 			for (const following of lines.slice(index + 1)) {

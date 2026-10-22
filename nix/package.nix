@@ -18,15 +18,15 @@ in
 buildGoModule {
   pname = "actionlint";
   inherit src version;
-  vendorHash = "sha256-nwlNN1/YEeY21WrPDgMW4Z9CRvSlTmmKZ4dmIGfAmFc=";
+  vendorHash = "sha256-YXC+s+MWO1i6lHEKItW4K7CmTdHADxAKAMby8T/mM4E=";
   subPackages = [ "cmd/actionlint" ];
 
   env.CGO_ENABLED = 0;
   ldflags = [
     "-s"
     "-w"
-    "-X actionlint.kjanat.dev/internal/engine.version=${version}"
-    "-X actionlint.kjanat.dev/internal/engine.installedFrom=Nix"
+    "-X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=${version}"
+    "-X actionlint.kjanat.dev/internal/buildinfo.InstallOrigin=Nix"
   ];
 
   nativeBuildInputs = [
@@ -44,7 +44,7 @@ buildGoModule {
   checkPhase = ''
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
-    go test -skip '^(${completionTests})$' . ./analysis/... ./analyzer/... ./config/... ./diagnostic/... ./document/... ./syntax/... ./cmd/... ./fuzz ./internal/...
+    go test -skip '^(${completionTests})$' . ./analysis/... ./analyzer/... ./config/... ./diagnostic/... ./document/... ./syntax/... ./cmd/... ./fuzz ./internal/... ./tools/...
     runHook postCheck
   '';
 

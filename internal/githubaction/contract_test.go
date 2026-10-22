@@ -8,8 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/internal/render"
+
 	"actionlint.kjanat.dev/internal/cli"
-	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -41,7 +42,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 			t.Errorf("%s differs from Action JSON output", filepath.Base(path))
 		}
 	}
-	var result actionlint.CheckResult
+	var result render.CheckResult
 	if err := json.Unmarshal([]byte(rendered), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -64,6 +65,7 @@ func TestCLIAndActionResultContract(t *testing.T) {
 	for _, tc := range []struct {
 		name, source string
 		code         int
+		symlink      bool
 	}{
 		{"clean", `on: push
 jobs:
@@ -71,17 +73,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
-`, 0},
+`, 0, false},
 		{"findings", `on: push
 jobs:
   test:
     runs-on: invalid-runner
     steps:
       - run: echo ok
-`, 1},
+`, 1, false},
+		{"symlinked workspace", `on: push
+jobs:
+  test:
+    runs-on: invalid-runner
+    steps:
+      - run: echo ok
+`, 1, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workspace := t.TempDir()
+			if tc.symlink {
+				alias := filepath.Join(t.TempDir(), "workspace")
+				if err := os.Symlink(workspace, alias); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
+				workspace = alias
+			}
 			t.Chdir(workspace)
 			if err := os.WriteFile("ci.yml", []byte(tc.source), 0600); err != nil {
 				t.Fatal(err)
@@ -91,19 +107,21 @@ jobs:
 			if code := command.Main([]string{"actionlint", "check", "--json", "--shellcheck=", "--pyflakes=", "ci.yml"}); code != tc.code {
 				t.Fatalf("CLI status %d: %s", code, &stderr)
 			}
-			var cliResult actionlint.CheckResult
+			var cliResult render.CheckResult
 			if err := json.Unmarshal(stdout.Bytes(), &cliResult); err != nil {
 				t.Fatal(err)
 			}
 			resultPath := filepath.Join(workspace, "result.json")
 			outputPath := filepath.Join(workspace, "outputs")
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false"}
+			env := map[string]string{
+				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
+				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false",
+			}
 			stdout.Reset()
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
 				t.Fatalf("Action status %d: %s", code, &stdout)
 			}
-			var persisted, rendered actionlint.CheckResult
+			var persisted, rendered render.CheckResult
 			if err := json.Unmarshal([]byte(read(t, resultPath)), &persisted); err != nil {
 				t.Fatal(err)
 			}

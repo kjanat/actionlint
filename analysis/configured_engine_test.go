@@ -305,3 +305,46 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 		})
 	}
 }
+
+func TestConfiguredEngineURIs(t *testing.T) {
+	for _, scheme := range []string{"http", "https"} {
+		for _, mode := range []string{"sources", "files", "repository"} {
+			t.Run(scheme+"/"+mode, func(t *testing.T) {
+				root, paths, _ := configuredEngineFixture(t)
+				t.Chdir(t.TempDir())
+				uri := scheme + "://example.com/engine.wasm?version=1#sha256=" + strings.Repeat("a", 64)
+				configPath := filepath.Join(root, "actionlint.yaml")
+				if err := os.WriteFile(configPath, []byte("tools: {ruff: {backend: {wasm: {path: '"+uri+"'}}}}"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				cfg, err := config.Load(configPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				backend := &configuredBackend{}
+				var loads atomic.Int32
+				options := analysis.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, source string) (analyzer.ScriptBackend, error) {
+					loads.Add(1)
+					if source != uri {
+						t.Errorf("changed engine URI: got %q, want %q", source, uri)
+					}
+					return backend, nil
+				}}
+				result, err := runConfiguredAnalysis(t, mode, root, paths[:2], cfg, options)
+				if err != nil || result == nil || loads.Load() != 1 || backend.closes.Load() != 1 {
+					t.Fatalf("URI engine: result=%+v err=%v loads=%d closes=%d", result, err, loads.Load(), backend.closes.Load())
+				}
+				foundConfig := false
+				for _, path := range result.Inputs {
+					if strings.Contains(path, "example.com") {
+						t.Errorf("remote engine treated as local input: %q", path)
+					}
+					foundConfig = foundConfig || path == configPath
+				}
+				if !foundConfig {
+					t.Error("engine configuration missing from local inputs")
+				}
+			})
+		}
+	}
+}

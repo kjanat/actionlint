@@ -180,7 +180,7 @@ test('recognizes unchanged YAML parents around partial diff hunks', () => {
 });
 
 test('does not flag the generated configuration examples by length', () => {
-	const source = readFileSync(new URL('../../../internal/engine/config_default.yaml', import.meta.url), 'utf8');
+	const source = readFileSync(new URL('../../../internal/config/config_default.yaml', import.meta.url), 'utf8');
 	const lines = source.split('\n');
 	const patch = `@@ -0,0 +1,${lines.length} @@\n${lines.map(line => `+${line}`).join('\n')}`;
 	const groups = groupsFromPatch('config_default.yaml', patch, source);

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see scripts/generate-config-schema/README.md.",
+  "$comment": "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see tools/config/README.md.",
   "title": "ShellCheck 0.11.0 inline directives for actionlint",
   "description": "Is a typed representation of project-wide ShellCheck directives.",
   "markdownDescription": "Is a typed representation of project-wide ShellCheck directives.",
@@ -25,8 +25,8 @@
     },
     "enable": {
       "title": "enable",
-      "description": "Lists optional check names, or all. ShellCheck validates available names.",
-      "markdownDescription": "Lists optional check names, or all. ShellCheck validates available names.",
+      "description": "Selects optional check names. Scalar all or true expands to [all]. This selection does not change the tool enabled setting.",
+      "markdownDescription": "Selects optional check names. Scalar all or true expands to [all]. This selection does not change the tool enabled setting.",
       "oneOf": [
         {
           "type": "array",
@@ -37,6 +37,18 @@
         },
         {
           "type": "null"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "all"
+          ]
+        },
+        {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
         }
       ]
     },

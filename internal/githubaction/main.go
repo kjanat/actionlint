@@ -29,9 +29,15 @@ func environmentArgs(env func(string) string) []string {
 	args := make([]string, 1, 10)
 	args[0] = "actionlint -github-action"
 	for _, input := range []struct{ name, fallback string }{
-		{"FILES", ""}, {"FORMAT", "github"}, {"IGNORE", ""}, {"CONFIG-FILE", ""},
-		{"SHELLCHECK", "true"}, {"PYFLAKES", "false"}, {"WORKING-DIRECTORY", "."},
-		{"OUTPUT-FILE", ""}, {"FAIL-ON-ERROR", "true"},
+		{"FILES", ""},
+		{"FORMAT", "github"},
+		{"IGNORE", ""},
+		{"CONFIG-FILE", ""},
+		{"SHELLCHECK", "true"},
+		{"PYFLAKES", "false"},
+		{"WORKING-DIRECTORY", "."},
+		{"OUTPUT-FILE", ""},
+		{"FAIL-ON-ERROR", "true"},
 	} {
 		value := env("INPUT_" + input.name)
 		if value == "" {

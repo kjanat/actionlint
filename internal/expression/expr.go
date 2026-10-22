@@ -2,8 +2,8 @@ package expression
 
 import "fmt"
 
-// Error is an Error type caused by lexing/parsing expression syntax. For more details, see
-// https://docs.github.com/en/actions/learn-github-actions/expressions
+// Error is a syntax or semantic finding in an expression. Rule and Code identify
+// the check independently of its wording and source coordinates.
 type Error struct {
 	// Message is an Error message
 	Message string
@@ -15,8 +15,9 @@ type Error struct {
 	Line int
 	// Column is column number position which caused the Error. Note that this value is 1-based.
 	Column int
-	// rule identifies a separately configurable semantic diagnostic.
+	// Rule identifies the configurable check; Code identifies its diagnostic kind.
 	Rule string
+	Code string
 }
 
 func (e *Error) Error() string {

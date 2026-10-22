@@ -29,12 +29,12 @@ func TestFilesRootsRelativeTargetsInWorkingDirectory(t *testing.T) {
 			}
 			paths := []string{path}
 			result, err := analysis.Files(t.Context(), paths, analysis.FileOptions{
-				Options: analysis.Options{WorkingDir: root, ReadFile: func(actual string) ([]byte, error) {
+				WorkingDir: root, ReadFile: func(actual string) ([]byte, error) {
 					if actual != expected {
 						return nil, fmt.Errorf("read %q; want %q", actual, expected)
 					}
 					return []byte(workflow), nil
-				}}, SkipProjectConfig: true,
+				}, SkipProjectConfig: true,
 			})
 			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 				t.Fatalf("result=%+v err=%v", result, err)
@@ -76,7 +76,7 @@ func TestRepositoryRootsRelativeDirectoryInWorkingDirectory(t *testing.T) {
 				directory, workingDir = "", repository
 			}
 			result, err := analysis.Repository(t.Context(), directory, analysis.FileOptions{
-				Options: analysis.Options{WorkingDir: workingDir}, SkipProjectConfig: true,
+				WorkingDir: workingDir, SkipProjectConfig: true,
 			})
 			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 				t.Fatalf("result=%+v err=%v", result, err)

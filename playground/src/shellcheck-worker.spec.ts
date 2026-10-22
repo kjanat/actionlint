@@ -110,6 +110,7 @@ describe('ShellCheck worker boundary', () => {
 	it('loads the pinned CDN assets through a module bootstrap, matching offline tests', async () => {
 		await loadShellcheck();
 		const version = pkg.devDependencies['@kjanat/rshellcheck-wasm'];
+		assert.match(version, /^\d+\.\d+\.\d+$/, 'CDN and offline tests must use one exact version');
 		assert.equal(
 			shellcheckAssets.wasm,
 			`https://cdn.jsdelivr.net/npm/@kjanat/rshellcheck-wasm@${version}/shellcheck_wasm.wasm`,
