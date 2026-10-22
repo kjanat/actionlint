@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 type concurrentEngine struct {

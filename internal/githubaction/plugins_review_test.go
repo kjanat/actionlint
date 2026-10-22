@@ -84,7 +84,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{
 				"GITHUB_WORKSPACE": root, "INPUT_FORMAT": "json",
-				"INPUT_FILES": ".github/workflows/ci.yml",
+				"INPUT_FILES": ".github/workflows/ci.yml", "INPUT_RUFF": "true",
 			}
 			lookup := func(key string) string { return env[key] }
 			plan, err := provisioningRequest(lookup)
