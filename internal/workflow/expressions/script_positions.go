@@ -7,10 +7,10 @@ import (
 
 	"mvdan.cc/sh/v3/syntax"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	"actionlint.kjanat.dev/internal/workflow/runner"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 func (rule *Checker) scriptShell(run *workflowlang.ExecRun) string {

@@ -17,7 +17,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/webhook/payload"
+	"actionlint.kjanat.dev/v2/internal/webhook/payload"
 )
 
 // These inputs are pinned. Updating them is an explicit maintenance operation;

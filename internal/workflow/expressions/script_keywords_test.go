@@ -7,7 +7,7 @@ import (
 
 	"mvdan.cc/sh/v3/syntax"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestReservedMatrixWordChangesShellGrammar(t *testing.T) {
