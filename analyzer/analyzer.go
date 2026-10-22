@@ -1,0 +1,161 @@
+// Package analyzer defines document analyzers independently of AST traversal,
+// executable tools, configuration discovery, and diagnostic rendering.
+package analyzer
+
+import (
+	"context"
+	"encoding/json"
+
+	"actionlint.kjanat.dev/diagnostic"
+)
+
+// Fact identifies shared information requested by an analyzer.
+type Fact string
+
+const (
+	Source      Fact = "source"
+	Scripts     Fact = "scripts"
+	Mappings    Fact = "mappings"
+	Invocations Fact = "invocations"
+	Execution   Fact = "execution"
+)
+
+// Descriptor declares identity and input requirements before execution.
+type Descriptor struct {
+	Name     string
+	Requires []Fact
+}
+
+// Analyzer completes all work before returning. The host may call Analyze
+// concurrently for different documents. Implementations must honor cancellation.
+// Findings may accompany an error when an analysis is incomplete.
+type Analyzer interface {
+	Descriptor() Descriptor
+	Analyze(context.Context, Input) ([]diagnostic.Diagnostic, error)
+}
+
+// Registration supplies analyzer-specific configuration without exposing the
+// host's mutable configuration objects or rule registry.
+type Registration struct {
+	Analyzer Analyzer
+	Options  json.RawMessage
+}
+
+// Input is one document and its shared analysis facts. Each analyzer receives
+// its own slices; Content and script text are immutable strings. Scripts are
+// declared by the document itself. Invoked scripts belong to composite actions
+// the document calls and name their own Path.
+type Input struct {
+	Path        string
+	Content     string
+	Kind        string
+	ParseStatus string
+	Available   []Fact
+	Options     json.RawMessage
+	Scripts     []Script
+	Invoked     []Script
+	Mappings    []Mapping
+}
+
+// Script is a declared run script. Shell contains the declared shell, without
+// resolving runner defaults. Start points to the original run value in the
+// document at Path; an empty Path means Input.Path. Spans map text positions
+// back to that document. Invocation is set for scripts reached through a
+// composite action call. Runtime is set when the Execution fact was requested.
+type Script struct {
+	JobID      string
+	StepID     string
+	Text       string
+	Shell      string
+	Start      diagnostic.Position
+	Path       string
+	Spans      []Span
+	Invocation *Invocation
+	Runtime    *Runtime
+}
+
+// Span maps the text columns [Start, End) of one line of Text to the declaring
+// document. Document is the position of the first mapped character. DocumentEnd
+// is nonzero for a decoded escape sequence, whose source width differs from its
+// text width.
+type Span struct {
+	Line        int
+	Start       int
+	End         int
+	Document    diagnostic.Position
+	DocumentEnd diagnostic.Position
+}
+
+// Invocation identifies the step whose uses: reference reached a composite
+// action's script. Caller names the document containing that step; an empty
+// Caller means Input.Path. Depth counts composite calls from Input.Path.
+type Invocation struct {
+	Caller string
+	Step   diagnostic.Position
+	Uses   string
+	Depth  int
+}
+
+// Runtime carries the shell and working directory the runner would use.
+// ShellKnown and DirectoryKnown report whether static analysis determined the
+// value. ShellImplicit marks a shell supplied by the runner or platform.
+type Runtime struct {
+	Shell          string
+	ShellKnown     bool
+	ShellImplicit  bool
+	Directory      string
+	DirectoryKnown bool
+}
+
+// Position maps a one-based line and character column of Text to the declaring
+// document. Exclusive selects the end of a range. Text without a source, such as
+// whitespace synthesized by YAML folding, reports false.
+func (s Script) Position(line, column int, exclusive bool) (diagnostic.Position, bool) {
+	for _, span := range s.Spans {
+		if span.Line != line {
+			continue
+		}
+		inside := column >= span.Start && column < span.End
+		if exclusive {
+			inside = column > span.Start && column <= span.End || span.Start == span.End && column == span.Start
+		}
+		if !inside {
+			continue
+		}
+		if span.DocumentEnd.Line != 0 {
+			if exclusive && column == span.End {
+				return span.DocumentEnd, true
+			}
+			return span.Document, true
+		}
+		return diagnostic.Position{Line: span.Document.Line, Column: span.Document.Column + column - span.Start}, true
+	}
+	return diagnostic.Position{}, false
+}
+
+// Mapping contains normalized names and source provenance for a declaration.
+// Complete is false when an insertion or key depends on runtime values.
+type Mapping struct {
+	Scope    string
+	Complete bool
+	Entries  []Entry
+}
+
+// Entry separates an evaluated name from source expression text. Evaluated
+// entries came from object expressions and must not be interpreted again.
+type Entry struct {
+	Name      string
+	State     KeyState
+	Source    string
+	Evaluated bool
+	Start     diagnostic.Position
+}
+
+// KeyState distinguishes a runtime name from a statically invalid declaration.
+type KeyState string
+
+const (
+	UnknownKey KeyState = "unknown"
+	KnownKey   KeyState = "known"
+	InvalidKey KeyState = "invalid"
+)

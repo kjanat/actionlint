@@ -13,7 +13,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/ruff"
 )
 

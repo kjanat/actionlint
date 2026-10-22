@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -49,7 +49,7 @@ jobs:
 ` + cachePolicySteps
 	var stdout, stderr strings.Builder
 	cmd := Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-	status := cmd.Main([]string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-format", actionlint.SARIFTemplate(), "-"})
+	status := cmd.Main([]string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-output", "sarif", "-"})
 	if status != actionlint.ExitStatusSuccessProblemFound || stderr.Len() != 0 {
 		t.Fatalf("status=%d stderr=%s", status, &stderr)
 	}

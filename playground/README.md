@@ -66,7 +66,7 @@ and type-checked separately:
 npm run lint
 ```
 
-Formatting is handled from the repository root by [dprint](https://dprint.dev/). See [`.dprint.jsonc`](../.dprint.jsonc).
+Formatting is handled from the repository root by [dprint](https://dprint.dev/). See [`dprint.toml`](../dprint.toml).
 
 ## Deployment
 

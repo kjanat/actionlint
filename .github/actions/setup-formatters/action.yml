@@ -1,0 +1,29 @@
+name: Setup pinned formatters (Linux x64)
+description: Install reviewed dprint and Tombi release bytes without GitHub API discovery.
+runs:
+  using: composite
+  steps:
+    - name: Select formatter pins
+      id: prepare
+      shell: bash
+      run: bash "${GITHUB_ACTION_PATH}/setup.bash" prepare
+    - name: Restore formatter archives
+      id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: ${{ steps.prepare.outputs.cache-key }}
+    - name: Verify and install formatters
+      shell: bash
+      run: bash "${GITHUB_ACTION_PATH}/setup.bash" install
+    - name: Cache verified formatter archives
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}
+    - name: Cache compiled dprint plugins
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/dprint
+        key: dprint-plugins-v1-${{ steps.prepare.outputs.cache-key }}-${{ hashFiles('dprint.toml', 'dprint.json', 'dprint.jsonc') }}

@@ -2,8 +2,8 @@
 # directory over it whenever the directory is newer, so no built-in rule may apply here.
 MAKEFLAGS += --no-builtin-rules
 
-GO_FILES := $(wildcard *.go cmd/*/*.go internal/*/*.go)
-SRCS := $(filter-out %_test.go, $(GO_FILES)) config_default.yaml sarif_template.txt internal/actioncatalog/popular_actions.json go.mod go.sum
+GO_FILES := $(wildcard *.go analysis/*.go config/*.go diagnostic/*.go document/*.go syntax/*.go analyzer/*.go cmd/*/*.go internal/*/*.go)
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/engine/config_default.yaml internal/actioncatalog/popular_actions.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard scripts/*/*.go)
 TESTDATA := $(wildcard \
@@ -101,16 +101,16 @@ endif
 lint-docs:
 	go run ./scripts/check-checks -quiet ./docs/checks.md
 
-internal/actioncatalog/popular_actions.json all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go: $(GO_GEN_SRCS)
+internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go: $(GO_GEN_SRCS)
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json all_webhooks.go availability.go action_metadata_availability.go action_runtimes.go
+	$(TOUCH) internal/actioncatalog/popular_actions.json internal/engine/all_webhooks.go internal/workflowcontext/availability.go internal/engine/action_metadata_availability.go internal/engine/action_runtimes.go
 else
 	go generate
 endif
 
 GIT_DESCRIBE := $(shell git describe --tags 2>/dev/null)
 ifneq ($(GIT_DESCRIBE),)
-BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev.version=$(GIT_DESCRIBE)"
+BUILD_LDFLAGS = -ldflags "-X actionlint.kjanat.dev/internal/engine.version=$(GIT_DESCRIBE)"
 endif
 
 # Creating or moving a tag changes the version stamp without touching a prerequisite.
@@ -142,7 +142,7 @@ man/actionlint.1.html: man/actionlint.1.md man/manual.css
 man: man/actionlint.1 man/actionlint.1.html
 
 bench:
-	go test -bench Lint -benchmem
+	go test -bench Lint -benchmem ./internal/engine
 
 .github/actionlint-matcher.json: scripts/generate-actionlint-matcher/main.mjs scripts/generate-actionlint-matcher/object.mjs
 	node ./scripts/generate-actionlint-matcher/main.mjs .github/actionlint-matcher.json

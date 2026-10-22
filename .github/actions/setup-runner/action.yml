@@ -1,0 +1,65 @@
+name: Setup cached runner cli
+description: Install pinned runner bytes using bundled signed provenance and reuse authenticated binary hashes.
+inputs:
+  version-file:
+    description: File containing an exact runner version pin.
+    default: .tool-versions
+  verify:
+    description: Provenance policy, auto or require. Reviewed pins always have verified provenance.
+    default: auto
+outputs:
+  version:
+    description: Installed runner version.
+    value: ${{ steps.publish.outputs.version }}
+  bin-dir:
+    description: Directory added to PATH.
+    value: ${{ steps.publish.outputs.bin-dir }}
+  runner-bin:
+    description: Full path to runner.
+    value: ${{ steps.publish.outputs.runner-bin }}
+  run-bin:
+    description: Full path to run.
+    value: ${{ steps.publish.outputs.run-bin }}
+runs:
+  using: composite
+  steps:
+    - name: Identify pinned runner installation
+      id: prepare
+      shell: bash
+      env:
+        VERSION_FILE: ${{ inputs.version-file }}
+        VERIFY_MODE: ${{ inputs.verify }}
+      run: node "${GITHUB_ACTION_PATH//\\//}/setup.mjs" prepare
+    - name: Restore runner installation
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: ${{ steps.prepare.outputs.cache-key }}
+    - name: Check runner verification receipt
+      id: inspect
+      shell: bash
+      env:
+        VERSION_FILE: ${{ inputs.version-file }}
+        VERIFY_MODE: ${{ inputs.verify }}
+      run: node "${GITHUB_ACTION_PATH//\\//}/setup.mjs" inspect
+    - name: Install and verify runner
+      id: install
+      if: steps.inspect.outputs.hit != 'true'
+      shell: bash
+      env:
+        VERSION_FILE: ${{ inputs.version-file }}
+        VERIFY_MODE: ${{ inputs.verify }}
+      run: node "${GITHUB_ACTION_PATH//\\//}/setup.mjs" install
+    - name: Save verified runner installation
+      if: steps.inspect.outputs.hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: ${{ steps.prepare.outputs.cache-key }}
+    - name: Publish runner paths
+      id: publish
+      shell: bash
+      env:
+        VERSION_FILE: ${{ inputs.version-file }}
+        VERIFY_MODE: ${{ inputs.verify }}
+      run: node "${GITHUB_ACTION_PATH//\\//}/setup.mjs" publish

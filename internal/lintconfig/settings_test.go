@@ -10,6 +10,8 @@ import (
 func TestSettingCanonicalLevels(t *testing.T) {
 	for _, tc := range []struct{ input, want string }{
 		{"false", "off"},
+		{"true", "on"},
+		{"{level: true}", "on"},
 		{"{level: false}", "off"},
 		{"null", "default"},
 		{"{level: null}", "default"},
@@ -40,7 +42,7 @@ func TestSettingCanonicalLevels(t *testing.T) {
 }
 
 func TestLevelErrorsUseNamedLevels(t *testing.T) {
-	for _, input := range []string{"''", "true", "0", "[]", "{}"} {
+	for _, input := range []string{"''", "0", "[]", "{}"} {
 		var level Level
 		err := yaml.Unmarshal([]byte(input), &level)
 		if err == nil {

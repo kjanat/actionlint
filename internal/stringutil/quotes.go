@@ -1,0 +1,92 @@
+package stringutil
+
+import (
+	"slices"
+	"strconv"
+	"strings"
+)
+
+type QuotesBuilder struct {
+	inner strings.Builder
+	buf   []byte
+	comma bool
+}
+
+func (b *QuotesBuilder) Append(s string) {
+	if b.comma {
+		b.inner.WriteString(", ")
+	} else {
+		b.comma = true
+	}
+	b.buf = strconv.AppendQuote(b.buf[:0], s)
+	b.inner.Write(b.buf)
+}
+
+func (b *QuotesBuilder) appendRune(r rune) {
+	if b.comma {
+		b.inner.WriteString(", ")
+	} else {
+		b.comma = true
+	}
+	b.buf = strconv.AppendQuoteRune(b.buf[:0], r)
+	b.inner.Write(b.buf)
+}
+
+func (b *QuotesBuilder) Build() string {
+	return b.inner.String()
+}
+
+func Quotes(ss []string) string {
+	l := len(ss)
+	if l == 0 {
+		return ""
+	}
+	n, longest := 0, 0
+	for _, s := range ss {
+		m := len(s) + 2 // 2 for delims
+		n += m
+		if m > longest {
+			longest = m
+		}
+	}
+	n += (l - 1) * 2 // comma
+	b := QuotesBuilder{}
+	b.buf = make([]byte, 0, longest)
+	b.inner.Grow(n)
+	for _, s := range ss {
+		b.Append(s)
+	}
+	return b.Build()
+}
+
+func SortedQuotes(ss []string) string {
+	sorted := slices.Clone(ss)
+	slices.Sort(sorted)
+	return Quotes(sorted)
+}
+
+func QuotesAll(sss ...[]string) string {
+	n, longest := 0, 0
+	for _, ss := range sss {
+		for _, s := range ss {
+			m := len(s) + 2 // 2 for delims
+			n += m
+			if m > longest {
+				longest = m
+			}
+		}
+		n += (len(ss) - 1) * 2 // comma
+	}
+	b := QuotesBuilder{}
+	b.buf = make([]byte, 0, longest)
+	n += (len(sss) - 1) * 2 // comma
+	if n > 0 {
+		b.inner.Grow(n)
+	}
+	for _, ss := range sss {
+		for _, s := range ss {
+			b.Append(s)
+		}
+	}
+	return b.Build()
+}

@@ -58,8 +58,8 @@ rc paths retain the directory of their declaring configuration.
 
 Only local files are supported: no remote downloads, package resolution, or
 commands. Missing bases, cycles, invalid base settings, and chains deeper than
-32 levels are errors. `ReadConfigFile` and file-based CLI configuration resolve
-inheritance. In-memory `ParseConfig` and inline Action overlays cannot resolve
+32 levels are errors. `config.Load` and file-based CLI configuration resolve
+inheritance. In-memory `config.Parse` and inline Action overlays cannot resolve
 `extends`; select a configuration file instead.
 
 ## File selection
@@ -128,7 +128,7 @@ lint:
 
 Every catalog rule accepts `off`, `on` (retain its native severity), `info`, `warn`,
 or `error`. Use `default` to reset a rule or group override to the applicable
-preset/group baseline. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
+preset/group baseline. `true` is an alias for `on`, and `false` for `off`; a group also accepts `all` as shorthand for `{preset: all}`. `options: null` resets a rule's options. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
 the rule supports them. Unknown groups, rules, levels and option keys are rejected.
 For example, `require-permissions` accepts `{scope: job}`; `require-job-timeout`
 accepts timeout bounds. The generated schema describes each rule's own options.
@@ -237,18 +237,22 @@ It never installs tools or executes Python scripts.
 tools:
   ruff:
     enabled: true
-    target-version: py314
-    # select: [F, B, S]
-    ignore: []
+    config:
+      target-version: py314
+      lint:
+        extend-select: [B, S]
+        ignore: []
 lint:
   rules:
     external:
       ruff: error
 ```
 
-Ruff uses its own default rule selection. `select` and `ignore`
+Ruff uses its own default rule selection. `config` accepts Ruff's native options, including nested `lint` settings and rule-specific options. The selected Ruff engine validates them. Omitted or null options retain engine defaults.
+
+The legacy flat `select` and `ignore`
 accept Ruff codes or prefixes matching stable rules; preview-only selectors are
-rejected. Lists replace inherited lists. `select: []` selects
+rejected. Lists replace inherited lists. Flat selectors override their equivalents inside `config.lint`; `config.target-version` takes precedence over the flat target. `select: []` selects
 no lint rules (Python syntax errors can still be reported). `target-version`
 defaults to the version in an explicit interpreter such as `python3.9`, when
 supported by Ruff, and otherwise to `py314`. An explicit setting takes precedence.
@@ -269,13 +273,68 @@ actionlint's workflow checks still run. Templates inside strings and comments
 continue to be sanitized while preserving source positions.
 Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.
 
-The Go APIs opt in with `AnalysisOptions.Ruff`, `AnalysisRequest.Ruff`, or
-`LinterOptions.Ruff`; an empty command disables the tool. The analysis APIs also
-accept `RuffOptions` for literal executable paths, arguments, and child environment.
+The Go library opts in with `analysis.Options.Ruff`, selecting either a
+`Process` or an `analyzer.ScriptBackend`; a zero `analysis.Tool` disables it.
+See [the library API](api.md#script-engine-backends) for cancellation, configuration
+and backend lifetime requirements.
 The GitHub Action's `ruff` input defaults to `true`.
 The Action installs Ruff when enabled and required by the effective configuration.
 It reuses a binary on `PATH`, then its cache, then a checksum-verified release download.
 The browser playground cannot run external tools.
+
+## Tool execution backends
+
+Engine configuration and execution are separate. `tools.<name>.config` configures
+checks; `tools.<name>.backend.process` configures native invocation. Process is the
+currently configurable transport. Library callers may also supply an engine backend
+without an executable. Core-WASM and component-WASM loading are future adapters.
+
+```yaml
+tools:
+  shellcheck:
+    backend:
+      process:
+        executable: mise
+        args: [exec, --silent, --quiet, "github:kjanat/shellcheck-rs@latest", --, rshellcheck]
+        env: { SHELLCHECK_OPTS: "" }
+    config:
+      enable: [all]
+  ruff:
+    backend:
+      process:
+        executable: ./tools/ruff
+    config:
+      lint: { extend-select: [B, S] }
+```
+
+Executable paths are literal. Relative paths resolve from the declaring config
+file, including inherited files and file overrides; inline configs use the analysis
+working directory. Bare names use `PATH`. Arguments are literal launcher arguments
+prepended to the engine invocation; they are never shell source. Environment entries
+affect the child only. Explicit CLI, environment or library invocation settings take
+precedence over repository process settings. An explicit disable remains disabled.
+
+Repository-selected native executables require `--allow-config-processes`. Enable
+this flag only for trusted configuration, including its inherited files and file
+overrides. Without host opt-in, actionlint reports the selected process backend as
+an operational error before launching it. Explicit CLI, environment and library
+process selections already authorize their own executable.
+
+The pinning rule supports scoped exceptions without suppressing other action checks:
+
+```yaml
+lint:
+  rules:
+    policy:
+      require-commit-hash:
+        level: true
+        options:
+          exclude: ["my-org/*"]
+```
+
+Patterns without `@` match the repository or complete action path; repository
+matches also cover sub-actions and reusable workflows. Patterns containing `@`
+match the complete reference including its ref. Docker references retain `docker://`.
 
 ## Additional correctness checks
 

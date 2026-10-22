@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"actionlint.kjanat.dev/internal/fsread"
 	"actionlint.kjanat.dev/internal/projectpath"
 	"github.com/fatih/color"
@@ -140,8 +140,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		presets.Experimental = &c.Experimental
 	}
 	app, err := actionlint.NewAnalysisSession(actionlint.AnalysisOptions{
-		RulePresets: presets,
-		Context:     ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
+		AllowConfigProcesses: c.AllowConfigProcesses,
+		RulePresets:          presets,
+		Context:              ctx, WorkingDir: options.WorkingDir, StdinFileName: options.StdinFileName,
 		ConfigFile: options.ConfigFile, Shellcheck: options.Shellcheck,
 		ShellcheckOptions: c.ShellcheckOptions,
 		Ruff:              c.Ruff, RuffOptions: c.RuffOptions,

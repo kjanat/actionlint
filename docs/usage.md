@@ -419,6 +419,12 @@ settings. Legacy `-ruff COMMAND` and `-shellcheck COMMAND` still accept separate
 values on the root. The older `=false` and empty values also remain supported.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
+Repository configuration can select native executables through
+`tools.<name>.backend.process`. Authorize these selections with
+`--allow-config-processes` only when you trust the complete configuration,
+including inherited files and overrides. Explicit CLI and environment commands
+already authorize their own executable.
+
 The deprecated `-pyflakes COMMAND` option selects Ruff's Pyflakes (`F`) rules
 when no Ruff option is supplied. The command value is never executed.
 An empty value or `false` disables Python linting. Explicit Ruff options take precedence.
@@ -554,7 +560,7 @@ Use the built-in format directly:
 actionlint --output sarif > actionlint.sarif
 ```
 
-The [canonical template](../sarif_template.txt) remains available for custom formatting.
+Native SARIF output is a typed JSON document.
 
 Outputs are also too large to be written here. Please read [the output example in test data](../testdata/format/test.sarif).
 
@@ -1053,7 +1059,7 @@ repos:
     hooks:
       - id: actionlint
         additional_dependencies:
-          - github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@v0.11.0-wrapper.1
+          - github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@4698af259e9ac9b327d8b1e6e55d7ad17815e1db
 ```
 
 ### VS Code

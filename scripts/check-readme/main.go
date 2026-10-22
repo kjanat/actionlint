@@ -84,7 +84,7 @@ func (g *generator) lint() (string, string, error) {
 	}
 
 	g.log.Println("linting", workflow, "with", version)
-	out, err := g.miseExec(true, forkTool+"@latest", "--", binary, "-no-color",
+	out, err := g.miseExec(true, forkTool+"@latest", "--", binary, "-no-color", "-shellcheck=",
 		"-config-file", filepath.Join(fixtureDir, config),
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
@@ -141,12 +141,17 @@ func (g *generator) section() (string, error) {
 }
 
 func (g *generator) command(allowExitOne bool, name string, args ...string) ([]byte, error) {
+	return g.commandIn(g.root, allowExitOne, name, args...)
+}
+
+func (g *generator) commandIn(dir string, allowExitOne bool, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(g.ctx, name, args...)
-	cmd.Dir = g.root
+	cmd.Dir = dir
 	cmd.Env = append(os.Environ(),
 		"MISE_YES=1",
 		"MISE_SILENT=1",
 		"MISE_SAFE=1",
+		"MISE_ENABLE_TOOLS="+forkTool+","+upstreamTool,
 		"MISE_TRUSTED_CONFIG_PATHS="+g.root,
 		// The fork releases faster than the age gate admits, and the gate would hold the
 		// comparison on the previous release.
@@ -174,11 +179,17 @@ func (g *generator) miseExec(allowExitOne bool, args ...string) ([]byte, error) 
 }
 
 func (g *generator) releasedCommand(tool string) (string, error) {
-	requested := tool + "@latest"
-	if _, err := g.command(false, "mise", "install", requested); err != nil {
+	dir, err := os.MkdirTemp("", "actionlint-readme-release-")
+	if err != nil {
 		return "", err
 	}
-	output, err := g.command(false, "mise", "which", "actionlint", "--tool", requested)
+	defer os.RemoveAll(dir)
+
+	requested := tool + "@latest"
+	if _, err := g.commandIn(dir, false, "mise", "install", requested); err != nil {
+		return "", err
+	}
+	output, err := g.commandIn(dir, false, "mise", "which", "actionlint", "--tool", requested)
 	if err != nil {
 		return "", err
 	}
@@ -205,7 +216,7 @@ func (g *generator) measureUpstream() (string, string, error) {
 	}
 	g.log.Println("measuring upstream", version)
 
-	out, err := g.miseExec(true, upstreamTool+"@latest", "--", binary, "-no-color",
+	out, err := g.miseExec(true, upstreamTool+"@latest", "--", binary, "-no-color", "-shellcheck=",
 		filepath.Join(fixtureDir, workflow))
 	if err != nil {
 		return "", "", err

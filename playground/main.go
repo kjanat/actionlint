@@ -9,7 +9,7 @@ import (
 	"io"
 	"syscall/js"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 // Set by the site build to reject catalogue/WASM deployment mismatches.
@@ -63,9 +63,7 @@ func shellcheck(args []string, stdin string) ([]byte, error) {
 }
 
 func lint(source string, check uint64) {
-	opts := actionlint.LinterOptions{WorkingDir: "/", OnRulesCreated: func(rules []actionlint.Rule) []actionlint.Rule {
-		return append(rules, actionlint.NewRuleShellcheckWithRunner(shellcheck))
-	}}
+	opts := actionlint.LinterOptions{WorkingDir: "/", ShellcheckRunner: shellcheck}
 	linter, err := actionlint.NewLinter(io.Discard, &opts)
 	if err != nil {
 		fail(err, "creating linter instance")

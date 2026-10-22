@@ -2,7 +2,7 @@
   description = "GitHub Actions workflow linter";
 
   # Pin the required Go toolchain update until it reaches nixpkgs-unstable.
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/4b4931b2f5d285574aa1fbdbbf58e6aab595d31c";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/e666c2b24f9fbf7274b4d5caadc1f54cfb0c3dbb";
 
   outputs =
     { self, nixpkgs }:

@@ -1,7 +1,21 @@
+# yaml-language-server: $schema=https://www.schemastore.org/codecov.json
 # https://docs.codecov.com/docs/commit-status#disabling-a-status
+---
+comment: false
+github_checks: { annotations: true }
 coverage:
   status:
-    project: off
-    patch: off
-
-comment: false
+    project:
+      default: { target: 0%, informational: true }
+    patch:
+      default: { target: 0%, informational: true }
+ignore:
+  - "**/*_generated.go"
+  - "internal/component/bindings/**"
+  - "internal/plugins/component/bindings/**"
+  - "internal/engine/action_metadata_availability.go"
+  - "internal/engine/action_runtimes.go"
+  - "internal/engine/all_webhooks.go"
+  - "internal/workflowcontext/availability.go"
+  - "internal/expression/context/availability.go"
+  - "internal/webhook/webhooks.go"

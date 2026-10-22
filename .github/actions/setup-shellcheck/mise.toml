@@ -1,0 +1,3 @@
+[tasks.test]
+description = "Test verified ShellCheck installation and cache reuse"
+run         = "node --test setup.test.mjs"

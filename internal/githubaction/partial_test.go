@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func TestPartialResultAnalyzer(t *testing.T) {

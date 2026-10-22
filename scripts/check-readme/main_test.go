@@ -26,6 +26,10 @@ func TestMain(m *testing.M) {
 
 func runMiseHelper() {
 	args := os.Args[1:]
+	if os.Getenv("MISE_ENABLE_TOOLS") != forkTool+","+upstreamTool {
+		fmt.Fprintln(os.Stderr, "README probes must resolve only the compared release tools")
+		os.Exit(2)
+	}
 	file, err := os.OpenFile(os.Getenv("CHECK_README_MISE_CALLS"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -44,6 +48,10 @@ func runMiseHelper() {
 		os.Exit(2)
 	}
 	if len(args) == 2 && args[0] == "install" {
+		if _, err := os.Stat(".mise.toml"); err == nil {
+			fmt.Fprintln(os.Stderr, "failed to resolve configured install dependency 'github:koalaman/shellcheck@prefix:0.11' while offline")
+			os.Exit(2)
+		}
 		os.Exit(0)
 	}
 	if len(args) == 4 && args[0] == "which" && args[1] == "actionlint" && args[2] == "--tool" {
@@ -77,6 +85,9 @@ func miseHelperBinary(tool string) string {
 func miseGeneratorFixture(t *testing.T) (generator, string) {
 	t.Helper()
 	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".mise.toml"), []byte("[tools.\"github:kjanat/actionlint\"]\nversion = \"latest\"\ndepends = [\"github:koalaman/shellcheck\"]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -94,6 +105,7 @@ func miseGeneratorFixture(t *testing.T) (generator, string) {
 	}
 	capture := filepath.Join(root, "calls.jsonl")
 	t.Setenv("PATH", root+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("MISE_ENABLE_TOOLS", "node,npm")
 	t.Setenv(commandHelper, "mise")
 	t.Setenv("CHECK_README_MISE_CALLS", capture)
 	g := generator{ctx: t.Context(), root: root, log: log.New(io.Discard, "", 0)}
@@ -117,11 +129,11 @@ func TestReleasedToolsSkipProjectDependencyPreparation(t *testing.T) {
 		{"install", forkTool + "@latest"},
 		{"which", "actionlint", "--tool", forkTool + "@latest"},
 		{"exec", "--no-deps", forkTool + "@latest", "--", miseHelperBinary(forkTool + "@latest"), "-version"},
-		{"exec", "--no-deps", forkTool + "@latest", "--", miseHelperBinary(forkTool + "@latest"), "-no-color", "-config-file", filepath.Join(fixtureDir, config), filepath.Join(fixtureDir, workflow)},
+		{"exec", "--no-deps", forkTool + "@latest", "--", miseHelperBinary(forkTool + "@latest"), "-no-color", "-shellcheck=", "-config-file", filepath.Join(fixtureDir, config), filepath.Join(fixtureDir, workflow)},
 		{"install", upstreamTool + "@latest"},
 		{"which", "actionlint", "--tool", upstreamTool + "@latest"},
 		{"exec", "--no-deps", upstreamTool + "@latest", "--", miseHelperBinary(upstreamTool + "@latest"), "-version"},
-		{"exec", "--no-deps", upstreamTool + "@latest", "--", miseHelperBinary(upstreamTool + "@latest"), "-no-color", filepath.Join(fixtureDir, workflow)},
+		{"exec", "--no-deps", upstreamTool + "@latest", "--", miseHelperBinary(upstreamTool + "@latest"), "-no-color", "-shellcheck=", filepath.Join(fixtureDir, workflow)},
 	}
 	if len(lines) != len(want) {
 		t.Fatalf("captured %d invocations, want %d: %s", len(lines), len(want), captured)

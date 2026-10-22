@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -240,6 +240,26 @@ test('Action smoke fixtures are re-included after the general testdata exclusion
 	assert.equal(selectJobs(ci, ['testdata/ok/other.yaml']).action, false);
 });
 
+test('Pandoc pins and installer select both consumers and installation regression tests', () => {
+	for (const path of ['.github/actions/setup-pandoc/SHA256SUMS', '.github/actions/setup-pandoc/setup.bash']) {
+		const jobs = selectJobs(workflowFilters('ci'), [path]);
+		assert.equal(jobs.javascript, true);
+		assert.equal(jobs.release, true);
+		assert.equal(jobs.wasm, true);
+	}
+	const workflow = readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8');
+	const wasm = workflow.split('\n  wasm:\n')[1]?.split(/\n {2}\S/)[0];
+	assert.ok(wasm);
+	assert.match(wasm, /uses: \$\/\.github\/actions\/setup-pandoc/);
+	assert.doesNotMatch(wasm, /install_args:.*github:jgm\/pandoc/);
+});
+
+test('runner cache metadata and code select the installation regression tests', () => {
+	for (const path of ['action.yml', 'setup.mjs', 'setup.test.mjs', 'mise.toml']) {
+		assert.equal(selectJobs(workflowFilters('ci'), [`.github/actions/setup-runner/${path}`]).javascript, true, path);
+	}
+});
+
 test('release snapshots cover every archived documentation input', () => {
 	const ci = workflowFilters('ci');
 	for (
@@ -248,4 +268,103 @@ test('release snapshots cover every archived documentation input', () => {
 		assert.equal(selectJobs(ci, [path]).release, true, path);
 	}
 	assert.equal(selectJobs(ci, ['CONTRIBUTING.md']).release, false);
+});
+
+test('Windows matrix jobs serialize setup to avoid shared event payload writes', () => {
+	const workflow = readFileSync(new URL('../workflows/ci.yml', import.meta.url), 'utf8');
+	for (const job of ['unit-tests', 'action']) {
+		const body = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n {2}\S/)[0];
+		assert.ok(body, `${job} job must exist`);
+		assert.match(body, /windows-/);
+		assert.doesNotMatch(body, /^\s+- parallel:/m, `${job} steps share the runner event.json file`);
+	}
+});
+
+test('pinned formatter helper and workflow changes select installer tests', () => {
+	for (const name of ['action.yml', 'setup.bash', 'pins.tsv', 'mise.toml']) {
+		assert.equal(
+			selectJobs(workflowFilters('ci'), [`.github/actions/setup-formatters/${name}`]).javascript,
+			true,
+			name,
+		);
+	}
+	const root = new URL('../../', import.meta.url);
+	const read = (/** @type {string} */ path) => readFileSync(new URL(path, root), 'utf8');
+	const autofix = read('.github/workflows/autofix.yml');
+	assert.match(autofix, /uses: \$\/\.github\/actions\/setup-formatters/);
+	assert.doesNotMatch(autofix, /install_args:.*(?:dprint|tombi)/);
+	assert.doesNotMatch(autofix, /uses: kjanat\/install-dprint/);
+	assert.match(read('dprint.toml'), /command\s*= "tombi format - --stdin-filename \{\{file_path\}\}"/);
+	assert.match(read('package.json'), /\/\/\.github\/actions\/setup-formatters:test/);
+	assert.match(read('.mise.toml'), /"\.github\/actions\/setup-formatters"/);
+	const pages = read('.github/workflows/pages.yml');
+	assert.match(pages, /uses: \$\/\.github\/actions\/setup-runner/);
+	assert.match(pages, /uses: \$\/\.github\/actions\/setup-pandoc/);
+	assert.doesNotMatch(pages, /install_args:.*(?:runner|pandoc)/);
+	const upkeep = read('.github/workflows/upkeep.yml');
+	assert.match(upkeep, /uses: \$\/\.github\/actions\/setup-shellcheck/);
+	assert.match(
+		upkeep,
+		/MISE_DISABLE_TOOLS: "shellcheck,github:koalaman\/shellcheck,rshellcheck,github:kjanat\/shellcheck-rs"/,
+	);
+	assert.doesNotMatch(upkeep, /install_args:.*koalaman\/shellcheck/);
+});
+
+test('README autofix bootstraps mise without installing project tools', () => {
+	const workflow = readFileSync(new URL('../workflows/autofix.yml', import.meta.url), 'utf8');
+	const steps = workflow.split(/\n {6}- /);
+	const bootstraps = steps.filter(step => /uses: jdx\/mise-action@/.test(step));
+	assert.equal(bootstraps.length, 1, 'README generation requires one explicit mise bootstrap');
+	const [bootstrap] = bootstraps;
+	assert.ok(bootstrap);
+	assert.match(bootstrap, /if: steps\.inputs\.outputs\.readme == 'true'/);
+	assert.match(bootstrap, /install: false/);
+	assert.match(bootstrap, /env: false/);
+	assert.match(bootstrap, /add_shims_to_path: false/);
+	assert.match(bootstrap, /working_directory: \$\{\{ runner\.temp \}\}/);
+	assert.match(bootstrap, /mise_dir: \$\{\{ env\.ACTIONLINT_MISE_DIR \}\}/);
+	assert.doesNotMatch(bootstrap, /install_args:/);
+	const readme = steps.findIndex(step => /id: readme\n/.test(step));
+	assert.ok(readme > steps.indexOf(bootstrap), 'mise must exist before the README generator runs');
+});
+
+test('mise setup limits environment resolution to explicitly installed tools', () => {
+	const directory = new URL('../workflows/', import.meta.url);
+	for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
+		const lines = readFileSync(new URL(name, directory), 'utf8').split('\n');
+		for (const [index, line] of lines.entries()) {
+			if (!/uses: (?:&SetupMise )?(?:jdx\/mise-action@|\*SetupMise)/.test(line)) continue;
+			const indentation = line.indexOf('uses:');
+			const body = [];
+			for (const following of lines.slice(index + 1)) {
+				if (following.trim() && following.search(/\S/) < indentation) break;
+				body.push(following);
+			}
+			const step = body.join('\n');
+			const args = /install_args: (.+)/.exec(step)?.[1];
+			if (args) {
+				const enabled = /MISE_ENABLE_TOOLS: "([^"]+)"/.exec(step)?.[1];
+				assert.equal(enabled, args.trim().replaceAll(/\s+/g, ','), `${name} selected tool environment`);
+				assert.match(step, /add_shims_to_path: false/, `${name} must export concrete tool paths`);
+			} else {
+				assert.match(step, /install: false/, `${name} bootstrap must not install configured tools`);
+				assert.match(step, /env: false/, `${name} bootstrap must not resolve the project environment`);
+				assert.match(step, /add_shims_to_path: false/, `${name} bootstrap must not shadow installed tools`);
+				assert.match(
+					step,
+					/working_directory: ["']?\$\{\{ runner\.temp \}\}/,
+					`${name} bootstrap must not list project tools`,
+				);
+			}
+		}
+	}
+});
+
+test('preview and npm builds select the go.mod toolchain', () => {
+	const preview = readFileSync(new URL('../workflows/annotation-preview.yml', import.meta.url), 'utf8');
+	assert.match(preview, /GOTOOLCHAIN: local/);
+	assert.match(preview, /with: \{ go-version-file: go.mod \}\n\s*#[^\n]*\n\s*env: \{ GOTOOLCHAIN: auto \}/);
+	const npm = readFileSync(new URL('../workflows/npm-release.yml', import.meta.url), 'utf8');
+	assert.match(npm, /with: \{ go-version-file: go.mod \}/);
+	assert.doesNotMatch(npm, /env\.GO|GO: "1\.27"/);
 });

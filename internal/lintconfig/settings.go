@@ -12,7 +12,7 @@ import (
 // Level controls one diagnostic, independently of its category or maturity.
 type Level string
 
-// UnmarshalYAML normalizes false to off and null to the default level.
+// UnmarshalYAML normalizes booleans to on/off and null to the default level.
 // The zero value represents an omitted/null level, never an empty string input.
 func (l *Level) UnmarshalYAML(n *yaml.Node) error {
 	switch n.ShortTag() {
@@ -24,10 +24,11 @@ func (l *Level) UnmarshalYAML(n *yaml.Node) error {
 		if err := n.Decode(&enabled); err != nil {
 			return err
 		}
-		if !enabled {
-			*l = "off"
-			return nil
+		*l = "off"
+		if enabled {
+			*l = "on"
 		}
+		return nil
 	case "!!str":
 		value := Level(n.Value)
 		if value.Valid() {
@@ -117,7 +118,9 @@ func (g *Group) UnmarshalYAML(n *yaml.Node) error {
 	var next Group
 	switch n.Kind {
 	case yaml.ScalarNode:
-		if err := n.Decode(&next.Level); err != nil {
+		if n.ShortTag() == "!!str" && n.Value == "all" {
+			next.Preset = "all"
+		} else if err := n.Decode(&next.Level); err != nil {
 			return err
 		}
 	case yaml.MappingNode:
@@ -146,7 +149,7 @@ func (g Group) MarshalYAML() (any, error) {
 
 // DecodeOptions validates and decodes options using the catalog's type factory.
 func (s *Setting) DecodeOptions(factory func() any) error {
-	if s.optionsNode == nil {
+	if s.optionsNode == nil || s.optionsNode.ShortTag() == "!!null" {
 		return nil
 	}
 	if factory == nil {

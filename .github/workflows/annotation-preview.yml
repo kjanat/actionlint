@@ -45,6 +45,8 @@ jobs:
         with: { fetch-depth: 0, persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
+        # Let setup-go read toolchain; keep local mode for the preview build.
+        env: { GOTOOLCHAIN: auto }
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with: { node-version-file: .node-version, package-manager-cache: false }
       - name: Build this branch's binary and Action

@@ -1545,7 +1545,7 @@ actionlint validates the Webhook configurations:
 | `tags`            | `push`                                                                       |
 | `tags-ignore`     | `push`                                                                       |
 
-The table of available Webhooks and their types are defined in [`all_webhooks.go`](../all_webhooks.go). It is generated
+The table of available Webhooks and their types are defined in [`all_webhooks.go`](../internal/engine/all_webhooks.go). It is generated
 by [a script][generate-webhook-events] and kept to the latest by CI workflow triggered weekly.
 
 <a id="check-workflow-dispatch-events"></a>
@@ -3159,7 +3159,7 @@ jobs:
 Output:
 
 ```console
-test.yaml:8:22: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> $GITHUB_OUTPUT` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
+test.yaml:8:22: workflow command "set-output" was deprecated. use `echo "{name}={value}" >> "${GITHUB_OUTPUT}"` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions [deprecated-commands]
   |
 8 |       - run: echo '::set-output name=foo::bar'
   |                      ^~~~~~~~~~

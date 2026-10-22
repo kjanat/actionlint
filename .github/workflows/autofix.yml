@@ -30,6 +30,7 @@ on:
       - "!man/actionlint.1.md"
       - "!.github/**"
       - ".github/workflows/autofix.yml"
+      - ".github/actions/setup-formatters/**"
   pull_request:
     paths: *FormatPaths
 
@@ -58,9 +59,7 @@ jobs:
             base=${BASE_SHA}
           fi
           bash scripts/autofix-inputs.bash "${base}" "${HEAD_SHA}"
-      # Without this action, dprint has to recompile the wasm plugins each time the action runs,
-      # which is often, and wastes time, energy, and sanity.
-      - uses: kjanat/install-dprint@c2cdca92154b44b2a2c15222d25d91d1cddfca1b # v2.2.0
+      - uses: $/.github/actions/setup-formatters
       - { uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e, with: { go-version-file: go.mod } } # v7
       - name: x/tools/go/analysis modernize
         id: modernize
@@ -68,13 +67,31 @@ jobs:
       - name: Regenerate the configuration schema
         id: schema
         run: bash scripts/autofix-step.bash go generate -run generate-config-schema
+      - name: Keep mise metadata with cached tools
+        if: steps.inputs.outputs.readme == 'true'
+        shell: bash
+        run: |
+          mise_dir="${HOME//\\//}/.local/share/actionlint-mise"
+          if [[ "${RUNNER_OS}" == Windows ]]; then mise_dir="$(cygpath -m "${mise_dir}")"; fi
+          printf 'ACTIONLINT_MISE_DIR=%s\nMISE_CACHE_DIR=%s/cache\n' "${mise_dir}" "${mise_dir}" >> "${GITHUB_ENV}"
+      - name: Set up mise for the README generator
+        if: steps.inputs.outputs.readme == 'true'
+        uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          install: false
+          env: false
+          add_shims_to_path: false
+          working_directory: ${{ runner.temp }}
+          cache: true
+          auto_update: true
+          mise_dir: ${{ env.ACTIONLINT_MISE_DIR }}
+          cache_key: >-
+            actionlint-mise-v3-{{platform}}-{{version}}-{{mise_env}}-{{install_args_hash}}-p{{cache_period}}-${{ hashFiles('.mise.toml', '.tool-versions', '**/mise.lock', '**/.mise.lock') }}
       - name: Regenerate affected Go tables
         id: tables
         if: steps.inputs.outputs.tables == 'true'
         run: bash scripts/autofix-step.bash go generate -skip generate-config-schema
         env: { GH_TOKEN: "${{ github.token }}" }
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with: { cache: true, auto_update: true }
       - name: Refresh the affected README demo
         id: readme
         if: steps.inputs.outputs.readme == 'true'

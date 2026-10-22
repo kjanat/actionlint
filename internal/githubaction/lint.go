@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 const lintTimeout = 300 * time.Second

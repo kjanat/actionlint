@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.

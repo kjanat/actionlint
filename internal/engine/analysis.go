@@ -1,0 +1,433 @@
+package engine
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"runtime"
+	"slices"
+	"sync"
+
+	"actionlint.kjanat.dev/analyzer"
+	exprlang "actionlint.kjanat.dev/internal/expression"
+	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/internal/workflownames"
+	"golang.org/x/sync/errgroup"
+)
+
+// SourceUnit is a workflow or action manifest and its resolved configuration.
+type SourceUnit struct {
+	Path    string
+	Content []byte
+	Config  *Config
+	Project *Project
+	// inputPath retains the opened path when Path is made relative for diagnostics.
+	inputPath string
+}
+
+// AnalysisRequest contains resolved sources and analysis settings.
+type AnalysisRequest struct {
+	Sources    []SourceUnit
+	Analyzers  []analyzer.Registration
+	ShellCheck string
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	Pyflakes           string
+	ShellcheckOptions  *ExternalCommandOptions
+	ShellcheckSettings *ShellcheckSettings
+	// Deprecated: Pyflakes integration was removed. This field is ignored.
+	PyflakesOptions *ExternalCommandOptions
+	IgnorePatterns  IgnorePatterns
+	// OnRulesCreated customizes workflow rules, as in LinterOptions. It is not called for action metadata.
+	OnRulesCreated func([]Rule) []Rule
+	// WorkingDir resolves workflow paths in reusable-workflow caches. Empty uses os.Getwd.
+	WorkingDir string
+	// ReadFile reads local action metadata and reusable workflows. Nil uses os.ReadFile.
+	// Custom readers own path resolution and filesystem boundary enforcement.
+	// It must support concurrent calls and does not restrict external tools.
+	ReadFile          func(string) ([]byte, error)
+	RulePresets       RulePresets
+	Ruff              string
+	RuffOptions       *ExternalCommandOptions
+	RuffBackend       analyzer.ScriptBackend
+	ShellcheckBackend analyzer.ScriptBackend
+	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
+	ShellcheckRunner func([]string, string) ([]byte, error)
+	// AllowConfigProcesses authorizes repository-selected executable invocations.
+	AllowConfigProcesses bool
+}
+
+// AnalysisResult contains findings, their sources, and every local input read during analysis.
+type AnalysisResult struct {
+	Configurations []ConfigReport
+	Diagnostics    []Diagnostic
+	Documents      DocumentOutlines
+	// Inputs includes discovery directories so watchers can detect added files.
+	Inputs []string
+	files  []analyzedFile
+}
+
+type analyzedFile struct {
+	source  SourceUnit
+	errors  []*Error
+	rules   []RuleInfo
+	outline DocumentOutline
+}
+
+type inputFiles struct {
+	mu    sync.Mutex
+	paths map[string]struct{}
+}
+
+func (f *inputFiles) add(path string) {
+	if path == "" || path == "<stdin>" {
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.paths == nil {
+		f.paths = map[string]struct{}{}
+	}
+	f.paths[absPath(path)] = struct{}{}
+}
+
+func (f *inputFiles) list() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	paths := make([]string, 0, len(f.paths))
+	for path := range f.paths {
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+	return paths
+}
+
+func (f *inputFiles) addConfig(config *Config, project *Project) {
+	if config != nil {
+		for _, path := range config.Sources() {
+			f.add(path)
+		}
+	}
+	if project != nil {
+		f.add(project.configPath)
+	}
+}
+
+// Analyze checks resolved workflows and action manifests without rendering diagnostics.
+// On analysis failure, a non-nil result retains findings collected before the failure.
+func Analyze(ctx context.Context, request AnalysisRequest) (*AnalysisResult, error) {
+	return analyze(ctx, request, io.Discard, LogLevelNone)
+}
+
+func analyze(ctx context.Context, request AnalysisRequest, log io.Writer, level LogLevel) (*AnalysisResult, error) {
+	if err := request.validateBackends(); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if request.WorkingDir == "" {
+		var err error
+		request.WorkingDir, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var err error
+	request.WorkingDir, err = filepath.Abs(request.WorkingDir)
+	if err != nil {
+		return nil, err
+	}
+	inputs := &inputFiles{}
+	allSources := request.Sources
+	selected := make([]SourceUnit, 0, len(request.Sources))
+	for _, source := range request.Sources {
+		// Selection itself consumes configuration, even when no source survives.
+		inputs.addConfig(source.Config, source.Project)
+		root := request.WorkingDir
+		if source.Project != nil {
+			root = source.Project.RootDir()
+		}
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			path = filepath.Join(request.WorkingDir, path)
+		}
+		source.inputPath = path
+		if source.Config.IncludesFile(path, root) {
+			selected = append(selected, source)
+		}
+	}
+	request.Sources = selected
+	if level != LogLevelNone {
+		log = &analysisLogWriter{out: log}
+	}
+	logger := analysisLogger{log, level}
+	engine := &analysisEngine{
+		analyzers: request.Analyzers, ctx: ctx,
+		buildRules: builtinFactory(request, logger), rulePresets: request.RulePresets,
+		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
+	}
+
+	documents := &actionDocuments{byPath: map[string]ActionOutline{}}
+	proc := newConcurrentProcess(ctx, runtime.NumCPU())
+	actions := NewLocalActionsCacheFactory(engine.debugWriter())
+	cwd := request.WorkingDir
+	if cwd == "" {
+		var err error
+		cwd, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+	}
+	workflows := NewLocalReusableWorkflowCacheFactory(cwd, engine.debugWriter())
+	engine.workingDir = absPath(cwd)
+	engine.gitModes = &gitModes{}
+	result := &AnalysisResult{Diagnostics: []Diagnostic{}, files: make([]analyzedFile, len(request.Sources))}
+	sourceContents := map[string][]byte{}
+	sourcePaths := make([]string, 0, len(allSources))
+	for _, source := range allSources {
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(engine.workingDir, path)
+		}
+		sourceContents[filepath.Clean(path)] = source.Content
+		sourcePaths = append(sourcePaths, filepath.Clean(path))
+	}
+	baseReader := fsread.New(ctx, request.ReadFile, nil)
+	reader := fsread.New(ctx, func(path string) ([]byte, error) {
+		fullPath := path
+		if !filepath.IsAbs(fullPath) {
+			fullPath = filepath.Join(engine.workingDir, fullPath)
+		}
+		if content, ok := sourceContents[filepath.Clean(fullPath)]; ok {
+			return content, nil
+		}
+		return baseReader.ReadFile(path)
+	}, inputs.add)
+	engine.reader = reader
+	engine.workflowNames = &workflownames.Index{Paths: sourcePaths, Reader: reader, Load: func(path string) (string, bool, error) {
+		if err := ctx.Err(); err != nil {
+			return "", false, err
+		}
+		content, ok := sourceContents[filepath.Clean(path)]
+		if ok {
+			reader.Record(path)
+		} else {
+			var err error
+			content, err = reader.ReadFile(path)
+			if err != nil {
+				return "", false, err
+			}
+		}
+		workflow, errs := Parse(content)
+		if workflow == nil || len(errs) > 0 {
+			return "", false, nil
+		}
+		if workflow.Name == nil {
+			return "", true, nil
+		}
+		if literal := exprlang.LiteralExpressionValue(workflow.Name.Value); literal != nil {
+			return *literal, true, nil
+		}
+		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
+	}}
+	// Initialize shared caches before any analysis goroutines access them.
+	actionContents := make(map[string][]byte)
+	for path, content := range sourceContents {
+		if isActionInput(path) {
+			actionContents[physicalSourcePath(path)] = content
+		}
+	}
+	for _, source := range request.Sources {
+		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
+		ac.reader, wc.reader = reader, reader
+		ac.onDocument = documents.add
+		ac.customReader = request.ReadFile != nil
+		ac.explicitSources = actionContents
+	}
+	group := errgroup.Group{}
+	group.SetLimit(runtime.NumCPU())
+	for i, source := range request.Sources {
+		path := source.inputPath
+		if path == "" {
+			path = source.Path
+		}
+		inputs.add(path)
+		ac, wc := actions.GetCache(source.Project), workflows.GetCache(source.Project)
+		group.Go(func() error {
+			file := &result.files[i]
+			file.source = source
+			var err error
+			file.errors, file.outline, err = engine.check(source.Path, source.Content, source.Project, source.Config, proc, ac, wc, &file.rules)
+			if err != nil {
+				return &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
+			}
+			return err
+		})
+	}
+	err = group.Wait()
+	proc.wait()
+	if err == nil {
+		err = ctx.Err()
+	}
+	result.collectDiagnostics()
+	result.Documents = make(DocumentOutlines, 0, len(result.files))
+	explicitActions := make(map[string]bool)
+	for _, file := range result.files {
+		result.Documents = append(result.Documents, file.outline)
+		if _, action := file.outline.(ActionOutline); action {
+			explicitActions[physicalSourcePath(file.source.inputPath)] = true
+		}
+	}
+	for _, document := range documents.list() {
+		path := relativeAnalysisPath(engine.workingDir, document.DocumentPath())
+		if !explicitActions[physicalSourcePath(document.DocumentPath())] {
+			result.Documents = append(result.Documents, document.WithPath(path))
+		}
+	}
+	result.Inputs = inputs.list()
+	return result, err
+}
+
+type actionDocuments struct {
+	mu     sync.Mutex
+	byPath map[string]ActionOutline
+}
+
+func (d *actionDocuments) add(document ActionOutline) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	path := absPath(document.Path)
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	d.byPath[path] = document
+}
+
+func (d *actionDocuments) list() DocumentOutlines {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	paths := make([]string, 0, len(d.byPath))
+	for path := range d.byPath {
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+	documents := make(DocumentOutlines, 0, len(paths))
+	for _, path := range paths {
+		documents = append(documents, d.byPath[path])
+	}
+	return documents
+}
+
+func (r *AnalysisResult) collectDiagnostics() {
+	type location struct {
+		project, path, rule string
+		start               DiagnosticPosition
+	}
+	seen := make(map[location][]Diagnostic)
+	type metadataLocation struct {
+		project, kind, severity string
+		finding                 actionMetadataFindingKey
+	}
+	seenMetadata := make(map[metadataLocation]bool)
+	type declarationLocation struct {
+		project string
+		finding actionMetadataFindingKey
+	}
+	declarations := make(map[declarationLocation]bool)
+	parseDeclarations := make(map[string]bool)
+	for _, file := range r.files {
+		project := ""
+		if file.source.Project != nil {
+			project = absPath(file.source.Project.RootDir())
+		}
+		for _, finding := range file.errors {
+			if _, action := file.outline.(ActionOutline); action && finding.Kind == "syntax-check" {
+				parseDeclarations[physicalSourcePath(file.source.inputPath)] = true
+			}
+			if identity := finding.metadataFinding; identity != nil && identity.declaration && finding.Kind == "action" {
+				declarations[declarationLocation{project, identity.key}] = true
+			}
+		}
+	}
+	for i := range r.files {
+		file := &r.files[i]
+		project := ""
+		if file.source.Project != nil {
+			project = absPath(file.source.Project.RootDir())
+		}
+		unique := file.errors[:0]
+		for _, finding := range file.errors {
+			if finding.Kind == "action" && finding.metadataParsePath != "" && parseDeclarations[physicalSourcePath(finding.metadataParsePath)] {
+				continue
+			}
+			diagnostic := finding.diagnostic(file.source.Content)
+			if identity := finding.metadataFinding; identity != nil && finding.Kind == "action" {
+				key := metadataLocation{project, finding.Kind, finding.severity, identity.key}
+				if !identity.declaration && declarations[declarationLocation{project, identity.key}] {
+					continue
+				}
+				if seenMetadata[key] {
+					continue
+				}
+				seenMetadata[key] = true
+			}
+			key := location{project, diagnostic.Path, diagnostic.Rule, diagnostic.Start}
+			if slices.ContainsFunc(seen[key], func(previous Diagnostic) bool {
+				return reflect.DeepEqual(previous, diagnostic)
+			}) {
+				continue
+			}
+			seen[key] = append(seen[key], diagnostic)
+			r.Diagnostics = append(r.Diagnostics, diagnostic)
+			unique = append(unique, finding)
+		}
+		clear(file.errors[len(unique):])
+		file.errors = unique
+	}
+}
+
+type sourceAnalysisError struct {
+	batch bool
+	path  string
+	err   error
+}
+
+func (e *sourceAnalysisError) Error() string { return e.err.Error() }
+func (e *sourceAnalysisError) Unwrap() error { return e.err }
+
+func (r *AnalysisResult) legacyErrors() []*Error {
+	if len(r.files) == 1 {
+		return r.files[0].errors
+	}
+	errors := make([]*Error, 0, len(r.Diagnostics))
+	for _, file := range r.files {
+		errors = append(errors, file.errors...)
+	}
+	return errors
+}
+
+// CompileIgnorePatterns validates message filters used by analysis and config initialization.
+func CompileIgnorePatterns(patterns []string) (IgnorePatterns, error) {
+	ignore := make(IgnorePatterns, 0, len(patterns))
+	for _, pattern := range patterns {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid regular expression for ignore pattern %q: %w", pattern, err)
+		}
+		ignore = append(ignore, re)
+	}
+	return ignore, nil
+}
+
+// FileCount reports the number of explicit inputs analyzed, including clean files.
+func (r *AnalysisResult) FileCount() int { return len(r.files) }

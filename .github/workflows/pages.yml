@@ -5,10 +5,15 @@ on:
     branches: [master]
     paths:
       - "*.go"
+      - "analysis/**"
+      - "analyzer/**"
+      - "config/**"
+      - "diagnostic/**"
+      - "document/**"
+      - "syntax/**"
       - "go.mod"
       - "go.sum"
-      - "config_default.yaml"
-      - "sarif_template.txt"
+      - "internal/engine/config_default.yaml"
       - "cmd/**"
       - "internal/**"
       - "playground/**"
@@ -57,7 +62,11 @@ jobs:
         with:
           cache: true
           auto_update: true
-          install_args: go node npm github:kjanat/runner github:jgm/pandoc
+          install_args: go node npm
+          add_shims_to_path: false
+        env: { MISE_ENABLE_TOOLS: "go,node,npm" }
+      - uses: $/.github/actions/setup-runner
+      - uses: $/.github/actions/setup-pandoc
       - parallel:
           - name: Install JavaScript dependencies
             run: runner install --pm npm --no-tools --frozen

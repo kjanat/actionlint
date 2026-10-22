@@ -2,7 +2,7 @@ name: CodeQL
 
 on:
   push: { branches: [master] }
-  pull_request: { branches: [master] }
+  pull_request:
   schedule:
     # Every Saturday 6:41 in JST
     - cron: "41 21 * * 5"
@@ -28,7 +28,7 @@ jobs:
           ],
           "jobs": {
             "go": [
-              "**/*.go", "go.mod", "go.sum", "config_default.yaml", "sarif_template.txt", ".github/codeql/**", "!testdata/**", "!**/testdata/**",
+              "**/*.go", "go.mod", "go.sum", "internal/engine/config_default.yaml", ".github/codeql/**", "!testdata/**", "!**/testdata/**",
               "!**/*_test.go"
             ],
             "javascript-typescript": [

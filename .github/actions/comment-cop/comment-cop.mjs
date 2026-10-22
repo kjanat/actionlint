@@ -93,6 +93,15 @@ function isCommentLine(line, lang) {
 		|| text.startsWith('* ');
 }
 
+/** @param {string} line */
+function isGoDirective(line) {
+	const directive = /^\/\/go:([a-z][a-z0-9_]*)(?:[ \t]|$)/.exec(line.trimStart());
+	if (directive !== null) {
+		return directive[1] !== 'generate' || /^\/\/go:generate[ \t]/.test(line);
+	}
+	return /^\/\/line [^\r\n]+:\d+(?::\d+)?\r?$/.test(line);
+}
+
 /** @param {string} patch */
 function linesFromPatch(patch) {
 	/** @type {string[]} */
@@ -209,7 +218,11 @@ export function groupsFromPatch(path, patch, source) {
 
 	/** @param {string} content */
 	const startsBlock = content => {
-		if (!markdown) return isCommentLine(content, lang) && !yamlExamples.has(newLine);
+		if (!markdown) {
+			return isCommentLine(content, lang)
+				&& !(lang === 'go' && isGoDirective(content))
+				&& !yamlExamples.has(newLine);
+		}
 		const nextFence = updateFence(fence, content);
 		if (nextFence !== fence) {
 			fence = nextFence;

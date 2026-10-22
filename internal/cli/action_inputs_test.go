@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"actionlint.kjanat.dev"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
 func TestCommandActionInputs(t *testing.T) {

@@ -12,7 +12,7 @@ below. It does not duplicate the supported selector catalogue. Python target
 versions reference the upstream `PythonVersion` definition directly.
 
 The configuration parser uses generated selector and Python target tables in
-`internal/ruff/selectors_generated.go`, derived from the same upstream metadata.
+`internal/ruffconfig/selectors_generated.go`, derived from the same upstream metadata.
 Configuration loading is offline; it does not download or interpret schemas.
 
 When updating the bundled Ruff release:
@@ -28,7 +28,7 @@ When updating the bundled Ruff release:
 4. Run the Ruff configuration, schema, and selector generator tests.
 
 When changing the snapshot version, update the exact upstream file exclusion in
-`.dprint.jsonc`. Keep previously published schema paths available.
+`dprint.toml`. Keep previously published schema paths available.
 
 Only codes and prefixes matching at least one non-preview rule are supported.
 Human-readable names and categories require Ruff preview mode, which this

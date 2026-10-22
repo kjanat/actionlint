@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev"
 	"actionlint.kjanat.dev/internal/cli"
+	actionlint "actionlint.kjanat.dev/internal/engine"
 	"github.com/google/go-cmp/cmp"
 )
 

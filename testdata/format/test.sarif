@@ -3,6 +3,7 @@
   "version": "2.1.0",
   "runs": [
     {
+      "columnKind": "unicodeCodePoints",
       "tool": {
         "driver": {
           "name": "GitHub Actions lint",
@@ -417,12 +418,16 @@
             {
               "id": "unsound-ternary",
               "name": "UnsoundTernary",
-              "defaultConfiguration": {"level": "error"},
+              "defaultConfiguration": {
+                "level": "error"
+              },
               "properties": {
-                "description": "Report a && b || c expressions where b is always falsy",
+                "description": "Report a \u0026\u0026 b || c expressions where b is always falsy",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
               },
-              "fullDescription": {"text": "Report a && b || c expressions where b is always falsy"},
+              "fullDescription": {
+                "text": "Report a \u0026\u0026 b || c expressions where b is always falsy"
+              },
               "helpUri": "https://github.com/kjanat/actionlint/blob/HEAD/docs/checks.md"
             },
             {
@@ -449,6 +454,7 @@
           "message": {
             "text": "unexpected key \"branch\" for \"push\" section. expected one of \"branches\", \"branches-ignore\", \"paths\", \"paths-ignore\", \"tags\", \"tags-ignore\", \"types\", \"workflows\""
           },
+          "level": "error",
           "locations": [
             {
               "physicalLocation": {
@@ -459,9 +465,10 @@
                 "region": {
                   "startLine": 3,
                   "startColumn": 5,
-                  "endColumn": 11,
+                  "endLine": 3,
+                  "endColumn": 12,
                   "snippet": {
-                    "text": "    branch: main\n    ^~~~~~~"
+                    "text": "    branch: main"
                   }
                 }
               }
@@ -473,6 +480,7 @@
           "message": {
             "text": "property \"msg\" is not defined in object type {}"
           },
+          "level": "error",
           "locations": [
             {
               "physicalLocation": {
@@ -483,9 +491,10 @@
                 "region": {
                   "startLine": 9,
                   "startColumn": 23,
-                  "endColumn": 32,
+                  "endLine": 9,
+                  "endColumn": 33,
                   "snippet": {
-                    "text": "      - run: echo ${{ matrix.msg }}\n                      ^~~~~~~~~~"
+                    "text": "      - run: echo ${{ matrix.msg }}"
                   }
                 }
               }
@@ -497,6 +506,7 @@
           "message": {
             "text": "unexpected key \"with\" for step to run shell command. expected one of \"background\", \"continue-on-error\", \"env\", \"id\", \"if\", \"name\", \"run\", \"shell\", \"timeout-minutes\", \"working-directory\""
           },
+          "level": "error",
           "locations": [
             {
               "physicalLocation": {
@@ -507,9 +517,10 @@
                 "region": {
                   "startLine": 10,
                   "startColumn": 9,
-                  "endColumn": 13,
+                  "endLine": 10,
+                  "endColumn": 14,
                   "snippet": {
-                    "text": "        with:\n        ^~~~~"
+                    "text": "        with:"
                   }
                 }
               }

@@ -1,7 +1,5 @@
 package mapping
 
-import "maps"
-
 type Matrix[R any, F, S comparable] struct {
 	Rows             map[string]R
 	Include, Exclude F
@@ -9,22 +7,33 @@ type Matrix[R any, F, S comparable] struct {
 	Insertions       []*Matrix[R, F, S]
 }
 
-func ExpandMatrix[R any, F, S comparable](matrix *Matrix[R, F, S], evaluate func(S) *Matrix[R, F, S]) (*Matrix[R, F, S], bool) {
+func ExpandMatrix[R any, F, S comparable](matrix *Matrix[R, F, S], evaluate func(S) *Matrix[R, F, S], resolveName func(string, R) (string, bool)) (*Matrix[R, F, S], bool) {
 	var zeroSource S
 	var zeroFilter F
 	if matrix.Expression != zeroSource {
 		result := evaluate(matrix.Expression)
-		return result, result != nil
+		if result == nil {
+			return nil, false
+		}
+		return ExpandMatrix(result, evaluate, resolveName)
 	}
 	result := *matrix
-	result.Rows = maps.Clone(matrix.Rows)
-	if result.Rows == nil {
-		result.Rows = map[string]R{}
-	}
+	result.Rows = map[string]R{}
 	result.Insertions = nil
 	complete := true
+	for name, row := range matrix.Rows {
+		resolved, known := resolveName(name, row)
+		complete = complete && known
+		if !known {
+			continue
+		}
+		if _, duplicate := result.Rows[resolved]; duplicate {
+			return nil, false
+		}
+		result.Rows[resolved] = row
+	}
 	for _, insertion := range matrix.Insertions {
-		inserted, known := ExpandMatrix(insertion, evaluate)
+		inserted, known := ExpandMatrix(insertion, evaluate, resolveName)
 		complete = complete && known
 		if inserted == nil {
 			continue
