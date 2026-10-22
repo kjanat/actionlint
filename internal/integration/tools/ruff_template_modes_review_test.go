@@ -133,7 +133,8 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 10+strings.Count(script, "\n") {
+			ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(script, 8)...)
+			if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 10+strings.Count(script, "\n") {
 				t.Fatalf("conversion template %q changed independent script findings: %+v", script, result.Diagnostics)
 			}
 		}

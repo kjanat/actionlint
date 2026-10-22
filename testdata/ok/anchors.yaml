@@ -25,13 +25,14 @@ jobs:
       FOO2: BAR4
     steps:
       - &step
-        run: echo ${{ env.R }}
+        run: echo "$R"
+        shell: *default_shell
         env:
           R: *runner
         if: &cond ${{ env.R == 'windows-latest' }}
       - *step
       - *step
-      - run: echo ${{ env.FOO1 }}
+      - run: echo "$FOO1"
         env: *default_env
         if: *cond
       - run: echo ${{ env.USER }}
@@ -52,7 +53,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: *runner
-      - run: echo ${{ env.FOO1 }}
+      - run: echo "$env:FOO1"
         env: *default_env
       - run: echo "$env:USER@$env:PASS"
         env: *cred_env

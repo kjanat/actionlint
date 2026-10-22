@@ -2,6 +2,7 @@ package tools_test
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -14,31 +15,45 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
-func ruffFindingsWithInterpolation(t *testing.T, findings []diagnostic.Diagnostic, interpolationLine int) []diagnostic.Diagnostic {
+func ruffFindingsWithInterpolation(t *testing.T, findings []diagnostic.Diagnostic, interpolationLines ...int) []diagnostic.Diagnostic {
 	t.Helper()
 	var ruff []diagnostic.Diagnostic
-	interpolations := 0
+	wantLines := slices.Clone(interpolationLines)
 	for _, finding := range findings {
 		switch finding.Rule {
 		case "ruff":
 			ruff = append(ruff, finding)
 		case "script-interpolation":
-			interpolations++
-			if finding.Code != "unknown-script-value" || finding.Start.Line != interpolationLine {
+			line := slices.Index(wantLines, finding.Start.Line)
+			if finding.Code != "unknown-script-value" || line < 0 {
 				t.Fatalf("unexpected interpolation finding: %+v", finding)
 			}
+			wantLines = slices.Delete(wantLines, line, line+1)
 		default:
 			t.Fatalf("unexpected independent finding: %+v", finding)
 		}
 	}
-	want := 0
-	if interpolationLine != 0 {
-		want = 1
-	}
-	if interpolations != want {
-		t.Fatalf("interpolation findings = %d, want %d", interpolations, want)
+	if len(wantLines) != 0 {
+		t.Fatalf("missing interpolation findings at lines %v", wantLines)
 	}
 	return ruff
+}
+
+func templateDiagnosticLines(script string, firstLine int) []int {
+	var lines []int
+	for offset := 0; offset < len(script); {
+		relative := strings.Index(script[offset:], "${{")
+		if relative < 0 {
+			break
+		}
+		body := offset + relative + len("${{")
+		for body < len(script) && strings.ContainsRune(" \t\r\n", rune(script[body])) {
+			body++
+		}
+		lines = append(lines, firstLine+strings.Count(script[:body], "\n"))
+		offset = body
+	}
+	return lines
 }
 
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
@@ -60,7 +75,8 @@ jobs:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 11 {
+		ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(pattern, 9)...)
+		if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 11 {
 			t.Fatalf("capture template changed independent diagnostics: %+v", result.Diagnostics)
 		}
 	}
@@ -107,11 +123,7 @@ jobs:
 					if err != nil {
 						t.Fatal(err)
 					}
-					interpolationLine := 0
-					if strings.Contains(script, "${{ '[]' }}") {
-						interpolationLine = 9
-					}
-					ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, interpolationLine)
+					ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(script, 8)...)
 					if len(ruff) == 0 {
 						t.Fatal("from clause caused script checking to be skipped")
 					}
@@ -161,7 +173,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, 8)
+	ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(source, 1)...)
 	if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 10 {
 		t.Fatalf("operator template changed independent diagnostics: %+v", result.Diagnostics)
 	}

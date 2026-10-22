@@ -924,7 +924,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "bd44ae6d1e430cca7acc4b07e72e5d209063ed0424ffafc8a68bd9d6878c0c9f"
+      "schemastore/src/test/github-workflow/issue_2463_file_2.yaml": "b0f2119a90ba8e3aff5b92ac20a72c4b27fc17b9d6b4778841d5b72a8f79164c"
     },
     "findings": [
       {
@@ -939,29 +939,42 @@
         "category": "extra-lint",
         "scope": "diagnostic",
         "diagnostic_indices": [
-          7,
-          10,
-          12,
-          14,
-          19,
+          8,
+          11,
+          13,
+          15,
           20,
           21,
           22,
           23,
-          33,
+          24,
           34,
           35,
           36,
-          42,
+          37,
           43,
           44,
-          45
+          45,
+          46
         ],
         "rationale": "The reference accepts template syntax without checking script substitution safety. These expressions insert unknown strings or syntax-bearing literals directly into scripts; the independent script-interpolation rule reports that risk while preserving the reference acceptance observation.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml",
           "source:internal/expression/script_interpolation.go",
           "source:internal/workflow/expressions/script_values.go"
+        ]
+      },
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          6
+        ],
+        "rationale": "The hashFiles result is inserted into a Python string. Bounded shell-word syntax does not prove a safe position in Python; the reference schema validates template syntax only.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_positions.go"
         ]
       }
     ]
@@ -1051,7 +1064,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/runs-on.yaml": "918e722b32153d87b0360d97f22bd0be47cf909a54ab43393ca0f4f7ab151e06"
+      "schemastore/src/test/github-workflow/runs-on.yaml": "dc721c22f9815fd9f24e00907816d46fa8018b6f6aa9effa8db1a5ce422391d2"
     },
     "findings": [
       {
@@ -1060,6 +1073,28 @@
         "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (events, runner-label). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/runs-on.yaml"
+        ]
+      },
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          6,
+          7,
+          8,
+          10,
+          13,
+          14,
+          15,
+          16,
+          20,
+          23
+        ],
+        "rationale": "PowerShell and unresolved runner shells have no shell-word position proof. The extra diagnostics record that analysis boundary for runner.os substitutions, independently of runner-label validation.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/runs-on.yaml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_positions.go"
         ]
       }
     ]
@@ -1081,7 +1116,6 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/defaults.yaml": "dc5894d647c61f68228b4e79a4dbf2c0279c33385d507bcc8f01d0b9e28905cb",
       "schemastore/src/test/github-workflow/env-with-simple-expression.yaml": "e3460c86aa525daa10699aa0f4103d36c1cfff1a846f902bd2ac4366a22cafc8"
     },
     "findings": [
@@ -1090,8 +1124,35 @@
         "scope": "fixture",
         "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (expression). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
         "evidence": [
-          "fixture:schemastore/src/test/github-workflow/defaults.yaml",
           "fixture:schemastore/src/test/github-workflow/env-with-simple-expression.yaml"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "schemastore/src/test/github-workflow/defaults.yaml": "d34d0f0f65decb4434c372d5e6094778a99e8d9a0417a2f279747d2ec2ed64e8"
+    },
+    "findings": [
+      {
+        "category": "extra-lint",
+        "scope": "fixture",
+        "rationale": "Schema versus lint contract: this schema-valid example triggers additional actionlint checks (expression). The exact diagnostics are retained for review; schema acceptance alone does not establish runtime validity.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/defaults.yaml"
+        ]
+      },
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          1
+        ],
+        "rationale": "The selected shell is unresolved, so runner.os has no language-specific script-position proof. Schema validation accepts the template without assessing its execution position.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/defaults.yaml",
+          "source:internal/expression/script_interpolation.go",
+          "source:internal/workflow/expressions/script_positions.go"
         ]
       }
     ]

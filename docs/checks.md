@@ -775,10 +775,18 @@ test.yaml:21:24: property "dev" is not defined in matrix.package [expression-ref
    |
 21 |       - run: echo '${{ matrix.package.dev }}'
    |                        ^~~~~~~~~~~~~~~~~~
+test.yaml:24:25: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+24 |           echo 'os: ${{ matrix.os }}'
+   |                         ^~~~~~~~~
 test.yaml:25:35: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 25 |           echo 'node version: ${{ matrix.node }}'
    |                                   ^~~~~~~~~~~
+test.yaml:26:30: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+   |
+26 |           echo 'package: ${{ matrix.package.name }} (optional=${{ matrix.package.optional }})'
+   |                              ^~~~~~~~~~~~~~~~~~~
 test.yaml:26:67: interpolated scalar is not proved to occupy a script data argument; pass it through an environment variable and read that variable as data instead [script-interpolation]
    |
 26 |           echo 'package: ${{ matrix.package.name }} (optional=${{ matrix.package.optional }})'

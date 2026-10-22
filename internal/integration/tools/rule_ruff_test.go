@@ -109,13 +109,9 @@ func TestRuffPythonScripts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(result.Diagnostics) != tc.count {
-				t.Fatalf("got %+v, want %d findings", result.Diagnostics, tc.count)
-			}
-			for _, d := range result.Diagnostics {
-				if d.Rule != "ruff" {
-					t.Fatalf("unexpected diagnostic: %+v", d)
-				}
+			ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(tc.script, 7)...)
+			if len(ruff) != tc.count {
+				t.Fatalf("got %+v, want %d Ruff findings", result.Diagnostics, tc.count)
 			}
 		})
 	}
@@ -257,11 +253,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			interpolationLine := 0
-			if strings.Contains(script, "${{ '==' }}") {
-				interpolationLine = 7
-			}
-			ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, interpolationLine)
+			ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(script, 7)...)
 			if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 9 {
 				t.Fatalf("unexpected findings: %+v", result.Diagnostics)
 			}
@@ -292,7 +284,8 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "ruff" || result.Diagnostics[0].Code != "F821" || result.Diagnostics[0].Start.Line != 13 {
+			ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(source, 1)...)
+			if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 13 {
 				t.Fatalf("unexpected findings: %+v", result.Diagnostics)
 			}
 		}
