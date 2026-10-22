@@ -20,8 +20,13 @@ import (
 // including overrides and invoked composite actions.
 func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, error) {
 	base := o.Registration()
+	defaults := processconfig.Options{Optional: true}
+	if o.Process != nil {
+		defaults.WorkingDir = o.Process.WorkingDir
+		defaults.AllowWasm = o.Process.AllowWasm
+	}
 	if !processconfig.Enabled(o.Command, o.Process) || o.Backend != nil || o.Runner != nil || o.Settings != nil ||
-		o.Command != "shellcheck" || o.Process != nil && !reflect.DeepEqual(*o.Process, processconfig.Options{Optional: true}) {
+		o.Command != "shellcheck" || o.Process != nil && !reflect.DeepEqual(*o.Process, defaults) {
 		return base, nil
 	}
 	next := base

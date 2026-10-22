@@ -50,17 +50,20 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		name, config string
 		disabled     bool
 		partial      bool
+		process      *processconfig.Options
 	}{
-		{"enabled", "{}", false, false},
-		{"tool disabled", "tools: {shellcheck: false}", true, false},
-		{"rule disabled", "lint: {rules: {external: {shellcheck: off}}}", true, false},
-		{"inline options", "tools: {shellcheck: {config: {disable: [SC2001], enable: [quote-safe-variables], shell: bash, extended-analysis: false}}}", false, false},
-		{"override disabled", "overrides: [{includes: ['ci.yml'], tools: {shellcheck: false}}]", true, false},
-		{"partial findings", "{}", false, true},
+		{"enabled", "{}", false, false, nil},
+		{"tool disabled", "tools: {shellcheck: false}", true, false, nil},
+		{"rule disabled", "lint: {rules: {external: {shellcheck: off}}}", true, false, nil},
+		{"inline options", "tools: {shellcheck: {config: {disable: [SC2001], enable: [quote-safe-variables], shell: bash, extended-analysis: false}}}", false, false, nil},
+		{"override disabled", "overrides: [{includes: ['ci.yml'], tools: {shellcheck: false}}]", true, false, nil},
+		{"partial findings", "{}", false, true, nil},
+		{"working directory", "{}", false, false, &processconfig.Options{Optional: true, WorkingDir: t.TempDir()}},
+		{"wasm permitted", "{}", false, false, &processconfig.Options{Optional: true, AllowWasm: true, WorkingDir: t.TempDir()}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			guest := &documentGuest{fail: tc.partial}
-			registration, err := (shellcheck.Options{Command: "shellcheck"}).Registration().WithAnalyzer(guest)
+			registration, err := (shellcheck.Options{Command: "shellcheck", Process: tc.process}).Registration().WithAnalyzer(guest)
 			if err != nil {
 				t.Fatal(err)
 			}
