@@ -307,7 +307,8 @@ func (f *LockFile) replace(ctx context.Context, data []byte) (err error) {
 }
 
 // Set preserves publisher identity and refuses replacement of an accepted
-// version, even if the registry starts serving a different digest for it.
+// version, even if the registry starts serving a different artifact for it.
+// Artifact format and filename may evolve across versions of the same plugin.
 func (f *LockFile) Set(pin Pin) error {
 	return f.set(pin, "")
 }
@@ -333,10 +334,10 @@ func (f *LockFile) set(pin Pin, selectedRegistry string) error {
 		if !strings.EqualFold(old.Name, pin.Name) {
 			continue
 		}
-		if (!SameRegistry(old.Registry, pin.Registry) && !SameRegistry(selectedRegistry, pin.Registry)) || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID || old.Kind != pin.Kind || old.Asset != pin.Asset {
-			return fmt.Errorf("publisher or artifact identity changed for %s; remove explicitly before switching", pin.Name)
+		if (!SameRegistry(old.Registry, pin.Registry) && !SameRegistry(selectedRegistry, pin.Registry)) || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID {
+			return fmt.Errorf("publisher or plugin identity changed for %s; remove explicitly before switching", pin.Name)
 		}
-		if old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || old.Contract != pin.Contract) {
+		if old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || old.Contract != pin.Contract || old.Kind != pin.Kind || old.Asset != pin.Asset) {
 			return fmt.Errorf("immutable version %s@%s changed", pin.Name, pin.Version)
 		}
 		previous := "v" + strings.TrimPrefix(old.Version, "v")

@@ -67,7 +67,18 @@ func (r *PluginRegistry) RecordURL(tag string) string {
 
 func (r *PluginRegistry) Add(t *testing.T, tag string, wasm []byte) []byte {
 	t.Helper()
+	return r.AddArtifact(t, tag, "plugin.wasm", wasm)
+}
+
+// AddArtifact publishes one version's selected asset.
+func (r *PluginRegistry) AddArtifact(t *testing.T, tag, asset string, wasm []byte) []byte {
+	t.Helper()
 	metadata := fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":"https://github.com/publisher/plugin","transport":"wasm-component","interface":"kjanat:actionlint/analyzer@0.1.0","contract_sha256":%q}`, r.PluginID, strings.TrimPrefix(tag, "v"), fixtureContractDigest)
+	kind, contract := "component", "kjanat:actionlint/analyzer@0.1.0#sha256="+fixtureContractDigest
+	if len(wasm) >= 8 && bytes.Equal(wasm[4:8], []byte{1, 0, 0, 0}) {
+		kind, contract = "core", "wasm-core-json/1"
+		metadata = fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":"https://github.com/publisher/plugin","transport":"wasm-core-json","abi_version":1}`, r.PluginID, strings.TrimPrefix(tag, "v"))
+	}
 	section := binary.AppendUvarint(nil, uint64(len("actionlint.plugin")))
 	section = append(section, []byte("actionlint.plugin")...)
 	section = append(section, metadata...)
@@ -76,9 +87,9 @@ func (r *PluginRegistry) Add(t *testing.T, tag string, wasm []byte) []byte {
 	data = binary.AppendUvarint(data, uint64(len(section)))
 	data = append(data, section...)
 	digest := fmt.Sprintf("%x", sha256.Sum256(data))
-	artifactURL := "https://" + FixturePluginName + "/releases/download/" + tag + "/plugin.wasm"
-	submission := fmt.Sprintf(`{"schema_version":1,"provider":"github","repository":"publisher/plugin","tag":%q,"asset":"plugin.wasm","sha256":%q,"kind":"component"}`, tag, digest)
-	declaration := fmt.Sprintf(`{"kind":"component","sha256":%q,"plugin_id":%q,"plugin_version":%q,"repository":"https://github.com/publisher/plugin","contract":%q,"metadata":%s}`, digest, r.PluginID, strings.TrimPrefix(tag, "v"), "kjanat:actionlint/analyzer@0.1.0#sha256="+fixtureContractDigest, metadata)
+	artifactURL := "https://" + FixturePluginName + "/releases/download/" + tag + "/" + asset
+	submission := fmt.Sprintf(`{"schema_version":1,"provider":"github","repository":"publisher/plugin","tag":%q,"asset":%q,"sha256":%q,"kind":%q}`, tag, asset, digest, kind)
+	declaration := fmt.Sprintf(`{"kind":%q,"sha256":%q,"plugin_id":%q,"plugin_version":%q,"repository":"https://github.com/publisher/plugin","contract":%q,"metadata":%s}`, kind, digest, r.PluginID, strings.TrimPrefix(tag, "v"), contract, metadata)
 	record := fmt.Sprintf(`{"record_version":2,"artifact":%s,"submission":%s,"receipt":{"schema_version":1,"submission":%s,"identity":{"issuer":"https://token.actions.githubusercontent.com","repository_id":"10","owner_id":"5","repository":"publisher/plugin","ref":%q,"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},"repository_id":10,"owner_id":5,"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","url":%q,"upstream_immutable":true,"release_id":11,"asset_id":12}`, declaration, submission, submission, "refs/tags/"+tag, artifactURL)
 	r.Files[artifactURL] = data
 	r.Files[r.RecordURL(tag)] = []byte(record)
@@ -102,5 +113,5 @@ func (r *PluginRegistry) Publish(t *testing.T, versions ...string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r.Files[FixtureRegistryURL+manifestPath] = fmt.Appendf(nil, `{"plugin":{"schema_version":1,"issuer":"https://token.actions.githubusercontent.com","repository_id":"10","owner_id":"5","provider":"github","repository":"publisher/plugin","plugin_id":%q,"asset":"plugin.wasm","kind":"component"},"versions":%s}`, r.PluginID, data)
+	r.Files[FixtureRegistryURL+manifestPath] = fmt.Appendf(nil, `{"plugin":{"schema_version":1,"issuer":"https://token.actions.githubusercontent.com","repository_id":"10","owner_id":"5","provider":"github","repository":"publisher/plugin","plugin_id":%q},"versions":%s}`, r.PluginID, data)
 }

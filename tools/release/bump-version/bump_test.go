@@ -527,7 +527,17 @@ func gitRepo(t *testing.T) *repo {
 			t.Fatal(err)
 		}
 	}
+	foregroundMaintenance := func(repository *repo) {
+		t.Helper()
+		// Temporary repositories must have no detached Git writers at cleanup.
+		for _, key := range []string{"maintenance.autoDetach", "gc.autoDetach"} {
+			if _, err := repository.git("config", key, "false"); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	run("init", "--initial-branch=master")
+	foregroundMaintenance(r)
 	run("config", "user.email", "test@example.com")
 	run("config", "user.name", "test")
 	run("config", "commit.gpgsign", "false")
@@ -540,9 +550,11 @@ func gitRepo(t *testing.T) *repo {
 	run("commit", "-m", "init")
 
 	remote := t.TempDir()
-	if _, err := (&repo{ctx: t.Context(), root: remote, out: io.Discard}).git("init", "--bare"); err != nil {
+	remoteRepo := &repo{ctx: t.Context(), root: remote, out: io.Discard}
+	if _, err := remoteRepo.git("init", "--bare"); err != nil {
 		t.Fatal(err)
 	}
+	foregroundMaintenance(remoteRepo)
 	run("remote", "add", "origin", remote)
 	return r
 }

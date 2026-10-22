@@ -37,9 +37,20 @@ func ActionInputValue(action *ExecAction, name string) (string, bool) {
 
 func ActionInputNames(action *ExecAction) (map[string]*Input, bool) {
 	names, complete := InputResolver.Names(InputMapping(action))
+	sources := map[*String]*ScriptSource{}
+	var collect func(*ActionInputMapping)
+	collect = func(mapping *ActionInputMapping) {
+		for _, input := range mapping.Inputs {
+			sources[input.Value] = input.Source
+		}
+		for _, insertion := range mapping.Insertions {
+			collect(insertion)
+		}
+	}
+	collect(&ActionInputMapping{Inputs: action.Inputs, Insertions: action.InputInsertions})
 	inputs := make(map[string]*Input, len(names))
 	for name, input := range names {
-		inputs[name] = &Input{Name: input.Name, Value: input.Value}
+		inputs[name] = &Input{Name: input.Name, Value: input.Value, Source: sources[input.Value]}
 	}
 	return inputs, complete
 }

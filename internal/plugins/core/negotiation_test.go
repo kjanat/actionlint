@@ -12,10 +12,18 @@ import (
 
 	"actionlint.kjanat.dev/analyzer"
 	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	"actionlint.kjanat.dev/internal/tools"
+	backendroute "actionlint.kjanat.dev/internal/tools/backend"
+	"actionlint.kjanat.dev/rule"
 )
 
 // Build small guests directly so timeout tests need no external compiler.
 func negotiationFixture(t *testing.T, check, encoding, hang string, versions ...int) string {
+	t.Helper()
+	return negotiationFixtureWithShells(t, check, encoding, hang, nil, versions...)
+}
+
+func negotiationFixtureWithShells(t *testing.T, check, encoding, hang string, shells []string, versions ...int) string {
 	t.Helper()
 	u := func(n int) []byte { return binary.AppendUvarint(nil, uint64(n)) }
 	name := func(s string) []byte { return append(u(len(s)), s...) }
@@ -37,7 +45,7 @@ func negotiationFixture(t *testing.T, check, encoding, hang string, versions ...
 	metadata, err := json.Marshal(corewasm.Metadata{
 		MetadataVersion: version,
 		ABIVersion:      1, Interfaces: map[string][]corewasm.Interface{"check": {{Version: 1, Export: check}}},
-		Capabilities: corewasm.Capabilities{PositionEncoding: encoding},
+		Capabilities: corewasm.Capabilities{PositionEncoding: encoding, ScriptShells: shells},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -99,6 +107,62 @@ func negotiationFixture(t *testing.T, check, encoding, hang string, versions ...
 		t.Fatal(err)
 	}
 	return path
+}
+
+func TestLegacyShellSelectorsAreNormalized(t *testing.T) {
+	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), corewasm.Options{})
+	shells := engine.Metadata().Capabilities.ScriptShells
+	if len(shells) != 2 || shells[0] != "python" || shells[1] != "python" {
+		t.Fatalf("legacy shell selectors were not normalized: %q", shells)
+	}
+}
+
+func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
+	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), corewasm.Options{})
+	described := coreDescribedBackend{ScriptBackend: engine, descriptor: analyzer.ScriptEngineDescriptor{
+		Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
+	}}
+	nativeCalls := 0
+	registration := backendroute.WithConfiguredEngine(tools.Registration{
+		Descriptor: rule.Descriptor{Name: "ruff"},
+		Build: func(tools.Context) (tools.Runner, error) {
+			return coreBatchRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+				nativeCalls++
+				if len(batch.Scripts) != 2 || batch.Scripts[0].Text != "print(1)" || batch.Scripts[1].Text != "print(2)" {
+					t.Fatalf("legacy core shell selectors lost supported runs: %+v", batch.Scripts)
+				}
+				return nil, nil
+			}), nil
+		},
+	}, func(tools.Context) (analyzer.ScriptBackend, error) { return described, nil })
+	runner, err := registration.Build(tools.Context{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	python, bash := "python", "bash"
+	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
+		{Text: "print(1)", Shell: &python},
+		{Text: "print(2)", Execution: tools.Execution{Shell: "\"C:\\Program Files\\Python\\python.exe\"\u2003{0}"}},
+		{Text: "echo no", Shell: &bash},
+	}})
+	if err != nil || nativeCalls != 1 {
+		t.Fatalf("native calls=%d err=%v", nativeCalls, err)
+	}
+}
+
+type coreDescribedBackend struct {
+	analyzer.ScriptBackend
+	descriptor analyzer.ScriptEngineDescriptor
+}
+
+func (b coreDescribedBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	return b.descriptor
+}
+
+type coreBatchRunner func(context.Context, tools.Batch) ([]tools.Finding, error)
+
+func (r coreBatchRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+	return r(ctx, batch)
 }
 
 func TestNegotiatesAliasedCheckWithoutConfigValidation(t *testing.T) {

@@ -25,7 +25,7 @@ declare class Go {
 
 declare module '*wasm_exec.js';
 
-// The published 0.11.0 wrapper has no declarations. Keep its narrow boundary
+// The published wrapper has no declarations. Keep its narrow boundary
 // typed here; result validation is shared by the worker and integration tests.
 declare module '@kjanat/rshellcheck-wasm' {
 	export function createChecker(bytes: BufferSource): Promise<{

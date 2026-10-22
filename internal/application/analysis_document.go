@@ -189,7 +189,10 @@ func (s *analysisSession) composeDocument(path, root string, document documentpa
 	service := composition.New(composition.Options{
 		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
-		Paths:   execution.Paths{Workspace: root, Analysis: s.workingDir, Reader: s.reader}, Config: cfg,
+		ScriptInputsForConfig: func(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
+			return selected.inputSelectors(toolContext, cfg)
+		},
+		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir, Reader: s.reader}, Config: cfg,
 		ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {

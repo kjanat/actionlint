@@ -109,7 +109,9 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		step := documentparse.ActionStep(metadataStep, parser)
 		analysis.actions.ObserveExecution(step)
 		analysis.actions.ObserveCheckout(step)
-		analysis.collectScript(step, scriptConfig, meta.Path(), meta.Source, nil, nil)
+		if err := analysis.collectScript(step, scriptConfig, meta.Path(), meta.Source, nil, nil); err != nil {
+			return err
+		}
 		if _, action := step.Exec.(*workflowlang.ExecAction); action {
 			for _, pass := range analysis.passes {
 				if parent, enabled := pass.(builtin.MetadataParticipant); enabled {

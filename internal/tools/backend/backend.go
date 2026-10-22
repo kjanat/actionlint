@@ -7,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
@@ -22,22 +23,75 @@ import (
 // Register uses advertised shell selectors, never an engine-name switch. Backends
 // with language-specific preparation can instead supply their own registration.
 func Register(descriptor rule.Descriptor, shells []string, backend analyzer.ScriptBackend) (tools.Registration, error) {
-	if descriptor.Name == "" || len(shells) == 0 || backend == nil {
+	return RegisterEngine(analyzer.ScriptEngineDescriptor{Rule: descriptor, Shells: shells}, backend)
+}
+
+// RegisterEngine routes both shell snippets and declared action-input sites.
+func RegisterEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
+	return registerEngine(descriptor, backend, nil, nil)
+}
+
+func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend, enabled func(tools.Context) bool, prepareInput func(tools.Script) (tools.PreparedInput, error)) (tools.Registration, error) {
+	descriptor = descriptor.Clone()
+	if backend == nil {
 		return tools.Registration{}, errors.New("script engine requires a rule, shell selectors and a backend")
 	}
-	shells = slices.Clone(shells)
+	if err := analyzer.ValidateScriptInputs(descriptor.ScriptInputs); err != nil {
+		return tools.Registration{}, err
+	}
+	if descriptor.Rule.Name == "" || len(descriptor.Shells)+len(descriptor.ScriptInputs) == 0 {
+		return tools.Registration{}, errors.New("script engine requires a rule and script selectors")
+	}
+	selectors, err := shellCatalogue(descriptor.Rule, descriptor.Shells)
+	if err != nil {
+		return tools.Registration{}, err
+	}
+	inputs := make(map[analyzer.ScriptInput]struct{}, len(descriptor.ScriptInputs))
+	for _, input := range descriptor.ScriptInputs {
+		inputs[input] = struct{}{}
+	}
+	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0, Build: func(c tools.Context) (tools.Runner, error) {
+		return runner{descriptor: descriptor.Rule, shells: selectors, inputs: inputs, backend: backend, enabled: enabled, context: c, prepareInput: prepareInput}, nil
+	}}, nil
+}
+
+func shellCatalogue(descriptor rule.Descriptor, shells []string) (map[string]struct{}, error) {
+	if descriptor.Name == "" {
+		return nil, errors.New("script engine requires a rule, shell selectors and a backend")
+	}
+	selectors := make(map[string]struct{}, len(shells))
 	for _, shell := range shells {
 		if shell == "" || strings.ContainsAny(shell, " /\\\t\r\n") {
-			return tools.Registration{}, fmt.Errorf("invalid script shell selector %q", shell)
+			return nil, fmt.Errorf("invalid script shell selector %q", shell)
 		}
+		selectors[shell] = struct{}{}
 	}
-	return tools.Registration{Descriptor: descriptor, RequiresExecution: true, Build: func(tools.Context) (tools.Runner, error) { return runner{descriptor, shells, backend}, nil }}, nil
+	return selectors, nil
 }
 
 type runner struct {
-	descriptor rule.Descriptor
-	shells     []string
-	backend    analyzer.ScriptBackend
+	descriptor   rule.Descriptor
+	shells       map[string]struct{}
+	inputs       map[analyzer.ScriptInput]struct{}
+	backend      analyzer.ScriptBackend
+	enabled      func(tools.Context) bool
+	context      tools.Context
+	prepareInput func(tools.Script) (tools.PreparedInput, error)
+}
+
+func (r runner) scriptEnabled(cfg *config.Config) bool {
+	if r.enabled == nil {
+		return true
+	}
+	c := r.context
+	c.Config, c.ProjectConfig, c.ProjectRoot = cfg, nil, ""
+	if cfg != nil {
+		resolved := *cfg
+		// The prepared script already has its file overrides applied.
+		resolved.Overrides = nil
+		c.Config = &resolved
+	}
+	return r.enabled(c)
 }
 
 func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -47,16 +101,33 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if err := ctx.Err(); err != nil {
 			return out, errors.Join(failures, err)
 		}
-		if config.DiagnosticLevel(script.Config, r.descriptor.Name) == "off" {
+		if !r.scriptEnabled(script.Config) || config.DiagnosticLevel(script.Config, r.descriptor.Name) == "off" {
 			continue
 		}
-		command, _, _ := strings.Cut(script.Execution.Shell, " ")
-		shell := strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
-		if !slices.Contains(r.shells, shell) {
-			continue
+		if script.Input != nil {
+			if _, supported := r.inputs[*script.Input]; !supported {
+				continue
+			}
+		} else {
+			shell := scriptShell(script)
+			if _, supported := r.shells[shell]; !supported {
+				continue
+			}
 		}
 		var options json.RawMessage
-		if script.Config != nil {
+		var prepared tools.PreparedInput
+		if r.prepareInput != nil && script.Input != nil {
+			var err error
+			prepared, err = r.prepareInput(script)
+			if err != nil {
+				failures = errors.Join(failures, err)
+				continue
+			}
+			options = prepared.Config
+		} else {
+			prepared.Source = maskExpressions(script.Text)
+		}
+		if (r.prepareInput == nil || script.Input == nil) && script.Config != nil {
 			settings := script.Config.Lint.Rules.Plugins.Rules[r.descriptor.Name].Options
 			if settings != nil {
 				data, err := json.Marshal(settings)
@@ -65,6 +136,9 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				}
 				options = data
 			}
+		}
+		if prepared.Skip {
+			continue
 		}
 		if err := analyzerhost.ValidateOptions(r.descriptor.OptionsSchema, options); err != nil {
 			failures = errors.Join(failures, fmt.Errorf("tool %s options: %w", r.descriptor.Name, err))
@@ -76,13 +150,30 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				continue
 			}
 		}
-		request := analyzer.ScriptRequest{Source: maskExpressions(script.Text), Filename: "actionlint-script", Config: options}
+		request := analyzer.ScriptRequest{Source: prepared.Source, Filename: "actionlint-script", Config: options}
+		if script.Input != nil {
+			request.Filename = inputFilename(*script.Input)
+		}
 		diagnostics, err := r.backend.Check(ctx, request)
 		failures = errors.Join(failures, err)
 		for _, d := range diagnostics {
 			if d.Filename != "" && d.Filename != request.Filename {
 				failures = errors.Join(failures, fmt.Errorf("tool %s returned an unrelated source %q", r.descriptor.Name, d.Filename))
 				continue
+			}
+			if prepared.AcceptDiagnostic != nil && !prepared.AcceptDiagnostic(d) {
+				continue
+			}
+			if prepared.OriginalLine != nil {
+				hasEnd := d.EndLocation != (analyzer.ScriptPosition{})
+				d.Location.Row = prepared.OriginalLine(d.Location.Row)
+				if hasEnd {
+					d.EndLocation.Row = prepared.OriginalLine(d.EndLocation.Row)
+				}
+				if d.Location.Row == 0 || hasEnd && d.EndLocation.Row == 0 {
+					failures = errors.Join(failures, fmt.Errorf("tool %s configuration diagnostic: %s", r.descriptor.Name, d.Message))
+					continue
+				}
 			}
 			start, ok := script.Source.Position(d.Location.Row, d.Location.Column)
 			end, endOK := script.Source.EndPos(d.EndLocation.Row, d.EndLocation.Column)
@@ -101,6 +192,19 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		}
 	}
 	return out, failures
+}
+
+func inputFilename(site analyzer.ScriptInput) string {
+	extension := site.Language
+	switch extension {
+	case "python":
+		extension = "py"
+	case "javascript":
+		extension = "js"
+	case "typescript":
+		extension = "ts"
+	}
+	return "actionlint-input/" + site.Language + "/" + site.Action + "/" + site.Input + "." + extension
 }
 
 func maskExpressions(text string) string {
@@ -127,4 +231,39 @@ func maskExpressions(text string) string {
 		}
 		text = text[end:]
 	}
+}
+
+func scriptShell(script tools.Script) string {
+	shell := script.Execution.Shell
+	if shell == "" && script.Shell != nil {
+		shell = *script.Shell
+	}
+	command := shellCommand(shell)
+	return strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
+}
+
+func shellCommand(shell string) string {
+	shell = strings.TrimSpace(shell)
+	if shell == "" {
+		return ""
+	}
+	if quote := shell[0]; quote == '"' || quote == '\'' {
+		end := strings.IndexByte(shell[1:], quote)
+		if end < 0 {
+			return ""
+		}
+		end++
+		if end+1 < len(shell) {
+			next, _ := utf8.DecodeRuneInString(shell[end+1:])
+			if !unicode.IsSpace(next) {
+				return ""
+			}
+		}
+		return shell[1:end]
+	}
+	end := strings.IndexFunc(shell, unicode.IsSpace)
+	if end < 0 {
+		return shell
+	}
+	return shell[:end]
 }

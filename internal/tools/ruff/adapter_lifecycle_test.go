@@ -69,7 +69,7 @@ func TestRuffAdapterMapsBothEndpoints(t *testing.T) {
 	} {
 		t.Run(endpoints.name, func(t *testing.T) {
 			checker := NewBackend(t.Context(), testBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
-				return []analyzer.ScriptDiagnostic{{Filename: stdinFilename, Code: "F821", Message: "undefined name", Severity: "warning", Location: Position{Row: endpoints.start, Column: 7}, EndLocation: Position{Row: endpoints.end, Column: 14}}}, nil
+				return []analyzer.ScriptDiagnostic{{Filename: stdinFilename, Code: "F821", Message: "undefined name", Severity: "warning", URL: "https://docs.astral.sh/ruff/rules/undefined-name/", Location: Position{Row: endpoints.start, Column: 7}, EndLocation: Position{Row: endpoints.end, Column: 14}}}, nil
 			}), ruffExpressionEnd)
 			adapter := &ruffAnalyzer{checker: checker}
 			findings, err := adapter.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: run.Source, Key: run.RunPos, Value: run.Run.Pos, Shell: &python, Path: "workflow.yml", Content: source}}})
@@ -80,6 +80,9 @@ func TestRuffAdapterMapsBothEndpoints(t *testing.T) {
 				t.Fatalf("want one finding: %+v", findings)
 			}
 			finding := findings[0]
+			if finding.DocumentationURL != "https://docs.astral.sh/ruff/rules/undefined-name/" {
+				t.Fatalf("documentation URL lost: %+v", finding)
+			}
 			wantStart, wantEnd := (diagnostic.Position{Line: 8, Column: 17}), (diagnostic.Position{Line: 8, Column: 24})
 			if endpoints.name != "mapped" {
 				wantStart = diagnostic.Position{Line: 7, Column: 9}

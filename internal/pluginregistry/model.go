@@ -54,15 +54,13 @@ type Version struct {
 }
 
 type identity struct {
-	SchemaVersion int           `json:"schema_version"`
-	Issuer        string        `json:"issuer"`
-	RepositoryID  string        `json:"repository_id"`
-	OwnerID       string        `json:"owner_id"`
-	Provider      string        `json:"provider"`
-	Repository    string        `json:"repository"`
-	PluginID      string        `json:"plugin_id"`
-	Asset         string        `json:"asset"`
-	Kind          artifact.Kind `json:"kind"`
+	SchemaVersion int    `json:"schema_version"`
+	Issuer        string `json:"issuer"`
+	RepositoryID  string `json:"repository_id"`
+	OwnerID       string `json:"owner_id"`
+	Provider      string `json:"provider"`
+	Repository    string `json:"repository"`
+	PluginID      string `json:"plugin_id"`
 }
 
 type manifest struct {

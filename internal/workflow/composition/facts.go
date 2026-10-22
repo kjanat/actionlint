@@ -52,9 +52,12 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 				script.Invocation.Reference = byPath[referencePath(caller)].Positions[[2]int{script.Invocation.Step.Line, script.Invocation.Step.Column}]
 			}
 
-			if script.Path == "" {
+			switch {
+			case unit.Input != nil:
+				input.ActionInputs = append(input.ActionInputs, analyzer.ActionInput{Script: script, Site: unit.Input.Site})
+			case script.Path == "":
 				input.Scripts = append(input.Scripts, script)
-			} else {
+			default:
 				input.Invoked = append(input.Invoked, script)
 			}
 		}

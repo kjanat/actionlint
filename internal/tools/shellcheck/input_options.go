@@ -1,0 +1,68 @@
+package shellcheck
+
+import (
+	"encoding/json"
+	"errors"
+	"slices"
+
+	"actionlint.kjanat.dev/internal/tools"
+)
+
+func excludedChecks(settings *ShellcheckSettings) []string {
+	excluded := []string{"SC1091", "SC2194", "SC2050", "SC2153", "SC2154", "SC2157", "SC2043"}
+	if settings != nil {
+		for _, code := range settings.Exclude {
+			if !slices.Contains(excluded, code) {
+				excluded = append(excluded, code)
+			}
+		}
+	}
+	return excluded
+}
+
+func backendOptions(dialect string, settings *ShellcheckSettings) (json.RawMessage, error) {
+	return json.Marshal(map[string]any{"shell": dialect, "exclude": excludedChecks(settings), "external-sources": false})
+}
+
+func prepareInput(script tools.Script) (tools.PreparedInput, error) {
+	script.Text = sanitizeExpressionsInScript(script.Text)
+	dialect := ""
+	if script.Input != nil {
+		switch script.Input.Language {
+		case "bash", "sh", "dash", "ksh", "busybox":
+			dialect = script.Input.Language
+		}
+	}
+	var inline *ShellcheckConfig
+	if script.Config != nil {
+		selection := script.Config.Tools.Shellcheck.Config
+		if selection.Path() != "" {
+			return tools.PreparedInput{}, errors.New("ShellCheck backend needs inline configuration; rc-file access requires a process backend")
+		}
+		inline = selection.Inline()
+	}
+	if inline != nil {
+		if len(inline.SourcePath) != 0 || inline.ExternalSources != nil && *inline.ExternalSources {
+			return tools.PreparedInput{}, errors.New("ShellCheck backend does not provide external source access")
+		}
+		if inline.Shell != nil {
+			dialect = *inline.Shell
+		}
+	}
+	if header, _, selected := shellcheckHeader(script.Text); selected {
+		dialect = shellcheckHeaderDialect(header)
+	}
+	options, err := backendOptions(dialect, nil)
+	if err != nil {
+		return tools.PreparedInput{}, err
+	}
+	directives, err := inline.Directives()
+	if err != nil {
+		return tools.PreparedInput{}, err
+	}
+	if directives == "" {
+		return tools.PreparedInput{Source: script.Text, Config: options}, nil
+	}
+	prepared := prepareShellcheckScript(script.Text, directives, "")
+	return tools.PreparedInput{Source: prepared.text, Config: options, OriginalLine: prepared.originalLine}, nil
+}

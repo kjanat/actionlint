@@ -3,7 +3,9 @@
 actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.1.0` interface. The contract is
 [`plugins/wit/analyzer.wit`](../plugins/wit/analyzer.wit). A plugin describes itself once, then receives one document per
 call with the facts it declared and returns diagnostics. Components may instead implement the independent
-`kjanat:actionlint/runner-provider@0.1.0` interface, or implement both roles. Any language with a component toolchain can implement them.
+`kjanat:actionlint/runner-provider@0.1.0` interface or the
+[`kjanat:actionlint/script-engine@0.1.0`](../plugins/wit/script-engine.wit) interface. Components can implement multiple
+roles. Any language with a component toolchain can implement them.
 
 ## Install from the registry
 
@@ -69,6 +71,11 @@ Failed downloads, identity changes, same-version digest replacements and concurr
 lock. Updates acquire every selected artifact before saving config and lock. A failed config write restores
 the previous lock unless another writer changed it. Removal updates both files and leaves shared cache entries intact.
 
+A new release may change its artifact filename or migrate from a core module to a component.
+An explicit update records that release's format, filename, interface and digest. Publisher, repository
+and plugin identity must remain unchanged, and an existing release cannot be replaced with different bytes,
+format or filename. Checking, synchronization and installation with an already matching pin keep the old artifact.
+
 Edit `plugins` directly, then run `actionlint plugin install` without arguments to resolve missing or changed
 dependencies. Existing matching pins stay pinned. This command also migrates older lock-only installations
 into config without upgrading their artifacts. Checks require declarations and matching pins; they never
@@ -110,8 +117,8 @@ use a fixed snapshot for that session; restart to refresh them. Configured local
 content changes, and selecting a different engine URI loads that identity separately. Earlier engines remain
 available to active analyses until shutdown. Every analysis still receives fresh document buffers and invocation state.
 
-The host refuses a component at load when it exports an unsupported version of either recognized interface, imports an interface
-the host does not grant, or exports neither role. Before guest startup it checks each implemented interface's complete
+The host refuses a component at load when it exports an unsupported version of a recognized interface, imports an interface
+the host does not grant, or exports no supported role. Before guest startup it checks each implemented interface's complete
 type graph against the canonical WIT, including function signatures, record fields and enum ordering. The expected
 graph and enum discriminants are generated with `go generate ./internal/plugins/component`; a test detects stale output.
 
@@ -326,21 +333,33 @@ file access are reported.
 
 ## Script engines
 
-Python and shell snippets go through a second contract, `analyzer.ScriptBackend`: actionlint selects the snippet,
+Python and shell snippets use `analyzer.ScriptBackend`: actionlint selects the snippet,
 masks workflow expressions and maps positions back, and the engine checks one sanitized snippet at a time.
-[actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) implements it as a core WebAssembly module
-with a JSON ABI: `check`, `validate_config` and `metadata` exports, no imports, requests and responses as UTF-8 JSON in
-linear memory. Select such a module in the configuration:
+The preferred component interface is [`script-engine.wit`](../plugins/wit/script-engine.wit), world
+`script-engine-plugin`. It has typed `describe`, `validate-config` and `check` operations. Plugin-specific
+configuration remains a JSON object checked by the engine; shared descriptors, diagnostics and outcomes use WIT
+records. Coordinates count one-based Unicode scalar values, with exclusive range ends. An outcome can contain
+both findings and an incomplete-analysis error. This interface does not provide fix edits.
+
+[actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) supplies a component and a legacy core
+module built from the same analysis implementation. Both use the existing Ruff expression sanitizer, configuration
+and YAML mapper. Select either artifact through `--plugin`, the registry, or the tool configuration:
 
 ```yaml
 tools:
   ruff:
     backend:
       wasm:
-        path: ./tools/actionlint-plugin-ruff.wasm.gz
+        path: ./tools/plugin.component.wasm.gz
 ```
 
-The host checks the ABI version, the export signatures and the advertised operation versions when it loads the module,
+From Go, load a component with `plugin.Load`, require `HasScriptEngine()`, and set the component as
+`analysis.Tool.Backend`. `plugin.LoadEngine` continues to load core modules unchanged. Component loading checks the
+typed interface, runtime descriptor and static declaration before registering the engine. Component engines use
+the same component execution limits and lifecycle as the other component roles.
+
+Legacy core modules retain their version 1 JSON ABI: `check`, `validate_config` and `metadata` exports, no imports,
+and UTF-8 JSON in linear memory. The host checks the ABI version, export signatures and advertised operation versions,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
 limit. Defined tables require finite maxima; conservative reservations for their maximum size and growth buffers share
 that memory budget with linear memory. Components charge each core instance, including repeated and nested modules;
@@ -418,7 +437,7 @@ Plugins requiring `dependencies` receive literal action and reusable-workflow
 references, including source ranges and owning node identities. Dynamic references
 remain unknown and are not sent as literal dependencies.
 
-Core script engines use the version 1 JSON ABI to analyze sanitized snippets.
+Script engines analyze sanitized snippets through either the typed component interface or the version 1 JSON ABI.
 `--plugin` accepts either binary kind and selects the appropriate host from its
 WebAssembly header. A failing component is never retried as a core module.
 
@@ -459,6 +478,55 @@ options and severity. They advertise `capabilities.script_shells`, for example
 `["python", "python3"]`, in their version 1 metadata. The host selects snippets by
 these shell names and registers the engine's rule descriptor in the catalogue.
 Local paths and remote artifact URLs use the same registration path.
+
+Script engines can also declare action-input sites in static metadata:
+
+```json
+{
+  "capabilities": {
+    "script_shells": [],
+    "script_inputs": [
+      {
+        "action": "actions/github-script",
+        "input": "script",
+        "language": "javascript"
+      }
+    ]
+  }
+}
+```
+
+Selectors use lowercase owner/repository names and case-sensitive subpaths without `@ref`, an input name and an explicit language. Targets use exact
+matching; wildcard selectors are rejected. Duplicate targets, conflicting languages and malformed selectors are
+rejected. Up to 256 selectors are allowed per engine. These declarations route snippets; they do not prove the
+guest understands a language. Input-only components may return an empty `shells` list from `describe`, but must
+provide valid input selectors in their root `actionlint.plugin` section. The existing script-engine WIT and core
+ABI remain unchanged. [`action-input.metadata.json`](../examples/plugins/action-input.metadata.json) and its
+Makefile target demonstrate packaging metadata at the component root. Metadata inside embedded core modules is
+ignored.
+
+The host recognizes `actions/github-script`'s `script` input as JavaScript. Other sites come from registered engine
+declarations. Input requests use the virtual filename
+`actionlint-input/<language>/<owner>/<repository>[/<subpath>]/<input>.<extension>`.
+Language and action/input segments retain the validated selector; Python, JavaScript
+and TypeScript use `py`, `js` and `ts` extensions; other languages use their own name.
+Guests can distinguish sites and select a parser without filesystem access or a new
+wire interface. Ordinary run requests retain their existing adapter filenames.
+Configured Wasm backends use the same selectors as explicitly loaded plugins, and
+disabled engines do not contribute selector conflicts for that effective configuration.
+Workflow and local composite inputs retain their declaring source maps and invocation identity;
+workflow expressions are masked before checking. Whole inputs created by object expressions have no physical
+script scalar and remain unavailable for this analysis. Ordinary action inputs and `run` scripts are not sent to
+an input-only engine. Action inputs have a language, never an inferred runner shell, and cannot opt into ShellCheck
+through a shell directive.
+
+Engines replacing Ruff or ShellCheck receive the corresponding `tools.ruff` or `tools.shellcheck` settings for both
+run scripts and declared inputs, including file overrides. ShellCheck's inline directives retain the input scalar's
+source mapping; they do not add runner startup commands.
+
+Go document analyzers requesting `analyzer.Scripts` receive these sites separately in `Input.ActionInputs`, with
+`Site`, spans and optional composite `Invocation`. Their shell and runtime fields remain empty. `Input.Scripts`
+and `Input.Invoked`, including the existing portable analyzer WIT, continue to contain only `run` scripts.
 
 The internal tool contract supplies prepared snippets, source maps and execution
 context to a registered runner. A runner returns findings with their originating

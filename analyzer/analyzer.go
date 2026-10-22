@@ -58,8 +58,17 @@ type Input struct {
 	Options      json.RawMessage
 	Scripts      []Script
 	Invoked      []Script
+	ActionInputs []ActionInput
 	Mappings     []Mapping
 	Dependencies []Dependency
+}
+
+// ActionInput is mapped source supplied to an action rather than a run command.
+// Site declares its language and action input. Script supplies source identity,
+// spans and invocation only; its Shell stays empty and Runtime stays nil.
+type ActionInput struct {
+	Script
+	Site ScriptInput
 }
 
 // Script is a declared run script. Shell contains the declared shell, without

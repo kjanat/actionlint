@@ -121,13 +121,18 @@ type runner struct{ check scriptAnalyzer }
 
 func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
 	private := scriptBatch{}
+	var scriptIndexes []int
 	scopes := map[*tools.Scope]*scriptScope{}
 	for _, scope := range batch.Scopes {
 		s := &scriptScope{paths: runPaths{analysis: scope.AnalysisDir, workspace: scope.Workspace, reader: scope.Reader}, config: scope.Config, actionPath: scope.ActionPath, composite: scope.Composite}
 		scopes[scope] = s
 		private.scopes = append(private.scopes, s)
 	}
-	for _, s := range batch.Scripts {
+	for index, s := range batch.Scripts {
+		if s.Input != nil {
+			continue
+		}
+		scriptIndexes = append(scriptIndexes, index)
 		kind := directoryUnknown
 		if s.Execution.DirectoryKnown {
 			kind = directoryKnown
@@ -142,6 +147,9 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 			d.End = diagnostic.Position{Line: f.endPosition.Line, Column: f.endPosition.Col}
 		}
 		out := tools.Finding{Diagnostic: d, Script: f.scriptIndex, Content: f.source, RawScript: f.rawScriptSource}
+		if out.Script >= 0 && out.Script < len(scriptIndexes) {
+			out.Script = scriptIndexes[out.Script]
+		}
 		if o := f.suppressionOrigin; o != nil {
 			out.Suppression = &tools.Suppression{Path: o.path, First: o.first, Last: o.last}
 		}

@@ -5,7 +5,10 @@ package composition
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+
+	"actionlint.kjanat.dev/analyzer"
 
 	actionmeta "actionlint.kjanat.dev/internal/action"
 	actionlocal "actionlint.kjanat.dev/internal/action/local"
@@ -22,6 +25,8 @@ import (
 
 type Options struct {
 	Runners                          *runnerlang.Knowledge
+	ScriptInputs                     []analyzer.ScriptInput
+	ScriptInputsForConfig            func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
 	Context                          context.Context
 	Actions                          *actionlocal.Resolver
 	Rules                            []workflowvisit.Rule
@@ -78,6 +83,10 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 			err = errors.Join(err, join())
 		}
 	}()
+	scriptInputs, err := scriptInputCatalogue(options.ScriptInputs)
+	if err != nil {
+		return result, err
+	}
 	passes := make([]workflowvisit.Pass, len(options.Rules))
 	for i, r := range options.Rules {
 		passes[i] = r
@@ -88,6 +97,8 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		runners:      options.Runners,
 		scriptConfig: options.Config, scriptPaths: options.Paths,
 		collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
+		scriptInputs:          scriptInputs,
+		scriptInputsForConfig: options.ScriptInputsForConfig,
 	}
 	if options.ConfigForFile != nil {
 		c.configForFile = func(path string) (*repoconfig.Config, error) {
@@ -120,4 +131,26 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		}
 	}
 	return Result{Findings: findings, Batch: batch, CollectScripts: c.collectScripts, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), Configs: configs}, err
+}
+
+func scriptInputCatalogue(additional []analyzer.ScriptInput) ([]analyzer.ScriptInput, error) {
+	// Multiple engines may analyze the same site, provided they agree on its language.
+	known := analyzer.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}
+	inputs := []analyzer.ScriptInput{known}
+	languages := map[[2]string]string{{known.Action, known.Input}: known.Language}
+	for _, input := range additional {
+		if err := analyzer.ValidateScriptInput(input); err != nil {
+			return nil, err
+		}
+		key := [2]string{input.Action, input.Input}
+		if language, found := languages[key]; found {
+			if input.Language != language {
+				return nil, fmt.Errorf("script input %s/%s has conflicting languages %q and %q", input.Action, input.Input, language, input.Language)
+			}
+			continue
+		}
+		languages[key] = input.Language
+		inputs = append(inputs, input)
+	}
+	return inputs, nil
 }

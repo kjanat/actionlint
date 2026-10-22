@@ -10,14 +10,22 @@ import (
 
 func Fact(unit Unit, document, documentAbs string, includeExecution bool) analyzer.Script {
 	run := unit.Run
-	script := analyzer.Script{Text: run.Run.Value, Shell: stringValue(run.Shell), Start: workflowfacts.Position(run.Run.Pos)}
+	var script analyzer.Script
+	var source *workflowlang.ScriptSource
+	if input := unit.Input; input != nil {
+		script = analyzer.Script{Text: input.Value.Value.Value, Start: workflowfacts.Position(input.Value.Value.Pos)}
+		source = input.Value.Source
+	} else {
+		script = analyzer.Script{Text: run.Run.Value, Shell: stringValue(run.Shell), Start: workflowfacts.Position(run.Run.Pos)}
+		source = run.Source
+	}
 	if unit.Origin != nil {
 		script.JobID, script.StepID = unit.Origin.Job, unit.Origin.StepID
 	}
 	if unit.Path != "" && unit.Path != document && unit.Path != documentAbs {
 		script.Path = unit.Path
 	}
-	for _, span := range run.Source.LineSpans() {
+	for _, span := range source.LineSpans() {
 		script.Spans = append(script.Spans, analyzer.Span{
 			Line: span.Line, Start: span.Start, End: span.End,
 			Document:    diagmodel.Position{Line: span.YamlLine, Column: span.YamlColumn},
@@ -34,7 +42,7 @@ func Fact(unit Unit, document, documentAbs string, includeExecution bool) analyz
 		}
 		script.Invocation = invocation
 	}
-	if includeExecution {
+	if includeExecution && unit.Input == nil {
 		script.Runtime = &analyzer.Runtime{
 			Shell: unit.Execution.Shell.Name, ShellKnown: unit.Execution.Shell.Name != "", ShellImplicit: unit.Execution.Shell.Implicit,
 			Directory: unit.Execution.Directory.Path, DirectoryKnown: unit.Execution.Directory.Kind == workflowexecution.DirectoryKnown,

@@ -23,7 +23,8 @@ func (o Options) Registration() tools.Registration {
 	descriptor, _ := rulecatalog.Find("ruff")
 	compatibility := &Compatibility{}
 	registration := tools.Registration{
-		Descriptor: descriptor,
+		Descriptor:   descriptor,
+		PrepareInput: prepareInput,
 		Enabled: func(c tools.Context) bool {
 			possible, err := projectMayEnable(c.Config, c.ProjectConfig, c.ProjectRoot != "")
 			return (o.Backend != nil || selection.AllowsModule("ruff", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (possible || err != nil)
@@ -56,6 +57,12 @@ func (o Options) Registration() tools.Registration {
 			next.Backend = backend
 			return next.Registration(), nil
 		},
+	}
+	registration.ConfiguredBackend = func(c tools.Context) (analyzer.ScriptBackend, error) {
+		if o.Backend != nil {
+			return o.Backend, nil
+		}
+		return selection.Load("ruff", o.Command, o.Process, c.Config, engineLoader(c))
 	}
 	return registration
 }

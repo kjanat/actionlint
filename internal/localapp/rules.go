@@ -30,7 +30,7 @@ func Rules(ctx context.Context, paths []string) (result []rule.Descriptor, err e
 	}
 	seen := make(map[string]bool)
 	for _, engine := range plugins.engines {
-		descriptor := engineDescriptor(engine.Metadata())
+		descriptor := engine.descriptor.Rule.Clone()
 		if seen[descriptor.Name] {
 			return nil, errors.New("duplicate script engine: " + descriptor.Name)
 		}

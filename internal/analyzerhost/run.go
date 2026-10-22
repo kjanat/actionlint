@@ -42,6 +42,10 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			supplied.Options = slices.Clone(registration.Options)
 			supplied.Scripts = cloneScripts(input.Scripts)
 			supplied.Invoked = cloneScripts(input.Invoked)
+			supplied.ActionInputs = slices.Clone(input.ActionInputs)
+			for i, input := range supplied.ActionInputs {
+				supplied.ActionInputs[i].Script = cloneScripts([]analyzer.Script{input.Script})[0]
+			}
 			supplied.Dependencies = slices.Clone(input.Dependencies)
 			supplied.Mappings = slices.Clone(input.Mappings)
 			for i := range supplied.Mappings {

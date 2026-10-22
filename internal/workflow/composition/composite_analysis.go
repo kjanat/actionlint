@@ -3,6 +3,8 @@ package composition
 import (
 	"context"
 
+	"actionlint.kjanat.dev/analyzer"
+
 	checks "actionlint.kjanat.dev/internal/checks"
 	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
 
@@ -19,6 +21,8 @@ import (
 // compositeAnalyzer owns script-analyzer policy and invocation-specific state,
 // leaving Visitor responsible for the workflow's ordinary pass lifecycle.
 type compositeAnalyzer struct {
+	scriptInputs                      []analyzer.ScriptInput
+	scriptInputsForConfig             func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
 	runners                           *runnerlang.Knowledge
 	resolveScriptExecution            bool
 	scripts                           []scriptexecution.Unit
@@ -90,7 +94,9 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	}
 	analysis.actions.ObserveExecution(step)
 	analysis.actions.ObserveCheckout(step)
-	analysis.collectScript(step, analysis.scriptConfig, "", nil, analysis.jobScriptShell, analysis.workflowScriptShell)
+	if err := analysis.collectScript(step, analysis.scriptConfig, "", nil, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
+		return err
+	}
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
 		if participant, ok := pass.(builtin.InvocationParticipant); ok && participant.DeferActionInvocation() {

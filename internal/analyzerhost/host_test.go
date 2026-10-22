@@ -88,3 +88,30 @@ func TestRunRequirementsAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRunIsolatesActionInputFacts(t *testing.T) {
+	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Scripts}, ActionInputs: []analyzer.ActionInput{{
+		Site:       analyzer.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
+		Spans:      []analyzer.Span{{Line: 1, Start: 1, End: 8}},
+		Invocation: &analyzer.Invocation{Depth: 1},
+	}}}
+	changed := make(chan struct{})
+	first := testAnalyzer{analyzer.Descriptor{Name: "first", Requires: []analyzer.Fact{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
+		in.ActionInputs[0].Site.Language = "python"
+		in.ActionInputs[0].Spans[0].End = 99
+		in.ActionInputs[0].Invocation.Depth = 99
+		close(changed)
+		return nil, nil
+	}}
+	second := testAnalyzer{analyzer.Descriptor{Name: "second", Requires: []analyzer.Fact{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
+		<-changed
+		got := in.ActionInputs[0]
+		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Invocation.Depth != 1 {
+			t.Errorf("action input facts shared between analyzers: %+v", got)
+		}
+		return nil, nil
+	}}
+	if _, err := Run(t.Context(), input, []analyzer.Registration{{Analyzer: first}, {Analyzer: second}}); err != nil {
+		t.Fatal(err)
+	}
+}

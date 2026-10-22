@@ -3,6 +3,8 @@ package execution
 import (
 	"context"
 
+	"actionlint.kjanat.dev/analyzer"
+
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	findingmodel "actionlint.kjanat.dev/internal/finding"
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
@@ -13,6 +15,7 @@ import (
 // remains an adapter concern; backends receive text and explicit shell selection.
 type Unit struct {
 	Run       *workflowlang.ExecRun
+	Input     *ActionInput
 	Shell     *string
 	Config    *repoconfig.Config
 	Path      string
@@ -21,6 +24,12 @@ type Unit struct {
 	Owner     *findingmodel.Owner
 	Scope     *Scope
 	Execution Execution
+}
+
+// ActionInput is a typed, mapped action argument, never a shell run command.
+type ActionInput struct {
+	Site  analyzer.ScriptInput
+	Value *workflowlang.Input
 }
 
 // Scope identifies a workflow or composite invocation independently of

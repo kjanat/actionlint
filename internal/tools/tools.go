@@ -3,6 +3,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
@@ -29,6 +30,9 @@ type Context struct {
 // consumes capabilities; adding a provider does not change its control flow.
 type Registration struct {
 	Descriptor        rule.Descriptor
+	ScriptInputs      []analyzer.ScriptInput
+	InputSelectors    func(Context) ([]analyzer.ScriptInput, error)
+	ConfiguredBackend func(Context) (analyzer.ScriptBackend, error)
 	RequiresExecution bool
 	NeedsProcess      func(*config.Config, *config.Config, bool) (bool, error)
 	Validate          func() error
@@ -36,6 +40,18 @@ type Registration struct {
 	Required          func(Context) bool
 	Build             func(Context) (Runner, error)
 	WithBackend       func(analyzer.ScriptBackend) (Registration, error)
+	// PrepareInput shares adapter configuration with advertised action-input routes.
+	PrepareInput func(Script) (PreparedInput, error)
+}
+
+// PreparedInput preserves the original scalar's coordinates when an adapter
+// inserts configuration directives. A nil OriginalLine leaves rows unchanged.
+type PreparedInput struct {
+	Source           string
+	Config           json.RawMessage
+	OriginalLine     func(int) int
+	AcceptDiagnostic func(analyzer.ScriptDiagnostic) bool
+	Skip             bool
 }
 
 type Runner interface {
@@ -58,6 +74,7 @@ type Execution struct {
 
 // Script is a prepared snippet and its source map, not a workflow AST visitor.
 type Script struct {
+	Input      *analyzer.ScriptInput
 	Text       string
 	Source     *workflow.ScriptSource
 	Key, Value *workflow.Pos

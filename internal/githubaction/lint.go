@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
 	documentmodel "actionlint.kjanat.dev/document"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	"actionlint.kjanat.dev/internal/localapp"
 
 	"actionlint.kjanat.dev/diagnostic"
 	"actionlint.kjanat.dev/internal/tools/adapters"
@@ -31,10 +30,6 @@ const lintTimeout = 300 * time.Second
 
 // Allow canceled analysis to drain callbacks and hand back its partial result.
 const lintCancellationGrace = time.Second
-
-func loadScriptEngine(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
-	return corewasm.Load(ctx, path, corewasm.Options{})
-}
 
 type lintRequest struct {
 	ruff               string
@@ -125,7 +120,7 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := application.Options{
-		LoadScriptEngine: loadScriptEngine,
+		LoadScriptEngine: localapp.ScriptEngineLoader(&logs, false),
 		IgnorePatterns:   req.ignore,
 		ConfigFile:       req.configFile,
 		ConfigOverlays:   req.overlays,

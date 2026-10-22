@@ -39,7 +39,7 @@ func Check(ctx context.Context, options application.Options, input application.I
 		return nil, err
 	}
 	if options.LoadScriptEngine == nil {
-		options.LoadScriptEngine = scriptEngineLoader(log, options.Debug)
+		options.LoadScriptEngine = ScriptEngineLoader(log, options.Debug)
 	}
 	return application.Check(ctx, options, input)
 }
@@ -47,21 +47,25 @@ func Check(ctx context.Context, options application.Options, input application.I
 func (l *loadedPlugins) configure(options application.Options) (application.Options, error) {
 	seen := map[string]bool{}
 	for _, engine := range l.engines {
-		metadata := engine.Metadata()
-		if seen[metadata.Engine.Name] {
-			return options, &PluginLoadError{fmt.Errorf("multiple plugins provide script engine %q", metadata.Engine.Name)}
+		metadata := engine.descriptor
+		if seen[metadata.Engine] {
+			return options, &PluginLoadError{fmt.Errorf("multiple plugins provide script engine %q", metadata.Engine)}
 		}
-		seen[metadata.Engine.Name] = true
+		seen[metadata.Engine] = true
 		found := false
 		options.Tools = slices.Clone(options.Tools)
 		for i, registration := range options.Tools {
-			if registration.Descriptor.Name != metadata.Engine.Name {
+			if registration.Descriptor.Name != metadata.Engine {
 				continue
 			}
 			if registration.WithBackend == nil {
-				return options, &PluginLoadError{fmt.Errorf("tool %q cannot replace its backend", metadata.Engine.Name)}
+				return options, &PluginLoadError{fmt.Errorf("tool %q cannot replace its backend", metadata.Engine)}
 			}
-			replacement, err := registration.WithBackend(engine)
+			replacement, err := registration.WithBackend(engine.backend)
+			if err != nil {
+				return options, &PluginLoadError{err}
+			}
+			replacement, err = backend.WithScriptInputs(replacement, metadata, engine.backend)
 			if err != nil {
 				return options, &PluginLoadError{err}
 			}
@@ -70,8 +74,7 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 			break
 		}
 		if !found {
-			descriptor := engineDescriptor(metadata)
-			registration, err := backend.Register(descriptor, metadata.Capabilities.ScriptShells, engine)
+			registration, err := backend.RegisterEngine(metadata, engine.backend)
 			if err != nil {
 				return options, &PluginLoadError{err}
 			}
@@ -79,6 +82,10 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 		}
 	}
 
+	options.Tools = slices.Clone(options.Tools)
+	for i, registration := range options.Tools {
+		options.Tools[i] = backend.Configure(registration)
+	}
 	options.Analyzers = slices.Concat(options.Analyzers, l.registrations())
 	options.Runners.Providers = slices.Concat(options.Runners.Providers, l.runnerProviders())
 	return options, nil

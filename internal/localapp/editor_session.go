@@ -3,14 +3,12 @@ package localapp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/internal/application"
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
 )
 
 // An editor session owns compiled plugins, never document or analysis state.
@@ -98,15 +96,11 @@ func (s *editorEngines) load(ctx context.Context, source string) (analyzer.Scrip
 		if existing, ok := s.loaded[identity]; ok {
 			return borrowEditorEngine(existing), nil
 		}
-		engine, loadErr := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: engineCacheDir()})
+		engine, loadErr := loadScriptArtifact(ctx, artifact, s.log, s.debug)
 		if loadErr != nil {
 			return nil, loadErr
 		}
 		backend = engine
-		if s.debug {
-			metadata := engine.Metadata()
-			_, _ = fmt.Fprintf(s.log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, engine.Path(), engine.Limits())
-		}
 	}
 	if err != nil {
 		// A superseded analysis must not poison the next generation's load.
@@ -128,9 +122,16 @@ func (s *editorEngines) close(ctx context.Context) error {
 }
 
 // application.Check owns per-analysis loaders. A borrowed backend deliberately
-// exposes no Close method while retaining optional configuration validation.
+// exposes no Close method while retaining validation and selector capabilities.
 type (
-	borrowedEditorEngine   struct{ analyzer.ScriptBackend }
+	borrowedEditorEngine  struct{ analyzer.ScriptBackend }
+	describedEditorEngine struct {
+		analyzer.DescribedScriptBackend
+	}
+	validatingDescribedEditorEngine struct {
+		analyzer.DescribedScriptBackend
+		analyzer.ScriptConfigValidator
+	}
 	validatingEditorEngine struct {
 		analyzer.ScriptBackend
 		analyzer.ScriptConfigValidator
@@ -138,6 +139,12 @@ type (
 )
 
 func borrowEditorEngine(backend analyzer.ScriptBackend) analyzer.ScriptBackend {
+	if described, ok := backend.(analyzer.DescribedScriptBackend); ok {
+		if validator, ok := backend.(analyzer.ScriptConfigValidator); ok {
+			return validatingDescribedEditorEngine{DescribedScriptBackend: described, ScriptConfigValidator: validator}
+		}
+		return describedEditorEngine{DescribedScriptBackend: described}
+	}
 	if validator, ok := backend.(analyzer.ScriptConfigValidator); ok {
 		return validatingEditorEngine{ScriptBackend: backend, ScriptConfigValidator: validator}
 	}

@@ -97,14 +97,15 @@ type EngineVersion struct {
 
 // Capabilities lists what the engine supports.
 type Capabilities struct {
-	ScriptShells     []string `json:"script_shells,omitempty"`
-	Check            bool     `json:"check"`
-	ValidateConfig   bool     `json:"validate_config"`
-	ConfigSchema     bool     `json:"config_schema"`
-	Fixes            bool     `json:"fixes"`
-	Format           bool     `json:"format"`
-	PositionEncoding string   `json:"position_encoding"`
-	MaxInputBytes    int      `json:"max_input_bytes"`
+	ScriptShells     []string               `json:"script_shells,omitempty"`
+	ScriptInputs     []analyzer.ScriptInput `json:"script_inputs,omitempty"`
+	Check            bool                   `json:"check"`
+	ValidateConfig   bool                   `json:"validate_config"`
+	ConfigSchema     bool                   `json:"config_schema"`
+	Fixes            bool                   `json:"fixes"`
+	Format           bool                   `json:"format"`
+	PositionEncoding string                 `json:"position_encoding"`
+	MaxInputBytes    int                    `json:"max_input_bytes"`
 }
 
 // Engine is a loaded core module. It implements analyzer.ScriptBackend and
@@ -311,6 +312,13 @@ func (e *Engine) negotiate(raw []byte) error {
 	if encoding := metadata.Capabilities.PositionEncoding; encoding != "" && encoding != "unicode" {
 		return fmt.Errorf("metadata reports unsupported position encoding %q; this host requires unicode scalar columns", encoding)
 	}
+	if err := analyzer.ValidateScriptInputs(metadata.Capabilities.ScriptInputs); err != nil {
+		return fmt.Errorf("metadata input selectors: %w", err)
+	}
+	for i, shell := range metadata.Capabilities.ScriptShells {
+		// Legacy core metadata accepted executable casing and Windows suffixes.
+		metadata.Capabilities.ScriptShells[i] = strings.TrimSuffix(strings.ToLower(shell), ".exe")
+	}
 	if metadata.Interfaces == nil {
 		metadata.Interfaces = map[string][]Interface{"check": {{1, "check"}}, "validate_config": {{1, "validate_config"}}, "metadata": {{1, "metadata"}}}
 	}
@@ -363,6 +371,8 @@ func (e *Engine) Metadata() Metadata {
 		metadata.Rules[i] = metadata.Rules[i].Clone()
 	}
 	metadata.ConfigSchema = slices.Clone(metadata.ConfigSchema)
+	metadata.Capabilities.ScriptShells = slices.Clone(metadata.Capabilities.ScriptShells)
+	metadata.Capabilities.ScriptInputs = slices.Clone(metadata.Capabilities.ScriptInputs)
 	metadata.Interfaces = maps.Clone(metadata.Interfaces)
 	for name, versions := range metadata.Interfaces {
 		metadata.Interfaces[name] = slices.Clone(versions)

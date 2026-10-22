@@ -17,20 +17,23 @@ import (
 // Process registers a native provider speaking the same check request/result
 // envelope as a core-WASM engine. Native CLI-specific protocols need an adapter.
 func Process(descriptor rule.Descriptor, shells []string, executable string, options *processconfig.Options) tools.Registration {
+	selectors, selectorErr := shellCatalogue(descriptor, shells)
+	if len(shells) == 0 {
+		selectorErr = errors.New("process script engine requires shell selectors")
+	}
 	return tools.Registration{
 		Descriptor: descriptor, RequiresExecution: true,
 		NeedsProcess: func(_ *config.Config, _ *config.Config, _ bool) (bool, error) { return true, nil },
 		Build: func(c tools.Context) (tools.Runner, error) {
+			if selectorErr != nil {
+				return nil, selectorErr
+			}
 			command, err := c.Processes.ConfiguredCommandRunner(executable, options, false)
 			if err != nil {
 				return nil, err
 			}
 			command.RequireSuccess = true
-			registration, err := Register(descriptor, shells, processBackend{command})
-			if err != nil {
-				return nil, err
-			}
-			return registration.Build(c)
+			return runner{descriptor: descriptor, shells: selectors, backend: processBackend{command}}, nil
 		},
 	}
 }
