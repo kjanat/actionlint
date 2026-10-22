@@ -402,7 +402,7 @@ func (p *Plugin) verifyScriptMetadata(data []byte) error {
 	if len(d.Shells)+len(declared.Capabilities.ScriptInputs) == 0 {
 		return errors.New("script descriptor needs shell or static action-input selectors")
 	}
-	// Routing is host metadata, not an additional runtime WIT operation.
+	// The host routes scripts using the artifact's static input selectors.
 	p.scriptDescriptor.ScriptInputs = slices.Clone(declared.Capabilities.ScriptInputs)
 	return nil
 }
