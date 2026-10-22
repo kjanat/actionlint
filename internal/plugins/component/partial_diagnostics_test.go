@@ -1,7 +1,7 @@
 package component
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -18,7 +18,7 @@ func TestLiftAnalysisPreservesValidSiblings(t *testing.T) {
 		mixedDiagnostic("after", diagnostic.Position{Line: 5, Column: 1}, diagnostic.Position{Line: 5, Column: 2}),
 	)
 	for _, independentError := range []bool{false, true} {
-		t.Run(fmt.Sprint(independentError), func(t *testing.T) {
+		t.Run(strconv.FormatBool(independentError), func(t *testing.T) {
 			completion := wacogo.ValOptionNone()
 			if independentError {
 				completion = wacogo.ValOptionSome(wacogo.ValString("analysis incomplete"))
