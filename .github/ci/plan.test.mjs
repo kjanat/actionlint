@@ -197,10 +197,35 @@ test('plugin sources and Cargo inputs select the plugin checks', () => {
 			'rust-toolchain.toml',
 			'examples/plugins/pipe-to-shell.rs',
 			'testdata/plugins/misbehave/src/lib.rs',
+			'testdata/runner-provider/snapshot.json',
+			'tools/runner-host/src/main.rs',
+			'tools/runner-host/Cargo.toml',
+			'tools/runner-host/Cargo.lock',
+			'analysis/analysis.go',
+			'internal/application/analysis_document.go',
 		]
 	) {
 		assert.equal(selectJobs(ci, [path]).plugins, true, path);
 	}
+});
+
+test('runner sources select every Go consumer and provider tests select their test jobs', () => {
+	const ci = workflowFilters('ci');
+	const jobs = selectJobs(ci, ['runner/resolve.go']);
+	assert.deepEqual(Object.keys(jobs).filter(job => jobs[job]), [
+		'unit',
+		'race',
+		'nix',
+		'wasm',
+		'release',
+		'lint',
+		'docker',
+		'action',
+		'precommit',
+		'plugins',
+	]);
+	const tests = selectJobs(ci, ['runner/resolve_test.go']);
+	assert.deepEqual(Object.keys(tests).filter(job => tests[job]), ['unit', 'race', 'lint', 'plugins']);
 });
 
 test('test-only CLI changes keep Go coverage without rebuilding packages or running unrelated suites', () => {

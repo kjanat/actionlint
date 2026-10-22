@@ -25,6 +25,7 @@ type ExecutableChecker struct {
 	context                             ExecutableContext
 	workflowDir, jobDir                 Directory
 	workflowShell, jobShell             ShellValue
+	runnerShell                         ShellValue
 	paths                               Paths
 	unix                                bool
 	workflowEnv, jobEnv                 bool
@@ -41,6 +42,7 @@ type ExecutableChecker struct {
 // ExecutableContext supplies repository observations and paths to script analysis.
 // Index loads a shared immutable snapshot; all shell interpretation stays local.
 type ExecutableContext struct {
+	Runners                 *runnerlang.Knowledge
 	Context                 context.Context
 	ProjectRoot, WorkingDir string
 	Reader                  *fsread.Reader
@@ -82,12 +84,17 @@ func (rule *ExecutableChecker) VisitWorkflowPre(workflow *workflowlang.Workflow)
 func (rule *ExecutableChecker) VisitJobPre(job *workflowlang.Job) error {
 	rule.jobDir, rule.jobShell = DefaultDirectory(job.Defaults), DefaultShell(job.Defaults)
 	rule.jobEnv = rule.workflowEnv || ShellEnvironmentUnknown(job.Env)
-	platform := runnerlang.PlatformOf(job.RunsOn)
+	knowledge := rule.context.Runners.Job(job)
+	rule.runnerShell = ShellValue{Kind: ShellUnknown}
+	if knowledge.Shell != "" {
+		rule.runnerShell = ShellValueOf(&workflowlang.String{Value: knowledge.Shell})
+	}
+	platform := knowledge.Platform
 	rule.jobGitEnv = CheckoutEnvironmentUnknown(rule.workflowGitEnv, platform) || CheckoutEnvironmentUnknown(job.Env, platform)
 	rule.jobPathUnknown = rule.workflowPathUnknown || ShellPathUnknown(job.Env)
-	rule.unix = runnerlang.PlatformOf(job.RunsOn) == runnerlang.MacOrLinux
-	rule.caseInsensitive = MacOSRunner(job.RunsOn)
-	rule.shIsDash = UbuntuRunner(job.RunsOn)
+	rule.unix = platform == runnerlang.MacOrLinux && knowledge.PathsKnown
+	rule.caseInsensitive = knowledge.CaseInsensitive
+	rule.shIsDash = knowledge.ShIsDash
 	// Container mounts can replace the checked-out tree. Treat them as unknown.
 	if job.Container != nil || ServicesMayChangeWorkspace(job.Services) {
 		rule.unix = false
@@ -95,8 +102,8 @@ func (rule *ExecutableChecker) VisitJobPre(job *workflowlang.Job) error {
 	if enabled, known := JobCondition(job); known && !enabled {
 		rule.unix = false
 	}
-	rule.executableState = newExecutableState(runnerlang.Hosted(job.RunsOn), rule.callerRepositoryUnknown)
-	rule.paths = Paths{Workspace: rule.context.ProjectRoot, Analysis: rule.context.WorkingDir, Platform: runnerlang.PlatformOf(job.RunsOn), Reader: rule.context.Reader}
+	rule.executableState = newExecutableState(knowledge.Ephemeral, rule.callerRepositoryUnknown)
+	rule.paths = Paths{Workspace: rule.context.ProjectRoot, Analysis: rule.context.WorkingDir, Platform: platform, Reader: rule.context.Reader}
 	return nil
 }
 
@@ -205,7 +212,7 @@ func (rule *ExecutableChecker) checkScript(run *workflowlang.ExecRun) {
 	if run.Run == nil {
 		return
 	}
-	shell := ResolveShell(run, rule.jobShell, rule.workflowShell, ShellValue{})
+	shell := ResolveShell(run, rule.jobShell, rule.workflowShell, rule.runnerShell)
 	shellName := strings.ToLower(shell.Name)
 	if shellName != "bash" && shellName != "sh" {
 		rule.pristine = false
@@ -364,7 +371,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *workflowlang.
 		rule.pristine = false
 		return
 	}
-	shell := ResolveShell(run, rule.jobShell, rule.workflowShell, ShellValue{})
+	shell := ResolveShell(run, rule.jobShell, rule.workflowShell, rule.runnerShell)
 	bashReadonly := !rule.shIsDash || !strings.EqualFold(shell.Name, "sh")
 	for _, assignment := range command.Assigns {
 		if assignment.Append || assignment.Naked || assignment.Index != nil || assignment.Array != nil {

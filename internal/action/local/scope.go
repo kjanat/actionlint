@@ -9,17 +9,15 @@ import (
 // BeginJob resets checkout and persistent environment assumptions for a new job.
 func (c *Resolver) BeginJob(workflowEnv *workflowlang.Env, workflowShell execution.ShellValue, job *workflowlang.Job) {
 	c.setCheckout(execution.Directory{})
-	c.platform = runnerlang.PlatformOf(job.RunsOn)
-	c.caseInsensitive = c.platform == runnerlang.Windows || execution.MacOSRunner(job.RunsOn)
-	c.checkoutEnvUnknown = execution.CheckoutEnvironmentUnknown(workflowEnv, c.platform) || execution.CheckoutEnvironmentUnknown(job.Env, c.platform)
+	knowledge := c.Runners.Job(job)
+	c.platform = knowledge.Platform
+	c.caseInsensitive = knowledge.CaseInsensitive
+	c.checkoutEnvUnknown = !knowledge.PathsKnown || execution.CheckoutEnvironmentUnknown(workflowEnv, c.platform) || execution.CheckoutEnvironmentUnknown(job.Env, c.platform)
 	c.persistentEnvUnknown = false
 	c.shellEnvUnknown = c.shellEnvironmentUnknown(workflowEnv) || c.shellEnvironmentUnknown(job.Env)
 	runnerShell := execution.ShellValue{Kind: execution.ShellUnknown}
-	switch c.platform {
-	case runnerlang.Windows:
-		runnerShell = execution.ShellValueOf(&workflowlang.String{Value: "pwsh"})
-	case runnerlang.MacOrLinux:
-		runnerShell = execution.ShellValue{}
+	if knowledge.Shell != "" && (c.Runners != nil || c.platform != runnerlang.Any) {
+		runnerShell = execution.ShellValueOf(&workflowlang.String{Value: knowledge.Shell})
 	}
 	if container := execution.ContainerShell(job.Container); container.Kind != execution.ShellUnspecified {
 		runnerShell = container

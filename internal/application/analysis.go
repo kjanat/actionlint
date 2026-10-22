@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 
 	documentmodel "actionlint.kjanat.dev/document"
@@ -35,6 +36,7 @@ import (
 	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
 	"actionlint.kjanat.dev/internal/workspace"
 	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/runner"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -44,6 +46,7 @@ type sourceUnit = workspace.Source
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
+	Runners              runner.Options
 	Sources              []sourceUnit
 	Analyzers            []analyzer.Registration
 	Tools                []tools.Registration
@@ -182,6 +185,7 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 		}
 	}
 	session := &analysisSession{
+		runners:   request.Runners,
 		analyzers: request.Analyzers, ctx: ctx, toolDescriptors: extensions,
 		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
@@ -291,6 +295,13 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 		})
 	}
 	err = group.Wait()
+	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int {
+		if order := strings.Compare(a.Path, b.Path); order != 0 {
+			return order
+		}
+		return strings.Compare(a.Identity, b.Identity)
+	})
+	result.RunnerEvidence = session.runnerReports
 	if err == nil {
 		err = ctx.Err()
 	}

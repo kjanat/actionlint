@@ -161,10 +161,10 @@ jobs:
         with: { go-version-file: go.mod }
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version-file: .node-version, package-manager-cache: false }
-      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+      - uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31.11.2
       - uses: $/.github/actions/setup-runner
         with: { version-file: .tool-versions }
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         with: { install: false, env: false, add_shims_to_path: false, working_directory: "${{ runner.temp }}" }
       - name: Test synchronized toolchain updates
         env: { MISE_TASK_RUN_AUTO_INSTALL: "false" }

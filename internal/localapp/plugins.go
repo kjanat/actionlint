@@ -12,6 +12,7 @@ import (
 	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
 	"actionlint.kjanat.dev/internal/plugins/component"
 	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	"actionlint.kjanat.dev/runner"
 )
 
 type loadedPlugins struct {
@@ -48,7 +49,7 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 		}
 		if debug {
-			_, _ = fmt.Fprintf(log, "[Linter] Loaded plugin %q from %s (%s)\n", plugin.Descriptor().Name, path, plugin.Limits())
+			_, _ = fmt.Fprintf(log, "[Linter] Loaded component from %s (%s)\n", path, plugin.Limits())
 		}
 		loaded.plugins = append(loaded.plugins, plugin)
 	}
@@ -58,7 +59,20 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 func (l *loadedPlugins) registrations() []analyzer.Registration {
 	registrations := make([]analyzer.Registration, 0, len(l.plugins))
 	for _, plugin := range l.plugins {
+		if !plugin.HasAnalyzer() {
+			continue
+		}
 		registrations = append(registrations, analyzer.Registration{Analyzer: plugin})
+	}
+	return registrations
+}
+
+func (l *loadedPlugins) runnerProviders() []runner.Registration {
+	var registrations []runner.Registration
+	for _, plugin := range l.plugins {
+		if plugin.HasRunnerProvider() {
+			registrations = append(registrations, runner.Registration{Provider: plugin, Identity: plugin.ArtifactDigest()})
+		}
 	}
 	return registrations
 }

@@ -30,9 +30,9 @@ func PlatformOf(runner *workflowlang.Runner) Platform {
 	for _, label := range Labels(runner) {
 		k := Any
 		l := strings.ToLower(label.Value)
-		if strings.HasPrefix(l, "windows-") || l == "windows" {
+		if windowsLabel(l) {
 			k = Windows
-		} else if strings.HasPrefix(l, "macos-") || strings.HasPrefix(l, "ubuntu-") || strings.HasPrefix(l, "xcode-") || l == "macos" || l == "linux" {
+		} else if defaultRunnerOSCompats[l]&(defaultRunnerOSCompats["macos"]|defaultRunnerOSCompats["linux"]) != 0 {
 			k = MacOrLinux
 		}
 
@@ -47,6 +47,12 @@ func PlatformOf(runner *workflowlang.Runner) Platform {
 	}
 
 	return ret
+}
+
+// Custom runner names conventionally separate their platform with hyphens.
+// A substring such as "windowsish" supplies no platform information.
+func windowsLabel(label string) bool {
+	return slices.Contains(strings.Split(strings.ToLower(label), "-"), "windows")
 }
 
 // Labels resolves static runs-on expressions while preserving dynamic label nodes.

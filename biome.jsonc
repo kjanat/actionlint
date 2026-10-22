@@ -18,6 +18,9 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
+      "a11y": {
+        "noSvgWithoutTitle": "off"
+      },
       "complexity": {
         "useLiteralKeys": "off"
       },

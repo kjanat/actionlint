@@ -5,15 +5,17 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	runnerapi "actionlint.kjanat.dev/runner"
 )
 
 func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 	testCases := []struct {
-		what   string
-		labels []string
-		matrix []string
-		known  []string
-		errs   []string
+		what         string
+		labels       []string
+		matrix       []string
+		known        []string
+		errs         []string
+		providerErrs []string
 	}{
 		// Normal cases
 		{
@@ -267,6 +269,8 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			labels: []string{"${{matrix.os}}", "ubuntu-latest"},
 			matrix: []string{"windows-latest", "macos-latest"},
 			errs:   []string{`label "ubuntu-latest" conflicts with label`},
+			// Complete selectors retain both incompatible alternatives.
+			providerErrs: []string{`label "ubuntu-latest" conflicts with label "windows-latest"`, `label "ubuntu-latest" conflicts with label "macos-latest"`},
 		},
 		{
 			what:   "Repeated matrix references select the same value",
@@ -390,6 +394,23 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			}
 
 			errs := Check(node, tc.known)
+			prepared, err := Prepare(t.Context(), &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": node}}, tc.known, runnerapi.Options{}, "scope")
+			if err != nil {
+				t.Fatal(err)
+			}
+			provided := prepared.Job(node).Findings
+			wantProvided := tc.providerErrs
+			if wantProvided == nil {
+				wantProvided = tc.errs
+			}
+			if len(provided) != len(wantProvided) {
+				t.Fatalf("provider: want %d findings, got %v", len(wantProvided), provided)
+			}
+			for i, want := range wantProvided {
+				if !strings.Contains(provided[i].Message, want) {
+					t.Fatalf("provider: %q missing from %q", want, provided[i].Message)
+				}
+			}
 			if len(errs) != len(tc.errs) {
 				t.Fatalf("%d error(s) are wanted but got %d error(s) actually: %v", len(tc.errs), len(errs), errs)
 			}
