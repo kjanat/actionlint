@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 func TestScriptDescriptorShellValidation(t *testing.T) {

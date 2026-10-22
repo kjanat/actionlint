@@ -10,7 +10,7 @@ import (
 	"time"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
 )
 

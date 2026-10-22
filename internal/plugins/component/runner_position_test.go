@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 func TestRunnerPositionsAllowOnlyTheJobSentinelOrSourceCoordinates(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/runner"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 func (p *Plugin) HasAnalyzer() bool       { return p.analyzerRole }

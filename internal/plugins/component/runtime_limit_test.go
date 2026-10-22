@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/component"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 func TestLoadBoundsCanonicalDescriptorAllocations(t *testing.T) {

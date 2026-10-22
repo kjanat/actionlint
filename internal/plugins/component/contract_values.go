@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/source"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 func lowerReference(ref source.Reference) *wacogo.ValRecord {

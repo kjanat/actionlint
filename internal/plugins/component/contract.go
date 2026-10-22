@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/partite-ai/wacogo/wasmparser"
+	"github.com/kjanat/wacogo/wasmparser"
 )
 
 // checkContract rejects incompatible analyzer interfaces before guest startup.

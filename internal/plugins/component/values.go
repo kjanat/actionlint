@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/rule"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 // WIT enum order comes from the generated canonical contract, not a second table.

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 func TestLiftAnalysisPreservesValidSiblings(t *testing.T) {

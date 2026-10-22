@@ -23,8 +23,10 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/invopop/jsonschema v0.14.0 h1:MHQqLhvpNUZfw+hM3AZDYK7jxO8FZoQeQM77g8iyZjg=
 github.com/invopop/jsonschema v0.14.0/go.mod h1:ygm6C2EaVNMBDPpaPlnOA2pFAxBnxGjFlMZABxm9n2I=
-github.com/kjanat/wacogo v0.0.0-20261021204442-5e1c0d4aa136 h1:/X9nd+I+/2Q6hoCE9KtRdxcTFW/A4Ss8aACZJI7JpF4=
-github.com/kjanat/wacogo v0.0.0-20261021204442-5e1c0d4aa136/go.mod h1:YTz1qE4ayxyF9Kk+raydxoXJ8RBJtIsTo3Is796dV6E=
+github.com/kjanat/go-modules v0.7.1 h1:fQrOqM2Qy97tz0IXOijQRgKdJMvgnh2ar4UN5D6vqpE=
+github.com/kjanat/go-modules v0.7.1/go.mod h1:MdDDmCoWcbiQYNVZvDUwKGLRTB3garaS5UOEJcPpmDQ=
+github.com/kjanat/wacogo v0.1.0 h1:4nC5tiLuOQ1Blf+ElEhJhFD44HXIeQy9dupNIyYFhs8=
+github.com/kjanat/wacogo v0.1.0/go.mod h1:cDQFi86BhjHzWUWMCa4vAE6s0DpX5h4B3Vreh9z3oJw=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
@@ -65,8 +67,6 @@ github.com/tetratelabs/wazero v1.11.1-0.20260418165552-5cb4bb3ec0c1 h1:EzfzRz7tk
 github.com/tetratelabs/wazero v1.11.1-0.20260418165552-5cb4bb3ec0c1/go.mod h1:3ghOSSWYnzX0zd/3Ns4ni2tKxcXDE9/QgkwuH1PW3Rs=
 github.com/yuin/goldmark v1.8.6 h1:d0VcaP1sx9GkFVkoW+KtggpGi2KZ965i14b0+bDQST4=
 github.com/yuin/goldmark v1.8.6/go.mod h1:ip/1k0VRfGynBgxOz0yCqHrbZXhcjxyuS66Brc7iBKg=
-go.bytecodealliance.org v0.7.0 h1:CTJ1eb5kFhBKHw1/xycxxz4SmVWNKXYHhrA78oLNXhY=
-go.bytecodealliance.org v0.7.0/go.mod h1:PCLMft5yTQsHT9oNPWlq0I6Qdmo6THvdky2AZHjNUkA=
 go.yaml.in/yaml/v3 v3.0.4/go.mod h1:DhzuOOF2ATzADvBadXxruRBLzYTpT36CKvDb3+aBEFg=
 go.yaml.in/yaml/v4 v4.0.0-rc.6 h1:1h7H1ohdUh93/FyE4YaDa1Zh64K6VVbjF4K6WUxMtH4=
 go.yaml.in/yaml/v4 v4.0.0-rc.6/go.mod h1:aZqd9kCMsGL7AuUv/m/PvWLdg5sjJsZ4oHDEnfPPfY0=
