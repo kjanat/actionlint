@@ -9,9 +9,11 @@ Inside a Git repository, action discovery runs `git` 2.8 or newer to apply ignor
 package and the AUR and Scoop packages provide it. Standalone archives, Go installs, the Homebrew cask, WinGet, and
 npm and PyPI packages need `git` on `PATH`; on macOS the Xcode Command Line Tools provide it.
 
-ShellCheck and Ruff are optional external linters. Standalone archives, Go installs, and npm and PyPI packages
-contain actionlint only; install `shellcheck` and `ruff` separately on `PATH` to check shell and Python scripts.
-See [external linter configuration](usage.md#ignore-some-errors).
+In v2, ShellCheck and Ruff run as project-managed Wasm plugins. Standalone archives, Go installs, and npm and
+PyPI packages contain the actionlint host. Run `actionlint config init` for a new project, or follow
+[configuration migration](config-migration.md) for an existing one, to install and pin the default plugins.
+Commit the configuration and adjacent `actionlint.plugins.lock.json`; native script-linter executables are not
+required for these plugins. See [plugin installation](plugins.md#install-from-the-registry).
 
 Images built from this revision bundle both native executables, without requiring Python. The Nix package
 also provides both through its wrapper. The v2 [pre-commit distribution](usage.md#pre-commit)
@@ -98,8 +100,9 @@ The unqualified [`actionlint` formula][formula] in Homebrew core installs the up
 The per-project `kjanat/actionlint` tap redirects to `kjanat/tap` through Homebrew's tap migration metadata, so existing
 `kjanat/actionlint/actionlint` installations keep upgrading. Releases publish only to `kjanat/tap`.
 
-The cask has no package dependencies and uses the system `git`. ShellCheck and Ruff are optional and must be installed separately on `PATH`.
-For [ShellCheck integration](checks.md#check-shellcheck-integ),
+The cask has no package dependencies and uses the system `git`. Install and pin Wasm plugins as described above.
+If you explicitly configure a native backend instead, install its executable separately on `PATH`.
+For native [ShellCheck integration](checks.md#check-shellcheck-integ),
 the `kjanat/tap/shellcheck` cask provides the upstream static binary and shell completions with no dependencies.
 Uninstall the homebrew-core formula first if it already owns the `shellcheck` binary:
 
@@ -107,7 +110,7 @@ Uninstall the homebrew-core formula first if it already owns the `shellcheck` bi
 brew install --cask kjanat/tap/shellcheck
 ```
 
-For [Ruff integration](config.md#ruff), install [Ruff's Homebrew package](https://docs.astral.sh/ruff/installation/):
+For a native [Ruff backend](config.md#ruff), install [Ruff's Homebrew package](https://docs.astral.sh/ruff/installation/):
 
 ```sh
 brew install ruff
@@ -390,24 +393,26 @@ The project's [`kjanat/actionlint` Action](action.md) installs actionlint and ru
 ```yaml
 - uses: actions/checkout@v7
   with: { persist-credentials: false }
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
 ```
 
-The upcoming Node-based Action also supports installation for later steps in the same job:
+These examples target the upcoming v2 Action, which is not published yet. The Node-based Action also supports
+installation for later steps in the same job:
 
 ```yaml
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
   with:
     install-only: true
-    shellcheck: false
-    ruff: false
 - run: actionlint --version
 ```
 
-Install-only requires an Action release containing that feature. Existing immutable releases retain their
-original implementation. Pin a published release commit SHA or a specific release tag for reproducible setup.
-Enable the `shellcheck` and `ruff` inputs to install those tools too. See the
-[Action installation guide](action.md#install-without-running-analysis) for version selection and prerequisites.
+`install-only` exports only the actionlint binary. It does not read project configuration, install plugins, or
+provide native `shellcheck` and `ruff` executables. The `shellcheck` and `ruff` inputs control Wasm checks during
+analysis; they do not install those tools on `PATH`. Provision native executables separately if later steps need them.
+For later actionlint checks, install and pin the project's plugins using the commands above.
+Existing immutable releases retain their original implementation. Pin a published release commit SHA or a specific
+release tag for reproducible setup. See the [Action installation guide](action.md#install-without-running-analysis)
+for version selection and prerequisites.
 
 ## Community-maintained integrations
 

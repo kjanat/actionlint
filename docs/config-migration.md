@@ -21,8 +21,10 @@ not automatically enrolled in default plugins.
 
 The parser accepts old documents through the same conversion, including
 inherited files and inline configuration. Parsing alone never writes files.
-YAML, JSON and TOML keep their format. A prepared file migration checks its
-entire inherited input graph before writing; concurrent edits abort the write.
+YAML, JSON and TOML keep their format. TOML schema directives and comments are retained;
+comments within moved settings appear before the resulting `lint` section.
+A prepared file migration checks its entire inherited input graph before writing;
+concurrent edits abort the write.
 TOML cannot express null resets. If encoding would change inherited settings,
 migration refuses the rewrite; convert that selected document to YAML or JSON first.
 

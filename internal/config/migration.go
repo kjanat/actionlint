@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
-	"github.com/pelletier/go-toml/v2"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -68,16 +67,17 @@ func MigrateDocument(path string, content []byte) (Migration, error) {
 		result.Notes = append(result.Notes, "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.")
 	}
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".json", ".toml":
+	case ".json":
 		var value map[string]any
 		if err := next.Decode(&value); err != nil {
 			return Migration{}, err
 		}
-		if strings.EqualFold(filepath.Ext(path), ".json") {
-			result.Content, err = json.MarshalIndent(value, "", "  ")
-		} else {
-			result.Content, err = toml.Marshal(value)
+		result.Content, err = json.MarshalIndent(value, "", "  ")
+		if err != nil {
+			return Migration{}, err
 		}
+	case ".toml":
+		result.Content, err = migrateTOML(content, next)
 		if err != nil {
 			return Migration{}, err
 		}
@@ -93,7 +93,7 @@ func MigrateDocument(path string, content []byte) (Migration, error) {
 	if !bytes.HasSuffix(result.Content, []byte("\n")) {
 		result.Content = append(result.Content, '\n')
 	}
-	if bytes.Contains(content, []byte("\r\n")) {
+	if !strings.EqualFold(filepath.Ext(path), ".toml") && bytes.Contains(content, []byte("\r\n")) {
 		result.Content = bytes.ReplaceAll(result.Content, []byte("\n"), []byte("\r\n"))
 	}
 	return result, nil

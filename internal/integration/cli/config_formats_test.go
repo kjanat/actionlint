@@ -15,7 +15,7 @@ func TestCheckReadsJSONAndTOMLConfigs(t *testing.T) {
 	}
 	dir := t.TempDir()
 	configs := map[string]string{
-		"actionlint.toml": "[self-hosted-runner]\nlabels = [\"gpu\"]\n",
+		"actionlint.toml": "#:schema https://actionlint.kjanat.dev/schema/config.json\n# repository runner settings\nplugins = [] # explicit opt-out\n[self-hosted-runner] # runner section\nlabels = [\"gpu\"] # custom label\n",
 		"actionlint.json": "{\"$schema\": \"../actionlint.schema.json\", \"self-hosted-runner\": {\"labels\": [\"gpu\"]}}\n",
 	}
 	for name, content := range configs {
@@ -30,6 +30,20 @@ func TestCheckReadsJSONAndTOMLConfigs(t *testing.T) {
 		got := testRunCommand(workflow, "check", "--config", path, "-")
 		if got.Status != 0 || got.Stdout != "" || got.Stderr != "warning: migrated configuration: "+physical+"\n" {
 			t.Fatalf("%s: %+v", name, got)
+		}
+		migrated, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if name == "actionlint.toml" {
+			if !strings.HasPrefix(string(migrated), "#:schema https://actionlint.kjanat.dev/schema/config.json\n") {
+				t.Fatalf("automatic TOML migration removed schema directive:\n%s", migrated)
+			}
+			for _, comment := range []string{"# repository runner settings", "# explicit opt-out", "# runner section", "# custom label"} {
+				if strings.Count(string(migrated), comment) != 1 {
+					t.Errorf("automatic TOML migration changed comment %q:\n%s", comment, migrated)
+				}
+			}
 		}
 		got = testRunCommand(workflow, "check", "--config", path, "-")
 		if got.Status != 0 || got.Stdout != "" || got.Stderr != "" {

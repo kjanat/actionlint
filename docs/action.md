@@ -39,7 +39,9 @@ normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
 
 `install-only` exports the selected binary for later steps without reading workflows
 or lint configuration. Keep `add-actionlint-to-path: true`
-(the default). Analysis and reporting inputs do not apply in this mode.
+(the default). Analysis and reporting inputs do not apply in this mode. This installs only the actionlint binary:
+`shellcheck` and `ruff` do not install plugins or native executables in install-only mode. Provision native tools
+separately if later steps need them; configure and pin Wasm plugins for later actionlint checks.
 
 Use `version-file: .tool-versions` instead of `version` to read a checked-in pin:
 
