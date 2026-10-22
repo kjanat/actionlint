@@ -9,8 +9,15 @@ import (
 // Metadata validation owns context/name errors, so do not duplicate those findings.
 func (rule *Checker) CheckCompositeScript(step *workflowlang.Step) {
 	previous := *rule
+	// This pass owns script findings only; metadata validation owns every other
+	// composite diagnostic, including shape errors reported outside exprError.
+	rule.errs = nil
 	defer func() {
-		previous.errs = rule.errs
+		for _, finding := range rule.errs {
+			if finding.Rule == "script-injection" || finding.Rule == "script-interpolation" {
+				previous.errs = append(previous.errs, finding)
+			}
+		}
 		*rule = previous
 	}()
 	rule.compositeScript = true

@@ -23,9 +23,11 @@ func TestCompositeActionInputRestoresCheckerContext(t *testing.T) {
 	}
 	rule.inputsTy = exprlang.NewMapObjectType(exprlang.BoolType{})
 	rule.scriptEnv = job.Steps[0].Env
+	rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "existing finding")
+	originalFinding := rule.errs[0]
 	previous := *rule
 	rule.CheckCompositeScript(job.Steps[0])
-	if len(rule.errs) != 1 || rule.errs[0].Rule != "script-injection" {
+	if len(rule.errs) != 2 || rule.errs[0] != originalFinding || rule.errs[1].Rule != "script-injection" {
 		t.Fatalf("script finding lost: %+v", rule.errs)
 	}
 	current := *rule

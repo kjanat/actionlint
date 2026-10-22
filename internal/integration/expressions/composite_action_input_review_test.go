@@ -86,3 +86,26 @@ func TestCompositeActionInputScriptSourceLocations(t *testing.T) {
 		}
 	}
 }
+
+func TestCompositeActionInputMappingValidationOwnership(t *testing.T) {
+	for _, tc := range []struct{ name, mapping string }{
+		{"whole string", "${{ 'not-a-map' }}"},
+		{"whole array", "${{ fromJSON('[]') }}"},
+		{"inserted array", "\n        ${{ insert }}: ${{ fromJSON('[]') }}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, _ := testutil.ExecutableFixture(t)
+			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
+			body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: example/action@v1\n      with: " + tc.mapping + "\n"
+			testutil.WriteFixture(t, root, "inner/action.yml", body)
+			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "action" {
+				t.Fatalf("metadata must exclusively own malformed composite input mappings: %+v", result.Diagnostics)
+			}
+			findings := testutil.WorkflowDiagnostics(t, "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with: "+strings.ReplaceAll(tc.mapping, "\n", "\n  ")+"\n", "tools: {shellcheck: false, ruff: false}\n")
+			if len(findings) != 1 || findings[0].Rule != "expression" || !strings.Contains(findings[0].Message, "with must be object") {
+				t.Fatalf("workflow input mapping validation must remain: %+v", findings)
+			}
+		})
+	}
+}
