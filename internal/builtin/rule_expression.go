@@ -70,7 +70,11 @@ func (r *RuleExpression) SetConfig(config *repoconfig.Config) {
 }
 
 func workflowExpressionOptions(config *repoconfig.Config) workflowexpr.Options {
-	return workflowexpr.Options{Semantics: *expressionOptionsFromConfig(config), UnsoundTernary: repoconfig.DiagnosticLevel(config, "unsound-ternary") != "off"}
+	return workflowexpr.Options{
+		Semantics:               *expressionOptionsFromConfig(config),
+		UnsoundTernary:          repoconfig.DiagnosticLevel(config, "unsound-ternary") != "off",
+		ScriptInjectionDisabled: repoconfig.DiagnosticLevel(config, "script-injection") == "off",
+	}
 }
 
 func expressionOptionsFromConfig(config *repoconfig.Config) *exprlang.Options {

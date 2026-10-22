@@ -44,8 +44,9 @@ type Checker struct {
 
 // Options selects expression diagnostics without repository configuration.
 type Options struct {
-	Semantics      exprlang.Options
-	UnsoundTernary bool
+	Semantics               exprlang.Options
+	UnsoundTernary          bool
+	ScriptInjectionDisabled bool
 }
 
 // Dependencies provides metadata to workflow expression inference. Missing

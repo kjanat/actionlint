@@ -78,10 +78,25 @@ func SafeScriptLiteral(value string) bool {
 	return true
 }
 
-// SafeScriptWord additionally excludes Bash/POSIX reserved words from literal proofs.
+// SafeScriptWord additionally excludes empty text, I/O numbers, and Bash/POSIX
+// reserved words from unrestricted shell-word proofs.
 func SafeScriptWord(value string) bool {
 	// IsKeyword omits elif, which the parser handles as conditional syntax.
-	return SafeScriptLiteral(value) && !shellsyntax.IsKeyword(value) && value != "elif"
+	return value != "" && SafeScriptLiteral(value) && !isScriptIONumber(value) && !shellsyntax.IsKeyword(value) && value != "elif"
+}
+
+// isScriptIONumber recognizes the unsigned decimal words that shells may parse
+// as file descriptors when they directly precede a redirection operator.
+func isScriptIONumber(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // ScriptPosition identifies the syntax proved by the script's language and parser.
@@ -147,17 +162,19 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 	if safeReference != nil && safeReference(expr) {
 		return true
 	}
-	if safeScriptStatusReference(expr) {
+	if safeScriptStatusReference(expr, scalarArgument, safeReference) {
 		return true
 	}
-	// Fixed identifier, numeric, hash and enum contexts qualify; branch/workflow names and user outputs remain arbitrary.
+	// Numeric identifiers and hashes may be all digits or empty, so prove them
+	// only at shell data arguments. Fixed nonnumeric enums remain safe words.
 	// Actor names are excluded because bot-login brackets have shell glob syntax.
 	switch strings.ToLower(eventReference(expr)) {
 	case "github.repository_owner":
 		return scalarArgument
 	case "github.sha", "github.run_id", "github.run_number", "github.run_attempt",
-		"github.repository_id", "github.repository_owner_id", "github.actor_id",
-		"github.repository", "github.repositoryurl",
+		"github.repository_id", "github.repository_owner_id", "github.actor_id":
+		return scalarArgument
+	case "github.repository", "github.repositoryurl",
 		"github.event_name", "github.ref_type", "github.repository_visibility",
 		"runner.os", "runner.arch", "runner.environment", "job.status":
 		return true
@@ -178,7 +195,7 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 			return scalarArgument
 		}
 		if strings.EqualFold(n.Callee, "hashFiles") {
-			return true
+			return scalarArgument
 		}
 		if strings.EqualFold(n.Callee, "toJSON") && len(n.Args) == 1 {
 			switch n.Args[0].(type) {
@@ -208,9 +225,9 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 	return false
 }
 
-// Step outcomes/conclusions and dependency results are fixed status enums,
-// regardless of how the step or job is selected. Outputs remain arbitrary.
-func safeScriptStatusReference(node Node) bool {
+// Known step outcomes/conclusions and dependency results are fixed status enums.
+// Missing or dynamic selectors may produce empty text; outputs remain arbitrary.
+func safeScriptStatusReference(node Node, scalarArgument bool, safeReference func(Node) bool) bool {
 	var receiver Node
 	var property string
 	switch node := node.(type) {
@@ -226,10 +243,12 @@ func safeScriptStatusReference(node Node) bool {
 		return false
 	}
 	var context Node
+	staticSelector := true
 	switch receiver := receiver.(type) {
 	case *ObjectDerefNode:
 		context = receiver.Receiver
 	case *IndexAccessNode:
+		_, staticSelector = receiver.Index.(*StringNode)
 		context = receiver.Operand
 	default:
 		return false
@@ -240,10 +259,17 @@ func safeScriptStatusReference(node Node) bool {
 	}
 	switch strings.ToLower(variable.Name) {
 	case "steps":
-		return strings.EqualFold(property, "conclusion") || strings.EqualFold(property, "outcome")
+		if !strings.EqualFold(property, "conclusion") && !strings.EqualFold(property, "outcome") {
+			return false
+		}
 	case "needs":
-		return strings.EqualFold(property, "result")
+		if !strings.EqualFold(property, "result") {
+			return false
+		}
 	default:
 		return false
 	}
+	// A missing or dynamic selector can yield an empty string, which is safe
+	// only when the script parser proved a data-argument position.
+	return scalarArgument || staticSelector && safeReference != nil && safeReference(receiver)
 }

@@ -82,6 +82,44 @@ jobs:
 	}
 }
 
+func TestScriptInterpolationRemainsWhenInjectionIsDisabled(t *testing.T) {
+	for _, tc := range []struct {
+		name, injection, interpolation, want string
+	}{
+		{"both enabled", "on", "on", "script-injection"},
+		{"injection disabled", "off", "on", "script-interpolation"},
+		{"both disabled", "off", "off", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			configText := "lint: {rules: {correctness: {script-interpolation: " + tc.interpolation + "}, security: {script-injection: " + tc.injection + "}}}"
+			cfg, err := repoconfig.Parse([]byte(configText))
+			if err != nil {
+				t.Fatal(err)
+			}
+			workflow := `on: issues
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github.event.issue.title }}"
+`
+			result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if len(result.Diagnostics) != 0 {
+					t.Fatalf("disabled rules still reported: %+v", result.Diagnostics)
+				}
+				return
+			}
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != tc.want {
+				t.Fatalf("diagnostic = %+v, want only %s", result.Diagnostics, tc.want)
+			}
+		})
+	}
+}
+
 func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool, syntaxSensitive ...bool) {
 	t.Helper()
 	workflow := `on: {issues: {}, workflow_run: {workflows: [Build], types: [completed]}}

@@ -59,9 +59,11 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 		{"steps.test.outcome", StringType{}, false},
 		{"steps['TEST']['CONCLUSION']", StringType{}, false},
 		{"steps[inputs.id].outcome", StringType{}, false},
+		{"steps['missing'].outcome", StringType{}, false},
 		{"needs.build.result", StringType{}, false},
 		{"needs['BUILD']['RESULT']", StringType{}, false},
 		{"needs[inputs.job].result", StringType{}, false},
+		{"needs['missing'].result", StringType{}, false},
 		{"steps.test.outputs.conclusion", StringType{}, true},
 		{"needs.build.outputs.result", StringType{}, true},
 		{"steps.test[inputs.property]", AnyType{}, true},
@@ -93,8 +95,8 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 				t.Fatal(err)
 			}
 			findings := NewChecker(false, nil).CheckScriptInterpolation(node, tc.typeOf, ScriptShellArgument, func(ref Node) bool {
-				name := eventReference(ref)
-				return name == "matrix.target"
+				name := StaticReference(ref)
+				return name == "matrix.target" || name == "steps.test" || name == "needs.build"
 			})
 			if (len(findings) != 0) != tc.finding {
 				t.Fatalf("got %v; want finding=%t", findings, tc.finding)
@@ -103,6 +105,46 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 				t.Fatalf("wrong finding identity: %+v", findings[0])
 			}
 		})
+	}
+}
+
+func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
+	for _, tc := range []struct {
+		expression string
+		known      bool
+	}{
+		{"steps.test.outcome", true},
+		{"steps['TEST'].conclusion", true},
+		{"needs.build.result", true},
+		{"steps['missing'].outcome", false},
+		{"needs['missing'].result", false},
+		{"steps[inputs.id].outcome", false},
+		{"needs[inputs.job].result", false},
+		{"steps.test.outputs.value", false},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			node, err := NewParser().Parse(NewLexer(tc.expression + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			findings := NewChecker(false, nil).CheckScriptInterpolation(node, StringType{}, ScriptShellWord, func(ref Node) bool {
+				name := StaticReference(ref)
+				return tc.known && (name == "steps.test" || name == "needs.build")
+			})
+			if (len(findings) == 0) != tc.known {
+				t.Fatalf("findings=%v; known selector=%t", findings, tc.known)
+			}
+		})
+	}
+	for _, expression := range []string{"steps[inputs.id].outcome", "steps['missing'].outcome"} {
+		node, err := NewParser().Parse(NewLexer(expression + "}}"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		findings := NewChecker(false, nil).CheckScriptInterpolation(node, StringType{}, ScriptShellArgument, nil)
+		if len(findings) != 0 {
+			t.Errorf("data argument rejected for %s: %v", expression, findings)
+		}
 	}
 }
 
@@ -125,9 +167,25 @@ func TestScriptKeywordWordProof(t *testing.T) {
 			t.Errorf("keyword must retain only its character proof: %q", word)
 		}
 	}
-	for _, word := range []string{"", "echo", "linux-x64", "org/repo", "fi-linux", "https://github.com/org/repo"} {
+	for _, word := range []string{"echo", "linux-x64", "org/repo", "fi-linux", "https://github.com/org/repo"} {
 		if !SafeScriptWord(word) {
 			t.Errorf("ordinary literal lost its word proof: %q", word)
+		}
+	}
+}
+
+func TestNumericScriptLiteralsRequireArgumentPosition(t *testing.T) {
+	if !SafeScriptLiteral("") || SafeScriptWord("") {
+		t.Error("empty literal must have only an argument proof")
+	}
+	for _, value := range []string{"0", "2", "123"} {
+		if !SafeScriptLiteral(value) || SafeScriptWord(value) {
+			t.Errorf("numeric literal must have only an argument proof: %q", value)
+		}
+	}
+	for _, value := range []string{"-2", "2.0", "2f"} {
+		if !SafeScriptWord(value) {
+			t.Errorf("non-IO-number literal lost its word proof: %q", value)
 		}
 	}
 }

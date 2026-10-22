@@ -3,7 +3,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          for x in ${{ github.run_number }}; do
+      - env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          read -ra values <<< "$RUN_NUMBER"
+          for x in "${values[@]}"; do
             echo "$x"
           done

@@ -17,7 +17,8 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 					key = "jobs.<job_id>.steps.with"
 				}
 				rule.checkScriptString(&workflowlang.String{Value: "const value = ${{ " + expression + " }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}, key, shell)
-				unsafe := shell != "bash" && shell != "sh"
+				positionDependent := expression == "github.sha" || expression == "hashFiles('**/go.sum')"
+				unsafe := positionDependent || shell != "bash" && shell != "sh"
 				findings := rule.Findings()
 				if (len(findings) != 0) != unsafe || unsafe && (len(findings) != 1 || findings[0].Rule != "script-interpolation") {
 					t.Fatalf("shell=%q expression=%q unsafe=%t: %+v", shell, expression, unsafe, findings)

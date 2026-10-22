@@ -117,26 +117,163 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 }
 
 func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
-	proofs := map[string]scriptValueProof{"matrix.container[*]": scriptLiteralWord, "matrix.nested[0][0]": scriptLiteralWord, "matrix.target.name": scriptLiteralWord}
+	proofs := map[string]scriptValueProof{
+		"matrix.container[*]": scriptArgumentOnly,
+		"matrix.nested[0][0]": scriptLiteralWord,
+		"matrix.nested[0][*]": scriptArgumentOnly,
+		"matrix.target.name":  scriptLiteralWord,
+		"matrix.target[*]":    scriptArgumentOnly,
+	}
 	for _, tc := range []struct {
 		expression string
+		argument   bool
 		want       bool
 	}{
-		{"matrix.container[matrix.version]", true},
-		{"matrix.container['3.10']", true},
-		{"matrix.nested[0][0]", true},
-		{"matrix.nested[0][inputs.index]", false},
-		{"matrix['target']['NAME']", true},
-		{"matrix['target.name']", false},
-		{"matrix.container[inputs.key].name", false},
+		{"matrix.container[matrix.version]", false, false},
+		{"matrix.container[matrix.version]", true, true},
+		{"matrix.container['missing']", false, false},
+		{"matrix.container['missing']", true, true},
+		{"matrix.nested[0][9]", false, false},
+		{"matrix.nested[0][9]", true, true},
+		{"matrix.container['3.10']", false, false},
+		{"matrix.nested[0][0]", false, true},
+		{"matrix.nested[0][inputs.index]", false, false},
+		{"matrix.nested[0][inputs.index]", true, true},
+		{"matrix['target']['NAME']", false, true},
+		{"matrix['target.name']", false, false},
+		{"matrix.container[inputs.key].name", true, false},
+		{"matrix.target[matrix.index]", false, false},
+		{"matrix.target[matrix.index]", true, true},
 	} {
 		node, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.expression + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := safeMatrixScriptReference(node, proofs, false); got != tc.want {
+		if got := safeMatrixScriptReference(node, proofs, tc.argument); got != tc.want {
 			t.Errorf("%s: safe=%t, want %t", tc.expression, got, tc.want)
 		}
+	}
+}
+
+func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
+	for _, tc := range []struct {
+		name, matrix, path string
+		want               scriptValueProof
+	}{
+		{"optional object member", `{item: [{word: echo}, {}]}`, "matrix.item.word", scriptArgumentOnly},
+		{"optional include member", `{include: [{item: {word: echo}}, {item: {}}]}`, "matrix.item.word", scriptArgumentOnly},
+		{"omitted include-only axis", `{include: [{word: echo}, {other: safe}]}`, "matrix.word", scriptArgumentOnly},
+		{"included axis across base rows", `{target: [linux, windows], include: [{word: echo}]}`, "matrix.word", scriptLiteralWord},
+		{"fully covered include-only axis", `{target: [linux, windows], include: [{word: echo}, {word: printf}]}`, "matrix.word", scriptLiteralWord},
+		{"filtered include-only axis with base rows", `{target: [linux, windows], include: [{target: linux, word: echo}]}`, "matrix.word", scriptArgumentOnly},
+		{"ragged array index", `{target: [[linux], [linux, windows]]}`, "matrix.target[1]", scriptArgumentOnly},
+		{"empty object wildcard", `{item: [{}]}`, "matrix.item[*]", scriptArgumentOnly},
+		{"empty array wildcard", `{target: [[]]}`, "matrix.target[*]", scriptArgumentOnly},
+		{"definite object member", `{item: [{word: echo}, {word: printf}]}`, "matrix.item.word", scriptLiteralWord},
+		{"definite array index", `{target: [[linux, windows], [linux, macos]]}`, "matrix.target[1]", scriptLiteralWord},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
+			workflow, errors := workflowlang.Parse([]byte(source))
+			if len(errors) != 0 {
+				t.Fatal(errors)
+			}
+			proofs := safeMatrixScriptReferences(workflow.Jobs["test"].Strategy.Matrix)
+			if got := proofs[tc.path]; got != tc.want {
+				t.Fatalf("proof for %s = %v, want %v (all proofs: %v)", tc.path, got, tc.want, proofs)
+			}
+		})
+	}
+}
+
+func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
+	checker := &Checker{
+		stepsTy: exprlang.NewObjectType(map[string]exprlang.Type{"producer": exprlang.StringType{}}),
+		needsTy: exprlang.NewObjectType(map[string]exprlang.Type{"build": exprlang.StringType{}}),
+	}
+	for _, tc := range []struct {
+		expression string
+		want       bool
+	}{
+		{"steps.producer", true},
+		{"steps['PRODUCER']", true},
+		{"steps.missing", false},
+		{"steps['missing']", false},
+		{"steps[inputs.step]", false},
+		{"needs.build", true},
+		{"needs.missing", false},
+		{"needs[inputs.job]", false},
+		{"steps.producer.outputs", false},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			node, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.expression + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := checker.safeScriptStatusSelector(node); got != tc.want {
+				t.Fatalf("safe status selector = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
+	steps := exprlang.NewObjectType(map[string]exprlang.Type{
+		"producer": exprlang.NewObjectType(map[string]exprlang.Type{
+			"outcome": exprlang.StringType{},
+			"outputs": exprlang.NewObjectType(map[string]exprlang.Type{"value": exprlang.StringType{}}),
+		}),
+	})
+	needs := exprlang.NewObjectType(map[string]exprlang.Type{
+		"build": exprlang.NewObjectType(map[string]exprlang.Type{"result": exprlang.StringType{}}),
+	})
+	rule := &Checker{stepsTy: steps, needsTy: needs}
+	for _, tc := range []struct {
+		expression string
+		wordSafe   bool
+		argument   bool
+	}{
+		{"steps.producer.outcome", true, true},
+		{"steps['PRODUCER'].conclusion", true, true},
+		{"needs.build.result", true, true},
+		{"steps.missing.outcome", false, true},
+		{"steps['missing'].outcome", false, true},
+		{"steps[inputs.step].outcome", false, true},
+		{"needs[inputs.job].result", false, true},
+		{"steps.producer.outputs.value", false, false},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			node, err := exprlang.NewParser().Parse(exprlang.NewLexer(tc.expression + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			semantic := exprlang.NewChecker(false, nil)
+			semantic.SetContextAvailability([]string{"steps", "needs", "inputs"})
+			semantic.UpdateSteps(steps)
+			semantic.UpdateNeeds(needs)
+			semantic.UpdateInputs(exprlang.NewStrictObjectType(map[string]exprlang.Type{
+				"step": exprlang.StringType{}, "job": exprlang.StringType{},
+			}))
+			typeOf, errs := semantic.Check(node)
+			if len(errs) != 0 {
+				t.Fatalf("expression did not typecheck: %v", errs)
+			}
+			for _, position := range []struct {
+				name string
+				pos  exprlang.ScriptPosition
+				want bool
+			}{
+				{"shell word", exprlang.ScriptShellWord, tc.wordSafe},
+				{"data argument", exprlang.ScriptShellArgument, tc.argument},
+			} {
+				findings := semantic.CheckScriptInterpolation(node, typeOf, position.pos, func(node exprlang.Node) bool {
+					return rule.safeScriptStatusSelector(node)
+				})
+				if (len(findings) == 0) != position.want {
+					t.Errorf("%s: findings=%v; safe=%t", position.name, findings, position.want)
+				}
+			}
+		})
 	}
 }
 

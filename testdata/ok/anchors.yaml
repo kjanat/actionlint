@@ -84,7 +84,10 @@ jobs:
             node: *node
     runs-on: ${{ matrix.runner }}
     steps:
-      - run: ./install_node.bash ${{ matrix.node.version }} ${{ matrix.node.path }}
+      - run: ./install_node.bash "$NODE_VERSION" "$NODE_PATH"
+        env:
+          NODE_VERSION: ${{ matrix.node.version }}
+          NODE_PATH: ${{ matrix.node.path }}
       - run: npm install ${{ matrix.package.name }}@${{ matrix.package.version }}
   test5:
     container:

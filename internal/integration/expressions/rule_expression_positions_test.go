@@ -16,7 +16,7 @@ func TestWorkflowExpressionScalarPositions(t *testing.T) {
 		"prefix\n      ${{ missing }}",
 		">-\n      é prefix\n      ${{ missing }}",
 		"|-\n      é prefix\n      ${{ missing }}",
-		"\"é\\n${{ github.actor_id }} ${{ missing }}\"",
+		"\"é\\n${{ github.event_name }} ${{ missing }}\"",
 		"${{ github.actor &&\n      missing }}",
 		`"${{ \u006dissing }}"`,
 	} {

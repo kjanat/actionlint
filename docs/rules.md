@@ -704,7 +704,7 @@ jobs:
 
 ## script-interpolation
 
-Detect template values that may change script syntax. Unknown string values are checked independently of attacker control. Boolean and numeric values require a proved script data position; constrained literal strings have a separate character-based check.
+Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and `hashFiles()` results also require that position.
 
 Pass dynamic values through environment variables and read them as data in the script. Quoting a template expression does not prevent substitution before script parsing.
 

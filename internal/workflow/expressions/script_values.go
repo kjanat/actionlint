@@ -68,8 +68,17 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 	if !complete {
 		return nil
 	}
-	axes := map[string]map[string]scriptValueProof{}
-	add := func(name string, value workflowlang.RawYAMLValue, expressions bool) bool {
+	type pathProof struct {
+		proof scriptValueProof
+		count int
+	}
+	type axisProofs struct {
+		baseAlternatives    int
+		includeAlternatives int
+		paths               map[string]pathProof
+	}
+	axes := map[string]*axisProofs{}
+	add := func(name string, value workflowlang.RawYAMLValue, expressions, include bool) bool {
 		if !scriptPathName(name) {
 			return true
 		}
@@ -77,28 +86,37 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 		if !matrixScriptValuePaths("matrix."+name, value, expressions, paths) {
 			return false
 		}
-		if previous, exists := axes[name]; exists {
-			// Missing members evaluate to an empty string. Only a present unsafe
-			// value invalidates a proof from another alternative.
-			for path, proof := range paths {
-				before, present := previous[path]
-				if present {
-					proof = min(proof, before)
-				}
-				previous[path] = proof
-			}
+		axis := axes[name]
+		if axis == nil {
+			axis = &axisProofs{paths: map[string]pathProof{}}
+			axes[name] = axis
+		}
+		if include {
+			axis.includeAlternatives++
 		} else {
-			axes[name] = paths
+			axis.baseAlternatives++
+		}
+		for path, proof := range paths {
+			previous, exists := axis.paths[path]
+			if exists {
+				proof = min(proof, previous.proof)
+				previous.count++
+			} else {
+				previous.count = 1
+			}
+			previous.proof = proof
+			axis.paths[path] = previous
 		}
 		return true
 	}
+	includeSelectsBase := false
 	for name, row := range resolved.Rows {
 		elements, complete := matrixcheck.RowElements(row, true)
 		if !complete {
 			return nil
 		}
 		for _, element := range elements {
-			if !add(name, element.Value, element.Expressions) {
+			if !add(name, element.Value, element.Expressions, false) {
 				return nil
 			}
 		}
@@ -107,17 +125,37 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 		for _, combination := range includes.Combinations {
 			for key, assignment := range combination.Assigns {
 				name, known := matrixcheck.RowName(key, &workflowlang.MatrixRow{Name: assignment.Key, Evaluated: combination.Evaluated})
-				if !known || !add(name, assignment.Value, !combination.Evaluated) {
+				if !known || !add(name, assignment.Value, !combination.Evaluated, true) {
 					return nil
+				}
+				if _, baseAxis := resolved.Rows[name]; baseAxis {
+					includeSelectsBase = true
 				}
 			}
 		}
 	}
+	for _, axis := range axes {
+		alternatives := axis.baseAlternatives + axis.includeAlternatives
+		includeCoverage := true
+		if axis.baseAlternatives == 0 {
+			// Include-only fields are proved only when every include supplies them
+			// without selecting a subset of the declared base axes.
+			alternatives = len(includes.Combinations)
+			includeCoverage = alternatives > 0 && !includeSelectsBase && axis.includeAlternatives == alternatives
+		}
+		for path, proof := range axis.paths {
+			if proof.count < alternatives || !includeCoverage {
+				// A missing member, index, or include-only assignment can be empty.
+				proof.proof = min(proof.proof, scriptArgumentOnly)
+			}
+			axis.paths[path] = proof
+		}
+	}
 	result := map[string]scriptValueProof{}
-	for _, paths := range axes {
-		for path, proof := range paths {
-			if proof != scriptUnsafe {
-				result[path] = proof
+	for _, axis := range axes {
+		for path, proof := range axis.paths {
+			if proof.proof != scriptUnsafe {
+				result[path] = proof.proof
 			}
 		}
 	}
@@ -152,7 +190,9 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
 			}
 		}
-		safe[path+"[*]"] = allSafe
+		// A wildcard can select no value or a missing member, so it is only
+		// proved safe when the caller also proves shell argument position.
+		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
 	case *workflowlang.RawYAMLArray:
 		safe[path] = scriptUnsafe
 		allSafe := scriptLiteralWord
@@ -163,7 +203,9 @@ func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expres
 			}
 			allSafe = min(allSafe, safe[child])
 		}
-		safe[path+"[*]"] = allSafe
+		// A wildcard can select no value or a missing member, so it is only
+		// proved safe when the caller also proves shell argument position.
+		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
 	}
 	return true
 }
@@ -197,7 +239,9 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValu
 				copyScriptPaths(path+"."+strings.ToLower(name), paths, safe)
 			}
 		}
-		safe[path+"[*]"] = allSafe
+		// A wildcard can select no value or a missing member, so it is only
+		// proved safe when the caller also proves shell argument position.
+		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
 	case []any:
 		safe[path] = scriptUnsafe
 		allSafe := scriptLiteralWord
@@ -208,7 +252,9 @@ func matrixScriptLiteralPaths(path string, value any, safe map[string]scriptValu
 			}
 			allSafe = min(allSafe, safe[child])
 		}
-		safe[path+"[*]"] = allSafe
+		// A wildcard can select no value or a missing member, so it is only
+		// proved safe when the caller also proves shell argument position.
+		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
 	}
 	return true
 }
@@ -221,14 +267,22 @@ func copyScriptPaths(prefix string, paths, destination map[string]scriptValuePro
 
 func safeMatrixScriptReference(node exprlang.Node, proofs map[string]scriptValueProof, argument bool) bool {
 	path := matrixScriptReferencePath(node)
-	if path != "" && proofs[path].safe(argument) {
-		return true
+	if path != "" {
+		if proof, exists := proofs[path]; exists {
+			return proof.safe(argument)
+		}
 	}
-	if index, ok := node.(*exprlang.IndexAccessNode); ok {
-		base := matrixScriptReferencePath(index.Operand)
-		return base != "" && proofs[base+"[*]"].safe(argument)
+	if !argument {
+		return false
 	}
-	return false
+	base := ""
+	switch node := node.(type) {
+	case *exprlang.IndexAccessNode:
+		base = matrixScriptReferencePath(node.Operand)
+	case *exprlang.ObjectDerefNode:
+		base = matrixScriptReferencePath(node.Receiver)
+	}
+	return base != "" && proofs[base+"[*]"].safe(true)
 }
 
 func matrixScriptReferencePath(node exprlang.Node) string {
