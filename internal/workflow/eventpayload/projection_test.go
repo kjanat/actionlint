@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	expr "actionlint.kjanat.dev/v2/internal/expression"
+	workflow "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestPayloadExpressions(t *testing.T) {
@@ -43,6 +44,7 @@ func TestPayloadExpressions(t *testing.T) {
 		{"action guard retains push otherwise", []Trigger{{Name: "push"}, {Name: "issues"}}, "github.event.action != 'labeled' && github.event.commits[0].message", ""},
 		{"caller action remains unknown", []Trigger{{Name: "workflow_call"}, {Name: "issues"}}, "github.event.action == 'labeled' && github.event.commits[0].message", ""},
 		{"dispatch action remains unknown", []Trigger{{Name: "repository_dispatch"}, {Name: "issues"}}, "github.event.action == 'custom' && github.event.client_payload.value", ""},
+		{"dispatch action narrows", []Trigger{{Name: "repository_dispatch", Actions: []string{"custom"}}, {Name: "issues", Actions: []string{"opened"}}}, "github.event.action == 'opened' && github.event.client_payload.value", `property "client_payload"`},
 		{"future event action remains unknown", []Trigger{{Name: "new_event"}, {Name: "issues"}}, "github.event.action == 'labeled' && github.event.future.field", ""},
 		{"event guard narrows", []Trigger{{Name: "push"}, {Name: "pull_request"}}, "github.event_name == 'push' && github.event.pull_request.title", `property "pull_request"`},
 		{"event guard retains", []Trigger{{Name: "push"}, {Name: "pull_request"}}, "github.event_name == 'pull_request' && github.event.pull_request.title", ""},
@@ -85,5 +87,33 @@ func TestDefaultVariants(t *testing.T) {
 				t.Errorf("unexpected default activity %q", variant.Action)
 			}
 		}
+	}
+}
+
+func TestRepositoryDispatchTypesReachProjection(t *testing.T) {
+	w, errs := workflow.Parse([]byte(`on:
+  repository_dispatch:
+    types: [custom]
+  issues:
+    types: [opened]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+`))
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	c := expr.NewChecker(false, nil)
+	c.UpdateEvent(Type(w))
+	c.SetContextAvailability([]string{"github"})
+	n, err := expr.NewParser().Parse(expr.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, errors := c.Check(n)
+	if len(errors) != 1 || !strings.Contains(errors[0].Message, `property "client_payload"`) {
+		t.Fatalf("dispatch type was not narrowed away: %v", errors)
 	}
 }

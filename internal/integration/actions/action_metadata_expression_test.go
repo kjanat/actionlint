@@ -66,3 +66,22 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 		t.Fatalf("suggested unavailable input context: %+v", violations)
 	}
 }
+
+func TestCompositeInjectionSurvivesExpressionError(t *testing.T) {
+	root, _ := testutil.ExecutableFixture(t)
+	testutil.WriteFixture(t, root, "inner/action.yml", `name: inner
+description: test
+runs:
+  using: composite
+  steps:
+    - run: echo "${{ github.event.issue.title || github.events }}"
+      shell: bash
+`)
+	result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Rule == "script-injection" && strings.Contains(diagnostic.Message, "potentially untrusted") {
+			return
+		}
+	}
+	t.Fatalf("missing independent composite injection finding: %+v", result.Diagnostics)
+}

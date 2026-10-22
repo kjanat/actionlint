@@ -120,6 +120,27 @@ jobs:
 	}
 }
 
+func TestSecretInterpolationRemainsWhenScriptInterpolationIsDisabled(t *testing.T) {
+	cfg, err := repoconfig.Parse([]byte("lint: {rules: {correctness: {script-interpolation: off}, security: {script-injection: on}}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow := `on: push
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github[format('to{0}', 'ken')] }}"
+`
+	result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "secret") {
+		t.Fatalf("folded token escaped the enabled security rule: %+v", result.Diagnostics)
+	}
+}
+
 func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool, syntaxSensitive ...bool) {
 	t.Helper()
 	workflow := `on: {issues: {}, workflow_run: {workflows: [Build], types: [completed]}}

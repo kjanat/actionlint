@@ -115,10 +115,6 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
 	}
 	ty, errs := c.Check(expr)
-	if rule.compositeScript && slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule != "script-injection" }) {
-		// A bad expression must not erase independent script findings before or after it.
-		return ty, false
-	}
 	canCheckInterpolation := len(errs) == 0 || rule.options.ScriptInjectionDisabled && !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule != "script-injection" })
 	if checkUntrusted && canCheckInterpolation {
 		scalarArgument := rule.scriptScalarArgs[rule.expressionOffset-3]

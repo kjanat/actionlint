@@ -69,16 +69,18 @@ func secretValue(node Node) bool {
 	case *VariableNode:
 		return n.Name == "secrets"
 	case *ObjectDerefNode:
-		if root, ok := n.Receiver.(*VariableNode); ok && root.Name == "github" && n.Property == "token" {
+		if root, ok := n.Receiver.(*VariableNode); ok && strings.EqualFold(root.Name, "github") && strings.EqualFold(n.Property, "token") {
 			return true
 		}
 		return secretValue(n.Receiver)
 	case *ArrayDerefNode:
 		return secretValue(n.Receiver)
 	case *IndexAccessNode:
-		if root, ok := n.Operand.(*VariableNode); ok && root.Name == "github" {
-			if key, ok := n.Index.(*StringNode); ok && strings.EqualFold(key.Value, "token") {
-				return true
+		if root, ok := n.Operand.(*VariableNode); ok && strings.EqualFold(root.Name, "github") {
+			if value, known := ConditionConstantValue(n.Index); known {
+				if key, ok := value.(string); ok && strings.EqualFold(key, "token") {
+					return true
+				}
 			}
 		}
 		return secretValue(n.Operand)
