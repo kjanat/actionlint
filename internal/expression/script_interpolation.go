@@ -165,9 +165,8 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 	if safeScriptStatusReference(expr, scalarArgument, safeReference) {
 		return true
 	}
-	// Numeric identifiers and hashes may be all digits or empty, so prove them
-	// only at shell data arguments. Fixed nonnumeric enums remain safe words.
-	// Actor names are excluded because bot-login brackets have shell glob syntax.
+	// Numeric identifiers and hashes need data-argument proofs. Actor names
+	// may contain glob characters.
 	switch strings.ToLower(eventReference(expr)) {
 	case "github.repository_owner":
 		return scalarArgument
