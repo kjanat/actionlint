@@ -96,9 +96,14 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 		refs = slices.Clone(project.Manifest.References)
 		updatePlugins = false
 	case !declaredLocally && len(project.Lock.Lock.Plugins) != 0:
-		// A lock-only project predates manifest declarations. Migrate its pins
-		// into the manifest instead of replacing them with default selections.
-		refs, err = project.Dependencies(true)
+		if resolved.Config.Plugins != nil {
+			// An invocation overlay explicitly selected plugins for this migration.
+			refs = slices.Clone(resolved.Config.Plugins)
+		} else {
+			// A lock-only project predates manifest declarations. Migrate its pins
+			// into the manifest while plugins remain unspecified.
+			refs, err = project.Dependencies(true)
+		}
 	default:
 		refs, err = DefaultPluginReferences(resolved.Config, options)
 	}
@@ -159,40 +164,9 @@ func MigrateConfig(ctx context.Context, path string, options DefaultPluginOption
 }
 
 func migrateConfig(ctx context.Context, path, repositoryRoot string, options DefaultPluginOptions) error {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return fmt.Errorf("could not read config file %q: %w", path, err)
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		// Reading a linked config remains supported; automatic writes never
-		// change its target outside the selected project.
-		return nil
-	}
-	migration, err := config.PrepareMigration(path)
-	if err != nil || !migration.Changed {
+	prepared, err := prepareConfigMigration(ctx, path, repositoryRoot, options)
+	if err != nil || prepared == nil {
 		return err
-	}
-	if repositoryRoot != "" {
-		inside, err := migrationPathInsideRepository(repositoryRoot, migration.Path)
-		if err != nil {
-			return err
-		}
-		if !inside {
-			return nil
-		}
-	}
-	prepared, err := PrepareConfigMigration(ctx, path, options)
-	if err != nil {
-		return err
-	}
-	if repositoryRoot != "" {
-		inside, err := migrationPathInsideRepository(repositoryRoot, prepared.Path)
-		if err != nil {
-			return err
-		}
-		if !inside {
-			return nil
-		}
 	}
 	if err := prepared.Apply(ctx); err != nil {
 		return err
@@ -204,6 +178,45 @@ func migrateConfig(ctx context.Context, path, repositoryRoot string, options Def
 		}
 	}
 	return nil
+}
+
+func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, options DefaultPluginOptions) (*ConfigMigration, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		// Reading a linked config remains supported; automatic writes never
+		// change its target outside the selected project.
+		return nil, nil
+	}
+	migration, err := config.PrepareMigration(path)
+	if err != nil || !migration.Changed {
+		return nil, err
+	}
+	if repositoryRoot != "" {
+		inside, err := migrationPathInsideRepository(repositoryRoot, migration.Path)
+		if err != nil {
+			return nil, err
+		}
+		if !inside {
+			return nil, nil
+		}
+	}
+	prepared, err := PrepareConfigMigration(ctx, path, options)
+	if err != nil {
+		return nil, err
+	}
+	if repositoryRoot != "" {
+		inside, err := migrationPathInsideRepository(repositoryRoot, prepared.Path)
+		if err != nil {
+			return nil, err
+		}
+		if !inside {
+			return nil, nil
+		}
+	}
+	return prepared, nil
 }
 
 func migrationPathInsideRepository(root, path string) (bool, error) {
@@ -228,7 +241,7 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 }
 
 // Migrate upgrades selected local configs before runtime plugin selection.
-// Cache planning calls Select directly and remains read-only.
+// Cache planning calls SelectForCache and remains read-only.
 func (s PluginSelection) Migrate(ctx context.Context, directory string, input application.Input, options DefaultPluginOptions) error {
 	if s.Disabled || len(s.Paths) != 0 || s.LockFile != "" {
 		return nil
@@ -262,12 +275,20 @@ func (s PluginSelection) Migrate(ctx context.Context, directory string, input ap
 		return nil
 	}
 	seen := map[string]bool{}
+	var candidates []struct {
+		root string
+		path string
+	}
 	for _, start := range starts {
-		root := projectpath.RepositoryRoot(start)
-		if root == "" || seen[root] {
+		identity := pluginProjectRoot(start)
+		if seen[identity] {
 			continue
 		}
-		seen[root] = true
+		seen[identity] = true
+		root := projectpath.RepositoryRoot(start)
+		if root == "" {
+			continue
+		}
 		path, err := pluginConfigPath(filepath.Join(root, ".github"))
 		if err != nil {
 			return err
@@ -277,8 +298,42 @@ func (s PluginSelection) Migrate(ctx context.Context, directory string, input ap
 		} else if err != nil {
 			return err
 		}
-		if err := migrateConfig(ctx, path, root, options); err != nil {
+		candidates = append(candidates, struct {
+			root string
+			path string
+		}{root, path})
+	}
+	if len(seen) > 1 {
+		// Check existing plugin scopes before planning migrations. Selection is
+		// read-only and catches active configs in repositories with no legacy file.
+		if _, err := s.SelectForCache(ctx, directory, input); err != nil {
 			return err
+		}
+	}
+	plans := make([]*ConfigMigration, 0, len(candidates))
+	for _, candidate := range candidates {
+		plan, err := prepareConfigMigration(ctx, candidate.path, candidate.root, options)
+		if err != nil {
+			return err
+		}
+		if plan != nil {
+			plans = append(plans, plan)
+		}
+	}
+	if len(seen) > 1 && slices.ContainsFunc(plans, func(plan *ConfigMigration) bool {
+		return len(plan.refs) != 0
+	}) {
+		return errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
+	}
+	for _, plan := range plans {
+		if err := plan.Apply(ctx); err != nil {
+			return err
+		}
+		if options.Warning != nil {
+			options.Warning("migrated configuration: " + plan.Path)
+			for _, note := range plan.Notes {
+				options.Warning(note)
+			}
 		}
 	}
 	return nil
