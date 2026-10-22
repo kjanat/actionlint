@@ -226,7 +226,7 @@ Architecture tests keep the engine free of the runtime and the loader free of th
 zero-size request, which the canonical ABI allows and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11).
 `go.mod` pins `github.com/kjanat/wacogo` and the repaired `github.com/kjanat/go-modules` loader under their
 fork module paths. This supports `go install` without module replacements. The runtime includes the fix above
-and the pending ownership and allocation-budget fixes in upstream PRs #13–16.
+and the pending ownership and allocation fixes in upstream PRs #13 through #16.
 `internal/plugins/component/runtime_limit_test.go` checks that an empty string lowers into a component whose realloc returns
 null for size 0.
 

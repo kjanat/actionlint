@@ -2,6 +2,8 @@ module actionlint.kjanat.dev/tools/plugin-contract
 
 go 1.27.0
 
+toolchain go1.27.3
+
 require github.com/kjanat/go-modules v0.7.1
 
 require (
