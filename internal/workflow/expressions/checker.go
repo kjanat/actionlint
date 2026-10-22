@@ -6,6 +6,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 type typedExpr struct {
@@ -52,6 +53,7 @@ type Options struct {
 // Dependencies provides metadata to workflow expression inference. Missing
 // lookups leave output types open; dependency loading remains the caller's job.
 type Dependencies struct {
+	Runners       *runner.Knowledge
 	LocalAction   func(string) (*actionmeta.Metadata, error)
 	PopularAction func(string) *actionmeta.Metadata
 	Workflow      func(string) (*calls.Metadata, error)

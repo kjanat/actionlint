@@ -1064,7 +1064,7 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/runs-on.yaml": "dc721c22f9815fd9f24e00907816d46fa8018b6f6aa9effa8db1a5ce422391d2"
+      "schemastore/src/test/github-workflow/runs-on.yaml": "8c33c733842fb6b5095a7126dc634c555b0a2d1ef05648eced1397e0a695d51b"
     },
     "findings": [
       {
@@ -1079,22 +1079,27 @@
         "category": "extra-lint",
         "scope": "diagnostic",
         "diagnostic_indices": [
-          6,
+          3,
+          5,
           7,
-          8,
+          9,
           10,
-          13,
+          11,
+          12,
           14,
-          15,
-          16,
+          17,
+          18,
+          19,
           20,
-          23
+          24,
+          27
         ],
-        "rationale": "PowerShell and unresolved runner shells have no shell-word position proof. The extra diagnostics record that analysis boundary for runner.os substitutions, independently of runner-label validation.",
+        "rationale": "PowerShell and unresolved runner shells have no shell-word position proof. This includes retired labels whose selected runner provider supplies no shell; their spelling cannot establish Bash semantics. The extra diagnostics record that analysis boundary for runner.os substitutions, independently of runner-label validation.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/runs-on.yaml",
           "source:internal/expression/script_interpolation.go",
-          "source:internal/workflow/expressions/script_positions.go"
+          "source:internal/workflow/expressions/script_positions.go",
+          "source:internal/workflow/runner/knowledge.go"
         ]
       }
     ]

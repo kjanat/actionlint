@@ -18,7 +18,8 @@ TESTDATA := $(wildcard \
 	)
 GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
 				internal/actioncatalog/generate/popular_actions.json \
-				internal/webhook/generate/main.go \
+				$(filter-out %_test.go,$(wildcard internal/webhook/generate/*.go)) \
+				$(wildcard internal/webhook/generate/sources/*) \
 				internal/expression/context/generate/main.go
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 

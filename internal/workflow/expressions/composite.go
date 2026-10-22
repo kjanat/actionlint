@@ -8,23 +8,43 @@ import (
 // CheckCompositeScript checks script sinks independently of workflow caller types.
 // Metadata validation owns context/name errors, so do not duplicate those findings.
 func (rule *Checker) CheckCompositeScript(step *workflowlang.Step) {
-	run, ok := step.Exec.(*workflowlang.ExecRun)
-	if !ok {
-		return
-	}
-	if run == nil || run.Run == nil {
-		return
-	}
-	previous := rule.workflow
-	previousComposite := rule.compositeScript
+	previous := *rule
+	defer func() {
+		previous.errs = rule.errs
+		*rule = previous
+	}()
 	rule.compositeScript = true
-	rule.workflow = &workflowlang.Workflow{ExpressionSources: map[workflowlang.Pos]*workflowlang.ScriptSource{*run.Run.Pos: run.Source}}
-	defer func() { rule.workflow, rule.compositeScript = previous, previousComposite }()
+	rule.workflow = &workflowlang.Workflow{ExpressionSources: map[workflowlang.Pos]*workflowlang.ScriptSource{}}
 	// Caller inputs and previous step outputs have no supplied value/type snapshot.
 	rule.inputsTy = exprlang.NewMapObjectType(exprlang.StringType{})
 	rule.stepsTy = exprlang.NewMapObjectType(exprlang.AnyType{})
 	rule.matrixTy = exprlang.NewMapObjectType(exprlang.AnyType{})
+	rule.matrixScriptSafe = nil
+	rule.jobEnv, rule.scriptJob = nil, nil
 	rule.scriptEnv = step.Env
-	defer func() { rule.scriptEnv = nil }()
-	rule.checkScriptString(run.Run, "jobs.<job_id>.steps.run", rule.scriptShell(run))
+	switch exec := step.Exec.(type) {
+	case *workflowlang.ExecRun:
+		if exec == nil || exec.Run == nil {
+			return
+		}
+		rule.workflow.ExpressionSources[*exec.Run.Pos] = exec.Source
+		rule.checkScriptString(exec.Run, "jobs.<job_id>.steps.run", rule.scriptShell(exec))
+	case *workflowlang.ExecAction:
+		if exec == nil {
+			return
+		}
+		var collect func(*workflowlang.ActionInputMapping)
+		collect = func(mapping *workflowlang.ActionInputMapping) {
+			for _, input := range mapping.Inputs {
+				if input.Value != nil && input.Value.Pos != nil {
+					rule.workflow.ExpressionSources[*input.Value.Pos] = input.Source
+				}
+			}
+			for _, insertion := range mapping.Insertions {
+				collect(insertion)
+			}
+		}
+		collect(&workflowlang.ActionInputMapping{Inputs: exec.Inputs, Insertions: exec.InputInsertions})
+		rule.checkActionInputs(workflowlang.InputMapping(exec), exec.Uses)
+	}
 }

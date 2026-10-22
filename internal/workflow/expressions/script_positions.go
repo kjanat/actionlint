@@ -10,7 +10,6 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
-	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 func (rule *Checker) scriptShell(run *workflowlang.ExecRun) string {
@@ -22,11 +21,9 @@ func (rule *Checker) scriptShell(run *workflowlang.ExecRun) string {
 		jobShell = execution.DefaultShell(rule.scriptJob.Defaults)
 		runnerShell = execution.ContainerShell(rule.scriptJob.Container)
 		if runnerShell.Kind == execution.ShellUnspecified {
-			switch runner.PlatformOf(rule.scriptJob.RunsOn) {
-			case runner.Windows:
-				runnerShell = execution.ShellValueOf(&workflowlang.String{Value: "pwsh"})
-			case runner.Any:
-				runnerShell = execution.ShellValue{Kind: execution.ShellUnknown}
+			runnerShell = execution.ShellValue{Kind: execution.ShellUnknown}
+			if shell := rule.dependencies.Runners.Job(rule.scriptJob).Shell; shell != "" {
+				runnerShell = execution.ShellValueOf(&workflowlang.String{Value: shell})
 			}
 		}
 	}

@@ -72,3 +72,41 @@ func TestSecretInterpolationPreservesName(t *testing.T) {
 		t.Fatalf("source spelling lost: %v", findings)
 	}
 }
+
+func TestSecretInterpolationWithIndependentSemanticError(t *testing.T) {
+	for _, tc := range []struct {
+		expression              string
+		wantSecrets, wantErrors int
+	}{
+		{"secrets.TOKEN || github.events", 1, 1},
+		{"github.events || secrets.TOKEN", 1, 1},
+		{"format('{0}{1}', secrets.TOKEN, github.events)", 1, 1},
+		{"secrets[true]", 0, 1},
+		{"secrets.TOKEN.invalid", 0, 1},
+		{"github.token.invalid || secrets.TOKEN", 1, 1},
+		{"secrets.TOKEN != '' || github.events", 0, 1},
+		{"false && secrets.TOKEN || github.events", 0, 1},
+		{"secrets.TOKEN", 1, 0},
+	} {
+		t.Run(tc.expression, func(t *testing.T) {
+			node, err := NewParser().Parse(NewLexer(tc.expression + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			checker := NewChecker(true, nil)
+			checker.SetWorkflowKeyAvailability("jobs.<job_id>.steps.run")
+			_, findings := checker.Check(node)
+			secrets, errors := 0, 0
+			for _, finding := range findings {
+				if finding.Code == "secret-interpolation" {
+					secrets++
+				} else {
+					errors++
+				}
+			}
+			if secrets != tc.wantSecrets || errors != tc.wantErrors {
+				t.Fatalf("got %d secret findings and %d semantic findings, want %d and %d: %+v", secrets, errors, tc.wantSecrets, tc.wantErrors, findings)
+			}
+		})
+	}
+}

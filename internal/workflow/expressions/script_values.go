@@ -49,7 +49,7 @@ func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
 
 // safeMatrixScriptReferences proves individual paths across all declared axis
 // values and include assignments, without expanding the Cartesian product.
-// Exclusions can only remove values, so ignoring them keeps the proof conservative.
+// Includes apply after exclusions, so an excluded match may become a sparse job.
 func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptValueProof {
 	if matrix == nil {
 		return nil
@@ -62,6 +62,7 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 	if !complete {
 		return nil
 	}
+	excludes, exclusionsKnown := matrixcheck.ExpandCombinations(resolved.Exclude)
 	type pathProof struct {
 		proof scriptValueProof
 		count int
@@ -104,11 +105,14 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 		return true
 	}
 	includeSelectsBase := false
+	baseValues := map[string][]matrixcheck.Element{}
+	missingBaseAxes := map[string]bool{}
 	for name, row := range resolved.Rows {
 		elements, complete := matrixcheck.RowElements(row, true)
 		if !complete {
 			return nil
 		}
+		baseValues[name] = elements
 		for _, element := range elements {
 			if !add(name, element.Value, element.Expressions, false) {
 				return nil
@@ -117,18 +121,55 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 	}
 	if includes != nil {
 		for _, combination := range includes.Combinations {
+			assignments := map[string]workflowlang.RawYAMLValue{}
 			for key, assignment := range combination.Assigns {
 				name, known := matrixcheck.RowName(key, &workflowlang.MatrixRow{Name: assignment.Key, Evaluated: combination.Evaluated})
 				if !known || !add(name, assignment.Value, !combination.Evaluated, true) {
 					return nil
 				}
+				assignments[name] = assignment.Value
 				if _, baseAxis := resolved.Rows[name]; baseAxis {
 					includeSelectsBase = true
 				}
 			}
+			// An include that cannot augment any original base combination
+			// creates its own job. Omitted base axes are empty in that job;
+			// earlier includes cannot supply them. Match each axis separately
+			// rather than expanding the Cartesian product.
+			standalone := len(baseValues) == 0 || !exclusionsKnown
+			witness := map[string]workflowlang.RawYAMLValue{}
+			for name, values := range baseValues {
+				if len(values) == 0 {
+					standalone = true
+				} else {
+					witness[name] = values[0].Value
+				}
+				if assigned, exists := assignments[name]; exists {
+					matches := false
+					for _, value := range values {
+						if value.Value.Equals(assigned) {
+							witness[name] = value.Value
+							matches = true
+							break
+						}
+					}
+					standalone = standalone || !matches
+				}
+			}
+			// A surviving witness proves that this include augments an existing
+			// job. If this witness is excluded, conservatively allow a standalone
+			// job rather than searching the full product for another match.
+			standalone = standalone || !matrixScriptWitnessSurvives(witness, excludes)
+			if standalone {
+				for name := range baseValues {
+					if _, supplied := assignments[name]; !supplied {
+						missingBaseAxes[name] = true
+					}
+				}
+			}
 		}
 	}
-	for _, axis := range axes {
+	for name, axis := range axes {
 		alternatives := axis.baseAlternatives + axis.includeAlternatives
 		includeCoverage := true
 		if axis.baseAlternatives == 0 {
@@ -138,7 +179,7 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 			includeCoverage = alternatives > 0 && !includeSelectsBase && axis.includeAlternatives == alternatives
 		}
 		for path, proof := range axis.paths {
-			if proof.count < alternatives || !includeCoverage {
+			if proof.count < alternatives || !includeCoverage || missingBaseAxes[name] {
 				// A missing member, index, or include-only assignment can be empty.
 				proof.proof = min(proof.proof, scriptArgumentOnly)
 			}
@@ -154,6 +195,29 @@ func safeMatrixScriptReferences(matrix *workflowlang.Matrix) map[string]scriptVa
 		}
 	}
 	return result
+}
+
+func matrixScriptWitnessSurvives(values map[string]workflowlang.RawYAMLValue, excludes *workflowlang.MatrixCombinations) bool {
+	if excludes == nil {
+		return true
+	}
+	for _, exclusion := range excludes.Combinations {
+		matches := true
+		for key, assignment := range exclusion.Assigns {
+			name, known := matrixcheck.RowName(key, &workflowlang.MatrixRow{Name: assignment.Key, Evaluated: exclusion.Evaluated})
+			if !known {
+				return false
+			}
+			if !matrixcheck.Subset(values[name], assignment.Value, true) {
+				matches = false
+				break
+			}
+		}
+		if matches {
+			return false
+		}
+	}
+	return true
 }
 
 func matrixScriptValuePaths(path string, value workflowlang.RawYAMLValue, expressions bool, safe map[string]scriptValueProof) bool {

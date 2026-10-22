@@ -75,7 +75,12 @@ func (sema *Checker) withEventGuard(guard Node, truth bool, check func() Type) T
 			selected = append(selected, variant)
 		}
 	}
-	if len(selected) == len(event.EventVariants) || len(selected) == 0 {
+	if len(selected) == 0 {
+		// No configured trigger can evaluate this branch. Its payload accesses
+		// and constant evaluation must not produce findings.
+		return AnyType{}
+	}
+	if len(selected) == len(event.EventVariants) {
 		return check()
 	}
 	previous := sema.vars
@@ -111,12 +116,14 @@ func eventGuardValue(node Node, variant EventVariant) (bool, bool) {
 		if n.Kind != CompareOpNodeKindEq && n.Kind != CompareOpNodeKindNotEq {
 			return false, false
 		}
-		ref, literal := n.Left, n.Right
-		if _, ok := ref.(*StringNode); ok {
-			ref, literal = literal, ref
+		ref, operand := n.Left, n.Right
+		constant, known := ConditionConstantValue(operand)
+		if !known {
+			ref, operand = operand, ref
+			constant, known = ConditionConstantValue(operand)
 		}
-		text, ok := literal.(*StringNode)
-		if !ok {
+		text, ok := constant.(string)
+		if !known || !ok {
 			return false, false
 		}
 		var value string
@@ -135,12 +142,12 @@ func eventGuardValue(node Node, variant EventVariant) (bool, bool) {
 				if _, exists := variant.Payload.Props["action"]; exists {
 					return false, false
 				}
-				return CompareConditionValues(n.Kind, nil, text.Value)
+				return CompareConditionValues(n.Kind, nil, text)
 			}
 		default:
 			return false, false
 		}
-		return CompareConditionValues(n.Kind, value, text.Value)
+		return CompareConditionValues(n.Kind, value, text)
 	}
 	return false, false
 }

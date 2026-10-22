@@ -1408,8 +1408,15 @@ func (sema *Checker) Check(expr Node) (Type, []*Error) {
 	if sema.untrusted != nil {
 		sema.untrusted.OnVisitEnd()
 		errs = append(errs, sema.untrusted.Errs()...)
-		if len(sema.errs) == 0 {
-			errs = append(errs, CheckSecretInterpolations(expr)...)
+		for _, finding := range CheckSecretInterpolations(expr) {
+			// Invalid selectors do not prove that a secret value is emitted.
+			// Errors in a separate expression branch must not hide valid ones.
+			invalid := slices.ContainsFunc(sema.errs, func(err *Error) bool {
+				return err.Offset < finding.EndOffset && finding.Offset < err.EndOffset
+			})
+			if !invalid {
+				errs = append(errs, finding)
+			}
 		}
 	}
 	return ty, errs

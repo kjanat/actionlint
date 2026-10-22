@@ -12,6 +12,7 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	workflowexpr "actionlint.kjanat.dev/v2/internal/workflow/expressions"
+	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -38,8 +39,13 @@ func (r *RuleExpression) VisitStep(step *workflowlang.Step) error {
 }
 
 func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *RuleExpression {
+	return newRuleExpression(actionsCache, workflowCache, nil)
+}
+
+func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge) *RuleExpression {
 	r := &RuleExpression{tag: "expression"}
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
+		Runners: runners,
 		LocalAction: func(spec string) (*actionmeta.Metadata, error) {
 			if actionsCache == nil {
 				return nil, nil
