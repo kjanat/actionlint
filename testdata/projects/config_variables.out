@@ -1,1 +1,5 @@
+workflows/test.yaml:8:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+workflows/test.yaml:9:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+workflows/test.yaml:11:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
+workflows/test.yaml:12:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
 workflows/test.yaml:14:24: undefined configuration variable "piyo". defined configuration variables in actionlint.yaml are "FOO", "WOO" [expression-reference]

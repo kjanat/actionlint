@@ -9,5 +9,9 @@ jobs:
   my_job:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ${{ github.event.inputs.my_input }}
-      - run: echo ${{ inputs.my_input }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.my_input }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.my_input }}

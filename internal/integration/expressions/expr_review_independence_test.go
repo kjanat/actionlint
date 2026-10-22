@@ -29,7 +29,7 @@ func TestReferencedWorkflowInjectionSources(t *testing.T) {
 		"startsWith(github.event.workflow_run.referenced_workflows[0].path, 'owner/')",
 	} {
 		t.Run(expression, func(t *testing.T) {
-			checkReferencedWorkflowExpression(t, expression, false)
+			checkReferencedWorkflowExpression(t, expression, false, strings.HasSuffix(expression, ".sha") || strings.HasPrefix(expression, "join("))
 		})
 	}
 	workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
@@ -62,8 +62,8 @@ func TestWorkflowRunActorDisplayNameInjection(t *testing.T) {
 			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
 		}
 		for _, field := range []string{"login", "id", "type"} {
-			checkReferencedWorkflowExpression(t, "github.event.workflow_run."+actor+"."+field, false)
-			checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(actor)+"']['"+strings.ToUpper(field)+"']", false)
+			checkReferencedWorkflowExpression(t, "github.event.workflow_run."+actor+"."+field, false, field != "id")
+			checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(actor)+"']['"+strings.ToUpper(field)+"']", false, field != "id")
 		}
 		checkReferencedWorkflowExpression(t, "contains(github.event.workflow_run."+actor+".name, 'trusted')", false)
 		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
@@ -82,7 +82,66 @@ jobs:
 	}
 }
 
-func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool) {
+func TestScriptInterpolationRemainsWhenInjectionIsDisabled(t *testing.T) {
+	for _, tc := range []struct {
+		name, injection, interpolation, want string
+	}{
+		{"both enabled", "on", "on", "script-injection"},
+		{"injection disabled", "off", "on", "script-interpolation"},
+		{"both disabled", "off", "off", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			configText := "lint: {rules: {correctness: {script-interpolation: " + tc.interpolation + "}, security: {script-injection: " + tc.injection + "}}}"
+			cfg, err := repoconfig.Parse([]byte(configText))
+			if err != nil {
+				t.Fatal(err)
+			}
+			workflow := `on: issues
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github.event.issue.title }}"
+`
+			result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if len(result.Diagnostics) != 0 {
+					t.Fatalf("disabled rules still reported: %+v", result.Diagnostics)
+				}
+				return
+			}
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != tc.want {
+				t.Fatalf("diagnostic = %+v, want only %s", result.Diagnostics, tc.want)
+			}
+		})
+	}
+}
+
+func TestSecretInterpolationRemainsWhenScriptInterpolationIsDisabled(t *testing.T) {
+	cfg, err := repoconfig.Parse([]byte("lint: {rules: {correctness: {script-interpolation: off}, security: {script-injection: on}}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow := `on: push
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github[format('to{0}', 'ken')] }}"
+`
+	result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "secret") {
+		t.Fatalf("folded token escaped the enabled security rule: %+v", result.Diagnostics)
+	}
+}
+
+func checkReferencedWorkflowExpression(t *testing.T, expression string, untrusted bool, syntaxSensitive ...bool) {
 	t.Helper()
 	workflow := `on: {issues: {}, workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
@@ -95,6 +154,12 @@ jobs:
 		t.Fatal(err)
 	}
 	if !untrusted {
+		if len(syntaxSensitive) != 0 && syntaxSensitive[0] {
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].Start.Line != 6 {
+				t.Fatalf("expected interpolation warning without an untrusted-input claim: %+v", result.Diagnostics)
+			}
+			return
+		}
 		if len(result.Diagnostics) != 0 {
 			t.Fatalf("safe expression rejected: %+v", result.Diagnostics)
 		}

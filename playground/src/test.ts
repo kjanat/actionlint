@@ -137,7 +137,8 @@ describe('source', () => {
 		assert.throws(() => querySource('a'.repeat(maxSourceBytes + 1)), /larger than/);
 	});
 
-	it('accepts an incompressible source at the limit', () => {
+	// Exercise the full 16 MiB boundary, including compression, on slower runners.
+	it('accepts an incompressible source at the limit', { timeout: 30_000 }, () => {
 		const source = new Uint8Array(maxSourceBytes);
 		for (let offset = 0; offset < source.length; offset += 65536) {
 			crypto.getRandomValues(source.subarray(offset, offset + 65536));
@@ -306,12 +307,11 @@ jobs:
 		}
 	});
 
-	it('keeps native and actionlint suppressions, expression sanitization, and non-shell scripts', async () => {
+	it('keeps native and actionlint suppressions and non-shell scripts', async () => {
 		for (
 			const run of [
 				'      - run: |\n          # shellcheck disable=SC2086\n          echo $value',
 				'      # actionlint:ignore-next-line shellcheck\n      - run: echo $value',
-				'      - run: echo "${{ github.ref }}"',
 				'      - shell: python\n        run: print("hello")',
 				'      - shell: pwsh\n        run: Write-Output $value',
 			]
@@ -319,6 +319,14 @@ jobs:
 			const errors = await checkRun(run);
 			assert.deepEqual(errors, [], JSON.stringify({ run, errors }));
 		}
+	});
+
+	it('sanitizes expressions for ShellCheck while retaining interpolation findings', async () => {
+		const errors = await checkRun('      - run: echo "${{ github.ref }}"');
+		assert.deepEqual(
+			errors.map(({ kind, line, column, endColumn }) => ({ kind, line, column, endColumn })),
+			[{ kind: 'script-interpolation', line: 6, column: 24, endColumn: 33 }],
+		);
 	});
 
 	it('uses workflow shell defaults for portability diagnostics', async () => {

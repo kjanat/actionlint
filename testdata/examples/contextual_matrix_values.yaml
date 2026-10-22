@@ -19,7 +19,7 @@ jobs:
       - run: echo '${{ matrix.platform }}'
       # Matrix value is strongly typed. Below line causes an error since matrix.package is {name: string, optional: bool}
       - run: echo '${{ matrix.package.dev }}'
-      # OK
+      # Scalar positions cannot be proved without resolving this matrix runner's shell
       - run: |
           echo 'os: ${{ matrix.os }}'
           echo 'node version: ${{ matrix.node }}'

@@ -18,6 +18,7 @@ jobs:
       output1: ${{ steps.step1.outputs.firstword }}
     steps:
       - id: step1
-        run: echo "firstword=hello, ${{ inputs.username }}" >> "$GITHUB_OUTPUT"
+        run: echo "firstword=hello, $USERNAME" >> "$GITHUB_OUTPUT"
         env:
           TOKEN: ${{ secrets.token }}
+          USERNAME: ${{ inputs.username }}

@@ -26,7 +26,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo '${{ ` + expression + ` }}'
+      - env:
+          VALUE: ${{ ` + expression + ` }}
+        run: printf '%s\n' "$VALUE"
 `
 			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 			if err != nil {

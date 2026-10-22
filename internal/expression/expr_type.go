@@ -3,6 +3,7 @@ package expression
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -187,6 +188,10 @@ type ObjectType struct {
 	DisplayName string
 	// Props is map from properties name to their Type.
 	Props map[string]Type
+	// PropertyNames retains canonical spelling when it differs from the lookup key.
+	PropertyNames map[string]string
+	// EventVariants retains trigger/action correlations behind a payload projection.
+	EventVariants []EventVariant
 	// Mapped is an element Type of this object. This means all props have the Type. For example,
 	// The element Type of env context is String.
 	// AnyType means its property types can be any Type so it shapes a Loose object. Setting nil
@@ -216,6 +221,40 @@ func NewEmptyStrictObjectType() *ObjectType {
 // given prop types.
 func NewStrictObjectType(props map[string]Type) *ObjectType {
 	return &ObjectType{Props: props}
+}
+
+// Named contexts use normalized keys; raw JSON objects retain their original
+// keys for structural validation, including case-collision diagnostics.
+func newNamedObjectType(props map[string]Type) *ObjectType {
+	ty := NewEmptyStrictObjectType()
+	for name, t := range props {
+		ty.SetProperty(name, t)
+	}
+	return ty
+}
+
+// SetProperty stores a case-insensitive member without losing its declared spelling.
+func (ty *ObjectType) SetProperty(name string, t Type) {
+	key := strings.ToLower(name)
+	if ty.Props == nil {
+		ty.Props = map[string]Type{}
+	}
+	ty.Props[key] = t
+	if name != key {
+		if ty.PropertyNames == nil {
+			ty.PropertyNames = map[string]string{}
+		}
+		ty.PropertyNames[key] = name
+	} else {
+		delete(ty.PropertyNames, key)
+	}
+}
+
+func (ty *ObjectType) PropertyName(key string) string {
+	if name, ok := ty.PropertyNames[key]; ok {
+		return name
+	}
+	return key
 }
 
 // NewMapObjectType creates new ObjectType which maps keys to a specific Type value.
@@ -270,7 +309,7 @@ func (ty *ObjectType) String() string {
 		} else {
 			b.WriteString("; ")
 		}
-		b.WriteString(p)
+		b.WriteString(ty.PropertyName(p))
 		b.WriteString(": ")
 		b.WriteString(ty.Props[p].String())
 	}
@@ -355,9 +394,10 @@ func (ty *ObjectType) Merge(other Type) Type {
 		}
 
 		return &ObjectType{
-			Props:       props,
-			Mapped:      mapped,
-			DisplayName: ty.DisplayName,
+			Props:         props,
+			Mapped:        mapped,
+			DisplayName:   ty.DisplayName,
+			PropertyNames: mergePropertyNames(ty, other),
 		}
 	default:
 		return AnyType{}
@@ -366,6 +406,10 @@ func (ty *ObjectType) Merge(other Type) Type {
 
 // DeepCopy duplicates itself. All its child types are copied recursively.
 func (ty *ObjectType) DeepCopy() Type {
+	return ty.deepCopyObject()
+}
+
+func (ty *ObjectType) deepCopyObject() *ObjectType {
 	p := make(map[string]Type, len(ty.Props))
 	for n, t := range ty.Props {
 		p[n] = t.DeepCopy()
@@ -374,7 +418,21 @@ func (ty *ObjectType) DeepCopy() Type {
 	if m != nil {
 		m = m.DeepCopy()
 	}
-	return &ObjectType{Props: p, Mapped: m, DisplayName: ty.DisplayName}
+	variants := slices.Clone(ty.EventVariants)
+	for i := range variants {
+		variants[i].Payload = variants[i].Payload.deepCopyObject()
+	}
+	return &ObjectType{Props: p, Mapped: m, DisplayName: ty.DisplayName, PropertyNames: maps.Clone(ty.PropertyNames), EventVariants: variants}
+}
+
+func mergePropertyNames(a, b *ObjectType) map[string]string {
+	if a.PropertyNames == nil && b.PropertyNames == nil {
+		return nil
+	}
+	names := map[string]string{}
+	maps.Copy(names, b.PropertyNames)
+	maps.Copy(names, a.PropertyNames)
+	return names
 }
 
 // ArrayType is Type for arrays.

@@ -37,7 +37,8 @@ jobs:
     steps:
       - uses: ./broken
         id: broken
-      - run: echo '${{ steps.broken.outputs.result }}'
+      - env: {RESULT: '${{ steps.broken.outputs.result }}'}
+        run: echo "$RESULT"
 `)
 	result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, Sources: []sourceUnit{{Path: "ci.yml", Content: source, Project: workspace.Identity(root)}}})
 	if err != nil {

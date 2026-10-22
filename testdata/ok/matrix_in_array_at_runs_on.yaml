@@ -7,4 +7,6 @@ jobs:
         host: ["macOS", "linux"]
     runs-on: ["self-hosted", "${{ matrix.host }}"]
     steps:
-      - run: echo "hello, ${{ matrix.host }}"
+      - run: echo "hello, $HOST"
+        env:
+          HOST: ${{ matrix.host }}

@@ -49,14 +49,15 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
+				ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(tc.script, 8)...)
 				var codes []string
-				for _, diagnostic := range result.Diagnostics {
-					codes = append(codes, diagnostic.Code)
+				for _, finding := range ruff {
+					codes = append(codes, finding.Code)
 				}
 				if !slices.Equal(codes, tc.codes) {
 					t.Fatalf("template parentheses changed diagnostics: %+v", result.Diagnostics)
 				}
-				last := result.Diagnostics[len(result.Diagnostics)-1]
+				last := ruff[len(ruff)-1]
 				if last.Start.Line != 9+strings.Count(tc.script, "\n") || last.Start.Column != 17 {
 					t.Fatalf("independent finding moved: %+v", last)
 				}

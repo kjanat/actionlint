@@ -145,19 +145,19 @@ func (rule *eventsCheck) checkWebhookEvent(event *workflowlang.WebhookEvent) {
 		event.Paths,
 		event.PathsIgnore,
 		hook,
-		[]string{"push", "pull_request", "pull_request_target"},
+		webhook.EventsWithField("paths"),
 	)
 	rule.checkExclusiveFilters(
 		event.Branches,
 		event.BranchesIgnore,
 		hook,
-		[]string{"merge_group", "push", "pull_request", "pull_request_target", "workflow_run"},
+		webhook.EventsWithField("branches"),
 	)
 	rule.checkExclusiveFilters(
 		event.Tags,
 		event.TagsIgnore,
 		hook,
-		[]string{"push"},
+		webhook.EventsWithField("tags"),
 	)
 }
 
@@ -288,7 +288,6 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version
 func (rule *eventsCheck) checkImageVersionEvent(event *workflowlang.ImageVersionEvent) {
-	// Both official workflow schemas define these activities in image-version-activity-type.
 	hook := &workflowlang.String{Value: event.EventName(), Pos: event.Pos}
-	rule.checkTypes(hook, event.Types, []string{"created", "ready", "deleted"})
+	rule.checkTypes(hook, event.Types, webhook.AllWebhookTypes[hook.Value])
 }

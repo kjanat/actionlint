@@ -1,6 +1,7 @@
 test.yaml:12:37: broken JSON string is passed to fromJSON() at offset 4: unexpected end of JSON input [expression-call]
 test.yaml:13:37: broken JSON string is passed to fromJSON() at offset 6: unexpected end of JSON input [expression-call]
 test.yaml:14:37: broken JSON string is passed to fromJSON() at offset 0: unexpected end of JSON input [expression-call]
+test.yaml:22:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
 test.yaml:24:19: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type null [expression]
 test.yaml:25:19: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type array<string> [expression]
 test.yaml:26:19: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {array: array<bool>; bool: bool} [expression]

@@ -638,9 +638,9 @@ Configure this rule with `lint.rules.correctness.runner-label`. Use `off`, `on`,
 
 ## script-injection
 
-Detect untrusted values interpolated into scripts.
+Detect untrusted values and secrets interpolated into scripts.
 
-Pass untrusted values through environment variables or action inputs and read them as data inside the script.
+Pass untrusted values through environment variables or action inputs. For secrets, prefer the tool's native environment variable or stdin over command arguments. GitHub secrets are automatically masked; register generated or fetched secrets with add-mask before use. Masking protects logs, not process arguments.
 
 - Category: `security/scripts`
 - Provider: `actionlint`
@@ -649,6 +649,113 @@ Pass untrusted values through environment variables or action inputs and read th
 - Fixes: `none`
 
 Configure this rule with `lint.rules.security.script-injection`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Prefer the tool's native environment variable: GitHub CLI reads GH_TOKEN directly, keeping the secret out of script text and command arguments. GitHub secrets are automatically masked in logs; register generated or fetched secrets with add-mask before use. Masking does not protect process arguments.
+
+```yaml
+# wrong: secret in script text
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: GH_TOKEN="${{ secrets.TOKEN }}" gh api user
+```
+
+```yaml
+# correct: secret in environment variable
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.TOKEN }}
+        run: gh api user
+```
+
+When supported, pass secrets through stdin. Bash's printf builtin feeds Docker's password-stdin option without putting the password in Docker's arguments. GitHub masks this stored secret automatically; generated or fetched values must be masked before use. Keep shell tracing disabled.
+
+```yaml
+# wrong: password in command arguments
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          REGISTRY_USER: ${{ vars.REGISTRY_USER }}
+        run: docker login --username "$REGISTRY_USER" --password "${{ secrets.REGISTRY_PASSWORD }}"
+```
+
+```yaml
+# correct: password through stdin
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        env:
+          REGISTRY_USER: ${{ vars.REGISTRY_USER }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: printf '%s' "${REGISTRY_PASSWORD}" | docker login --username "${REGISTRY_USER}" --password-stdin
+```
+
+## script-interpolation
+
+Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and hashFiles results also require that position.
+
+Pass dynamic values through environment variables and read them as data in the script. Quoting a template expression does not prevent substitution before script parsing.
+
+- Category: `correctness/scripts`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+- Fixes: `none`
+
+Configure this rule with `lint.rules.correctness.script-interpolation`. Use `off`, `on`, `info`, `warn` or `error`; findings at every enabled level affect the CLI exit status.
+
+Keep a dynamic value out of generated shell source.
+
+```yaml
+# wrong: template value in script text
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ vars.MESSAGE }}"
+```
+
+```yaml
+# better: template value in environment variable
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - env: { MESSAGE: "${{ vars.MESSAGE }}" }
+        run: echo "${MESSAGE}"
+```
+
+Best when logging untrusted text: keep the environment binding and suspend workflow-command processing around the output. Use a fresh unpredictable token for each invocation, keep shell tracing disabled, and register any secret masks before stopping commands. The EXIT trap resumes commands even if printing fails. This protects the log command channel; it does not sanitize shell source, hide secrets, or escape terminal control characters. If raw text is unnecessary, use a serializer or escaping routine for the intended output format. See [GitHub's stop-commands guidance](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#stopping-and-starting-workflow-commands).
+
+```yaml
+# best: untrusted log output cannot issue workflow commands
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        env: { MESSAGE: "${{ vars.MESSAGE }}" }
+        run: |
+          stop_token="$(openssl rand -hex 32)"
+          trap 'printf "::%s::\n" "${stop_token}"' EXIT
+          printf '::stop-commands::%s\n' "${stop_token}"
+          printf '%s\n' "${MESSAGE}"
+```
 
 ## shell-name
 

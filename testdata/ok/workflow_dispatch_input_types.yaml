@@ -44,14 +44,32 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo '${{ github.event.inputs.name }}'
-      - run: echo '${{ github.event.inputs.type }}'
-      - run: echo '${{ github.event.inputs.submitter }}'
-      - run: echo '${{ github.event.inputs.message }}'
-      - run: echo '${{ github.event.inputs.verbose }}'
-      - run: echo '${{ github.event.inputs.dry-run }}'
-      - run: echo '${{ github.event.inputs.notification }}'
-      - run: echo '${{ github.event.inputs.environment }}'
-      - run: echo '${{ github.event.inputs.number }}'
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.name }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.type }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.submitter }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.message }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.verbose }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.dry-run }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.notification }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.environment }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ github.event.inputs.number }}
       - run: echo "${{ contains('hello, world!', github.event.inputs.name) }}"
         if: ${{ github.event.inputs.verbose }}

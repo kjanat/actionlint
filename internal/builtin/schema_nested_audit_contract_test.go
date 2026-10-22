@@ -38,11 +38,9 @@ jobs:
 
 func TestSchemaNestedImageVersionFilters(t *testing.T) {
 	for _, filters := range []string{
-		`types: ready
-    names: build-image
+		`names: build-image
     versions: '1.*'`,
-		`types: [created, ready, deleted]
-    names: [build-image]
+		`names: [build-image]
     versions: ['1.*']`,
 	} {
 		src := `on:
@@ -63,55 +61,77 @@ jobs:
 			t.Fatal(err)
 		}
 		if errs := rule.Errs(); len(errs) != 0 {
-			t.Fatalf("schema-supported activity types rejected: %v", errs)
+			t.Fatalf("documented image filters rejected: %v", errs)
 		}
 	}
 }
 
-func TestSchemaNestedImageVersionRejectsUnknownActivity(t *testing.T) {
-	src := `on:
+func TestSchemaNestedImageVersionActivities(t *testing.T) {
+	for _, tc := range []struct {
+		activity string
+		valid    bool
+	}{{"created", true}, {"ready", true}, {"deleted", true}, {"unsupported", false}} {
+		t.Run(tc.activity, func(t *testing.T) {
+			src := `on:
   image_version:
-    types: unavailable
+    types: ` + tc.activity + `
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - run: echo test
 `
-	w, errs := workflowlang.ParseDocument([]byte(src))
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
-	rule := builtin.NewRuleEvents()
-	if err := rule.VisitWorkflowPre(w); err != nil {
-		t.Fatal(err)
-	}
-	if errs := rule.Errs(); len(errs) != 1 || !strings.Contains(errs[0].Message, `invalid activity type "unavailable"`) {
-		t.Fatalf("wanted invalid image activity diagnostic, got %v", errs)
+			w, errs := workflowlang.ParseDocument([]byte(src))
+			if len(errs) != 0 {
+				t.Fatal(errs)
+			}
+			rule := builtin.NewRuleEvents()
+			if err := rule.VisitWorkflowPre(w); err != nil {
+				t.Fatal(err)
+			}
+			if errs := rule.Errs(); tc.valid {
+				if len(errs) != 0 {
+					t.Fatalf("reviewed image activity rejected: %v", errs)
+				}
+			} else if len(errs) != 1 || !strings.Contains(errs[0].Message, `invalid activity type "unsupported"`) {
+				t.Fatalf("wanted invalid image activity diagnostic, got %v", errs)
+			}
+		})
 	}
 }
 
 func TestSchemaNestedStackedPullRequests(t *testing.T) {
-	w, errs := workflowlang.ParseDocument([]byte(`on:
+	for _, tc := range []struct {
+		activity string
+		valid    bool
+	}{{"stacked", true}, {"unsupported", false}} {
+		t.Run(tc.activity, func(t *testing.T) {
+			w, errs := workflowlang.ParseDocument([]byte(`on:
   pull_request:
-    types: stacked
+    types: ` + tc.activity + `
   pull_request_target:
-    types: stacked
+    types: ` + tc.activity + `
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - run: echo test
 `))
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
-	rule := builtin.NewRuleEvents()
-	if err := rule.VisitWorkflowPre(w); err != nil {
-		t.Fatal(err)
-	}
-	if errs := rule.Errs(); len(errs) != 0 {
-		t.Fatal(errs)
+			if len(errs) != 0 {
+				t.Fatal(errs)
+			}
+			rule := builtin.NewRuleEvents()
+			if err := rule.VisitWorkflowPre(w); err != nil {
+				t.Fatal(err)
+			}
+			if errs := rule.Errs(); tc.valid {
+				if len(errs) != 0 {
+					t.Fatalf("reviewed pull request activity rejected: %v", errs)
+				}
+			} else if len(errs) != 2 || !strings.Contains(errs[0].Message, `invalid activity type "unsupported"`) || !strings.Contains(errs[1].Message, `invalid activity type "unsupported"`) {
+				t.Fatalf("wanted invalid pull request activity diagnostics, got %v", errs)
+			}
+		})
 	}
 }
 

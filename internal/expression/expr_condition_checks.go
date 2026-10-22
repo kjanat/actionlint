@@ -2,6 +2,10 @@ package expression
 
 import "strings"
 
+// StaticReference returns a normalized context path for static dot or literal
+// bracket access. Computed selectors and expressions have no static reference.
+func StaticReference(expr Node) string { return conditionReference(expr) }
+
 // conditionReference accepts static dot and bracket access without guessing dynamic keys.
 func conditionReference(expr Node) string {
 	switch n := expr.(type) {

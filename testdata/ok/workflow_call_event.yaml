@@ -29,9 +29,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - run: |
-          echo ${{ inputs.input0 }}
-          echo ${{ inputs.input1 }}
+          echo "$INPUT0"
+          echo "$INPUT1"
           echo ${{ inputs.input2 }}
           echo ${{ inputs.input3 }}
-          echo ${{ secrets.secret0 }}
-          echo ${{ secrets.secret1 }}
+          test -n "$SECRET0"
+          test -n "$SECRET1"
+        env:
+          INPUT0: ${{ inputs.input0 }}
+          INPUT1: ${{ inputs.input1 }}
+          SECRET0: ${{ secrets.secret0 }}
+          SECRET1: ${{ secrets.secret1 }}

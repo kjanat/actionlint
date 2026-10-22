@@ -21,7 +21,15 @@ jobs:
   some-job:
     runs-on: ubuntu-latest
     steps:
-      - run: echo '${{ inputs.input-for-dispatch }}'
-      - run: echo '${{ inputs.input-for-call }}'
-      - run: echo '${{ inputs.same-type-input }}'
-      - run: echo '${{ inputs.different-type-input }}'
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.input-for-dispatch }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.input-for-call }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.same-type-input }}
+      - run: echo "$VALUE"
+        env:
+          VALUE: ${{ inputs.different-type-input }}

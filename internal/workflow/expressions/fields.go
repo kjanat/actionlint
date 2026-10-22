@@ -386,11 +386,21 @@ func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) [
 	return ts
 }
 
-func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey string) {
+func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey string, shell ...string) {
 	if str == nil {
 		return
 	}
 
+	previous, previousPosition := rule.scriptScalarArgs, rule.scriptPosition
+	rule.scriptScalarArgs = nil
+	rule.scriptPosition = exprlang.ScriptUnknownPosition
+	if len(shell) > 0 {
+		rule.scriptScalarArgs = scalarScriptArguments(str.Value, shell[0])
+		if _, ok := scriptShellVariant(shell[0]); ok {
+			rule.scriptPosition = exprlang.ScriptShellWord
+		}
+	}
+	defer func() { rule.scriptScalarArgs, rule.scriptPosition = previous, previousPosition }()
 	ts, ok := rule.checkExprsIn(str.Value, str.Pos, str.Quoted, true, workflowKey)
 	if !ok {
 		return

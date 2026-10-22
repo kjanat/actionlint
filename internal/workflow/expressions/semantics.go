@@ -1,8 +1,10 @@
 package expressions
 
 import (
+	"slices"
 	"strings"
 
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -56,6 +58,9 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 }
 
 func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
+	if rule.compositeScript && err.Rule != "script-injection" && err.Rule != "script-interpolation" {
+		return // Metadata validation owns composite syntax, context and call errors.
+	}
 	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
 	var end *workflowlang.Pos
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
@@ -106,7 +111,37 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 		c.SetWorkflowKeyAvailability(workflowKey)
 	}
 
+	if rule.compositeScript {
+		c.SetContextAvailability(actionmeta.AllowedContexts("runs.steps.*.run"))
+	}
 	ty, errs := c.Check(expr)
+	canCheckInterpolation := len(errs) == 0 || rule.options.ScriptInjectionDisabled && !slices.ContainsFunc(errs, func(err *exprlang.Error) bool { return err.Rule != "script-injection" })
+	if checkUntrusted && canCheckInterpolation {
+		scalarArgument := rule.scriptScalarArgs[rule.expressionOffset-3]
+		position := rule.scriptPosition
+		if scalarArgument {
+			position = exprlang.ScriptShellArgument
+		}
+		findings := c.CheckScriptInterpolation(expr, ty, position, func(node exprlang.Node) bool {
+			path := exprlang.StaticReference(node)
+			if c.IsScriptScalar(node) {
+				return scalarArgument
+			}
+			if rule.safeScriptStatusSelector(node) {
+				return true
+			}
+			if safeMatrixScriptReference(node, rule.matrixScriptSafe, scalarArgument) {
+				return true
+			}
+			if name, ok := strings.CutPrefix(path, "env."); ok {
+				return rule.safeScriptEnv(name, scalarArgument)
+			}
+			return false
+		})
+		for _, finding := range findings {
+			rule.exprError(finding, line, col)
+		}
+	}
 	for _, err := range errs {
 		rule.exprError(err, line, col)
 	}
@@ -127,6 +162,41 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 	}
 
 	return ty, len(errs) == 0
+}
+
+func (rule *Checker) safeScriptStatusSelector(node exprlang.Node) bool {
+	var context, name string
+	switch node := node.(type) {
+	case *exprlang.ObjectDerefNode:
+		variable, ok := node.Receiver.(*exprlang.VariableNode)
+		if !ok {
+			return false
+		}
+		context, name = variable.Name, node.Property
+	case *exprlang.IndexAccessNode:
+		variable, ok := node.Operand.(*exprlang.VariableNode)
+		key, keyOK := node.Index.(*exprlang.StringNode)
+		if !ok || !keyOK {
+			return false
+		}
+		context, name = variable.Name, key.Value
+	default:
+		return false
+	}
+	var properties *exprlang.ObjectType
+	switch strings.ToLower(context) {
+	case "steps":
+		properties = rule.stepsTy
+	case "needs":
+		properties = rule.needsTy
+	default:
+		return false
+	}
+	if properties == nil {
+		return false
+	}
+	_, exists := properties.Props[strings.ToLower(name)]
+	return exists
 }
 
 func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, int, bool) {

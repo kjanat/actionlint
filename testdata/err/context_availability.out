@@ -25,6 +25,7 @@
 /test\.yaml:143:25: context "env" is not allowed here\. .+ \[context-availability\]/
 /test\.yaml:146:26: context "env" is not allowed here\. .+ \[context-availability\]/
 /test\.yaml:160:36: context "secrets" is not allowed here\. .+ \[context-availability\]/
+test.yaml:166:32: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
 /test\.yaml:183:23: context "env" is not allowed here\. .+ \[context-availability\]/
 /test\.yaml:189:21: context "env" is not allowed here\. .+ \[context-availability\]/
 /test\.yaml:193:40: context "env" is not allowed here\. .+ \[context-availability\]/

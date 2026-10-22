@@ -10,6 +10,33 @@ The [14 September 2026 measurements](expression-results/2026-09-14.md) contain t
 
 ## What to watch for
 
+### Scalar expressions still need a script data position
+
+Booleans, numbers and null cannot contain arbitrary shell text. That does not make
+every interpolation safe: `${{ inputs.flag }}` as a command can execute `true` or
+`false`, and an interpreter can evaluate an argument as source code. The
+`script-interpolation` check exempts these scalars only in literal data arguments
+to `echo` or `printf` in successfully parsed Bash or POSIX shell scripts. It honors
+step, job and workflow shell selection. Command names, redirections, expansions,
+other commands and unsupported or unresolved shells receive no scalar exemption.
+Raw null values already fail template type validation; serialized null values
+follow the scalar position check.
+
+This is a narrow syntax check, not proof of runtime command identity or behavior;
+aliases, functions and application-specific argument semantics are not modeled.
+Use environment variables and the interpreter's data-access mechanism elsewhere.
+Unknown string values still warn inside quotes. Separately, constrained strings
+such as `github.repository` retain their character-based proof.
+
+Bash/POSIX reserved words such as `fi` also require a proved data argument.
+This applies to constants and known environment or matrix values. A repository
+owner login can be a reserved word, so `github.repository_owner` needs the same
+position check. Matrix alternatives retain their weakest applicable proof.
+
+Misspelled contexts and functions receive a correction only when one close name
+is available at that workflow location. Ambiguous names receive no guess. Dynamic
+property maps accept undeclared keys without correction suggestions.
+
 ### Condition source is different from a computed string
 
 A YAML null (`if: null`, `if: ~`, or an empty value), an empty string, and a

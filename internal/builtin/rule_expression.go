@@ -9,8 +9,11 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	workflowexpr "actionlint.kjanat.dev/v2/internal/workflow/expressions"
+	"actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleExpression connects workflow expression checking to host lookups and options.
@@ -18,11 +21,31 @@ type RuleExpression struct {
 	*workflowexpr.Checker
 	ruleLogger
 	Configuration
+	compositeScripts bool
+}
+
+func (r *RuleExpression) ForComposite(Invocation) (workflowvisit.Rule, error) {
+	child := &RuleExpression{Checker: workflowexpr.New(workflowexpr.Dependencies{}, workflowExpressionOptions(r.Config())), compositeScripts: true}
+	child.SetConfig(r.Config())
+	return child, nil
+}
+
+func (r *RuleExpression) VisitStep(step *workflowlang.Step) error {
+	if r.compositeScripts {
+		r.CheckCompositeScript(step)
+		return nil
+	}
+	return r.Checker.VisitStep(step)
 }
 
 func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *RuleExpression {
+	return newRuleExpression(actionsCache, workflowCache, nil)
+}
+
+func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge) *RuleExpression {
 	r := &RuleExpression{tag: "expression"}
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
+		Runners: runners,
 		LocalAction: func(spec string) (*actionmeta.Metadata, error) {
 			if actionsCache == nil {
 				return nil, nil
@@ -53,7 +76,11 @@ func (r *RuleExpression) SetConfig(config *repoconfig.Config) {
 }
 
 func workflowExpressionOptions(config *repoconfig.Config) workflowexpr.Options {
-	return workflowexpr.Options{Semantics: *expressionOptionsFromConfig(config), UnsoundTernary: repoconfig.DiagnosticLevel(config, "unsound-ternary") != "off"}
+	return workflowexpr.Options{
+		Semantics:               *expressionOptionsFromConfig(config),
+		UnsoundTernary:          repoconfig.DiagnosticLevel(config, "unsound-ternary") != "off",
+		ScriptInjectionDisabled: repoconfig.DiagnosticLevel(config, "script-injection") == "off",
+	}
 }
 
 func expressionOptionsFromConfig(config *repoconfig.Config) *exprlang.Options {

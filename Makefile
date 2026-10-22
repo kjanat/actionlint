@@ -16,10 +16,14 @@ TESTDATA := $(wildcard \
 		testdata/projects/* \
 		testdata/reusable_workflow_metadata/* \
 	)
-GO_GEN_SRCS := $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
+GO_GEN_SRCS := generate.go $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
 				internal/actioncatalog/generate/popular_actions.json \
-				internal/webhook/generate/main.go \
+				$(filter-out %_test.go,$(wildcard internal/webhook/generate/*.go)) \
+				$(wildcard internal/webhook/generate/sources/*) \
+				$(filter-out %_test.go,$(wildcard internal/webhook/payload/*.go)) \
 				internal/expression/context/generate/main.go
+PAYLOAD_GEN_SRCS := generate.go $(filter-out %.test.mts,$(wildcard internal/webhook/payload/generate/*.mts)) \
+				internal/webhook/payload/generate/source.json
 PANDOC := pandoc --standalone --from=markdown-smart --syntax-highlighting=none
 
 ifeq ($(OS),Windows_NT)
@@ -102,11 +106,18 @@ endif
 lint-docs:
 	go run ./internal/rulecatalog/check-docs -quiet ./docs/checks.md
 
-internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go: $(GO_GEN_SRCS)
+internal/webhook/payload/catalogue.json: $(PAYLOAD_GEN_SRCS)
+ifdef SKIP_GO_GENERATE
+	$(TOUCH) $@
+else
+	go generate -run 'payload/generate'
+endif
+
+internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go &: $(GO_GEN_SRCS) internal/webhook/payload/catalogue.json
 ifdef SKIP_GO_GENERATE
 	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go
 else
-	go generate
+	go generate -skip 'payload/generate'
 endif
 
 GIT_DESCRIBE := $(shell git describe --tags 2>/dev/null)

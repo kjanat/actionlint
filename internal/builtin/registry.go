@@ -66,7 +66,7 @@ func ruleBehaviours() map[string]behaviour {
 		"glob":                {Build: func(c Context) workflowvisit.Rule { return NewRuleGlob() }},
 		"permissions":         {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
 		"workflow-call":       {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.Path, c.Workflows) }},
-		"expression":          {Build: func(c Context) workflowvisit.Rule { return NewRuleExpression(c.Actions, c.Workflows) }},
+		"expression":          {Build: func(c Context) workflowvisit.Rule { return newRuleExpression(c.Actions, c.Workflows, c.Runners) }},
 		"deprecated-commands": {Script: workflowcommands.Analyzer{}},
 		"if-cond":             {Build: func(c Context) workflowvisit.Rule { return NewRuleIfCond() }},
 		"require-commit-hash": {Build: func(c Context) workflowvisit.Rule {

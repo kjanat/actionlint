@@ -294,7 +294,7 @@ var builtinSecretProps = map[string]Type{
 var BuiltinGlobalVariableTypes = map[string]Type{
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#github-context
 	// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/contexts
-	"github": NewStrictObjectType(map[string]Type{
+	"github": newNamedObjectType(map[string]Type{
 		"action":                    StringType{},
 		"action_path":               StringType{}, // Note: Composite actions only
 		"action_ref":                StringType{},
@@ -325,7 +325,7 @@ var BuiltinGlobalVariableTypes = map[string]Type{
 		"repository_owner":          StringType{},
 		"repository_owner_id":       StringType{},
 		"repository_visibility":     StringType{}, // Note: Missing from the context reference; documented as an OIDC claim
-		"repositoryurl":             StringType{}, // repositoryUrl
+		"repositoryUrl":             StringType{},
 		"retention_days":            StringType{},
 		"run_attempt":               StringType{},
 		"run_id":                    StringType{},
@@ -533,7 +533,7 @@ func (sema *Checker) UpdateSecrets(ty *ObjectType) {
 	sema.ensureVarsCopied()
 
 	// Merges automatically supplied secrets with manually defined secrets.
-	copied := &ObjectType{Props: maps.Clone(builtinSecretProps), Mapped: ty.Mapped}
+	copied := &ObjectType{Props: maps.Clone(builtinSecretProps), Mapped: ty.Mapped, PropertyNames: maps.Clone(ty.PropertyNames)}
 	maps.Copy(copied.Props, ty.Props)
 	sema.vars["secrets"] = copied
 }
@@ -564,13 +564,21 @@ func (sema *Checker) UpdateDispatchInputs(ty *ObjectType) {
 	for n := range ty.Props {
 		p[n] = StringType{}
 	}
-	ty = NewStrictObjectType(p)
+	ty = &ObjectType{Props: p, PropertyNames: maps.Clone(ty.PropertyNames)}
 
 	sema.ensureGithubVarCopied()
 	if gh, ok := sema.vars["github"].(*ObjectType); ok {
 		if ev, ok := gh.Props["event"].(*ObjectType); ok {
 			ev = copyEventObject(ev)
 			ev.Props["inputs"] = ty
+			ev.EventVariants = slices.Clone(ev.EventVariants)
+			for i, variant := range ev.EventVariants {
+				if variant.Event == "workflow_dispatch" {
+					updated := copyEventObject(variant.Payload)
+					updated.Props["inputs"] = ty
+					ev.EventVariants[i].Payload = updated
+				}
+			}
 			gh.Props["event"] = ev
 		}
 	}
@@ -701,6 +709,16 @@ func (sema *Checker) checkVariable(n *VariableNode) Type {
 			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
 			return AnyType{}
 		}
+		available := make([]string, 0, len(sema.availableContexts))
+		for _, name := range sema.availableContexts {
+			if _, exists := sema.vars[name]; exists {
+				available = append(available, name)
+			}
+		}
+		if suggestion := CloseName(n.Name, available); suggestion != "" {
+			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
+			return AnyType{}
+		}
 		ss := make([]string, 0, len(sema.vars))
 		for n := range sema.vars {
 			ss = append(ss, n)
@@ -739,14 +757,12 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 				switch receiver.Name {
 				case "github", "job", "runner", "strategy":
 					if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
-						sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.Property, suggestion)
+						sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.PropertyName(), suggestion)
 						return AnyType{}
 					}
 				}
 			}
-			if !sema.missingEventProperty(n, n.Receiver, n.Property, ty) {
-				sema.errorf(unknownProperty, n, "property %q is not defined in object type %s", n.Property, ty.String())
-			}
+			sema.missingProperty(n, n.Receiver, n.PropertyName(), ty)
 		}
 		return AnyType{}
 	case *ArrayType:
@@ -766,9 +782,7 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 			} else if et.Mapped != nil {
 				elem = et.Mapped
 			} else if et.IsStrict() {
-				if !sema.missingEventProperty(n, n.Receiver, n.Property, et) {
-					sema.errorf(unknownProperty, n, "property %q is not defined in object type %s as element of filtered array", n.Property, et.String())
-				}
+				sema.missingProperty(n, n.Receiver, n.PropertyName(), et)
 			}
 			return &ArrayType{elem, true}
 		default:
@@ -913,7 +927,7 @@ func (sema *Checker) checkArrayDeref(n *ArrayDerefNode) Type {
 		}
 
 		// Payload object filters select scalar members as well as object members.
-		if strings.HasPrefix(eventReference(n.Receiver), "github.event") {
+		if path := strings.ToLower(eventReference(n.Receiver)); path == "github.event" || strings.HasPrefix(path, "github.event.") || strings.HasPrefix(path, "github.event[") {
 			return &ArrayType{Elem: AnyType{}, Deref: true}
 		}
 		// For strict object at receiver of .*
@@ -977,9 +991,7 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 					return ty.Mapped
 				}
 				if ty.IsStrict() {
-					if !sema.missingEventProperty(n, n.Operand, lit.Value, ty) {
-						sema.errorf(unknownProperty, n, "property %q is not defined in object type %s", lit.Value, ty.String())
-					}
+					sema.missingProperty(n, n.Operand, lit.Value, ty)
 				}
 			}
 			if ty.Mapped != nil {
@@ -1122,25 +1134,35 @@ func (sema *Checker) checkExpressionBranch(node Node, skipped bool) Type {
 
 func (sema *Checker) checkCaseCall(n *FuncCallNode) Type {
 	sema.checkSpecialFunctionAvailability(n)
-	remaining := true
-	for i := 0; i < len(n.Args)-1; i += 2 {
-		ty := sema.checkExpressionBranch(n.Args[i], !remaining)
-		if remaining && !sema.skipEvaluation {
-			switch ty.(type) {
-			case BoolType, AnyType:
-			default:
-				sema.errorf(operandType, n.Args[i], "case() predicate must be boolean but found %s", ty.String())
-			}
-		}
-		value, known := ConditionConstantValue(n.Args[i])
-		predicate, boolean := value.(bool)
-		sema.checkExpressionBranch(n.Args[i+1], !remaining || known && boolean && !predicate)
-		if known && boolean && predicate {
-			remaining = false
+	return sema.checkCaseBranches(n.Args, true)
+}
+
+func (sema *Checker) checkCaseBranches(args []Node, remaining bool) Type {
+	if len(args) == 1 {
+		sema.checkExpressionBranch(args[0], !remaining)
+		return AnyType{}
+	}
+	ty := sema.checkExpressionBranch(args[0], !remaining)
+	if remaining && !sema.skipEvaluation {
+		switch ty.(type) {
+		case BoolType, AnyType:
+		default:
+			sema.errorf(operandType, args[0], "case() predicate must be boolean but found %s", ty.String())
 		}
 	}
-	sema.checkExpressionBranch(n.Args[len(n.Args)-1], !remaining)
-	return AnyType{}
+	value, known := ConditionConstantValue(args[0])
+	predicate, boolean := value.(bool)
+	sema.withEventGuard(args[0], true, func() Type {
+		return sema.checkExpressionBranch(args[1], !remaining || known && boolean && !predicate)
+	})
+	if known && boolean && predicate {
+		remaining = false
+	}
+	// Later predicates and the default are reachable only when this predicate
+	// is false. Keep those guards nested so all earlier exclusions apply.
+	return sema.withEventGuard(args[0], false, func() Type {
+		return sema.checkCaseBranches(args[2:], remaining)
+	})
 }
 
 func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
@@ -1148,6 +1170,19 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 	callee := strings.ToLower(n.Callee)
 	sigs, ok := sema.funcs[callee]
 	if !ok {
+		candidates := make([]string, 0, len(sema.funcs))
+		for name, signatures := range sema.funcs {
+			if _, special := contextspec.SpecialFunctionNames[name]; special && !slices.Contains(sema.availableSpecialFuncs, name) {
+				continue
+			}
+			if len(signatures) > 0 {
+				candidates = append(candidates, signatures[0].Name)
+			}
+		}
+		if suggestion := CloseName(callee, candidates); suggestion != "" {
+			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
+			return AnyType{}
+		}
 		ss := make([]string, 0, len(sema.funcs))
 		for n := range sema.funcs {
 			ss = append(ss, n)
@@ -1283,13 +1318,13 @@ func (sema *Checker) checkWithNarrowing(n Node, isTruthy bool) Type {
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {
 				sema.check(n.Left)
-				return sema.check(n.Right)
+				return sema.withEventGuard(n.Left, true, func() Type { return sema.check(n.Right) })
 			}
 		case LogicalOpNodeKindOr:
 			// When `l || r` is false, narrow its type to `typeof(r)`
 			if !isTruthy {
 				sema.check(n.Left)
-				return sema.check(n.Right)
+				return sema.withEventGuard(n.Left, false, func() Type { return sema.check(n.Right) })
 			}
 		}
 		return sema.checkLogicalOp(n)
@@ -1307,13 +1342,15 @@ func (sema *Checker) checkLogicalOp(n *LogicalOpNode) Type {
 		// Narrow the type of LHS expression by assuming its value is falsy.
 		left := sema.checkWithNarrowing(n.Left, false)
 		value, known := ConditionConstantValue(n.Left)
-		return left.Merge(sema.checkExpressionBranch(n.Right, known && !ExpressionTruthy(value)))
+		right := sema.withEventGuard(n.Left, true, func() Type { return sema.checkExpressionBranch(n.Right, known && !ExpressionTruthy(value)) })
+		return left.Merge(right)
 	case LogicalOpNodeKindOr:
 		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise `typeof(r).
 		// Narrow the type of LHS expression by assuming its value is truthy.
 		left := sema.checkWithNarrowing(n.Left, true)
 		value, known := ConditionConstantValue(n.Left)
-		return left.Merge(sema.checkExpressionBranch(n.Right, known && ExpressionTruthy(value)))
+		right := sema.withEventGuard(n.Left, false, func() Type { return sema.checkExpressionBranch(n.Right, known && ExpressionTruthy(value)) })
+		return left.Merge(right)
 	default:
 		sema.check(n.Left)
 		sema.check(n.Right)
@@ -1371,6 +1408,16 @@ func (sema *Checker) Check(expr Node) (Type, []*Error) {
 	if sema.untrusted != nil {
 		sema.untrusted.OnVisitEnd()
 		errs = append(errs, sema.untrusted.Errs()...)
+		for _, finding := range CheckSecretInterpolations(expr) {
+			// Invalid selectors do not prove that a secret value is emitted.
+			// Errors in a separate expression branch must not hide valid ones.
+			invalid := slices.ContainsFunc(sema.errs, func(err *Error) bool {
+				return err.Offset < finding.EndOffset && finding.Offset < err.EndOffset
+			})
+			if !invalid {
+				errs = append(errs, finding)
+			}
+		}
 	}
 	return ty, errs
 }

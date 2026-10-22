@@ -84,6 +84,9 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 					} else {
 						suggestion = exprlang.ContextPropertySuggestion(name, avail.contexts, exprlang.BuiltinGlobalVariableTypes)
 					}
+					if suggestion == "" {
+						suggestion = exprlang.CloseName(name, avail.contexts)
+					}
 					if suggestion != "" {
 						v.Message = fmt.Sprintf("uses undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
 					} else {
@@ -108,6 +111,20 @@ func ExpressionViolations(s string, bare bool, field string, inputs Inputs) []Vi
 					signatures, ok := exprlang.BuiltinFuncSignatures[name]
 					if !ok {
 						v.Message = fmt.Sprintf("calls unknown function %q", name)
+						var candidates []string
+						for candidate, signatures := range exprlang.BuiltinFuncSignatures {
+							if slices.Contains(actionMetadataSpecialFunctions, candidate) {
+								if _, available := avail.functions[candidate]; !available {
+									continue
+								}
+							}
+							if len(signatures) > 0 {
+								candidates = append(candidates, signatures[0].Name)
+							}
+						}
+						if suggestion := exprlang.CloseName(name, candidates); suggestion != "" {
+							v.Message += fmt.Sprintf("; did you mean %q?", suggestion)
+						}
 					} else if !actionFunctionArityMatches(signatures, len(n.Args)) ||
 						(name == "format" || name == "case") && len(n.Args) > 255 ||
 						name == "case" && len(n.Args)%2 == 0 {

@@ -92,7 +92,9 @@ func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
 		{"with nonobject", "", "uses: actions/checkout@v6\n        with: ${{ 'wrong' }}", "with must be object"},
 		{"with nonscalar property", "", "uses: actions/checkout@v6\n        with: ${{ fromJSON('{\"fetch-depth\":{}}') }}", "with.fetch-depth must be string"},
 		{"services object", `services: ${{ fromJSON('{"db":{"image":"redis","command":"redis-server"}}') }}`, "run: echo test", ""},
-		{"unknown expression object", "container: ${{ fromJSON(vars.CONTAINER) }}\n    strategy: ${{ fromJSON(vars.STRATEGY) }}", "run: echo ${{ matrix.os }}", ""},
+		{"unknown expression object", "container: ${{ fromJSON(vars.CONTAINER) }}\n    strategy: ${{ fromJSON(vars.STRATEGY) }}", "run: echo test\n        env: {OS: '${{ matrix.os }}'}", ""},
+		{"unsafe strategy interpolation", `strategy: ${{ fromJSON('{"matrix":{"os":["$(id)"]}}') }}`, "run: echo ${{ matrix.os }}", "interpolated value"},
+		{"dynamic strategy interpolation", `strategy: ${{ fromJSON(vars.STRATEGY) }}`, "run: echo ${{ matrix.os }}", "interpolated value"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := `on: push

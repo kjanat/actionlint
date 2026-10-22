@@ -60,6 +60,31 @@ func TestActionExpressionContextSuggestions(t *testing.T) {
 	}
 }
 
+func TestActionCloseNameSuggestions(t *testing.T) {
+	for _, tc := range []struct{ field, source, suggestion string }{
+		{"runs.steps.*.run", "${{ githbu.ref }}", "github"},
+		{"runs.steps.*.run", "${{ startWith('abc', 'a') }}", "startsWith"},
+		{"runs.steps.*.if", "${{ alway() }}", "always"},
+		{"runs.steps.*.run", "${{ alway() }}", ""},
+		{"runs.steps.*.run", "${{ secret.TOKEN }}", ""},
+	} {
+		t.Run(tc.field+tc.source, func(t *testing.T) {
+			violations := ExpressionViolations(tc.source, false, tc.field, nil)
+			if len(violations) != 1 {
+				t.Fatalf("expected one invalid name, got %+v", violations)
+			}
+			message := violations[0].Message
+			if tc.suggestion == "" {
+				if strings.Contains(message, "did you mean") {
+					t.Fatal(message)
+				}
+			} else if !strings.Contains(message, `did you mean "`+tc.suggestion+`"?`) {
+				t.Fatal(message)
+			}
+		})
+	}
+}
+
 func TestActionExpressionFunctions(t *testing.T) {
 	tests := []struct {
 		name, field, expression string

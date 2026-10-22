@@ -28,7 +28,9 @@ jobs:
             gui: 'kde'
     runs-on: ${{ matrix.os.runner }}
     steps:
-      - run: echo ${{ matrix.gui }}
+      - run: echo "$GUI"
+        env:
+          GUI: ${{ matrix.gui }}
   array:
     strategy:
       matrix:
@@ -52,4 +54,7 @@ jobs:
             gui: ['gnome', 'x11']
     runs-on: ${{ matrix.os[0] }}-${{ matrix.os[1] }}
     steps:
-      - run: echo '${{ matrix.gui[0] }} on ${{ matrix.gui[1] }}'
+      - run: echo "$GUI_FIRST on $GUI_LAST"
+        env:
+          GUI_FIRST: ${{ matrix.gui[0] }}
+          GUI_LAST: ${{ matrix.gui[1] }}

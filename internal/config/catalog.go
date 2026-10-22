@@ -83,7 +83,7 @@ func Rules() []Rule {
 		{Name: "glob"},
 		{Name: "permissions"},
 		{Name: "workflow-call", Options: func() any { return &WorkflowCallOptions{} }, Configure: configureWorkflowCall},
-		{Name: "expression"},
+		{Name: "expression", SupportsActions: true},
 		{Name: "expression-syntax", SupportsActions: true},
 		{Name: "expression-reference", SupportsActions: true, Options: func() any { return &ExpressionReferenceOptions{} }, Configure: configureExpressionReferences},
 		{Name: "context-availability", SupportsActions: true},
@@ -91,6 +91,7 @@ func Rules() []Rule {
 		{Name: "expression-call", SupportsActions: true},
 		{Name: "event-payload", SupportsActions: true},
 		{Name: "script-injection", SupportsActions: true},
+		{Name: "script-interpolation", SupportsActions: true},
 
 		{Name: "deprecated-commands", SupportsActions: true, Scope: SourceScope},
 		{Name: "if-cond"},

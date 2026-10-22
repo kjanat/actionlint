@@ -25,13 +25,14 @@ jobs:
       FOO2: BAR4
     steps:
       - &step
-        run: echo ${{ env.R }}
+        run: echo "$R"
+        shell: *default_shell
         env:
           R: *runner
         if: &cond ${{ env.R == 'windows-latest' }}
       - *step
       - *step
-      - run: echo ${{ env.FOO1 }}
+      - run: echo "$FOO1"
         env: *default_env
         if: *cond
       - run: echo ${{ env.USER }}
@@ -39,7 +40,7 @@ jobs:
           USER: rhysd
           PASS: P@ssw0rd
         if: *cond
-      - run: echo ${{ env.PASS }}
+      - run: echo "$PASS"
         env: *cred_env
         if: *cond
   test2: &job
@@ -52,9 +53,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: *runner
-      - run: echo ${{ env.R }}
+      - run: echo "$env:FOO1"
         env: *default_env
-      - run: echo ${{ env.USER }}@${{ env.PASS }}
+      - run: echo "$env:USER@$env:PASS"
         env: *cred_env
       - run: echo "$SHELL"
         shell: *default_shell
@@ -83,7 +84,10 @@ jobs:
             node: *node
     runs-on: ${{ matrix.runner }}
     steps:
-      - run: ./install_node.bash ${{ matrix.node.version }} ${{ matrix.node.path }}
+      - run: ./install_node.bash "$NODE_VERSION" "$NODE_PATH"
+        env:
+          NODE_VERSION: ${{ matrix.node.version }}
+          NODE_PATH: ${{ matrix.node.path }}
       - run: npm install ${{ matrix.package.name }}@${{ matrix.package.version }}
   test5:
     container:
@@ -100,7 +104,7 @@ jobs:
         credentials: *cred
     runs-on: ubuntu-slim
     steps:
-      - run: ./login.bash ${{ env.username }}@${{ env.password }}
+      - run: ./login.bash "$username@$password"
         env: *cred
   test6:
     env: &expr ${{ fromJSON('{}') }}

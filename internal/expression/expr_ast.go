@@ -123,7 +123,16 @@ type ObjectDerefNode struct {
 	// Receiver is an expression at receiver of property dereference.
 	Receiver Node
 	// Property is a name of property to access.
-	Property string
+	Property      string
+	propertyToken *Token
+}
+
+// PropertyName retains the source spelling independently of case-insensitive lookup.
+func (n ObjectDerefNode) PropertyName() string {
+	if n.propertyToken != nil {
+		return n.propertyToken.Value
+	}
+	return n.Property
 }
 
 // Token returns the first Token of the Node. This method is useful to get position of this Node.

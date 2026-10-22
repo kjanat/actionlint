@@ -10,5 +10,7 @@ jobs:
           script: |
             core.setOutput('foo', 'bar');
       - id: call
+        env:
+          TEST_OUTPUT: ${{ steps.test.outputs.foo }}
         run: |
-          echo "Test output: ${{ steps.test.outputs.foo }}"
+          echo "Test output: $TEST_OUTPUT"

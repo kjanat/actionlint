@@ -557,15 +557,33 @@
                 "level": "error"
               },
               "properties": {
-                "description": "Detect untrusted values interpolated into scripts",
+                "description": "Detect untrusted values and secrets interpolated into scripts",
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection"
               },
               "fullDescription": {
-                "text": "Detect untrusted values interpolated into scripts."
+                "text": "Detect untrusted values and secrets interpolated into scripts."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-injection",
               "help": {
-                "text": "Pass untrusted values through environment variables or action inputs and read them as data inside the script."
+                "text": "Pass untrusted values through environment variables or action inputs. For secrets, prefer the tool's native environment variable or stdin over command arguments. GitHub secrets are automatically masked; register generated or fetched secrets with add-mask before use. Masking protects logs, not process arguments."
+              }
+            },
+            {
+              "id": "script-interpolation",
+              "name": "ScriptInterpolation",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "description": "Detect template values that may change script syntax",
+                "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-interpolation"
+              },
+              "fullDescription": {
+                "text": "Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and hashFiles results also require that position."
+              },
+              "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-interpolation",
+              "help": {
+                "text": "Pass dynamic values through environment variables and read them as data in the script. Quoting a template expression does not prevent substitution before script parsing."
               }
             },
             {
@@ -691,7 +709,7 @@
         {
           "ruleId": "expression-reference",
           "message": {
-            "text": "property \"msg\" is not defined in object type {}"
+            "text": "property \"msg\" is not defined in matrix"
           },
           "level": "error",
           "properties": {

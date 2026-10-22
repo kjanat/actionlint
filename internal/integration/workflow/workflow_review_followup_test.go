@@ -171,8 +171,16 @@ jobs:
     steps:
       - run: echo "${{ ` + expression + " }}\"\n"
 		result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
-		if err != nil || len(result.Diagnostics) != 0 {
-			t.Fatalf("safe expression %q: %v, %+v", expression, err, result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.HasSuffix(expression, ".sha") {
+			// Payload string types do not yet prove a constrained hash alphabet.
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-interpolation" {
+				t.Fatalf("want syntax warning for %q: %+v", expression, result.Diagnostics)
+			}
+		} else if len(result.Diagnostics) != 0 {
+			t.Fatalf("safe expression %q: %+v", expression, result.Diagnostics)
 		}
 	}
 	source := `on: {workflow_run: {workflows: [Build], types: [completed]}}

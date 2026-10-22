@@ -12,4 +12,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo '${{ inputs.property_name }}'
+      - run: echo "$PROPERTY_NAME"
+        env:
+          PROPERTY_NAME: ${{ inputs.property_name }}

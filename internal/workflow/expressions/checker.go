@@ -6,6 +6,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 type typedExpr struct {
@@ -23,6 +24,9 @@ type Checker struct {
 	dependencies     Dependencies
 	errs             []*findingmodel.Finding
 	matrixTy         *exprlang.ObjectType
+	matrixScriptSafe map[string]scriptValueProof
+	scriptEnv        *workflowlang.Env
+	jobEnv           *workflowlang.Env
 	stepsTy          *exprlang.ObjectType
 	needsTy          *exprlang.ObjectType
 	secretsTy        *exprlang.ObjectType
@@ -33,17 +37,23 @@ type Checker struct {
 	eventTy          *exprlang.ObjectType
 	expressionSource *workflowlang.ScriptSource
 	expressionOffset int
+	scriptScalarArgs map[int]bool
+	scriptPosition   exprlang.ScriptPosition
+	scriptJob        *workflowlang.Job
+	compositeScript  bool
 }
 
 // Options selects expression diagnostics without repository configuration.
 type Options struct {
-	Semantics      exprlang.Options
-	UnsoundTernary bool
+	Semantics               exprlang.Options
+	UnsoundTernary          bool
+	ScriptInjectionDisabled bool
 }
 
 // Dependencies provides metadata to workflow expression inference. Missing
 // lookups leave output types open; dependency loading remains the caller's job.
 type Dependencies struct {
+	Runners       *runner.Knowledge
 	LocalAction   func(string) (*actionmeta.Metadata, error)
 	PopularAction func(string) *actionmeta.Metadata
 	Workflow      func(string) (*calls.Metadata, error)
