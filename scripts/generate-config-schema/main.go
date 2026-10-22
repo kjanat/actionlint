@@ -47,7 +47,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	switch t {
 	case reflect.TypeFor[actionlint.IgnoreConfig]():
 		mapping := reflectMapping(struct {
-			Rule   string `yaml:"rule" jsonschema:"required,minLength=1,description=Diagnostic rule to suppress."`
+			Rule   string `yaml:"rule" jsonschema:"required,minLength=1,description=Built-in or registered plugin diagnostic rule to suppress. Registration is validated when loading configuration."`
 			File   string `yaml:"file,omitempty" jsonschema:"minLength=1,description=Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them."`
 			Uses   string `yaml:"uses,omitempty" jsonschema:"minLength=1,description=Exact action or reusable workflow reference including its version."`
 			Job    string `yaml:"job,omitempty" jsonschema:"minLength=1,description=Exact workflow job ID."`
@@ -55,11 +55,12 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Reason string `yaml:"reason,omitempty" jsonschema:"minLength=1,description=Optional explanation for this exception."`
 		}{})
 		rule, _ := mapping.Properties.Get("rule")
+		rule.Not = &jsonschema.Schema{Const: "disallow-suppressions"}
 		for _, name := range actionlint.InlineSuppressibleRules() {
 			if name == "disallow-suppressions" {
 				continue
 			}
-			rule.Enum = append(rule.Enum, name)
+			rule.Examples = append(rule.Examples, name)
 		}
 		for _, name := range []string{"file", "uses", "job", "step", "reason"} {
 			property, _ := mapping.Properties.Get(name)
@@ -94,8 +95,9 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Disable []string              `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
 		}{})
 		disable, _ := mapping.Properties.Get("disable")
+		disable.Items.MinLength = new(uint64(1))
 		for _, name := range actionlint.InlineSuppressibleRules() {
-			disable.Items.Enum = append(disable.Items.Enum, name)
+			disable.Items.Examples = append(disable.Items.Examples, name)
 		}
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
@@ -182,6 +184,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		config.Description = config.Then.AllOf[0].Description
 		mapping.Type = ""
 		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
+		requireOneBackend(mapping)
 		return mapping
 	case reflect.TypeFor[actionlint.RuffToolConfig]():
 		type plain actionlint.RuffToolConfig
@@ -204,6 +207,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			property.Items = &jsonschema.Schema{Type: "string", Examples: []any{"F", "F821"}}
 			property.Not = &jsonschema.Schema{Type: "array", Contains: &jsonschema.Schema{Not: &jsonschema.Schema{Ref: ruffconfig.SelectorSchemaPath}}}
 		}
+		requireOneBackend(mapping)
 		for name, description := range map[string]string{
 			"backend":        "Select the execution backend. Process settings apply only to the native adapter.",
 			"enabled":        "Enable Ruff analysis with the selected backend.",
@@ -247,10 +251,11 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Report the prohibited directive or retain original violations or both."`
 		}{})
 		rules, _ := mapping.Properties.Get("rules")
+		rules.Items.MinLength = new(uint64(1))
 		names := actionlint.InlineSuppressibleRules()
 		slices.Sort(names)
 		for _, name := range names {
-			rules.Items.Enum = append(rules.Items.Enum, name)
+			rules.Items.Examples = append(rules.Items.Examples, name)
 		}
 		mapping.Version = ""
 		mapping.ID = ""
@@ -301,6 +306,11 @@ func documentFields(s *jsonschema.Schema) {
 	documentFields(s.Then)
 	documentFields(s.Items)
 	documentFields(s.AdditionalProperties)
+}
+
+func requireOneBackend(mapping *jsonschema.Schema) {
+	backend, _ := mapping.Properties.Get("backend")
+	backend.OneOf = []*jsonschema.Schema{{Required: []string{"process"}}, {Required: []string{"wasm"}}}
 }
 
 func documentedReflector() (*jsonschema.Reflector, error) {

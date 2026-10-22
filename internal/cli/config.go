@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -25,8 +26,8 @@ func writeConfigPath(out io.Writer, req configPathRequest) error {
 	return err
 }
 
-func writeConfigValidation(out io.Writer, req configValidateRequest) error {
-	inspection, err := actionlint.InspectConfig(req.Config, false)
+func writeConfigValidation(ctx context.Context, out io.Writer, req configValidateRequest) error {
+	inspection, err := inspectConfig(ctx, req.Config, req.Plugins, false)
 	if err != nil {
 		return err
 	}
@@ -54,8 +55,8 @@ func writeConfigValidation(out io.Writer, req configValidateRequest) error {
 	return err
 }
 
-func writeConfigShow(out io.Writer, req configShowRequest) error {
-	inspection, err := actionlint.InspectConfig(req.Config, req.Origin)
+func writeConfigShow(ctx context.Context, out io.Writer, req configShowRequest) error {
+	inspection, err := inspectConfig(ctx, req.Config, req.Plugins, req.Origin)
 	if err != nil {
 		return err
 	}

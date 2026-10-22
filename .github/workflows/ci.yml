@@ -44,7 +44,7 @@ jobs:
             "javascript": [
               "**/*.js", "**/*.mjs", "**/*.cjs", "**/*.ts", "**/*.tsx", "**/package.json", "**/tsconfig*.json", "package-lock.json", "biome.jsonc",
               "go.mod", "!testdata/**", "!**/testdata/**", "package.json", ".node-version", ".tool-versions", ".mise.toml", "tsconfig.json",
-              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**"
+              ".github/actions/**/mise.toml", ".github/actions/setup-shellcheck/**", ".github/actions/setup-runner/**", ".github/actions/setup-wasm-toolchain/**", ".github/actions/setup-pandoc/**", ".github/actions/setup-formatters/**"
             ],
             "release": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go", "Makefile",
@@ -79,6 +79,10 @@ jobs:
             "precommit": [
               "*.go", "analysis/**", "config/**", "diagnostic/**", "document/**", "syntax/**", "analyzer/**", "go.mod", "go.sum", "cmd/**", "internal/**", "!**/*_test.go",
               ".pre-commit-hooks.yaml", "scripts/check-packaged-cli.bash", ".github/actions/setup-shellcheck/**", "!**/testdata/**"
+            ],
+            "plugins": [
+              ".github/actions/setup-wasm-toolchain/**",
+              "plugins/**", "plugin/**", "internal/component/**", "internal/corewasm/**", "analyzer/**", "diagnostic/**", "go.mod", "go.sum", "Makefile"
             ]
           }
         }
@@ -280,6 +284,41 @@ jobs:
         env: *SkipGoGen
       - name: Lint bash scripts
         run: shellcheck ./scripts/*.bash
+  plugins:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['plugins']) }}
+    name: Component plugins
+    runs-on: ubuntu-latest
+    steps:
+      - *ActCheckNocred
+      - parallel:
+          - *Go
+          - uses: $/.github/actions/setup-wasm-toolchain
+          - name: Install TinyGo
+            uses: *SetupMise
+            with: { cache: true, auto_update: true, install_args: tinygo, add_shims_to_path: false }
+            env: { MISE_ENABLE_TOOLS: "tinygo" }
+          - name: Install the Rust wasip2 target
+            run: rustup target add wasm32-wasip2 wasm32-unknown-unknown
+          - name: Install wasi-sdk
+            run: |
+              curl --silent --show-error --location --output "${RUNNER_TEMP}/wasi-sdk.tar.gz" https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz
+              tar -xzf "${RUNNER_TEMP}/wasi-sdk.tar.gz" -C "${RUNNER_TEMP}"
+              echo "WASI_SDK_PATH=${RUNNER_TEMP}/wasi-sdk-34.0-x86_64-linux" >> "${GITHUB_ENV}"
+      - name: Build the plugin fixtures from source
+        run: make plugins
+      - name: Build the examples outside the repository
+        run: |
+          stage="${RUNNER_TEMP}/plugin-stage"
+          mkdir -p "${stage}/examples"
+          cp -R plugins/wit "${stage}/wit"
+          cp -R plugins/examples/pipe-to-shell plugins/examples/no-sudo plugins/examples/insecure-download "${stage}/examples/"
+          cargo build --locked --release --target wasm32-wasip2 --manifest-path "${stage}/examples/pipe-to-shell/Cargo.toml"
+          "${stage}/examples/no-sudo/build.sh" "${stage}/no-sudo.wasm"
+          "${stage}/examples/insecure-download/build.sh" "${stage}/insecure-download.wasm"
+          go run ./cmd/actionlint --no-config --shellcheck= --ruff= --plugin "${stage}/examples/pipe-to-shell/target/wasm32-wasip2/release/actionlint_plugin_pipe_to_shell.wasm" --plugin "${stage}/no-sudo.wasm" --plugin "${stage}/insecure-download.wasm" testdata/ok/minimal.yaml
+      - run: go test -count=1 ./internal/component ./internal/corewasm ./plugin
+      - run: go test -count=1 -run "Plugin|Engine" ./internal/cli
   docker:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['docker']) }}

@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/document"
 	"actionlint.kjanat.dev/internal/engine"
 	"context"
+	"errors"
 	"path/filepath"
 )
 
@@ -29,7 +30,7 @@ type Process struct {
 }
 
 // Tool selects one engine implementation. Backend is independent of transport;
-// Process selects the built-in native adapter. A zero Tool disables the engine.
+// Process selects the built-in native adapter. A zero Tool disables native execution.
 // Supplying both is an error. The caller owns backend lifetime and may reuse it.
 type Tool struct {
 	Backend analyzer.ScriptBackend
@@ -40,6 +41,11 @@ type Tool struct {
 // ReadFile must support concurrent calls. It does not sandbox external tools.
 type Options struct {
 	Analyzers []analyzer.Registration
+	// LoadScriptEngine authorizes configuration-selected Wasm engines. Nil disables
+	// them. Calls receive resolved paths and may be concurrent. Each analysis loads
+	// each path once and closes returned backends implementing Close(context.Context) error.
+	// Explicit Tool selections take precedence. Native processes remain disabled.
+	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 	// WorkingDir roots source paths, config selection and local references.
 	// Empty uses the process working directory; Analyze does not discover config.
 	WorkingDir     string
@@ -77,7 +83,9 @@ type Result struct {
 }
 
 // Analyze checks already-loaded sources. It does not perform source discovery.
-func Analyze(ctx context.Context, request Request) (*Result, error) {
+func Analyze(ctx context.Context, request Request) (result *Result, err error) {
+	engines := engine.NewScriptEngines(request.Options.LoadScriptEngine)
+	defer func() { err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	root, err := filepath.Abs(request.Options.WorkingDir)
 	if err != nil {
 		return nil, err
@@ -91,17 +99,20 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	result, err := engine.Analyze(ctx, engine.AnalysisRequest{
+	analyzed, err := engine.Analyze(ctx, engine.AnalysisRequest{
 		Analyzers: request.Options.Analyzers, Sources: sources, WorkingDir: root, ReadFile: request.Options.ReadFile,
-		ShellcheckOptions: backendProcessOptions(request.Options.ShellCheck), RuffOptions: backendProcessOptions(request.Options.Ruff),
+		ShellcheckOptions: backendProcessOptions(request.Options.ShellCheck, request.Options.LoadScriptEngine != nil), RuffOptions: backendProcessOptions(request.Options.Ruff, request.Options.LoadScriptEngine != nil),
 		RuffBackend: request.Options.Ruff.Backend, ShellcheckBackend: request.Options.ShellCheck.Backend,
 		RulePresets: request.Options.Presets, IgnorePatterns: ignore,
+		Ruff:             configuredToolName("ruff", request.Options.Ruff, request.Options.LoadScriptEngine != nil),
+		ShellCheck:       configuredToolName("shellcheck", request.Options.ShellCheck, request.Options.LoadScriptEngine != nil),
+		LoadScriptEngine: engines.Load,
 	})
-	return resultView(result), err
+	return resultView(analyzed), err
 }
 
 // Files checks explicit paths with project discovery and configuration loading.
-func Files(ctx context.Context, paths []string, options FileOptions) (*Result, error) {
+func Files(ctx context.Context, paths []string, options FileOptions) (result *Result, err error) {
 	settings, err := sessionOptions(ctx, options)
 	if err != nil {
 		return nil, err
@@ -110,6 +121,7 @@ func Files(ctx context.Context, paths []string, options FileOptions) (*Result, e
 	if err != nil {
 		return nil, err
 	}
+	defer func() { err = errors.Join(err, session.Close(context.WithoutCancel(ctx))) }()
 	resolvedPaths := make([]string, len(paths))
 	for i, path := range paths {
 		resolvedPaths[i] = path
@@ -117,12 +129,12 @@ func Files(ctx context.Context, paths []string, options FileOptions) (*Result, e
 			resolvedPaths[i] = filepath.Join(settings.WorkingDir, path)
 		}
 	}
-	result, err := session.Files(resolvedPaths, nil)
-	return resultView(result), err
+	analyzed, err := session.Files(resolvedPaths, nil)
+	return resultView(analyzed), err
 }
 
 // Repository discovers and checks workflows and actions under a repository.
-func Repository(ctx context.Context, directory string, options FileOptions) (*Result, error) {
+func Repository(ctx context.Context, directory string, options FileOptions) (result *Result, err error) {
 	settings, err := sessionOptions(ctx, options)
 	if err != nil {
 		return nil, err
@@ -134,8 +146,9 @@ func Repository(ctx context.Context, directory string, options FileOptions) (*Re
 	if err != nil {
 		return nil, err
 	}
-	result, err := session.Repository(directory)
-	return resultView(result), err
+	defer func() { err = errors.Join(err, session.Close(context.WithoutCancel(ctx))) }()
+	analyzed, err := session.Repository(directory)
+	return resultView(analyzed), err
 }
 
 func toolOptions(tool Process) *engine.ExternalCommandOptions {
@@ -153,9 +166,12 @@ func sessionOptions(ctx context.Context, options FileOptions) (engine.AnalysisOp
 	return engine.AnalysisOptions{
 		Analyzers: options.Analyzers, Context: ctx, WorkingDir: root, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck),
-		RuffOptions: backendProcessOptions(options.Ruff), RuffBackend: options.Ruff.Backend, ShellcheckBackend: options.ShellCheck.Backend, RulePresets: options.Presets,
+		ReadFile: options.ReadFile, ShellcheckOptions: backendProcessOptions(options.ShellCheck, options.LoadScriptEngine != nil),
+		RuffOptions: backendProcessOptions(options.Ruff, options.LoadScriptEngine != nil), RuffBackend: options.Ruff.Backend, ShellcheckBackend: options.ShellCheck.Backend, RulePresets: options.Presets,
 		IgnorePatterns: options.IgnorePatterns, QuietSelection: true,
+		Ruff:             configuredToolName("ruff", options.Ruff, options.LoadScriptEngine != nil),
+		Shellcheck:       configuredToolName("shellcheck", options.ShellCheck, options.LoadScriptEngine != nil),
+		LoadScriptEngine: options.LoadScriptEngine,
 	}, nil
 }
 
@@ -166,12 +182,21 @@ func resultView(result *engine.AnalysisResult) *Result {
 	return &Result{Diagnostics: result.Diagnostics, Documents: result.Documents, Inputs: result.Inputs, Configurations: result.Configurations, FileCount: result.FileCount()}
 }
 
-func backendProcessOptions(tool Tool) *engine.ExternalCommandOptions {
+func backendProcessOptions(tool Tool, configured bool) *engine.ExternalCommandOptions {
 	if tool.Process != nil {
 		return toolOptions(*tool.Process)
 	}
 	if tool.Backend != nil {
 		return nil
 	}
-	return toolOptions(Process{})
+	options := toolOptions(Process{})
+	options.AllowWasm = configured
+	return options
+}
+
+func configuredToolName(name string, tool Tool, configured bool) string {
+	if configured && tool.Backend == nil && tool.Process == nil {
+		return name
+	}
+	return ""
 }

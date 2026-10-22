@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/internal/configtree"
+	"actionlint.kjanat.dev/internal/toolconfig"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -50,7 +51,7 @@ func (e *OverlayError) Unwrap() error { return e.cause }
 // ParseOverlay parses a complete YAML/JSON document (input "config") or
 // the YAML/JSON value of one ConfigKeys entry. Unknown keys are rejected here;
 // existing config files retain their parsing behavior.
-func ParseOverlay(input string, content []byte) (Overlay, error) {
+func ParseOverlay(input string, content []byte, registeredRules ...string) (Overlay, error) {
 	var doc yaml.Node
 	d := yaml.NewDecoder(bytes.NewReader(content))
 	if err := d.Decode(&doc); err != nil {
@@ -83,7 +84,7 @@ func ParseOverlay(input string, content []byte) (Overlay, error) {
 	if len(config.Extends) > 0 {
 		return Overlay{}, fmt.Errorf("input %s: extends requires a config file origin", input)
 	}
-	if _, err := ResolveNode(node, nil); err != nil {
+	if _, err := ResolveNode(node, nil, registeredRules...); err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
 	node, err := configtree.Expand(node, make(map[*yaml.Node]bool))
@@ -126,9 +127,22 @@ func MarkInput(node *yaml.Node, input string, inputs map[*yaml.Node]Input) {
 // Name returns the input that supplied this overlay.
 func (o Overlay) Name() string { return o.name }
 
+// BindPaths returns a copy whose relative tool paths resolve from directory.
+func (o Overlay) BindPaths(directory string) (Overlay, error) {
+	node, err := configtree.Expand(o.node, make(map[*yaml.Node]bool))
+	if err != nil {
+		return Overlay{}, err
+	}
+	toolconfig.NormalizePaths(node, directory)
+	return Overlay{o.name, node}, nil
+}
+
 // Overlaid merges parsed overlays over a loaded source and resolves the result.
 // Without overlays it returns the supplied configuration and the source's document.
-func Overlaid(cfg *Config, source *Loaded, overlays []Overlay) (*Config, Resolved, error) {
+func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, registeredRules ...string) (*Config, Resolved, error) {
+	if registeredRules == nil && cfg != nil {
+		registeredRules = cfg.registeredRules
+	}
 	var node *yaml.Node
 	var resolved Resolved
 	if source != nil {
@@ -146,7 +160,7 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay) (*Config, Resolve
 	}
 	if len(overlays) > 0 {
 		var err error
-		resolved, err = ResolveNode(node, inputs)
+		resolved, err = ResolveNode(node, inputs, registeredRules...)
 		if err != nil {
 			return nil, Resolved{}, &OverlayError{names, err}
 		}
@@ -163,7 +177,7 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay) (*Config, Resolve
 		}
 	} else if source == nil {
 		var err error
-		resolved, err = ResolveNode(nil, nil)
+		resolved, err = ResolveNode(nil, nil, registeredRules...)
 		if err != nil {
 			return nil, Resolved{}, err
 		}

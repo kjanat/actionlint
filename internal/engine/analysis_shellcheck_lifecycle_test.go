@@ -15,7 +15,7 @@ func TestShellcheckRetainsPreparationFailureOnCancellation(t *testing.T) {
 	defer cancel()
 	failure := errors.New("invalid ShellCheck configuration")
 	prepared := 0
-	checker := &shellcheckAnalyzer{forConfig: func(*Config) (*externalCommand, error) {
+	checker := &shellcheckAnalyzer{forConfig: func(*Config) (*shellcheckAnalyzer, error) {
 		prepared++
 		cancel()
 		return nil, failure

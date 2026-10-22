@@ -260,6 +260,14 @@ test('runner cache metadata and code select the installation regression tests', 
 	}
 });
 
+test('Wasm toolchain pins and installer select plugin and installation tests', () => {
+	for (const path of ['releases.json', 'setup.bash', 'action.yml', 'setup.test.mjs', 'mise.toml']) {
+		const jobs = selectJobs(workflowFilters('ci'), [`.github/actions/setup-wasm-toolchain/${path}`]);
+		assert.equal(jobs.javascript, true, path);
+		assert.equal(jobs.plugins, true, path);
+	}
+});
+
 test('release snapshots cover every archived documentation input', () => {
 	const ci = workflowFilters('ci');
 	for (
@@ -341,7 +349,7 @@ test('mise setup limits environment resolution to explicitly installed tools', (
 				body.push(following);
 			}
 			const step = body.join('\n');
-			const args = /install_args: (.+)/.exec(step)?.[1];
+			const args = /install_args: ([^,}\n]+)/.exec(step)?.[1];
 			if (args) {
 				const enabled = /MISE_ENABLE_TOOLS: "([^"]+)"/.exec(step)?.[1];
 				assert.equal(enabled, args.trim().replaceAll(/\s+/g, ','), `${name} selected tool environment`);

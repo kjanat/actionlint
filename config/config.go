@@ -47,6 +47,7 @@ type ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
 type ShellcheckToolConfig = repoconfig.ShellcheckToolConfig
 type SuppressionsPolicy = repoconfig.SuppressionsPolicy
 type ToolsConfig = repoconfig.ToolsConfig
+type ToolModule = toolconfig.Module
 
 // ToolBackend selects the configured transport for an external tool.
 type ToolBackend = toolconfig.Backend
@@ -61,19 +62,27 @@ const (
 )
 
 // Parse decodes a standalone configuration document. Use Load to resolve extends.
-func Parse(source []byte) (*Config, error) { return repoconfig.Parse(source) }
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func Parse(source []byte, registeredRules ...string) (*Config, error) {
+	return repoconfig.Parse(source, registeredRules...)
+}
 
 // ParseOverlay validates a complete config document or one named configuration input.
-func ParseOverlay(input string, source []byte) (Overlay, error) {
-	return repoconfig.ParseOverlay(input, source)
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func ParseOverlay(input string, source []byte, registeredRules ...string) (Overlay, error) {
+	return repoconfig.ParseOverlay(input, source, registeredRules...)
 }
 
 // Load reads a configuration file and resolves its inheritance.
-func Load(path string) (*Config, error) { return repoconfig.Load(path) }
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func Load(path string, registeredRules ...string) (*Config, error) {
+	return repoconfig.Load(path, registeredRules...)
+}
 
 // Inspect reports effective configuration and optionally its origins.
-func Inspect(selection Selection, origins bool) (Inspection, error) {
-	return repoconfig.Inspect(selection, origins)
+// registeredRules adds caller-registered plugin IDs to the built-in rule catalog.
+func Inspect(selection Selection, origins bool, registeredRules ...string) (Inspection, error) {
+	return repoconfig.Inspect(selection, origins, registeredRules...)
 }
 
 func RequireJobTimeout(maxMinutes float64) *JobTimeoutPolicy {

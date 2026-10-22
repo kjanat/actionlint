@@ -59,6 +59,10 @@ type AnalysisOptions struct {
 	ShellcheckBackend analyzer.ScriptBackend
 	// ShellcheckRunner supplies an isolated embedded ShellCheck backend.
 	ShellcheckRunner func([]string, string) ([]byte, error)
+	// LoadScriptEngine loads the core WebAssembly engine a configuration selects
+	// through tools.<name>.backend.wasm. The session loads each path once and
+	// releases the engines in Close. Nil rejects such configurations.
+	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
 }
@@ -67,6 +71,7 @@ type AnalysisOptions struct {
 // It retains project discovery state for callers that reuse a Linter.
 type AnalysisSession struct {
 	analysisLogger
+	engines           *ScriptEngines
 	projects          *Projects
 	defaultConfig     *Config
 	defaultConfigPath string
@@ -129,6 +134,10 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	if err := a.request.validateBackends(); err != nil {
 		return nil, err
 	}
+	if opts.LoadScriptEngine != nil {
+		a.engines = NewScriptEngines(opts.LoadScriptEngine)
+		a.request.LoadScriptEngine = a.engines.Load
+	}
 	if a.ctx == nil {
 		a.ctx = context.Background()
 	}
@@ -136,6 +145,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.readFile = fsread.Disk
 	}
 	a.projects.readFile = a.readFile
+	a.projects.registeredRules = analyzerRuleNames(opts.Analyzers)
 	a.request.ReadFile = opts.ReadFile
 	a.request.RulePresets = opts.RulePresets
 	if a.logOut == nil {
@@ -148,7 +158,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	}
 	var err error
 	if opts.ConfigFile != "" {
-		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile)
+		source, loadErr := repoconfig.Read(opts.ConfigFile, a.readFile, a.projects.registeredRules...)
 		err = loadErr
 		if err != nil {
 			return nil, err
@@ -161,6 +171,7 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 		a.configState = &analysisConfigState{}
 	}
 	a.configState.overlays = slices.Clone(opts.ConfigOverlays)
+	a.configState.registeredRules = a.projects.registeredRules
 	a.configState.onLoaded = opts.OnConfigLoaded
 	a.configState.loaded = make(map[*Project]*Config)
 	a.configState.reports = make(map[*Project]ConfigReport)
@@ -178,6 +189,13 @@ func NewAnalysisSession(opts AnalysisOptions) (*AnalysisSession, error) {
 	a.cwd, err = filepath.Abs(a.cwd)
 	if err != nil {
 		return nil, err
+	}
+	for i, overlay := range a.configState.overlays {
+		bound, err := overlay.BindPaths(a.cwd)
+		if err != nil {
+			return nil, err
+		}
+		a.configState.overlays[i] = bound
 	}
 	if a.stdin == "" {
 		a.stdin = "<stdin>"
@@ -335,7 +353,7 @@ func (a *AnalysisSession) Empty() (*AnalysisResult, error) {
 			return nil, err
 		}
 		a.configState.Lock()
-		inputs.addConfig(a.configState.loaded[project], project)
+		inputs.addConfig(a.configState.loaded[project], project, a.cwd)
 		result.Configurations = append(result.Configurations, a.configState.reports[project])
 		a.configState.Unlock()
 	}
@@ -460,7 +478,7 @@ func (a *AnalysisSession) analyze(sources []SourceUnit, configProjects ...*Proje
 	for _, project := range projects {
 		if !seen[project] {
 			seen[project] = true
-			inputs.addConfig(a.configState.loaded[project], project)
+			inputs.addConfig(a.configState.loaded[project], project, a.cwd)
 			result.Configurations = append(result.Configurations, a.configState.reports[project])
 		}
 	}
@@ -474,4 +492,9 @@ func (a *AnalysisSession) Completed(result *AnalysisResult) {
 	if len(result.files) > 1 {
 		a.selectionLog("Found", len(result.Diagnostics), "errors in", len(result.files), "files")
 	}
+}
+
+// Close releases the WebAssembly engines the session loaded.
+func (a *AnalysisSession) Close(ctx context.Context) error {
+	return a.engines.Close(ctx)
 }

@@ -61,19 +61,23 @@ func (c *IgnoreConfig) UnmarshalYAML(n *yaml.Node) error {
 			return fmt.Errorf("ignores.%s must be a nonempty string", n.Content[i].Value)
 		}
 	}
-	if err := IgnoreConfig(next).Validate(); err != nil {
+	if err := IgnoreConfig(next).validateSelectors(); err != nil {
 		return err
 	}
 	*c = IgnoreConfig(next)
 	return nil
 }
 
-func (c IgnoreConfig) Validate() error {
+func (c IgnoreConfig) Validate(registeredRules ...string) error {
+	if !Suppressible(c.Rule, registeredRules...) {
+		return fmt.Errorf("ignores: unknown suppressible rule %q", c.Rule)
+	}
+	return c.validateSelectors()
+}
+
+func (c IgnoreConfig) validateSelectors() error {
 	if c.Rule == "disallow-suppressions" {
 		return errors.New("ignores: disallow-suppressions cannot be suppressed")
-	}
-	if !Suppressible(c.Rule) {
-		return fmt.Errorf("ignores: unknown suppressible rule %q", c.Rule)
 	}
 	if c.File == "" && c.Uses == "" && c.Job == "" && c.Step == "" {
 		return fmt.Errorf("ignores: rule %q requires at least one file, uses, job, or step selector", c.Rule)

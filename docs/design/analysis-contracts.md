@@ -176,6 +176,46 @@ The built-in deprecated-commands check consumes these facts through the same con
 to host state such as ignore origins and foreign sources. Public findings that name a composite action path are
 filtered with that file's inline suppressions and configuration. Other built-in rules still run as visitors.
 
+## Decision: run external analyzers as WebAssembly components
+
+`plugins/wit/analyzer.wit` is the plugin contract. It mirrors the Go `analyzer` package: a `describe` call returns the
+plugin name and required facts, and `analyze` receives one document with its declared and invoked scripts, spans,
+invocation context, runtime facts, mappings and registered options, and returns diagnostics or an error message. The
+host implements `kjanat:actionlint/host`, which currently carries one `log` function. Go host bindings for that import
+are generated from the WIT with `wacogo-witgen`; guest bindings come from `wit-bindgen` in each plugin's language.
+Exported calls use the runtime's reflective value API, so the host keeps one conversion layer per direction.
+
+The runtime is `wacogo` on `wazero`: pure Go, no cgo, and a component-model implementation that covers the value
+types this contract uses. `internal/component` loads a component, checks that it exports
+`kjanat:actionlint/analyzer@0.1.0` and imports only the host interface and the granted `wasi:cli`, `wasi:io`,
+`wasi:clocks`, `wasi:random` and `wasi:filesystem` interfaces, then calls `describe`. Every `analyze` call instantiates
+the component anew under a per-call deadline and a memory limit, with an empty environment, no preopened directories
+and stdio routed to the host log. Calls on one plugin are serialized. A trap, an exit through `wasi:cli/exit`, a
+failed allocation, a deadline or a cancellation returns an error that names the plugin and its limits; the document's
+analysis reports the failure with its partial findings. The engine and the public `analysis` package do not import the
+runtime; the CLI loads plugins from `--plugin` and registers them as analyzers.
+
+Verification uses a Rust example built with `wit-bindgen` for `wasm32-wasip2`, a C example built with `wit-bindgen c`
+and wasi-sdk, a TinyGo example built with `wit-bindgen-go`, hand-written components that export the wrong interface
+version, import a socket interface, import an unknown interface or export no analyzer, and a Rust test plugin that
+traps, panics, exits, allocates past the limit, loops, reads a file, reads the environment and logs on request.
+Architecture tests keep the engine free of the runtime and the loader free of the engine.
+
+`wacogo` before https://github.com/partite-ai/wacogo/pull/12 rejected a null pointer from `cabi_realloc` for a
+zero-size request, which the canonical ABI allows and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11).
+`go.mod` requires the merge commit of that pull request, which limits the trap to non-zero sizes.
+`internal/component/runtime_limit_test.go` checks that an empty string lowers into a component whose realloc returns
+null for size 0.
+
+Core WebAssembly JSON engines such as `actionlint-plugin-ruff` keep their own transport behind
+`analyzer.ScriptBackend`. `internal/corewasm` runs them on `wazero` directly: it verifies the version 1 exports and
+their signatures, refuses modules with imports, reads the metadata export to negotiate the `check` and
+`validate_config` operation versions and the request size limit, pools instances across concurrent calls and discards
+an instance after a trap or an exceeded limit. `tools.<name>.backend.wasm` selects a module in the configuration. The
+engine does not load modules itself: the CLI and library callers pass a loader, the session loads each path once and
+closes the engines when it ends, and a configuration that selects a module without a loader fails. The public
+`plugin` package exposes both loaders.
+
 ## Decision: separate language analysis from the host
 
 Expression analysis receives `expression.Options`: allowed variable and secret names and explicit semantic-check

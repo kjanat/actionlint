@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,23 +16,18 @@ import (
 )
 
 func TestDoctorRuffCompatibility(t *testing.T) {
-	t.Chdir(t.TempDir())
-	executable, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(executable)
-	if err != nil {
-		t.Fatal(err)
-	}
 	bin := t.TempDir()
 	tool := filepath.Join(bin, "ruff")
 	if runtime.GOOS == "windows" {
 		tool += ".exe"
 	}
-	if err := os.WriteFile(tool, data, 0o700); err != nil {
-		t.Fatal(err)
+	// Probe a small native executable: copying this package's race test binary
+	// makes first startup compete with the production probe's five-second limit.
+	build := exec.CommandContext(t.Context(), "go", "build", "-race=false", "-o", tool, "./internal/cli/testdata/ruff-probe")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build Ruff probe fixture: %v: %s", err, output)
 	}
+	t.Chdir(t.TempDir())
 	t.Setenv("PATH", bin)
 	t.Setenv("ACTIONLINT_TEST_RUFF_DISCOVERY", "1")
 	for _, key := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
@@ -47,15 +43,15 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 		return commandTranscript{status, stdout.String(), stderr.String()}
 	}
 	for _, tc := range []struct {
-		name, version, status string
-		args                  []string
-		probe                 bool
+		name, version, status, reason string
+		args                          []string
+		probe                         bool
 	}{
-		{"old", "ruff 0.16.10", "unavailable", nil, true},
-		{"current", "ruff 0.17.0", "available", nil, true},
-		{"invalid", "unexpected banner", "unavailable", nil, true},
-		{"explicit", "ruff 0.16.10", "available", []string{"--ruff=" + tool}, false},
-		{"disabled", "ruff 0.16.10", "disabled", []string{"--ruff=false"}, false},
+		{"old", "ruff 0.16.10", "unavailable", "is incompatible; requires 0.17.0 or newer", nil, true},
+		{"current", "ruff 0.17.0", "available", "", nil, true},
+		{"invalid", "unexpected banner", "unavailable", "could not identify Ruff version", nil, true},
+		{"explicit", "ruff 0.16.10", "available", "", []string{"--ruff=" + tool}, false},
+		{"disabled", "ruff 0.16.10", "disabled", "", []string{"--ruff=false"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			calls := filepath.Join(t.TempDir(), "calls")
@@ -73,10 +69,13 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 				t.Fatal(err)
 			}
 			ruff := report.Tools[1]
-			if ruff.Status != tc.status || (ruff.Error != "") != (tc.status == "unavailable") {
+			if ruff.Status != tc.status || (ruff.Error != "") != (tc.status == "unavailable") || !strings.Contains(ruff.Error, tc.reason) {
 				t.Fatalf("incorrect compatibility report: %+v", ruff)
 			}
 			text := run(args...)
+			if text.Status != 0 || text.Stderr != "" {
+				t.Fatalf("text doctor failed: %+v", text)
+			}
 			if tc.status == "unavailable" && !strings.Contains(text.Stdout, ruff.Error) {
 				t.Fatalf("text hid compatibility failure: %+v", text)
 			}

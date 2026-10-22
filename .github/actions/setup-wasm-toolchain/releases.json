@@ -1,0 +1,12 @@
+[
+  {
+    "name": "wasm-tools",
+    "version": "1.258.0",
+    "sha256": "b52d14eb74a4852cc249369bd4480c2b2fdd876145f41db51ff52269ded240ce"
+  },
+  {
+    "name": "wit-bindgen",
+    "version": "0.62.0",
+    "sha256": "3e81cc6523729f7532b4aa7968648a04abf0c711b7d1677150e9121f4e6458fe"
+  }
+]

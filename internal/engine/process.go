@@ -164,6 +164,9 @@ type ExternalCommandOptions struct {
 	// IgnoreConfig marks an explicit application invocation that overrides the
 	// repository's command settings, even when it names the default executable.
 	IgnoreConfig bool
+	// AllowWasm retains configured Wasm selection when this invocation supplies
+	// the executable for native process backends.
+	AllowWasm bool
 	// Optional permits automatic Ruff discovery to skip an unavailable executable.
 	// Explicitly configured checkers should leave this false.
 	Optional   bool

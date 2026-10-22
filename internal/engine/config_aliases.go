@@ -44,14 +44,18 @@ const (
 )
 
 // ParseConfig decodes a standalone configuration document.
-func ParseConfig(b []byte) (*Config, error) { return repoconfig.Parse(b) }
+func ParseConfig(b []byte, registeredRules ...string) (*Config, error) {
+	return repoconfig.Parse(b, registeredRules...)
+}
 
 // ReadConfigFile reads a configuration file and resolves its inheritance.
-func ReadConfigFile(path string) (*Config, error) { return repoconfig.Load(path) }
+func ReadConfigFile(path string, registeredRules ...string) (*Config, error) {
+	return repoconfig.Load(path, registeredRules...)
+}
 
 // ParseConfigOverlay parses one configuration input supplied outside a config file.
-func ParseConfigOverlay(input string, content []byte) (ConfigOverlay, error) {
-	return repoconfig.ParseOverlay(input, content)
+func ParseConfigOverlay(input string, content []byte, registeredRules ...string) (ConfigOverlay, error) {
+	return repoconfig.ParseOverlay(input, content, registeredRules...)
 }
 
 // ConfigKeys returns the supported top-level configuration keys in declaration order.
@@ -63,8 +67,8 @@ func SelectedConfigPath(selection ConfigSelection) (string, error) {
 }
 
 // InspectConfig validates settings and optionally records their YAML origins.
-func InspectConfig(selection ConfigSelection, withOrigin bool) (ConfigInspection, error) {
-	return repoconfig.Inspect(selection, withOrigin)
+func InspectConfig(selection ConfigSelection, withOrigin bool, registeredRules ...string) (ConfigInspection, error) {
+	return repoconfig.Inspect(selection, withOrigin, registeredRules...)
 }
 
 // RequireJobTimeout enables the job timeout policy with an optional upper bound.

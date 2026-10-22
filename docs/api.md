@@ -96,6 +96,9 @@ An analyzer must finish its own work before returning and honor cancellation. Th
 concurrently for different documents. The contract does not expose traversal callbacks, mutable built-in rules,
 process schedulers or caches. Built-in visitor adapters remain an internal implementation detail.
 
+The same contract is available to other languages as the WebAssembly component interface described in
+[Plugins](plugins.md). The CLI loads such components with `--plugin`.
+
 ## Configuration and syntax
 
 Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing configuration format. Configuration
@@ -126,7 +129,8 @@ The architecture decision and remaining implementation boundaries are recorded i
 ### Script engine backends
 
 `analysis.Tool` selects either `Process` or an `analyzer.ScriptBackend`. Supplying both is an error;
-leaving both absent disables the tool. `Process.Arguments` is a literal launcher prefix, for example
+leaving both absent disables native execution. When `Options.LoadScriptEngine` is set, repository-selected
+Wasm engines can run without a native tool. An explicit empty `Process` also disables configured Wasm engines. `Process.Arguments` is a literal launcher prefix, for example
 `mise exec -- ruff`. Configure Ruff rules through `tools.ruff.config`.
 Environment overrides and working directories belong to the process adapter.
 
@@ -136,6 +140,26 @@ as JSON. Positions count Unicode scalar values from one; end positions are exclu
 accompany a failure. The host maps them into the workflow/action source, applies suppressions, and joins
 all started work. A backend must honor cancellation and permit concurrent calls; callers own its lifetime.
 It may implement `ScriptConfigValidator` to validate its engine configuration before checking a snippet.
+
+`plugin.LoadEngine` returns such a backend for a core WebAssembly module that follows the
+actionlint-plugin-ruff JSON ABI, and `plugin.Load` returns an `analyzer.Analyzer` for a component plugin.
+Both report their limits. See [Plugins](plugins.md). Repository configuration can select an engine module
+through `tools.<name>.backend.wasm`; library tool settings take precedence over it, as they do for
+configured processes.
+
+Supply `Options.LoadScriptEngine` to authorize configuration-selected Wasm engines in `Analyze`, `Files`, or
+`Repository`. The callback receives resolved module paths, for example:
+
+```go
+options.LoadScriptEngine = func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
+    return plugin.LoadEngine(ctx, path, plugin.EngineOptions{})
+}
+```
+
+Each analysis loads a path once, shares it between documents, and closes loaded engines before returning.
+Cleanup errors accompany the result. The loader owns artifact access and runtime limits; `ReadFile` does
+not constrain its filesystem access. Supplying a loader does not enable repository-selected processes.
+Explicit `Tool.Backend` instances remain caller-owned.
 
 Ruff receives its native options (`target-version`, `lint`, etc.). The native process adapter implements
 this same contract. ShellCheck backends receive `shell`, `exclude`, and `external-sources: false`; the

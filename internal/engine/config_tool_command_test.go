@@ -35,6 +35,41 @@ func TestProjectToolBackendPrecedence(t *testing.T) {
 	}
 }
 
+func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
+	for _, name := range []string{"ruff", "shellcheck"} {
+		t.Run(name, func(t *testing.T) {
+			cfg := &Config{}
+			backend := &toolconfig.Backend{Wasm: &toolconfig.Module{Path: "selected.wasm"}}
+			if name == "ruff" {
+				cfg.Tools.Ruff.Backend = backend
+			} else {
+				cfg.Tools.Shellcheck.Backend = backend
+			}
+			for _, tc := range []struct {
+				name    string
+				options *ExternalCommandOptions
+				want    bool
+			}{
+				{"automatic", &ExternalCommandOptions{Optional: true}, true},
+				{"explicit process", &ExternalCommandOptions{}, false},
+				{"provisioned process", &ExternalCommandOptions{AllowWasm: true}, true},
+				{"explicit override", &ExternalCommandOptions{AllowWasm: true, IgnoreConfig: true}, false},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					if got := configuredScriptModule(name, name, tc.options, cfg); (got != nil) != tc.want {
+						t.Fatalf("selected=%+v want=%t", got, tc.want)
+					}
+				})
+			}
+			backend.Wasm = nil
+			backend.Process = &toolconfig.Command{Executable: "untrusted"}
+			if got := projectToolCommand(name, name, &ExternalCommandOptions{AllowWasm: true}, cfg); got != nil {
+				t.Fatalf("repository process replaced provisioned command: %+v", got)
+			}
+		})
+	}
+}
+
 func TestInheritedBackendExecutableOrigins(t *testing.T) {
 	root := t.TempDir()
 	parentDir := filepath.Join(root, "parent")

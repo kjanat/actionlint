@@ -84,7 +84,7 @@ func ruleSetting(cfg *Config, d ruleDescriptor, p RulePresets) RuleSetting {
 
 func diagnosticLevel(cfg *Config, name string) RuleLevel {
 	if cfg != nil {
-		if cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled {
+		if cfg.Lint.Enabled != nil && !*cfg.Lint.Enabled || slices.Contains(cfg.Lint.Rules.Disable, name) {
 			return "off"
 		}
 		if level, ok := cfg.Lint.Rules.ResolvedLevel(name); ok {
@@ -124,7 +124,7 @@ func configForDocument(config *Config, path, root string) (*Config, error) {
 	return repoconfig.ForFile(config, path, root)
 }
 
-func filterConfigIgnores(path, root string, source []byte, findings []*Error, cfg *Config, foreign bool, level func(string) RuleLevel) []*Error {
+func filterConfigIgnores(path, root string, source []byte, findings []*Error, cfg *Config, foreign bool, level func(string) RuleLevel, registeredRules ...string) []*Error {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
@@ -148,7 +148,7 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 		ignored := false
 		if applies && finding.Kind != "disallow-suppressions" {
 			for _, ignore := range cfg.Ignores {
-				if finding.Kind != ignore.Rule || ignore.Validate() != nil {
+				if finding.Kind != ignore.Rule || ignore.Validate(registeredRules...) != nil {
 					continue
 				}
 				if ignore.File != "" && !(filefilter.Selection{Includes: []string{ignore.File}}).Match(file) {
@@ -185,11 +185,12 @@ func filterConfigIgnores(path, root string, source []byte, findings []*Error, cf
 
 type analysisConfigState struct {
 	sync.Mutex
-	source   *repoconfig.Loaded
-	overlays []ConfigOverlay
-	onLoaded func(ConfigReport)
-	loaded   map[*Project]*Config
-	reports  map[*Project]ConfigReport
+	source          *repoconfig.Loaded
+	overlays        []ConfigOverlay
+	onLoaded        func(ConfigReport)
+	loaded          map[*Project]*Config
+	reports         map[*Project]ConfigReport
+	registeredRules []string
 }
 
 func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
@@ -228,7 +229,7 @@ func (a *AnalysisSession) configForProject(project *Project) (*Config, error) {
 	for _, overlay := range s.overlays {
 		report.Overrides = append(report.Overrides, overlay.Name())
 	}
-	cfg, resolved, err := repoconfig.Overlaid(cfg, source, s.overlays)
+	cfg, resolved, err := repoconfig.Overlaid(cfg, source, s.overlays, s.registeredRules...)
 	if err != nil {
 		return nil, err
 	}

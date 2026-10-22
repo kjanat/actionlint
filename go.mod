@@ -13,10 +13,12 @@ require (
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mattn/go-runewidth v0.0.31
 	github.com/mattn/go-shellwords v1.0.16
+	github.com/partite-ai/wacogo v0.0.0-20261016032519-b3984dc3d485
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
+	github.com/tetratelabs/wazero v1.11.1-0.20260418165552-5cb4bb3ec0c1
 	github.com/yuin/goldmark v1.8.6
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
 	golang.org/x/net v0.61.0
@@ -30,7 +32,14 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
+	go.bytecodealliance.org v0.7.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 )
+
+replace github.com/partite-ai/wacogo => github.com/kjanat/wacogo v0.0.0-20261021204442-5e1c0d4aa136
+
+tool github.com/partite-ai/wacogo/cmd/wacogo-witgen

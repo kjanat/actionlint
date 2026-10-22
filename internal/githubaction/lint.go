@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/internal/corewasm"
 	actionlint "actionlint.kjanat.dev/internal/engine"
 )
 
@@ -18,6 +20,10 @@ const lintTimeout = 300 * time.Second
 
 // Allow canceled analysis to drain callbacks and hand back its partial result.
 const lintCancellationGrace = time.Second
+
+func loadScriptEngine(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
+	return corewasm.Load(ctx, path, corewasm.Options{})
+}
 
 type lintRequest struct {
 	ruff               string
@@ -67,7 +73,7 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 		}
 	}
 	if command := env("ACTIONLINT_RUFF_COMMAND"); req.ruff != "" && command != "" {
-		req.ruffOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+		req.ruffOptions = &actionlint.ExternalCommandOptions{Executable: &command, AllowWasm: true}
 	}
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
@@ -78,7 +84,7 @@ func (req *lintRequest) configureEnvironment(env func(string) string) error {
 		req.overlays = append(req.overlays, overlay)
 	}
 	if command := env("ACTIONLINT_SHELLCHECK_COMMAND"); req.shellcheck != "" && command != "" {
-		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command}
+		req.shellcheckOptions = &actionlint.ExternalCommandOptions{Executable: &command, AllowWasm: true}
 	}
 	return nil
 }
@@ -108,7 +114,8 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := actionlint.AnalysisOptions{
-		Ruff: req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
+		LoadScriptEngine: loadScriptEngine,
+		Ruff:             req.ruff, RuffOptions: toolOptionsInDirectory(req.ruffOptions, req.workingDir),
 		Context:            req.ctx,
 		ShellcheckOptions:  toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
 		ShellcheckSettings: req.shellcheckSettings,
@@ -132,6 +139,7 @@ func runLinter(req *lintRequest) *lintResult {
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", actionlint.ExitStatusFailure}
 		return result
 	}
+	defer session.Close(context.Background())
 
 	var analysis *actionlint.AnalysisResult
 	inputNames := make(map[string]string, len(req.files))
@@ -245,7 +253,7 @@ func reportPath(workingDir, workspace, path string) string {
 }
 
 func toolOptionsInDirectory(options *actionlint.ExternalCommandOptions, directory string) *actionlint.ExternalCommandOptions {
-	configured := actionlint.ExternalCommandOptions{}
+	configured := actionlint.ExternalCommandOptions{AllowWasm: true}
 	if options != nil {
 		configured = *options
 	}
@@ -263,7 +271,11 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 		return &lintResult{lintOutcome: &lintOutcome{"", msg, actionlint.ExitStatusFailure}}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), a.timeout)
+	withTimeout := a.withTimeout
+	if withTimeout == nil {
+		withTimeout = context.WithTimeout
+	}
+	ctx, cancel := withTimeout(context.Background(), a.timeout)
 	defer cancel()
 	request := *req
 	request.ctx = ctx

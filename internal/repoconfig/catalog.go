@@ -2,6 +2,7 @@ package repoconfig
 
 import (
 	"fmt"
+	"slices"
 
 	"actionlint.kjanat.dev/internal/lintconfig"
 	"go.yaml.in/yaml/v4"
@@ -106,9 +107,9 @@ func FindRule(name string) (Rule, bool) {
 }
 
 // Suppressible reports whether inline directives and ignore settings may name the rule.
-func Suppressible(name string) bool {
+func Suppressible(name string, registeredRules ...string) bool {
 	_, ok := FindRule(name)
-	return ok
+	return ok || slices.Contains(registeredRules, name)
 }
 
 func boolRuleOption(field func(*Policy) **bool) func(*Config, Setting) {

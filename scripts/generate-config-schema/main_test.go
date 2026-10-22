@@ -49,6 +49,20 @@ func TestRuleLevelSuggestions(t *testing.T) {
 	}
 }
 
+func TestPluginRuleSelectors(t *testing.T) {
+	ignore := mapYAMLType(reflect.TypeFor[actionlint.IgnoreConfig](), nil)
+	rule, _ := ignore.Properties.Get("rule")
+	lint := mapYAMLType(reflect.TypeFor[actionlint.LintRulesConfig](), nil)
+	disabled, _ := lint.Properties.Get("disable")
+	policy := mapYAMLType(reflect.TypeFor[actionlint.SuppressionsPolicy](), nil)
+	prohibited, _ := policy.OneOf[1].Properties.Get("rules")
+	for _, selector := range []*jsonschema.Schema{rule, disabled.Items, prohibited.Items} {
+		if selector.Type != "string" || selector.MinLength == nil || *selector.MinLength != 1 || len(selector.Enum) != 0 || len(selector.Examples) == 0 {
+			t.Fatalf("plugin rule selectors require nonempty strings and built-in examples: %+v", selector)
+		}
+	}
+}
+
 func TestRuffTargetVersionSuggestions(t *testing.T) {
 	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
 	target, ok := schema.Properties.Get("target-version")
@@ -428,6 +442,11 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"ruff wasm path", `tools: {ruff: {backend: {wasm: {path: ruff.wasm}}}}`, true, true},
+		{"ruff empty wasm path", `tools: {ruff: {backend: {wasm: {path: ""}}}}`, false, false},
+		{"shellcheck wasm path", `tools: {shellcheck: {backend: {wasm: {path: shellcheck.wasm}}}}`, true, true},
+		{"shellcheck empty wasm path", `tools: {shellcheck: {backend: {wasm: {path: ""}}}}`, false, false},
+		{"override empty wasm path", `overrides: [{includes: ['**'], tools: {ruff: {backend: {wasm: {path: ""}}}}}]`, false, false},
 		{"ignore policy itself", `ignores: [{rule: disallow-suppressions, file: '**'}]`, false, false},
 		{"ignore blank job", `ignores: [{rule: expression, job: ' '}]`, false, false},
 		{"ignore blank step", `ignores: [{rule: expression, step: "\t\n"}]`, false, false},
@@ -520,7 +539,8 @@ func TestSchemaValidation(t *testing.T) {
 		{"not policy", `policy: {mixed-type-matrix-filters: true}`, false, false},
 		{"lint suppression", `lint: {rules: {disable: [expression, shellcheck]}}`, true, true},
 		{"lint null suppression", `lint: {rules: {disable: null}}`, true, true},
-		{"lint unknown rule", `lint: {rules: {disable: [typo]}}`, false, false},
+		{"lint unregistered rule", `lint: {rules: {disable: [no-sudo]}}`, true, false},
+		{"lint empty rule", `lint: {rules: {disable: ['']}}`, false, false},
 		{"lint unknown key", `lint: {rules: {typo: true}}`, false, false},
 		{"file override", `overrides: [{includes: ['.github/workflows/**'], lint: {rules: {suspicious: on}}}]`, true, true},
 		{"file override null lint", `overrides: [{includes: ['**'], lint: null}]`, true, true},
@@ -646,7 +666,9 @@ policy: {required-actions: []}
 		{"suppressions empty rules", `policy: {disallow-suppressions: {rules: []}}`, false, false},
 		{"suppressions null rules", `policy: {disallow-suppressions: {rules: null}}`, false, false},
 		{"suppressions scalar rules", `policy: {disallow-suppressions: {rules: cache-operation}}`, false, false},
-		{"suppressions unknown rule", `policy: {disallow-suppressions: {rules: [cache-operation, typo]}}`, false, false},
+		{"suppressions unregistered rule", `policy: {disallow-suppressions: {rules: [cache-operation, no-sudo]}}`, true, false},
+		{"suppressions empty rule", `policy: {disallow-suppressions: {rules: ['']}}`, false, false},
+		{"ignore unregistered rule", `ignores: [{rule: no-sudo, job: check}]`, true, false},
 		{"suppressions numeric rule", `policy: {disallow-suppressions: {rules: [1]}}`, false, false},
 		{"suppressions unknown report", `policy: {disallow-suppressions: {report: ignore}}`, false, false},
 		{"suppressions null report", `policy: {disallow-suppressions: {report: null}}`, false, false},

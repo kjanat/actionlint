@@ -9,8 +9,9 @@ import (
 	workflowlang "actionlint.kjanat.dev/internal/workflow"
 )
 
-// InlineSuppressibleRules returns the rule IDs accepted by inline directives and
-// disallow-suppressions configuration. The returned slice is owned by the caller.
+// InlineSuppressibleRules returns the built-in rule IDs accepted by inline
+// directives and disallow-suppressions configuration. Analysis sessions also
+// accept their registered analyzer IDs. The returned slice is caller-owned.
 func InlineSuppressibleRules() []string {
 	rules := builtinRuleDescriptors()
 	names := make([]string, 0, len(rules))
@@ -20,8 +21,8 @@ func InlineSuppressibleRules() []string {
 	return names
 }
 
-func isInlineSuppressibleRule(name string) bool {
-	return slices.Contains(InlineSuppressibleRules(), name)
+func isInlineSuppressibleRule(name string, registeredRules ...string) bool {
+	return slices.Contains(InlineSuppressibleRules(), name) || slices.Contains(registeredRules, name)
 }
 
 // inlineSuppressionDirective is validated before policy evaluation. targetLine
@@ -40,7 +41,7 @@ type suppressionOrigin struct {
 	first, last int
 }
 
-func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppressionDirective, *Error) {
+func parseInlineSuppression(comment inlineSuppressionComment, registeredRules ...string) (inlineSuppressionDirective, *Error) {
 	invalid := func(message string) *Error {
 		return errorAt(&comment.pos, "inline-suppression", message)
 	}
@@ -72,8 +73,8 @@ func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppression
 	var rules []string
 	for name := range strings.SplitSeq(selectors, ",") {
 		name = strings.TrimSpace(name)
-		if !isInlineSuppressibleRule(name) {
-			allowed := InlineSuppressibleRules()
+		if !isInlineSuppressibleRule(name, registeredRules...) {
+			allowed := append(InlineSuppressibleRules(), registeredRules...)
 			for i, rule := range allowed {
 				allowed[i] = strconv.Quote(rule)
 			}
@@ -86,11 +87,11 @@ func parseInlineSuppression(comment inlineSuppressionComment) (inlineSuppression
 	return inlineSuppressionDirective{pos: comment.pos, targetLine: target, endLine: comment.endLine, rules: rules, reason: strings.TrimSpace(reason)}, nil
 }
 
-func filterInlineSuppressions(source []byte, errors []*Error, policy *SuppressionsPolicy) []*Error {
-	return filterInlineSuppressionsAt(source, errors, policy, "")
+func filterInlineSuppressions(source []byte, errors []*Error, policy *SuppressionsPolicy, registeredRules ...string) []*Error {
+	return filterInlineSuppressionsAt(source, errors, policy, "", registeredRules...)
 }
 
-func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *SuppressionsPolicy, scope string) []*Error {
+func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *SuppressionsPolicy, scope string, registeredRules ...string) []*Error {
 	comments := collectInlineSuppressionComments(source)
 	if len(comments) == 0 {
 		return errors
@@ -98,7 +99,7 @@ func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *Suppress
 	var directives []inlineSuppressionDirective
 	var directiveErrors []*Error
 	for _, comment := range comments {
-		directive, err := parseInlineSuppression(comment)
+		directive, err := parseInlineSuppression(comment, registeredRules...)
 		if err != nil {
 			directiveErrors = append(directiveErrors, err)
 		} else {
@@ -109,7 +110,7 @@ func filterInlineSuppressionsAt(source []byte, errors []*Error, policy *Suppress
 }
 
 // Scope directives to their owning YAML while retaining diagnostic sources.
-func filterForeignInlineSuppressions(path string, source []byte, findings []*Error, policy *SuppressionsPolicy) []*Error {
+func filterForeignInlineSuppressions(path string, source []byte, findings []*Error, policy *SuppressionsPolicy, registeredRules ...string) []*Error {
 	local := make([]*Error, len(findings))
 	for i, finding := range findings {
 		scoped := *finding
@@ -118,7 +119,7 @@ func filterForeignInlineSuppressions(path string, source []byte, findings []*Err
 		}
 		local[i] = &scoped
 	}
-	local = filterInlineSuppressionsAt(source, local, policy, path)
+	local = filterInlineSuppressionsAt(source, local, policy, path, registeredRules...)
 	for _, finding := range local {
 		if finding.suppressionOrigin == nil {
 			finding.source = source

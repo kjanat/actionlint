@@ -17,13 +17,36 @@ var shellcheckOptionalName = regexp.MustCompile(`^[a-zA-Z-]+$`)
 // Normalize the boolean shorthand before merging so it only overrides enabled.
 // Expanded YAML nodes retain their source positions, including alias/merge origins.
 func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
-	var rewrite func(*yaml.Node, []string) *yaml.Node
-	rewrite = func(node *yaml.Node, keys []string) *yaml.Node {
+	var rewrite func(*yaml.Node, []string, bool) *yaml.Node
+	rewrite = func(node *yaml.Node, keys []string, backend bool) *yaml.Node {
 		if node == nil {
 			return nil
 		}
 		normalized := *node
 		if len(keys) == 0 {
+			if backend {
+				if node.Kind != yaml.MappingNode {
+					return node
+				}
+				selected := ""
+				for i := 0; i+1 < len(node.Content); i += 2 {
+					if node.Content[i].Value == "process" || node.Content[i].Value == "wasm" {
+						if selected != "" {
+							return node
+						}
+						selected = node.Content[i].Value
+					}
+				}
+				if selected == "" {
+					return node
+				}
+				other := "wasm"
+				if selected == "wasm" {
+					other = "process"
+				}
+				normalized.Content = append(slices.Clone(node.Content), &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: other}, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"})
+				return &normalized
+			}
 			if node.Tag != "!!bool" {
 				return node
 			}
@@ -35,18 +58,22 @@ func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
 		switch node.Kind {
 		case yaml.DocumentNode:
 			if len(normalized.Content) == 1 {
-				normalized.Content[0] = rewrite(normalized.Content[0], keys)
+				normalized.Content[0] = rewrite(normalized.Content[0], keys, backend)
 			}
 		case yaml.MappingNode:
 			for i := 0; i+1 < len(normalized.Content); i += 2 {
 				if normalized.Content[i].Value == keys[0] {
-					normalized.Content[i+1] = rewrite(normalized.Content[i+1], keys[1:])
+					normalized.Content[i+1] = rewrite(normalized.Content[i+1], keys[1:], backend)
 				}
 			}
 		}
 		return &normalized
 	}
-	return rewrite(rewrite(node, []string{"tools", "shellcheck"}), []string{"tools", "ruff"})
+	for _, tool := range []string{"shellcheck", "ruff"} {
+		node = rewrite(node, []string{"tools", tool}, false)
+		node = rewrite(node, []string{"tools", tool, "backend"}, true)
+	}
+	return node
 }
 
 func validateShellcheckBooleans(node *yaml.Node, keys ...string) error {

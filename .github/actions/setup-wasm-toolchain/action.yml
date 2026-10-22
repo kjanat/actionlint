@@ -1,0 +1,24 @@
+name: Setup WebAssembly toolchain
+description: Install the pinned Linux x64 plugin fixture tools from verified release bytes without GitHub API calls.
+runs:
+  using: composite
+  steps:
+    - name: Select verified toolchain cache
+      id: prepare
+      shell: bash
+      run: bash "${GITHUB_ACTION_PATH}/setup.bash" prepare
+    - name: Restore toolchain archives
+      id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: ${{ steps.prepare.outputs.cache-key }}
+    - name: Verify and install plugin fixture tools
+      shell: bash
+      run: bash "${GITHUB_ACTION_PATH}/setup.bash" install
+    - name: Cache verified toolchain archives
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}
