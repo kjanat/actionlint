@@ -32,25 +32,19 @@ func scriptLiteralProof(value string) scriptValueProof {
 }
 
 func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
-	var workflowEnv *workflowlang.Env
-	if rule.workflow != nil {
-		workflowEnv = rule.workflow.Env
+	if rule.scriptEnv == nil {
+		return false
 	}
-	for _, env := range []*workflowlang.Env{rule.scriptEnv, rule.jobEnv, workflowEnv} {
-		if env == nil {
-			continue
-		}
-		mapping := workflowlang.EnvMappingView(env)
-		names, complete := workflowlang.InputResolver.Names(mapping)
-		if !complete {
-			return false
-		}
-		if _, present := names[strings.ToLower(name)]; present {
-			value, known := workflowlang.InputResolver.Value(mapping, name)
-			return known && scriptLiteralProof(value).safe(argument)
-		}
+	mapping := workflowlang.EnvMappingView(rule.scriptEnv)
+	names, complete := workflowlang.InputResolver.Names(mapping)
+	if !complete {
+		return false
 	}
-	return false
+	if _, present := names[strings.ToLower(name)]; !present {
+		return false
+	}
+	value, known := workflowlang.InputResolver.Value(mapping, name)
+	return known && scriptLiteralProof(value).safe(argument)
 }
 
 // safeMatrixScriptReferences proves individual paths across all declared axis

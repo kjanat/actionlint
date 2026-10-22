@@ -64,10 +64,11 @@ func TestScriptKeywordNeedsDataArgument(t *testing.T) {
 				if tc.matrix != "" {
 					source += "    strategy:\n      matrix: " + tc.matrix + "\n"
 				}
+				source += "    steps:\n      - "
 				if tc.env != "" {
-					source += "    env: " + tc.env + "\n"
+					source += "env: " + tc.env + "\n        "
 				}
-				source += "    steps:\n      - shell: " + shell + "\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
+				source += "shell: " + shell + "\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
 				workflow, errors := workflowlang.Parse([]byte(source))
 				if len(errors) != 0 {
 					t.Fatal(errors)

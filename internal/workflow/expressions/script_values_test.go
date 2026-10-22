@@ -14,11 +14,11 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 		name, workflowEnv, jobEnv, stepEnv string
 		unsafe                             bool
 	}{
-		{"workflow literal", "{VALUE: safe}", "{OTHER: safe}", "{OTHER: safe}", false},
-		{"job literal", "{OTHER: safe}", "{VALUE: safe}", "{OTHER: safe}", false},
+		{"workflow literal can be changed between steps", "{VALUE: safe}", "{OTHER: safe}", "{OTHER: safe}", true},
+		{"job literal can be changed between steps", "{OTHER: safe}", "{VALUE: safe}", "{OTHER: safe}", true},
 		{"step literal overrides unsafe job", "{OTHER: safe}", "{VALUE: 'unsafe value'}", "{VALUE: safe}", false},
-		{"job overrides unsafe workflow", "{VALUE: 'unsafe value'}", "{VALUE: safe}", "{OTHER: safe}", false},
-		{"unrelated step entry", "{VALUE: safe}", "{OTHER: safe}", "{OTHER: safe}", false},
+		{"job override can be changed between steps", "{VALUE: 'unsafe value'}", "{VALUE: safe}", "{OTHER: safe}", true},
+		{"unrelated step entry does not prove inherited value", "{VALUE: safe}", "{OTHER: safe}", "{OTHER: safe}", true},
 		{"unknown step shadows workflow", "{VALUE: safe}", "{OTHER: safe}", "{VALUE: '${{ github.ref }}'}", true},
 		{"unsafe job shadows workflow", "{VALUE: safe}", "{VALUE: 'unsafe value'}", "{OTHER: safe}", true},
 		{"unknown step insertion", "{VALUE: safe}", "{OTHER: safe}", "{'${{ insert }}': '${{ fromJSON(vars.ENV) }}'}", true},

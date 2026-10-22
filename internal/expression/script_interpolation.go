@@ -188,7 +188,10 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 			}
 			return safeScriptExpression(n.Left, scalarArgument, safeReference)
 		}
-		return (n.Kind == LogicalOpNodeKindAnd || safeScriptExpression(n.Left, scalarArgument, safeReference)) && safeScriptExpression(n.Right, scalarArgument, safeReference)
+		if n.Kind == LogicalOpNodeKindAnd {
+			return safeFalsyScriptResult(n.Left, scalarArgument, safeReference) && safeScriptExpression(n.Right, scalarArgument, safeReference)
+		}
+		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeScriptExpression(n.Right, scalarArgument, safeReference)
 	case *FuncCallNode:
 		if isSafeFuncCall(n) {
 			return scalarArgument
@@ -222,6 +225,49 @@ func safeScriptExpression(expr Node, scalarArgument bool, safeReference func(Nod
 		}
 	}
 	return false
+}
+
+func safeTruthyScriptResult(expr Node, scalarArgument bool, safeReference func(Node) bool) bool {
+	if value, known := ConditionConstantValue(expr); known {
+		if !ExpressionTruthy(value) {
+			return true
+		}
+		return safeScriptExpression(expr, scalarArgument, safeReference)
+	}
+	n, ok := expr.(*LogicalOpNode)
+	if !ok {
+		return safeScriptExpression(expr, scalarArgument, safeReference)
+	}
+	switch n.Kind {
+	case LogicalOpNodeKindAnd:
+		return safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
+	case LogicalOpNodeKindOr:
+		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
+	}
+	return safeScriptExpression(expr, scalarArgument, safeReference)
+}
+
+func safeFalsyScriptResult(expr Node, scalarArgument bool, safeReference func(Node) bool) bool {
+	if scalarArgument {
+		return true
+	}
+	if value, known := ConditionConstantValue(expr); known {
+		if ExpressionTruthy(value) {
+			return true
+		}
+		return safeScriptExpression(expr, scalarArgument, safeReference)
+	}
+	n, ok := expr.(*LogicalOpNode)
+	if !ok {
+		return safeScriptExpression(expr, scalarArgument, safeReference)
+	}
+	switch n.Kind {
+	case LogicalOpNodeKindAnd:
+		return safeFalsyScriptResult(n.Left, scalarArgument, safeReference) && safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
+	case LogicalOpNodeKindOr:
+		return safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
+	}
+	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
 
 // Known step outcomes/conclusions and dependency results are fixed status enums.

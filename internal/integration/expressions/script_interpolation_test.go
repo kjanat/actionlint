@@ -134,3 +134,81 @@ func TestTemplateStringNeedsShellWordProof(t *testing.T) {
 		})
 	}
 }
+
+func TestMutableInheritedEnvIsNotScriptWordProof(t *testing.T) {
+	for _, tc := range []struct {
+		name, workflowEnv, jobEnv, stepEnv string
+		wantFinding                        bool
+	}{
+		{name: "workflow env can change", workflowEnv: "env: {WORD: echo}", wantFinding: true},
+		{name: "job env can change", jobEnv: "env: {WORD: echo}", wantFinding: true},
+		{name: "step env overrides inherited value", workflowEnv: "env: {WORD: echo}", stepEnv: "env: {WORD: echo}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := "on: push\n" + tc.workflowEnv + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + tc.jobEnv + "\n    steps:\n      - run: echo 'WORD=fi' >> \"$GITHUB_ENV\"\n      - " + tc.stepEnv + "\n        run: if true; then ${{ env.WORD }}; fi\n"
+			cfg, err := repoconfig.Parse([]byte("tools: {shellcheck: false, ruff: false}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, diagnostic := range result.Diagnostics {
+				found = found || diagnostic.Rule == "script-interpolation"
+			}
+			if found != tc.wantFinding {
+				t.Fatalf("script-interpolation=%t, want %t: %+v", found, tc.wantFinding, result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestLogicalScriptWordProofs(t *testing.T) {
+	for _, tc := range []struct {
+		name, expression string
+		wordFinding      bool
+		argumentFinding  bool
+	}{
+		{name: "unknown falsy and branch", expression: "inputs.command && 'echo'", wordFinding: true},
+		{name: "unknown value in data branch", expression: "inputs.command && inputs.value", wordFinding: true, argumentFinding: true},
+		{name: "numeric and branch", expression: "github.run_id && 'echo'", wordFinding: true},
+		{name: "known true and branch", expression: "true && 'echo'"},
+		{name: "known false and branch", expression: "false && 'echo'", wordFinding: true},
+		{name: "false or branch", expression: "false || 'echo'"},
+		{name: "true or branch returns boolean", expression: "true || 'echo'", wordFinding: true},
+		{name: "unknown and inside ternary", expression: "inputs.flag && 'release' || 'debug'"},
+		{name: "unknown and branch with fallback", expression: "inputs.command && 'echo' || 'printf'"},
+		{name: "unknown or branch", expression: "inputs.command || 'echo'", wordFinding: true, argumentFinding: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := repoconfig.Parse([]byte("tools: {shellcheck: false, ruff: false}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, check := range []struct {
+				name, run string
+				want      bool
+			}{
+				{name: "command word", run: "if true; then ${{ " + tc.expression + " }}; fi", want: tc.wordFinding},
+				{name: "data argument", run: "printf '%s\\n' \"${{ " + tc.expression + " }}\"", want: tc.argumentFinding},
+			} {
+				t.Run(check.name, func(t *testing.T) {
+					source := "on: {workflow_dispatch: {inputs: {command: {type: string}, value: {type: string}, flag: {type: boolean}}}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + check.run + "\n"
+					result, err := application.Analyze(t.Context(), application.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(source), Config: cfg}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					found := false
+					for _, diagnostic := range result.Diagnostics {
+						found = found || diagnostic.Rule == "script-interpolation"
+					}
+					if found != check.want {
+						t.Fatalf("script-interpolation=%t, want %t: %+v", found, check.want, result.Diagnostics)
+					}
+				})
+			}
+		})
+	}
+}
