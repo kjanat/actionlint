@@ -69,6 +69,13 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 					t.Fatal("echo fixture must contain exactly one diagnostic code")
 				}
 				artifact = bytes.Replace(module, []byte("F821"), []byte(tc.code), 1)
+				oldShells := []byte(`"script_shells":["python","python3"]`)
+				newShells := []byte(`"script_shells":["bash","sh"]`)
+				if bytes.Count(artifact, oldShells) != 1 {
+					t.Fatal("echo fixture must contain exactly one shell catalogue")
+				}
+				newShells = append(newShells, bytes.Repeat([]byte(" "), len(oldShells)-len(newShells))...)
+				artifact = bytes.Replace(artifact, oldShells, newShells, 1)
 			}
 			path := filepath.Join(t.TempDir(), "engine.wasm")
 			if err := os.WriteFile(path, artifact, 0o600); err != nil {
