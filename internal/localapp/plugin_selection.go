@@ -43,6 +43,7 @@ type pluginSelectionMode uint8
 const (
 	pluginAnalysis pluginSelectionMode = iota
 	pluginRuleDiscovery
+	pluginCachePreview
 )
 
 func OpenPluginLock(ctx context.Context, directory, explicit, config string) (*pluginregistry.LockFile, error) {
@@ -89,6 +90,12 @@ func (s PluginSelection) Select(ctx context.Context, directory string, input app
 	return s.selectSources(ctx, directory, input, pluginAnalysis)
 }
 
+// SelectForCache previews migratable lock-only legacy projects without changing
+// the selection rules used by analysis or editor commands.
+func (s PluginSelection) SelectForCache(ctx context.Context, directory string, input application.Input) (PluginSources, error) {
+	return s.selectSources(ctx, directory, input, pluginCachePreview)
+}
+
 func (s PluginSelection) selectSources(ctx context.Context, directory string, input application.Input, mode pluginSelectionMode) (PluginSources, error) {
 	if len(s.Paths) > 0 {
 		if s.LockFile != "" {
@@ -121,7 +128,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		if mode == pluginRuleDiscovery && !project.Manifest.Exists {
 			return PluginSources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
 		}
-		return s.sourcesFromProject(project, "")
+		return s.sourcesFromProject(project, "", mode)
 	}
 	starts := []string{directory}
 	if input.Kind == application.Files && len(input.Paths) > 0 {
@@ -169,7 +176,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 			return PluginSources{}, err
 		}
 		configs = append(configs, prepared)
-		pins, err := project.SelectedLock()
+		pins, err := s.selectedLock(project, mode, root)
 		if err != nil {
 			return PluginSources{}, err
 		}
@@ -202,7 +209,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 	if len(roots) != 1 {
 		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
 	}
-	return s.sourcesFromProject(selectedProject, selected.root)
+	return s.sourcesFromProject(selectedProject, selected.root, mode)
 }
 
 func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config, error) {
@@ -224,12 +231,12 @@ func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config,
 	return resolved.Config, nil
 }
 
-func (s PluginSelection) sourcesFromProject(project *PluginProject, root string) (PluginSources, error) {
+func (s PluginSelection) sourcesFromProject(project *PluginProject, root string, mode pluginSelectionMode) (PluginSources, error) {
 	prepared, err := s.prepareProject(project)
 	if err != nil {
 		return PluginSources{}, err
 	}
-	lock, err := project.SelectedLock()
+	lock, err := s.selectedLock(project, mode, root)
 	if err != nil {
 		return PluginSources{}, err
 	}

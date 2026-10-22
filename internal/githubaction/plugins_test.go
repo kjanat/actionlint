@@ -208,6 +208,170 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	}
 }
 
+func TestActionPluginPlanPreviewsLockOnlyLegacyMigration(t *testing.T) {
+	wasm, err := os.ReadFile("../plugins/component/testdata/plugins/no-sudo.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := testutil.NewPluginRegistry(t)
+	directory := isolatePluginCache(t)
+	registry.Add(t, "v1.0.0", wasm)
+	client, err := pluginregistry.New(testutil.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, err := client.Resolve(t.Context(), testutil.FixturePluginName, "latest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace := workspaceWith(t, map[string]string{
+		".git":                    "",
+		".github/actionlint.yaml": "policy: {require-job-timeout: false}\n",
+		"ci.yml":                  "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n",
+	})
+	lockPath := filepath.Join(workspace, ".github", pluginregistry.LockName)
+	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := lock.Set(pin); err != nil {
+		t.Fatal(err)
+	}
+	if err := lock.Save(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(workspace, ".github", "actionlint.yaml")
+	configBefore, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lockBefore, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry.Requests = nil
+	env := map[string]string{
+		"GITHUB_WORKSPACE": workspace,
+		"INPUT_FILES":      "ci.yml",
+		"INPUT_SHELLCHECK": "false",
+		"INPUT_RUFF":       "false",
+	}
+	lookup := func(key string) string { return env[key] }
+	var stdout, stderr bytes.Buffer
+	if code := PluginPlan(lookup, &stdout, &stderr); code != 0 {
+		t.Fatalf("plugin plan failed: %d %s", code, &stderr)
+	}
+	var plan localapp.PluginCachePlan
+	if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if plan.Directory != directory || len(plan.Artifacts) != 1 || plan.Artifacts[0] != pin.SHA256 {
+		t.Fatalf("lock-only plan = %+v; want directory %s and digest %s", plan, directory, pin.SHA256)
+	}
+	if len(registry.Requests) != 0 {
+		t.Fatalf("cache preview fetched artifacts: %v", registry.Requests)
+	}
+	configAfter, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lockAfter, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(configBefore, configAfter) || !bytes.Equal(lockBefore, lockAfter) {
+		t.Fatal("cache preview modified legacy configuration or lock")
+	}
+
+	req, err := provisioningRequest(lookup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := runLinter(req)
+	if result.code != 1 || len(result.diagnostics) != 1 || result.diagnostics[0].Rule != "no-sudo" {
+		t.Fatalf("migrated locked plugin result: %+v %s", result.diagnostics, result.stderr)
+	}
+	if len(registry.Requests) != 1 || registry.Requests[0] != pin.URL {
+		t.Fatalf("migration fetched unexpected plugin bytes: %v", registry.Requests)
+	}
+	configAfter, err = os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(configAfter), testutil.FixturePluginName) {
+		t.Fatalf("action analysis did not migrate pinned plugin declaration: %s", configAfter)
+	}
+}
+
+func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
+	wasm, err := os.ReadFile("../plugins/component/testdata/plugins/no-sudo.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := testutil.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", wasm)
+	client, err := pluginregistry.New(testutil.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, err := client.Resolve(t.Context(), testutil.FixturePluginName, "v1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		config string
+		lock   string
+	}{
+		{
+			name: "missing lock",
+			config: "policy: {require-job-timeout: false}\nplugins:\n" +
+				"  - name: " + testutil.FixturePluginName + "\n    version: v1.0.0\n    registry: " + testutil.FixtureRegistryURL + "\n",
+		},
+		{name: "corrupt lock", config: "policy: {require-job-timeout: false}\n", lock: "not a lock\n"},
+		{
+			name: "stale lock",
+			config: "policy: {require-job-timeout: false}\nplugins:\n" +
+				"  - name: " + testutil.FixturePluginName + "\n    version: v2.0.0\n    registry: " + testutil.FixtureRegistryURL + "\n",
+			lock: "valid",
+		},
+		{name: "canonical undeclared lock", config: "lint: {}\n", lock: "valid"},
+		{name: "malformed config", config: "policy: [\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			isolatePluginCache(t)
+			workspace := workspaceWith(t, map[string]string{
+				".git": "", ".github/actionlint.yaml": tc.config,
+			})
+			if tc.lock != "" {
+				lockPath := filepath.Join(workspace, ".github", pluginregistry.LockName)
+				if tc.lock == "valid" {
+					lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := lock.Set(pin); err != nil {
+						t.Fatal(err)
+					}
+					if err := lock.Save(t.Context()); err != nil {
+						t.Fatal(err)
+					}
+				} else if err := os.WriteFile(lockPath, []byte(tc.lock), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false"}
+			var stdout, stderr bytes.Buffer
+			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 3 {
+				t.Fatalf("got status %d, want failure: %s", code, &stderr)
+			}
+			if stdout.Len() != 0 || stderr.Len() == 0 {
+				t.Fatalf("got stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
 func TestActionInlinePinnedPlugin(t *testing.T) {
 	isolatePluginCache(t)
 	wasm, err := os.ReadFile("../plugins/component/testdata/plugins/no-sudo.wasm")

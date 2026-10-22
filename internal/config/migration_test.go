@@ -177,6 +177,76 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 	}
 }
 
+func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
+	directory := t.TempDir()
+	selected := filepath.Join(directory, "actionlint.yaml")
+	base := filepath.Join(directory, "base.yaml")
+	other := filepath.Join(directory, "other.yaml")
+	linkedBase := filepath.Join(directory, "linked-base.yaml")
+	if err := os.WriteFile(base, []byte("config-variables: [BASE]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(other, []byte("config-variables: [OTHER]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(base, linkedBase); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := os.WriteFile(selected, []byte("extends: [linked-base.yaml]\npolicy: {require-job-timeout: false}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("unchanged target", func(t *testing.T) {
+		plan, err := PrepareMigration(selected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := plan.CheckUnchanged(); err != nil {
+			t.Fatalf("unchanged symlinked inherited input rejected: %v", err)
+		}
+		if err := plan.Apply(); err != nil {
+			t.Fatalf("migration with unchanged symlinked inherited input failed: %v", err)
+		}
+	})
+
+	for _, tc := range []struct {
+		name   string
+		change func() error
+	}{
+		{name: "retargeted", change: func() error {
+			if err := os.Remove(linkedBase); err != nil {
+				return err
+			}
+			return os.Symlink(other, linkedBase)
+		}},
+		{name: "mutated target", change: func() error {
+			return os.WriteFile(base, []byte("config-variables: [CHANGED]\n"), 0600)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(selected, []byte("extends: [linked-base.yaml]\npolicy: {require-job-timeout: false}\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(linkedBase); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(base, linkedBase); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+			plan, err := PrepareMigration(selected)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := tc.change(); err != nil {
+				t.Fatal(err)
+			}
+			if err := plan.CheckUnchanged(); err == nil || !strings.Contains(err.Error(), "changed before migration") {
+				t.Fatalf("changed symlinked inherited input accepted: %v", err)
+			}
+		})
+	}
+}
+
 func TestMigrationYAMLBooleanSpellings(t *testing.T) {
 	for _, spelling := range []string{"true", "True", "TRUE"} {
 		t.Run(spelling, func(t *testing.T) {

@@ -190,6 +190,70 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 	}
 }
 
+func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		inputName     string
+		absolute      bool
+		exists        bool
+		shouldMigrate bool
+		wantError     bool
+	}{
+		{name: "unnamed", inputName: ""},
+		{name: "stdin marker", inputName: "<stdin>"},
+		{name: "missing relative", inputName: "missing.yml"},
+		{name: "missing absolute", inputName: "missing.yml", absolute: true},
+		{name: "invalid named path", inputName: "\x00", wantError: true},
+		{name: "existing named", inputName: "workflow.yml", exists: true, shouldMigrate: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := pluginRepository(t)
+			configDir := filepath.Join(root, ".github")
+			if err := os.Mkdir(configDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			configPath := filepath.Join(configDir, "actionlint.yaml")
+			original := []byte("config-variables: []\n")
+			if err := os.WriteFile(configPath, original, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if tc.exists {
+				if err := os.WriteFile(filepath.Join(root, tc.inputName), []byte("on: push\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			inputName := tc.inputName
+			if tc.absolute {
+				inputName = filepath.Join(root, inputName)
+			}
+			input := application.Input{Kind: application.Stdin, Name: inputName}
+			err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{})
+			if tc.wantError {
+				if err == nil {
+					t.Fatal("invalid named stdin path was accepted")
+				}
+				return
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			actual, err := os.ReadFile(configPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.shouldMigrate {
+				if bytes.Equal(actual, original) {
+					t.Fatal("existing named stdin path was not migrated")
+				}
+			} else if !bytes.Equal(actual, original) {
+				t.Fatalf("unused stdin selection migrated project config: %q", actual)
+			}
+			if _, err := os.Stat(filepath.Join(configDir, pluginregistry.LockName)); !os.IsNotExist(err) {
+				t.Fatalf("stdin migration unexpectedly wrote lock: %v", err)
+			}
+		})
+	}
+}
+
 func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 	for _, tc := range []struct{ config, want string }{
 		{"{}", "shellcheck,ruff"},

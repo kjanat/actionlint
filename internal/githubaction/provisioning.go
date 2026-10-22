@@ -49,7 +49,7 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer) int {
 	}
 	if err == nil {
 		var selected localapp.PluginSources
-		selected, err = req.pluginSelection().Select(context.Background(), req.workingDir, req.pluginInput())
+		selected, err = req.pluginSelection().SelectForCache(context.Background(), req.workingDir, req.pluginInput())
 		if err == nil {
 			var plan localapp.PluginCachePlan
 			plan, err = selected.CachePlan()

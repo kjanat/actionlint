@@ -19,8 +19,13 @@ import (
 type FileMigration struct {
 	Path string
 	Migration
-	snapshots map[string][]byte
+	snapshots map[string]fileSnapshot
 	mode      os.FileMode
+}
+
+type fileSnapshot struct {
+	content []byte
+	target  string
 }
 
 // PrepareMigration reads the selected file and its inherited inputs, validates
@@ -42,13 +47,18 @@ func PrepareMigration(path string) (*FileMigration, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("cannot migrate non-regular config file %q", absolute)
 	}
-	snapshots := map[string][]byte{}
+	snapshots := map[string]fileSnapshot{}
 	reader := fsread.New(context.Background(), nil, nil)
 	read := func(path string) ([]byte, error) {
 		content, err := reader.ReadFile(path)
-		if err == nil {
-			snapshots[path] = bytes.Clone(content)
+		if err != nil {
+			return nil, err
 		}
+		target, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return nil, err
+		}
+		snapshots[path] = fileSnapshot{content: bytes.Clone(content), target: target}
 		return content, err
 	}
 	normalize := func(_ string, node *yaml.Node) (*yaml.Node, error) {
@@ -59,7 +69,7 @@ func PrepareMigration(path string) (*FileMigration, error) {
 	if err != nil {
 		return nil, err
 	}
-	migration, err := MigrateDocument(absolute, snapshots[absolute])
+	migration, err := MigrateDocument(absolute, snapshots[absolute].content)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +83,7 @@ func PrepareMigration(path string) (*FileMigration, error) {
 		if !exists {
 			return nil, fmt.Errorf("migration introduced unexpected config dependency %q", path)
 		}
-		return content, nil
+		return content.content, nil
 	}, normalize)
 	if err != nil {
 		return nil, err
@@ -110,7 +120,7 @@ func (m *FileMigration) SetContent(content []byte) error {
 		if !exists {
 			return nil, fmt.Errorf("migration introduced unexpected config dependency %q", path)
 		}
-		return original, nil
+		return original.content, nil
 	}, func(_ string, node *yaml.Node) (*yaml.Node, error) {
 		resolved, err := resolveNode(node, nil, false)
 		return resolved.Node, err
@@ -118,7 +128,7 @@ func (m *FileMigration) SetContent(content []byte) error {
 		return err
 	}
 	m.Content = bytes.Clone(content)
-	m.Changed = !bytes.Equal(content, m.snapshots[m.Path])
+	m.Changed = !bytes.Equal(content, m.snapshots[m.Path].content)
 	return nil
 }
 
@@ -171,21 +181,40 @@ func (m *FileMigration) CheckUnchanged() error {
 	}
 	reader := fsread.New(context.Background(), nil, nil)
 	for path, expected := range m.snapshots {
-		info, err := os.Lstat(path)
+		readPath := path
+		if path == m.Path {
+			info, err := os.Lstat(path)
+			if err != nil {
+				return err
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("config input changed before migration: %s is not a regular file", path)
+			}
+			if info.Mode().Perm() != m.mode {
+				return errors.New("config permissions changed before migration; prepare the migration again")
+			}
+		} else {
+			target, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return fmt.Errorf("config input changed before migration: %s; prepare the migration again: %w", path, err)
+			}
+			if filepath.Clean(target) != filepath.Clean(expected.target) {
+				return fmt.Errorf("config input changed before migration: %s now resolves to %s; prepare the migration again", path, target)
+			}
+			info, err := os.Lstat(target)
+			if err != nil {
+				return err
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("config input changed before migration: %s is not a regular file", path)
+			}
+			readPath = target
+		}
+		current, err := reader.ReadFile(readPath)
 		if err != nil {
 			return err
 		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("config input changed before migration: %s is not a regular file", path)
-		}
-		if path == m.Path && info.Mode().Perm() != m.mode {
-			return errors.New("config permissions changed before migration; prepare the migration again")
-		}
-		current, err := reader.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		if !bytes.Equal(current, expected) {
+		if !bytes.Equal(current, expected.content) {
 			return fmt.Errorf("config input changed before migration: %s; prepare the migration again", path)
 		}
 	}

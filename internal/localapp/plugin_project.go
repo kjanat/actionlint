@@ -109,6 +109,10 @@ func (p *PluginProject) SelectedLock() (pluginregistry.Lock, error) {
 	if err != nil {
 		return pluginregistry.Lock{}, err
 	}
+	return p.selectedPins(refs)
+}
+
+func (p *PluginProject) selectedPins(refs []pluginref.Reference) (pluginregistry.Lock, error) {
 	selected := pluginregistry.Lock{SchemaVersion: 1, Plugins: []pluginregistry.Pin{}}
 	for _, ref := range refs {
 		if ref.DirectSource() != "" {

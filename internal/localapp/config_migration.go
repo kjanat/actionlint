@@ -3,6 +3,7 @@ package localapp
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -237,7 +238,8 @@ func (s PluginSelection) Migrate(ctx context.Context, directory string, input ap
 		return MigrateConfig(ctx, s.ConfigFile, options)
 	}
 	starts := []string{directory}
-	if input.Kind == application.Files && len(input.Paths) != 0 {
+	switch {
+	case input.Kind == application.Files && len(input.Paths) != 0:
 		starts = nil
 		for _, path := range input.Paths {
 			if !filepath.IsAbs(path) {
@@ -245,12 +247,19 @@ func (s PluginSelection) Migrate(ctx context.Context, directory string, input ap
 			}
 			starts = append(starts, filepath.Dir(path))
 		}
-	} else if input.Kind == application.Stdin && input.Name != "" && input.Name != "<stdin>" {
+	case input.Kind == application.Stdin && input.Name != "" && input.Name != "<stdin>":
 		path := input.Name
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(directory, path)
 		}
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return nil
+		} else if err != nil {
+			return err
+		}
 		starts = []string{filepath.Dir(path)}
+	case input.Kind == application.Stdin:
+		return nil
 	}
 	seen := map[string]bool{}
 	for _, start := range starts {
