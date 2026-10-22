@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 import { temporary } from '#native';
 import type { PluginCache, PluginPlan } from '#plugin-cache';
-import { cachePlugins, inspectPlugins, parsePluginPlan, pluginCacheKey } from '#plugin-cache';
+import { cachePlugins, inspectPlugins, parsePluginPlan, pluginCacheKey, withPluginCache } from '#plugin-cache';
 import { InputError } from '#runtime';
 
 const bytes = Buffer.from('pinned wasm fixture');
@@ -90,6 +90,25 @@ test('first migration run saves newly pinned artifacts even when lint finds prob
 			1,
 		);
 		assert.equal(saved, true);
+	});
+});
+
+test('an unsupported refreshed plan does not save stale plugin artifacts', async () => {
+	await fixture(async (plan) => {
+		let saved = false;
+		assert.equal(
+			await cachePlugins(plan, async () => {
+				await writeFile(join(plan.directory, digest), bytes);
+				return 0;
+			}, {
+				restore: async () => undefined,
+				save: async () => {
+					saved = true;
+				},
+			}, async () => undefined),
+			0,
+		);
+		assert.equal(saved, false);
 	});
 });
 
@@ -229,6 +248,7 @@ test('legal glob characters in cache directories preserve native execution', asy
 			stdout: JSON.stringify({ directory, artifacts: [digest] }),
 			stderr: '',
 		}));
+		assert.ok(plan);
 		let executed = false;
 		const client: PluginCache = {
 			restore: async () => assert.fail('glob-bearing path must not reach toolkit restore'),
@@ -287,7 +307,7 @@ test('cache plans reject path traversal, glob expansion and malformed digests', 
 	});
 });
 
-test('preflight parses JSON and rejects unsupported binaries and invalid configuration', async () => {
+test('preflight parses JSON and distinguishes unsupported binaries from invalid configuration', async () => {
 	await fixture(async (plan) => {
 		assert.deepEqual(
 			await inspectPlugins('actionlint', {}, async (_executable, args) => {
@@ -302,9 +322,9 @@ test('preflight parses JSON and rejects unsupported binaries and invalid configu
 				'unknown flag: --github-action-plugins',
 			]
 		) {
-			await assert.rejects(
-				inspectPlugins('actionlint', {}, async () => ({ exitCode: 2, stdout: '', stderr })),
-				InputError,
+			assert.equal(
+				await inspectPlugins('actionlint', {}, async () => ({ exitCode: 2, stdout: '', stderr })),
+				undefined,
 			);
 		}
 		await assert.rejects(
@@ -331,5 +351,42 @@ test('preflight parses JSON and rejects unsupported binaries and invalid configu
 			})),
 			InputError,
 		);
+		await assert.rejects(
+			inspectPlugins('actionlint', {}, async () => ({
+				exitCode: 2,
+				stdout: '',
+				stderr: 'unknown flag: --github-action-plugins\ninvalid manifest',
+			})),
+			InputError,
+		);
+		await assert.rejects(
+			inspectPlugins('actionlint', {}, async () => ({
+				exitCode: 2,
+				stdout: '',
+				stderr:
+					'flag provided but not defined: -github-action-plugins\nUsage of actionlint:\n  -github-action\n    run action mode\ninvalid manifest',
+			})),
+			InputError,
+		);
 	});
+});
+
+test('unrelated inspection failures still block analysis', async () => {
+	for (
+		const result of [
+			{ exitCode: 0, stdout: '{invalid json', stderr: '' },
+			{ exitCode: 2, stdout: '', stderr: 'invalid manifest' },
+			{ exitCode: 2, stdout: '', stderr: 'unknown flag: --github-action-plugins-unrelated' },
+			{ exitCode: 3, stdout: '', stderr: 'read failed' },
+		]
+	) {
+		let analyzed = false;
+		await assert.rejects(
+			withPluginCache('actionlint', {}, async () => {
+				analyzed = true;
+				return 0;
+			}, async () => result),
+		);
+		assert.equal(analyzed, false);
+	}
 });

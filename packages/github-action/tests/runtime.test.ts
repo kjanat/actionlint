@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { capture, temporary } from '#native';
+import type { PluginCache } from '#plugin-cache';
+import { withPluginCache } from '#plugin-cache';
 import type { Environment, Runtime } from '#runtime';
 import { InputError, runAction, toolEnabled } from '#runtime';
 
@@ -44,6 +48,62 @@ test('plugin cache wraps Wasm hydration and execution, including findings', asyn
 	assert.equal(await runAction({}, setup.runtime), 1);
 	assert.deepEqual(setup.calls, ['native', 'restore', 'save']);
 	assert.equal(setup.executions.length, 1);
+});
+
+test('selected legacy binary still runs analysis when its plugin-cache probe is unsupported', async () => {
+	await temporary(async (directory) => {
+		const source = join(directory, 'legacy-actionlint.go');
+		const executable = join(directory, process.platform === 'win32' ? 'legacy-actionlint.exe' : 'legacy-actionlint');
+		await writeFile(
+			source,
+			[
+				'package main',
+				'import ("flag"; "fmt"; "os")',
+				'func main() {',
+				'  if len(os.Args) > 1 && os.Args[1] == "-github-action" {',
+				'    fmt.Fprintln(os.Stdout, "analysis ran")',
+				'    os.Exit(1)',
+				'  }',
+				'  flags := flag.NewFlagSet("actionlint", flag.ContinueOnError)',
+				'  flags.SetOutput(os.Stderr)',
+				'  flags.Bool("github-action", false, "run action mode")',
+				'  if err := flags.Parse(os.Args[1:]); err != nil { os.Exit(2) }',
+				'}',
+			].join('\n'),
+		);
+		const build = await capture('go', ['build', '-o', executable, source], process.env, { timeoutMS: 300_000 });
+		assert.equal(build.exitCode, 0, build.stderr);
+
+		const unsupported = await capture(executable, ['-github-action-plugins']);
+		assert.equal(unsupported.exitCode, 2);
+		assert.match(unsupported.stderr, /^flag provided but not defined: -github-action-plugins\r?\nUsage of actionlint:/);
+		assert.match(unsupported.stderr, /-github-action[\s\S]*run action mode/);
+
+		const setup = fixture();
+		const client: PluginCache = {
+			restore: async () => assert.fail('unsupported binary must not restore plugin cache'),
+			save: async () => assert.fail('unsupported binary must not save plugin cache'),
+		};
+		setup.runtime.native = async () => executable;
+		setup.runtime.plugins = (selected, environment, run) =>
+			withPluginCache(
+				selected,
+				environment,
+				run,
+				capture,
+				client,
+			);
+		setup.runtime.execute = async (selected, args, environment) => {
+			setup.executions.push({ executable: selected, args, environment });
+			const result = await capture(selected, args, environment);
+			assert.equal(result.stdout, 'analysis ran\n');
+			return result.exitCode;
+		};
+
+		assert.equal(await runAction({}, setup.runtime), 1);
+		assert.equal(setup.executions.length, 1);
+		assert.deepEqual(setup.executions[0]?.args, ['-github-action']);
+	});
 });
 
 test('plugin cache can be disabled and install-only never inspects plugin configuration', async () => {

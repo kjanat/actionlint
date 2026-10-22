@@ -12,6 +12,19 @@ import { commandEscape } from '#workflow';
 
 export type PluginPlan = { directory: string; artifacts: string[] };
 
+type PluginProbe = typeof capture;
+
+function unsupportedPluginFlag(stderr: string): boolean {
+	const lines = stderr.trimEnd().split(/\r?\n/);
+	if (lines.length === 1) {
+		return lines[0] === 'unknown flag: --github-action-plugins'
+			|| lines[0] === 'flag provided but not defined: -github-action-plugins';
+	}
+	return lines[0] === 'flag provided but not defined: -github-action-plugins'
+		&& /^Usage of .+:$/.test(lines[1] || '')
+		&& lines.slice(2).every((line) => line === '' || /^\s+-/.test(line) || /^\s{4,}\S/.test(line));
+}
+
 export type PluginCache = {
 	restore: (paths: string[], key: string) => Promise<string | undefined>;
 	save: (paths: string[], key: string) => Promise<unknown>;
@@ -56,12 +69,14 @@ export function pluginCacheKey(plan: PluginPlan, platform = process.platform): s
 export async function inspectPlugins(
 	executable: string,
 	environment: Environment,
-	probe = capture,
-): Promise<PluginPlan> {
+	probe: PluginProbe = capture,
+): Promise<PluginPlan | undefined> {
 	const result = await probe(executable, ['-github-action-plugins'], environment, { timeoutMS: 300_000 });
 	if (result.exitCode !== 0) {
-		const message = result.stderr.trim() || `actionlint plugin inspection exited with ${result.exitCode}`;
-		throw result.exitCode === 2 ? new InputError(message) : new Error(message);
+		if (result.exitCode === 2 && unsupportedPluginFlag(result.stderr)) return undefined;
+		const message = result.stderr.trim();
+		const error = message || `actionlint plugin inspection exited with ${result.exitCode}`;
+		throw result.exitCode === 2 ? new InputError(error) : new Error(error);
 	}
 	return parsePluginPlan(JSON.parse(result.stdout));
 }
@@ -100,7 +115,7 @@ export async function cachePlugins(
 	plan: PluginPlan,
 	run: () => Promise<number>,
 	client: PluginCache,
-	inspectAfter?: () => Promise<PluginPlan>,
+	inspectAfter?: () => Promise<PluginPlan | undefined>,
 ): Promise<number> {
 	if (!cacheable(plan)) return run();
 	const paths = plan.artifacts.map((digest) => join(plan.directory, digest));
@@ -122,15 +137,21 @@ export async function cachePlugins(
 		// Automatic config migration can add pins during analysis. Inspect again
 		// so its first run saves the newly verified default artifacts too.
 		let current = plan;
+		let canSave = true;
 		if (inspectAfter) {
 			try {
-				current = await inspectAfter();
+				const refreshed = await inspectAfter();
+				if (refreshed) current = refreshed;
+				else canSave = false;
 			} catch (error) {
 				warning('plan refresh', error);
 			}
 		}
 		const currentKey = pluginCacheKey(current);
-		if (cacheable(current) && current.artifacts.length > 0 && hit !== currentKey && await verifiedArtifacts(current)) {
+		if (
+			canSave && cacheable(current) && current.artifacts.length > 0
+			&& hit !== currentKey && await verifiedArtifacts(current)
+		) {
 			try {
 				await client.save(current.artifacts.map((digest) => join(current.directory, digest)), currentKey);
 			} catch (error) {
@@ -144,7 +165,10 @@ export async function withPluginCache(
 	executable: string,
 	environment: Environment,
 	run: () => Promise<number>,
+	probe: PluginProbe = capture,
+	client: PluginCache = service,
 ): Promise<number> {
-	const plan = await inspectPlugins(executable, environment);
-	return cachePlugins(plan, run, service, () => inspectPlugins(executable, environment));
+	const plan = await inspectPlugins(executable, environment, probe);
+	if (!plan) return run();
+	return cachePlugins(plan, run, client, () => inspectPlugins(executable, environment, probe));
 }

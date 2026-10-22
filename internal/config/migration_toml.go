@@ -27,8 +27,7 @@ type tomlMigrationExpression struct {
 
 // migrateTOML removes legacy syntax and replaces the merged lint subtree while
 // retaining unrelated source expressions and all comments in the rewritten
-// expressions. The parser supplies comment and expression spans, so '#' in a
-// string is never mistaken for a comment.
+// expressions. Parser spans distinguish comments from '#' characters in strings.
 func migrateTOML(source []byte, migrated *yaml.Node) ([]byte, error) {
 	var values map[string]any
 	if err := migrated.Decode(&values); err != nil {

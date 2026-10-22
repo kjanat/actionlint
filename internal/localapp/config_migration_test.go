@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/testutil"
@@ -60,6 +61,132 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	}
 	if len(registry.Requests) != before {
 		t.Fatal("already migrated config contacted registry")
+	}
+}
+
+func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
+	registry := testutil.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	client, err := pluginregistry.New(testutil.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, err := client.Resolve(t.Context(), testutil.FixturePluginName, "v1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := pluginRepository(t)
+	path := filepath.Join(root, ".github", "actionlint.yaml")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("config-variables: []\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	project, err := OpenPluginProject(t.Context(), root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := project.Lock.Set(pin); err != nil {
+		t.Fatal(err)
+	}
+	if err := SyncPlugins(t.Context(), project.Lock.Lock); err != nil {
+		t.Fatal(err)
+	}
+	if err := project.Lock.Save(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	registry.Offline = true
+
+	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+		t.Fatal(err)
+	}
+	migrated, err := config.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name != pin.Name || migrated.Plugins[0].Version != pin.Selector || migrated.Plugins[0].Registry != pin.Registry {
+		t.Fatalf("lock-only plugin selection changed: %+v, %v", migrated.Plugins, err)
+	}
+	lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(filepath.Dir(path), pluginregistry.LockName))
+	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0] != pin {
+		t.Fatalf("lock-only pin changed: %+v, %v", lock, err)
+	}
+}
+
+func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
+	root := pluginRepository(t)
+	path := filepath.Join(root, "actionlint.yaml")
+	base := filepath.Join(root, "base.yaml")
+	if err := os.WriteFile(base, []byte("plugins: [publisher/base]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nconfig-variables: []\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(plan.Content, []byte("plugins:")) {
+		t.Fatalf("copied inherited plugins into leaf config:\n%s", plan.Content)
+	}
+	if err := plan.Apply(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("migration wrote lock for inherited declaration: %v", err)
+	}
+	if err := os.WriteFile(base, []byte("plugins: [publisher/base, publisher/next]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := OpenPluginManifest(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !manifest.Declared || len(manifest.References) != 2 || manifest.References[0].Name != "github.com/publisher/base" || manifest.References[1].Name != "github.com/publisher/next" {
+		t.Fatalf("leaf stopped inheriting plugins: %+v", manifest.References)
+	}
+}
+
+func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
+	workspace := t.TempDir()
+	root := filepath.Join(workspace, "repo")
+	shared := filepath.Join(workspace, "shared")
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(shared, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(shared, "actionlint.yaml")
+	original := []byte("config-variables: []\n")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(shared, filepath.Join(root, ".github")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := (PluginSelection{}).Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	actual, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(actual, original) {
+		t.Fatalf("automatic migration changed config outside repository: %q, %v", actual, err)
+	}
+	if _, err := os.Stat(filepath.Join(shared, pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("automatic migration wrote lock outside repository: %v", err)
+	}
+	invalid := []byte("config-variables: [\n")
+	if err := os.WriteFile(path, invalid, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := (PluginSelection{}).Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{}); err == nil {
+		t.Fatal("automatic migration skipped reading the linked config")
+	}
+	actual, err = os.ReadFile(path)
+	if err != nil || !bytes.Equal(actual, invalid) {
+		t.Fatalf("automatic migration changed invalid config outside repository: %q, %v", actual, err)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
+	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
@@ -56,8 +57,9 @@ func DefaultPluginReferences(cfg *config.Config, options DefaultPluginOptions) (
 // Applying it downloads and verifies all dependencies before replacing either file.
 type ConfigMigration struct {
 	*config.FileMigration
-	project *PluginProject
-	refs    []pluginref.Reference
+	project       *PluginProject
+	refs          []pluginref.Reference
+	updatePlugins bool
 }
 
 func PrepareConfigMigration(ctx context.Context, path string, options DefaultPluginOptions) (*ConfigMigration, error) {
@@ -76,13 +78,38 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err != nil {
 		return nil, err
 	}
-	refs, err := DefaultPluginReferences(resolved.Config, options)
+	leaf, err := configtree.Decode(migration.Path, migration.Content)
 	if err != nil {
 		return nil, err
 	}
-	content, err := editPluginManifest(migration.Path, migration.Content, refs)
+	_, declaredLocally, err := manifestReferences(leaf)
 	if err != nil {
 		return nil, err
+	}
+	updatePlugins := true
+	var refs []pluginref.Reference
+	switch {
+	case !declaredLocally && project.Manifest.Declared:
+		// Keep inherited declarations inherited. Writing the effective list into
+		// the leaf would freeze future changes made by the shared base.
+		refs = slices.Clone(project.Manifest.References)
+		updatePlugins = false
+	case !declaredLocally && len(project.Lock.Lock.Plugins) != 0:
+		// A lock-only project predates manifest declarations. Migrate its pins
+		// into the manifest instead of replacing them with default selections.
+		refs, err = project.Dependencies(true)
+	default:
+		refs, err = DefaultPluginReferences(resolved.Config, options)
+	}
+	if err != nil {
+		return nil, err
+	}
+	content := migration.Content
+	if updatePlugins {
+		content, err = editPluginManifest(migration.Path, migration.Content, refs)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if err := migration.SetContent(content); err != nil {
 		return nil, err
@@ -93,7 +120,7 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 		migration.Notes = append(migration.Notes, "ShellCheck now uses the isolated Wasm plugin; implicit source-file following stops. Explicit native source/rc configuration retains the native backend.")
 	}
 	project.StatusOptions.Warning = options.Warning
-	return &ConfigMigration{migration, project, refs}, nil
+	return &ConfigMigration{FileMigration: migration, project: project, refs: refs, updatePlugins: updatePlugins}, nil
 }
 
 func (m *ConfigMigration) Apply(ctx context.Context) error {
@@ -105,6 +132,9 @@ func (m *ConfigMigration) Apply(ctx context.Context) error {
 	}
 	if err := m.CheckUnchanged(); err != nil {
 		return err
+	}
+	if !m.updatePlugins {
+		return m.FileMigration.Apply()
 	}
 	if err := m.project.Resolve(ctx, m.refs, nil); err != nil {
 		return fmt.Errorf("config migration left %s unchanged: %w", m.Path, err)
@@ -124,6 +154,10 @@ func (m *ConfigMigration) Apply(ctx context.Context) error {
 // MigrateConfig automatically upgrades a selected legacy local file.
 // Files already using current syntax are never implicitly enrolled in plugins.
 func MigrateConfig(ctx context.Context, path string, options DefaultPluginOptions) error {
+	return migrateConfig(ctx, path, "", options)
+}
+
+func migrateConfig(ctx context.Context, path, repositoryRoot string, options DefaultPluginOptions) error {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return fmt.Errorf("could not read config file %q: %w", path, err)
@@ -137,9 +171,27 @@ func MigrateConfig(ctx context.Context, path string, options DefaultPluginOption
 	if err != nil || !migration.Changed {
 		return err
 	}
+	if repositoryRoot != "" {
+		inside, err := migrationPathInsideRepository(repositoryRoot, migration.Path)
+		if err != nil {
+			return err
+		}
+		if !inside {
+			return nil
+		}
+	}
 	prepared, err := PrepareConfigMigration(ctx, path, options)
 	if err != nil {
 		return err
+	}
+	if repositoryRoot != "" {
+		inside, err := migrationPathInsideRepository(repositoryRoot, prepared.Path)
+		if err != nil {
+			return err
+		}
+		if !inside {
+			return nil
+		}
 	}
 	if err := prepared.Apply(ctx); err != nil {
 		return err
@@ -151,6 +203,27 @@ func MigrateConfig(ctx context.Context, path string, options DefaultPluginOption
 		}
 	}
 	return nil
+}
+
+func migrationPathInsideRepository(root, path string) (bool, error) {
+	physicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false, err
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return false, err
+	}
+	physicalParent, err := filepath.EvalSymlinks(filepath.Dir(absolute))
+	if err != nil {
+		return false, err
+	}
+	physicalPath := filepath.Join(physicalParent, filepath.Base(absolute))
+	relative, err := filepath.Rel(physicalRoot, physicalPath)
+	if err != nil {
+		return false, fmt.Errorf("cannot compare migration path with repository root: %w", err)
+	}
+	return filepath.IsLocal(relative), nil
 }
 
 // Migrate upgrades selected local configs before runtime plugin selection.
@@ -195,7 +268,7 @@ func (s PluginSelection) Migrate(ctx context.Context, directory string, input ap
 		} else if err != nil {
 			return err
 		}
-		if err := MigrateConfig(ctx, path, options); err != nil {
+		if err := migrateConfig(ctx, path, root, options); err != nil {
 			return err
 		}
 	}
