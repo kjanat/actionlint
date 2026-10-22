@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/wasmbudget"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 	"github.com/tetratelabs/wazero/experimental"
 )
 

@@ -20,7 +20,7 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/plugins/wasmbudget"
 	"actionlint.kjanat.dev/v2/rule"
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )

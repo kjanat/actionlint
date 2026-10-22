@@ -3,8 +3,8 @@ package wasmbudget
 import (
 	"testing"
 
-	"github.com/partite-ai/wacogo"
-	"github.com/partite-ai/wacogo/wasmparser"
+	"github.com/kjanat/wacogo"
+	"github.com/kjanat/wacogo/wasmparser"
 )
 
 func TestTablesReserveMaximumWithGrowthHeadroom(t *testing.T) {

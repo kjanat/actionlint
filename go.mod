@@ -9,11 +9,11 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/google/go-cmp v0.7.0
 	github.com/invopop/jsonschema v0.14.0
+	github.com/kjanat/wacogo v0.1.0
 	github.com/mattn/go-colorable v0.1.16
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mattn/go-runewidth v0.0.31
 	github.com/mattn/go-shellwords v1.0.16
-	github.com/partite-ai/wacogo v0.0.0-20261016032519-b3984dc3d485
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
@@ -36,15 +36,13 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/kjanat/go-modules v0.7.1 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
-	go.bytecodealliance.org v0.7.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 )
 
-replace github.com/partite-ai/wacogo => github.com/kjanat/wacogo v0.0.0-20261021204442-5e1c0d4aa136
-
-tool github.com/partite-ai/wacogo/cmd/wacogo-witgen
+tool github.com/kjanat/wacogo/cmd/wacogo-witgen
 
 ignore (
 	node_modules

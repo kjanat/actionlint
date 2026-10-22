@@ -4,7 +4,7 @@ package wasmbudget
 import (
 	"fmt"
 
-	"github.com/partite-ai/wacogo"
+	"github.com/kjanat/wacogo"
 )
 
 // Tables reserves declared maxima, including room for old backing storage,
