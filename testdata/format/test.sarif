@@ -579,7 +579,7 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-interpolation"
               },
               "fullDescription": {
-                "text": "Detect template values that may change script syntax. Unknown string values are checked independently of attacker control. Boolean and numeric values require a proved script data position; constrained literal strings have a separate character-based check."
+                "text": "Detect template values that may change script syntax. Unknown strings are checked independently of attacker control. Constrained, nonempty literal strings can be used as shell words; empty and all-decimal strings need a proved data-argument position. Booleans, numeric values, optional matrix members, numeric identifiers, SHA values, and hashFiles results also require that position."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#script-interpolation",
               "help": {
