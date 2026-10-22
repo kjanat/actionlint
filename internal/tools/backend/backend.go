@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"actionlint.kjanat.dev/analyzer"
 	"actionlint.kjanat.dev/diagnostic"
@@ -236,6 +238,32 @@ func scriptShell(script tools.Script) string {
 	if shell == "" && script.Shell != nil {
 		shell = *script.Shell
 	}
-	command, _, _ := strings.Cut(shell, " ")
+	command := shellCommand(shell)
 	return strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
+}
+
+func shellCommand(shell string) string {
+	shell = strings.TrimSpace(shell)
+	if shell == "" {
+		return ""
+	}
+	if quote := shell[0]; quote == '"' || quote == '\'' {
+		end := strings.IndexByte(shell[1:], quote)
+		if end < 0 {
+			return ""
+		}
+		end++
+		if end+1 < len(shell) {
+			next, _ := utf8.DecodeRuneInString(shell[end+1:])
+			if !unicode.IsSpace(next) {
+				return ""
+			}
+		}
+		return shell[1:end]
+	}
+	end := strings.IndexFunc(shell, unicode.IsSpace)
+	if end < 0 {
+		return shell
+	}
+	return shell[:end]
 }

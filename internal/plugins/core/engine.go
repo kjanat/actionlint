@@ -315,6 +315,10 @@ func (e *Engine) negotiate(raw []byte) error {
 	if err := analyzer.ValidateScriptInputs(metadata.Capabilities.ScriptInputs); err != nil {
 		return fmt.Errorf("metadata input selectors: %w", err)
 	}
+	for i, shell := range metadata.Capabilities.ScriptShells {
+		// Legacy core metadata accepted executable casing and Windows suffixes.
+		metadata.Capabilities.ScriptShells[i] = strings.TrimSuffix(strings.ToLower(shell), ".exe")
+	}
 	if metadata.Interfaces == nil {
 		metadata.Interfaces = map[string][]Interface{"check": {{1, "check"}}, "validate_config": {{1, "validate_config"}}, "metadata": {{1, "metadata"}}}
 	}

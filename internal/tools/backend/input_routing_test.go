@@ -236,7 +236,7 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
 		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
 			calls++
-			if len(batch.Scripts) != 1 || batch.Scripts[0].Text != "print(1)" {
+			if len(batch.Scripts) != 2 || batch.Scripts[0].Text != "print(1)" || batch.Scripts[1].Text != "print(2)" {
 				t.Fatalf("explicit Python shell lost without execution facts: %+v", batch.Scripts)
 			}
 			return nil, nil
@@ -247,7 +247,11 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 		t.Fatal(err)
 	}
 	python, unadvertised := "python", "bash"
-	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: "print(1)", Shell: &python}, {Text: "echo no", Shell: &unadvertised}}})
+	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
+		{Text: "print(1)", Shell: &python},
+		{Text: "print(2)", Execution: tools.Execution{Shell: "\"C:\\Program Files\\Python\\python.exe\"\u2003{0}"}},
+		{Text: "echo no", Shell: &unadvertised},
+	}})
 	if err != nil || calls != 1 {
 		t.Fatalf("native route calls=%d err=%v", calls, err)
 	}

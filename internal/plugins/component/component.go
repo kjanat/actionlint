@@ -169,9 +169,8 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		if descriptor.Name == "" {
 			return errors.New("plugin describes itself with an empty name")
 		}
-		if strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, ",\r\n") ||
-			strings.Contains(descriptor.Name, " -- ") || strings.HasSuffix(descriptor.Name, " --") {
-			return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", descriptor.Name)
+		if err := validateSuppressionRuleName(descriptor.Name); err != nil {
+			return err
 		}
 		p.descriptor = descriptor
 	}
@@ -199,6 +198,14 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		}
 	}
 
+	return nil
+}
+
+func validateSuppressionRuleName(name string) error {
+	if strings.TrimSpace(name) != name || strings.ContainsAny(name, ",\r\n") ||
+		strings.Contains(name, " -- ") || strings.HasSuffix(name, " --") {
+		return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", name)
+	}
 	return nil
 }
 

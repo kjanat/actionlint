@@ -293,6 +293,9 @@ func liftScriptDescriptor(value wacogo.Val) (analyzer.ScriptEngineDescriptor, er
 	if err != nil {
 		return d, err
 	}
+	if err := validateSuppressionRuleName(d.Rule.Name); err != nil {
+		return d, err
+	}
 	if d.Rule.Name != d.Engine || d.Rule.Provider != d.ID {
 		return d, errors.New("script rule identity disagrees with its engine descriptor")
 	}

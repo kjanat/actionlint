@@ -68,6 +68,67 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 	}
 }
 
+func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
+	p := loadScriptFixture(t)
+	results, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := liftRecord(results[0], "script descriptor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name  string
+		valid bool
+	}{
+		{"no,sudo", false}, {"no -- x", false}, {"name --", false},
+		{" no-sudo", false}, {"no-sudo ", false}, {"no\nsudo", false},
+		{"no-sudo", true}, {"NO.SUDO", true}, {"org/foo", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			descriptor, err := scriptDescriptorWithRuleName(original, test.name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = liftScriptDescriptor(descriptor)
+			if (err == nil) != test.valid {
+				t.Fatalf("name=%q valid=%v: %v", test.name, test.valid, err)
+			}
+		})
+	}
+}
+
+func scriptDescriptorWithRuleName(original *wacogo.ValRecord, name string) (wacogo.Val, error) {
+	rule, err := liftRecord(original.Field("rule"), "script rule descriptor")
+	if err != nil {
+		return nil, err
+	}
+	ruleValue := wacogo.NewValRecord(
+		field("name", wacogo.ValString(name)),
+		field("description", rule.Field("description")),
+		field("category", rule.Field("category")),
+		field("subcategory", rule.Field("subcategory")),
+		field("maturity", rule.Field("maturity")),
+		field("provider", rule.Field("provider")),
+		field("explanation", rule.Field("explanation")),
+		field("help", rule.Field("help")),
+		field("documentation-url", rule.Field("documentation-url")),
+		field("recommended", rule.Field("recommended")),
+		field("options-schema", rule.Field("options-schema")),
+		field("examples", rule.Field("examples")),
+	)
+	return wacogo.NewValRecord(
+		field("id", original.Field("id")),
+		field("version", original.Field("version")),
+		field("name", original.Field("name")),
+		field("engine", wacogo.ValString(name)),
+		field("engine-version", original.Field("engine-version")),
+		field("shells", original.Field("shells")),
+		field("rule", ruleValue),
+	), nil
+}
+
 func loadScriptFixture(t *testing.T) *Plugin {
 	t.Helper()
 	p, err := Load(t.Context(), "testdata/plugins/script-engine.wasm", Options{})
