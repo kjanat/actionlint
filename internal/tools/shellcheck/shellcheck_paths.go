@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 func (run *shellcheckRun) prepareConfigPath() error {

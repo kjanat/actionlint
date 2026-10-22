@@ -1,4 +1,4 @@
-module actionlint.kjanat.dev
+module actionlint.kjanat.dev/v2
 
 go 1.27.0
 
@@ -45,3 +45,8 @@ require (
 replace github.com/partite-ai/wacogo => github.com/kjanat/wacogo v0.0.0-20261021204442-5e1c0d4aa136
 
 tool github.com/partite-ai/wacogo/cmd/wacogo-witgen
+
+ignore (
+	node_modules
+	target
+)

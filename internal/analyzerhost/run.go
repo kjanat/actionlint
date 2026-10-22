@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Run isolates each analyzer's input and joins all started work. Results and

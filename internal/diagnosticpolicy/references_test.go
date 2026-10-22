@@ -3,11 +3,11 @@ package diagnosticpolicy
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {

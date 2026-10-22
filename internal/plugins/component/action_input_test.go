@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 func TestInputOnlyScriptMetadata(t *testing.T) {

@@ -9,11 +9,60 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/tools"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
+
+func TestPluginFallbackRespectsDocumentBackend(t *testing.T) {
+	fallbackCalls, configuredCalls := 0, 0
+	fallback := testBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+		fallbackCalls++
+		return nil, nil
+	})
+	configured := testBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+		configuredCalls++
+		return nil, nil
+	})
+	registration, err := (Options{Command: "ruff"}).Registration().WithBackend(fallback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := tools.Context{Processes: analyzerhost.NewProcessPool(t.Context(), 1), LoadEngine: func(_ context.Context, path string) (analyzer.ScriptBackend, error) {
+		if path != "configured.wasm" {
+			t.Fatalf("unexpected module: %s", path)
+		}
+		return configured, nil
+	}}
+	runner, err := registration.Build(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{}
+	cfg.Tools.Ruff.Backend = &toolconfig.Backend{Wasm: &toolconfig.Module{Path: "configured.wasm"}}
+	pos, python := &workflowlang.Pos{Line: 1, Col: 1}, "python"
+	for _, settings := range []*config.Config{nil, cfg, nil} {
+		_, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Config: settings, Text: "print(1)", Key: pos, Value: pos, Shell: &python}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if fallbackCalls != 2 || configuredCalls != 1 {
+		t.Fatalf("fallback=%d configured=%d", fallbackCalls, configuredCalls)
+	}
+	cfg.Tools.Ruff.Backend = &toolconfig.Backend{Process: &toolconfig.Command{Executable: filepath.Join(t.TempDir(), "missing-ruff")}}
+	ctx.Config = cfg
+	if needed, err := registration.NeedsProcess(cfg, nil, false); err != nil || !needed || !registration.Required(ctx) {
+		t.Fatalf("explicit process must be required: needed=%t err=%v", needed, err)
+	}
+	if _, err := registration.Build(ctx); err == nil {
+		t.Fatal("missing explicitly configured process silently used plugin")
+	}
+}
 
 func TestRuffAnalyzerCompletesBeforeReturning(t *testing.T) {
 	var workers sync.WaitGroup

@@ -9,25 +9,36 @@ settings.
 
 ```yaml
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
-self-hosted-runner:
-  labels: [linux.2xlarge, windows-latest-xl]
-config-variables: [DEFAULT_RUNNER, ENVIRONMENT_STAGE]
-config-secrets: [DEPLOY_TOKEN]
-assume-default-permissions: restricted
-paths:
-  .github/workflows/**/*.{yml,yaml}:
-    ignore:
+lint:
+  rules:
+    correctness:
+      runner-label:
+        level: default
+        options: { labels: [linux.2xlarge, windows-latest-xl] }
+      expression-reference:
+        level: default
+        options:
+          variables: [DEFAULT_RUNNER, ENVIRONMENT_STAGE]
+          secrets: [DEPLOY_TOKEN]
+      workflow-call:
+        level: default
+        options: { default-permissions: restricted }
+  message-ignores:
+    ".github/workflows/**/*.{yml,yaml}":
       - "shellcheck reported issue in this script: SC2086:.+"
 ```
 
-| Key                          | Purpose                                                                                                                                                         |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins`                    | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry).  |
-| `self-hosted-runner.labels`  | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                                |
-| `config-variables`           | Allowed `vars` names. Omitted or `null` disables the check; `[]` allows none.                                                                                   |
-| `config-secrets`             | Allowed secret names, case-insensitive. Omitted or `null` disables the check; `[]` allows only built-in and declared `workflow_call` secrets.                   |
-| `assume-default-permissions` | Assumed repository token default for reusable calls without explicit permissions: `restricted` (default) or `permissive`. Neither implicitly grants `id-token`. |
-| `paths`                      | Repository-relative [glob patterns][doublestar], using `/`. Each `ignore` list contains regular expressions matched against diagnostic messages.                |
+| Key                                                                | Purpose                                                                                                                                                        |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins`                                                          | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
+| `lint.rules.correctness.runner-label.options.labels`               | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                               |
+| `lint.rules.correctness.expression-reference.options.variables`    | Allowed `vars` names. Omitted or `null` disables checking; `[]` allows none.                                                                                   |
+| `lint.rules.correctness.expression-reference.options.secrets`      | Allowed secret names, case-insensitive. Omitted or `null` disables checking; `[]` allows only built-in and declared `workflow_call` secrets.                   |
+| `lint.rules.correctness.workflow-call.options.default-permissions` | Assumed repository token default: `restricted` (default) or `permissive`. Neither implicitly grants `id-token`.                                                |
+| `lint.message-ignores`                                             | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                              |
+
+Older root settings are converted at the parsing boundary. Use
+[`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
 
 ### JSON and TOML
 
@@ -37,14 +48,21 @@ file may carry a top-level `$schema` key. TOML editors take the schema from a `#
 ```toml
 #:schema ../node_modules/@kjanat/actionlint/actionlint.schema.json
 
-config-variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
-config-secrets   = ["DEPLOY_TOKEN"]
+[lint.rules.correctness.runner-label]
+level = "default"
 
-[self-hosted-runner]
+[lint.rules.correctness.runner-label.options]
 labels = ["linux.2xlarge", "windows-latest-xl"]
 
-[paths.".github/workflows/**/*.{yml,yaml}"]
-ignore = ["shellcheck reported issue in this script: SC2086:.+"]
+[lint.rules.correctness.expression-reference]
+level = "default"
+
+[lint.rules.correctness.expression-reference.options]
+variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
+secrets   = ["DEPLOY_TOKEN"]
+
+[lint.message-ignores]
+".github/workflows/**/*.{yml,yaml}" = ["shellcheck reported issue in this script: SC2086:.+"]
 ```
 
 Errors and warnings name the line and column in the file as written.
@@ -63,8 +81,8 @@ Use a source-commit schema when trying unreleased settings; `HEAD` changes with 
 The full editor experience works in a real config file. YAML inside the Action
 `config` string is validated at runtime; editors generally see only a string.
 The schema rejects unknown keys. Runtime parsing warns about ignored keys at the
-top level, in `self-hosted-runner`, and in `paths` entries, with their locations
-and accepted alternatives. New inline overlays reject unknown keys. Regex and glob
+top level and in legacy sections, with their locations and accepted alternatives.
+Rule options and inline overlays reject unknown keys. Regex and glob
 validity is checked when actionlint loads the file.
 
 ## Extending configuration
@@ -169,14 +187,14 @@ by `all` or their group level, but not by `recommended`. Nursery rules need
 an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false`
 suppresses all lint diagnostics. Configuration, I/O and other operational errors remain fatal.
 
-Resolution order is: existing defaults/legacy policy settings, global preset,
+Resolution order is: rule defaults, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
 lists. File overrides are merged before that resolution. `--experimental=false`
 is an explicit exclusion of nursery rules only. `--strict` selects all stable
-rules but respects group and individual exceptions. Existing top-level `policy`
-settings remain supported; `lint.rules` settings take precedence. The cache safety
-checks are classified under security (and cache-operation under correctness);
-their legacy configuration paths remain compatible.
+rules but respects group and individual exceptions. Legacy `policy` settings
+are migrated to explicit levels, so explicit disables now survive presets and
+`--strict`. Conflicting old and current values in one document are errors.
+Cache safety checks belong to security, with cache-operation under correctness.
 
 Severity is carried through JSON, SARIF and GitHub annotations. As before, the CLI
 exits nonzero for any reported finding, including warnings and informational
@@ -254,11 +272,14 @@ Each file gets its own effective configuration, without changing other files.
 
 Ruff checks Python scripts selected by `shell: python`, `shell: python3`, or a
 custom command beginning with either interpreter, including workflow/job shell
-defaults and local composite actions. The CLI discovers Ruff on `PATH` and skips
-it when unavailable. `--no-ruff` disables it. A bare `--ruff` explicitly selects
-`ruff` on `PATH`. `--ruff=/path/to/ruff` selects a binary.
-`--ruff='python -m ruff'` runs Ruff through a Python module launcher.
-It never installs tools or executes Python scripts.
+defaults and local composite actions. New configurations and eligible legacy
+migrations declare the `ruff` Wasm plugin; normal checking loads its exact pinned
+artifact. See [plugin installation](plugins.md#install-from-the-registry).
+`--no-ruff` disables Ruff. Native execution remains available: a bare `--ruff`
+explicitly selects `ruff` on `PATH`, `--ruff=/path/to/ruff` selects a binary, and
+`--ruff='python -m ruff'` uses a Python module launcher. Without a selected plugin
+or explicit backend, the CLI retains optional `PATH` discovery and skips Ruff
+when unavailable. It never executes the Python scripts being checked.
 
 ```yaml
 tools:
@@ -307,16 +328,20 @@ The Go library opts in with `analysis.Options.Ruff`, selecting either a
 See [the library API](api.md#script-engine-backends) for cancellation, configuration
 and backend lifetime requirements.
 The GitHub Action's `ruff` input defaults to `true`.
-The Action installs Ruff when enabled and required by the effective configuration.
-It reuses a binary on `PATH`, then its cache, then a checksum-verified release download.
+It enables the configured Ruff plugin; the Action does not install native Ruff
+or add it to `PATH`. The default `plugin-cache: true` restores and saves the
+selected Wasm artifact bytes, keyed by operating system and exact digests.
+Restored bytes are verified before execution. See [Action caching](plugins.md#github-action-caching).
 The browser playground cannot run external tools.
 
 ## Tool execution backends
 
 Engine configuration and execution are separate. `tools.<name>.config` configures
 checks; `tools.<name>.backend` selects how the engine runs. `process` invokes a native
-executable and `wasm` loads a core WebAssembly engine in-process. Library callers may
-also supply an engine backend without an executable.
+executable and `wasm` loads a typed script-engine component or a legacy core engine
+in-process. Prefer root `plugins` declarations for registry-managed dependencies;
+explicit backends are useful for a native tool or a directly selected script
+engine. Library callers may also supply an engine backend without an executable.
 
 ```yaml
 tools:
@@ -331,7 +356,7 @@ tools:
   ruff:
     backend:
       wasm:
-        path: ./tools/actionlint-plugin-ruff.wasm.gz
+        path: ./tools/plugin.component.wasm.gz
     config:
       lint: { extend-select: [B, S] }
 ```
@@ -353,13 +378,22 @@ overrides. Without host opt-in, actionlint reports the selected process backend 
 an operational error before launching it. Explicit CLI, environment and library
 process selections already authorize their own executable.
 
-A `wasm` module follows the [actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff)
-JSON ABI, version 1, raw or gzip-compressed, and its path resolves like an executable path.
-actionlint checks the module's exports and metadata when it loads, compiles it once per run,
-and keeps the machine code under the user cache directory in `actionlint/wazero`. Each call
-runs under a 256 MiB memory limit and a 10 second time limit; a trap or an exceeded limit
-fails that document's analysis. An explicit `--ruff` command, including an empty one, still
-takes precedence over the repository's `wasm` backend. See [Plugins](plugins.md#script-engines).
+A `wasm` backend accepts a component implementing the typed `script-engine`
+interface or a core module implementing the version 1 JSON ABI. A document-only
+analyzer, such as the official ShellCheck component, belongs in root `plugins`,
+not `tools.shellcheck.backend.wasm`. Artifacts can be raw or gzip-compressed.
+Local paths resolve from the declaring configuration file; remote execution
+requires a `#sha256=` pin covering the downloaded bytes, including compression.
+
+actionlint validates exports and metadata before registering the engine. Component
+calls default to 64 MiB of guest memory and a 10-second limit; core calls default
+to 256 MiB and 10 seconds. Traps and exceeded limits fail that document's analysis.
+Core engines cache compiled code under the user cache directory in
+`actionlint/wazero`; downloaded artifacts use the separate verified artifact cache.
+An explicit `--ruff` command, including an empty one, takes precedence over a
+configured `tools.ruff.backend.wasm`. Selecting a Ruff plugin and an explicit
+competing command/backend is rejected; select one execution source.
+See [script engines](plugins.md#script-engines) for lifecycle and Go APIs.
 
 The pinning rule supports scoped exceptions without suppressing other action checks:
 
@@ -414,8 +448,17 @@ tools:
 ```
 
 `tools: {shellcheck: false}` disables ShellCheck; `true` enables it. The default is
-enabled when the executable is available. This setting does not install it or
-override an empty CLI ShellCheck command or the Action's `shellcheck: false` input.
+enabled for the selected plugin or available native executable. New configurations
+and eligible legacy migrations select the official ShellCheck Wasm plugin. This
+boolean alone does not install a dependency or override an empty CLI ShellCheck
+command or the Action's `shellcheck: false` input.
+
+The official registry plugin accepts individual disabled codes and optional check
+names through these settings. Explicit rc files, source paths, enabled external
+source access, disabled-code ranges or `all` retain native execution; provide that
+executable yourself. The isolated component cannot read repository source files.
+To select a native process explicitly, use `tools.shellcheck.backend.process` or
+`--shellcheck=/path/to/shellcheck`.
 
 `config` accepts the inline settings below, an rc-file path, or a directory in
 which `.shellcheckrc`, then `shellcheckrc`, is searched. Rc discovery is otherwise
@@ -461,10 +504,8 @@ happens once. In workflow inputs, GitHub evaluates expressions first; pass a lit
 with `${{ '${{ configdir }}/.shellcheckrc' }}` when needed.
 
 The Action's `config` input overlays these settings: lists replace, boolean shorthand
-changes only `enabled`, and `null` restores defaults. `shellcheck-args` uses native
-ShellCheck precedence. The separate `shellcheck-rc` input accepts `true`, `false`
-or an absolute/Action-working-directory-relative rc path, without interpolation. It overrides rc
-selection; `false` leaves inline settings active.
+changes only `enabled`, and `null` restores defaults. Configure ShellCheck through
+`tools.shellcheck.config`; the Action forwards those options to the configured plugin.
 
 Inline settings use a separate [ShellCheck 0.11.0 schema][shellcheck-schema].
 That schema version does not pin the installed executable; optional checks depend
@@ -526,9 +567,10 @@ defaults. Relative composite working directories start at the workspace root;
 
 ## Policy checks
 
-The three cache policies below default to enabled. Other policies are opt-in.
-Omitted or `null` values keep defaults; `false` disables a boolean policy and `[]`
-disables `required-actions`. `policy: {}` does not disable cache checks.
+The three cache checks below default to enabled. Cache safety checks belong to
+`lint.rules.security`; `cache-operation` belongs to `lint.rules.correctness`.
+Other policies are opt-in under `lint.rules.policy`. Omitted rules and `level: default`
+keep defaults; `level: off` explicitly disables a rule, including under `--strict`.
 Policy names also identify their diagnostics.
 
 ### cache-call-unrestricted
@@ -537,7 +579,8 @@ Requires an explicit cache ceiling at reusable calls on low-trust triggers, set 
 the job or inherited from the workflow. Use `cache-mode: read` or `none` to cap
 the callee. A write-capable declaration satisfies this check but may trigger
 `cache-write-untrusted`. Applies to local and remote calls without downloading
-remote workflow bodies. Disable with `policy: {cache-call-unrestricted: false}`.
+remote workflow bodies. Disable with
+`lint: {rules: {security: {cache-call-unrestricted: off}}}`.
 
 ### cache-operation
 
@@ -552,7 +595,7 @@ Reports official cache actions disabled by the effective explicit cache mode:
 Follows inherited ceilings through local reusable workflows. Inherited violations
 are reported at the caller's `uses`; explicit callee modes are checked in the
 callee. Omitted modes, custom wrappers and remote bodies are not guessed.
-Disable with `policy: {cache-operation: false}`.
+Disable with `lint: {rules: {correctness: {cache-operation: off}}}`.
 
 ### cache-write-untrusted
 
@@ -567,7 +610,7 @@ Checked triggers: `branch_protection_rule`, `check_run`, `check_suite`, `deploym
 `image_version`, `issue_comment`, `issues`, `label`, `milestone`, `public`,
 `pull_request_target`, `status`, `watch` and `workflow_run`.
 See [cache checks](checks.md#cache-safety-policies) for diagnostic examples.
-Disable with `policy: {cache-write-untrusted: false}`.
+Disable with `lint: {rules: {security: {cache-write-untrusted: off}}}`.
 
 ### Local action source mappings
 
@@ -655,14 +698,18 @@ I/O and tool-launch failures remain operational errors and cannot be suppressed.
 
 ### disallow-suppressions
 
-`policy: {disallow-suppressions: true}` prohibits inline and configured exceptions.
+`lint.rules.policy.disallow-suppressions: on` prohibits inline and configured exceptions.
 To select rules and output:
 
 ```yaml
-policy:
-  disallow-suppressions:
-    rules: [cache-call-unrestricted, cache-write-untrusted]
-    report: all
+lint:
+  rules:
+    policy:
+      disallow-suppressions:
+        level: on
+        options:
+          rules: [cache-call-unrestricted, cache-write-untrusted]
+          report: all
 ```
 
 | `report`        | Prohibited directive | Original finding |
@@ -671,35 +718,39 @@ policy:
 | `suppression`   | Reported             | Suppressed       |
 | `violation`     | Not reported         | Retained         |
 
-`true` or `{}` selects all supported diagnostic rules; explicit `rules` must be nonempty.
-Omission, `null` or `false` permits exceptions. The policy cannot exempt itself,
+`on` without options selects all supported diagnostic rules; explicit `options.rules` must be nonempty.
+Omission or `off` permits exceptions. The policy cannot exempt itself,
 enable a disabled rule or override CLI/path ignores. `all` and `suppression` report
 prohibited inline directives even when no underlying finding exists. Configured
 exceptions are reported when they match a finding.
 
 ### require-commit-hash
 
-`policy: {require-commit-hash: true}` requires 40- or 64-digit hexadecimal refs for
+`lint.rules.policy.require-commit-hash: on` requires 40- or 64-digit hexadecimal refs for
 actions/reusable workflows and digests for `docker://` images. Local `./` and `$/`
 references and unresolved expressions are skipped.
 
 ### require-job-timeout
 
-`policy: {require-job-timeout: true}` requires `timeout-minutes` on jobs running
+`lint.rules.policy.require-job-timeout: on` requires `timeout-minutes` on jobs running
 steps. Reusable-call jobs are excluded. Optional inclusive bounds:
 
 ```yaml
-policy:
-  require-job-timeout: { min-minutes: 5, max-minutes: 60 }
+lint:
+  rules:
+    policy:
+      require-job-timeout:
+        level: on
+        options: { min-minutes: 5, max-minutes: 60 }
 ```
 
 Either bound may be omitted; both must be finite and positive, with minimum no
-greater than maximum. `{}` requires the key only. Expression values are not compared.
+greater than maximum. Omitted options require the key only. Expression values are not compared.
 
 ### require-permissions
 
-`policy: {require-permissions: true}` requires workflow-level `permissions`, as do
-`{}` and `{scope: workflow}`. Use `{scope: job}` to require it on every job,
+`lint.rules.policy.require-permissions: on` requires workflow-level `permissions`.
+Use `{level: on, options: {scope: job}}` to require it on every job,
 including reusable calls. Empty mappings, named scopes, `read-all` and `write-all`
 all satisfy the check. This policy only requires a declaration; it does not assess
 least privilege.
@@ -707,8 +758,12 @@ least privilege.
 ### required-actions
 
 ```yaml
-policy:
-  required-actions: [actions/checkout, my-org/security-scan@v2*]
+lint:
+  rules:
+    policy:
+      required-actions:
+        level: on
+        options: { actions: [actions/checkout, "my-org/security-scan@v2*"] }
 ```
 
 Patterns match action names case-insensitively and refs case-sensitively; `*` does

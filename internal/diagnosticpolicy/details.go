@@ -4,9 +4,9 @@ import (
 	"maps"
 	"path/filepath"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/rulecatalog"
-	"actionlint.kjanat.dev/internal/sourceid"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
 func CompleteDiagnostic(d *diagmodel.Diagnostic, content []byte, path string) {

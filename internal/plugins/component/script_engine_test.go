@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 	"github.com/partite-ai/wacogo"
 )
 

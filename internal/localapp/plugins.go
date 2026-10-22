@@ -8,17 +8,18 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/analyzer"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/internal/plugins/component"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/analyzer"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
+	"actionlint.kjanat.dev/v2/runner"
 )
 
 type loadedPlugins struct {
-	plugins []*component.Plugin
-	engines []scriptEngineRegistration
-	core    []*corewasm.Engine
+	plugins         []*component.Plugin
+	analyzerSources map[string]*component.Plugin
+	engines         []scriptEngineRegistration
+	core            []*corewasm.Engine
 }
 
 type scriptEngineRegistration struct {
@@ -27,8 +28,12 @@ type scriptEngineRegistration struct {
 }
 
 func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool) (*loadedPlugins, error) {
-	loaded := &loadedPlugins{}
+	loaded := &loadedPlugins{analyzerSources: map[string]*component.Plugin{}}
 	for _, path := range paths {
+		source := path
+		if err := pluginartifact.RequireRemotePin(path); err != nil {
+			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
+		}
 		artifact, err := pluginartifact.Resolve(ctx, path, artifactOptions())
 		if err != nil {
 			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
@@ -64,6 +69,9 @@ func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool)
 			_, _ = fmt.Fprintf(log, "[Linter] Loaded component from %s (%s)\n", path, plugin.Limits())
 		}
 		loaded.plugins = append(loaded.plugins, plugin)
+		if plugin.HasAnalyzer() {
+			loaded.analyzerSources[source] = plugin
+		}
 		if plugin.HasScriptEngine() {
 			loaded.engines = append(loaded.engines, scriptEngineRegistration{plugin, plugin.ScriptDescriptor()})
 		}
@@ -111,6 +119,9 @@ func (l *loadedPlugins) close(ctx context.Context) error {
 // with the same artifact verification and lifecycle for every native entrypoint.
 func ScriptEngineLoader(log io.Writer, debug bool) func(context.Context, string) (analyzer.ScriptBackend, error) {
 	return func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
+		if err := pluginartifact.RequireRemotePin(path); err != nil {
+			return nil, err
+		}
 		artifact, err := pluginartifact.Resolve(ctx, path, artifactOptions())
 		if err != nil {
 			return nil, err

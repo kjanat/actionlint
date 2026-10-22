@@ -1,8 +1,8 @@
 package finding
 
 import (
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 // Canonical resolves source extents and fix paths into the public diagnostic contract.

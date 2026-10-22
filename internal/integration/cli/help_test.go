@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
 	"github.com/fatih/color"
 )
 
@@ -217,7 +217,7 @@ func TestCommandJSONHelpAndVersion(t *testing.T) {
 	if err := json.Unmarshal([]byte(got.Stdout), &info); err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != 0 || got.Stderr != "" || info.Name != "actionlint.kjanat.dev" || info.Version != buildinfo.Version() || info.InstalledFrom != buildinfo.InstalledFrom() || info.GoVersion != runtime.Version() || info.OS != runtime.GOOS || info.GOARCH != runtime.GOARCH {
+	if got.Status != 0 || got.Stderr != "" || info.Name != "actionlint.kjanat.dev/v2" || info.Version != buildinfo.Version() || info.InstalledFrom != buildinfo.InstalledFrom() || info.GoVersion != runtime.Version() || info.OS != runtime.GOOS || info.GOARCH != runtime.GOARCH {
 		t.Fatalf("%+v", got)
 	}
 }

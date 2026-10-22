@@ -6,15 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import {
-	createReleaseCommit,
-	pinPreCommitImage,
-	preCommitHooks,
-	prepareRelease,
-	recordRelease,
-	showBytes,
-	sourceRoot,
-} from './build-action-release.mjs';
+import { createReleaseCommit, prepareRelease, recordRelease, showBytes, sourceRoot } from './build-action-release.mjs';
 
 export const workflowPath = '.github/workflows/release-prepare.yml';
 export const manifestName = 'release-candidate.json';
@@ -261,18 +253,13 @@ export async function verifyCandidate(root, directory, manifest) {
 		throw new Error('Candidate tree differs');
 	}
 	const changed = git(root, 'diff-tree', '--no-commit-id', '--name-status', '-r', manifest.source, manifest.candidate);
-	if (changed !== `M\t${preCommitHooks}\nA\tSHA256SUMS\nA\taction.mjs`) {
+	if (changed !== 'A\tSHA256SUMS\nA\taction.mjs') {
 		throw new Error('Candidate changed source files or omitted the bundle');
 	}
-	for (const name of ['action.mjs', 'SHA256SUMS', preCommitHooks]) {
+	for (const name of ['action.mjs', 'SHA256SUMS']) {
 		if (!git(root, 'ls-tree', manifest.candidate, '--', name).startsWith('100644 blob ')) {
 			throw new Error(`Invalid candidate file mode: ${name}`);
 		}
-	}
-	const sourceHooks = showBytes(root, `${manifest.source}:${preCommitHooks}`).toString('utf8');
-	const candidateHooks = showBytes(root, `${manifest.candidate}:${preCommitHooks}`).toString('utf8');
-	if (candidateHooks !== pinPreCommitImage(sourceHooks, manifest.version)) {
-		throw new Error('Candidate pre-commit image pin differs');
 	}
 	const bundleBytes = showBytes(root, `${manifest.candidate}:action.mjs`);
 	const digest = sha256(bundleBytes);

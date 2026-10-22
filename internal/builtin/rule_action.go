@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	actioncheck "actionlint.kjanat.dev/internal/action/validation"
-	"actionlint.kjanat.dev/internal/actioncatalog"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/references"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
+	"actionlint.kjanat.dev/v2/internal/actioncatalog"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleAction is a rule to check running action in steps of jobs.

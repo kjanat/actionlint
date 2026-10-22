@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	configtree "actionlint.kjanat.dev/internal/config/tree"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -52,6 +52,17 @@ func (e *OverlayError) Unwrap() error { return e.cause }
 // the YAML/JSON value of one ConfigKeys entry. Unknown keys are rejected here;
 // existing config files retain their parsing behavior.
 func ParseOverlay(input string, content []byte, additional ...string) (Overlay, error) {
+	return parseOverlay(input, content, true, additional...)
+}
+
+// ParseOverlayBeforePlugins validates input structure and settings before plugin
+// rule names are available. Normal configuration resolution binds those names
+// after the selected plugins have loaded.
+func ParseOverlayBeforePlugins(input string, content []byte) (Overlay, error) {
+	return parseOverlay(input, content, false)
+}
+
+func parseOverlay(input string, content []byte, bindRules bool, additional ...string) (Overlay, error) {
 	var doc yaml.Node
 	d := yaml.NewDecoder(bytes.NewReader(content))
 	if err := d.Decode(&doc); err != nil {
@@ -67,7 +78,7 @@ func ParseOverlay(input string, content []byte, additional ...string) (Overlay, 
 	node := doc.Content[0]
 	if input != "config" {
 		known := false
-		for _, key := range Keys() {
+		for _, key := range append(Keys(), legacyKeys...) {
 			known = known || key == input
 		}
 		if !known {
@@ -77,6 +88,14 @@ func ParseOverlay(input string, content []byte, additional ...string) (Overlay, 
 			{Kind: yaml.ScalarNode, Tag: "!!str", Value: input}, node,
 		}}
 	}
+	if warnings := configWarnings(node, nil); len(warnings) != 0 {
+		return Overlay{}, fmt.Errorf("input %s: %s", input, warnings[0].Message)
+	}
+	var err error
+	node, err = NormalizeForMerge(node)
+	if err != nil {
+		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
+	}
 	var config Config
 	if err := node.Load(&config, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
@@ -84,10 +103,10 @@ func ParseOverlay(input string, content []byte, additional ...string) (Overlay, 
 	if len(config.Extends) > 0 {
 		return Overlay{}, fmt.Errorf("input %s: extends requires a config file origin", input)
 	}
-	if _, err := ResolveNode(node, nil, additional...); err != nil {
+	if _, err := resolveNode(node, nil, bindRules, additional...); err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
-	node, err := configtree.Expand(node, make(map[*yaml.Node]bool))
+	node, err = configtree.Expand(node, make(map[*yaml.Node]bool))
 	if err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
@@ -99,6 +118,22 @@ func ParseOverlay(input string, content []byte, additional ...string) (Overlay, 
 		}
 	}
 	return Overlay{input, normalizeToolSwitch(node)}, nil
+}
+
+// ResolveBeforePlugins merges already parsed overlays for dependency selection.
+// Only rule-name binding is deferred; it is repeated by the analysis session.
+func ResolveBeforePlugins(node *yaml.Node, overlays []Overlay) (Resolved, error) {
+	inputs := make(map[*yaml.Node]Input)
+	names := make([]string, 0, len(overlays))
+	for _, overlay := range overlays {
+		node = configtree.Merge(node, overlay.node, inputs)
+		names = append(names, overlay.name)
+	}
+	resolved, err := resolveNode(node, nil, false)
+	if err != nil && len(names) != 0 {
+		return Resolved{}, &OverlayError{names, err}
+	}
+	return resolved, err
 }
 
 type Loaded struct {

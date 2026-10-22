@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/langserver"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/langserver"
 )
 
 func TestEditorAnalysisRetainsDependencySources(t *testing.T) {

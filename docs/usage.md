@@ -323,8 +323,9 @@ check. `doctor` reports the selected config and resolves configured external-too
 commands without executing them. Its paths become clickable `file://` links when
 hyperlinks are enabled, with spaces and non-ASCII characters encoded in the target.
 Windows drive and UNC paths are supported. Missing optional tools are reported as unavailable;
-a malformed selected configuration returns exit status 3. Help, version, rules and
-completion do not load configuration or create a linter.
+a malformed selected configuration returns exit status 3. Help, version and
+completion do not load configuration or create a linter. Rules load selected plugin
+declarations without running analysis.
 
 ### Shell completion
 
@@ -672,7 +673,7 @@ jobs:
         with: { persist-credentials: false }
       - name: Download actionlint
         id: get_actionlint
-        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
         shell: bash
       - name: Check workflow files
         env: { actionlint: "${{ steps.get_actionlint.outputs.executable }}" }
@@ -685,7 +686,7 @@ Or simply download the executable and run it in one step:
 ```yaml
 - name: Check workflow files
   run: |
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
     ./actionlint -color
   shell: bash
 ```
@@ -749,7 +750,7 @@ Available tags are:
   Moving alias for the latest stable version of actionlint. This image is recommended.
 - `ghcr.io/kjanat/actionlint:{version}`:\
   Release-specific actionlint image rather than a moving alias.\
-  (e.g. `ghcr.io/kjanat/actionlint:1.17.0`)
+  (e.g. `ghcr.io/kjanat/actionlint:2.0.0`)
 
 The CLI image is also published to Docker Hub as `kjanat/actionlint:latest` and
 `kjanat/actionlint:{version}`. Both registries carry the same manifest, so pick
@@ -868,7 +869,7 @@ in the step of your workflow.
 - name: Check workflow files
   run: |
     echo "::add-matcher::.github/actionlint-matcher.json"
-    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
+    bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
     ./actionlint -color
   shell: bash
 ```
@@ -939,130 +940,52 @@ For a discussion of native hooks and the pre-commit framework, see
 
 ### pre-commit
 
-> [!NOTE]
-> The configuration below points directly at `kjanat/actionlint`. The
-> `actionlint` hook builds this fork, `actionlint-docker` pulls this fork's
-> image, and `actionlint-system` runs the `actionlint` executable on `PATH`.
-> `actionlint-shellcheck` builds this fork and installs ShellCheck next to it.
-> `actionlint-bundled` builds the selected source revision's Docker image with both ShellCheck and Ruff.
-
-[pre-commit][pre-commit] is a framework for managing and maintaining
-multi-language Git pre-commit hooks. actionlint is available as a pre-commit
-hook to check workflow files in the `.github/workflows/` directory.
-
-All hooks run `actionlint pre-commit` on every commit and check **all
-repository workflows**, even when the commit changes no workflow file. Changing
-or deleting a local action, a reusable workflow, or the actionlint configuration
-rechecks the unchanged workflows that use it. Pre-commit excludes deleted files
-from filename selection, so the hooks use `always_run: true` and
-`pass_filenames: false`.
-
-`actionlint pre-commit` exists for the hooks and stays out of `--help`. It
-passes a repository without workflow files, such as an action-only repository,
-and otherwise checks the nearest repository exactly like `actionlint` with no
-arguments. The `actionlint-system` hook needs an actionlint release that has
-this command. Between releases, the `actionlint-docker` hook on the `master`
-branch runs the `nightly` image; a release pins its own image tag. Docker reuses
-a cached `nightly` image, so run `docker pull ghcr.io/kjanat/actionlint:nightly`
-to pick up a newer build.
-
-Only local actions referenced by the checked workflows receive action-metadata
-validation. A missing local action is reported under `missing-local-action`.
-
-Add this to your `.pre-commit-config.yaml` in your repository:
+For v2, [pre-commit][pre-commit] hooks are published separately in
+[kjanat/actionlint-pre-commit](https://github.com/kjanat/actionlint-pre-commit).
+The first v2 hook release is pending; replace the placeholder below with a published
+tag from that repository before installing:
 
 ```yaml
----
 repos:
-  - repo: https://github.com/kjanat/actionlint
-    rev: v1.17.0
+  - repo: https://github.com/kjanat/actionlint-pre-commit
+    rev: <published-v2-tag>
     hooks:
       - id: actionlint
 ```
 
-As alternatives to `actionlint` hook, `actionlint-docker`, `actionlint-system`,
-`actionlint-shellcheck`, or `actionlint-bundled` hooks are available.
+The default `actionlint` hook installs an exact `actionlint-kjanat` wheel dependency
+in pre-commit's Python environment. The wheel contains the native host binary; no Go
+compiler or separate native ShellCheck/Ruff installer is needed. The project's
+[plugin declarations and lockfile](plugins.md) select and pin Wasm analyzers.
+Initialize or migrate those files with actionlint before committing them.
+
+The distribution also offers `actionlint-system` for an existing installation and
+`actionlint-docker` for its pinned published container. See the hook repository for
+platform support and release prerequisites.
+
+All hooks run `actionlint pre-commit` on every commit and check **all repository
+workflows**, including when only a local action, reusable workflow, or configuration
+is changed or deleted. They use `always_run: true` and `pass_filenames: false`.
+The native command succeeds when the repository has no workflows and otherwise
+performs ordinary repository analysis. Only referenced local actions receive
+metadata validation; missing actions report `missing-local-action`.
 
 #### Updating pre-commit hooks
 
-[`pre-commit autoupdate`](https://pre-commit.com/#pre-commit-autoupdate) picks a Git tag. It does not check whether
-that tag is a stable version or has a published GitHub release. Review the chosen tag before committing an update.
+Change the `repo:` URL explicitly when migrating from v1: `pre-commit autoupdate`
+does not move a configuration to another repository. Old immutable v1 hook revisions
+remain available at the old URL. See [v2 migration](migration-v2.md).
 
-These workarounds address the non-release updates reported in
-[kjanat/actionlint#192](https://github.com/kjanat/actionlint/issues/192) and the documentation request in
-[kjanat/actionlint#194](https://github.com/kjanat/actionlint/issues/194). A downstream guard was added in
-[lfreleng-actions/actions-template#251](https://github.com/lfreleng-actions/actions-template/pull/251).
-
-[pre-commit/pre-commit#3759](https://github.com/pre-commit/pre-commit/issues/3759) proposed letting each hook
-repository declare an allowed tag pattern in its manifest. `autoupdate` would read it from the pinned revision,
-filter candidate tags, then use its existing selection logic. Leaving the setting unset would keep the current
-behavior. Named release channels, such as stable and beta, were suggested as a later extension.
-
-For manual updates, set `rev` to a published `vX.Y.Z` release. Alternatively, use `actionlint-system` and update the
-installed binary yourself.
-
-Use `--freeze` to store a commit hash in `rev`. The chosen tag stays in a `# frozen:` comment:
+After the first v2 hook release, update within the dedicated repository:
 
 ```sh
-pre-commit autoupdate --freeze --repo https://github.com/kjanat/actionlint
+pre-commit autoupdate --freeze --repo https://github.com/kjanat/actionlint-pre-commit
 ```
 
-`--freeze` does not change which tag is chosen. Add this guard to your `repos` list to reject frozen-tag comments
-unless they use the format `X.Y.Z` or `vX.Y.Z`:
-
-```yaml
-- repo: local
-  hooks:
-    - id: frozen-revs-are-release-tags
-      name: Frozen revisions use stable release tags
-      language: pygrep
-      entry: '#[ \t]*frozen:(?![ \t]*v?[0-9]+\.[0-9]+\.[0-9]+[ \t]*\r?$)'
-      files: '^\.pre-commit-config\.ya?ml$'
-```
-
-The guard checks all frozen-tag comments in the file. Adjust it if other hooks use different version formats.
-You still need to check that the selected tag has a published release and matches the pinned commit.
-
-#### Hook installation
-
-| Hook ID                 | Explanation                                                                                                                                                                                                                                               |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `actionlint`            | Automatically installs `actionlint` command in isolated `$GOPATH` directory using [Go toolchain][go-install].                                                                                                                                             |
-| `actionlint-docker`     | Automatically pulls [the actionlint Docker image](#docker).                                                                                                                                                                                               |
-| `actionlint-bundled`    | Builds this revision's Dockerfile, bundling ShellCheck and Ruff. Requires Docker; no host Go, Python, ShellCheck, or Ruff installation is needed.                                                                                                         |
-| `actionlint-system`     | Uses system-installed `actionlint` command. The command is necessary to be [installed manually](install.md).                                                                                                                                              |
-| `actionlint-shellcheck` | Same as `actionlint`, and additionally installs [rshellcheck][shellcheck-rs], the native Rust port of ShellCheck, through its Go installer so [the shellcheck integration](checks.md#check-shellcheck-integ) works without a host-installed `shellcheck`. |
-
-The `actionlint` hook installs into an isolated `$GOPATH`, so ShellCheck and Ruff must already be on `PATH`.
-The `actionlint-shellcheck` hook installs ShellCheck but not Ruff. Go `additional_dependencies` cannot install
-Ruff's Python package, and a separate `ruff-pre-commit` hook does not share its environment with actionlint.
-Use `actionlint-bundled` to install both automatically: select a commit or release containing this hook and set
-`id: actionlint-bundled`. It builds the bundled image from that revision.
-
-`actionlint-shellcheck` pins the rshellcheck installer so each actionlint revision builds a
-reproducible pre-commit environment. The installer's module version selects the matching
-rshellcheck release. Its first run downloads that release's binary for the hook's platform,
-checks it against the release checksums and caches it in the user cache directory, so the
-first run needs network access to github.com. When `gh` is on `PATH` and signed in, the
-installer also verifies the release's build provenance with `gh attestation verify` and
-refuses an archive that fails. Every later run starts the native binary directly.
-rshellcheck reports its own diagnostics, such as SC9001 and SC9002, beside upstream's,
-and actionlint passes them through unchanged. The scheduled
-[Upkeep workflow](../.github/workflows/upkeep.yml) compares the pin with the latest rshellcheck
-release and its newest installer tag, including installer-only `-wrapper.N` releases, and
-proposes pin updates automatically. To choose a different version
-yourself, use `additional_dependencies` on the plain hook:
-
-```yaml
----
-repos:
-  - repo: https://github.com/kjanat/actionlint
-    rev: v1.17.0
-    hooks:
-      - id: actionlint
-        additional_dependencies:
-          - github.com/kjanat/shellcheck-rs/go/cmd/shellcheck@4698af259e9ac9b327d8b1e6e55d7ad17815e1db
-```
+Only completed stable hook releases receive tags in that repository; unrelated
+source, Action-channel, and development tags remain in the host repository.
+Review the selected release and commit the updated revision. A frozen revision pins
+the hook installation; `actionlint.plugins.lock.json` separately pins the project's plugins.
 
 ### VS Code
 
@@ -1152,7 +1075,7 @@ trunk check enable actionlint
 or if you'd like a specific version:
 
 ```bash
-trunk check enable actionlint@1.17.0
+trunk check enable actionlint@2.0.0
 ```
 
 or modify `.trunk/trunk.yaml` in your repository to contain:
@@ -1160,7 +1083,7 @@ or modify `.trunk/trunk.yaml` in your repository to contain:
 ```yaml
 lint:
   enabled:
-    - actionlint@1.17.0
+    - actionlint@2.0.0
 ```
 
 Then just run:
@@ -1209,7 +1132,6 @@ You can also see actionlint issues inline in VS Code via the [Trunk VS Code exte
 [reviewdog-actionlint]: https://github.com/reviewdog/action-actionlint
 [reviewdog]: https://github.com/reviewdog/reviewdog
 [sarif]: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
-[shellcheck-rs]: https://github.com/kjanat/shellcheck-rs
 [super-linter-env-var]: https://github.com/super-linter/super-linter#environment-variables
 [super-linter]: https://github.com/github/super-linter
 [trunk-docs]: https://docs.trunk.io/docs/check

@@ -3,7 +3,7 @@ package rulecatalog
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Examples are executable workflow documents. Engine tests check that the before

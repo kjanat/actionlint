@@ -5,11 +5,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	expr "actionlint.kjanat.dev/internal/expression"
-	contextspec "actionlint.kjanat.dev/internal/expression/context"
-	workflow "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/eventpayload"
-	"actionlint.kjanat.dev/internal/yaml"
+	expr "actionlint.kjanat.dev/v2/internal/expression"
+	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
+	workflow "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/eventpayload"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // Complete returns expression property edits against the supplied buffer.

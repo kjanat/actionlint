@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	"actionlint.kjanat.dev/internal/actioncatalog"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/actioncatalog"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {

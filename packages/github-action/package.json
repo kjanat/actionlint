@@ -6,16 +6,15 @@
   "type": "module",
   "imports": {
     "#*": "./src/*.ts",
-    "#pkg": "./package.json",
-    "#tools/*": "./tools/*.json"
+    "#pkg": "./package.json"
   },
   "scripts": {
     "build": "tsdown",
     "test": "node --test tests/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json",
-    "update:shellcheck": "gh release view --repo koalaman/shellcheck --json apiUrl,assets,author,body,createdAt,databaseId,id,isDraft,isImmutable,isPrerelease,name,publishedAt,tagName,tarballUrl,targetCommitish,uploadUrl,url,zipballUrl --jq . > tools/shellcheck.json"
+    "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@actions/cache": "6.3.0",
     "string-width": "8.3.0",
     "undici": "7.30.0"
   },

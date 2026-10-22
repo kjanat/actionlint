@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"time"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 
 	"golang.org/x/sys/execabs"
 )
@@ -30,6 +32,9 @@ func (out *prettyJSONOutput) writeJSON(value any) error {
 }
 
 func writePrettyJSON(ctx context.Context, out io.Writer, mode render.Color, data []byte, explicit bool) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if explicit {
 		var formatted bytes.Buffer
 		if err := json.Indent(&formatted, bytes.TrimSpace(data), "", "  "); err != nil {
@@ -41,7 +46,11 @@ func writePrettyJSON(ctx context.Context, out io.Writer, mode render.Color, data
 	if terminal {
 		if jq, err := execabs.LookPath("jq"); err == nil {
 			colored := mode == render.ColorAlways || (mode == render.ColorAuto && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
-			if formatted, err := formatJSONWithJQ(ctx, jq, data, colored); err == nil {
+			// Formatting is optional; external startup must not block output.
+			formatterCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			formatted, err := formatJSONWithJQ(formatterCtx, jq, data, colored)
+			cancel()
+			if err == nil {
 				data = formatted
 				if colored {
 					restore := enableTerminalVT(file)
@@ -50,10 +59,8 @@ func writePrettyJSON(ctx context.Context, out io.Writer, mode render.Color, data
 			}
 		}
 	}
-	if ctx != nil {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	n, err := out.Write(data)
 	if err == nil && n != len(data) {
@@ -66,8 +73,6 @@ func formatJSONWithJQ(ctx context.Context, jq string, data []byte, colored bool)
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
 	color := "--monochrome-output"
 	if colored {
 		color = "--color-output"
@@ -76,8 +81,18 @@ func formatJSONWithJQ(ctx context.Context, jq string, data []byte, colored bool)
 	cmd.Stdin = bytes.NewReader(data)
 	cmd.WaitDelay = 100 * time.Millisecond
 	output, err := cmd.Output()
-	if err == nil && len(bytes.TrimSpace(output)) == 0 {
-		err = io.ErrUnexpectedEOF
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && len(exitErr.Stderr) != 0 {
+			return nil, fmt.Errorf("jq: %w: %s", err, bytes.TrimSpace(exitErr.Stderr))
+		}
+		return nil, err
 	}
-	return output, err
+	if len(bytes.TrimSpace(output)) == 0 {
+		return nil, io.ErrUnexpectedEOF
+	}
+	return output, nil
 }

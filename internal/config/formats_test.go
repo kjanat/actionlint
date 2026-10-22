@@ -103,7 +103,15 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 			if got.Path != want {
 				t.Fatalf("selected path=%q, want %q", got.Path, want)
 			}
-			variables, err := jsonv2.Marshal(got.Config["config-variables"])
+			settings := got.Config
+			for _, key := range []string{"lint", "rules", "correctness", "expression-reference", "options"} {
+				var ok bool
+				settings, ok = settings[key].(map[string]any)
+				if !ok {
+					t.Fatalf("missing canonical configuration field %s", key)
+				}
+			}
+			variables, err := jsonv2.Marshal(settings["variables"])
 			if err != nil || string(variables) != `["STAGE"]` {
 				t.Fatalf("configuration variables=%s, error=%v", variables, err)
 			}

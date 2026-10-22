@@ -3,7 +3,7 @@ package checks
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 type findingCollector struct {

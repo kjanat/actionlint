@@ -5,7 +5,7 @@ import (
 	"errors"
 	"slices"
 
-	"actionlint.kjanat.dev/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools"
 )
 
 func excludedChecks(settings *ShellcheckSettings) []string {

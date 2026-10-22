@@ -9,7 +9,6 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const sourceRoot = fileURLToPath(new URL('../../', import.meta.url));
-export const preCommitHooks = '.pre-commit-hooks.yaml';
 const generatedFiles = ['action.mjs', 'SHA256SUMS'];
 
 /** @param {string} command @param {string[]} args @param {string} cwd @param {NodeJS.ProcessEnv} [env] @param {string} [input] */
@@ -26,16 +25,6 @@ export function showBytes(root, spec, env = process.env) {
 	if (result.error) throw result.error;
 	if (result.status !== 0) throw new Error(`Cannot read ${spec}: ${result.stderr}`);
 	return result.stdout;
-}
-
-/** @param {string} manifest @param {string} version */
-export function pinPreCommitImage(manifest, version) {
-	assertVersion(version);
-	const entries = manifest.match(/^ {2}entry: ghcr\.io\/kjanat\/actionlint:nightly pre-commit\r?$/gm) ?? [];
-	if (entries.length !== 1) {
-		throw new Error(`${preCommitHooks} must run the nightly image in exactly one hook, found ${entries.length}`);
-	}
-	return manifest.replace(/^( {2}entry: ghcr\.io\/kjanat\/actionlint:)nightly( pre-commit\r?)$/m, `$1${version}$2`);
 }
 
 /** @param {string} root @param {string} directory */
@@ -136,9 +125,6 @@ export async function createReleaseCommit(root, directory, version, parent) {
 			const blob = execute('git', ['hash-object', '-w', '--no-filters', '--', join(action, name)], root, env);
 			execute('git', ['update-index', '--add', '--cacheinfo', `100644,${blob},${name}`], root, env);
 		}
-		const hooks = pinPreCommitImage(showBytes(root, `${parent}:${preCommitHooks}`, env).toString('utf8'), version);
-		const hooksBlob = execute('git', ['hash-object', '-w', '--no-filters', '--stdin'], root, env, hooks);
-		execute('git', ['update-index', '--cacheinfo', `100644,${hooksBlob},${preCommitHooks}`], root, env);
 		const tree = execute('git', ['write-tree'], root, env);
 		return execute('git', ['commit-tree', tree, '-p', parent, '-m', `Build GitHub Action for v${version}`], root, env);
 	} finally {

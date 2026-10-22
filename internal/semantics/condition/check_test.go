@@ -3,7 +3,7 @@ package condition
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 func TestCheck(t *testing.T) {

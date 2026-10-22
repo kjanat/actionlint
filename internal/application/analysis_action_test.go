@@ -3,7 +3,7 @@ package application
 import (
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 const standaloneComposite = "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"

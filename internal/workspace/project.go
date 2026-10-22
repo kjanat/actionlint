@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/fsread"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Project represents one GitHub project. One Git repository corresponds to one project.

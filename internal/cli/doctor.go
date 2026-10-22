@@ -13,10 +13,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"actionlint.kjanat.dev/internal/localapp"
-	"actionlint.kjanat.dev/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 
-	"actionlint.kjanat.dev/internal/tools/ruff"
+	"actionlint.kjanat.dev/v2/internal/tools/ruff"
 )
 
 type doctorTool struct {

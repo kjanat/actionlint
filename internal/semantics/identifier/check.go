@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 var pattern = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_-]*$`)

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/config"
+	"actionlint.kjanat.dev/v2/config"
 )
 
 func TestPublicConfigurationConstructors(t *testing.T) {

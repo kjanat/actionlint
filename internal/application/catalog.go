@@ -1,7 +1,7 @@
 package application
 
 import (
-	"actionlint.kjanat.dev/internal/actioncatalog"
+	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 )
 
 // LoadActionCatalog installs the validated browser catalogue before analysis begins.

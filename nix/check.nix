@@ -16,7 +16,7 @@ runCommand "actionlint-nix-integration"
   }
   ''
     bash ${../tools/release/check-packaged-cli.bash} ${actionlint}/bin/actionlint
-    ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev ${actionlint.version}'
+    ${actionlint}/bin/actionlint -version | grep -Fx 'actionlint.kjanat.dev/v2 ${actionlint.version}'
     expectedToolchain="$(sed -n 's/^toolchain //p' ${actionlint.src}/go.mod)"
     test -n "$expectedToolchain"
     ${actionlint}/bin/actionlint -version | grep -F "built with $expectedToolchain compiler for "
@@ -55,11 +55,18 @@ runCommand "actionlint-nix-integration"
     mkdir -p project/.github/workflows
     cp ${./integration.yml} project/.github/workflows/check.yml
     cd project
-    ${actionlint}/bin/actionlint -init-config
-    grep -F 'yaml-language-server: $schema=' .github/actionlint.yaml
+    cat > .github/actionlint.yaml <<'YAML'
+    plugins: []
+    tools:
+      shellcheck:
+        backend: {process: {executable: shellcheck}}
+      ruff:
+        backend: {process: {executable: ruff}}
+    YAML
+    ${actionlint}/bin/actionlint config validate
 
     set +e
-    PATH= ${actionlint}/bin/actionlint -no-color -oneline > diagnostics.txt 2>&1
+    PATH= ${actionlint}/bin/actionlint --allow-config-processes -no-color -oneline > diagnostics.txt 2>&1
     status=$?
     set -e
     if ! test "$status" -eq 1 ||

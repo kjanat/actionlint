@@ -4,11 +4,11 @@ package checks
 import (
 	"io"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/builtin"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 type Selection struct {

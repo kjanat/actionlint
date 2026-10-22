@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func actionVersion() string {
@@ -148,9 +148,6 @@ func (a *action) prepareRequest(in *inputs, workspaceDir string) (*lintRequest, 
 	}
 	req := buildRequest(in, workspaceDir, workingDir)
 	if err := req.configureEnvironment(a.env); err != nil {
-		return nil, err
-	}
-	if err := req.configureShellcheck(a.env); err != nil {
 		return nil, err
 	}
 	return req, nil

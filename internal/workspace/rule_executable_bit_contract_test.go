@@ -3,7 +3,7 @@ package workspace_test
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestGitIndexModes(t *testing.T) {

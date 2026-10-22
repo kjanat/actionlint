@@ -1,11 +1,11 @@
 package builtin
 
 import (
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/internal/workflow/matrix"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleMatrix adapts matrix diagnostics to the remaining visitor pipeline.

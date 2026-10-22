@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 type testBackend func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error)

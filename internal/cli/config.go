@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/localapp"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/localapp"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/projectpath"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/projectpath"
+	"actionlint.kjanat.dev/v2/internal/render"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -78,7 +78,52 @@ func writeConfigShow(ctx context.Context, out io.Writer, req configShowRequest) 
 	return errors.Join(err, encoder.Close())
 }
 
-func initLegacyCommandConfig(streams Command, req legacyConfigInitRequest) error {
+func migrateCommandConfig(ctx context.Context, streams Command, req configMigrateRequest) (int, error) {
+	path, err := repoconfig.SelectedPath(req.Config)
+	if err != nil {
+		return 0, err
+	}
+	if path == "" {
+		return 0, errors.New("config migrate requires a selected config file; use --config PATH")
+	}
+	migration, err := localapp.PrepareConfigMigration(ctx, path, localapp.DefaultPluginOptions{
+		Shellcheck: true, Ruff: true,
+		Warning: func(message string) { _, _ = fmt.Fprintln(streams.Stderr, "warning: "+message) },
+	})
+	if err != nil {
+		return 0, err
+	}
+	if req.Write {
+		if err := migration.Apply(ctx); err != nil {
+			return 0, err
+		}
+	}
+	if req.JSON {
+		err = writeCommandJSON(streams.Stdout, struct {
+			Path    string   `json:"path"`
+			Changed bool     `json:"changed"`
+			Content string   `json:"content"`
+			Notes   []string `json:"notes,omitempty"`
+		}{migration.Path, migration.Changed, string(migration.Content), migration.Notes})
+	} else {
+		for _, note := range migration.Notes {
+			if _, err := fmt.Fprintln(streams.Stderr, note); err != nil {
+				return 0, err
+			}
+		}
+		if !req.Check && !req.Write {
+			_, err = streams.Stdout.Write(migration.Content)
+		} else {
+			_, err = fmt.Fprintf(streams.Stdout, "%s: migration needed=%t written=%t\n", path, migration.Changed, req.Write && migration.Changed)
+		}
+	}
+	if req.Check && migration.Changed {
+		return 1, err
+	}
+	return 0, err
+}
+
+func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyConfigInitRequest) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -110,22 +155,28 @@ func initLegacyCommandConfig(streams Command, req legacyConfigInitRequest) error
 			return err
 		}
 	}
-	return generateCommandConfig(streams.Stdout, req.JSON, false, req.Hyperlinks)
+	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks)
 }
 
-func generateCommandConfig(out io.Writer, asJSON, withSchema bool, hyperlinks hyperlinkMode) error {
+func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	path, err := repoconfig.Generate(projectpath.RepositoryRoot(cwd), withSchema, buildinfo.Version())
+	path, err := localapp.InitializeConfig(ctx, projectpath.RepositoryRoot(cwd), buildinfo.Version())
 	if err != nil {
 		return err
 	}
 	if asJSON {
 		return writeCommandJSON(out, map[string]string{"path": path})
 	}
-	label, err := filepath.Rel(cwd, path)
+	// Plugin storage resolves checkout aliases; compare both paths in the same
+	// namespace, retaining the caller's relative spelling for display and links.
+	physicalCwd, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		return err
+	}
+	label, err := filepath.Rel(physicalCwd, path)
 	if err != nil {
 		label = path
 	}

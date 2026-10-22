@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
 )
 
 func TestPreCommitCommand(t *testing.T) {

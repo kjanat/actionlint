@@ -2,7 +2,7 @@
 
 package engine
 
-import actionmeta "actionlint.kjanat.dev/internal/action"
+import actionmeta "actionlint.kjanat.dev/v2/internal/action"
 
 // PopularActions is data set of known popular actions. Keys are specs (owner/repo@ref) of actions
 // and values are their metadata.

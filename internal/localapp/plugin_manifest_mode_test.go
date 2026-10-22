@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 )
 
 func TestPluginManifestFileMode(t *testing.T) {

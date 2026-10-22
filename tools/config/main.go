@@ -12,9 +12,9 @@ import (
 	"strings"
 	"unicode"
 
-	actionlint "actionlint.kjanat.dev/internal/config"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/genfile"
+	actionlint "actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/genfile"
 
 	"github.com/invopop/jsonschema"
 )
@@ -49,14 +49,14 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	switch t {
 	case reflect.TypeFor[actionlint.PluginDeclarations]():
 		mapping := reflectMapping(struct {
-			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
+			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
 			Version  string `yaml:"version,omitempty" jsonschema:"minLength=1,description=Exact release tag or latest stable. Omission selects latest."`
 			Registry string `yaml:"registry,omitempty" jsonschema:"minLength=1,description=HTTPS catalogue directory URL. Omission uses the public actionlint registry."`
 		}{})
 		return &jsonschema.Schema{
 			Type: "array",
 			Items: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
-				{Type: "string", MinLength: new(uint64(1)), Examples: []any{"kjanat/actionlint-plugin-shellcheck@v0.1.1", "gitlab.com/group/plugin"}},
+				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.1.1", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64)}},
 				mapping,
 			}},
 		}
@@ -246,6 +246,14 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
+	case reflect.TypeFor[map[string]actionlint.IgnorePatterns]():
+		return &jsonschema.Schema{
+			Type: "object",
+			AdditionalProperties: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
+				{Type: "array", Items: &jsonschema.Schema{Type: "string"}},
+				{Type: "null"},
+			}},
+		}
 	case reflect.TypeFor[actionlint.DefaultPermissionsAssumption]():
 		return &jsonschema.Schema{
 			Type:    "string",
@@ -340,14 +348,14 @@ func requireOneBackend(mapping *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	if err := r.AddGoComments("actionlint.kjanat.dev", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
+	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
-	if err := r.AddGoComments("actionlint.kjanat.dev", "internal/config/tools/command.go", jsonschema.WithFullComment()); err != nil {
+	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/tools/command.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
-	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go"} {
-		if err := r.AddGoComments("actionlint.kjanat.dev", filepath.Join("internal", "config", file), jsonschema.WithFullComment()); err != nil {
+	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "knowledge_options.go"} {
+		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "config", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
 	}

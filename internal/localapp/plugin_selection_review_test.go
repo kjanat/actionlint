@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 )
 
 func TestPluginSelectionRetainsObservedLocksAcrossRepositories(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/references"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 // ActionOrigin resolves the runner and analysis locations of one composite invocation.

@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
-	"actionlint.kjanat.dev/internal/workspace"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 type analysisRecordingLog struct {

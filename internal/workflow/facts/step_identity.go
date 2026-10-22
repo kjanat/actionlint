@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // stepFingerprint includes the step's structural values, without source positions,

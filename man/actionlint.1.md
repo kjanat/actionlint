@@ -2,7 +2,7 @@
 title: actionlint
 section: 1
 header: General Commands Manual
-footer: actionlint 1.17.0
+footer: actionlint 2.0.0
 ---
 
 # NAME
@@ -17,7 +17,7 @@ footer: actionlint 1.17.0
 # DESCRIPTION
 
 **actionlint** checks GitHub Actions workflow files without executing the workflows. This is
-the maintained `kjanat/actionlint` fork, distributed as the Go module `actionlint.kjanat.dev`.
+the maintained `kjanat/actionlint` fork, distributed as the Go module `actionlint.kjanat.dev/v2`.
 
 Checks include workflow syntax, expression types and context availability, action inputs and
 outputs, local action metadata and composite steps, reusable workflow inputs and permissions,
@@ -660,7 +660,7 @@ Detailed documentation for this release and current installation options are ava
 
 ## Checks
 
-https://github.com/kjanat/actionlint/blob/v1.17.0/docs/checks.md
+https://github.com/kjanat/actionlint/blob/v2.0.0/docs/checks.md
 
 Full list of all checks done by actionlint with example inputs, outputs, and playground links.
 
@@ -673,26 +673,26 @@ script, Docker, and Go, plus the status of WinGet and upstream-only package name
 
 ## Usage
 
-https://github.com/kjanat/actionlint/blob/v1.17.0/docs/usage.md
+https://github.com/kjanat/actionlint/blob/v2.0.0/docs/usage.md
 
 CLI usage, shell completion, output templates, the GitHub Action, Docker images, and editor
 and CI integrations.
 
 ## Configuration
 
-https://github.com/kjanat/actionlint/blob/v1.17.0/docs/config.md
+https://github.com/kjanat/actionlint/blob/v2.0.0/docs/config.md
 
 Repository configuration, runner labels, variables, secrets, and policy checks.
 
 ## Go API
 
-https://github.com/kjanat/actionlint/blob/v1.17.0/docs/api.md
+https://github.com/kjanat/actionlint/blob/v2.0.0/docs/api.md
 
 How to use actionlint as Go library.
 
 ## References
 
-https://github.com/kjanat/actionlint/blob/v1.17.0/docs/reference.md
+https://github.com/kjanat/actionlint/blob/v2.0.0/docs/reference.md
 
 Links to resources.
 

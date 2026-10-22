@@ -3,10 +3,10 @@ package expressions
 import (
 	"strings"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	contextspec "actionlint.kjanat.dev/internal/expression/context"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {

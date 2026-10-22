@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestRepositoryRelativeConfigAliasBoundaries(t *testing.T) {

@@ -1,6 +1,6 @@
 package main
 
-import "actionlint.kjanat.dev/internal/tools/adapters"
+import "actionlint.kjanat.dev/v2/internal/tools/adapters"
 
 import (
 	"bufio"
@@ -18,10 +18,10 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/buildinfo"
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )

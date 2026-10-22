@@ -1,9 +1,9 @@
 package documentparse
 
 import (
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // ActionStep decodes a composite step with its own declared shell.

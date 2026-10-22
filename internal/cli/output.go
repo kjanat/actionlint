@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 type commandResultWriter struct {

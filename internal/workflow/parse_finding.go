@@ -3,8 +3,8 @@ package workflow
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 // SyntaxError describes a syntax failure independently of lint rule state.

@@ -8,9 +8,9 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestCompositeAnalysisCancellation(t *testing.T) {

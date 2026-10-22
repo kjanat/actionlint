@@ -3,8 +3,8 @@ package execution
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/schema"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
 // Shell distinguishes the runner's bash -e fallback from explicit bash,

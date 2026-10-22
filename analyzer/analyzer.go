@@ -6,9 +6,9 @@ import (
 	"context"
 	"encoding/json"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/rule"
-	"actionlint.kjanat.dev/source"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/rule"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // Fact identifies shared information requested by an analyzer.

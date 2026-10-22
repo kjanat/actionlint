@@ -1,7 +1,7 @@
 // Package diagnostic defines findings and source edits shared by analysis and parsing.
 package diagnostic
 
-import "actionlint.kjanat.dev/source"
+import "actionlint.kjanat.dev/v2/source"
 
 // Position uses one-based Unicode character positions. Range ends are exclusive and may lie on a later line.
 type Position struct {

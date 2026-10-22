@@ -17,8 +17,8 @@ const shared = await mkdtemp(join(tempRoot, 'actionlint-shared-test-'));
 const outputFile = join(workspace, 'github-output');
 const summaryFile = join(workspace, 'github-summary');
 
-/** @param {Record<string, string>} inputs @param {number} expected */
-async function run(inputs, expected = 0) {
+/** @param {Record<string, string>} inputs @param {number} expected @param {Record<string, string>} extraEnvironment */
+async function run(inputs, expected = 0, extraEnvironment = {}) {
 	await writeFile(outputFile, '');
 	await writeFile(summaryFile, '');
 	/** @type {NodeJS.ProcessEnv} */
@@ -31,7 +31,6 @@ async function run(inputs, expected = 0) {
 			shellcheck: 'true',
 			pyflakes: 'false',
 			'add-actionlint-to-path': 'false',
-			'add-shellcheck-to-path': 'false',
 			'working-directory': '.',
 			'fail-on-error': 'true',
 			...inputs,
@@ -43,6 +42,7 @@ async function run(inputs, expected = 0) {
 	env.GITHUB_STEP_SUMMARY = summaryFile;
 	env.RUNNER_TEMP = workspace;
 	env.GITHUB_ACTIONS = 'true';
+	Object.assign(env, extraEnvironment);
 	const result = spawnSync(process.execPath, [entrypoint], { cwd: workspace, env, encoding: 'utf8' });
 	if (result.error) throw result.error;
 	const log = `${result.stdout}\n${result.stderr}`;
@@ -164,30 +164,53 @@ try {
 	assert.match(await readFile(summaryFile, 'utf8'), /Could not start analysis/);
 	assert.match(setupFailure.log, /::error::/);
 	await run({ files: '' }, 3);
-	const shell = await run({
-		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
-		pyflakes: 'false',
-		'fail-on-error': 'false',
+	// Tool booleans enable selected plugins; they do not install native tools.
+	// Select the released plugin explicitly and forbid PATH-based fallbacks.
+	const shellCache = join(workspace, 'shell-cache');
+	await mkdir(shellCache);
+	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
+	const installShell = spawnSync(resolve(binary), ['plugin', 'install', 'shellcheck@v0.1.1'], {
+		cwd: workspace,
+		env: { ...process.env, ...shellEnvironment },
+		encoding: 'utf8',
 	});
+	assert.equal(installShell.status, 0, `${installShell.error ?? ''}\n${installShell.stdout}\n${installShell.stderr}`);
+	const shell = await run(
+		{
+			files: 'testdata/err/shellcheck_default_shell_detection.yaml',
+			pyflakes: 'false',
+			'fail-on-error': 'false',
+		},
+		0,
+		shellEnvironment,
+	);
 	assert.equal(shell.outputs.get('problem-count'), '12', shell.log);
 	await writeFile(
 		join(workspace, 'shell-fix.yaml'),
 		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          value="$1"\n          echo $value\n',
 	);
-	const fixable = await run({
-		files: 'shell-fix.yaml',
-		pyflakes: 'false',
-		'fail-on-error': 'false',
-		annotations: 'true',
-		sarif: 'true',
-	});
-	const githubFixable = await run({
-		files: 'shell-fix.yaml',
-		pyflakes: 'false',
-		'fail-on-error': 'false',
-		annotations: 'true',
-		format: 'github',
-	});
+	const fixable = await run(
+		{
+			files: 'shell-fix.yaml',
+			pyflakes: 'false',
+			'fail-on-error': 'false',
+			annotations: 'true',
+			sarif: 'true',
+		},
+		0,
+		shellEnvironment,
+	);
+	const githubFixable = await run(
+		{
+			files: 'shell-fix.yaml',
+			pyflakes: 'false',
+			'fail-on-error': 'false',
+			annotations: 'true',
+			format: 'github',
+		},
+		0,
+		shellEnvironment,
+	);
 	const jsonAnnotations = fixable.log.match(/^::(?:error|warning|notice) file=.*$/gm) || [];
 	const githubAnnotations = githubFixable.log.match(/^::(?:error|warning|notice) file=.*$/gm) || [];
 	assert.ok(
@@ -211,18 +234,28 @@ try {
 	assert.equal(fixable.analysis.sarif.runs[0].columnKind, 'unicodeCodePoints');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].artifactLocation.uri, 'shell-fix.yaml');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].replacements.length, quote.fixes[0].edits.length);
-	const noShell = await run({
-		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
-		shellcheck: 'false',
-		pyflakes: 'false',
-	});
+	const noShell = await run(
+		{
+			files: 'testdata/err/shellcheck_default_shell_detection.yaml',
+			shellcheck: 'false',
+			pyflakes: 'false',
+		},
+		0,
+		shellEnvironment,
+	);
 	assert.equal(noShell.outputs.get('problem-count'), '0', noShell.log);
-	const configuredNoShell = await run({
-		files: 'testdata/err/shellcheck_default_shell_detection.yaml',
-		config: 'tools: {shellcheck: {enabled: false}}',
-		pyflakes: 'false',
-	});
+	const configuredNoShell = await run(
+		{
+			files: 'testdata/err/shellcheck_default_shell_detection.yaml',
+			config: 'tools: {shellcheck: {enabled: false}}',
+			pyflakes: 'false',
+		},
+		0,
+		shellEnvironment,
+	);
 	assert.equal(configuredNoShell.outputs.get('problem-count'), '0', configuredNoShell.log);
+	await rm(join(workspace, '.github/actionlint.yaml'));
+	await rm(join(workspace, '.github/actionlint.plugins.lock.json'));
 	const saved = await run({
 		files: 'testdata/err/one_error.yaml',
 		format: 'json-lines',
@@ -271,13 +304,122 @@ try {
 	assert.match(quotedIgnore.log, /quotes|apostrophes/i);
 	for (const extension of ['yaml', 'yml']) {
 		const configuration = join(workspace, `.github/actionlint.${extension}`);
-		await writeFile(configuration, 'self-hosted-runner:\n  labels: [ubuntu-24.04-custom]\n');
+		await writeFile(configuration, 'plugins: []\nself-hosted-runner:\n  labels: [ubuntu-24.04-custom]\n');
 		const configured = await run(customRunner);
 		assert.match(configured.log, new RegExp(`actionlint\\.${extension}`));
 		await rm(configuration);
 	}
-	console.log('GitHub Action entrypoint tests passed');
+	// Exercise released component bytes through the actual bundled launcher.
+	// The second URL cannot download: success proves reuse of the digest cache.
+	const pluginDigest = 'c33638bb1fac6167e4dcd3a5fb7f59fcaa639c93d2287c4dda07f2beea3522b4';
+	const pluginURL = 'https://github.com/kjanat/actionlint-plugin-shellcheck/releases/download/v0.1.1/plugin.wasm';
+	const pluginCache = join(workspace, 'plugin-cache');
+	const pluginEnvironment = { HOME: pluginCache, XDG_CACHE_HOME: pluginCache, LOCALAPPDATA: pluginCache };
+	await mkdir(pluginCache, { recursive: true });
+	await writeFile(
+		join(workspace, 'plugin.yml'),
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $GITHUB_SHA\n',
+	);
+	const realCache = process.env.ACTIONLINT_TEST_GITHUB_CACHE === '1';
+	const pluginInputs = {
+		files: 'plugin.yml',
+		shellcheck: 'false',
+		ruff: 'false',
+		'plugin-cache': String(realCache),
+	};
+	/** @param {string} url */
+	const pluginConfig = (url) =>
+		JSON.stringify({
+			plugins: [`${url}#sha256=${pluginDigest}`],
+			lint: { rules: { plugins: { 'shellcheck-rs': 'error' } } },
+		});
+	const cold = await run({ ...pluginInputs, config: pluginConfig(pluginURL) }, 1, pluginEnvironment);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const coldDiagnostics = cold.analysis.diagnostics;
+	assert.ok(coldDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), cold.log);
+	if (realCache) {
+		// Remove only this test's verified artifact. The next process must restore
+		// it from GitHub cache; a warning/miss cannot masquerade as coverage.
+		const base = process.platform === 'darwin' ? join(pluginCache, 'Library/Caches') : pluginCache;
+		await rm(join(base, 'actionlint/artifacts', pluginDigest));
+	}
+	const warm = await run(
+		{
+			...pluginInputs,
+			config: pluginConfig('https://unavailable.invalid/plugin.wasm'),
+		},
+		1,
+		pluginEnvironment,
+	);
+	assert.deepEqual(warm.analysis.diagnostics, cold.analysis.diagnostics);
+	const install = spawnSync(resolve(binary), ['plugin', 'install', 'shellcheck@v0.1.1'], {
+		cwd: workspace,
+		env: { ...process.env, ...pluginEnvironment },
+		encoding: 'utf8',
+	});
+	assert.equal(install.status, 0, `${install.error ?? ''}\n${install.stdout}\n${install.stderr}`);
+	const managed = await run(
+		{ ...pluginInputs, shellcheck: 'true', 'fail-on-error': 'false' },
+		0,
+		pluginEnvironment,
+	);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const managedDiagnostics = managed.analysis.diagnostics;
+	assert.ok(
+		managedDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086' && diagnostic.rule === 'shellcheck'),
+		managed.log,
+	);
+	const disabled = await run(pluginInputs, 0, pluginEnvironment);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const disabledDiagnostics = disabled.analysis.diagnostics;
+	assert.equal(disabledDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), false, disabled.log);
+	const installRuff = spawnSync(resolve(binary), ['plugin', 'install', 'ruff@v0.1.0'], {
+		cwd: workspace,
+		env: { ...process.env, ...pluginEnvironment },
+		encoding: 'utf8',
+	});
+	assert.equal(installRuff.status, 0, `${installRuff.error ?? ''}\n${installRuff.stdout}\n${installRuff.stderr}`);
+	await writeFile(
+		join(workspace, 'default-plugins.yml'),
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $GITHUB_SHA\n      - shell: python\n        run: print(unknown_name)\n',
+	);
+	const defaultInputs = {
+		files: 'default-plugins.yml',
+		shellcheck: 'true',
+		ruff: 'true',
+		'plugin-cache': 'false',
+		'fail-on-error': 'false',
+	};
+	const lockPath = join(workspace, '.github/actionlint.plugins.lock.json');
+	const lock = await readFile(lockPath, 'utf8');
+	const defaults = await run(defaultInputs, 0, pluginEnvironment);
+	assert.equal(defaults.analysis.completed, true, defaults.log);
+	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
+	const defaultDiagnostics = defaults.analysis.diagnostics;
+	for (const [rule, code] of [['shellcheck', 'SC2086'], ['ruff', 'F821']]) {
+		assert.ok(
+			defaultDiagnostics.some((diagnostic) => diagnostic.rule === rule && diagnostic.code === code),
+			`missing ${rule}/${code}: ${defaults.log}`,
+		);
+	}
+	// Both packages are pinned and cached now. Broken proxies make any registry
+	// or artifact fetch fail; checking must use the recorded bytes unchanged.
+	const offline = await run(defaultInputs, 0, {
+		...pluginEnvironment,
+		HTTP_PROXY: 'http://127.0.0.1:1',
+		HTTPS_PROXY: 'http://127.0.0.1:1',
+		http_proxy: 'http://127.0.0.1:1',
+		https_proxy: 'http://127.0.0.1:1',
+		NO_PROXY: '',
+		no_proxy: '',
+	});
+	assert.equal(offline.analysis.completed, true, offline.log);
+	assert.deepEqual(offline.analysis.diagnostics, defaultDiagnostics);
+	assert.equal(await readFile(lockPath, 'utf8'), lock);
+	console.log('GitHub Action entrypoint, published default plugins and cache tests passed');
 } finally {
-	if (dirname(workspace) === tempRoot) await rm(workspace, { recursive: true, force: true });
-	if (dirname(shared) === tempRoot) await rm(shared, { recursive: true, force: true });
+	if (dirname(workspace) === tempRoot) {
+		await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+	}
+	if (dirname(shared) === tempRoot) await rm(shared, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 }

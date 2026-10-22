@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestRuleRequireJobTimeout(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Reference renders the catalogue consumed by configuration and plugin adapters.

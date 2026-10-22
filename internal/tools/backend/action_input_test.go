@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestInputRegistrationRetainsPerEngineLimit(t *testing.T) {

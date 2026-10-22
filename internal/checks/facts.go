@@ -1,6 +1,6 @@
 package checks
 
-import "actionlint.kjanat.dev/analyzer"
+import "actionlint.kjanat.dev/v2/analyzer"
 
 func RuleNames(registrations []analyzer.Registration) []string {
 	var names []string

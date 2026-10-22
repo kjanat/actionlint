@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -18,18 +18,18 @@ const cachePolicySteps = `    runs-on: ubuntu-latest
 `
 
 func TestCommandCachePolicyDefaults(t *testing.T) {
-	for _, policy := range []struct{ name, workflow string }{
-		{"cache-write-untrusted", `on: pull_request_target
+	for _, policy := range []struct{ name, category, workflow string }{
+		{"cache-write-untrusted", "security", `on: pull_request_target
 cache-mode: write
 jobs:
   build:
 ` + cachePolicySteps},
-		{"cache-call-unrestricted", `on: pull_request_target
+		{"cache-call-unrestricted", "security", `on: pull_request_target
 jobs:
   call:
     uses: example/repo/.github/workflows/build.yaml@main
 `},
-		{"cache-operation", `on: push
+		{"cache-operation", "correctness", `on: push
 cache-mode: none
 jobs:
   build:
@@ -44,11 +44,11 @@ jobs:
 			disabled      bool
 		}{
 			{"absent", "", false},
-			{"empty policy", "policy: {}\n", false},
-			{"null policy", "policy: null\n", false},
-			{"null setting", fmt.Sprintf("policy: {%s: null}\n", policy.name), false},
-			{"true setting", fmt.Sprintf("policy: {%s: true}\n", policy.name), false},
-			{"false setting", fmt.Sprintf("policy: {%s: false}\n", policy.name), true},
+			{"empty category", fmt.Sprintf("lint: {rules: {%s: {}}}\n", policy.category), false},
+			{"null category", fmt.Sprintf("lint: {rules: {%s: null}}\n", policy.category), false},
+			{"null setting", fmt.Sprintf("lint: {rules: {%s: {%s: null}}}\n", policy.category, policy.name), false},
+			{"on setting", fmt.Sprintf("lint: {rules: {%s: {%s: on}}}\n", policy.category, policy.name), false},
+			{"off setting", fmt.Sprintf("lint: {rules: {%s: {%s: off}}}\n", policy.category, policy.name), true},
 		} {
 			for _, explicit := range []bool{false, true} {
 				if explicit && config.content == "" {

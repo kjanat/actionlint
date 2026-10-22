@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/cli"
 )
 
 func TestEnvironmentDefaults(t *testing.T) {
@@ -169,10 +169,16 @@ func TestEnvironmentValidationByOperation(t *testing.T) {
 	t.Setenv("ACTIONLINT_IGNORE_REGEX", "not JSON")
 	t.Setenv("ACTIONLINT_LOG_LEVEL", "invalid")
 	t.Setenv("ACTIONLINT_SHELLCHECK_FLAGS", `"unterminated`)
-	for _, args := range [][]string{{"--help"}, {"version", "--json"}, {"--version", "--json"}, {"completion", "fish"}, {"rules"}} {
+	for _, args := range [][]string{{"--help"}, {"version", "--json"}, {"--version", "--json"}, {"completion", "fish"}} {
 		if got := testRunCommand("", args...); got.Status != 0 {
 			t.Fatalf("unrelated environment blocked %v: %+v", args, got)
 		}
+	}
+	if got := testRunCommand("", "rules"); got.Status != 3 || !strings.Contains(got.Stderr, "plugin configuration does not exist") {
+		t.Fatalf("rules ignored its selected plugin configuration: %+v", got)
+	}
+	if got := testRunCommand("", "rules", "--no-config"); got.Status != 0 {
+		t.Fatalf("unrelated analysis environment blocked rule discovery: %+v", got)
 	}
 	t.Setenv("ACTIONLINT_LOG_LEVEL", "")
 	if got := testRunCommand(commandGoodWorkflow, "check", "--no-config", "-"); got.Status != 2 || !strings.Contains(got.Stderr, "ACTIONLINT_IGNORE_REGEX") {

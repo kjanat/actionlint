@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	actioncheck "actionlint.kjanat.dev/internal/action/validation"
-	"actionlint.kjanat.dev/internal/actioncatalog"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
+	"actionlint.kjanat.dev/v2/internal/actioncatalog"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestDeprecatedPopularActionKeepsInputAndOutputMetadata(t *testing.T) {

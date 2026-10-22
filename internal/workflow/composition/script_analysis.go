@@ -5,13 +5,13 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/analyzer"
-	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
+	"actionlint.kjanat.dev/v2/analyzer"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/internal/workflow/execution"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
 
 func scriptDefaultShell(defaults *workflowlang.Defaults) *string {

@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/config"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.

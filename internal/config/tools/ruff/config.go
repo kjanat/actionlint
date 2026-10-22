@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 
 	"go.yaml.in/yaml/v4"
 )

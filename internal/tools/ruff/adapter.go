@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/config"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/processconfig"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/tools/selection"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/config"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // ruffAnalyzer consumes prepared scripts. It has no traversal or diagnostic state.
@@ -44,6 +44,7 @@ func newRuffAnalyzer(c tools.Context, o Options, compatibility *Compatibility) (
 }
 
 func newRuffChecker(c tools.Context, o Options, compatibility *Compatibility) (*Checker, error) {
+	o = o.forConfig(c.Config)
 	if o.Backend != nil {
 		return NewBackend(c.Processes.Ctx, o.Backend, ruffExpressionEnd), nil
 	}

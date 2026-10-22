@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"actionlint.kjanat.dev/document"
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/testutil"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/document"
+	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestCommandActionInputs(t *testing.T) {

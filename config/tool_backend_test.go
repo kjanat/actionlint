@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/config"
+	"actionlint.kjanat.dev/v2/config"
 )
 
 func TestPublicToolBackendsCanBeConstructed(t *testing.T) {

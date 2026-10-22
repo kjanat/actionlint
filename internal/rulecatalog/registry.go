@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Combine gives built-ins and extensions one collision-checked namespace.

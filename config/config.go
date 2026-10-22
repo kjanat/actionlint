@@ -2,10 +2,10 @@
 package config
 
 import (
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	lintconfig "actionlint.kjanat.dev/internal/config/rules"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	"actionlint.kjanat.dev/internal/pluginref"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 )
 
 type (

@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"actionlint.kjanat.dev/resolver"
+	"actionlint.kjanat.dev/v2/resolver"
 )
 
 // Process invokes a literal executable using the bounded JSON protocol. No shell

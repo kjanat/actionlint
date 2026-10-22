@@ -1,7 +1,7 @@
 package config
 
 import (
-	lintconfig "actionlint.kjanat.dev/internal/config/rules"
+	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 )
 
 // Level controls the severity of a diagnostic.

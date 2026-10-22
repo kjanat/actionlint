@@ -5,8 +5,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestWorkflowExpressionScalarPositions(t *testing.T) {

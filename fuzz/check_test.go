@@ -4,9 +4,9 @@ import (
 	"io/fs"
 	"testing"
 
-	"actionlint.kjanat.dev/analysis"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/syntax"
+	"actionlint.kjanat.dev/v2/analysis"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/syntax"
 )
 
 func parseWorkflowPanicFree(data []byte) *workflowlang.Workflow {

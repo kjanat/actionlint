@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/resolver"
+	"actionlint.kjanat.dev/v2/resolver"
 )
 
 func TestResolverProcessHelper(t *testing.T) {

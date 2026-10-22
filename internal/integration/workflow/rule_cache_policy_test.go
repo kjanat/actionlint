@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/testutil"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestCachePolicyRemoteCallBoundaries(t *testing.T) {

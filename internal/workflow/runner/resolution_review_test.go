@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
-	runnerapi "actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 func TestProviderPointerResolutionsMatchValues(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"text/template"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // TemplateFields holds all fields to format one finding with a Go template.

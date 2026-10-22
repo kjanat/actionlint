@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/localapp"
-	"actionlint.kjanat.dev/internal/processconfig"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/localapp"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.
@@ -49,11 +49,11 @@ func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 	if len(selection.Paths) > 0 && selection.LockFile != "" {
 		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
-	paths, err := selectedRulePlugins(ctx, selection)
+	sources, err := selectedRulePlugins(ctx, selection)
 	if err != nil {
 		return 0, err
 	}
-	rules, err := localapp.Rules(ctx, paths)
+	rules, err := localapp.RulesSources(ctx, sources)
 	if err != nil {
 		if _, loadFailure := errors.AsType[*localapp.PluginLoadError](err); loadFailure && len(selection.Paths) > 0 {
 			return 0, commandUsageError{err}
@@ -114,11 +114,20 @@ type configInitRequest struct {
 	Hyperlinks hyperlinkMode
 }
 
+type configMigrateRequest struct {
+	Config             repoconfig.Selection
+	JSON, Write, Check bool
+}
+
+func (r configMigrateRequest) run(ctx context.Context, streams Command) (int, error) {
+	return migrateCommandConfig(ctx, streams, r)
+}
+
 func (r configInitRequest) run(ctx context.Context, streams Command) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
-	return 0, generateCommandConfig(streams.Stdout, r.JSON, true, r.Hyperlinks)
+	return 0, generateCommandConfig(ctx, streams.Stdout, r.JSON, r.Hyperlinks)
 }
 
 type legacyConfigInitRequest struct {
@@ -133,7 +142,7 @@ func (r legacyConfigInitRequest) run(ctx context.Context, streams Command) (int,
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
-	return 0, initLegacyCommandConfig(streams, r)
+	return 0, initLegacyCommandConfig(ctx, streams, r)
 }
 
 func executeInvocation(ctx context.Context, streams Command, inv invocation) (int, error) {

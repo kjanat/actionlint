@@ -3,9 +3,9 @@ package ruff
 import (
 	"encoding/json"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 
-	"actionlint.kjanat.dev/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools"
 )
 
 func prepareInput(script tools.Script) (tools.PreparedInput, error) {

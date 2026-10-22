@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 )
 
 func TestParseActionOutlineDeclarations(t *testing.T) {

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"sync"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/workflow/references"
-	"actionlint.kjanat.dev/internal/yaml"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 type metadataSource struct {

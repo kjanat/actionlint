@@ -24,7 +24,8 @@ check_latest_version() {
 
 	out="$("${executable}" -version)"
 	first_line="${out%%$'\n'*}"
-	version="${first_line#actionlint.kjanat.dev }"
+	version="${first_line#actionlint.kjanat.dev/v2 }"
+	version="${version#actionlint.kjanat.dev }"
 	if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
 		|| [[ "${out}" != *"https://github.com/kjanat/actionlint/releases/tag/v${version}"* ]]; then
 		echo "Output from ${executable} -version is unexpected: '${out}'" >&2

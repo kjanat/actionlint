@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/runner"
 	"github.com/partite-ai/wacogo"
 )
 

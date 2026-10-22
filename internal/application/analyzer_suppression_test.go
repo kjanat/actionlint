@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/diagnosticpolicy"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 )
 
 type suppressionAnalyzer struct{ name string }

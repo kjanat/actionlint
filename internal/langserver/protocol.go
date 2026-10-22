@@ -17,8 +17,8 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/fix"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/fix"
 )
 
 type position struct {

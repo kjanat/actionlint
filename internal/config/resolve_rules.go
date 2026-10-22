@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func presetLevel(p Preset, d Rule, fallback Level) Level {

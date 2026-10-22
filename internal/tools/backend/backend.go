@@ -11,13 +11,13 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	config "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	config "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Register uses advertised shell selectors, never an engine-name switch. Backends

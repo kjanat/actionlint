@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestWorkflowDiscoveryRecordsListedDirectories(t *testing.T) {

@@ -116,6 +116,7 @@ func newCommandApp(streams *Command) *commandApp {
 		{"path", "Print the selected configuration path"},
 		{"show", "Show effective configuration settings"},
 		{"validate", "Validate the selected configuration using actionlint's loader"},
+		{"migrate", "Preview conversion to current configuration syntax"},
 	} {
 		c := &cobra.Command{Use: item.name, Short: item.description, Args: cobra.NoArgs, RunE: a.capture(operation("config " + item.name))}
 		if item.name == "show" || item.name == "validate" {
@@ -124,6 +125,12 @@ func newCommandApp(streams *Command) *commandApp {
 		if item.name == "show" {
 			c.Flags().BoolVar(&a.inv.Origin, "origin", false, "Include the source of each setting")
 			annotateFlag(c.Flags(), "origin", "Input")
+		}
+		if item.name == "migrate" {
+			c.Flags().BoolVar(&a.inv.MigrationWrite, "write", false, "Atomically write the migrated configuration")
+			c.Flags().BoolVar(&a.inv.MigrationCheck, "check", false, "Exit with status 1 when migration is needed")
+			annotateFlag(c.Flags(), "write", "Output")
+			annotateFlag(c.Flags(), "check", "Output")
 		}
 		config.AddCommand(c)
 	}

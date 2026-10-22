@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/application"
 )
 
 func TestWorkspaceReportRebasesRelatedLocationsAndFixRevisions(t *testing.T) {

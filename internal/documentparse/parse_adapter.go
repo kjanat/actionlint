@@ -1,9 +1,9 @@
 package documentparse
 
 import (
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Parse adapts syntax findings to the analysis host's diagnostic state.

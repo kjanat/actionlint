@@ -61,7 +61,7 @@ func (r *repo) checkNix(args []string, stderr io.Writer) error {
 	return nil
 }
 
-func (r *repo) preflight(tag string) error {
+func (r *repo) preflight(tag string, commit, push bool) error {
 	top, err := r.git("rev-parse", "--show-toplevel")
 	if err != nil {
 		return err
@@ -82,18 +82,23 @@ func (r *repo) preflight(tag string) error {
 		return fmt.Errorf("this command must run at the repository root but %q is not %q", resolved, topResolved)
 	}
 
-	if out, err := r.git("status", "--porcelain", "--untracked-files=all"); err != nil {
-		return err
-	} else if out != "" {
-		return errors.New("the working tree is not clean. commit, stash, or remove all changed and untracked files before bumping the version")
+	if commit || push {
+		if out, err := r.git("status", "--porcelain", "--untracked-files=all"); err != nil {
+			return err
+		} else if out != "" {
+			return errors.New("automatic release commits require a clean working tree; omit -commit and -push to prepare version edits for review")
+		}
 	}
 
 	branch, err := r.git("rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return err
 	}
-	if branch != "master" {
-		return fmt.Errorf("this command must run on the 'master' branch but the current branch is %q", branch)
+	if push && branch != "master" {
+		return fmt.Errorf("-push requires the 'master' branch but the current branch is %q", branch)
+	}
+	if branch == "HEAD" {
+		return errors.New("version preparation requires a branch, not a detached HEAD")
 	}
 
 	if _, err := r.git("rev-parse", "--verify", "--quiet", "refs/tags/"+tag); err == nil {
@@ -169,7 +174,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	tag := "v" + v.String()
 
 	r := &repo{ctx: ctx, root: root, out: stdout}
-	if err := r.preflight(tag); err != nil {
+	if err := r.preflight(tag, commit, push); err != nil {
 		return err
 	}
 	if err := CheckChangelogRelease(root, v, stdout); err != nil {
@@ -202,7 +207,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		_, _ = fmt.Fprint(stdout, "\nAll version references were updated and verified. To prepare a release draft, run:\n\n")
 		_, _ = fmt.Fprintf(stdout, "  git add %s\n", strings.Join(append(paths(targets), changelogFile), " "))
 		_, _ = fmt.Fprintf(stdout, "  git commit -m 'bump up version to %s'\n", tag)
-		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
+		_, _ = fmt.Fprint(stdout, "\nMerge the reviewed version changes into master before preparing the release draft:\n\n")
 		_, _ = fmt.Fprintf(stdout, "  gh workflow run release-prepare.yml --ref master -f version=%s\n", v)
 		return nil
 	}
@@ -215,7 +220,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 	if !push {
 		_, _ = fmt.Fprint(stdout, "\nThe source commit was created locally. No tag or release was created. To prepare the draft, run:\n\n")
-		_, _ = fmt.Fprint(stdout, "  git push origin master\n")
+		_, _ = fmt.Fprint(stdout, "Merge the reviewed source commit into master before dispatching:\n\n")
 		_, _ = fmt.Fprintf(stdout, "  gh workflow run release-prepare.yml --ref master -f version=%s\n", v)
 		return nil
 	}

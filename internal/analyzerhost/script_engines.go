@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 const maxScriptEngines = 4

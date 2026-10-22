@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/diagnosticpolicy"
-	"actionlint.kjanat.dev/internal/suppression"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/diagnosticpolicy"
+	"actionlint.kjanat.dev/v2/internal/suppression"
 )
 
 func TestInlineSuppressionMalformedYAML(t *testing.T) {

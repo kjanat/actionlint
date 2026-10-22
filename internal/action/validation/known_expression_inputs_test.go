@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	actionmeta "actionlint.kjanat.dev/internal/action"
-	actioncheck "actionlint.kjanat.dev/internal/action/validation"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestKnownExpressionActionInputs(t *testing.T) {

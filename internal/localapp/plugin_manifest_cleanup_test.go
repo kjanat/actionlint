@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 )
 
 func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {

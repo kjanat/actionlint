@@ -3,8 +3,8 @@ package application
 import (
 	"context"
 
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 type gitModes struct{ workspace.IndexCache }

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	"actionlint.kjanat.dev/internal/tools"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestActionInputCannotOptIntoShellcheckWithDirective(t *testing.T) {

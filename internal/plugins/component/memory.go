@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"actionlint.kjanat.dev/internal/plugins/wasmbudget"
+	"actionlint.kjanat.dev/v2/internal/plugins/wasmbudget"
 	"github.com/partite-ai/wacogo"
 	"github.com/tetratelabs/wazero/experimental"
 )

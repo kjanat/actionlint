@@ -3,7 +3,7 @@ package workflow_test
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestWorkflowLiteralStaticValues(t *testing.T) {

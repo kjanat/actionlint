@@ -1,0 +1,12 @@
+name: Verify bundled Action
+description: Run the entrypoint suite with the runner's JavaScript-action cache credentials.
+inputs:
+  action-directory:
+    description: Directory containing the candidate action.mjs bundle.
+    required: true
+  binary:
+    description: Candidate native actionlint binary.
+    required: true
+runs:
+  using: node24
+  main: main.mjs

@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/runner"
 	"github.com/spf13/pflag"
 )
 

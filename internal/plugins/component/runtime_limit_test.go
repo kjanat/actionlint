@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/plugins/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
 	"github.com/partite-ai/wacogo"
 )
 

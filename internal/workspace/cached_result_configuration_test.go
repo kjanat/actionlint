@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/render"
-	"actionlint.kjanat.dev/internal/report"
-	"actionlint.kjanat.dev/internal/workspace"
+	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/report"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 func TestCheckResultRetainsCachedConfiguration(t *testing.T) {

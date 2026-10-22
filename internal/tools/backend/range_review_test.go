@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/tools"
-	workflow "actionlint.kjanat.dev/internal/workflow"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	workflow "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 type rangeReviewBackend struct{ end analyzer.ScriptPosition }

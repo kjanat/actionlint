@@ -9,13 +9,15 @@ Inside a Git repository, action discovery runs `git` 2.8 or newer to apply ignor
 package and the AUR and Scoop packages provide it. Standalone archives, Go installs, the Homebrew cask, WinGet, and
 npm and PyPI packages need `git` on `PATH`; on macOS the Xcode Command Line Tools provide it.
 
-ShellCheck and Ruff are optional external linters. Standalone archives, Go installs, and npm and PyPI packages
-contain actionlint only; install `shellcheck` and `ruff` separately on `PATH` to check shell and Python scripts.
-See [external linter configuration](usage.md#ignore-some-errors).
+In v2, ShellCheck and Ruff run as project-managed Wasm plugins. Standalone archives, Go installs, and npm and
+PyPI packages contain the actionlint host. Run `actionlint config init` for a new project, or follow
+[configuration migration](config-migration.md) for an existing one, to install and pin the default plugins.
+Commit the configuration and adjacent `actionlint.plugins.lock.json`; native script-linter executables are not
+required for these plugins. See [plugin installation](plugins.md#install-from-the-registry).
 
 Images built from this revision bundle both native executables, without requiring Python. The Nix package
-also provides both through its wrapper. The [`actionlint-bundled` pre-commit hook](usage.md#pre-commit)
-builds the Docker image from its selected source revision and includes both tools.
+also provides both through its wrapper. The v2 [pre-commit distribution](usage.md#pre-commit)
+uses the binary wheel and project-managed Wasm plugins.
 Previously published releases are unchanged and do not include Ruff.
 
 ## Project-maintained distributions
@@ -98,8 +100,9 @@ The unqualified [`actionlint` formula][formula] in Homebrew core installs the up
 The per-project `kjanat/actionlint` tap redirects to `kjanat/tap` through Homebrew's tap migration metadata, so existing
 `kjanat/actionlint/actionlint` installations keep upgrading. Releases publish only to `kjanat/tap`.
 
-The cask has no package dependencies and uses the system `git`. ShellCheck and Ruff are optional and must be installed separately on `PATH`.
-For [ShellCheck integration](checks.md#check-shellcheck-integ),
+The cask has no package dependencies and uses the system `git`. Install and pin Wasm plugins as described above.
+If you explicitly configure a native backend instead, install its executable separately on `PATH`.
+For native [ShellCheck integration](checks.md#check-shellcheck-integ),
 the `kjanat/tap/shellcheck` cask provides the upstream static binary and shell completions with no dependencies.
 Uninstall the homebrew-core formula first if it already owns the `shellcheck` binary:
 
@@ -107,7 +110,7 @@ Uninstall the homebrew-core formula first if it already owns the `shellcheck` bi
 brew install --cask kjanat/tap/shellcheck
 ```
 
-For [Ruff integration](config.md#ruff), install [Ruff's Homebrew package](https://docs.astral.sh/ruff/installation/):
+For a native [Ruff backend](config.md#ruff), install [Ruff's Homebrew package](https://docs.astral.sh/ruff/installation/):
 
 ```sh
 brew install ruff
@@ -179,15 +182,15 @@ The release matrix builds all these targets, but native CI tests do not cover:
 To install these binaries [`gh`][gh] command is useful. The following command is an example for x86_64 Linux.
 
 ```sh
-gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v1.17.0
-tar xf actionlint_1.17.0_linux_amd64.tar.gz
+gh release download --repo kjanat/actionlint --pattern '*_linux_amd64.tar.gz' v2.0.0
+tar xf actionlint_2.0.0_linux_amd64.tar.gz
 ./actionlint -version
 ```
 
 Verify the downloaded archive's [build provenance attestation][attestations] against this repository:
 
 ```sh
-gh attestation verify -R kjanat/actionlint actionlint_1.17.0_linux_amd64.tar.gz
+gh attestation verify -R kjanat/actionlint actionlint_2.0.0_linux_amd64.tar.gz
 ```
 
 <a id="download-script"></a>
@@ -206,10 +209,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6b
 ```
 
 When you need to install specific version of actionlint, please give the version to the 1st command line argument. The following
-example installs v1.17.0.
+example installs v2.0.0.
 
 ```sh
-bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 1.17.0
+bash <(curl -fsSL https://raw.githubusercontent.com/kjanat/actionlint/662318dd6bbd9c0c120e35b03168bc1be69bf428/scripts/download-actionlint.bash) 2.0.0
 ```
 
 This script downloads `actionlint` (or `actionlint.exe` on Windows) binary to the current working directory. When you need to put
@@ -263,12 +266,12 @@ Use the full `kjanat/actionlint` name to select this fork; the upstream package 
 
 Choose one backend for the `actionlint` executable:
 
-| Backend                                                   | Project-local command                              | Installation                                                                                             |
-| --------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [GitHub][mise-github]                                     | `mise use github:kjanat/actionlint`                | Prebuilt release binary; independent of registry snapshots.                                              |
-| [aqua](https://mise.jdx.dev/dev-tools/backends/aqua.html) | `mise use aqua:kjanat/actionlint`                  | Prebuilt release binary using aqua's checksum and attestation metadata; see registry availability below. |
-| [npm](https://mise.jdx.dev/dev-tools/backends/npm.html)   | `mise use 'npm:@kjanat/actionlint'`                | The npm launcher and its platform binary; requires Node.js at runtime and optional dependencies enabled. |
-| [Go](https://mise.jdx.dev/dev-tools/backends/go.html)     | `mise use go:actionlint.kjanat.dev/cmd/actionlint` | Builds from source with `go install`; requires a compatible Go toolchain.                                |
+| Backend                                                   | Project-local command                                 | Installation                                                                                             |
+| --------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [GitHub][mise-github]                                     | `mise use github:kjanat/actionlint`                   | Prebuilt release binary; independent of registry snapshots.                                              |
+| [aqua](https://mise.jdx.dev/dev-tools/backends/aqua.html) | `mise use aqua:kjanat/actionlint`                     | Prebuilt release binary using aqua's checksum and attestation metadata; see registry availability below. |
+| [npm](https://mise.jdx.dev/dev-tools/backends/npm.html)   | `mise use 'npm:@kjanat/actionlint'`                   | The npm launcher and its platform binary; requires Node.js at runtime and optional dependencies enabled. |
+| [Go](https://mise.jdx.dev/dev-tools/backends/go.html)     | `mise use go:actionlint.kjanat.dev/v2/cmd/actionlint` | Builds from source with `go install`; requires a compatible Go toolchain.                                |
 
 The short `actionlint` tool name resolves to upstream packages in mise's registry. Use the full identifiers above
 to select this fork. The npm route installs the executable into mise's tool directory; use
@@ -351,42 +354,37 @@ download a newer compiler. No Go toolchain is needed when using prebuilt binarie
 
 ```sh
 # Install the latest stable version
-go install actionlint.kjanat.dev/cmd/actionlint@latest
+go install actionlint.kjanat.dev/v2/cmd/actionlint@latest
 
 # Install the head of the master branch
-go install actionlint.kjanat.dev/cmd/actionlint@master
+go install actionlint.kjanat.dev/v2/cmd/actionlint@master
 ```
 
 ### pre-commit
 
-Install [pre-commit](https://pre-commit.com/#installation), then add this to `.pre-commit-config.yaml`:
+For v2, install hooks from
+[kjanat/actionlint-pre-commit](https://github.com/kjanat/actionlint-pre-commit).
+The first v2 hook release is pending. After publication, replace the placeholder
+with its exact tag:
 
 ```yaml
 repos:
-  - repo: https://github.com/kjanat/actionlint
-    rev: v1.17.0
+  - repo: https://github.com/kjanat/actionlint-pre-commit
+    rev: <published-v2-tag>
     hooks:
       - id: actionlint
 ```
 
-Install the Git hook and check all workflow files:
+The Python hook installs the matching binary wheel. Configure and lock the project's
+Wasm plugins, then run:
 
 ```sh
 pre-commit install
 pre-commit run actionlint --all-files
 ```
 
-This project's [hook manifest](../.pre-commit-hooks.yaml) provides five installation options:
-
-- `actionlint`: builds actionlint with Go. ShellCheck and Ruff are separate installations on `PATH`.
-- `actionlint-shellcheck`: builds actionlint with Go and installs rshellcheck, the native ShellCheck port, through its Go installer; the first run downloads the release binary from GitHub. Ruff is a separate installation.
-- `actionlint-docker`: pulls the project's published container image; requires Docker.
-- `actionlint-bundled`: builds the selected revision's container image with ShellCheck and Ruff; requires Docker.
-- `actionlint-system`: runs your existing `actionlint` installation on `PATH`.
-
-Choose a release or commit containing the hook you want. `actionlint-bundled` was added after v1.17.0.
-See [the pre-commit guide](usage.md#pre-commit) for hook selection and
-[updating pinned revisions](usage.md#updating-pre-commit-hooks).
+Existing users must change the repository URL; see [v2 migration](migration-v2.md).
+The [usage guide](usage.md#pre-commit) covers system/Docker alternatives and updates.
 
 ### GitHub Action
 
@@ -395,24 +393,26 @@ The project's [`kjanat/actionlint` Action](action.md) installs actionlint and ru
 ```yaml
 - uses: actions/checkout@v7
   with: { persist-credentials: false }
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
 ```
 
-The upcoming Node-based Action also supports installation for later steps in the same job:
+These examples target the upcoming v2 Action, which is not published yet. The Node-based Action also supports
+installation for later steps in the same job:
 
 ```yaml
-- uses: kjanat/actionlint@v1
+- uses: kjanat/actionlint@v2
   with:
     install-only: true
-    shellcheck: false
-    ruff: false
 - run: actionlint --version
 ```
 
-Install-only requires an Action release containing that feature. Existing immutable releases retain their
-original implementation. Pin a published release commit SHA or a specific release tag for reproducible setup.
-Enable the `shellcheck` and `ruff` inputs to install those tools too. See the
-[Action installation guide](action.md#install-without-running-analysis) for version selection and prerequisites.
+`install-only` exports only the actionlint binary. It does not read project configuration, install plugins, or
+provide native `shellcheck` and `ruff` executables. The `shellcheck` and `ruff` inputs control Wasm checks during
+analysis; they do not install those tools on `PATH`. Provision native executables separately if later steps need them.
+For later actionlint checks, install and pin the project's plugins using the commands above.
+Existing immutable releases retain their original implementation. Pin a published release commit SHA or a specific
+release tag for reproducible setup. See the [Action installation guide](action.md#install-without-running-analysis)
+for version selection and prerequisites.
 
 ## Community-maintained integrations
 
@@ -501,8 +501,8 @@ Until it is merged, use one of the [project-maintained distributions](#project-m
 [dockerhub]: https://hub.docker.com/r/kjanat/actionlint "Docker Hub"
 [formula]: https://formulae.brew.sh/formula/actionlint "brew formula"
 [gh]: https://docs.github.com/en/github-cli/github-cli/about-github-cli "gh"
-[go-module-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2F%40latest&query=%24.Version&logo=go&logoColor=white&label=Go%20module&labelColor=00ADD8&color=black
-[go-module]: https://pkg.go.dev/actionlint.kjanat.dev "Go module documentation"
+[go-module-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fproxy.golang.org%2Factionlint.kjanat.dev%2Fv2%2F%40latest&query=%24.Version&logo=go&logoColor=white&label=Go%20module&labelColor=00ADD8&color=black
+[go-module]: https://pkg.go.dev/actionlint.kjanat.dev/v2 "Go module documentation"
 [homebrew]: https://brew.sh/ "homebrew homepage"
 [mise-github]: https://mise.jdx.dev/dev-tools/backends/github.html "mise GitHub backend"
 [nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/ac/actionlint/package.nix "nixpkgs package definition for actionlint"

@@ -4,15 +4,15 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/mapping"
-	"actionlint.kjanat.dev/internal/semantics/condition"
-	"actionlint.kjanat.dev/internal/semantics/envname"
-	"actionlint.kjanat.dev/internal/semantics/identifier"
-	"actionlint.kjanat.dev/internal/semantics/jobneeds"
-	"actionlint.kjanat.dev/internal/semantics/permission"
-	"actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	"actionlint.kjanat.dev/v2/internal/semantics/condition"
+	"actionlint.kjanat.dev/v2/internal/semantics/envname"
+	"actionlint.kjanat.dev/v2/internal/semantics/identifier"
+	"actionlint.kjanat.dev/v2/internal/semantics/jobneeds"
+	"actionlint.kjanat.dev/v2/internal/semantics/permission"
+	"actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Finding retains the declaration owner when a check covers an entire job.

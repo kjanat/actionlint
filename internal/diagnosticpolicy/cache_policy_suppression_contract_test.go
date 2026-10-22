@@ -3,9 +3,9 @@ package diagnosticpolicy_test
 import (
 	"testing"
 
-	diagmodel "actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/diagnosticpolicy"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
+	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/diagnosticpolicy"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 
 	"github.com/google/go-cmp/cmp"
 )

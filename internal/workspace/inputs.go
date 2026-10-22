@@ -4,9 +4,9 @@ import (
 	"slices"
 	"sync"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	toolconfig "actionlint.kjanat.dev/internal/config/tools"
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 type Inputs struct {

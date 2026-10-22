@@ -3,7 +3,7 @@ package shellcheck
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 func TestShellcheckConfigDirectorySelection(t *testing.T) {

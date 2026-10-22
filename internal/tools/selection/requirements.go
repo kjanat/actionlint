@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/processconfig"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 )
 
 // ProjectMayEnable preserves a tool when a calling workflow or composite can enable it.
@@ -16,13 +16,20 @@ func ProjectMayEnable(name string, config, projectConfig *repoconfig.Config, pro
 
 // ProjectMayNeedProcess checks possible composite overrides without parsing workflow inputs.
 func ProjectMayNeedProcess(name string, config, projectConfig *repoconfig.Config, project bool, command string, explicit *processconfig.Options) (bool, error) {
+	return ProjectMayNeedProcessFor(name, config, projectConfig, project, func(candidate *repoconfig.Config) bool {
+		return processconfig.Enabled(command, explicit) && Module(name, command, explicit, candidate) == nil
+	})
+}
+
+// ProjectMayNeedProcessFor resolves a host's process choice for each enabled candidate.
+func ProjectMayNeedProcessFor(name string, config, projectConfig *repoconfig.Config, project bool, needsProcess func(*repoconfig.Config) bool) (bool, error) {
 	return projectMayMatch(config, projectConfig, project, func(config *repoconfig.Config) (bool, error) {
 		candidates, err := ConfigCandidates(name, config)
 		if err != nil {
 			return false, err
 		}
 		for _, candidate := range candidates {
-			if configEnabled(name, candidate) && processconfig.Enabled(command, explicit) && Module(name, command, explicit, candidate) == nil {
+			if configEnabled(name, candidate) && needsProcess(candidate) {
 				return true, nil
 			}
 		}

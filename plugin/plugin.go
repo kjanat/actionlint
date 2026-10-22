@@ -6,9 +6,9 @@ package plugin
 import (
 	"context"
 
-	pluginartifact "actionlint.kjanat.dev/internal/plugins/artifact"
-	"actionlint.kjanat.dev/internal/plugins/component"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/component"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 )
 
 // Component is a loaded plugin. Inspect HasAnalyzer, HasRunnerProvider and
@@ -29,8 +29,11 @@ type Limits = component.Limits
 // EngineLimits reports the bounds a core script engine runs under.
 type EngineLimits = corewasm.Limits
 
-// Load loads a component from a path, file URI or HTTP(S) URL.
+// Load loads a component from a path, file URI or SHA256-pinned HTTP(S) URL.
 func Load(ctx context.Context, path string, options Options) (*Component, error) {
+	if err := pluginartifact.RequireRemotePin(path); err != nil {
+		return nil, err
+	}
 	return component.Load(ctx, path, options)
 }
 
@@ -44,6 +47,9 @@ type EngineOptions = corewasm.Options
 // LoadEngine loads a core script engine from a raw or gzip-compressed module
 // path, file URI or HTTP(S) URL. Set the result as analysis.Tool.Backend.
 func LoadEngine(ctx context.Context, path string, options EngineOptions) (*Engine, error) {
+	if err := pluginartifact.RequireRemotePin(path); err != nil {
+		return nil, err
+	}
 	return corewasm.Load(ctx, path, options)
 }
 

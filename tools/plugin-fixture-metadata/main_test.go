@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 func TestMetadataIsPackagedAtComponentRoot(t *testing.T) {

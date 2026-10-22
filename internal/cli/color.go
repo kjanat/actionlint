@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 func parseColorMode(mode string) (render.Color, error) {

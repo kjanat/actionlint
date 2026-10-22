@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"actionlint.kjanat.dev/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/buildinfo"
 )
 
 func documentationRef(version string, info *debug.BuildInfo) string {

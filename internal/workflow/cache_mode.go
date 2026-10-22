@@ -1,8 +1,8 @@
 package workflow
 
 import (
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/yaml"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 // CacheModeKind identifies the cache access granted to a workflow or job.

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"slices"
 
-	"actionlint.kjanat.dev/analyzer"
-	"actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/tools"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/tools"
 )
 
 // WithScriptInputs retains native run preparation and adds the engine's input-only route.

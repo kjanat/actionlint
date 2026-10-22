@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	expr "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/webhook/payload"
+	expr "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/webhook/payload"
 )
 
 // Trigger identifies a possible event and optional activity filters. Unknown

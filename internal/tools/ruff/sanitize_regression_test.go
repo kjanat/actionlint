@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	"actionlint.kjanat.dev/internal/tools/ruff"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	"actionlint.kjanat.dev/v2/internal/tools/ruff"
 )
 
 func TestSanitizePythonScript(t *testing.T) {

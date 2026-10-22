@@ -3,7 +3,7 @@ package execution
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestCompositeConditionalModeCheckoutReset(t *testing.T) {

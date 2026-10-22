@@ -6,10 +6,10 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/diagnostic"
-	"actionlint.kjanat.dev/internal/fix"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/sourceid"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/fix"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
 func codeActions(ctx context.Context, path string, selection sourceRange, findings []diagnostic.Diagnostic, documents map[string]Document) []any {

@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/analysis"
+	"actionlint.kjanat.dev/v2/analysis"
 )
 
 func TestFilesRootsRelativeTargetsInWorkingDirectory(t *testing.T) {

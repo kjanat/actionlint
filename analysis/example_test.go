@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"actionlint.kjanat.dev/analysis"
+	"actionlint.kjanat.dev/v2/analysis"
 )
 
 func ExampleAnalyze() {

@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/analyzer"
-	corewasm "actionlint.kjanat.dev/internal/plugins/core"
-	"actionlint.kjanat.dev/internal/tools"
-	backendroute "actionlint.kjanat.dev/internal/tools/backend"
-	"actionlint.kjanat.dev/rule"
+	"actionlint.kjanat.dev/v2/analyzer"
+	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	backendroute "actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Build small guests directly so timeout tests need no external compiler.

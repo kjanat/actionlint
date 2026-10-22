@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
-	"actionlint.kjanat.dev/internal/pluginref"
-	"actionlint.kjanat.dev/internal/pluginregistry"
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
@@ -69,6 +69,35 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	}
 }
 
+func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
+	root := pluginRepository(t)
+	project, err := OpenPluginProject(t.Context(), root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, err := pluginref.Parse("https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+		t.Fatal(err)
+	}
+	project, err = OpenPluginProject(t.Context(), root, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, err := project.SelectedLock()
+	if err != nil || len(selected.Plugins) != 0 {
+		t.Fatalf("direct source acquired a registry pin: %+v %v", selected, err)
+	}
+	if got := project.DirectSources(); len(got) != 1 || got[0] != ref.DirectSource() {
+		t.Fatalf("direct source lost: %v", got)
+	}
+	if project.Lock.Exists() {
+		t.Fatal("created an unnecessary lockfile for an already pinned URL")
+	}
+}
+
 func TestPluginProjectMissingPinsAndForeignScope(t *testing.T) {
 	root, foreign := pluginRepository(t), pluginRepository(t)
 	if err := os.MkdirAll(filepath.Join(foreign, ".github"), 0700); err != nil {
@@ -97,6 +126,10 @@ func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := project.Save(t.Context(), []pluginref.Reference{}); err != nil {
+		t.Fatal(err)
+	}
+	// Seed an existing lock so this checks rollback of an already tracked file.
+	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	before, err := os.ReadFile(project.Lock.Path)
@@ -148,7 +181,7 @@ func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
 	}
 	registry.Offline = true
 	requests := len(registry.Requests)
-	if err := project.Resolve(t.Context(), refs, ""); err != nil {
+	if err := project.Resolve(t.Context(), refs, nil); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests) != requests || project.Lock.Lock.Plugins[0] != pin {
@@ -220,7 +253,7 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Resolve(t.Context(), []pluginref.Reference{ref}, ""); err != nil {
+	if err := project.Resolve(t.Context(), []pluginref.Reference{ref}, nil); err != nil {
 		t.Fatalf("removed package blocked its replacement: %v", err)
 	}
 	if len(project.Lock.Lock.Plugins) != 1 || project.Lock.Lock.Plugins[0] != pin {
@@ -245,7 +278,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 		t.Fatal(err)
 	}
 	refs := []pluginref.Reference{ref}
-	if err := project.Resolve(t.Context(), refs, ""); err != nil {
+	if err := project.Resolve(t.Context(), refs, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Save(t.Context(), refs); err != nil {
@@ -259,7 +292,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 		t.Fatal(err)
 	}
 	requests := len(registry.Requests)
-	if err := project.Resolve(t.Context(), refs, ""); err != nil {
+	if err := project.Resolve(t.Context(), refs, nil); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests) != requests || project.Lock.Lock.Plugins[0] != original {
@@ -269,7 +302,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	artifactURL := "https://" + testutil.FixturePluginName + "/releases/download/v2.0.0/plugin.component.wasm"
 	good := registry.Files[artifactURL]
 	registry.Files[artifactURL] = []byte("corrupt")
-	if err := project.Resolve(t.Context(), refs, "*"); err == nil {
+	if err := project.Resolve(t.Context(), refs, refs); err == nil {
 		t.Fatal("accepted corrupted replacement")
 	}
 	project, err = OpenPluginProject(t.Context(), root, "", "")
@@ -281,7 +314,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 		t.Fatalf("failed update damaged previous selection: %+v %v", selected, err)
 	}
 	registry.Files[artifactURL] = good
-	if err := project.Resolve(t.Context(), refs, "*"); err != nil {
+	if err := project.Resolve(t.Context(), refs, refs); err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Save(t.Context(), refs); err != nil {

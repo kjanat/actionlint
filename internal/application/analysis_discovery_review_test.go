@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/application"
+	"actionlint.kjanat.dev/v2/internal/application"
 )
 
 func TestRepositoryRetainsExcludedCandidates(t *testing.T) {

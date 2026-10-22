@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func (run *shellcheckRun) pathContext() repoconfig.PathContext {

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Selection selects an explicit file, repository discovery, or no configuration.

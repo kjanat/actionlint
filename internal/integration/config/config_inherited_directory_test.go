@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/testutil"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestInheritedConfigDirectorySpellings(t *testing.T) {

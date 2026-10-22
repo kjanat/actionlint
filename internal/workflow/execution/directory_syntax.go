@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
 // RunnerDirectoryPath interprets runner path syntax before local filesystem operations.

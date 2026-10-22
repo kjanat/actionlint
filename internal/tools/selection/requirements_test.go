@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
@@ -40,6 +40,17 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 			}
 			if !hasDefault || !hasProcess || !hasWasm {
 				t.Fatalf("transport candidates lost: default=%t process=%t wasm=%t", hasDefault, hasProcess, hasWasm)
+			}
+			needed, err := ProjectMayNeedProcessFor(name, cfg, nil, false, func(candidate *config.Config) bool {
+				backend := candidate.Tools.Shellcheck.Backend
+				if name == "ruff" {
+					backend = candidate.Tools.Ruff.Backend
+				}
+				// A host can supply plugins for defaults but retain explicit processes.
+				return backend != nil && backend.Process != nil
+			})
+			if err != nil || !needed {
+				t.Fatalf("host plugin default hid an explicit process: needed=%t error=%v", needed, err)
 			}
 		})
 	}

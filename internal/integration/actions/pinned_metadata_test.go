@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/testutil"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestPinnedActionInputsAndOutputs(t *testing.T) {

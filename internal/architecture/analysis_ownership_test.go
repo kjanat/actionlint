@@ -16,9 +16,9 @@ func TestAnalysisOwnership(t *testing.T) {
 		"tools/execution":      {"engine", "application", "workspace", "builtin", "checks", "diagnosticpolicy", "render"},
 		"workflow/composition": {"application", "workspace", "diagnosticpolicy", "tools/adapters", "tools/backend", "tools/ruff", "tools/shellcheck", "tools/selection", "render"},
 	}
-	args := []string{"list", "-json", "actionlint.kjanat.dev/document"}
+	args := []string{"list", "-json", "actionlint.kjanat.dev/v2/document"}
 	for name := range boundaries {
-		args = append(args, "actionlint.kjanat.dev/internal/"+name)
+		args = append(args, "actionlint.kjanat.dev/v2/internal/"+name)
 	}
 	output, err := exec.CommandContext(t.Context(), "go", args...).Output()
 	if err != nil {
@@ -33,15 +33,15 @@ func TestAnalysisOwnership(t *testing.T) {
 		if err := decoder.Decode(&pkg); err != nil {
 			t.Fatal(err)
 		}
-		name := strings.TrimPrefix(pkg.ImportPath, "actionlint.kjanat.dev/internal/")
+		name := strings.TrimPrefix(pkg.ImportPath, "actionlint.kjanat.dev/v2/internal/")
 		forbidden := boundaries[name]
-		if pkg.ImportPath == "actionlint.kjanat.dev/document" {
+		if pkg.ImportPath == "actionlint.kjanat.dev/v2/document" {
 			name = "document"
 			forbidden = []string{"engine", "application", "config", "analyzerhost", "workspace", "tools", "report", "documentparse"}
 		}
 		for _, dependency := range pkg.Deps {
 			for _, domain := range forbidden {
-				prefix := "actionlint.kjanat.dev/internal/" + domain
+				prefix := "actionlint.kjanat.dev/v2/internal/" + domain
 				if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
 					t.Errorf("%s imports responsibility %s", name, dependency)
 				}

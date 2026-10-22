@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
-	workflow "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/analyzer"
+	workflow "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {

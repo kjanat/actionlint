@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	expr "actionlint.kjanat.dev/internal/expression"
+	expr "actionlint.kjanat.dev/v2/internal/expression"
 )
 
 func TestPayloadExpressions(t *testing.T) {

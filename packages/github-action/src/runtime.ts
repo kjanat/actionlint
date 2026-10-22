@@ -6,31 +6,15 @@ export type Environment = Record<string, string>;
 
 export class InputError extends Error {}
 
-export type ExistingCommand = { kind: 'existing'; executable: string };
-
-export type ShellcheckCommand = ExistingCommand | { kind: 'standalone'; executable: string };
-export type RuffCommand = ShellcheckCommand;
-
-export type InstalledTools = {
-	actionlint?: string;
-	shellcheck?: ShellcheckCommand;
-	ruff?: RuffCommand;
-};
-
-export type ToolRequirements = { shellcheck: boolean; ruff: boolean };
-
 export type Runtime = {
 	native: () => Promise<string>;
 	checkExecutable: (path: string) => Promise<void>;
-	inspect: (executable: string, environment: Environment) => Promise<ToolRequirements>;
-	shellcheck: () => Promise<ShellcheckCommand>;
-	ruff: () => Promise<RuffCommand>;
-	publish: (tools: InstalledTools) => Promise<void>;
+	plugins: (executable: string, environment: Environment, run: () => Promise<number>) => Promise<number>;
+	publish: (executable: string) => Promise<void>;
 	execute: (executable: string, args: string[], environment: Environment) => Promise<number>;
 };
 
-// Leave invalid inputs to the native action parser, which writes the established
-// invalid-options outputs. Never install optional tools for an invalid boolean.
+// Parse launcher options; analysis options belong to the native Action parser.
 export function toolEnabled(value: string | undefined): boolean | undefined {
 	if (value === undefined || value === '' || value === 'true') return true;
 	if (value === 'false') return false;
@@ -52,17 +36,10 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 		return value;
 	};
 	const addActionlint = exportInput('add-actionlint-to-path');
-	const addShellcheck = exportInput('add-shellcheck-to-path');
-	const addRuff = exportInput('add-ruff-to-path');
+	const cachePlugins = exportInput('plugin-cache');
 	if (setupOnly && !addActionlint) {
 		throw new InputError("Input 'install-only: true' requires 'add-actionlint-to-path: true'");
 	}
-	const shellcheck = toolEnabled(environment.INPUT_SHELLCHECK);
-	const ruff = toolEnabled(environment.INPUT_RUFF);
-	if (setupOnly && (shellcheck === undefined)) {
-		throw new InputError("Input 'shellcheck' must be 'true' or 'false'");
-	}
-	if (setupOnly && ruff === undefined) throw new InputError("Input 'ruff' must be 'true' or 'false'");
 	const override = environment.ACTIONLINT_ACTION_BINARY;
 	let executable: string;
 	if (override) {
@@ -77,33 +54,13 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 	// Match action.yml defaults even when the launcher is invoked directly.
 	if (!childEnvironment.INPUT_RUFF) childEnvironment.INPUT_RUFF = 'true';
 	if (environment.INPUT_PYFLAKES === 'true') {
-		console.log('::warning::Pyflakes integration has been removed; the deprecated pyflakes input is ignored.');
+		console.log('::warning::The deprecated pyflakes input is ignored. Use ruff with a declared Ruff Wasm plugin.');
 	}
 	childEnvironment.INPUT_PYFLAKES = 'false';
-	if (environment['INPUT_ADD-PYFLAKES-TO-PATH'] === 'true') {
-		console.log(
-			'::warning::The add-pyflakes-to-path input is deprecated and ignored; Pyflakes is no longer installed or added to PATH.',
-		);
-		childEnvironment['INPUT_ADD-PYFLAKES-TO-PATH'] = 'false';
-	}
-	const tools: InstalledTools = {};
-	if (addActionlint) tools.actionlint = executable;
-	delete childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND;
-	delete childEnvironment.ACTIONLINT_RUFF_COMMAND;
-	if (shellcheck !== undefined && ruff !== undefined) {
-		const needed = setupOnly ? { shellcheck, ruff } : await runtime.inspect(executable, childEnvironment);
-		if (shellcheck && needed.shellcheck) {
-			const command = await runtime.shellcheck();
-			if (addShellcheck) tools.shellcheck = command;
-			childEnvironment.ACTIONLINT_SHELLCHECK_COMMAND = command.executable;
-		}
-		if (ruff && needed.ruff) {
-			const command = await runtime.ruff();
-			if (addRuff) tools.ruff = command;
-			childEnvironment.ACTIONLINT_RUFF_COMMAND = command.executable;
-		}
-		if (Object.keys(tools).length > 0) await runtime.publish(tools);
-	}
-	if (setupOnly) return 0;
-	return runtime.execute(executable, ['-github-action'], childEnvironment);
+	const run = async (): Promise<number> => {
+		if (addActionlint) await runtime.publish(executable);
+		if (setupOnly) return 0;
+		return runtime.execute(executable, ['-github-action'], childEnvironment);
+	};
+	return !setupOnly && cachePlugins ? runtime.plugins(executable, childEnvironment, run) : run();
 }

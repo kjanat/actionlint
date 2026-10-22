@@ -8,28 +8,31 @@ import (
 	"sync"
 	"time"
 
-	documentmodel "actionlint.kjanat.dev/document"
+	documentmodel "actionlint.kjanat.dev/v2/document"
 
-	"actionlint.kjanat.dev/analyzer"
-	actionlocal "actionlint.kjanat.dev/internal/action/local"
-	"actionlint.kjanat.dev/internal/analyzerhost"
-	"actionlint.kjanat.dev/internal/builtin"
-	"actionlint.kjanat.dev/internal/checks"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	"actionlint.kjanat.dev/internal/diagnosticpolicy"
-	"actionlint.kjanat.dev/internal/documentparse"
-	findingmodel "actionlint.kjanat.dev/internal/finding"
-	"actionlint.kjanat.dev/internal/fsread"
-	"actionlint.kjanat.dev/internal/tools"
-	"actionlint.kjanat.dev/internal/workflow/calls"
-	"actionlint.kjanat.dev/internal/workflow/composition"
-	"actionlint.kjanat.dev/internal/workflow/execution"
-	workflownames "actionlint.kjanat.dev/internal/workflow/names"
-	runnerlang "actionlint.kjanat.dev/internal/workflow/runner"
-	workflowvisit "actionlint.kjanat.dev/internal/workflow/visit"
-	"actionlint.kjanat.dev/internal/workspace"
-	"actionlint.kjanat.dev/rule"
-	"actionlint.kjanat.dev/runner"
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/checks"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/diagnosticpolicy"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/composition"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/rule"
+	"actionlint.kjanat.dev/v2/runner"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // analysisSession holds invocation resources assembled by the application.
@@ -111,7 +114,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 	var analysisErr error
 	composed := composition.Result{Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
-		composed, analysisErr = s.composeDocument(path, root, document, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
+		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
 			return nil, outline, analysisErr
 		}
@@ -134,7 +137,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 	return all, outline, analysisErr
 }
 
-func (s *analysisSession) composeDocument(path, root string, document documentparse.Document, action bool,
+func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {
@@ -176,6 +179,25 @@ func (s *analysisSession) composeDocument(path, root string, document documentpa
 			_, _ = fmt.Fprintln(s.logOut, "warning:", err)
 		}
 	}}
+	toolContext.DocumentPath, toolContext.DocumentContent = path, content
+	var mainReferences workflowfacts.References
+	var indexMain sync.Once
+	toolContext.Reference = func(filename string, snapshot []byte, position diagnostic.Position) source.Reference {
+		var refs workflowfacts.References
+		if filename != "" && filename != path && filename != sourcePath {
+			parsed := documentparse.Action(filename, filename, snapshot)
+			refs = documentparse.References(filename, snapshot, parsed, nil, fsread.PhysicalPath)[filename]
+		} else {
+			indexMain.Do(func() {
+				mainReferences = documentparse.References(sourcePath, content, document, nil, fsread.PhysicalPath)[sourcePath]
+			})
+			refs = mainReferences
+		}
+		if ref, ok := refs.Positions[[2]int{position.Line, position.Column}]; ok {
+			return ref
+		}
+		return refs.Document
+	}
 	selected, err := s.buildChecks(context, toolContext, action)
 	if err != nil {
 		return result, err

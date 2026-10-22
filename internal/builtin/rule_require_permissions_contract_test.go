@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/builtin"
-	repoconfig "actionlint.kjanat.dev/internal/config"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/builtin"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestWorkflowPermissionsDeclarationPosition(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/analyzer"
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 type admissionEngine struct{ closed bool }

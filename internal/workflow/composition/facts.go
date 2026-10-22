@@ -1,12 +1,12 @@
 package composition
 
 import (
-	"actionlint.kjanat.dev/analyzer"
-	documentmodel "actionlint.kjanat.dev/document"
-	"actionlint.kjanat.dev/internal/documentparse"
-	"actionlint.kjanat.dev/internal/sourceid"
-	scriptexecution "actionlint.kjanat.dev/internal/tools/execution"
-	workflowfacts "actionlint.kjanat.dev/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/analyzer"
+	documentmodel "actionlint.kjanat.dev/v2/document"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
 func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.References) analyzer.Input {

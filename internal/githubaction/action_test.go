@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/render"
 )
 
 type recordedLint struct {

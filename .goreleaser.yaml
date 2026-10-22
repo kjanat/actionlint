@@ -69,6 +69,8 @@ source:
   prefix_template: '{{ .ProjectName }}-{{ replace .Version "-" "_" }}/'
   files: [man/actionlint.1]
 
+# Beepboop publishes these release assets after Verify published candidate passes:
+# https://github.com/kjanat/beepboop/blob/master/routes.json
 homebrew_casks:
   - name: actionlint
     ids: [nix]
@@ -207,7 +209,7 @@ aur_sources:
       export CGO_LDFLAGS="${LDFLAGS}"
       export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
       go build -o build/actionlint \
-        -ldflags "-linkmode=external -X actionlint.kjanat.dev/internal/buildinfo.ReleaseVersion=${pkgver} -X actionlint.kjanat.dev/internal/buildinfo.InstallOrigin=https://aur.archlinux.org/packages/${pkgname}" \
+        -ldflags "-linkmode=external -X actionlint.kjanat.dev/v2/internal/buildinfo.ReleaseVersion=${pkgver} -X actionlint.kjanat.dev/v2/internal/buildinfo.InstallOrigin=https://aur.archlinux.org/packages/${pkgname}" \
         ./cmd/actionlint
     package: |-
       cd "actionlint-${pkgver}"

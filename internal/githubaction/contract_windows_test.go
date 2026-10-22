@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/internal/cli"
-	"actionlint.kjanat.dev/internal/render"
+	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/render"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/windows"
 )

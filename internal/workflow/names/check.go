@@ -3,9 +3,9 @@ package names
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/diagnostic"
-	exprlang "actionlint.kjanat.dev/internal/expression"
-	workflowlang "actionlint.kjanat.dev/internal/workflow"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // WorkflowRunFilters returns declared producer-name filters without loading an inventory.

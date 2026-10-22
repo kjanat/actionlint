@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/diagnostic"
+	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Completion is a buffer-relative property edit; the transport owns UTF-16 conversion.

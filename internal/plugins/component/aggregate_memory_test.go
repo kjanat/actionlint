@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	hostbind "actionlint.kjanat.dev/internal/plugins/component/bindings/kjanat/actionlint/host"
+	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
 	"github.com/partite-ai/wacogo"
 	"golang.org/x/sync/semaphore"
 )
