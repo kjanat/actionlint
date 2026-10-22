@@ -87,9 +87,16 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
 		input.Kind, input.Reader, input.Name, input.NormalizePath = application.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
-	result, err := localapp.Check(ctx, options, input, c.Plugins)
+	if len(c.Plugins) != 0 && c.PluginLock != "" {
+		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
+	}
+	plugins, err := c.pluginSelection().Resolve(ctx, workingDir, input)
 	if err != nil {
-		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok {
+		return 0, err
+	}
+	result, err := localapp.Check(ctx, options, input, plugins.Paths)
+	if err != nil {
+		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok && len(c.Plugins) != 0 {
 			return 0, commandUsageError{err}
 		}
 		if result != nil {
@@ -98,6 +105,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, err
 	}
 	inputs := append([]string{c.Config.Path, r.TemplateFile, c.RunnerSnapshot}, result.Inputs...)
+	inputs = append(inputs, plugins.Inputs...)
 	for _, source := range c.Plugins {
 		_, local, err := pluginartifact.NormalizeSource(source, workingDir)
 		if err != nil {
@@ -148,11 +156,12 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
-		result, err = localapp.Check(ctx, options, input, c.Plugins)
+		result, err = localapp.Check(ctx, options, input, plugins.Paths)
 		if err != nil {
 			return 0, err
 		}
 	}
+	result.Inputs = append(result.Inputs, plugins.Inputs...)
 	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderer, render.Prepare(*result)); err != nil {
 		return 0, err
 	}

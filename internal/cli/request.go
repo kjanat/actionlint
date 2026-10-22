@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	"actionlint.kjanat.dev/internal/localapp"
@@ -34,15 +35,30 @@ func (r versionRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type rulesRequest struct {
-	Plugins []string
-	Name    string
-	JSON    bool
+	Plugins   []string
+	Selection localapp.PluginSelection
+	Name      string
+	JSON      bool
 }
 
 func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
-	rules, err := localapp.Rules(ctx, r.Plugins)
+	selection := r.Selection
+	if len(r.Plugins) > 0 {
+		selection.Paths = r.Plugins
+	}
+	if len(selection.Paths) > 0 && selection.LockFile != "" {
+		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
+	}
+	paths, err := selectedRulePlugins(ctx, selection)
 	if err != nil {
-		return 0, commandUsageError{err}
+		return 0, err
+	}
+	rules, err := localapp.Rules(ctx, paths)
+	if err != nil {
+		if _, loadFailure := errors.AsType[*localapp.PluginLoadError](err); loadFailure && len(selection.Paths) > 0 {
+			return 0, commandUsageError{err}
+		}
+		return 0, err
 	}
 	return 0, writeRules(streams.Stdout, r.Name, r.JSON, rules)
 }

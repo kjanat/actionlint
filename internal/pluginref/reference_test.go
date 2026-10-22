@@ -1,0 +1,83 @@
+package pluginref
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestParse(t *testing.T) {
+	for _, tc := range []struct {
+		input, name, version, canonical string
+	}{
+		{"Kjanat/Shellcheck", "github.com/kjanat/shellcheck", "latest", "github.com/kjanat/shellcheck"},
+		{"github.com/Kjanat/Shellcheck@v1.2.3", "github.com/kjanat/shellcheck", "v1.2.3", "github.com/kjanat/shellcheck@v1.2.3"},
+		{"gitlab.com/Group/Subgroup/Plugin@latest", "gitlab.com/group/subgroup/plugin", "latest", "gitlab.com/group/subgroup/plugin"},
+		{"gitlab.com/Backend.Services/Team.Tools/Plugin@v1", "gitlab.com/backend.services/team.tools/plugin", "v1", "gitlab.com/backend.services/team.tools/plugin@v1"},
+		{"gitlab.com/_group/.sub_group/plugin.", "gitlab.com/_group/.sub_group/plugin.", "latest", "gitlab.com/_group/.sub_group/plugin."},
+		{"gitlab.com/group..name/subgroup_/plugin--name", "gitlab.com/group..name/subgroup_/plugin--name", "latest", "gitlab.com/group..name/subgroup_/plugin--name"},
+		{"gitlab.com/group.-name/plugin", "gitlab.com/group.-name/plugin", "latest", "gitlab.com/group.-name/plugin"},
+		{"owner/repo@Release-1+build", "github.com/owner/repo", "Release-1+build", "github.com/owner/repo@Release-1+build"},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			ref, err := Parse(tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ref.Name != tc.name || ref.Version != tc.version || ref.Registry != DefaultRegistry || ref.String() != tc.canonical {
+				t.Fatalf("unexpected reference: %#v (%s)", ref, ref.String())
+			}
+		})
+	}
+}
+
+func TestRejectInvalidReference(t *testing.T) {
+	for _, input := range []string{
+		"", "plugin", "owner/repo@", "owner/repo@@v1", "owner/repo@^1.0", "owner/repo@v1/extra",
+		"github.com/owner/repo/extra", "https://github.com/owner/repo", "codeberg.org/owner/repo",
+		"../repo", "owner/../repo", " owner/repo", "owner/repo ", "gitlab.com/group//repo",
+		"github.com/backend.services/plugin", "gitlab.com/-group/plugin", "gitlab.com/group./plugin",
+		"gitlab.com/group/subgroup./plugin", "gitlab.com/group/-plugin", "gitlab.com/group/plugin.git",
+		"gitlab.com/group/plugin.atom", "gitlab.com/group/../plugin", "gitlab.com/group%2ename/plugin",
+	} {
+		t.Run(input, func(t *testing.T) {
+			if _, err := Parse(input); err == nil {
+				t.Fatalf("accepted %q", input)
+			}
+		})
+	}
+}
+
+func TestRegistry(t *testing.T) {
+	ref, err := New("owner/repo", "v1", "https://Example.com/catalog")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ref.Registry != "https://example.com/catalog/" {
+		t.Fatalf("unexpected registry: %s", ref.Registry)
+	}
+	for _, registry := range []string{
+		"http://example.com/", "file:///catalog", "https://", "https://:443/", "https://user:secret@example.com/",
+		"https://example.com/?x=1", "https://example.com/?", "https://example.com/#hash",
+		"https://example.com/#", "https://example.com/a%5Cb",
+	} {
+		if _, err := New("owner/repo", "", registry); err == nil {
+			t.Errorf("accepted registry %q", registry)
+		}
+	}
+}
+
+func TestRegistryPreservesIPv6Zone(t *testing.T) {
+	for _, source := range []string{
+		"https://[FE80::1%25Ethernet]/",
+		"https://[FE80::1%25Ethernet]:443/catalog/",
+	} {
+		ref, err := New("owner/repo", "v1", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := strings.Replace(source, "FE80", "fe80", 1)
+		if ref.Registry != want {
+			t.Fatalf("registry=%q, want %q", ref.Registry, want)
+		}
+	}
+}

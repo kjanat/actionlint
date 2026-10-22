@@ -5,6 +5,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/internal/config"
 	lintconfig "actionlint.kjanat.dev/internal/config/rules"
 	toolconfig "actionlint.kjanat.dev/internal/config/tools"
+	"actionlint.kjanat.dev/internal/pluginref"
 )
 
 type (
@@ -27,6 +28,8 @@ type (
 	LintRulesConfig              = repoconfig.LintRulesConfig
 	LocalActionSources           = repoconfig.LocalActionSources
 	PathConfig                   = repoconfig.PathConfig
+	PluginDeclarations           = repoconfig.PluginDeclarations
+	PluginReference              = pluginref.Reference
 	PermissionsPolicy            = repoconfig.PermissionsPolicy
 	Policy                       = repoconfig.Policy
 	RuffToolConfig               = repoconfig.RuffToolConfig
