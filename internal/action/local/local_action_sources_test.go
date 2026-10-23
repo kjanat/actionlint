@@ -128,7 +128,7 @@ func TestMissingLocalActionMappedSourceDiagnostic(t *testing.T) {
 		if _, missing := errors.AsType[UnresolvedError](err); !missing {
 			t.Fatalf("folded=%v: expected missing-local-action: %v", folded, err)
 		}
-		want := `source mapping for local action "./generated": local action "./absent-source" has no action.yml or action.yaml; check the path and ensure the action is available when linting`
+		want := `source mapping for local action "./generated": local action "./absent-source" has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting`
 		if err.Error() != want {
 			t.Fatalf("folded=%v: got %q; want %q", folded, err, want)
 		}

@@ -11,11 +11,12 @@ func TestActionSnapshotManifestPrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		name, diskYAML, diskYML, explicitYAML, explicitYML, wantName, wantContent string
 	}{
-		{"disk-yaml-wins", "disk yaml", "", "", "snapshot yml", "action.yaml", "disk yaml"},
-		{"snapshot-yaml-wins", "disk yaml", "disk yml", "snapshot yaml", "snapshot yml", "action.yaml", "snapshot yaml"},
+		{"snapshot-yml-before-disk-yaml", "disk yaml", "", "", "snapshot yml", "action.yml", "snapshot yml"},
+		{"snapshot-yml-wins", "disk yaml", "disk yml", "snapshot yaml", "snapshot yml", "action.yml", "snapshot yml"},
 		{"snapshot-yml-overrides", "", "disk yml", "", "snapshot yml", "action.yml", "snapshot yml"},
-		{"snapshot-yaml-before-disk-yml", "", "disk yml", "snapshot yaml", "", "action.yaml", "snapshot yaml"},
+		{"disk-yml-before-snapshot-yaml", "", "disk yml", "snapshot yaml", "", "action.yml", "disk yml"},
 		{"disk-yml-fallback", "", "disk yml", "", "", "action.yml", "disk yml"},
+		{"disk-yaml-fallback", "disk yaml", "", "", "", "action.yaml", "disk yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()

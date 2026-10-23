@@ -133,6 +133,15 @@ func (c *Cache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
 		return nil, false, err
 	}
 	if f == "" {
+		docker, err := c.hasDockerfile(dir)
+		if err != nil {
+			return nil, false, err
+		}
+		if docker {
+			// Dockerfile-only actions execute without declaring inputs or outputs.
+			c.writeCache(spec, nil)
+			return nil, false, nil
+		}
 		c.debug("No action metadata found in %s", dir)
 		c.missing.Store(spec, true)
 		c.writeCache(spec, nil)
@@ -173,8 +182,29 @@ func (c *Cache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
 	return meta, false, nil
 }
 
+func (c *Cache) hasDockerfile(dir string) (bool, error) {
+	for _, name := range []string{"Dockerfile", "dockerfile"} {
+		file := filepath.Join(dir, name)
+		if !c.customReader {
+			if info, err := os.Stat(file); err == nil && info.IsDir() {
+				continue
+			}
+		}
+		// Record the dependency without presenting Dockerfile bytes as YAML metadata.
+		_, err := c.reader.ReadFile(file)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return false, fmt.Errorf("could not read local action Dockerfile %q: %w", file, err)
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (c *Cache) readLocalActionMetadataFile(dir string) ([]byte, string, error) {
-	for _, name := range []string{"action.yaml", "action.yml"} {
+	for _, name := range []string{"action.yml", "action.yaml"} {
 		path := filepath.Join(dir, name)
 		if content, ok := c.explicitSources[fsread.PhysicalPath(path)]; ok {
 			c.reader.Record(path)
@@ -198,7 +228,7 @@ func (c *Cache) hasExplicitAction(spec string) bool {
 		return false
 	}
 	dir := filepath.Join(c.root, filepath.FromSlash(spec))
-	for _, name := range []string{"action.yaml", "action.yml"} {
+	for _, name := range []string{"action.yml", "action.yaml"} {
 		if _, ok := c.explicitSources[fsread.PhysicalPath(filepath.Join(dir, name))]; ok {
 			return true
 		}

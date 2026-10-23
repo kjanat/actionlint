@@ -1,3 +1,3 @@
-test.yaml:6:15: local action "./missing-action" has no action.yml or action.yaml; check the path and ensure the action is available when linting [missing-local-action]
-test.yaml:7:15: local action "./missing-action" has no action.yml or action.yaml; check the path and ensure the action is available when linting [missing-local-action]
-test.yaml:8:15: local action "./missing-action" has no action.yml or action.yaml; check the path and ensure the action is available when linting [missing-local-action]
+test.yaml:6:15: local action "./missing-action" has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting [missing-local-action]
+test.yaml:7:15: local action "./missing-action" has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting [missing-local-action]
+test.yaml:8:15: local action "./missing-action" has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting [missing-local-action]

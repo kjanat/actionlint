@@ -628,7 +628,14 @@ known checkout paths are accounted for when resolving `uses`. Each mapping resol
 once to an actual source directory. Per-file overrides can provide different
 `local-actions` mappings for different workflows.
 Build tests remain responsible for checking the generation step and its output.
-Missing source manifests and invalid source entrypoints remain errors.
+Missing action sources and invalid source entrypoints are errors.
+
+Local action lookup checks `action.yml`, `action.yaml`, `Dockerfile`, then `dockerfile`, in that order.
+This also applies to source mappings. A Dockerfile-only action is executable by GitHub's Linux runner but supplies
+no manifest schema: actionlint leaves its input and output names unknown. `with.args` and `with.entrypoint`
+are accepted, as are other undeclared inputs; actionlint cannot infer their meaning from a Dockerfile.
+The Dockerfile is recorded as an analysis input for dependency tracking and output-collision checks.
+It is not parsed as a YAML action manifest. See the [runner's fallback implementation](https://github.com/actions/runner/blob/5f0b3ddcc6ee9fe9441e00d55e85b94ea4aad798/src/Runner.Worker/ActionManager.cs#L875-L912).
 
 ### Reusable ignores
 
