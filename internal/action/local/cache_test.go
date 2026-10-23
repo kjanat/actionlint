@@ -286,7 +286,7 @@ func TestLocalActionsMissingMetadata(t *testing.T) {
 		c := NewCache(root, nil)
 		for attempt := range 2 {
 			meta, cached, err := c.FindMetadata(spec)
-			if meta != nil || err == nil || !strings.Contains(err.Error(), "has no action.yml or action.yaml") {
+			if meta != nil || err == nil || !strings.Contains(err.Error(), "has no action.yml, action.yaml") {
 				t.Fatalf("%s: meta=%v err=%v", spec, meta, err)
 			}
 			if cached != (attempt > 0) {

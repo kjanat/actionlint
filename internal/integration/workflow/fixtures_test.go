@@ -46,7 +46,7 @@ func TestLinterMissingLocalAction(t *testing.T) {
 			t.Fatalf("got %v, %v; want %d diagnostics", errs, err, tc.want)
 		}
 		for i, diagnostic := range errs {
-			if diagnostic.Rule != "missing-local-action" || diagnostic.Start.Line != 6+i || !strings.Contains(diagnostic.Message, "has no action.yml or action.yaml") {
+			if diagnostic.Rule != "missing-local-action" || diagnostic.Start.Line != 6+i || !strings.Contains(diagnostic.Message, "has no action.yml, action.yaml") {
 				t.Fatalf("unexpected diagnostic: %+v", diagnostic)
 			}
 		}

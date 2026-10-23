@@ -28,7 +28,7 @@ func Normalize(value string) (string, error) {
 	return "./" + relative, nil
 }
 
-// CheckSource prevents a mapping from following source-directory symlinks outside the repository.
+// CheckSource rejects mapped source directories and files that resolve outside the repository.
 func CheckSource(root, source string) error {
 	resolvedRoot, err := filepath.EvalSymlinks(root)
 	if err != nil {
@@ -42,7 +42,7 @@ func CheckSource(root, source string) error {
 	if err != nil || !filepath.IsLocal(relative) {
 		return fmt.Errorf("source directory %q resolves outside the repository", source)
 	}
-	for _, name := range []string{"action.yaml", "action.yml"} {
+	for _, name := range []string{"action.yml", "action.yaml", "Dockerfile", "dockerfile"} {
 		manifest, err := filepath.EvalSymlinks(filepath.Join(resolved, name))
 		if os.IsNotExist(err) {
 			continue
@@ -50,9 +50,18 @@ func CheckSource(root, source string) error {
 		if err != nil {
 			return err
 		}
+		if name == "Dockerfile" || name == "dockerfile" {
+			info, err := os.Stat(manifest)
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				continue
+			}
+		}
 		relative, err := filepath.Rel(resolvedRoot, manifest)
 		if err != nil || !filepath.IsLocal(relative) {
-			return fmt.Errorf("source manifest %q resolves outside the repository", filepath.Join(source, name))
+			return fmt.Errorf("source file %q resolves outside the repository", filepath.Join(source, name))
 		}
 		break
 	}

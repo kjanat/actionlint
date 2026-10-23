@@ -102,7 +102,7 @@ func (e MappingError) Error() string { return e.Cause.Error() }
 func (e MappingError) Unwrap() error { return e.Cause }
 
 func missingLocalActionMetadata(spec string) error {
-	return UnresolvedError(fmt.Sprintf("local action %q has no action.yml or action.yaml; check the path and ensure the action is available when linting", spec))
+	return UnresolvedError(fmt.Sprintf("local action %q has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting", spec))
 }
 
 func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (*actionmeta.Metadata, bool, error) {
