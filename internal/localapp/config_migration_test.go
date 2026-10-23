@@ -264,8 +264,8 @@ func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 		{"lint: {rules: {external: {shellcheck: off}}}", "ruff"},
 		{"tools: {ruff: {backend: {process: {executable: custom-ruff}}}}", "shellcheck"},
 		{"tools: {shellcheck: {config: .shellcheckrc}}", "ruff"},
-		{"tools: {shellcheck: {config: {external-sources: true}}}", "ruff"},
-		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "ruff"},
+		{"tools: {shellcheck: {config: {external-sources: true}}}", "shellcheck,ruff"},
+		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "shellcheck,ruff"},
 	} {
 		t.Run(tc.config, func(t *testing.T) {
 			cfg, err := config.Parse([]byte(tc.config))

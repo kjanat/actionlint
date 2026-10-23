@@ -47,6 +47,7 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 				supplied.ActionInputs[i].Script = cloneScripts([]analyzer.Script{input.Script})[0]
 			}
 			supplied.Dependencies = slices.Clone(input.Dependencies)
+			supplied.Files = slices.Clone(input.Files)
 			supplied.Mappings = slices.Clone(input.Mappings)
 			for i := range supplied.Mappings {
 				supplied.Mappings[i].Entries = slices.Clone(supplied.Mappings[i].Entries)

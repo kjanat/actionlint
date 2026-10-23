@@ -115,8 +115,6 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 	for _, text := range []string{
 		"tools: {shellcheck: {config: .shellcheckrc}}",
-		"tools: {shellcheck: {config: {external-sources: true}}}",
-		"tools: {shellcheck: {config: {source-path: [scripts]}}}",
 		"tools: {shellcheck: {config: {disable: [SC1000-SC2000]}}}",
 		"tools: {shellcheck: {backend: {process: {executable: shellcheck-custom}}}}",
 	} {

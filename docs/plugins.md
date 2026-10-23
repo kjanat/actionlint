@@ -141,7 +141,8 @@ optimization; compiled runtime state is never stored in this cache.
 
 The Action never installs native Ruff or ShellCheck executables or adds them to PATH.
 The official `shellcheck` dependency uses `tools.shellcheck` and the ordinary `shellcheck` rule
-controls. Explicit native rc/source settings retain a caller-provided native backend.
+controls. Explicit rc files retain a caller-provided native backend; source settings
+use scoped read-only filesystem grants.
 A ShellCheck component loaded through a direct URL or `--plugin` remains a standalone analyzer,
 configured under its `shellcheck-rs` plugin rule. Explicit plugin analyzers are independent of
 the Action's native-tool enable switches.
@@ -207,14 +208,22 @@ unfinished line is flushed at the end of its call.
 
 The host grants these imports and nothing else:
 
-| Interface                        | What the plugin gets                                              |
-| -------------------------------- | ----------------------------------------------------------------- |
-| `kjanat:actionlint/host@0.1.0`   | `log`, one line into actionlint's debug log                       |
-| `wasi:cli/*`, `wasi:io/*`        | stdout and stderr into the debug log, empty stdin and environment |
-| `wasi:clocks/*`, `wasi:random/*` | clocks and random numbers                                         |
-| `wasi:filesystem/*`              | no preopened directories, so every open fails                     |
+| Interface                        | What the plugin gets                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| `kjanat:actionlint/host@0.1.0`   | `log`, one line into actionlint's debug log                                                 |
+| `wasi:cli/*`, `wasi:io/*`        | stdout and stderr into the debug log, empty stdin and environment                           |
+| `wasi:clocks/*`, `wasi:random/*` | clocks and random numbers                                                                   |
+| `wasi:filesystem/*`              | no directories by default; explicitly granted read-only snapshots for source-aware adapters |
 
 `wasi:sockets`, `wasi:http` and custom interfaces are refused at load.
+
+Go embedders can supply `analyzer.Input.Files` for one `Analyze` call. Each entry
+maps a caller-owned read-only filesystem to an absolute guest path. The caller
+keeps it open until analysis returns and supplies directory-relative read
+operations. A later call inherits no grants. Ordinary standalone analyzers receive
+no filesystem access automatically. The managed ShellCheck adapter grants only
+the workspace and explicitly configured source directories, records source
+dependencies and translates guest diagnostic paths back to their host files.
 
 The public Go package `actionlint.kjanat.dev/v2/plugin` provides `plugin.Load`, `plugin.Options` and `plugin.Limits`.
 

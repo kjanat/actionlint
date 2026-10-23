@@ -46,7 +46,7 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 }
 
 // SupportsDocumentPlugin reports whether ShellCheck's effective configuration
-// can run without native rc files, external sources or process-specific options.
+// can run with host-supplied source files and without native rc files or process options.
 func SupportsDocumentPlugin(cfg *config.Config) bool {
 	if cfg == nil {
 		return true
@@ -60,9 +60,6 @@ func SupportsDocumentPlugin(cfg *config.Config) bool {
 		return false
 	}
 	if inline := source.Inline(); inline != nil {
-		if len(inline.SourcePath) != 0 || inline.ExternalSources != nil && *inline.ExternalSources {
-			return false
-		}
 		// Native ShellCheck accepts ranges and "all"; the component accepts
 		// individual diagnostic codes. Preserve that native configuration.
 		for _, code := range inline.Disable {
@@ -75,10 +72,13 @@ func SupportsDocumentPlugin(cfg *config.Config) bool {
 }
 
 type documentPluginOptions struct {
-	Shell            *string  `json:"shell,omitempty"`
-	Disable          []string `json:"disable,omitempty"`
-	Enable           []string `json:"enable,omitempty"`
-	ExtendedAnalysis *bool    `json:"extended-analysis,omitempty"`
+	Shell            *string            `json:"shell,omitempty"`
+	Disable          []string           `json:"disable,omitempty"`
+	Enable           []string           `json:"enable,omitempty"`
+	ExtendedAnalysis *bool              `json:"extended-analysis,omitempty"`
+	ExternalSources  bool               `json:"external-sources,omitempty"`
+	SourcePath       []string           `json:"source-path,omitempty"`
+	SourceRoots      []pluginSourceRoot `json:"source-roots,omitempty"`
 }
 
 type documentPluginRunner struct {
@@ -118,13 +118,25 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		if err != nil {
 			return findings, errors.Join(failure, err)
 		}
+		files, fileErr := r.sourceFiles(ctx, script)
+		if fileErr != nil {
+			return findings, errors.Join(failure, fileErr)
+		}
+		if err := files.configure(&input); err != nil {
+			return findings, errors.Join(failure, err, files.close())
+		}
 		result, err := analyzerhost.Run(ctx, input, []analyzer.Registration{{Analyzer: r.guest, Options: input.Options}})
 		for _, finding := range result {
 			finding.Rule = "shellcheck"
 			finding.Help = r.help
-			findings = append(findings, tools.Finding{Diagnostic: finding, Script: i, Content: script.Content})
+			mapped, mapErr := files.finding(finding, script, i)
+			if mapErr != nil {
+				err = errors.Join(err, mapErr)
+				continue
+			}
+			findings = append(findings, mapped)
 		}
-		failure = errors.Join(failure, err)
+		failure = errors.Join(failure, err, files.close())
 	}
 	if len(nativeIndices) != 0 {
 		native, err := r.native()
