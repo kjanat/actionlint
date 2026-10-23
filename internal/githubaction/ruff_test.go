@@ -1,15 +1,26 @@
 package githubaction
 
 import (
-	"os/exec"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestRuffActionInput(t *testing.T) {
-	_, err := exec.LookPath("ruff")
+	module, err := os.ReadFile(filepath.Join("..", "plugins", "core", "testdata", "engines", "echo.wasm"))
 	if err != nil {
-		t.Skip("Ruff is not installed")
+		t.Fatal(err)
+	}
+	module, err = testutil.ReplaceWasmDataString(module, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	modulePath := filepath.Join(t.TempDir(), "ruff.wasm")
+	if err := os.WriteFile(modulePath, module, 0o600); err != nil {
+		t.Fatal(err)
 	}
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/python.yml": `on: push
 jobs:
@@ -18,7 +29,7 @@ jobs:
     steps:
       - shell: python
         run: print(missing)
-`})
+`, ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: " + filepath.ToSlash(modulePath) + "\n"})
 	for _, tc := range []struct {
 		input, config string
 		code          int

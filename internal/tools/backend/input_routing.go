@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -113,7 +114,11 @@ func WithConfiguredEngine(registration tools.Registration, load func(tools.Conte
 			return nil, err
 		}
 		if described, ok := engine.(analyzer.DescribedScriptBackend); ok {
-			return described.ScriptDescriptor().ScriptInputs, nil
+			descriptor := described.ScriptDescriptor()
+			if descriptor.Engine != registration.Descriptor.Name {
+				return nil, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, registration.Descriptor.Name)
+			}
+			return descriptor.ScriptInputs, nil
 		}
 		return nil, nil
 	}
@@ -168,6 +173,10 @@ func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]to
 			continue
 		}
 		descriptor := described.ScriptDescriptor()
+		if descriptor.Engine != r.registration.Descriptor.Name {
+			failures = errors.Join(failures, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, r.registration.Descriptor.Name))
+			continue
+		}
 		shells, err := shellCatalogue(r.registration.Descriptor, descriptor.Shells)
 		if err != nil {
 			failures = errors.Join(failures, err)

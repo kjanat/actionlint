@@ -1,0 +1,34 @@
+{
+  "metadata_version": 1,
+  "transport": "wasm-component",
+  "interface": "kjanat:actionlint/script-engine@0.1.0",
+  "contract_sha256": "cb0d4c86f1c4e9e8029368b8686f5da542d8e6e542483aa6dbce2510a35eba86",
+  "id": "echo-component",
+  "name": "Echo component",
+  "plugin_version": "1.0.0",
+  "engine": { "name": "ruff", "version": "1.0.0" },
+  "capabilities": {
+    "script_shells": [],
+    "script_inputs": [
+      { "action": "actions/github-script", "input": "script", "language": "javascript" },
+      { "action": "example/execute", "input": "code", "language": "javascript" }
+    ],
+    "fixes": false,
+    "format": false
+  },
+  "config_schema": { "type": "object" },
+  "rules": [
+    {
+      "name": "ruff",
+      "description": "Find a missing value",
+      "category": "correctness",
+      "subcategory": "python",
+      "maturity": "stable",
+      "provider": "echo-component",
+      "recommended": true,
+      "documentation_url": "https://example.com/echo",
+      "options_schema": { "type": "object" },
+      "fix_availability": "none"
+    }
+  ]
+}

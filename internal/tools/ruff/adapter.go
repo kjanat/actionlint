@@ -140,7 +140,7 @@ func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 		err := checker.Check(script.Text, script.Shell, script.Key.String(), settings, func(d Diagnostic) {
 			pos, mapped := script.Source.Position(d.Location.Row, d.Location.Column)
 			end, endMapped := script.Source.EndPos(d.EndLocation.Row, d.EndLocation.Column)
-			if !mapped || !endMapped {
+			if !mapped || !endMapped || end != nil && (end.Line < pos.Line || end.Line == pos.Line && end.Col < pos.Col) {
 				pos, end = script.Key, nil
 			}
 			finding := tools.Finding{Rule: "ruff", Message: fmt.Sprintf("Ruff reported issue in this script: %s: %s", d.Code, d.Message), Start: diagnostic.Position{Line: pos.Line, Column: pos.Col}, Code: d.Code, Severity: d.Severity, DocumentationURL: d.URL, Script: i, Content: script.Content}

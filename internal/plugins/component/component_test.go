@@ -104,19 +104,25 @@ func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
 		t.Fatalf("descriptor=%+v", plugin.Descriptor())
 	}
 	root := writeRepository(t, map[string]string{
-		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: make && sudo make install\n",
+		".github/workflows/ci.yml":         "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/setup\n      - run: make && sudo make install\n      - run: FOO=\"hello world\" sudo make test\n      - run: |-\n          FOO=\"hello\n          world\" sudo make test\n",
 		".github/actions/setup/action.yml": "name: setup\ndescription: setup\nruns:\n  using: composite\n  steps:\n    - run: sudo apt-get install -y jq\n      shell: bash\n",
 	})
 	result := analyzeRepository(t, root, plugin)
-	if len(result.Diagnostics) != 2 {
+	if len(result.Diagnostics) != 4 {
 		t.Fatalf("diagnostics=%+v", result.Diagnostics)
 	}
-	action, workflow := result.Diagnostics[0], result.Diagnostics[1]
+	action, workflow, assignment, multiline := result.Diagnostics[0], result.Diagnostics[1], result.Diagnostics[2], result.Diagnostics[3]
 	if !strings.HasSuffix(filepath.ToSlash(action.Path), ".github/actions/setup/action.yml") || action.Start != (diagnostic.Position{Line: 6, Column: 12}) || action.End != (diagnostic.Position{Line: 6, Column: 16}) {
 		t.Fatalf("action finding=%+v", action)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(workflow.Path), "ci.yml") || workflow.Rule != "no-sudo" || workflow.Start != (diagnostic.Position{Line: 7, Column: 22}) || workflow.End != (diagnostic.Position{Line: 7, Column: 26}) {
+	if !strings.HasSuffix(filepath.ToSlash(workflow.Path), ".github/workflows/ci.yml") || workflow.Rule != "no-sudo" || workflow.Start != (diagnostic.Position{Line: 7, Column: 22}) || workflow.End != (diagnostic.Position{Line: 7, Column: 26}) {
 		t.Fatalf("workflow finding=%+v", workflow)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(assignment.Path), ".github/workflows/ci.yml") || assignment.Rule != "no-sudo" || assignment.Start != (diagnostic.Position{Line: 8, Column: 32}) {
+		t.Fatalf("assignment-prefixed command finding=%+v", assignment)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(multiline.Path), ".github/workflows/ci.yml") || multiline.Rule != "no-sudo" || multiline.Start != (diagnostic.Position{Line: 11, Column: 18}) {
+		t.Fatalf("multiline assignment finding=%+v", multiline)
 	}
 }
 

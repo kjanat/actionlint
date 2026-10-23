@@ -266,3 +266,15 @@ func TestGitLabCorePin(t *testing.T) {
 		t.Fatal("accepted noncanonical GitLab download URL")
 	}
 }
+
+func TestGitHubPinWithSlashTag(t *testing.T) {
+	p := pluginregistry.Pin{
+		Registry: pluginregistry.DefaultURL, Name: "github.com/owner/.github",
+		RepositoryID: "10", OwnerID: "5", PluginID: "vendor/engine", Selector: "area/v1.2.3", Version: "area/v1.2.3",
+		Kind: artifact.Core, Asset: "plugin.wasm", SHA256: strings.Repeat("a", 64), Contract: "wasm-core-json/9",
+		URL: "https://github.com/owner/.github/releases/download/area%2Fv1.2.3/plugin.wasm",
+	}
+	if err := p.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

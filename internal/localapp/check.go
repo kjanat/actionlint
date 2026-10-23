@@ -42,7 +42,7 @@ func CheckSources(ctx context.Context, options application.Options, input applic
 			return nil, &PluginLoadError{err}
 		}
 	}
-	plugins, err := loadPlugins(ctx, sources.Paths, log, options.Debug)
+	plugins, err := loadPlugins(ctx, sources, log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func RequiredTools(ctx context.Context, options application.Options, paths, plug
 // RequiredToolsSources retains declared replacement roles during native-tool
 // discovery, using the same configuration policy as CheckSources.
 func RequiredToolsSources(ctx context.Context, options application.Options, paths []string, sources PluginSources) (needed application.ToolRequirements, err error) {
-	loaded, err := loadPlugins(ctx, sources.Paths, io.Discard, false)
+	loaded, err := loadPlugins(ctx, sources, io.Discard, false)
 	if err != nil {
 		return nil, err
 	}

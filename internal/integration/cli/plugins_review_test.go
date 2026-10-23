@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestOutputCannotReplaceExplicitPlugin(t *testing.T) {
@@ -30,6 +32,10 @@ func TestOutputCannotReplaceExplicitPlugin(t *testing.T) {
 func TestOutputCannotReplaceConfiguredEngine(t *testing.T) {
 	fixture := filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm")
 	data, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err = testutil.ReplaceWasmDataString(data, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
 	if err != nil {
 		t.Fatal(err)
 	}

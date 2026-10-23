@@ -18,7 +18,7 @@ func Rules(ctx context.Context, paths []string) (result []rule.Descriptor, err e
 // RulesSources lists managed document replacements under their existing tool
 // rule. Explicit standalone components keep their independently declared rule.
 func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Descriptor, err error) {
-	plugins, err := loadPlugins(ctx, sources.Paths, io.Discard, false)
+	plugins, err := loadPlugins(ctx, sources, io.Discard, false)
 	if err != nil {
 		return nil, err
 	}

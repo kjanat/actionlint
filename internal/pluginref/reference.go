@@ -17,10 +17,23 @@ const DefaultRegistry = "https://plugins.actionlint.kjanat.dev/"
 
 var (
 	shortNamePattern        = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
-	githubRepositoryPattern = regexp.MustCompile(`^github\.com/[A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	githubRepositoryPattern = regexp.MustCompile(`^github\.com/[A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9._-][A-Za-z0-9._-]*$`)
 	gitlabSegmentPattern    = regexp.MustCompile(`^[A-Za-z0-9_.][A-Za-z0-9_.-]*$`)
-	versionPattern          = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
+	versionPattern          = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*(/[A-Za-z0-9][A-Za-z0-9._+-]*)*$`)
 )
+
+// ValidVersion accepts exact release tags, including slash-separated tag names.
+func ValidVersion(version string) bool {
+	if len(version) > 128 || !versionPattern.MatchString(version) || strings.Contains(version, "..") || strings.HasSuffix(version, ".") {
+		return false
+	}
+	for segment := range strings.SplitSeq(version, "/") {
+		if strings.HasSuffix(segment, ".lock") {
+			return false
+		}
+	}
+	return true
+}
 
 // ValidRepository validates forge-qualified repository paths for declarations
 // and catalogue identities. Callers retain their existing case normalization.
@@ -29,7 +42,11 @@ func ValidRepository(name string) bool {
 		return false
 	}
 	if strings.HasPrefix(name, "github.com/") {
-		return githubRepositoryPattern.MatchString(name)
+		if !githubRepositoryPattern.MatchString(name) {
+			return false
+		}
+		repository := name[strings.LastIndexByte(name, '/')+1:]
+		return repository != "." && repository != ".."
 	}
 	pathname, ok := strings.CutPrefix(name, "gitlab.com/")
 	if !ok || !strings.Contains(pathname, "/") {
@@ -124,7 +141,7 @@ func New(name, version, registry string) (Reference, error) {
 	if version == "" {
 		version = "latest"
 	}
-	if !versionPattern.MatchString(version) {
+	if !ValidVersion(version) {
 		return Reference{}, fmt.Errorf("invalid plugin version %q: use latest or an exact release tag", version)
 	}
 	if registry == "" {

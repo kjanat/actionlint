@@ -220,6 +220,79 @@ func TestScriptEnginesConcurrentFailureIsCached(t *testing.T) {
 	}
 }
 
+func TestScriptEnginesClosesBackendReturnedWithLoadError(t *testing.T) {
+	loadErr := errors.New("load failed")
+	closeErr := errors.New("cleanup failed")
+	backend := &concurrentEngine{onClose: func(context.Context) error { return closeErr }}
+	engines := NewScriptEngines(func(context.Context, string) (analyzer.ScriptBackend, error) {
+		return backend, loadErr
+	})
+	got, err := engines.Load(t.Context(), "partial.wasm")
+	if got != nil || !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
+		t.Fatalf("backend=%v err=%v", got, err)
+	}
+	if backend.closes.Load() != 1 {
+		t.Fatalf("partial backend closed %d times", backend.closes.Load())
+	}
+	if err := engines.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if backend.closes.Load() != 1 {
+		t.Fatalf("failed backend closed again: %d", backend.closes.Load())
+	}
+}
+
+func TestScriptEnginesReservesPathDuringFailedBackendCleanup(t *testing.T) {
+	loadErr := errors.New("load failed")
+	closeErr := errors.New("cleanup failed")
+	closeEntered, closeBlocked := make(chan struct{}), make(chan struct{})
+	releaseClose := sync.OnceFunc(func() { close(closeBlocked) })
+	defer releaseClose()
+	cleanupContext := make(chan error, 1)
+	backend := &concurrentEngine{onClose: func(ctx context.Context) error {
+		cleanupContext <- ctx.Err()
+		close(closeEntered)
+		<-closeBlocked
+		return closeErr
+	}}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var loads atomic.Int32
+	engines := NewScriptEngines(func(context.Context, string) (analyzer.ScriptBackend, error) {
+		loads.Add(1)
+		cancel()
+		return backend, loadErr
+	})
+	first := loadScriptAsync(engines, ctx, "partial.wasm")
+	scriptSignalWithin(t, closeEntered, "partial backend cleanup")
+	waiting := loadScriptAsync(engines, t.Context(), "partial.wasm")
+	select {
+	case got := <-waiting:
+		t.Fatalf("same-path load escaped cleanup reservation: %+v", got)
+	case <-time.After(50 * time.Millisecond):
+	}
+	if got := loads.Load(); got != 1 {
+		t.Fatalf("loader called %d times during cleanup", got)
+	}
+	if err := engines.Close(t.Context()); err != nil {
+		t.Fatalf("close during cleanup: %v", err)
+	}
+	releaseClose()
+	if err := <-cleanupContext; err != nil {
+		t.Fatalf("cleanup inherited canceled context: %v", err)
+	}
+	if got := scriptResultWithin(t, first, "failed load cleanup completion"); got.backend != nil ||
+		!errors.Is(got.err, errScriptEnginesClosed) || !errors.Is(got.err, loadErr) || !errors.Is(got.err, closeErr) {
+		t.Fatalf("failed load lost cleanup/close errors: %+v", got)
+	}
+	if got := scriptResultWithin(t, waiting, "waiter after close during cleanup"); got.backend != nil || !errors.Is(got.err, errScriptEnginesClosed) {
+		t.Fatalf("waiting load survived session close: %+v", got)
+	}
+	if loads.Load() != 1 || backend.closes.Load() != 1 {
+		t.Fatalf("loads=%d closes=%d", loads.Load(), backend.closes.Load())
+	}
+}
+
 func TestScriptEnginesCloseCallbacksReleaseCacheLock(t *testing.T) {
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })

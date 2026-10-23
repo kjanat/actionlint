@@ -36,7 +36,7 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 		return value;
 	};
 	const addActionlint = exportInput('add-actionlint-to-path');
-	const cachePlugins = exportInput('plugin-cache');
+	exportInput('plugin-cache');
 	if (setupOnly && !addActionlint) {
 		throw new InputError("Input 'install-only: true' requires 'add-actionlint-to-path: true'");
 	}
@@ -62,5 +62,5 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 		if (setupOnly) return 0;
 		return runtime.execute(executable, ['-github-action'], childEnvironment);
 	};
-	return !setupOnly && cachePlugins ? runtime.plugins(executable, childEnvironment, run) : run();
+	return setupOnly ? run() : runtime.plugins(executable, childEnvironment, run);
 }

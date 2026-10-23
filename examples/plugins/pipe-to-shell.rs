@@ -82,6 +82,7 @@ fn check_script(script: &Script, findings: &mut Vec<Diagnostic>) {
 enum Separator {
     Pipe,
     LogicalOr,
+    Command,
     End,
 }
 
@@ -91,7 +92,40 @@ fn pipes_into_shell(line: &str) -> Vec<(u32, String)> {
     let mut segment_start = 0;
     let chars: Vec<char> = line.chars().collect();
     let mut i = 0;
+    let mut quote = None;
+    let mut escaped = false;
     while i < chars.len() {
+        if escaped {
+            escaped = false;
+            i += 1;
+            continue;
+        }
+        if chars[i] == '\\' && quote != Some('\'') {
+            escaped = true;
+            i += 1;
+            continue;
+        }
+        if chars[i] == '\'' || chars[i] == '"' {
+            quote = if quote == Some(chars[i]) {
+                None
+            } else if quote.is_none() {
+                Some(chars[i])
+            } else {
+                quote
+            };
+            i += 1;
+            continue;
+        }
+        if quote.is_some() {
+            i += 1;
+            continue;
+        }
+        if chars[i] == ';' || chars[i] == '&' && i + 1 < chars.len() && chars[i + 1] == '&' {
+            segments.push((segment_start, i, Separator::Command));
+            i += if chars[i] == ';' { 1 } else { 2 };
+            segment_start = i;
+            continue;
+        }
         if chars[i] == '|' {
             if i + 1 < chars.len() && chars[i + 1] == '|' {
                 segments.push((segment_start, i, Separator::LogicalOr));
@@ -191,6 +225,18 @@ mod tests {
             pipes_into_shell("curl URL | bash"),
             vec![(12, "bash".to_string())]
         );
+        assert!(pipes_into_shell("curl URL && bash").is_empty());
+        assert!(pipes_into_shell("curl URL ; bash").is_empty());
+        assert_eq!(
+            pipes_into_shell("echo ready && curl URL | bash"),
+            vec![(26, "bash".to_string())]
+        );
+        assert_eq!(
+            pipes_into_shell("echo ready;curl URL | bash"),
+            vec![(23, "bash".to_string())]
+        );
+        assert!(pipes_into_shell("echo 'curl URL | bash'").is_empty());
+        assert!(pipes_into_shell("curl URL | echo 'bash; sh'").is_empty());
         assert_eq!(
             pipes_into_shell("false || curl URL | bash"),
             vec![(21, "bash".to_string())]

@@ -203,7 +203,7 @@ func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		checks++
 		return nil, nil
-	}), descriptor: analyzer.ScriptEngineDescriptor{ScriptInputs: []analyzer.ScriptInput{site}}}
+	}), descriptor: analyzer.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "custom-rule"}, ScriptInputs: []analyzer.ScriptInput{site}}}
 	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
 		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
 			nativeCalls++
@@ -232,7 +232,7 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		t.Fatal("native route bypassed adapter")
 		return nil, nil
-	}), descriptor: analyzer.ScriptEngineDescriptor{Shells: []string{"python"}}}
+	}), descriptor: analyzer.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"python"}}}
 	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
 		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
 			calls++
@@ -276,5 +276,27 @@ func TestConfigureBindsLoaderOnce(t *testing.T) {
 	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: "print(1)"}}})
 	if err != nil || loads != 1 || nativeCalls != 1 {
 		t.Fatalf("composition repeated: loads=%d native=%d err=%v", loads, nativeCalls, err)
+	}
+}
+
+func TestConfiguredRouteRejectsForeignEngineIdentity(t *testing.T) {
+	calls := 0
+	foreign := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+		calls++
+		return nil, nil
+	}), descriptor: analyzer.ScriptEngineDescriptor{Engine: "other", Rule: rule.Descriptor{Name: "tool"}, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/action", Input: "source", Language: "python"}}}}
+	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
+		return routingEmpty{}, nil
+	}}, func(tools.Context) (analyzer.ScriptBackend, error) { return foreign, nil })
+	if _, err := registration.InputSelectors(tools.Context{}); err == nil || !strings.Contains(err.Error(), `does not match tool "tool"`) {
+		t.Fatalf("foreign selectors accepted: %v", err)
+	}
+	runner, err := registration.Build(tools.Context{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: "input", Input: &analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}}}})
+	if err == nil || calls != 0 {
+		t.Fatalf("foreign engine executed: calls=%d err=%v", calls, err)
 	}
 }

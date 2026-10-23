@@ -12,7 +12,7 @@ import (
 
 func TestLoadedPluginsCloseAfterCommandCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
-	loaded, err := loadPlugins(ctx, []string{filepath.Join("..", "plugins", "component", "testdata", "plugins", "pipe-to-shell.wasm")}, io.Discard, false)
+	loaded, err := loadPlugins(ctx, PluginSources{Paths: []string{filepath.Join("..", "plugins", "component", "testdata", "plugins", "pipe-to-shell.wasm")}}, io.Discard, false)
 	if err != nil {
 		cancel()
 		t.Fatal(err)

@@ -57,9 +57,10 @@ selectors are not supported. An explicit `version` takes precedence without read
 `version-file`. With neither input, the binary matches the Action release. An optional
 `v` prefix is accepted; the `version` output contains the selected version without it.
 
-Install-only works with older releases. Automatic linting requires a binary with
-the native Action protocol introduced by the Node Action; older binaries can be
-installed and invoked directly as shown above.
+Install-only works with older releases. Automatic linting requires the v2 Wasm
+plugin protocol, even with `plugin-cache: false`. Unsupported binaries fail before
+analysis. Use the matching v1 Action to lint with an older release, or install and
+invoke its binary directly as shown above.
 
 After setup, `result` is `success` and `exit-code` is `0`. No analysis occurred:
 `problem-count`, `output`, `output-file`, `result-file`, and `report-sarif` are empty.

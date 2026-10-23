@@ -175,9 +175,10 @@ RUST_BUILD_INPUTS := $(RUST_MANIFESTS) Cargo.lock rust-toolchain.toml
 .PHONY: plugins-check-native
 plugins-check-native:
 	cargo check --workspace --locked --all-targets
+	cargo test --locked --example pipe-to-shell
 
 .PHONY: plugin-examples plugins
-plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm $(PLUGIN_FIXTURES)/script-engine.wasm $(PLUGIN_FIXTURES)/action-input.wasm
+plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm $(PLUGIN_FIXTURES)/script-engine.wasm $(PLUGIN_FIXTURES)/action-input.wasm $(PLUGIN_FIXTURES)/ruff-script-engine.wasm $(PLUGIN_FIXTURES)/ruff-action-input.wasm
 
 plugins: plugin-examples $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
@@ -206,9 +207,17 @@ $(PLUGIN_FIXTURES)/script-engine.wasm: plugins/wit/script-engine.wit $(RUST_BUIL
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine
 	install -m 644 target/wasm32-wasip2/wasm/examples/script_engine.wasm $@
 
+$(PLUGIN_FIXTURES)/ruff-script-engine.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
+	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features ruff-fixture --target-dir target/plugin-fixtures/ruff-script-engine
+	install -m 644 target/plugin-fixtures/ruff-script-engine/wasm32-wasip2/wasm/examples/script_engine.wasm $@
+
 $(PLUGIN_FIXTURES)/action-input.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs examples/plugins/action-input.metadata.json $(wildcard tools/plugin-fixture-metadata/*.go)
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features action-input-fixture --target-dir target/plugin-fixtures/action-input
 	go run ./tools/plugin-fixture-metadata target/plugin-fixtures/action-input/wasm32-wasip2/wasm/examples/script_engine.wasm examples/plugins/action-input.metadata.json $@
+
+$(PLUGIN_FIXTURES)/ruff-action-input.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs examples/plugins/ruff-action-input.metadata.json $(wildcard tools/plugin-fixture-metadata/*.go)
+	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features action-input-fixture,ruff-fixture --target-dir target/plugin-fixtures/ruff-action-input
+	go run ./tools/plugin-fixture-metadata target/plugin-fixtures/ruff-action-input/wasm32-wasip2/wasm/examples/script_engine.wasm examples/plugins/ruff-action-input.metadata.json $@
 
 $(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit examples/plugins/no-sudo/build.sh $(wildcard examples/plugins/no-sudo/*.c)
 	examples/plugins/no-sudo/build.sh $(abspath $@)

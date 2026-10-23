@@ -172,7 +172,7 @@ func (p Pin) Validate() error {
 		return err
 	}
 	if !canonicalName(p.Name) || p.Alias != "" && !pluginref.ValidAlias(p.Alias) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
-		!namePattern.MatchString(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) ||
+		!pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) ||
 		!namePattern.MatchString(p.Asset) || (!strings.HasSuffix(p.Asset, ".wasm") && !strings.HasSuffix(p.Asset, ".wasm.gz")) ||
 		(p.Kind != artifact.Core && p.Kind != artifact.Component) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return fmt.Errorf("invalid registry pin for %q", p.Name)

@@ -21,7 +21,7 @@ type PluginCachePlan struct {
 
 // CachePlan does not fetch artifacts or execute plugins. Configuration backends
 // are included so their pinned bytes can be restored before runtime loading.
-func (s PluginSources) CachePlan() (PluginCachePlan, error) {
+func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 	base, err := os.UserCacheDir()
 	if err != nil {
 		return PluginCachePlan{}, err

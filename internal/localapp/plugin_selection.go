@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
@@ -35,6 +36,7 @@ type PluginSources struct {
 	lock      *pluginregistry.Lock
 	configs   []*config.Config
 	managed   map[string]string
+	artifacts map[string]*pluginartifact.Artifact
 	overlays  []config.Overlay
 }
 
@@ -276,16 +278,31 @@ func sourcesFromPins(path string, lock pluginregistry.Lock, root string) (Plugin
 }
 
 // Hydrate verifies pinned cached artifacts and downloads missing bytes.
-func (s PluginSources) Hydrate(ctx context.Context) error {
+func (s *PluginSources) Hydrate(ctx context.Context) error {
 	if s.lock == nil {
 		return nil
 	}
-	return SyncPlugins(ctx, *s.lock)
+	if err := s.lock.CheckStatuses(ctx, pluginregistry.StatusOptions{}); err != nil {
+		return err
+	}
+	artifacts := make(map[string]*pluginartifact.Artifact, len(s.lock.Plugins))
+	for _, pin := range s.lock.Plugins {
+		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), artifactOptions())
+		if err != nil {
+			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		}
+		if err := pin.Verify(artifact.Info); err != nil {
+			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		}
+		artifacts[pin.Source()] = artifact
+	}
+	s.artifacts = artifacts
+	return nil
 }
 
 // ValidateScope prevents a session's automatic project plugins from being
 // applied to documents opened from another (including nested) repository.
-func (s PluginSources) ValidateScope(paths []string) error {
+func (s *PluginSources) ValidateScope(paths []string) error {
 	if !s.automatic {
 		return nil
 	}
