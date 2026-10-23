@@ -29,6 +29,7 @@ type shellcheckError struct {
 
 type shellcheckResult struct {
 	Comments []shellcheckError `json:"comments"`
+	Sources  []string          `json:"sources"`
 }
 
 type (
@@ -305,7 +306,7 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 			if err := json.Unmarshal(stdout, &result); err != nil {
 				return fmt.Errorf("could not parse JSON output from shellcheck: %w: stdout=%q", err, stdout)
 			}
-			return deliver(result.Comments)
+			return errors.Join(run.recordSources(result.Sources, directory.path), deliver(result.Comments))
 		})
 	}
 	return nil

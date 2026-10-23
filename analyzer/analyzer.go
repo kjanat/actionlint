@@ -5,6 +5,7 @@ package analyzer
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/rule"
@@ -61,6 +62,17 @@ type Input struct {
 	ActionInputs []ActionInput
 	Mappings     []Mapping
 	Dependencies []Dependency
+	// Files grants read-only filesystems for this call. Nil grants no file access.
+	// Mount paths are absolute guest paths; filesystem directories must implement
+	// descriptor-relative read operations when used by a component host.
+	Files []FileSystem
+}
+
+// FileSystem binds a caller-owned read-only filesystem to a guest path.
+// The caller retains ownership and keeps it open until Analyze returns.
+type FileSystem struct {
+	Path string
+	FS   fs.FS
 }
 
 // ActionInput is mapped source supplied to an action rather than a run command.

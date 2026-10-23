@@ -86,6 +86,14 @@ fn analyze(input: Input) -> Result<Vec<Diagnostic>, String> {
             Ok(content) => Err(format!("read host file: {content}")),
             Err(error) => Err(format!("filesystem denied: {error}")),
         },
+        "read-file" => match std::fs::read_to_string(&input.content) {
+            Ok(content) => Err(format!("file contents: {content}")),
+            Err(error) => Err(format!("filesystem denied: {error}")),
+        },
+        "write-file" => match std::fs::write(&input.content, "changed") {
+            Ok(()) => Err("file was overwritten".to_string()),
+            Err(error) => Err(format!("write denied: {error}")),
+        },
         "environment" => Err(format!(
             "environment: {:?}",
             std::env::vars().collect::<Vec<_>>()

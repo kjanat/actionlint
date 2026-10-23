@@ -454,9 +454,9 @@ boolean alone does not install a dependency or override an empty CLI ShellCheck
 command or the Action's `shellcheck: false` input.
 
 The official registry plugin accepts individual disabled codes and optional check
-names through these settings. Explicit rc files, source paths, enabled external
-source access, disabled-code ranges or `all` retain native execution; provide that
-executable yourself. The isolated component cannot read repository source files.
+names through these settings. Explicit rc files, disabled-code ranges or `all`
+retain native execution; provide that executable yourself. Source access and
+search paths work through the component's read-only host grants described below.
 To select a native process explicitly, use `tools.shellcheck.backend.process` or
 `--shellcheck=/path/to/shellcheck`.
 
@@ -553,12 +553,36 @@ root. For `working-directory: app` and `source-path: [scripts]`, the search path
 `app/scripts`. The ShellCheck process runs there too; custom wrapper arguments stay
 literal, so use absolute paths for wrapper-owned files elsewhere.
 
-Available parent directories, symlink targets and absolute paths with compatible
+For a native process, available parent directories, symlink targets and absolute paths with compatible
 host/runner syntax can be analyzed, including outside the repository. Dynamic,
 missing or unrepresentable working directories disable source following while
 retaining analysis of the embedded script. `SCRIPTDIR` does not mean the YAML
 directory: embedded scripts reach ShellCheck through stdin. Paths refer to
 actionlint's local filesystem; job containers and their mounts are not recreated.
+
+The official Wasm plugin follows sources when `external-sources: true` or an explicit
+`source-path` enables access. The host grants the workspace and configured search
+directories read-only; workflow directives cannot add grants. An outside working
+directory must fall within an explicitly configured search directory. Absolute
+source directives inside those grants are translated to the guest filesystem,
+including Windows paths. Missing search directories are ignored and recorded as
+dependencies. Symlinks cannot escape a granted root. Files are snapshotted on first
+read; subsequent reads and sourced diagnostic snippets use the same bytes.
+
+All successful Wasm source reads, including clean and transitively sourced files,
+enter analysis inputs. Metadata lookups also enter the dependency list, so creating
+an earlier search candidate changes the observed inputs. One invocation allows
+8 MiB of source bytes, 256 source files, 4096 lookups and 32 configured search
+directories; exceeding a limit makes analysis incomplete even if the guest ignores
+the read error. Source snapshots come from disk; unsaved source-file buffers are
+not substituted. Reanalysis obtains new snapshots after source edits.
+
+Native shellcheck-rs reports its complete source inventory in `json1.sources`;
+actionlint records it independently of diagnostics, including sources outside the
+workspace. Haskell ShellCheck does not expose this field: its dependency list can
+only include files named by diagnostics and is not exhaustive. Both recorded
+dependencies and Wasm reads protect those paths from being overwritten by report
+output.
 
 Referenced local composite actions, including nested ones, are checked too. Their
 steps use their own shell and working directory, without inheriting workflow/job

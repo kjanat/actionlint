@@ -21,6 +21,7 @@ import (
 	"github.com/kjanat/wacogo/host"
 	"github.com/kjanat/wacogo/wasi"
 	"github.com/kjanat/wacogo/wasi/cli/stdin"
+	"github.com/kjanat/wacogo/wasi/filesystem/preopens"
 	"github.com/kjanat/wacogo/wasmparser"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -286,6 +287,7 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 	if !p.analyzerRole {
 		return nil, errors.New("component does not implement the analyzer role")
 	}
+	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
 	results, err := p.call(ctx, "analyze", lowerInput(input))
 	if err != nil {
 		return nil, err
@@ -411,7 +413,10 @@ func (p *Plugin) prepareImports(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	world, err := wasi.NewWorld(ctx, p.engine, &wasi.Config{Args: []string{filepath.Base(p.path)}, Stdout: output, Stderr: output})
+	world, err := wasi.NewWorld(ctx, p.engine, &wasi.Config{
+		Args: []string{filepath.Base(p.path)}, Stdout: output, Stderr: output,
+		Preopens: func(deps preopens.Deps) preopens.Preopens { return scopedPreopens{deps} },
+	})
 	if err != nil {
 		_ = hostInstance.Close(ctx)
 		return err
