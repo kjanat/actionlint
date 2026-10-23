@@ -50,7 +50,7 @@ test('plugin cache wraps Wasm hydration and execution, including findings', asyn
 	assert.equal(setup.executions.length, 1);
 });
 
-test('selected legacy binary still runs analysis when its plugin-cache probe is unsupported', async () => {
+test('selected legacy binary is rejected with or without plugin caching', async () => {
 	await temporary(async (directory) => {
 		const source = join(directory, 'legacy-actionlint.go');
 		const executable = join(directory, process.platform === 'win32' ? 'legacy-actionlint.exe' : 'legacy-actionlint');
@@ -100,18 +100,18 @@ test('selected legacy binary still runs analysis when its plugin-cache probe is 
 			return result.exitCode;
 		};
 
-		assert.equal(await runAction({}, setup.runtime), 1);
-		assert.equal(setup.executions.length, 1);
-		assert.deepEqual(setup.executions[0]?.args, ['-github-action']);
+		for (const environment of [{}, { 'INPUT_PLUGIN-CACHE': 'false' }]) {
+			await assert.rejects(runAction(environment, setup.runtime), /requires an actionlint binary with Wasm plugin support/);
+		}
+		assert.equal(setup.executions.length, 0);
+		assert.equal(setup.publications.length, 0);
 	});
 });
 
-test('plugin cache can be disabled and install-only never inspects plugin configuration', async () => {
-	for (const environment of [{ 'INPUT_PLUGIN-CACHE': 'false' }, { 'INPUT_INSTALL-ONLY': 'true' }]) {
-		const setup = fixture();
-		setup.runtime.plugins = async () => assert.fail('plugin cache must not be invoked');
-		assert.equal(await runAction(environment, setup.runtime), 0);
-	}
+test('install-only never inspects plugin configuration and cache input is validated', async () => {
+	const installation = fixture();
+	installation.runtime.plugins = async () => assert.fail('installation must not inspect plugins');
+	assert.equal(await runAction({ 'INPUT_INSTALL-ONLY': 'true' }, installation.runtime), 0);
 	const setup = fixture();
 	await assert.rejects(runAction({ 'INPUT_PLUGIN-CACHE': 'sometimes' }, setup.runtime), InputError);
 	assert.deepEqual(setup.calls, []);

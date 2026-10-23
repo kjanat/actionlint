@@ -114,11 +114,15 @@ func TestRuffAdapterMapsBothEndpoints(t *testing.T) {
 		name       string
 		start, end int
 	}{
-		{"mapped", 1, 1}, {"unmapped start", 999, 1}, {"unmapped end", 1, 999},
+		{"mapped", 1, 1}, {"unmapped start", 999, 1}, {"unmapped end", 1, 999}, {"reversed", 1, 1},
 	} {
 		t.Run(endpoints.name, func(t *testing.T) {
 			checker := NewBackend(t.Context(), testBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
-				return []analyzer.ScriptDiagnostic{{Filename: stdinFilename, Code: "F821", Message: "undefined name", Severity: "warning", URL: "https://docs.astral.sh/ruff/rules/undefined-name/", Location: Position{Row: endpoints.start, Column: 7}, EndLocation: Position{Row: endpoints.end, Column: 14}}}, nil
+				start, end := Position{Row: endpoints.start, Column: 7}, Position{Row: endpoints.end, Column: 14}
+				if endpoints.name == "reversed" {
+					start, end = Position{Row: 1, Column: 10}, Position{Row: 1, Column: 7}
+				}
+				return []analyzer.ScriptDiagnostic{{Filename: stdinFilename, Code: "F821", Message: "undefined name", Severity: "warning", URL: "https://docs.astral.sh/ruff/rules/undefined-name/", Location: start, EndLocation: end}}, nil
 			}), ruffExpressionEnd)
 			adapter := &ruffAnalyzer{checker: checker}
 			findings, err := adapter.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: run.Source, Key: run.RunPos, Value: run.Run.Pos, Shell: &python, Path: "workflow.yml", Content: source}}})

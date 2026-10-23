@@ -28,7 +28,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	if err != nil {
 		return inspection, err
 	}
-	plugins, err := loadPlugins(ctx, sources.Paths, io.Discard, false)
+	plugins, err := loadPlugins(ctx, sources, io.Discard, false)
 	if err != nil {
 		return inspection, err
 	}

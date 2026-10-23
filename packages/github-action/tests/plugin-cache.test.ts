@@ -13,6 +13,21 @@ import { InputError } from '#runtime';
 const bytes = Buffer.from('pinned wasm fixture');
 const digest = createHash('sha256').update(bytes).digest('hex');
 
+test('disabled cache still checks compatibility without restoring or saving', async () => {
+	await fixture(async (plan) => {
+		let probes = 0;
+		const result = await withPluginCache('actionlint', { 'INPUT_PLUGIN-CACHE': 'false' }, async () => 1, async () => {
+			probes++;
+			return { exitCode: 0, stdout: JSON.stringify(plan), stderr: '' };
+		}, {
+			restore: async () => assert.fail('cache disabled'),
+			save: async () => assert.fail('cache disabled'),
+		});
+		assert.equal(result, 1);
+		assert.equal(probes, 1);
+	});
+});
+
 async function fixture(run: (plan: PluginPlan) => Promise<void>): Promise<void> {
 	await temporary(async (root) => {
 		const directory = join(root, 'actionlint', 'artifacts');
@@ -322,9 +337,9 @@ test('preflight parses JSON and distinguishes unsupported binaries from invalid 
 				'unknown flag: --github-action-plugins',
 			]
 		) {
-			assert.equal(
-				await inspectPlugins('actionlint', {}, async () => ({ exitCode: 2, stdout: '', stderr })),
-				undefined,
+			await assert.rejects(
+				inspectPlugins('actionlint', {}, async () => ({ exitCode: 2, stdout: '', stderr })),
+				/requires an actionlint binary with Wasm plugin support/,
 			);
 		}
 		await assert.rejects(

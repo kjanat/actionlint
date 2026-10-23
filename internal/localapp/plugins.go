@@ -27,16 +27,20 @@ type scriptEngineRegistration struct {
 	descriptor analyzer.ScriptEngineDescriptor
 }
 
-func loadPlugins(ctx context.Context, paths []string, log io.Writer, debug bool) (*loadedPlugins, error) {
+func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debug bool) (*loadedPlugins, error) {
 	loaded := &loadedPlugins{analyzerSources: map[string]*component.Plugin{}}
-	for _, path := range paths {
+	for _, path := range sources.Paths {
 		source := path
 		if err := pluginartifact.RequireRemotePin(path); err != nil {
 			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 		}
-		artifact, err := pluginartifact.Resolve(ctx, path, artifactOptions())
-		if err != nil {
-			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
+		artifact := sources.artifacts[path]
+		if artifact == nil {
+			var err error
+			artifact, err = pluginartifact.Resolve(ctx, path, artifactOptions())
+			if err != nil {
+				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
+			}
 		}
 		path = artifact.Info.Source
 		if artifact.Info.Kind == pluginartifact.Core {

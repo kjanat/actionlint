@@ -116,19 +116,33 @@ func TestActionLockedPlugins(t *testing.T) {
 }
 
 func TestActionConfiguredWasm(t *testing.T) {
-	for _, fixture := range []string{"../plugins/core/testdata/engines/echo.wasm", "../plugins/component/testdata/plugins/script-engine.wasm"} {
+	for _, fixture := range []string{"../plugins/core/testdata/engines/echo.wasm", "../plugins/component/testdata/plugins/ruff-action-input.wasm"} {
 		t.Run(fixture, func(t *testing.T) {
 			isolatePluginCache(t)
-			module, err := filepath.Abs(fixture)
+			module, err := os.ReadFile(fixture)
 			if err != nil {
 				t.Fatal(err)
 			}
-			encoded, err := json.Marshal(module)
+			if strings.Contains(fixture, "/core/") {
+				module, err = testutil.ReplaceWasmDataString(module, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			modulePath := filepath.Join(t.TempDir(), "ruff.wasm")
+			if err := os.WriteFile(modulePath, module, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := json.Marshal(modulePath)
 			if err != nil {
 				t.Fatal(err)
+			}
+			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n"
+			if strings.Contains(fixture, "/component/") {
+				workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing();\n"
 			}
 			workspace := workspaceWith(t, map[string]string{
-				".git": "", "ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
+				".git": "", "ci.yml": workflow,
 				".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: " + string(encoded) + "\n",
 			})
 			t.Setenv("PATH", t.TempDir())

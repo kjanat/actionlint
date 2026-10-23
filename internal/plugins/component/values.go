@@ -28,6 +28,10 @@ var factDiscriminants = func() map[analyzer.Fact]uint32 {
 	return values
 }()
 
+func validFactDiscriminant(discriminant uint32) bool {
+	return uint64(discriminant) < uint64(len(factNames))
+}
+
 var keyStateDiscriminants = func() map[analyzer.KeyState]uint32 {
 	values := make(map[analyzer.KeyState]uint32, len(canonical_key_state))
 	for i, name := range canonical_key_state {
@@ -260,7 +264,7 @@ func liftDescriptor(v wacogo.Val) (analyzer.Descriptor, error) {
 		if !ok {
 			return analyzer.Descriptor{}, liftError{"fact", requires.Get(i)}
 		}
-		if int(fact.Discriminant()) >= len(factNames) {
+		if !validFactDiscriminant(fact.Discriminant()) {
 			return analyzer.Descriptor{}, fmt.Errorf("plugin requires unknown fact %d", fact.Discriminant())
 		}
 		descriptor.Requires = append(descriptor.Requires, factNames[fact.Discriminant()])

@@ -49,6 +49,51 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 }
 
 func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
+	module, err := os.ReadFile("../plugins/component/testdata/plugins/ruff-action-input.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wasm := filepath.Join(t.TempDir(), "ruff.wasm")
+	if err := os.WriteFile(wasm, module, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	files := map[string]string{
+		".git/HEAD":               "ref: refs/heads/master\n",
+		".github/actionlint.yaml": fmt.Sprintf("tools:\n  ruff:\n    backend:\n      wasm:\n        path: %q\noverrides:\n  - includes: [disabled/**]\n    tools:\n      ruff:\n        enabled: false\n", filepath.ToSlash(wasm)),
+		"workflow.yml":            "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing();\n      - run: missing();\n        shell: python\n      - uses: ./nested\n      - uses: ./disabled\n",
+		"nested/action.yml":       "name: nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - uses: example/execute@v1\n      with:\n        code: missing();\n",
+		"disabled/action.yml":     "name: disabled\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - uses: example/execute@v1\n      with:\n        code: missing();\n",
+	}
+	for path, source := range files {
+		path = filepath.Join(root, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	registration := (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()
+	result, err := Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == "ECHO001" {
+			count++
+			if strings.Contains(d.Path, "disabled") {
+				t.Fatalf("disabled composite routed: %+v", d)
+			}
+		}
+	}
+	if count != 2 {
+		t.Fatalf("configured component input findings=%d diagnostics=%+v", count, result.Diagnostics)
+	}
+}
+
+func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 	module, err := filepath.Abs("../plugins/component/testdata/plugins/action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -76,21 +121,9 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 			if name == "shellcheck" {
 				registration = (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()
 			}
-			result, err := Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			count := 0
-			for _, d := range result.Diagnostics {
-				if d.Code == "ECHO001" {
-					count++
-					if strings.Contains(d.Path, "disabled") {
-						t.Fatalf("disabled composite routed: %+v", d)
-					}
-				}
-			}
-			if count != 2 {
-				t.Fatalf("configured component input findings=%d diagnostics=%+v", count, result.Diagnostics)
+			_, err = Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
+			if err == nil || !strings.Contains(err.Error(), `does not match tool "`+name+`"`) {
+				t.Fatalf("foreign engine accepted for %s: %v", name, err)
 			}
 		})
 	}
@@ -209,7 +242,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					if failure == "missing" {
 						return nil, errors.New("override module missing")
 					}
-					return &selectedInputBackend{descriptor: analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "shellcheck"}, ScriptInputs: []analyzer.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}}, nil
+					return &selectedInputBackend{descriptor: analyzer.ScriptEngineDescriptor{Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"}, ScriptInputs: []analyzer.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}}, nil
 				}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
 				if mode == "built" {
 					want := "override module missing"

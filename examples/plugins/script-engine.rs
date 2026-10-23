@@ -13,7 +13,11 @@ impl Guest for Plugin {
             id: "echo-component".into(),
             version: "1.0.0".into(),
             name: "Echo component".into(),
-            engine: "echo".into(),
+            engine: if cfg!(feature = "ruff-fixture") {
+                "ruff".into()
+            } else {
+                "echo".into()
+            },
             engine_version: "1.0.0".into(),
             shells: if cfg!(feature = "action-input-fixture") {
                 Vec::new()
@@ -21,7 +25,11 @@ impl Guest for Plugin {
                 vec!["python".into()]
             },
             rule: RuleDescriptor {
-                name: "echo".into(),
+                name: if cfg!(feature = "ruff-fixture") {
+                    "ruff".into()
+                } else {
+                    "echo".into()
+                },
                 description: "Find a missing value".into(),
                 category: "correctness".into(),
                 subcategory: "python".into(),

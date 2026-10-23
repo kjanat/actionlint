@@ -90,14 +90,61 @@ static size_t scalar_width(uint8_t lead) {
     return 1;
 }
 
+static size_t assignment_length(const uint8_t *text, size_t len, size_t at) {
+    size_t i = at;
+    if (i >= len || !((text[i] >= 'A' && text[i] <= 'Z') || (text[i] >= 'a' && text[i] <= 'z') || text[i] == '_')) {
+        return 0;
+    }
+    for (; i < len; i++) {
+        uint8_t c = text[i];
+        if (c == '=') {
+            i++;
+            uint8_t quote = 0;
+            bool escaped = false;
+            while (i < len) {
+                c = text[i];
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\' && quote != '\'') {
+                    escaped = true;
+                } else if ((c == '\'' || c == '"') && (quote == 0 || quote == c)) {
+                    quote = quote == 0 ? c : 0;
+                } else if (quote == 0 && (c == ' ' || c == '\t' || c == '\n' || c == ';' || c == '|' || c == '&')) {
+                    break;
+                }
+                i += scalar_width(c);
+            }
+            return i - at;
+        }
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) {
+            return 0;
+        }
+    }
+    return 0;
+}
+
 static void check_script(const script_t *script, findings_t *findings) {
     const uint8_t *text = script->text.ptr;
     size_t len = script->text.len;
     uint32_t line = 1;
     uint32_t column = 1;
     bool command_start = true;
+    size_t assignment_end = 0;
     for (size_t i = 0; i < len; i += scalar_width(text[i]), column++) {
         uint8_t c = text[i];
+        if (command_start && i >= assignment_end) {
+            size_t assignment = assignment_length(text, len, i);
+            if (assignment != 0) {
+                assignment_end = i + assignment;
+            }
+        }
+        if (i < assignment_end) {
+            if (c == '\n') {
+                line++;
+                column = 0;
+            }
+            continue;
+        }
         if (c == '\n') {
             line++;
             column = 0;

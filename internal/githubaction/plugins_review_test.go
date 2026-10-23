@@ -12,15 +12,24 @@ import (
 	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
-	module, err := filepath.Abs(filepath.Join("..", "plugins", "core", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join("..", "plugins", "core", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := fmt.Sprintf("tools:\n  shellcheck: false\n  ruff:\n    backend:\n      wasm: {path: %q}\n", filepath.ToSlash(module))
+	module, err = testutil.ReplaceWasmDataString(module, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "ruff.wasm")
+	if err := os.WriteFile(path, module, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config := fmt.Sprintf("tools:\n  shellcheck: false\n  ruff:\n    backend:\n      wasm: {path: %q}\n", filepath.ToSlash(path))
 	root := workspaceWith(t, map[string]string{
 		".git": "", ".github/actionlint.yaml": config,
 		".github/workflows/wasm.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing = 1\n        shell: python\n",
@@ -54,14 +63,22 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 		{"shellcheck", "ruff", "bash", "#!/bin/bash missing", "SC21"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			artifact := module
+			oldEngine := []byte(`"engine":{"name":"echo"`)
+			newEngine := []byte(`"engine":{"name":"ruff"`)
 			if tc.name == "shellcheck" {
-				// Keep the fixture's Wasm data lengths unchanged while supplying
-				// the SC-prefixed diagnostic required by the ShellCheck bridge.
-				if bytes.Count(module, []byte("F821")) != 1 {
+				oldEngine = []byte(`"name":"Echo","plugin_version":"0.1.0","engine":{"name":"echo","version":"1.0.0"},`)
+				newEngine = []byte(`"name":"E","plugin_version":"0","engine":{"name":"shellcheck","version":"1.0.0"} ,`)
+			}
+			artifact, err := testutil.ReplaceWasmDataString(module, oldEngine, newEngine)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.name == "shellcheck" {
+				// Supply the SC-prefixed diagnostic required by the ShellCheck bridge.
+				if bytes.Count(artifact, []byte("F821")) != 1 {
 					t.Fatal("echo fixture must contain exactly one diagnostic code")
 				}
-				artifact = bytes.Replace(module, []byte("F821"), []byte(tc.code), 1)
+				artifact = bytes.Replace(artifact, []byte("F821"), []byte(tc.code), 1)
 				oldShells := []byte(`"script_shells":["python","python3"]`)
 				newShells := []byte(`"script_shells":["bash","sh"]`)
 				if bytes.Count(artifact, oldShells) != 1 {
@@ -150,8 +167,12 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 }
 
 func TestActionRunsConfiguredScriptComponent(t *testing.T) {
-	module, err := filepath.Abs(filepath.Join("..", "plugins", "component", "testdata", "plugins", "script-engine.wasm"))
+	data, err := os.ReadFile(filepath.Join("..", "plugins", "component", "testdata", "plugins", "ruff-script-engine.wasm"))
 	if err != nil {
+		t.Fatal(err)
+	}
+	module := filepath.Join(t.TempDir(), "ruff-component.wasm")
+	if err := os.WriteFile(module, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	config := fmt.Sprintf("tools:\n  shellcheck: false\n  ruff:\n    backend:\n      wasm: {path: %q}\n", filepath.ToSlash(module))

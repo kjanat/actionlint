@@ -120,7 +120,7 @@ func TestLegacyShellSelectorsAreNormalized(t *testing.T) {
 func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), corewasm.Options{})
 	described := coreDescribedBackend{ScriptBackend: engine, descriptor: analyzer.ScriptEngineDescriptor{
-		Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
+		Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
 	}}
 	nativeCalls := 0
 	registration := backendroute.WithConfiguredEngine(tools.Registration{

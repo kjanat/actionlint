@@ -450,7 +450,7 @@ func editYAMLPlugins(original []byte, root, sequence *yaml.Node) ([]byte, error)
 		for end > start {
 			lineStart := bytes.LastIndexByte(original[:max(start, end-1)], '\n') + 1
 			line := bytes.TrimSpace(original[lineStart:end])
-			if len(line) != 0 && line[0] != '#' && !bytes.Equal(line, []byte("...")) {
+			if len(line) != 0 && line[0] != '#' && !isManifestDocumentEnd(original[lineStart:end]) {
 				break
 			}
 			end = lineStart
@@ -467,7 +467,7 @@ func editYAMLPlugins(original []byte, root, sequence *yaml.Node) ([]byte, error)
 	if start == len(original) {
 		// Append before an explicit document-end marker.
 		for i, line := range lines {
-			if bytes.Equal(bytes.TrimSpace(line), []byte("...")) {
+			if isManifestDocumentEnd(line) {
 				start = manifestLineOffset(lines, i+1)
 				end = start
 				break
@@ -478,6 +478,23 @@ func editYAMLPlugins(original []byte, root, sequence *yaml.Node) ([]byte, error)
 		}
 	}
 	return spliceManifest(original, start, end, data), nil
+}
+
+func isManifestDocumentEnd(line []byte) bool {
+	line = bytes.TrimSuffix(line, []byte("\n"))
+	line = bytes.TrimSuffix(line, []byte("\r"))
+	if !bytes.HasPrefix(line, []byte("...")) {
+		return false
+	}
+	rest := line[3:]
+	if len(rest) == 0 {
+		return true
+	}
+	if rest[0] != ' ' && rest[0] != '\t' {
+		return false
+	}
+	rest = bytes.TrimLeft(rest, " \t")
+	return len(rest) == 0 || rest[0] == '#'
 }
 
 func manifestLineOffset(lines [][]byte, line int) int {

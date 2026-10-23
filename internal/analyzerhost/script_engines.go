@@ -100,8 +100,8 @@ func (s *ScriptEngines) wait(ctx context.Context, pending *scriptEngineLoad) (an
 
 func (s *ScriptEngines) finish(ctx context.Context, path string, pending *scriptEngineLoad, backend analyzer.ScriptBackend, err error) (analyzer.ScriptBackend, error) {
 	s.mu.Lock()
-	delete(s.loading, path)
 	if s.closed {
+		delete(s.loading, path)
 		s.mu.Unlock()
 		if closer, ok := backend.(interface{ Close(context.Context) error }); ok {
 			err = errors.Join(err, closer.Close(context.WithoutCancel(ctx)))
@@ -114,11 +114,27 @@ func (s *ScriptEngines) finish(ctx context.Context, path string, pending *script
 		return nil, err
 	}
 	if err != nil {
+		if closer, ok := backend.(interface{ Close(context.Context) error }); ok {
+			s.mu.Unlock()
+			err = errors.Join(err, closer.Close(context.WithoutCancel(ctx)))
+			s.mu.Lock()
+		}
+		if s.closed {
+			delete(s.loading, path)
+			s.mu.Unlock()
+			err = errors.Join(errScriptEnginesClosed, err)
+			s.mu.Lock()
+			pending.err = err
+			close(pending.done)
+			s.mu.Unlock()
+			return nil, err
+		}
 		s.failed[path] = err
 	} else {
 		s.loaded[path] = backend
 		pending.backend = backend
 	}
+	delete(s.loading, path)
 	pending.err = err
 	close(pending.done)
 	s.mu.Unlock()

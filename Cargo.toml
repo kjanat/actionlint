@@ -19,7 +19,6 @@ wit-bindgen = "0.63"
 crate-type = ["cdylib"]
 name       = "pipe-to-shell"
 path       = "examples/plugins/pipe-to-shell.rs"
-test       = false
 
 [[example]]
 crate-type = ["cdylib"]
@@ -47,6 +46,7 @@ wit-bindgen.workspace = true
 
 [features]
 action-input-fixture = []
+ruff-fixture         = []
 
 [profile.wasm]
 inherits      = "release"

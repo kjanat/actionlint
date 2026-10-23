@@ -56,6 +56,9 @@ func TestPluginManifestFormats(t *testing.T) {
 		{"missing.json", "", ""},
 		{"missing.toml", "", ""},
 		{"append.yaml", "# intro\nother: true\n...\n", "# intro\nother: true\n"},
+		{"append-commented-end.yaml", "# intro\nother: true\n... # end\n", "... # end\n"},
+		{"append-scalar-ellipsis.yaml", "other: |\n  ... #literal\n  ... ordinary text\n", "  ... #literal\n  ... ordinary text\n"},
+		{"replace-commented-end.yaml", "plugins: [old/plugin]\n... # end\n", "... # end\n"},
 		{"append.json", "{\"other\" : true}\n", "\"other\" : true"},
 		{"append.toml", "# intro\n[lint.rules]\nunknown = 'warn'\n", "# intro\n[lint.rules]\nunknown = 'warn'"},
 		{"tables.toml", "# intro\n[[plugins]]\nname = 'old/plugin'\n[[plugins]]\nname = 'other/plugin'\n\n# retain this\n[lint.rules]\nunknown = 'warn'\n", "# retain this\n[lint.rules]\nunknown = 'warn'"},
@@ -87,6 +90,9 @@ func TestPluginManifestFormats(t *testing.T) {
 			}
 			if err := manifest.Save(t.Context(), nil); err != nil {
 				t.Fatal(err)
+			}
+			if strings.Contains(test.source, "... # end") && !strings.Contains(readManifestTest(t, path), "... # end") {
+				t.Fatal("removing plugins discarded commented document end")
 			}
 			empty, err := OpenPluginManifest(t.Context(), path)
 			if err != nil {

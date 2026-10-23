@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
+	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/runner"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
@@ -202,6 +203,9 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 }
 
 func validateSuppressionRuleName(name string) error {
+	if builtin, ok := rulecatalog.Find(name); ok && builtin.Provider == "actionlint" {
+		return fmt.Errorf("plugin name %q conflicts with a built-in rule", name)
+	}
 	if strings.TrimSpace(name) != name || strings.ContainsAny(name, ",\r\n") ||
 		strings.Contains(name, " -- ") || strings.HasSuffix(name, " --") {
 		return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", name)

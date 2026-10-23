@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 const pythonWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n"
@@ -30,12 +31,24 @@ func runWithDefaultRuff(input string, args ...string) commandTranscript {
 }
 
 func TestCheckRunsConfiguredWasmEngine(t *testing.T) {
-	config := writeEngineConfig(t, filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	module, err = testutil.ReplaceWasmDataString(module, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	modulePath := filepath.Join(t.TempDir(), "ruff.wasm")
+	if err := os.WriteFile(modulePath, module, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config := writeEngineConfig(t, modulePath)
 	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "--log-level", "debug", "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "<stdin>:6:20: Ruff reported issue in this script: F821: Undefined name `missing` [ruff]") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", got.Status, got.Stdout, got.Stderr)
 	}
-	if !strings.Contains(got.Stderr, `[Linter] Loaded engine "actionlint-engine-echo" (echo 1.0.0) from `) {
+	if !strings.Contains(got.Stderr, `[Linter] Loaded engine "actionlint-engine-echo" (ruff 1.0.0) from `) {
 		t.Fatalf("debug log: %q", got.Stderr)
 	}
 	disabled := testRunCommand(pythonWorkflow, "check", "--config", config, "-")

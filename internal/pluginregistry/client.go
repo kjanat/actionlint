@@ -162,7 +162,7 @@ func (c *Client) manifest(ctx context.Context, name string) (CatalogPlugin, mani
 		}
 		seen := map[string]bool{}
 		for _, v := range m.Versions {
-			if !namePattern.MatchString(v.Version) || seen[v.Version] || v.Record != "versions/"+hash(v.Version)+".json" {
+			if !pluginref.ValidVersion(v.Version) || seen[v.Version] || v.Record != "versions/"+hash(v.Version)+".json" {
 				return p, m, errors.New("invalid or duplicate registry version")
 			}
 			seen[v.Version] = true

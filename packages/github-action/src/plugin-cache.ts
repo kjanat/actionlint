@@ -70,10 +70,12 @@ export async function inspectPlugins(
 	executable: string,
 	environment: Environment,
 	probe: PluginProbe = capture,
-): Promise<PluginPlan | undefined> {
+): Promise<PluginPlan> {
 	const result = await probe(executable, ['-github-action-plugins'], environment, { timeoutMS: 300_000 });
 	if (result.exitCode !== 0) {
-		if (result.exitCode === 2 && unsupportedPluginFlag(result.stderr)) return undefined;
+		if (result.exitCode === 2 && unsupportedPluginFlag(result.stderr)) {
+			throw new InputError('This Action requires an actionlint binary with Wasm plugin support. Select actionlint v2 or use the matching v1 Action for an older binary.');
+		}
 		const message = result.stderr.trim();
 		const error = message || `actionlint plugin inspection exited with ${result.exitCode}`;
 		throw result.exitCode === 2 ? new InputError(error) : new Error(error);
@@ -169,6 +171,6 @@ export async function withPluginCache(
 	client: PluginCache = service,
 ): Promise<number> {
 	const plan = await inspectPlugins(executable, environment, probe);
-	if (!plan) return run();
+	if (environment['INPUT_PLUGIN-CACHE'] === 'false') return run();
 	return cachePlugins(plan, run, client, () => inspectPlugins(executable, environment, probe));
 }

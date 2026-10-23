@@ -40,10 +40,11 @@ func newEditorSources(ctx context.Context, options application.Options, sources 
 	if err := checkEditorPluginStatuses(ctx, sources, log); err != nil {
 		return nil, err
 	}
-	plugins, err := loadPlugins(ctx, sources.Paths, log, options.Debug)
+	plugins, err := loadPlugins(ctx, sources, log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
+	sources.artifacts = nil
 	options, err = plugins.configure(options)
 	if err != nil {
 		return nil, errors.Join(err, plugins.close(context.WithoutCancel(ctx)))

@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
@@ -45,6 +46,10 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 	t.Setenv("LOCALAPPDATA", cache)
 	var requests atomic.Int32
 	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "core", "testdata", "engines", "echo.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	module, err = testutil.ReplaceWasmDataString(module, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
 	if err != nil {
 		t.Fatal(err)
 	}
