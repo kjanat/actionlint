@@ -41,7 +41,10 @@ func TestShellcheckSourceInventoryWithoutDiagnostics(t *testing.T) {
 }
 
 func TestSourceInventoryResolvesSymlinksBeforeParents(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "workspace")
+	if err := os.Symlink(t.TempDir(), root); err != nil {
+		t.Fatal(err)
+	}
 	file := writeShellcheckFixture(t, root, "real/helper.sh", "VALUE=correct\n")
 	writeShellcheckFixture(t, root, "helper.sh", "VALUE=wrong\n")
 	if err := os.Mkdir(filepath.Join(root, "real", "sub"), 0o700); err != nil {
@@ -55,7 +58,23 @@ func TestSourceInventoryResolvesSymlinksBeforeParents(t *testing.T) {
 	if err := run.recordSources([]string{"link/../helper.sh"}, root); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(inputs, file) || !slices.Contains(inputs, filepath.Join(root, "link")) || slices.Contains(inputs, filepath.Join(root, "helper.sh")) {
+	recorded := func(name string) bool {
+		want, err := os.Lstat(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, input := range inputs {
+			got, err := os.Lstat(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if os.SameFile(want, got) {
+				return true
+			}
+		}
+		return false
+	}
+	if !recorded(file) || !recorded(filepath.Join(root, "link")) || recorded(filepath.Join(root, "helper.sh")) {
 		t.Fatalf("wrong source identity: %v", inputs)
 	}
 }
