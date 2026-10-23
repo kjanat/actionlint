@@ -74,7 +74,9 @@ export async function inspectPlugins(
 	const result = await probe(executable, ['-github-action-plugins'], environment, { timeoutMS: 300_000 });
 	if (result.exitCode !== 0) {
 		if (result.exitCode === 2 && unsupportedPluginFlag(result.stderr)) {
-			throw new InputError('This Action requires an actionlint binary with Wasm plugin support. Select actionlint v2 or use the matching v1 Action for an older binary.');
+			throw new InputError(
+				'This Action requires an actionlint binary with Wasm plugin support. Select actionlint v2 or use the matching v1 Action for an older binary.',
+			);
 		}
 		const message = result.stderr.trim();
 		const error = message || `actionlint plugin inspection exited with ${result.exitCode}`;

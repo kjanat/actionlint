@@ -101,7 +101,10 @@ test('selected legacy binary is rejected with or without plugin caching', async 
 		};
 
 		for (const environment of [{}, { 'INPUT_PLUGIN-CACHE': 'false' }]) {
-			await assert.rejects(runAction(environment, setup.runtime), /requires an actionlint binary with Wasm plugin support/);
+			await assert.rejects(
+				runAction(environment, setup.runtime),
+				/requires an actionlint binary with Wasm plugin support/,
+			);
 		}
 		assert.equal(setup.executions.length, 0);
 		assert.equal(setup.publications.length, 0);
