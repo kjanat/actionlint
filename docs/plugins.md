@@ -248,6 +248,61 @@ illustrates. The built-in GitHub provider does not interpret another provider's 
 select a script linter: script engines declare the shells they analyze. Missing or stale provider evidence leaves
 the default shell unknown; an explicit workflow shell still takes precedence.
 
+### Custom GitHub runner inventory
+
+Use the built-in `snapshot` provider for arbitrary labels such as `desktop-pool`, without writing a plugin:
+
+```sh
+actionlint --runner-provider snapshot --runner-scope my-org/my-repo \
+  --runner-snapshot runners.json workflow.yml
+```
+
+`runners.json` uses the same snapshot envelope as external providers. Its `content` contains the runner inventory:
+
+```json
+{
+  "scope": "my-org/my-repo",
+  "obtained_at": "2026-10-23T00:00:00Z",
+  "freshness": "fresh",
+  "complete": true,
+  "content": {
+    "runners": [{
+      "name": "desktop",
+      "labels": ["self-hosted", "desktop-pool", "x64"],
+      "group": "build",
+      "os": "windows",
+      "architecture": "x64",
+      "default_shell": "pwsh",
+      "case_sensitivity": "insensitive"
+    }]
+  }
+}
+```
+
+Each entry requires a unique, nonempty `name`. `labels` lists the labels assigned to that runner; labels match
+case-insensitively. An optional `group` matches the requested group exactly. All labels and the group must match
+one entry. Include only runners eligible for the supplied repository scope.
+Matrix alternatives resolve separately; ambiguous candidates contribute only facts on which they agree.
+
+Optional facts are `os` (`linux`, `macos`, `windows`, `unknown`), `architecture`, `default_shell`,
+`case_sensitivity` (`sensitive`, `insensitive`, `unknown`), `sh_is_dash` and `ephemeral`.
+Omitted facts remain unknown; declaring Windows alone does not assert that PowerShell is installed.
+Unknown JSON fields and invalid enum values are errors. An empty `runners` array asserts no eligible runners
+only when the snapshot is fresh and complete. Missing, stale or incomplete evidence cannot establish a default shell
+or reject a selector. Freshness and completeness are assertions supplied by whoever maintains the inventory.
+
+Selection is explicit: supplying a snapshot alone does not replace the default `github` provider. The `snapshot`
+provider uses only the inventory, without adding hosted labels or configuration allowlists. Include every eligible
+candidate relevant to the workflows being checked before marking the inventory complete. These flags also work with
+`actionlint lsp`; restart it after updating the snapshot. Go callers use `runner.Options{Provider: "snapshot", ...}`.
+
+For this inventory, `runs-on: desktop-pool` supplies Windows and `pwsh` to runner checks, shell inference and script
+routing. Load a script-engine plugin advertising `capabilities.script_shells: ["pwsh", "powershell"]` to analyze
+PowerShell snippets. The host selects engines by the effective shell; no `script-linter` setting is needed on a runner.
+This does not install a PowerShell analyzer. Without a matching engine, those snippets receive no engine diagnostics.
+ShellCheck handles an explicit `shell: bash` override. Step, job and workflow
+shell declarations override the inventory; a job container supplies its own `sh` default.
+
 ### Offline Buildkite example
 
 [`examples/plugins/buildkite-runners.rs`](../examples/plugins/buildkite-runners.rs) resolves an explicit queue mapping
@@ -262,7 +317,8 @@ actionlint --plugin target/wasm32-wasip2/wasm/examples/buildkite_runners.wasm \
   --runner-scope my-org/my-repo --runner-snapshot runners.json workflow.yml
 ```
 
-`runners.json` is a JSON envelope, with provider-specific catalogue JSON encoded in `content`:
+`runners.json` is a JSON envelope with provider-specific catalogue data in `content`.
+The CLI passes that JSON to the provider as opaque content. Providers using a text format can instead supply a string.
 
 ```json
 {
@@ -270,7 +326,16 @@ actionlint --plugin target/wasm32-wasip2/wasm/examples/buildkite_runners.wasm \
   "obtained_at": "2026-10-19T00:00:00Z",
   "freshness": "fresh",
   "complete": true,
-  "content": "{\"queues\":[{\"name\":\"windows-build\",\"labels\":[\"buildkite-windows\",\"x64\"],\"group\":\"build\",\"os\":\"windows\",\"architecture\":\"x64\",\"shell\":\"pwsh\"}]}"
+  "content": {
+    "queues": [{
+      "name": "windows-build",
+      "labels": ["buildkite-windows", "x64"],
+      "group": "build",
+      "os": "windows",
+      "architecture": "x64",
+      "shell": "pwsh"
+    }]
+  }
 }
 ```
 

@@ -70,6 +70,10 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 		selected = builtinProvider{custom: slices.Clone(custom)}
 		identity = "builtin-github"
 	}
+	if options.Target == "github" && options.Provider == "snapshot" {
+		selected = snapshotProvider{}
+		identity = "builtin-github-snapshot-v1"
+	}
 	for _, registration := range options.Providers {
 		if registration.Provider == nil {
 			return k, errors.New("nil runner provider")
