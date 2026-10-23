@@ -15,7 +15,8 @@ func TestDockerfileOnlyAction(t *testing.T) {
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
-			file := writeFixture(t, root, "action/"+name, "FROM scratch\n")
+			file := writeFixture(t, root, "action/"+name, `FROM scratch
+`)
 			var inputs []string
 			cache := NewCache(root, nil)
 			cache.Configure(Options{Reader: fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })})
@@ -50,9 +51,13 @@ func TestDockerfileFallbackPrecedence(t *testing.T) {
 					return nil, os.ErrNotExist
 				}
 				if strings.HasPrefix(name, "action.") {
-					return []byte("name: metadata\ndescription: test\nruns: {using: composite, steps: []}\n"), nil
+					return []byte(`name: metadata
+description: test
+runs: {using: composite, steps: []}
+`), nil
 				}
-				return []byte("FROM scratch\n"), nil
+				return []byte(`FROM scratch
+`), nil
 			}, func(path string) { inputs = append(inputs, filepath.Base(path)) })})
 			meta, _, err := cache.FindMetadata("./action")
 			if err != nil || len(inputs) != 1 || inputs[0] != names[0] || (meta != nil) != strings.HasPrefix(names[0], "action.") {
@@ -91,7 +96,8 @@ func TestMappedDockerfileCannotEscapeRepository(t *testing.T) {
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		t.Run(name, func(t *testing.T) {
 			root, outside := t.TempDir(), t.TempDir()
-			file := writeFixture(t, outside, name, "FROM scratch\n")
+			file := writeFixture(t, outside, name, `FROM scratch
+`)
 			if err := os.Mkdir(filepath.Join(root, "action"), 0o755); err != nil {
 				t.Fatal(err)
 			}
@@ -110,7 +116,8 @@ func TestMappedDockerfileInsideRepository(t *testing.T) {
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
-			file := writeFixture(t, root, "action/"+name, "FROM scratch\n")
+			file := writeFixture(t, root, "action/"+name, `FROM scratch
+`)
 			var inputs []string
 			cache := NewCache(root, nil)
 			cache.Configure(Options{Reader: fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })})
