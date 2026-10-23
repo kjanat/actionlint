@@ -53,3 +53,34 @@ func TestRunnerSnapshotValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestGitHubRunnerSnapshotCLI(t *testing.T) {
+	t.Chdir(t.TempDir())
+	envelope := runner.Snapshot{
+		Scope: "fixture", Freshness: runner.Fresh, Complete: true,
+		Content: `{"runners":[{"name":"desktop","labels":["desktop-pool"],"os":"windows","default_shell":"pwsh"}]}`,
+	}
+	data, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("runners.json", data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		provider, scope string
+		status          int
+		message         string
+	}{
+		{"snapshot", "fixture", 0, ""},
+		{"github", "fixture", 1, "runner-label"},
+		{"snapshot", "other", 3, "scope does not match"},
+	} {
+		var output bytes.Buffer
+		command := Command{Stdin: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: desktop-pool\n    steps: [{run: echo ok}]\n"), Stdout: &output, Stderr: &output}
+		status := command.MainContext(t.Context(), []string{"actionlint", "--no-config", "--no-shellcheck", "--no-ruff", "--runner-provider", tc.provider, "--runner-scope", tc.scope, "--runner-snapshot", "runners.json", "-"})
+		if status != tc.status || !strings.Contains(output.String(), tc.message) {
+			t.Fatalf("provider=%s scope=%s status=%d output=%s", tc.provider, tc.scope, status, &output)
+		}
+	}
+}
