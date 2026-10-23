@@ -1,13 +1,16 @@
 package shellcheck
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -18,8 +21,8 @@ import (
 )
 
 type pluginSourceMount struct {
-	host, guest string
-	files       *fsread.SnapshotFS
+	host, alias, guest string
+	files              *fsread.SnapshotFS
 }
 
 type pluginSourceFiles struct {
@@ -46,20 +49,44 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 	if len(inline.SourcePath) > 32 {
 		return nil, errors.New("ShellCheck source access exceeds 32 search directories")
 	}
+	directory := sourcePath(script.Execution.Directory, "")
+	run := &shellcheckRun{cfg: script.Config, actionPath: script.Scope.ActionPath, paths: runPaths{analysis: script.Scope.AnalysisDir, workspace: script.Scope.Workspace, reader: script.Scope.Reader}}
 	add := func(host, guest string) error {
-		host, err := filepath.Abs(host)
-		if err != nil {
+		if !filepath.IsAbs(host) {
+			base, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			host = sourceName(host, base)
+		}
+		if err := run.recordSources([]string{host}, directory); err != nil {
 			return err
 		}
-		snapshot, err := fsread.NewSnapshot(ctx, host, script.Scope.Reader, budget)
+		resolved, err := filepath.EvalSymlinks(host)
+		if err == nil {
+			resolved, err = filepath.Abs(resolved)
+		}
+		var info fs.FileInfo
+		if err == nil {
+			info, err = os.Stat(resolved)
+		}
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-				script.Scope.Reader.Record(host)
 				return nil
 			}
 			return fmt.Errorf("ShellCheck source directory %q: %w", host, err)
 		}
-		files.mounts = append(files.mounts, pluginSourceMount{host: host, guest: guest, files: snapshot})
+		if !info.IsDir() {
+			return nil
+		}
+		snapshot, err := fsread.NewSnapshot(ctx, resolved, script.Scope.Reader, budget)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+				return nil
+			}
+			return fmt.Errorf("ShellCheck source directory %q: %w", host, err)
+		}
+		files.mounts = append(files.mounts, pluginSourceMount{host: resolved, alias: host, guest: guest, files: snapshot})
 		return nil
 	}
 	workspace := script.Scope.Workspace
@@ -72,27 +99,24 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 	if err := add(workspace, "/workspace"); err != nil {
 		return nil, err
 	}
-	run := &shellcheckRun{cfg: script.Config, actionPath: script.Scope.ActionPath, paths: runPaths{analysis: script.Scope.AnalysisDir, workspace: script.Scope.Workspace}}
-	for i, directory := range inline.SourcePath {
-		directory, err := run.pathContext().Expand(directory)
+	for i, source := range inline.SourcePath {
+		source, err := run.pathContext().Expand(source)
 		if err != nil {
 			return nil, errors.Join(err, files.close())
 		}
-		if directory == "SCRIPTDIR" || strings.HasPrefix(directory, "SCRIPTDIR/") {
-			files.paths = append(files.paths, directory)
+		if source == "SCRIPTDIR" || strings.HasPrefix(source, "SCRIPTDIR/") {
+			files.paths = append(files.paths, source)
 			continue
 		}
-		if !filepath.IsAbs(directory) {
-			directory = filepath.Join(script.Execution.Directory, directory)
-		}
+		source = sourceName(source, directory)
 		guest := fmt.Sprintf("/sources/%d", i)
-		if err := add(directory, guest); err != nil {
+		if err := add(source, guest); err != nil {
 			return nil, errors.Join(err, files.close())
 		}
 		files.paths = append(files.paths, guest)
 	}
 	for _, mount := range files.mounts {
-		relative, err := filepath.Rel(mount.host, script.Execution.Directory)
+		relative, err := filepath.Rel(mount.host, directory)
 		if err == nil && filepath.IsLocal(relative) {
 			files.directory = path.Join(mount.guest, filepath.ToSlash(relative))
 			break
@@ -115,7 +139,13 @@ func (f *pluginSourceFiles) configure(input *analyzer.Input) error {
 	options.ExternalSources, options.SourcePath = true, f.paths
 	for _, mount := range f.mounts {
 		options.SourceRoots = append(options.SourceRoots, pluginSourceRoot{Host: filepath.ToSlash(mount.host), Guest: mount.guest})
+		if mount.alias != mount.host {
+			options.SourceRoots = append(options.SourceRoots, pluginSourceRoot{Host: filepath.ToSlash(mount.alias), Guest: mount.guest})
+		}
 	}
+	slices.SortStableFunc(options.SourceRoots, func(a, b pluginSourceRoot) int {
+		return cmp.Compare(len(b.Host), len(a.Host))
+	})
 	data, err := json.Marshal(options)
 	if err != nil {
 		return err

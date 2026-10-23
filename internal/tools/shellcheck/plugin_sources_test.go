@@ -2,6 +2,7 @@ package shellcheck
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -56,13 +57,13 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, path := range []string{file, external, filepath.Join(root, "missing")} {
+	for _, path := range []string{sourcePath(file, root), sourcePath(external, outside), filepath.Join(root, "missing")} {
 		if !slices.Contains(inputs, path) {
 			t.Fatalf("dependency missing: %s from %v", path, inputs)
 		}
 	}
 	finding, err := sources.finding(diagnostic.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: diagnostic.Position{Line: 1, Column: 1}}, script, 3)
-	if err != nil || finding.Path != file || !finding.RawScript || string(finding.Content) != "VALUE=one\n" || finding.Script != 3 {
+	if err != nil || finding.Path != sourcePath(file, root) || !finding.RawScript || string(finding.Content) != "VALUE=one\n" || finding.Script != 3 {
 		t.Fatalf("mapping=%+v error=%v", finding, err)
 	}
 	dir, err := input.Files[0].FS.Open(".")
@@ -83,7 +84,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	finding, err = sources.finding(diagnostic.Diagnostic{Path: "/workspace/link/../clean.sh"}, script, 3)
-	if err != nil || finding.Path != file || string(finding.Content) != "VALUE=one\n" {
+	if err != nil || finding.Path != sourcePath(file, root) || string(finding.Content) != "VALUE=one\n" {
 		t.Fatalf("symlink mapping=%+v error=%v", finding, err)
 	}
 	if err := os.WriteFile(file, []byte("VALUE=changed\n"), 0o600); err != nil {
@@ -97,6 +98,88 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	content, err := fs.ReadFile(fresh.mounts[0].files, "lib/clean.sh")
 	if err != nil || string(content) != "VALUE=changed\n" {
 		t.Fatalf("stale source: %q %v", content, err)
+	}
+}
+
+func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	file := writeShellcheckFixture(t, outside, "shared.sh", "SHARED=two\n")
+	alias := filepath.Join(root, "shared")
+	if err := os.Symlink(outside, alias); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := filepath.EvalSymlinks(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(outside, "sub"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(filepath.Join(outside, "sub"), link); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, directory, grant string }{
+		{"resolved working directory", resolved, alias},
+		{"aliased working directory", alias, alias},
+		{"symlink before parent", resolved, link + string(os.PathSeparator) + ".."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := config.Parse([]byte(fmt.Sprintf("tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant))))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var inputs []string
+			reader := fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
+			script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: reader}, Execution: tools.Execution{Directory: tc.directory, DirectoryKnown: true}, Key: &workflowlang.Pos{Line: 1}, Value: &workflowlang.Pos{Line: 1}}
+			sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer sources.close()
+			input := analyzer.Input{Options: []byte("{}"), Scripts: []analyzer.Script{{Runtime: &analyzer.Runtime{Directory: tc.directory, DirectoryKnown: true}}}}
+			if err := sources.configure(&input); err != nil {
+				t.Fatal(err)
+			}
+			if input.Scripts[0].Runtime.Directory != "/sources/2" || len(input.Files) != 2 {
+				t.Fatalf("working directory not granted: %s", input.Scripts[0].Runtime.Directory)
+			}
+			var options documentPluginOptions
+			if err := json.Unmarshal(input.Options, &options); err != nil {
+				t.Fatal(err)
+			}
+			for _, host := range []string{tc.grant, resolved} {
+				if !slices.Contains(options.SourceRoots, pluginSourceRoot{Host: filepath.ToSlash(host), Guest: "/sources/2"}) {
+					t.Fatalf("source root missing: %s from %+v", host, options.SourceRoots)
+				}
+				for _, mapping := range options.SourceRoots {
+					if strings.HasPrefix(filepath.ToSlash(host)+"/shared.sh", mapping.Host+"/") {
+						if mapping.Guest != "/sources/2" {
+							t.Fatalf("source alias shadowed: %s by %+v", host, mapping)
+						}
+						break
+					}
+				}
+			}
+			if _, err := fs.ReadFile(input.Files[1].FS, "shared.sh"); err != nil {
+				t.Fatal(err)
+			}
+			dependencies := []string{sourcePath(file, outside)}
+			if tc.name == "symlink before parent" {
+				dependencies = append(dependencies, filepath.Join(sourcePath(root, root), "link"))
+			} else {
+				dependencies = append(dependencies, filepath.Join(sourcePath(root, root), "shared"))
+			}
+			for _, dependency := range dependencies {
+				if !slices.Contains(inputs, dependency) {
+					t.Fatalf("dependency missing: %s from %v", dependency, inputs)
+				}
+			}
+			finding, err := sources.finding(diagnostic.Diagnostic{Path: "/sources/2/shared.sh"}, script, 0)
+			if err != nil || finding.Path != filepath.Join(resolved, "shared.sh") || string(finding.Content) != "SHARED=two\n" {
+				t.Fatalf("source mapping=%+v error=%v", finding, err)
+			}
+		})
 	}
 }
 
