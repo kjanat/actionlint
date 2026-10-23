@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -39,8 +40,28 @@ func (c checkInvocation) runners() (runner.Options, error) {
 	if len(data) > limit {
 		return options, fmt.Errorf("runner snapshot exceeds %d bytes", limit)
 	}
-	if err := jsonv2.Unmarshal(data, &options.Snapshot, jsonv2.RejectUnknownMembers(true)); err != nil {
+	var snapshot struct {
+		Content    jsontext.Value   `json:"content"`
+		Scope      string           `json:"scope"`
+		ObtainedAt string           `json:"obtained_at"`
+		Freshness  runner.Freshness `json:"freshness"`
+		Complete   bool             `json:"complete"`
+	}
+	if err := jsonv2.Unmarshal(data, &snapshot, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return options, fmt.Errorf("runner snapshot: %w", err)
+	}
+	content := string(snapshot.Content)
+	switch snapshot.Content.Kind() {
+	case '"':
+		if err := jsonv2.Unmarshal(snapshot.Content, &content); err != nil {
+			return options, fmt.Errorf("runner snapshot content: %w", err)
+		}
+	case 'n':
+		content = ""
+	}
+	options.Snapshot = runner.Snapshot{
+		Content: content, Scope: snapshot.Scope, ObtainedAt: snapshot.ObtainedAt,
+		Freshness: snapshot.Freshness, Complete: snapshot.Complete,
 	}
 	switch options.Snapshot.Freshness {
 	case runner.Fresh, runner.Stale, runner.Missing:

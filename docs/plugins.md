@@ -257,7 +257,7 @@ actionlint --runner-provider snapshot --runner-scope my-org/my-repo \
   --runner-snapshot runners.json workflow.yml
 ```
 
-`runners.json` uses the same snapshot envelope as external providers. Its `content` string contains a JSON inventory:
+`runners.json` uses the same snapshot envelope as external providers. Its `content` contains the runner inventory:
 
 ```json
 {
@@ -265,7 +265,17 @@ actionlint --runner-provider snapshot --runner-scope my-org/my-repo \
   "obtained_at": "2026-10-23T00:00:00Z",
   "freshness": "fresh",
   "complete": true,
-  "content": "{\"runners\":[{\"name\":\"desktop\",\"labels\":[\"self-hosted\",\"desktop-pool\",\"x64\"],\"group\":\"build\",\"os\":\"windows\",\"architecture\":\"x64\",\"default_shell\":\"pwsh\",\"case_sensitivity\":\"insensitive\"}]}"
+  "content": {
+    "runners": [{
+      "name": "desktop",
+      "labels": ["self-hosted", "desktop-pool", "x64"],
+      "group": "build",
+      "os": "windows",
+      "architecture": "x64",
+      "default_shell": "pwsh",
+      "case_sensitivity": "insensitive"
+    }]
+  }
 }
 ```
 
@@ -307,7 +317,8 @@ actionlint --plugin target/wasm32-wasip2/wasm/examples/buildkite_runners.wasm \
   --runner-scope my-org/my-repo --runner-snapshot runners.json workflow.yml
 ```
 
-`runners.json` is a JSON envelope, with provider-specific catalogue JSON encoded in `content`:
+`runners.json` is a JSON envelope with provider-specific catalogue data in `content`.
+The CLI passes that JSON to the provider as opaque content. Providers using a text format can instead supply a string.
 
 ```json
 {
@@ -315,7 +326,16 @@ actionlint --plugin target/wasm32-wasip2/wasm/examples/buildkite_runners.wasm \
   "obtained_at": "2026-10-19T00:00:00Z",
   "freshness": "fresh",
   "complete": true,
-  "content": "{\"queues\":[{\"name\":\"windows-build\",\"labels\":[\"buildkite-windows\",\"x64\"],\"group\":\"build\",\"os\":\"windows\",\"architecture\":\"x64\",\"shell\":\"pwsh\"}]}"
+  "content": {
+    "queues": [{
+      "name": "windows-build",
+      "labels": ["buildkite-windows", "x64"],
+      "group": "build",
+      "os": "windows",
+      "architecture": "x64",
+      "shell": "pwsh"
+    }]
+  }
 }
 ```
 
