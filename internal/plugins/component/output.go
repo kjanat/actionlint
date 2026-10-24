@@ -18,6 +18,7 @@ func (h hostImplementation) Log(_ context.Context, message string) error {
 	return err
 }
 
+// lineWriter belongs to one invocation; its output budget is never reset.
 type lineWriter struct {
 	log     func(string)
 	pending []byte
@@ -64,8 +65,4 @@ func (w *lineWriter) flush() {
 		w.log(string(w.pending))
 	}
 	w.pending = nil
-}
-
-func (w *lineWriter) reset() {
-	w.pending, w.written, w.err = nil, 0, nil
 }

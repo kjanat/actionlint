@@ -120,7 +120,7 @@ func TestCallScopeClosesPartialImportsAfterFailure(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = p.Close(context.Background()) })
 	teardown := callScope{plugin: p}
-	teardown.host, err = p.factory.NewInstance(t.Context(), hostImplementation{}, nil)
+	teardown.host, err = p.hostFactory.NewInstance(t.Context(), hostImplementation{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestCallScopeClosesPartialImportsAfterFailure(t *testing.T) {
 	if !slices.Equal(order, []string{"host"}) || teardown.host != nil || teardown.world != nil || teardown.output != nil {
 		t.Fatalf("partial cleanup incomplete: order=%v host=%v world=%v output=%v", order, teardown.host != nil, teardown.world != nil, teardown.output != nil)
 	}
-	if _, err := p.call(t.Context(), "describe"); err != nil {
+	if _, err := p.callAnalyzer(t.Context(), "describe"); err != nil {
 		t.Fatalf("call after failed partial cleanup: %v", err)
 	}
 	if !slices.Equal(order, []string{"host"}) {

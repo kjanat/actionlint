@@ -17,7 +17,7 @@ func TestCallCloseDoesNotRunGuestDestructors(t *testing.T) {
 			t.Cleanup(func() { _ = plugin.Close(context.Background()) })
 			baseline := plugin.memory.used
 			for range 2 {
-				value, err := plugin.call(t.Context(), operation)
+				value, err := plugin.callAnalyzer(t.Context(), operation)
 				if err != nil {
 					t.Fatalf("closing the guest invoked its %s destructor: %v", operation, err)
 				}

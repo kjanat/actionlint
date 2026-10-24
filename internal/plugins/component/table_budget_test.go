@@ -114,22 +114,22 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin := &Plugin{path: path, engine: engine, factory: factory, component: withoutTables,
+	plugin := &Plugin{path: path, engine: engine, hostFactory: factory, component: withoutTables,
 		limits: Limits{Timeout: time.Second, MemoryPages: 64}, gate: semaphore.NewWeighted(1),
 		memory: &memoryBudget{limit: 64 << 16}, log: func(string) {}}
 	t.Cleanup(func() { _ = plugin.Close(context.Background()) })
-	if _, err := plugin.call(t.Context(), "describe"); err != nil {
+	if _, err := plugin.callAnalyzer(t.Context(), "describe"); err != nil {
 		t.Fatal(err)
 	}
 	// Host instances vary independently of the guest. Leave exactly
 	// one page for stdin's stub and two pages for the guest's core instances.
 	plugin.memory.limit = callImportMemory(t, plugin) + 3<<16
 	plugin.limits.MemoryPages = uint32(plugin.memory.limit >> 16)
-	if _, err := plugin.call(t.Context(), "describe"); err != nil {
+	if _, err := plugin.callAnalyzer(t.Context(), "describe"); err != nil {
 		t.Fatalf("linear-only fixture did not fit calibrated budget: %v", err)
 	}
 	plugin.component = fixture
-	if _, err := plugin.call(t.Context(), "describe"); !errors.Is(err, errMemoryBudget) {
+	if _, err := plugin.callAnalyzer(t.Context(), "describe"); !errors.Is(err, errMemoryBudget) {
 		t.Fatalf("real plugin call ignored table reservations: %v", err)
 	}
 	if plugin.engine != nil || plugin.memory.used != 0 {

@@ -84,7 +84,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		return err
 	}
 	p.component = component
-	p.factory, err = hostbind.NewFactory(ctx, p.engine)
+	p.hostFactory, err = hostbind.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
 	}

@@ -27,9 +27,9 @@ const SourceAnnotationsInterface = annotationsbind.InterfaceName
 // serialized; each analysis runs in a fresh instance.
 type Plugin struct {
 	// A non-nil descriptor identifies a validated, available role.
-	descriptor       *analyzer.Descriptor
-	runnerDescriptor *runner.Descriptor
-	scriptDescriptor *analyzer.ScriptEngineDescriptor
+	analyzerDescriptor *analyzer.Descriptor
+	runnerDescriptor   *runner.Descriptor
+	scriptDescriptor   *analyzer.ScriptEngineDescriptor
 
 	digest string
 	path   string
@@ -38,7 +38,7 @@ type Plugin struct {
 
 	engine             *wacogo.Engine
 	component          *wacogo.Component
-	factory            *hostbind.Factory
+	hostFactory        *hostbind.Factory
 	annotationsFactory *annotationsbind.Factory
 
 	gate   *semaphore.Weighted
@@ -61,9 +61,9 @@ func (p *Plugin) Close(ctx context.Context) error {
 	}
 	defer p.gate.Release(1)
 	var errs []error
-	if p.factory != nil {
-		errs = append(errs, p.factory.Close(ctx))
-		p.factory = nil
+	if p.hostFactory != nil {
+		errs = append(errs, p.hostFactory.Close(ctx))
+		p.hostFactory = nil
 	}
 	if p.annotationsFactory != nil {
 		errs = append(errs, p.annotationsFactory.Close(ctx))

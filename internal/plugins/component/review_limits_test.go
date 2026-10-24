@@ -50,7 +50,7 @@ func TestQueuedPluginCallsHonorCallerCancellationAndDeadline(t *testing.T) {
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 		finished := make(chan error, 1)
-		go func() { _, err := p.call(ctx, "analyze"); finished <- err }()
+		go func() { _, err := p.callAnalyzer(ctx, "analyze"); finished <- err }()
 		if callerCancels {
 			cancel()
 		}
@@ -77,7 +77,7 @@ func TestPluginExecutionBudgetStartsAfterQueue(t *testing.T) {
 		t.Fatal(err)
 	}
 	finished := make(chan error, 1)
-	go func() { _, err := p.call(t.Context(), "analyze"); finished <- err }()
+	go func() { _, err := p.callAnalyzer(t.Context(), "analyze"); finished <- err }()
 	select {
 	case err := <-finished:
 		p.gate.Release(1)

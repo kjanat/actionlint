@@ -10,7 +10,7 @@ import (
 	"github.com/kjanat/wacogo"
 )
 
-func (p *Plugin) HasAnalyzer() bool { return p.descriptor != nil }
+func (p *Plugin) HasAnalyzer() bool { return p.analyzerDescriptor != nil }
 
 func (p *Plugin) loadAnalyzer(ctx context.Context) error {
 	descriptor, err := p.describe(ctx)
@@ -23,16 +23,16 @@ func (p *Plugin) loadAnalyzer(ctx context.Context) error {
 	if err := validateSuppressionRuleName(descriptor.Name); err != nil {
 		return err
 	}
-	p.descriptor = &descriptor
+	p.analyzerDescriptor = &descriptor
 	return nil
 }
 
 // Descriptor returns the identity the plugin declared when it was loaded.
 func (p *Plugin) Descriptor() analyzer.Descriptor {
-	if p.descriptor == nil {
+	if p.analyzerDescriptor == nil {
 		return analyzer.Descriptor{}
 	}
-	return analyzer.Descriptor{Descriptor: p.descriptor.Clone(), Requires: append([]analyzer.Fact(nil), p.descriptor.Requires...)}
+	return analyzer.Descriptor{Descriptor: p.analyzerDescriptor.Clone(), Requires: append([]analyzer.Fact(nil), p.analyzerDescriptor.Requires...)}
 }
 
 // Analyze runs the plugin on one document in a fresh instance. A trap, an
@@ -43,14 +43,14 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 	}
 	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
 	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
-	value, err := p.call(ctx, "analyze", lowerInput(input))
+	value, err := p.callAnalyzer(ctx, "analyze", lowerInput(input))
 	if err != nil {
 		return nil, err
 	}
 	diagnostics, err := liftAnalysis(value)
 	valid := diagnostics[:0]
 	for _, finding := range diagnostics {
-		if finding.Rule != "" && finding.Rule != p.descriptor.Name {
+		if finding.Rule != "" && finding.Rule != p.analyzerDescriptor.Name {
 			err = errors.Join(err, fmt.Errorf("undeclared diagnostic rule %q; use code for plugin-specific check identifiers", finding.Rule))
 			continue
 		}
@@ -63,7 +63,7 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 }
 
 func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
-	value, err := p.call(ctx, "describe")
+	value, err := p.callAnalyzer(ctx, "describe")
 	if err != nil {
 		return analyzer.Descriptor{}, err
 	}
@@ -74,6 +74,6 @@ func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
 	return descriptor, nil
 }
 
-func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (wacogo.Val, error) {
+func (p *Plugin) callAnalyzer(ctx context.Context, name string, args ...wacogo.Val) (wacogo.Val, error) {
 	return p.callInterface(ctx, AnalyzerInterface, name, args...)
 }

@@ -32,8 +32,8 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 
 func (p *Plugin) failure(ctx context.Context, err error) error {
 	name := filepath.Base(p.path)
-	if p.descriptor != nil {
-		name = p.descriptor.Name
+	if p.analyzerDescriptor != nil {
+		name = p.analyzerDescriptor.Name
 	}
 	switch {
 	case errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded):
@@ -106,7 +106,7 @@ func (c *callScope) execute(ctx context.Context, iface, name string, args ...wac
 func (c *callScope) prepareImports(ctx context.Context) error {
 	p := c.plugin
 	output := &lineWriter{log: p.log}
-	hostInstance, err := p.factory.NewInstance(ctx, hostImplementation{output: output}, nil)
+	hostInstance, err := p.hostFactory.NewInstance(ctx, hostImplementation{output: output}, nil)
 	if err != nil {
 		return err
 	}
