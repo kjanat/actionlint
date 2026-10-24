@@ -23,6 +23,60 @@ func (o *actionInputObserver) Analyze(_ context.Context, input analyzer.Input) (
 	return nil, nil
 }
 
+func TestAliasedActionInputCommentsReachAnalyzers(t *testing.T) {
+	const workflow = `on: push
+env:
+  SCRIPT: &script "console.log('hello')" # anchor comment
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          ${{ insert }}:
+            # alias leading
+            script: *script # alias trailing
+      - uses: actions/github-script@v7
+        with:
+          script: *script
+`
+	observer := &actionInputObserver{}
+	_, err := application.Check(t.Context(), application.Options{
+		WorkingDir: t.TempDir(),
+		Analyzers:  []analyzer.Registration{{Analyzer: observer}},
+	}, application.Input{Kind: application.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(observer.input.ActionInputs) != 2 {
+		t.Fatalf("action input facts=%+v", observer.input.ActionInputs)
+	}
+	first, second := observer.input.ActionInputs[0], observer.input.ActionInputs[1]
+	want := []analyzer.SourceComment{
+		{Text: "# alias leading", Start: diagnostic.Position{Line: 11, Column: 13}, Placement: analyzer.LeadingComment},
+		{Text: "# alias trailing", Start: diagnostic.Position{Line: 12, Column: 29}, Placement: analyzer.TrailingComment},
+	}
+	if len(first.Comments) != len(want) {
+		t.Fatalf("action input comments=%+v, want %+v", first.Comments, want)
+	}
+	for i, comment := range first.Comments {
+		if comment.Text != want[i].Text || comment.Start != want[i].Start || comment.Placement != want[i].Placement {
+			t.Errorf("comment=%+v, want %+v", comment, want[i])
+		}
+	}
+	if len(second.Comments) != 0 {
+		t.Fatalf("unannotated input inherited comments: %+v", second.Comments)
+	}
+	for _, input := range observer.input.ActionInputs {
+		if input.Text != "console.log('hello')" || len(input.Spans) == 0 || input.Spans[0].Document != (diagnostic.Position{Line: 3, Column: 20}) {
+			t.Fatalf("aliased action input lost anchored text/span: %+v", input)
+		}
+	}
+	if first.Reference == second.Reference {
+		t.Fatalf("aliased action inputs share declaration identity: %+v", first.Reference)
+	}
+}
+
 func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 	root := t.TempDir()
 	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v7\n        with:\n          script: |\n            console.log(\"${{ 'missing' }}\");\n            missing();\n      - uses: ./nested\n      - uses: example/execute@v1\n        with:\n          code: \"console.log('é'); missing();\"\n      - uses: actions/upload-artifact@v4\n        with:\n          name: missing\n      - run: echo missing\n        shell: bash\n"

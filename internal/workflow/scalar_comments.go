@@ -68,7 +68,7 @@ func (p *Parser) indexScalarComments(root *yaml.Node) {
 	visit(root, nil)
 }
 
-// ScriptSourceForDeclaration keeps alias-use comments with their owning run
+// ScriptSourceForDeclaration keeps alias-use comments with their owning scalar
 // declaration while text and fixes retain the anchored scalar's source spans.
 func (p *Parser) ScriptSourceForDeclaration(node *yaml.Node, declaration *Pos) *ScriptSource {
 	source := p.ScriptSource(node)
