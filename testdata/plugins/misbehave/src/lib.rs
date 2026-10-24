@@ -90,7 +90,7 @@ fn analyze(input: Input) -> Result<Vec<Diagnostic>, String> {
             Ok(content) => Err(format!("file contents: {content}")),
             Err(error) => Err(format!("filesystem denied: {error}")),
         },
-        "retain-file" => match std::fs::File::open(&input.content) {
+        "leave-file-open" => match std::fs::File::open(&input.content) {
             Ok(file) => {
                 std::mem::forget(file);
                 Ok(Vec::new())

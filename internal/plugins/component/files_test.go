@@ -18,7 +18,7 @@ import (
 	"github.com/kjanat/wacogo/wasi/filesystem/preopens"
 )
 
-func TestCallClosesRetainedHostFiles(t *testing.T) {
+func TestCallClosesFilesLeftOpenByGuest(t *testing.T) {
 	closeFailure := errors.New("host file close failed")
 	for _, tc := range []struct {
 		name string
@@ -34,7 +34,7 @@ func TestCallClosesRetainedHostFiles(t *testing.T) {
 			for call := range 2 {
 				files := &countedFiles{FS: fstest.MapFS{"source.sh": &fstest.MapFile{Data: []byte("echo hello")}}, closeErr: tc.err}
 				_, err := plugin.Analyze(t.Context(), analyzer.Input{
-					Content: "/workspace/source.sh", Options: json.RawMessage("retain-file"),
+					Content: "/workspace/source.sh", Options: json.RawMessage("leave-file-open"),
 					Files: []analyzer.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: files}}},
 				})
 				if !errors.Is(err, tc.err) {
@@ -69,7 +69,7 @@ func TestCallPreservesHostCloseFailureAfterCancellation(t *testing.T) {
 		},
 	}
 	_, err := plugin.Analyze(ctx, analyzer.Input{
-		Content: "/workspace/source.sh", Options: json.RawMessage("retain-file"),
+		Content: "/workspace/source.sh", Options: json.RawMessage("leave-file-open"),
 		Files: []analyzer.FileSystem{{Path: "/workspace", FS: preopens.ImmutableFS{FS: files}}},
 	})
 	if !errors.Is(err, context.Canceled) || !errors.Is(err, closeErr) {

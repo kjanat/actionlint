@@ -25,7 +25,7 @@ func callImportMemory(t *testing.T, plugin *Plugin) uint64 {
 		t.Fatal(err)
 	}
 	if plugin.memory.used != baseline {
-		t.Fatalf("host cleanup retained %d bytes; want %d", plugin.memory.used, baseline)
+		t.Fatalf("host cleanup left %d bytes accounted; want %d", plugin.memory.used, baseline)
 	}
 	return used
 }

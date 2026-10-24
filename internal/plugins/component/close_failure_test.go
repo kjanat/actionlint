@@ -36,7 +36,7 @@ func TestCallCloseDoesNotRunGuestDestructors(t *testing.T) {
 				t.Fatal(err)
 			}
 			if plugin.memory.used != 0 {
-				t.Fatalf("plugin close retained %d bytes", plugin.memory.used)
+				t.Fatalf("plugin close left %d bytes accounted", plugin.memory.used)
 			}
 		})
 	}
