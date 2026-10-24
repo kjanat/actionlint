@@ -3,8 +3,8 @@ import { test } from 'node:test';
 
 import { once } from 'node:events';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
-import { connect, type Socket } from 'node:net';
+import { createServer, request as forwardRequest, type Server } from 'node:http';
+import type { Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -158,7 +158,7 @@ test('default review API uses the runner proxy and honors NO_PROXY', { timeout: 
 	const original = new Map(variables.map((name) => [name, process.env[name]]));
 	const sockets = new Set<Socket>();
 	const requests: string[] = [];
-	const tunnels: string[] = [];
+	const proxyRequests: string[] = [];
 	let status = 200;
 	const origin = createServer((request, response) => {
 		requests.push(request.url ?? '');
@@ -186,18 +186,22 @@ test('default review API uses the runner proxy and honors NO_PROXY', { timeout: 
 		));
 	});
 	const originPort = await listen(origin);
-	proxy.on('connect', (request, socket, head) => {
-		tunnels.push(request.url ?? '');
-		const upstream = connect(originPort, '127.0.0.1');
-		sockets.add(upstream);
-		upstream.once('close', () => sockets.delete(upstream));
-		upstream.once('error', () => socket.destroy());
-		socket.once('error', () => upstream.destroy());
-		upstream.once('connect', () => {
-			socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-			if (head.length) upstream.write(head);
-			socket.pipe(upstream).pipe(socket);
+	proxy.on('request', (request, response) => {
+		const target = new URL(request.url ?? '');
+		proxyRequests.push(target.href);
+		const upstream = forwardRequest({
+			hostname: '127.0.0.1',
+			port: originPort,
+			method: request.method,
+			path: target.pathname + target.search,
+			headers: request.headers,
+			agent: false,
+		}, (incoming) => {
+			response.writeHead(incoming.statusCode ?? 502, incoming.headers);
+			incoming.pipe(response);
 		});
+		upstream.once('error', (error) => response.destroy(error));
+		request.pipe(upstream);
 	});
 	const proxyPort = await listen(proxy);
 	for (const name of variables) delete process.env[name];
@@ -210,15 +214,14 @@ test('default review API uses the runner proxy and honors NO_PROXY', { timeout: 
 			'/repos/owner/repo/pulls/5/files?per_page=100&page=1',
 			'/repos/owner/repo/pulls/5/comments?per_page=100&page=1',
 		]);
-		assert.ok(tunnels.length > 0);
-		assert.ok(tunnels.every((target) => target === 'proxy-only.invalid:80'));
+		assert.deepEqual(proxyRequests, requests.map((path) => `http://proxy-only.invalid${path}`));
 		status = 403;
 		await assert.rejects(postReview(result, proxied), /GitHub review API returned HTTP 403/);
 		status = 200;
-		const beforeBypass = tunnels.length;
+		const beforeBypass = proxyRequests.length;
 		process.env.NO_PROXY = '127.0.0.1';
 		await postReview(result, { ...environment, GITHUB_API_URL: `http://127.0.0.1:${originPort}` });
-		assert.equal(tunnels.length, beforeBypass);
+		assert.equal(proxyRequests.length, beforeBypass);
 	});
 });
 

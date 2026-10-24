@@ -33,9 +33,7 @@
     "typecheck": "run -q @typescript/native --noEmit"
   },
   "overrides": {
-    "@actions/github-script": {
-      "undici": ">=8.11.2"
-    }
+    "undici": ">=8.11.2"
   },
   "dependencies": {
     "feather-icons": "4.28.0"
