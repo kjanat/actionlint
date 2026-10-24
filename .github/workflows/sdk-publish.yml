@@ -1,0 +1,78 @@
+name: Publish Rust SDK
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SDK version from crates/actionlint-extension-api/Cargo.toml
+        type: string
+        required: true
+      dry-run:
+        description: Verify the package without publishing
+        type: boolean
+        default: true
+      authentication:
+        description: Use bootstrap-token only for the first crates.io publication
+        type: choice
+        options: [trusted-publishing, bootstrap-token]
+        default: trusted-publishing
+
+permissions: { contents: read }
+defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+    steps:
+      - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: Check publication target
+        id: package
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          if [[ "${DRY_RUN}" != true && "${GITHUB_REF}" != refs/heads/master ]]; then
+            echo 'SDK publication requires master.' >&2
+            exit 1
+          fi
+          version="$(cargo metadata --locked --no-deps --format-version 1 | jq -er '.packages[] | select(.name == "actionlint-extension-api") | .version')"
+          test "${version}" = "${EXPECTED_VERSION}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+      - name: Check SDK formatting
+        run: cargo fmt -p actionlint-extension-api --check
+      - name: Test default features
+        run: cargo test --locked -p actionlint-extension-api
+      - name: Test all features
+        run: cargo test --locked -p actionlint-extension-api --all-features
+      - name: Lint SDK targets
+        run: cargo clippy --locked -p actionlint-extension-api --all-targets --all-features -- -D warnings
+      - name: Verify the crates.io package
+        run: cargo publish --locked -p actionlint-extension-api --all-features --registry crates-io --dry-run
+
+  publish:
+    needs: verify
+    if: ${{ !inputs.dry-run && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: { name: crates-io, url: "https://crates.io/crates/actionlint-extension-api/${{ needs.verify.outputs.version }}" }
+    concurrency:
+      group: crates-io-actionlint-extension-api-${{ needs.verify.outputs.version }}
+      cancel-in-progress: false
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: *Checkout
+        with: { persist-credentials: false }
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: Authenticate with crates.io
+        if: inputs.authentication == 'trusted-publishing'
+        uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+        id: auth
+      - name: Publish through ${{ inputs.authentication }}
+        env: { CARGO_REGISTRY_TOKEN: "${{ case(inputs.authentication == 'trusted-publishing', steps.auth.outputs.token, secrets.CARGO_REGISTRY_TOKEN) }}" }
+        run: cargo publish --locked -p actionlint-extension-api --all-features --registry crates-io
