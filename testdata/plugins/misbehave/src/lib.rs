@@ -90,6 +90,13 @@ fn analyze(input: Input) -> Result<Vec<Diagnostic>, String> {
             Ok(content) => Err(format!("file contents: {content}")),
             Err(error) => Err(format!("filesystem denied: {error}")),
         },
+        "retain-file" => match std::fs::File::open(&input.content) {
+            Ok(file) => {
+                std::mem::forget(file);
+                Ok(Vec::new())
+            }
+            Err(error) => Err(format!("filesystem denied: {error}")),
+        },
         "write-file" => match std::fs::write(&input.content, "changed") {
             Ok(()) => Err("file was overwritten".to_string()),
             Err(error) => Err(format!("write denied: {error}")),

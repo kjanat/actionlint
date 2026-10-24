@@ -362,9 +362,25 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 				panic(recovered)
 			}
 			cleanup := context.WithoutCancel(ctx)
-			p.discardImports(cleanup)
-			results, err = nil, p.failure(ctx, errors.Join(errMemoryBudget, p.engine.Close(cleanup)))
+			closeErr := p.discardImports(cleanup)
+			if p.engine != nil {
+				closeErr = errors.Join(closeErr, p.engine.Close(cleanup))
+			}
+			results, err = nil, errors.Join(err, p.failure(ctx, errMemoryBudget), closeErr)
 			p.engine = nil
+		}
+	}()
+	// Guest closure does not drop outstanding handles in imported host instances.
+	closeRuntime := false
+	defer func() {
+		cleanup := context.WithoutCancel(ctx)
+		closeErr := p.discardImports(cleanup)
+		if closeRuntime && p.engine != nil {
+			closeErr = errors.Join(closeErr, p.engine.Close(cleanup))
+			p.engine = nil
+		}
+		if closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("plugin %s: close host imports: %w", p.path, closeErr))
 		}
 	}()
 	if err := p.prepareImports(ctx); err != nil {
@@ -376,16 +392,18 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 		output.flush()
 		if outputErr := output.err; outputErr != nil {
 			err = errors.Join(err, p.failure(ctx, outputErr))
-			p.discardImports(ctx)
 		}
 	}()
 	// wacogo's stdin component hands out one stream handle per host instance.
 	input, err := stdin.NewInstance(ctx, p.engine, p.world.Streams, p.world.Error, p.world.Poll, nil)
 	if err != nil {
-		p.discardImports(ctx)
 		return nil, p.failure(ctx, err)
 	}
-	defer func() { _ = input.Close(ctx) }()
+	defer func() {
+		if closeErr := input.Close(context.WithoutCancel(ctx)); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("plugin %s: close stdin: %w", p.path, closeErr))
+		}
+	}()
 	imports := append([]wacogo.InstantiateOption{wacogo.WithInstanceImport(HostInterface, p.host.Core())}, p.world.Imports()...)
 	imports = append(imports, wacogo.WithInstanceImport(stdin.InterfaceName, input.Core()))
 	if p.annotationsFactory != nil {
@@ -393,24 +411,22 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 		if err != nil {
 			return nil, p.failure(ctx, err)
 		}
-		defer func() { _ = annotations.Close(context.WithoutCancel(ctx)) }()
+		defer func() {
+			if closeErr := annotations.Close(context.WithoutCancel(ctx)); closeErr != nil {
+				err = errors.Join(err, fmt.Errorf("plugin %s: close source annotations: %w", p.path, closeErr))
+			}
+		}()
 		imports = append(imports, wacogo.WithInstanceImport(SourceAnnotationsInterface, annotations.Core()))
 	}
 	guest, err := p.component.Instantiate(ctx, imports...)
 	if err != nil {
-		p.discardImports(ctx)
 		return nil, p.failure(ctx, fmt.Errorf("instantiate: %w", err))
 	}
 	defer func() {
 		if closeErr := guest.Close(ctx); closeErr != nil {
-			p.discardImports(ctx)
-			// Guest destructors use the call deadline; runtime teardown runs no Wasm.
-			closeErr = errors.Join(closeErr, p.engine.Close(context.WithoutCancel(ctx)))
-			p.engine = nil
-			err = errors.Join(err, p.failure(ctx, fmt.Errorf("close component: %w", closeErr)))
-		}
-		if err != nil {
-			p.discardImports(ctx)
+			// Finish runtime teardown even when the call context was cancelled.
+			closeRuntime = true
+			err = errors.Join(err, fmt.Errorf("plugin %s: close component: %w", p.path, closeErr))
 		}
 	}()
 	exported := guest.ExportedInstance(iface)
@@ -435,7 +451,9 @@ func (p *Plugin) prepareImports(ctx context.Context) error {
 	if p.host != nil && p.world != nil {
 		return nil
 	}
-	p.discardImports(ctx)
+	if err := p.discardImports(context.WithoutCancel(ctx)); err != nil {
+		return err
+	}
 	output := &lineWriter{log: p.log}
 	hostInstance, err := p.factory.NewInstance(ctx, hostImplementation{output: output}, nil)
 	if err != nil {
@@ -446,23 +464,23 @@ func (p *Plugin) prepareImports(ctx context.Context) error {
 		Preopens: func(deps preopens.Deps) preopens.Preopens { return scopedPreopens{deps} },
 	})
 	if err != nil {
-		_ = hostInstance.Close(ctx)
-		return err
+		return errors.Join(err, hostInstance.Close(context.WithoutCancel(ctx)))
 	}
 	p.host, p.world, p.output = hostInstance, world, output
 	return nil
 }
 
-func (p *Plugin) discardImports(ctx context.Context) {
-	if p.world != nil {
-		_ = p.world.Close(ctx)
-		p.world = nil
+func (p *Plugin) discardImports(ctx context.Context) error {
+	world, hostInstance := p.world, p.host
+	p.world, p.host, p.output = nil, nil, nil
+	var errs []error
+	if world != nil {
+		errs = append(errs, world.Close(ctx))
 	}
-	if p.host != nil {
-		_ = p.host.Close(ctx)
-		p.host = nil
+	if hostInstance != nil {
+		errs = append(errs, hostInstance.Close(ctx))
 	}
-	p.output = nil
+	return errors.Join(errs...)
 }
 
 func (p *Plugin) failure(ctx context.Context, err error) error {
@@ -486,8 +504,7 @@ func (p *Plugin) Close(ctx context.Context) error {
 		return err
 	}
 	defer p.gate.Release(1)
-	p.discardImports(ctx)
-	var errs []error
+	errs := []error{p.discardImports(ctx)}
 	if p.factory != nil {
 		errs = append(errs, p.factory.Close(ctx))
 		p.factory = nil

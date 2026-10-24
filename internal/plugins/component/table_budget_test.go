@@ -121,9 +121,9 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 	if _, err := plugin.call(t.Context(), "describe"); err != nil {
 		t.Fatal(err)
 	}
-	// Retained host instances vary independently of the guest. Leave exactly
+	// Host instances vary independently of the guest. Leave exactly
 	// one page for stdin's stub and two pages for the guest's core instances.
-	plugin.memory.limit = plugin.memory.used + 3<<16
+	plugin.memory.limit = callImportMemory(t, plugin) + 3<<16
 	plugin.limits.MemoryPages = uint32(plugin.memory.limit >> 16)
 	if _, err := plugin.call(t.Context(), "describe"); err != nil {
 		t.Fatalf("linear-only fixture did not fit calibrated budget: %v", err)
