@@ -17,11 +17,12 @@ func callImportMemory(t *testing.T, plugin *Plugin) uint64 {
 	baseline := plugin.memory.used
 	ctx := experimental.WithMemoryAllocator(t.Context(), plugin.memory)
 	ctx = wacogo.WithCoreTableAllocator(ctx, plugin.memory.allocateTables)
-	if err := plugin.prepareImports(ctx); err != nil {
+	scope := callScope{plugin: plugin}
+	if err := scope.prepareImports(ctx); err != nil {
 		t.Fatal(err)
 	}
 	used := plugin.memory.used
-	if err := plugin.discardImports(context.WithoutCancel(ctx)); err != nil {
+	if err := scope.discardImports(context.WithoutCancel(ctx)); err != nil {
 		t.Fatal(err)
 	}
 	if plugin.memory.used != baseline {

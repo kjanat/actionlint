@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -16,13 +15,8 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
-	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/runner"
 	"github.com/kjanat/wacogo"
-	"github.com/kjanat/wacogo/host"
-	"github.com/kjanat/wacogo/wasi"
-	"github.com/kjanat/wacogo/wasi/cli/stdin"
-	"github.com/kjanat/wacogo/wasi/filesystem/preopens"
 	"github.com/kjanat/wacogo/wasmparser"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -47,8 +41,6 @@ const (
 	maxLiftBytes              = 8 * 1024 * 1024
 	maxLiftValues             = 262144
 )
-
-var grantedImportPrefixes = []string{"wasi:cli/", "wasi:clocks/", "wasi:io/", "wasi:random/", "wasi:filesystem/"}
 
 // Options configures a loaded plugin. Zero values select the defaults.
 type Options struct {
@@ -90,9 +82,6 @@ type Plugin struct {
 	annotationsFactory *annotationsbind.Factory
 
 	gate   *semaphore.Weighted
-	host   *host.ComponentInstance
-	world  *wasi.World
-	output *lineWriter
 	memory *memoryBudget
 }
 
@@ -217,78 +206,6 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	return nil
 }
 
-func validateSuppressionRuleName(name string) error {
-	if builtin, ok := rulecatalog.Find(name); ok && builtin.Provider == "actionlint" {
-		return fmt.Errorf("plugin name %q conflicts with a built-in rule", name)
-	}
-	if strings.TrimSpace(name) != name || strings.ContainsAny(name, ",\r\n") ||
-		strings.Contains(name, " -- ") || strings.HasSuffix(name, " --") {
-		return fmt.Errorf("plugin name %q cannot be used as an inline suppression rule", name)
-	}
-	return nil
-}
-
-type extensionRoleSet struct {
-	analyzer bool
-	runner   bool
-	script   bool
-}
-
-func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
-	var roles extensionRoleSet
-	supported := []struct {
-		name string
-		role *bool
-	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ScriptEngineInterface, &roles.script}}
-	for _, export := range exports {
-		for _, candidate := range supported {
-			prefix, _, _ := strings.Cut(candidate.name, "@")
-			if !strings.HasPrefix(export.Name, prefix+"@") {
-				continue
-			}
-			if export.Name != candidate.name {
-				return roles, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, candidate.name)
-			}
-			if export.Kind != wacogo.SortInstance {
-				return roles, fmt.Errorf("plugin export %s must be an interface instance", export.Name)
-			}
-			*candidate.role = true
-		}
-	}
-	if !roles.analyzer && !roles.runner && !roles.script {
-		return roles, fmt.Errorf("plugin does not export %s, %s or %s", AnalyzerInterface, RunnerInterface, ScriptEngineInterface)
-	}
-	return roles, nil
-}
-
-func checkImports(imports []wacogo.ImportDesc) error {
-	hostName := wasmparser.CanonicalizeImportName(HostInterface)
-	annotationsName := wasmparser.CanonicalizeImportName(SourceAnnotationsInterface)
-	for _, imported := range imports {
-		canonical := wasmparser.CanonicalizeImportName(imported.Name)
-		if canonical == hostName || canonical == annotationsName {
-			continue
-		}
-		if strings.HasPrefix(imported.Name, "kjanat:actionlint/host@") {
-			return fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, HostInterface)
-		}
-		if strings.HasPrefix(imported.Name, "kjanat:actionlint/source-annotations@") {
-			return fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, SourceAnnotationsInterface)
-		}
-		granted := false
-		for _, prefix := range grantedImportPrefixes {
-			if strings.HasPrefix(imported.Name, prefix) {
-				granted = true
-				break
-			}
-		}
-		if !granted {
-			return fmt.Errorf("plugin imports %s, which this host does not grant", imported.Name)
-		}
-	}
-	return nil
-}
-
 // Path returns the component file the plugin was loaded from.
 func (p *Plugin) Path() string { return p.path }
 
@@ -355,105 +272,8 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 	}
 	ctx = experimental.WithMemoryAllocator(ctx, p.memory)
 	ctx = wacogo.WithCoreTableAllocator(ctx, p.memory.allocateTables)
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			recoveredError, ok := recovered.(error)
-			if !ok || !errors.Is(recoveredError, errMemoryBudget) {
-				panic(recovered)
-			}
-			cleanup := context.WithoutCancel(ctx)
-			closeErr := p.discardImports(cleanup)
-			if p.engine != nil {
-				closeErr = errors.Join(closeErr, p.engine.Close(cleanup))
-			}
-			results, err = nil, errors.Join(err, p.failure(ctx, errMemoryBudget), closeErr)
-			p.engine = nil
-		}
-	}()
-	teardown := callTeardown{plugin: p}
-	defer teardown.finish(ctx, &err)
-	if err := p.prepareImports(ctx); err != nil {
-		return nil, p.failure(ctx, err)
-	}
-	output := p.output
-	output.reset()
-	defer func() {
-		output.flush()
-		if outputErr := output.err; outputErr != nil {
-			err = errors.Join(err, p.failure(ctx, outputErr))
-		}
-	}()
-	// wacogo's stdin component hands out one stream handle per host instance.
-	input, err := stdin.NewInstance(ctx, p.engine, p.world.Streams, p.world.Error, p.world.Poll, nil)
-	if err != nil {
-		return nil, p.failure(ctx, err)
-	}
-	defer teardown.closeResource(ctx, "stdin", input, &err)
-	imports := append([]wacogo.InstantiateOption{wacogo.WithInstanceImport(HostInterface, p.host.Core())}, p.world.Imports()...)
-	imports = append(imports, wacogo.WithInstanceImport(stdin.InterfaceName, input.Core()))
-	if p.annotationsFactory != nil {
-		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, nil)
-		if err != nil {
-			return nil, p.failure(ctx, err)
-		}
-		defer teardown.closeResource(ctx, "source annotations", annotations, &err)
-		imports = append(imports, wacogo.WithInstanceImport(SourceAnnotationsInterface, annotations.Core()))
-	}
-	guest, err := p.component.Instantiate(ctx, imports...)
-	if err != nil {
-		return nil, p.failure(ctx, fmt.Errorf("instantiate: %w", err))
-	}
-	defer teardown.closeGuest(ctx, guest, &err)
-	exported := guest.ExportedInstance(iface)
-	if exported == nil {
-		return nil, p.failure(ctx, fmt.Errorf("instance does not export %s", iface))
-	}
-	fn := exported.ExportedFunc(name)
-	if fn == nil {
-		return nil, p.failure(ctx, fmt.Errorf("plugin does not export %s", name))
-	}
-	results, err = fn.Call(ctx, args...)
-	if err != nil {
-		return nil, p.failure(ctx, err)
-	}
-	if len(results) != 1 {
-		return nil, p.failure(ctx, fmt.Errorf("%s returned %d values", name, len(results)))
-	}
-	return results, nil
-}
-
-func (p *Plugin) prepareImports(ctx context.Context) error {
-	if p.host != nil && p.world != nil {
-		return nil
-	}
-	if err := p.discardImports(context.WithoutCancel(ctx)); err != nil {
-		return err
-	}
-	output := &lineWriter{log: p.log}
-	hostInstance, err := p.factory.NewInstance(ctx, hostImplementation{output: output}, nil)
-	if err != nil {
-		return err
-	}
-	// The call owns each acquired import before the next allocation can fail.
-	p.host, p.output = hostInstance, output
-	p.world, err = wasi.NewWorld(ctx, p.engine, &wasi.Config{
-		Args: []string{filepath.Base(p.path)}, Stdout: output, Stderr: output,
-		Preopens: func(deps preopens.Deps) preopens.Preopens { return scopedPreopens{deps} },
-	})
-	return err
-}
-
-func (p *Plugin) discardImports(ctx context.Context) error {
-	world, hostInstance := p.world, p.host
-	p.world, p.host, p.output = nil, nil, nil
-	var errs []error
-	if world != nil {
-		errs = append(errs, world.Close(ctx))
-	}
-	if hostInstance != nil {
-		errs = append(errs, hostInstance.Close(ctx))
-	}
-	return errors.Join(errs...)
+	scope := callScope{plugin: p}
+	return scope.invoke(ctx, iface, name, args...)
 }
 
 func (p *Plugin) failure(ctx context.Context, err error) error {
@@ -463,7 +283,7 @@ func (p *Plugin) failure(ctx context.Context, err error) error {
 	}
 	switch {
 	case errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded):
-		return fmt.Errorf("plugin %s exceeded its time limit (%s)", name, p.limits)
+		return fmt.Errorf("plugin %s exceeded its time limit (%s): %w", name, p.limits, errors.Join(context.DeadlineExceeded, err))
 	case errors.Is(ctx.Err(), context.Canceled) || errors.Is(err, context.Canceled):
 		return fmt.Errorf("plugin %s was cancelled: %w", name, context.Canceled)
 	default:
@@ -477,7 +297,7 @@ func (p *Plugin) Close(ctx context.Context) error {
 		return err
 	}
 	defer p.gate.Release(1)
-	errs := []error{p.discardImports(ctx)}
+	var errs []error
 	if p.factory != nil {
 		errs = append(errs, p.factory.Close(ctx))
 		p.factory = nil
@@ -491,68 +311,4 @@ func (p *Plugin) Close(ctx context.Context) error {
 		p.engine = nil
 	}
 	return errors.Join(errs...)
-}
-
-type hostImplementation struct {
-	output *lineWriter
-}
-
-func (h hostImplementation) Log(_ context.Context, message string) error {
-	// Preserve log-call boundaries without joining a partial stdio line.
-	h.output.flush()
-	_, err := h.output.Write([]byte(message))
-	h.output.flush()
-	return err
-}
-
-type lineWriter struct {
-	log     func(string)
-	pending []byte
-	written int
-	err     error
-}
-
-// Output limits cover retained partial lines and total bytes per call,
-// including guest-handled I/O failures.
-const (
-	maxPluginOutput = 1 << 20
-	maxPluginLine   = 64 << 10
-)
-
-func (w *lineWriter) Write(data []byte) (int, error) {
-	if w.err != nil {
-		return 0, w.err
-	}
-	if len(data) > maxPluginOutput-w.written {
-		w.err = fmt.Errorf("plugin output exceeds %d bytes per call", maxPluginOutput)
-		return 0, w.err
-	}
-	w.written += len(data)
-	n := len(data)
-	for len(data) > 0 {
-		count := min(len(data), maxPluginLine-len(w.pending))
-		if index := bytes.IndexByte(data[:count], '\n'); index >= 0 {
-			w.pending = append(w.pending, data[:index]...)
-			w.flush()
-			data = data[index+1:]
-			continue
-		}
-		w.pending = append(w.pending, data[:count]...)
-		data = data[count:]
-		if len(w.pending) == maxPluginLine {
-			w.flush()
-		}
-	}
-	return n, nil
-}
-
-func (w *lineWriter) flush() {
-	if len(w.pending) != 0 && w.log != nil {
-		w.log(string(w.pending))
-	}
-	w.pending = nil
-}
-
-func (w *lineWriter) reset() {
-	w.pending, w.written, w.err = nil, 0, nil
 }
