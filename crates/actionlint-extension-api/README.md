@@ -41,9 +41,7 @@ actionlint_extension_api::export_plugin!(Plugin);
 ```
 
 See [`pipe-to-shell.rs`](https://github.com/kjanat/actionlint/blob/master/examples/plugins/pipe-to-shell.rs)
-for an analyzer that reports findings, and the
-[plugin guide](https://github.com/kjanat/actionlint/blob/master/docs/plugins.md#local-sdk-development)
-for local development setup.
+for an analyzer that reports findings.
 
 Build extensions for `wasm32-wasip2`. The default API imports only the original
 host logging interface. Enable `source-annotations` to import source comments
@@ -58,3 +56,5 @@ Only the outer discovery section is replaced; nested components/modules survive.
 
 This crate owns the public contracts in [`wit/`](https://github.com/kjanat/actionlint/tree/master/crates/actionlint-extension-api/wit). Host generation, examples and
 fixtures read these same files. Cargo includes them in the published package.
+
+For local SDK development, see [CONTRIBUTING.md](https://github.com/kjanat/actionlint/blob/master/crates/actionlint-extension-api/CONTRIBUTING.md).

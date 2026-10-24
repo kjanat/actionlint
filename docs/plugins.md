@@ -451,26 +451,6 @@ pass the plugin's descriptor, Cargo identity, engine, capabilities, languages an
 with the component path and output directory. The SDK writes discovery metadata, schema and license sidecars,
 and checksums. Plugins do not implement their own Wasm section traversal or vendor the SDK's WIT contracts.
 
-#### Local SDK development
-
-For development beside an actionlint checkout, use this plugin manifest:
-
-```toml
-[package]
-name    = "my-actionlint-extension"
-version = "0.1.0"
-edition = "2024"
-
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
-actionlint-extension-api = { path = "../actionlint/crates/actionlint-extension-api" }
-```
-
-The path points at the SDK in the adjacent checkout. Build the plugin with
-`cargo build --target wasm32-wasip2` from its own directory.
-
 ### Shared declaration facts
 
 [`examples/plugins/pinned-actions.rs`](../examples/plugins/pinned-actions.rs) and its
