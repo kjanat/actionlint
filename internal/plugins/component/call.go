@@ -39,7 +39,7 @@ func (p *Plugin) failure(ctx context.Context, err error) error {
 	case errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded):
 		return fmt.Errorf("plugin %s exceeded its time limit (%s): %w", name, p.limits, errors.Join(context.DeadlineExceeded, err))
 	case errors.Is(ctx.Err(), context.Canceled) || errors.Is(err, context.Canceled):
-		return fmt.Errorf("plugin %s was cancelled: %w", name, context.Canceled)
+		return fmt.Errorf("plugin %s was cancelled: %w", name, errors.Join(context.Canceled, err))
 	default:
 		return fmt.Errorf("plugin %s failed (%s): %w", name, p.limits, err)
 	}
@@ -72,23 +72,33 @@ func (c *callScope) invoke(ctx context.Context, iface, name string, args ...waco
 		}
 	}()
 	defer c.finish(ctx, &err)
-	if err := c.prepareGuest(ctx); err != nil {
-		return nil, p.failure(ctx, err)
-	}
-	exported := c.guest.ExportedInstance(iface)
-	if exported == nil {
-		return nil, p.failure(ctx, fmt.Errorf("instance does not export %s", iface))
-	}
-	fn := exported.ExportedFunc(name)
-	if fn == nil {
-		return nil, p.failure(ctx, fmt.Errorf("plugin does not export %s", name))
-	}
-	results, err := fn.Call(ctx, args...)
+	value, err = c.execute(ctx, iface, name, args...)
 	if err != nil {
 		return nil, p.failure(ctx, err)
 	}
+	return value, nil
+}
+
+// execute returns guest errors unchanged. invoke adds plugin context before
+// teardown joins independent cleanup failures into the same result.
+func (c *callScope) execute(ctx context.Context, iface, name string, args ...wacogo.Val) (wacogo.Val, error) {
+	if err := c.prepareGuest(ctx); err != nil {
+		return nil, err
+	}
+	exported := c.guest.ExportedInstance(iface)
+	if exported == nil {
+		return nil, fmt.Errorf("instance does not export %s", iface)
+	}
+	fn := exported.ExportedFunc(name)
+	if fn == nil {
+		return nil, fmt.Errorf("plugin does not export %s", name)
+	}
+	results, err := fn.Call(ctx, args...)
+	if err != nil {
+		return nil, err
+	}
 	if len(results) != 1 {
-		return nil, p.failure(ctx, fmt.Errorf("%s returned %d values", name, len(results)))
+		return nil, fmt.Errorf("%s returned %d values", name, len(results))
 	}
 	return results[0], nil
 }

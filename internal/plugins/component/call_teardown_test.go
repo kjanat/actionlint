@@ -39,6 +39,8 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	if _, err := teardown.output.Write([]byte("pending line")); err != nil {
 		t.Fatal(err)
 	}
+	outputErr := errors.New("output failure before cancellation")
+	teardown.output.err = outputErr
 	stdinErr := errors.New("stdin cleanup")
 	annotationsErr := errors.New("annotations cleanup")
 	hostErr := errors.New("host cleanup")
@@ -80,7 +82,7 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	result := errors.Join(primary, context.Canceled)
 	teardown.guest, teardown.annotations, teardown.stdin = guest, annotations, input
 	teardown.finish(cancelled, &result)
-	for _, cause := range []error{primary, context.Canceled, guestErr, annotationsErr, stdinErr, hostErr, runtimeErr} {
+	for _, cause := range []error{primary, context.Canceled, guestErr, annotationsErr, stdinErr, outputErr, hostErr, runtimeErr} {
 		if !errors.Is(result, cause) {
 			t.Errorf("cleanup lost %v: %v", cause, result)
 		}

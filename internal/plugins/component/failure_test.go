@@ -32,3 +32,25 @@ func TestTimeoutFailurePreservesCause(t *testing.T) {
 		})
 	}
 }
+
+func TestCancellationFailurePreservesCause(t *testing.T) {
+	p := &Plugin{path: "cancelled.wasm"}
+	cause := errors.New("guest interrupted")
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	for _, test := range []struct {
+		name string
+		ctx  context.Context
+		err  error
+	}{
+		{"caller cancellation", ctx, cause},
+		{"returned cancellation", t.Context(), errors.Join(context.Canceled, cause)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := p.failure(test.ctx, test.err)
+			if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+				t.Fatalf("cancellation lost its identity or cause: %v", err)
+			}
+		})
+	}
+}
