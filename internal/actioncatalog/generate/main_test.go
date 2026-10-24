@@ -227,27 +227,27 @@ func TestWriteGoToStdout(t *testing.T) {
 	}{
 		{
 			in:   "no_new_version.jsonl",
-			want: "no_new_version.go",
+			want: "no_new_version.gen.go",
 		},
 		{
 			in:   "skip_inputs.jsonl",
-			want: "skip_inputs.go",
+			want: "skip_inputs.gen.go",
 		},
 		{
 			in:   "skip_outputs.jsonl",
-			want: "skip_outputs.go",
+			want: "skip_outputs.gen.go",
 		},
 		{
 			in:   "skip_both.jsonl",
-			want: "skip_both.go",
+			want: "skip_both.gen.go",
 		},
 		{
 			in:   "outdated.jsonl",
-			want: "outdated.go",
+			want: "outdated.gen.go",
 		},
 		{
 			in:   "deprecated.jsonl",
-			want: "deprecated.go",
+			want: "deprecated.gen.go",
 		},
 	}
 
@@ -305,7 +305,7 @@ func TestWriteJSONLFile(t *testing.T) {
 
 func TestWriteGoFile(t *testing.T) {
 	in := filepath.Join("testdata", "jsonl", "no_new_version.jsonl")
-	out := filepath.Join("testdata", "go", "out.go")
+	out := filepath.Join("testdata", "go", "out.gen.go")
 	defer func() { _ = os.Remove(out) }()
 
 	stdout := io.Discard
@@ -315,7 +315,7 @@ func TestWriteGoFile(t *testing.T) {
 		t.Fatal("exit status is non-zero:", status)
 	}
 
-	b, err := os.ReadFile(filepath.Join("testdata", "go", "no_new_version.go"))
+	b, err := os.ReadFile(filepath.Join("testdata", "go", "no_new_version.gen.go"))
 	if err != nil {
 		panic(err)
 	}
@@ -337,9 +337,9 @@ func TestFetchRemoteYAML(t *testing.T) {
 		registry string
 		want     string
 	}{
-		{"fetch.json", "fetched.go"},
-		{"outdated.json", "outdated.go"},
-		{"skip_both.json", "skip_both.go"},
+		{"fetch.json", "fetched.gen.go"},
+		{"outdated.json", "outdated.gen.go"},
+		{"skip_both.json", "skip_both.gen.go"},
 	}
 
 	for _, tc := range tests {

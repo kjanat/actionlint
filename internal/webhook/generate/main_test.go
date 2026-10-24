@@ -22,7 +22,7 @@ func TestWriteStdoutOK(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	b, err := os.ReadFile(filepath.Join("testdata", "ok.go"))
+	b, err := os.ReadFile(filepath.Join("testdata", "ok.gen.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

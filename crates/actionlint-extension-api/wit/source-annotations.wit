@@ -1,0 +1,39 @@
+package kjanat:actionlint@0.1.0;
+
+/// Optional source metadata. Queries are limited to scripts supplied in this call.
+/// Script text and source spans describe the decoded scalar. YAML comments are separate.
+interface source-annotations {
+    record source-reference {
+        document: string,
+        revision: string,
+        node: string,
+        address: string,
+    }
+
+    /// One-based Unicode character position, pointing at the comment's '#'.
+    record position {
+        line: u32,
+        column: u32,
+    }
+
+    enum placement {
+        leading,
+        trailing,
+    }
+
+    record comment {
+        /// One physical YAML comment, including '#', without its line ending.
+        text: string,
+        start: position,
+        placement: placement,
+    }
+
+    /// Attached YAML comments before declarations or on scalar headers/closing lines, in source order.
+    /// Scalar content is excluded. Unknown references and calls outside analyze return no comments.
+    comments: func(reference: source-reference) -> list<comment>;
+}
+
+world annotated-plugin {
+    include plugin;
+    import source-annotations;
+}

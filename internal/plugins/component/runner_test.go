@@ -168,7 +168,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 }
 
 func TestRunnerContractShapeAndDigest(t *testing.T) {
-	data, err := os.ReadFile("../../../plugins/wit/runner.wit")
+	data, err := os.ReadFile("../../../crates/actionlint-extension-api/wit/runner.wit")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 output="${1:-insecure-download.wasm}"
-contract="${ACTIONLINT_WIT:-../../../plugins/wit}"
+contract="${ACTIONLINT_WIT:-../../../crates/actionlint-extension-api/wit}"
 tinygo_root="$(tinygo env TINYGOROOT)"
 
 wasm-tools component wit "${contract}" --json | go tool wit-bindgen-go generate --world plugin --out gen

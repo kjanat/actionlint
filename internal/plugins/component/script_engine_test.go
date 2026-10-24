@@ -289,7 +289,7 @@ func TestScriptEngineCancellationAndRecovery(t *testing.T) {
 }
 
 func TestScriptEngineContractCurrent(t *testing.T) {
-	data, err := os.ReadFile("../../../plugins/wit/script-engine.wit")
+	data, err := os.ReadFile("../../../crates/actionlint-extension-api/wit/script-engine.wit")
 	if err != nil {
 		t.Fatal(err)
 	}

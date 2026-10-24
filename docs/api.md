@@ -175,7 +175,7 @@ source or rc-file capability: requests for those features fail explicitly. Nativ
 filesystem-aware integration, including sourced-file diagnostics and fixes.
 
 These Go types are the host API. Component script engines use the typed
-[`script-engine.wit`](../plugins/wit/script-engine.wit) interface; legacy core engines keep their existing JSON ABI.
+[`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit) interface; legacy core engines keep their existing JSON ABI.
 The host adapts either transport to `analyzer.ScriptBackend`.
 
 ## Catalogue and source identity

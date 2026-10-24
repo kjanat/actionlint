@@ -4,7 +4,7 @@ package main
 // Run the following command from the root of this repository to apply manually.
 // This script is usually run via `go generate`.
 // ```
-// go run ./internal/webhook/generate input.html webhooks.go
+// go run ./internal/webhook/generate input.html webhooks.gen.go
 // ```
 
 import (

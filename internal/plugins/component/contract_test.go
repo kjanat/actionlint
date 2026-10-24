@@ -11,7 +11,7 @@ import (
 )
 
 func TestCanonicalContractIsCurrent(t *testing.T) {
-	data, err := os.ReadFile("../../../plugins/wit/analyzer.wit")
+	data, err := os.ReadFile("../../../crates/actionlint-extension-api/wit/analyzer.wit")
 	if err != nil {
 		t.Fatal(err)
 	}

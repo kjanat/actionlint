@@ -82,12 +82,14 @@ func (l *delayedSprintf) String() string {
 }
 
 type Parser struct {
-	ScalarDocument *yamlsource.Document
-	Errors         []*SyntaxError
-	SourceLines    []string
-	aliases        map[*yaml.Node]*yaml.Node
-	scalarContexts map[Pos]scalarContext
-	scalarSources  map[Pos]*ScriptSource
+	ScalarDocument     *yamlsource.Document
+	Errors             []*SyntaxError
+	SourceLines        []string
+	aliases            map[*yaml.Node]*yaml.Node
+	scalarContexts     map[Pos]scalarContext
+	scalarSources      map[Pos]*ScriptSource
+	scalarComments     map[Pos]scalarCommentNodes
+	scalarDeclarations map[Pos]scalarCommentNodes
 }
 
 func SplitSourceLines(b []byte) []string {
@@ -1447,7 +1449,7 @@ func (p *Parser) parseActionInputMapping(n *yaml.Node, allowEmpty bool, docker *
 			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
 		case p.parseDockerInput(e, docker):
 		default:
-			mapping.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSource(e.val)}
+			mapping.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 		}
 	}
 	return mapping
@@ -1534,7 +1536,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						continue
 					}
 					if !p.parseDockerInput(e, ret) {
-						ret.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSource(e.val)}
+						ret.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 					}
 				}
 			} else {
@@ -1543,7 +1545,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, nil))
 						continue
 					}
-					ret.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSource(e.val)}
+					ret.Inputs[e.id] = &Input{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 				}
 			}
 		case "id", "if", "name", "env", "continue-on-error", "timeout-minutes", "background":
@@ -1574,7 +1576,7 @@ func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *ExecRun {
 		case "run":
 			ret.Run = p.parseString(e.val, false)
 			ret.RunPos = e.key.Pos
-			ret.Source = p.ScriptSource(e.val)
+			ret.Source = p.ScriptSourceForDeclaration(e.val, e.key.Pos)
 		case "shell":
 			ret.Shell = p.parseStaticString(e.val)
 		case "working-directory":

@@ -99,6 +99,24 @@ type Script struct {
 	Spans      []Span
 	Invocation *Invocation
 	Runtime    *Runtime
+	// Comments are supplied through the optional source-annotations interface;
+	// the original analyzer component contract and Text remain unchanged.
+	Comments []SourceComment
+}
+
+// CommentPlacement identifies a YAML comment's attachment to a declaration.
+type CommentPlacement uint8
+
+const (
+	LeadingComment CommentPlacement = iota
+	TrailingComment
+)
+
+// SourceComment is one physical YAML comment, including '#'. Start points to '#'.
+type SourceComment struct {
+	Text      string
+	Start     diagnostic.Position
+	Placement CommentPlacement
 }
 
 // Span maps the text columns [Start, End) of one line of Text to the declaring

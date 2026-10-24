@@ -56,12 +56,12 @@ func TestGeneratedTriggerRegistryCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	have, err := os.ReadFile("../webhooks.go")
+	have, err := os.ReadFile("../webhooks.gen.go")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(bytes.ReplaceAll(have, []byte("\r\n"), []byte("\n")), want) {
-		t.Fatal("trigger registry stale; run go run ./internal/webhook/generate --registry internal/webhook/webhooks.go from repository root")
+		t.Fatal("trigger registry stale; run go run ./internal/webhook/generate --registry internal/webhook/webhooks.gen.go from repository root")
 	}
 }
 

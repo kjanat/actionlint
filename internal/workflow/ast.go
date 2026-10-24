@@ -47,6 +47,15 @@ type ScriptSource struct {
 	Lines        []scriptSourceLine
 	Spans        []ScriptSourceSpan
 	Literal      bool
+	Comments     []ScalarComment
+}
+
+// ScalarComment is a YAML comment attached to a scalar declaration, never text
+// inside its decoded value. Pos points to '#', in Unicode character columns.
+type ScalarComment struct {
+	Text     string
+	Pos      Pos
+	Trailing bool
 }
 
 func newScriptSource(value string) *ScriptSource {

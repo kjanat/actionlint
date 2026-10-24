@@ -1,7 +1,7 @@
 //! Dependency-fact equivalent of the native pinnedactions example. Source text
 //! is intentionally unused: the host owns parsing and declaration provenance.
 wit_bindgen::generate!({
-    path: "plugins/wit",
+    path: "crates/actionlint-extension-api/wit",
     world: "plugin",
 });
 

@@ -2,7 +2,7 @@
 
 package webhook
 
-// AllWebhookTypes contains permitted Actions activities, not all webhook activities.
+// AllWebhookTypes contains the event activities permitted in GitHub Actions.
 // Sources and reviewed discrepancies: generate/sources/manifest.json.
 // nil denotes unrestricted custom activities; an empty slice denotes no types.
 var AllWebhookTypes = map[string][]string{

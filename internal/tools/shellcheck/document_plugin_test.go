@@ -76,7 +76,13 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 			if err != nil || needed["shellcheck"] {
 				t.Fatalf("native dependency: %v %v", needed, err)
 			}
-			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE\n"
+			const workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE # shellcheck disable=SC2034
+`
 			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
 			if (err != nil) != tc.partial {
 				t.Fatal(err)
@@ -89,6 +95,10 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 			}
 			if len(guest.inputs) != 1 || len(result.Diagnostics) != 1 {
 				t.Fatalf("duplicate/missing findings: %d %+v", len(guest.inputs), result.Diagnostics)
+			}
+			comments := guest.inputs[0].Scripts[0].Comments
+			if len(comments) != 1 || comments[0].Text != "# shellcheck disable=SC2034" || comments[0].Placement != analyzer.TrailingComment || comments[0].Start != (diagnostic.Position{Line: 6, Column: 26}) {
+				t.Fatalf("document plugin lost attached YAML comments: %+v", comments)
 			}
 			finding := result.Diagnostics[0]
 			if finding.Rule != "shellcheck" || finding.Start.Line != 6 || finding.Start.Column != 19 || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[finding.Path] != sourceid.Digest([]byte(workflow)) {

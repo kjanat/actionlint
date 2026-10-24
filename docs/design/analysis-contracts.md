@@ -199,7 +199,7 @@ filtered with that file's inline suppressions and configuration. Other built-in 
 
 ## Decision: run external analyzers as WebAssembly components
 
-`plugins/wit/analyzer.wit` is the plugin contract. It mirrors the Go `analyzer` package: a `describe` call returns the
+[`crates/actionlint-extension-api/wit/analyzer.wit`](../../crates/actionlint-extension-api/wit/analyzer.wit) is the plugin contract. It mirrors the Go [`analyzer`](../../analyzer) package: a `describe` call returns the
 plugin name and required facts, and `analyze` receives one document with its declared and invoked scripts, spans,
 invocation context, runtime facts, mappings and registered options, and returns diagnostics or an error message. The
 host implements `kjanat:actionlint/host`, which currently carries one `log` function. Go host bindings for that import

@@ -1,6 +1,6 @@
 # generate-availability
 
-This is a script for generating [`availability.go`](../availability.go).
+This is a script for generating [`availability.gen.go`](../availability.gen.go).
 
 It does:
 
@@ -27,13 +27,13 @@ generate-availability [[srcfile] dstfile]
 For generating the source at root directory of this repository:
 
 ```sh
-go run ./internal/expression/context/generate ./internal/expression/context/availability.go
+go run ./internal/expression/context/generate ./internal/expression/context/availability.gen.go
 ```
 
 Read local file instead of fetching it from remote:
 
 ```sh
-go run ./internal/expression/context/generate /path/to/contexts.md ./internal/expression/context/availability.go
+go run ./internal/expression/context/generate /path/to/contexts.md ./internal/expression/context/availability.gen.go
 ```
 
 For debugging, specifying `-` to `dstfile` outputs the generated source to stdout:

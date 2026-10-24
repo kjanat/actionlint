@@ -28,7 +28,7 @@ func TestOKWriteStdout(t *testing.T) {
 		t.Fatalf("status was non-zero: %d: %q", status, stderr)
 	}
 
-	b, err := os.ReadFile(filepath.Join("testdata", "ok.go"))
+	b, err := os.ReadFile(filepath.Join("testdata", "ok.gen.go"))
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +41,7 @@ func TestOKWriteStdout(t *testing.T) {
 
 func TestOKWriteFile(t *testing.T) {
 	in := filepath.Join("testdata", "ok.md")
-	out := filepath.Join("testdata", "_test_output.go")
+	out := filepath.Join("testdata", "_test_output.gen.go")
 
 	stdout, stderr, status := testRunMain([]string{in, out})
 	if status != 0 {
@@ -49,7 +49,7 @@ func TestOKWriteFile(t *testing.T) {
 	}
 	defer func() { _ = os.Remove(out) }()
 
-	b, err := os.ReadFile(filepath.Join("testdata", "ok.go"))
+	b, err := os.ReadFile(filepath.Join("testdata", "ok.gen.go"))
 	if err != nil {
 		panic(err)
 	}
@@ -170,7 +170,7 @@ func TestFetchError(t *testing.T) {
 
 func TestCmdError(t *testing.T) {
 	f := filepath.Join("testdata", "ok.md")
-	dirNotExist := filepath.Join("dir", "does", "not", "exist", "out.go")
+	dirNotExist := filepath.Join("dir", "does", "not", "exist", "out.gen.go")
 	testCases := []struct {
 		what string
 		args []string

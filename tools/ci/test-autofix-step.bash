@@ -97,9 +97,9 @@ check_input internal/webhook/payload/catalogue.json true false
 check_input package.json true false
 check_input package-lock.json true false
 check_input internal/expression/context/generate/main.go true false
-check_input internal/expression/context/availability.go true false
-check_input internal/action/availability_generated.go true false
-check_input internal/action/runtimes_generated.go true false
+check_input internal/expression/context/availability.gen.go true false
+check_input internal/action/availability.gen.go true false
+check_input internal/action/runtimes.gen.go true false
 check_input internal/builtin/rule_events.go true false
 check_input internal/builtin/rule_expression.go true false
 check_input popular_actions.go false false

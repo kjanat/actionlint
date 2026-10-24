@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
+	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/runner"
 	"github.com/kjanat/wacogo"
@@ -34,6 +35,9 @@ const AnalyzerInterface = canonicalAnalyzerInterface
 
 // HostInterface is the interface the host implements for plugins.
 const HostInterface = hostbind.InterfaceName
+
+// SourceAnnotationsInterface provides optional, source-local YAML comments.
+const SourceAnnotationsInterface = annotationsbind.InterfaceName
 
 const (
 	// DefaultTimeout bounds guest execution after caller-controlled queue admission.
@@ -80,9 +84,10 @@ type Plugin struct {
 	limits           Limits
 	log              func(string)
 
-	engine    *wacogo.Engine
-	component *wacogo.Component
-	factory   *hostbind.Factory
+	engine             *wacogo.Engine
+	component          *wacogo.Component
+	factory            *hostbind.Factory
+	annotationsFactory *annotationsbind.Factory
 
 	gate   *semaphore.Weighted
 	host   *host.ComponentInstance
@@ -162,6 +167,15 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	p.factory, err = hostbind.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
+	}
+	for _, imported := range component.Imports() {
+		if wasmparser.CanonicalizeImportName(imported.Name) == wasmparser.CanonicalizeImportName(SourceAnnotationsInterface) {
+			p.annotationsFactory, err = annotationsbind.NewFactory(ctx, p.engine)
+			if err != nil {
+				return err
+			}
+			break
+		}
 	}
 	if roles.analyzer {
 		descriptor, err := p.describe(ctx)
@@ -249,12 +263,17 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 
 func checkImports(imports []wacogo.ImportDesc) error {
 	hostName := wasmparser.CanonicalizeImportName(HostInterface)
+	annotationsName := wasmparser.CanonicalizeImportName(SourceAnnotationsInterface)
 	for _, imported := range imports {
-		if wasmparser.CanonicalizeImportName(imported.Name) == hostName {
+		canonical := wasmparser.CanonicalizeImportName(imported.Name)
+		if canonical == hostName || canonical == annotationsName {
 			continue
 		}
 		if strings.HasPrefix(imported.Name, "kjanat:actionlint/host@") {
 			return fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, HostInterface)
+		}
+		if strings.HasPrefix(imported.Name, "kjanat:actionlint/source-annotations@") {
+			return fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, SourceAnnotationsInterface)
 		}
 		granted := false
 		for _, prefix := range grantedImportPrefixes {
@@ -288,6 +307,7 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 		return nil, errors.New("component does not implement the analyzer role")
 	}
 	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
+	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
 	results, err := p.call(ctx, "analyze", lowerInput(input))
 	if err != nil {
 		return nil, err
@@ -368,6 +388,14 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 	defer func() { _ = input.Close(ctx) }()
 	imports := append([]wacogo.InstantiateOption{wacogo.WithInstanceImport(HostInterface, p.host.Core())}, p.world.Imports()...)
 	imports = append(imports, wacogo.WithInstanceImport(stdin.InterfaceName, input.Core()))
+	if p.annotationsFactory != nil {
+		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, nil)
+		if err != nil {
+			return nil, p.failure(ctx, err)
+		}
+		defer func() { _ = annotations.Close(context.WithoutCancel(ctx)) }()
+		imports = append(imports, wacogo.WithInstanceImport(SourceAnnotationsInterface, annotations.Core()))
+	}
 	guest, err := p.component.Instantiate(ctx, imports...)
 	if err != nil {
 		p.discardImports(ctx)
@@ -463,6 +491,10 @@ func (p *Plugin) Close(ctx context.Context) error {
 	if p.factory != nil {
 		errs = append(errs, p.factory.Close(ctx))
 		p.factory = nil
+	}
+	if p.annotationsFactory != nil {
+		errs = append(errs, p.annotationsFactory.Close(ctx))
+		p.annotationsFactory = nil
 	}
 	if p.engine != nil {
 		errs = append(errs, p.engine.Close(ctx))

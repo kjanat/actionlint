@@ -323,7 +323,7 @@ func refresh(ctx context.Context, client *http.Client, token, output string) err
 
 func run(args []string) error {
 	f := flag.NewFlagSet("generate-action-metadata", flag.ContinueOnError)
-	output := f.String("output", "internal/action/availability_generated.go", "Generated Go file")
+	output := f.String("output", "internal/action/availability.gen.go", "Generated Go file")
 	runtimes := f.Bool("runtimes", false, "Generate accepted JavaScript runtimes and their lifecycle instead of expression tables")
 	if err := f.Parse(args); err != nil {
 		return err
@@ -331,8 +331,8 @@ func run(args []string) error {
 	if f.NArg() != 0 {
 		return errors.New("unexpected positional arguments")
 	}
-	if *runtimes && *output == "internal/action/availability_generated.go" {
-		*output = "internal/action/runtimes_generated.go"
+	if *runtimes && *output == "internal/action/availability.gen.go" {
+		*output = "internal/action/runtimes.gen.go"
 	}
 	if !filepath.IsLocal(*output) {
 		return fmt.Errorf("output file path must be relative to the current directory: %q", *output)
