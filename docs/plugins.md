@@ -436,8 +436,8 @@ comment; script diagnostics and fixes keep their original scalar spans and docum
 
 [`examples/plugins/pipe-to-shell.rs`](../examples/plugins/pipe-to-shell.rs) flags `curl ... | sh` patterns. It depends on
 [`actionlint-extension-api`](../crates/actionlint-extension-api), which provides the generated guest types,
-`Guest` trait, host imports and `export_plugin!` macro. Its README contains a complete consumer manifest and
-implementation. The example builds with:
+`Guest` trait, host imports and `export_plugin!` macro. Its [README](../crates/actionlint-extension-api/README.md)
+contains a minimal analyzer implementation. The example builds with:
 
 ```sh
 cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
@@ -450,6 +450,26 @@ continues to use the original analyzer world. The SDK's native `package` feature
 pass the plugin's descriptor, Cargo identity, engine, capabilities, languages and license text, then call `write`
 with the component path and output directory. The SDK writes discovery metadata, schema and license sidecars,
 and checksums. Plugins do not implement their own Wasm section traversal or vendor the SDK's WIT contracts.
+
+#### Local SDK development
+
+For development beside an actionlint checkout, use this plugin manifest:
+
+```toml
+[package]
+name    = "my-actionlint-extension"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+actionlint-extension-api = { path = "../actionlint/crates/actionlint-extension-api" }
+```
+
+The path points at the SDK in the adjacent checkout. Build the plugin with
+`cargo build --target wasm32-wasip2` from its own directory.
 
 ### Shared declaration facts
 

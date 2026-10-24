@@ -68,11 +68,8 @@ jobs:
           delete-branch: true
           add-paths: |
             internal/actioncatalog/popular_actions.json
-            internal/webhook/webhooks.gen.go
             internal/webhook/payload/catalogue.json
-            internal/expression/context/availability.gen.go
-            internal/action/availability.gen.go
-            internal/action/runtimes.gen.go
+            :(glob)internal/**/*.gen.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"
           body: |
