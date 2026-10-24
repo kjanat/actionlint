@@ -32,6 +32,7 @@ func Fact(unit Unit, document, documentAbs string, includeExecution bool) analyz
 			DocumentEnd: diagmodel.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
 		})
 	}
+	script.Comments = workflowfacts.SourceComments(source)
 	if scope := unit.Scope; scope != nil && script.Path != "" && scope.Call != nil {
 		invocation := &analyzer.Invocation{Step: workflowfacts.Position(scope.Call.Pos), Depth: scope.Depth}
 		if scope.Caller != document && scope.Caller != documentAbs {

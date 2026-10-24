@@ -1,16 +1,11 @@
-wit_bindgen::generate!({
-    path: "plugins/wit",
-    world: "plugin",
-});
-
-use exports::kjanat::actionlint::analyzer::{
+use actionlint_extension_api::{
     Descriptor, Diagnostic, Example, Fact, Guest, Input, Outcome, Position, Script,
 };
 
 const DOWNLOADERS: &[&str] = &["curl", "wget"];
 const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh"];
 
-struct Plugin;
+pub struct Plugin;
 
 impl Guest for Plugin {
     fn describe() -> Descriptor {
@@ -211,7 +206,7 @@ fn position(script: &Script, line: u32, column: u32, exclusive: bool) -> Option<
 }
 
 #[cfg(target_arch = "wasm32")]
-export!(Plugin);
+actionlint_extension_api::export_plugin!(Plugin);
 
 #[cfg(test)]
 mod tests {

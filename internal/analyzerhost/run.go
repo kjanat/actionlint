@@ -86,6 +86,7 @@ func cloneScripts(scripts []analyzer.Script) []analyzer.Script {
 	cloned := make([]analyzer.Script, len(scripts))
 	for i, script := range scripts {
 		script.Spans = slices.Clone(script.Spans)
+		script.Comments = slices.Clone(script.Comments)
 		if script.Invocation != nil {
 			invocation := *script.Invocation
 			script.Invocation = &invocation

@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
 // withAnalyzer retains native execution where the caller explicitly selected
@@ -169,7 +170,8 @@ func (r documentPluginRunner) input(script tools.Script) (analyzer.Input, error)
 	start := diagnostic.Position{Line: script.Value.Line, Column: script.Value.Col}
 	supplied := analyzer.Script{
 		Text: script.Text, Path: script.Path, Start: start,
-		Runtime: &analyzer.Runtime{Shell: script.Execution.Shell, ShellKnown: script.Execution.Shell != "", ShellImplicit: script.Execution.ImplicitShell, Directory: script.Execution.Directory, DirectoryKnown: script.Execution.DirectoryKnown},
+		Comments: workflowfacts.SourceComments(script.Source),
+		Runtime:  &analyzer.Runtime{Shell: script.Execution.Shell, ShellKnown: script.Execution.Shell != "", ShellImplicit: script.Execution.ImplicitShell, Directory: script.Execution.Directory, DirectoryKnown: script.Execution.DirectoryKnown},
 	}
 	if script.Shell != nil {
 		supplied.Shell = *script.Shell
