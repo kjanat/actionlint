@@ -118,10 +118,7 @@ func (nodes scalarCommentNodes) comments(lines []string, source *ScriptSource) [
 			if !strings.HasSuffix(strings.TrimSpace(physical), text) {
 				continue
 			}
-			prefix, _, found := strings.CutLast(physical, text)
-			if !found {
-				continue
-			}
+			prefix, _, _ := strings.CutLast(physical, text)
 			pos := Pos{line, utf8.RuneCountInString(prefix) + 1}
 			// Trailing comments lie before block/quoted content or after its closing token.
 			// Matching text inside a scalar is not another attachment.

@@ -50,7 +50,7 @@ func TestCompleteRunnerActionSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkedIn, err := os.ReadFile(filepath.Join("..", "..", "..", "internal", "action", "availability_generated.go"))
+	checkedIn, err := os.ReadFile(filepath.Join("..", "..", "..", "internal", "action", "availability.gen.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +195,7 @@ func TestRefresh(t *testing.T) {
 				}
 				return &http.Response{StatusCode: status, Status: http.StatusText(status), Body: io.NopCloser(strings.NewReader(data))}, nil
 			})}
-			output := filepath.Join(t.TempDir(), "generated.go")
+			output := filepath.Join(t.TempDir(), "output.gen.go")
 			if err := os.WriteFile(output, []byte("existing tables"), 0o600); err != nil {
 				t.Fatal(err)
 			}

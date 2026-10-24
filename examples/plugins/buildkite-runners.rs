@@ -1,6 +1,6 @@
 //! Offline Buildkite queue mapping example. A supplied snapshot describes queue
 //! labels and explicit platform guarantees; it never implies GitHub image parity.
-wit_bindgen::generate!({ path: "plugins/wit", world: "runner-plugin" });
+wit_bindgen::generate!({ path: "crates/actionlint-extension-api/wit", world: "runner-plugin" });
 
 use exports::kjanat::actionlint::runner_provider::{
     Answer, Candidate, CaseSensitivity, Descriptor, Evidence, Freshness, Guest, Os, Outcome,

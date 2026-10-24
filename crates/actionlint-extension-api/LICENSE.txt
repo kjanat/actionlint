@@ -1,7 +1,6 @@
 the MIT License
 
 Copyright (c) 2026 Kaj Kowalski
-Copyright (c) 2021 rhysd
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +18,4 @@ PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS 
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-Branding artwork and previews in docs/assets/brand/ are licensed separately under CC BY 4.0.
-See docs/assets/brand/LICENSE.md.
 

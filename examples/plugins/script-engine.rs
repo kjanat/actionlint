@@ -1,5 +1,5 @@
 //! Snippet component fixture, including partial failures and real WASI clocks.
-wit_bindgen::generate!({ path: "plugins/wit", world: "script-engine-plugin" });
+wit_bindgen::generate!({ path: "crates/actionlint-extension-api/wit", world: "script-engine-plugin" });
 
 use exports::kjanat::actionlint::script_engine::{
     Descriptor, Diagnostic, Guest, Outcome, Position, Request, RuleDescriptor, Severity,

@@ -1,9 +1,9 @@
 # generate-webhook-events
 
-Generates the Actions trigger registry [`webhooks.go`](../webhooks.go), offline:
+Generates the Actions trigger registry [`webhooks.gen.go`](../webhooks.gen.go), offline:
 
 ```sh
-go run ./internal/webhook/generate --registry internal/webhook/webhooks.go
+go run ./internal/webhook/generate --registry internal/webhook/webhooks.gen.go
 go test ./internal/webhook/generate
 ```
 
@@ -47,7 +47,7 @@ Exact source URLs and revisions are retained in the manifest for attribution.
 ## Documentation audit
 
 The original HTML parser remains available as an independent documentation audit.
-Its output is not the canonical registry and must not overwrite `webhooks.go`.
+Its output is not the canonical registry and must not overwrite `webhooks.gen.go`.
 
 It does:
 

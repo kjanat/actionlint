@@ -66,6 +66,5 @@ capabilities and license text, then call `write(input, output)`. It writes
 `plugin.wasm`, `metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS`.
 Only the outer discovery section is replaced; nested components/modules survive.
 
-`plugins/wit` in the actionlint repository owns the contracts. This crate bundles
-the same files so published packages build independently. Its build script rejects
-stale copies when the canonical files are present in the source workspace.
+This crate owns the public contracts in `wit/`. Host generation, examples and
+fixtures read these same files. Cargo includes them in the published package.

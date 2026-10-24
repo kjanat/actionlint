@@ -1,7 +1,7 @@
 package kjanat:actionlint@0.1.0;
 
 /// Optional source metadata. Queries are limited to scripts supplied in this call.
-/// Script text and its source spans remain the decoded scalar, without YAML comments.
+/// Script text and source spans describe the decoded scalar. YAML comments are separate.
 interface source-annotations {
     record source-reference {
         document: string,

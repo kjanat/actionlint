@@ -43,8 +43,9 @@ feature handles discovery metadata and distribution files. Plugins supply their
 own descriptor, Cargo identity, engine, capabilities and license. Non-Rust guests
 can consume the canonical public WIT contracts directly.
 
-The SDK bundles WIT snapshots for standalone Cargo publication. `plugins/wit`
-remains canonical; the SDK build rejects stale snapshots in the host workspace.
+The SDK owns the public contracts in `crates/actionlint-extension-api/wit`.
+Host generation, examples and fixtures read these same files. Cargo includes
+them in the published package.
 The `source-annotations` feature opts into an additional host import without
 changing the original analyzer interface or its contract digest.
 

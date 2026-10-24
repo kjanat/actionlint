@@ -11,7 +11,7 @@ git diff --name-only --no-renames -z "$1" "$2" -- | {
 				tables=true
 				readme=true
 				;;
-			internal/action/* | internal/actioncatalog/* | internal/webhook/webhooks.go | internal/webhook/generate/* | internal/webhook/payload/* | package.json | package-lock.json | internal/expression/context/* | internal/builtin/rule_events.go | internal/builtin/rule_expression.go | internal/rulecatalog/* | docs/rules.md | generate.go)
+			internal/action/* | internal/actioncatalog/* | internal/webhook/webhooks.gen.go | internal/webhook/generate/* | internal/webhook/payload/* | package.json | package-lock.json | internal/expression/context/* | internal/builtin/rule_events.go | internal/builtin/rule_expression.go | internal/rulecatalog/* | docs/rules.md | generate.go)
 				tables=true
 				;;
 			.mise.toml | README.md | docs/screenshots/* | internal/documentation/check-readme/*)

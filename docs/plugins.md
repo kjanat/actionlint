@@ -1,10 +1,10 @@
 # Plugins
 
 actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.1.0` interface. The contract is
-[`plugins/wit/analyzer.wit`](../plugins/wit/analyzer.wit). A plugin describes itself once, then receives one document per
+[`crates/actionlint-extension-api/wit/analyzer.wit`](../crates/actionlint-extension-api/wit/analyzer.wit). A plugin describes itself once, then receives one document per
 call with the facts it declared and returns diagnostics. Components may instead implement the independent
 `kjanat:actionlint/runner-provider@0.1.0` interface or the
-[`kjanat:actionlint/script-engine@0.1.0`](../plugins/wit/script-engine.wit) interface. Components can implement multiple
+[`kjanat:actionlint/script-engine@0.1.0`](../crates/actionlint-extension-api/wit/script-engine.wit) interface. Components can implement multiple
 roles. Any language with a component toolchain can implement them.
 
 ## Install from the registry
@@ -249,7 +249,7 @@ The public Go package `actionlint.kjanat.dev/v2/plugin` provides `plugin.Load`, 
 
 ## Runner providers
 
-[`plugins/wit/runner.wit`](../plugins/wit/runner.wit) defines the separate `runner-plugin` world. A provider-only
+[`crates/actionlint-extension-api/wit/runner.wit`](../crates/actionlint-extension-api/wit/runner.wit) defines the separate `runner-plugin` world. A provider-only
 component exports `describe` and `resolve`; it needs no dummy analyzer. Existing analyzer components remain compatible.
 The host resolves a batch of whole selectors before running checks. Labels within a selector are conjunctive; groups,
 correlated matrix alternatives, source positions and unresolved expressions survive normalization. Incomplete matrix
@@ -407,7 +407,7 @@ Findings with other rule names are rejected as incomplete analysis while valid f
 An empty `rule` takes the plugin name, and an empty `path` means the analyzed document, so findings in a composite
 action copy `script.path`.
 
-Plugins can opt into the [`source-annotations`](../plugins/wit/source-annotations.wit) interface by selecting the
+Plugins can opt into the [`source-annotations`](../crates/actionlint-extension-api/wit/source-annotations.wit) interface by selecting the
 `annotated-plugin` world. The existing `analyzer@0.1.0` interface and its contract digest are unchanged. The optional
 host function `comments` accepts a complete script source reference and returns physical YAML comments attached
 immediately before its declaration or after its scalar/header, with placement and Unicode source positions.
@@ -503,7 +503,7 @@ The Rust components are Cargo `[[example]]` targets. The C and TinyGo builds use
 Tests load the components through the plugin interface.
 
 For an independent Rust analyzer, create a package with its own manifest and lockfile and depend on the SDK.
-Other languages can vendor the public [`plugins/wit`](../plugins/wit) contracts and point their binding generator
+Other languages can vendor the public [`crates/actionlint-extension-api/wit`](../crates/actionlint-extension-api/wit) contracts and point their binding generator
 at that copy. The host's fixture workspace is not a dependency of external plugins.
 
 ## Test a plugin
@@ -526,7 +526,7 @@ file access are reported.
 
 Python and shell snippets use `analyzer.ScriptBackend`: actionlint selects the snippet,
 masks workflow expressions and maps positions back, and the engine checks one sanitized snippet at a time.
-The preferred component interface is [`script-engine.wit`](../plugins/wit/script-engine.wit), world
+The preferred component interface is [`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit), world
 `script-engine-plugin`. It has typed `describe`, `validate-config` and `check` operations. Plugin-specific
 configuration remains a JSON object checked by the engine; shared descriptors, diagnostics and outcomes use WIT
 records. Coordinates count one-based Unicode scalar values, with exclusive range ends. An outcome can contain

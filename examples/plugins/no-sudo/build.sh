@@ -5,7 +5,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 output="${1:-no-sudo.wasm}"
-contract="${ACTIONLINT_WIT:-../../../plugins/wit}"
+contract="${ACTIONLINT_WIT:-../../../crates/actionlint-extension-api/wit}"
 sdk="${WASI_SDK_PATH:-/opt/wasi-sdk}"
 
 wit-bindgen c --world plugin --out-dir gen "${contract}"

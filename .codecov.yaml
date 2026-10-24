@@ -10,12 +10,4 @@ coverage:
     patch:
       default: { target: 0%, informational: true }
 ignore:
-  - "**/*_generated.go"
-  - "internal/component/bindings/**"
-  - "internal/plugins/component/bindings/**"
-  - "internal/engine/action_metadata_availability.go"
-  - "internal/engine/action_runtimes.go"
-  - "internal/engine/all_webhooks.go"
-  - "internal/workflowcontext/availability.go"
-  - "internal/expression/context/availability.go"
-  - "internal/webhook/webhooks.go"
+  - "**/*.gen.go"

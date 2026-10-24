@@ -350,7 +350,7 @@ jobs:
       - name: Verify generated plugin interfaces
         run: |
           go run -C tools/plugin-contract .
-          git diff --exit-code -- internal/plugins/component/contract_generated.go internal/plugins/component/runner_generated.go internal/plugins/component/script_engine_generated.go
+          git diff --exit-code -- internal/plugins/component/contract.gen.go internal/plugins/component/runner.gen.go internal/plugins/component/script_engine.gen.go
       - name: Load the Rust, C and TinyGo examples
         run: >-
           go run ./cmd/actionlint --no-config --shellcheck= --ruff=

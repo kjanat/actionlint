@@ -76,7 +76,13 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 			if err != nil || needed["shellcheck"] {
 				t.Fatalf("native dependency: %v %v", needed, err)
 			}
-			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $VALUE # shellcheck disable=SC2034\n"
+			const workflow = `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo $VALUE # shellcheck disable=SC2034
+`
 			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
 			if (err != nil) != tc.partial {
 				t.Fatal(err)

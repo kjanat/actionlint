@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-/// Generated types, guest traits and host imports from the bundled WIT contract.
+/// Generated types, guest traits and host imports from the canonical WIT contract.
 pub mod bindings {
     #[cfg(not(feature = "source-annotations"))]
     wit_bindgen::generate!({

@@ -113,9 +113,9 @@ else
 	go generate -run 'payload/generate'
 endif
 
-internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go &: $(GO_GEN_SRCS) internal/webhook/payload/catalogue.json
+internal/actioncatalog/popular_actions.json internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go &: $(GO_GEN_SRCS) internal/webhook/payload/catalogue.json
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.go internal/expression/context/availability.go internal/action/availability_generated.go internal/action/runtimes_generated.go
+	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go
 else
 	go generate -skip 'payload/generate'
 endif
@@ -185,51 +185,51 @@ plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/source
 
 plugins: plugin-examples $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
-$(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
+$(PLUGIN_FIXTURES)/pipe-to-shell.wasm: crates/actionlint-extension-api/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
 	install -m 644 target/wasm32-wasip2/wasm/examples/pipe_to_shell.wasm $@
 
-$(PLUGIN_FIXTURES)/source-annotations.wasm: plugins/wit/analyzer.wit plugins/wit/source-annotations.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/source-annotations.rs
+$(PLUGIN_FIXTURES)/source-annotations.wasm: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/source-annotations.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/source-annotations.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example source-annotations --features source-annotations-fixture --target-dir target/plugin-fixtures/source-annotations
 	install -m 644 target/plugin-fixtures/source-annotations/wasm32-wasip2/wasm/examples/source_annotations.wasm $@
 
-$(PLUGIN_FIXTURES)/pinned-actions.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pinned-actions.rs
+$(PLUGIN_FIXTURES)/pinned-actions.wasm: crates/actionlint-extension-api/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pinned-actions.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example pinned-actions
 	install -m 644 target/wasm32-wasip2/wasm/examples/pinned_actions.wasm $@
 
-$(PLUGIN_FIXTURES)/misbehave.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/misbehave/src/*.rs)
+$(PLUGIN_FIXTURES)/misbehave.wasm: crates/actionlint-extension-api/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/misbehave/src/*.rs)
 	cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-plugin-misbehave
 	install -m 644 target/wasm32-wasip2/wasm/actionlint_plugin_misbehave.wasm $@
 
 # Separate target directories keep feature variants independent under make -j.
-$(PLUGIN_FIXTURES)/oversized-descriptor-%.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/misbehave/src/*.rs)
+$(PLUGIN_FIXTURES)/oversized-descriptor-%.wasm: crates/actionlint-extension-api/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/misbehave/src/*.rs)
 	cargo build --locked --release --target wasm32-wasip2 -p actionlint-plugin-misbehave --features oversized-descriptor-$* --target-dir target/plugin-fixtures/oversized-descriptor-$*
 	install -m 644 target/plugin-fixtures/oversized-descriptor-$*/wasm32-wasip2/release/actionlint_plugin_misbehave.wasm $@
 
-$(PLUGIN_FIXTURES)/buildkite-runners.wasm: plugins/wit/runner.wit $(RUST_BUILD_INPUTS) examples/plugins/buildkite-runners.rs
+$(PLUGIN_FIXTURES)/buildkite-runners.wasm: crates/actionlint-extension-api/wit/runner.wit $(RUST_BUILD_INPUTS) examples/plugins/buildkite-runners.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example buildkite-runners
 	install -m 644 target/wasm32-wasip2/wasm/examples/buildkite_runners.wasm $@
 
-$(PLUGIN_FIXTURES)/script-engine.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
+$(PLUGIN_FIXTURES)/script-engine.wasm: crates/actionlint-extension-api/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine
 	install -m 644 target/wasm32-wasip2/wasm/examples/script_engine.wasm $@
 
-$(PLUGIN_FIXTURES)/ruff-script-engine.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
+$(PLUGIN_FIXTURES)/ruff-script-engine.wasm: crates/actionlint-extension-api/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features ruff-fixture --target-dir target/plugin-fixtures/ruff-script-engine
 	install -m 644 target/plugin-fixtures/ruff-script-engine/wasm32-wasip2/wasm/examples/script_engine.wasm $@
 
-$(PLUGIN_FIXTURES)/action-input.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs examples/plugins/action-input.metadata.json $(wildcard tools/plugin-fixture-metadata/*.go)
+$(PLUGIN_FIXTURES)/action-input.wasm: crates/actionlint-extension-api/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs examples/plugins/action-input.metadata.json $(wildcard tools/plugin-fixture-metadata/*.go)
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features action-input-fixture --target-dir target/plugin-fixtures/action-input
 	go run ./tools/plugin-fixture-metadata target/plugin-fixtures/action-input/wasm32-wasip2/wasm/examples/script_engine.wasm examples/plugins/action-input.metadata.json $@
 
-$(PLUGIN_FIXTURES)/ruff-action-input.wasm: plugins/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs examples/plugins/ruff-action-input.metadata.json $(wildcard tools/plugin-fixture-metadata/*.go)
+$(PLUGIN_FIXTURES)/ruff-action-input.wasm: crates/actionlint-extension-api/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs examples/plugins/ruff-action-input.metadata.json $(wildcard tools/plugin-fixture-metadata/*.go)
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features action-input-fixture,ruff-fixture --target-dir target/plugin-fixtures/ruff-action-input
 	go run ./tools/plugin-fixture-metadata target/plugin-fixtures/ruff-action-input/wasm32-wasip2/wasm/examples/script_engine.wasm examples/plugins/ruff-action-input.metadata.json $@
 
-$(PLUGIN_FIXTURES)/no-sudo.wasm: plugins/wit/analyzer.wit examples/plugins/no-sudo/build.sh $(wildcard examples/plugins/no-sudo/*.c)
+$(PLUGIN_FIXTURES)/no-sudo.wasm: crates/actionlint-extension-api/wit/analyzer.wit examples/plugins/no-sudo/build.sh $(wildcard examples/plugins/no-sudo/*.c)
 	examples/plugins/no-sudo/build.sh $(abspath $@)
 
-$(PLUGIN_FIXTURES)/insecure-download.wasm: plugins/wit/analyzer.wit examples/plugins/insecure-download/build.sh examples/plugins/insecure-download/go.mod $(wildcard examples/plugins/insecure-download/*.go)
+$(PLUGIN_FIXTURES)/insecure-download.wasm: crates/actionlint-extension-api/wit/analyzer.wit examples/plugins/insecure-download/build.sh examples/plugins/insecure-download/go.mod $(wildcard examples/plugins/insecure-download/*.go)
 	examples/plugins/insecure-download/build.sh $(abspath $@)
 
 internal/plugins/component/testdata/wat/%.wasm: internal/plugins/component/testdata/wat/%.wat
@@ -242,10 +242,10 @@ $(ENGINE_FIXTURES)/echo.wasm: $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/e
 	cargo build --locked --profile wasm --target wasm32-unknown-unknown -p actionlint-engine-echo
 	install -m 644 target/wasm32-unknown-unknown/wasm/actionlint_engine_echo.wasm $@
 
-internal/plugins/component/bindings/kjanat/actionlint/host/host.go: plugins/wit/analyzer.wit internal/plugins/component/generate.go
+internal/plugins/component/bindings/kjanat/actionlint/host/host.gen.go: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/source-annotations.wit internal/plugins/component/generate.go $(wildcard tools/plugin-contract/*.go)
 	go generate ./internal/plugins/component
 
-internal/plugins/component/contract_generated.go internal/plugins/component/runner_generated.go internal/plugins/component/script_engine_generated.go &: plugins/wit/analyzer.wit plugins/wit/runner.wit plugins/wit/script-engine.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
+internal/plugins/component/contract.gen.go internal/plugins/component/runner.gen.go internal/plugins/component/script_engine.gen.go &: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/runner.wit crates/actionlint-extension-api/wit/script-engine.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum
 	go run -C tools/plugin-contract .
 
 CHANGELOG.md:

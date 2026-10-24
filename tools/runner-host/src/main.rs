@@ -5,7 +5,7 @@ use wasmtime::component::{Component, Linker, ResourceTable};
 use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-wasmtime::component::bindgen!({ path: "../../plugins/wit", world: "runner-plugin" });
+wasmtime::component::bindgen!({ path: "../../crates/actionlint-extension-api/wit", world: "runner-plugin" });
 use exports::kjanat::actionlint::runner_provider::{
     Answer, CaseSensitivity, Constraint, Freshness, Os, Position, Request, Resolution, Selector,
     Snapshot, Term,

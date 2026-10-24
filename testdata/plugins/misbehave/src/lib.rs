@@ -1,5 +1,5 @@
 wit_bindgen::generate!({
-    path: "../../../plugins/wit",
+    path: "../../../crates/actionlint-extension-api/wit",
     world: "plugin",
 });
 

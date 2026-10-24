@@ -34,7 +34,7 @@ The editor schema describes the wrapper without a release-specific Ruff catalog.
 Engine metadata supplies engine-specific schemas. Published schema snapshots
 remain available for existing consumers.
 
-Component plugins use the canonical `plugins/wit/analyzer.wit` contract. A matching
+Component plugins use the canonical `crates/actionlint-extension-api/wit/analyzer.wit` contract. A matching
 interface name alone does not establish compatibility when record definitions
 have changed. Changes to that contract require coordinated guest builds and
 versioning before release. Missing fields must not be silently defaulted.
