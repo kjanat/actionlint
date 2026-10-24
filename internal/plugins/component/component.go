@@ -370,19 +370,8 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 			p.engine = nil
 		}
 	}()
-	// Guest closure does not drop outstanding handles in imported host instances.
-	closeRuntime := false
-	defer func() {
-		cleanup := context.WithoutCancel(ctx)
-		closeErr := p.discardImports(cleanup)
-		if closeRuntime && p.engine != nil {
-			closeErr = errors.Join(closeErr, p.engine.Close(cleanup))
-			p.engine = nil
-		}
-		if closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("plugin %s: close host imports: %w", p.path, closeErr))
-		}
-	}()
+	teardown := callTeardown{plugin: p}
+	defer teardown.finish(ctx, &err)
 	if err := p.prepareImports(ctx); err != nil {
 		return nil, p.failure(ctx, err)
 	}
@@ -399,11 +388,7 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 	if err != nil {
 		return nil, p.failure(ctx, err)
 	}
-	defer func() {
-		if closeErr := input.Close(context.WithoutCancel(ctx)); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("plugin %s: close stdin: %w", p.path, closeErr))
-		}
-	}()
+	defer teardown.closeResource(ctx, "stdin", input, &err)
 	imports := append([]wacogo.InstantiateOption{wacogo.WithInstanceImport(HostInterface, p.host.Core())}, p.world.Imports()...)
 	imports = append(imports, wacogo.WithInstanceImport(stdin.InterfaceName, input.Core()))
 	if p.annotationsFactory != nil {
@@ -411,24 +396,14 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 		if err != nil {
 			return nil, p.failure(ctx, err)
 		}
-		defer func() {
-			if closeErr := annotations.Close(context.WithoutCancel(ctx)); closeErr != nil {
-				err = errors.Join(err, fmt.Errorf("plugin %s: close source annotations: %w", p.path, closeErr))
-			}
-		}()
+		defer teardown.closeResource(ctx, "source annotations", annotations, &err)
 		imports = append(imports, wacogo.WithInstanceImport(SourceAnnotationsInterface, annotations.Core()))
 	}
 	guest, err := p.component.Instantiate(ctx, imports...)
 	if err != nil {
 		return nil, p.failure(ctx, fmt.Errorf("instantiate: %w", err))
 	}
-	defer func() {
-		if closeErr := guest.Close(ctx); closeErr != nil {
-			// Finish runtime teardown even when the call context was cancelled.
-			closeRuntime = true
-			err = errors.Join(err, fmt.Errorf("plugin %s: close component: %w", p.path, closeErr))
-		}
-	}()
+	defer teardown.closeGuest(ctx, guest, &err)
 	exported := guest.ExportedInstance(iface)
 	if exported == nil {
 		return nil, p.failure(ctx, fmt.Errorf("instance does not export %s", iface))
@@ -459,15 +434,13 @@ func (p *Plugin) prepareImports(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	world, err := wasi.NewWorld(ctx, p.engine, &wasi.Config{
+	// The call owns each acquired import before the next allocation can fail.
+	p.host, p.output = hostInstance, output
+	p.world, err = wasi.NewWorld(ctx, p.engine, &wasi.Config{
 		Args: []string{filepath.Base(p.path)}, Stdout: output, Stderr: output,
 		Preopens: func(deps preopens.Deps) preopens.Preopens { return scopedPreopens{deps} },
 	})
-	if err != nil {
-		return errors.Join(err, hostInstance.Close(context.WithoutCancel(ctx)))
-	}
-	p.host, p.world, p.output = hostInstance, world, output
-	return nil
+	return err
 }
 
 func (p *Plugin) discardImports(ctx context.Context) error {
