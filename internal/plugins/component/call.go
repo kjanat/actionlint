@@ -25,7 +25,7 @@ type callScope struct {
 	annotations *host.ComponentInstance
 }
 
-func (c *callScope) invoke(ctx context.Context, iface, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
+func (c *callScope) invoke(ctx context.Context, iface, name string, args ...wacogo.Val) (value wacogo.Val, err error) {
 	p := c.plugin
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -36,7 +36,7 @@ func (c *callScope) invoke(ctx context.Context, iface, name string, args ...waco
 			cleanup := context.WithoutCancel(ctx)
 			closeErr := c.discardImports(cleanup)
 			closeErr = errors.Join(closeErr, p.closeEngine(cleanup))
-			results, err = nil, errors.Join(err, p.failure(ctx, errMemoryBudget), closeErr)
+			value, err = nil, errors.Join(err, p.failure(ctx, errMemoryBudget), closeErr)
 		}
 	}()
 	defer c.finish(ctx, &err)
@@ -51,14 +51,14 @@ func (c *callScope) invoke(ctx context.Context, iface, name string, args ...waco
 	if fn == nil {
 		return nil, p.failure(ctx, fmt.Errorf("plugin does not export %s", name))
 	}
-	results, err = fn.Call(ctx, args...)
+	results, err := fn.Call(ctx, args...)
 	if err != nil {
 		return nil, p.failure(ctx, err)
 	}
 	if len(results) != 1 {
 		return nil, p.failure(ctx, fmt.Errorf("%s returned %d values", name, len(results)))
 	}
-	return results, nil
+	return results[0], nil
 }
 
 func (c *callScope) prepareImports(ctx context.Context) error {

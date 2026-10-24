@@ -41,11 +41,11 @@ func (p *Plugin) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
 }
 
 func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) error {
-	results, err := p.callInterface(ctx, ScriptEngineInterface, "describe")
+	value, err := p.callInterface(ctx, ScriptEngineInterface, "describe")
 	if err != nil {
 		return err
 	}
-	descriptor, err := liftScriptDescriptor(results[0])
+	descriptor, err := liftScriptDescriptor(value)
 	if err != nil {
 		return err
 	}
@@ -65,13 +65,13 @@ func (p *Plugin) ValidateConfig(ctx context.Context, config json.RawMessage) err
 	if err != nil {
 		return err
 	}
-	results, err := p.callInterface(ctx, ScriptEngineInterface, "validate-config", wacogo.ValString(options))
+	value, err := p.callInterface(ctx, ScriptEngineInterface, "validate-config", wacogo.ValString(options))
 	if err != nil {
 		return err
 	}
-	result, ok := results[0].(*wacogo.ValResult)
+	result, ok := value.(*wacogo.ValResult)
 	if !ok {
-		return liftError{"configuration result", results[0]}
+		return liftError{"configuration result", value}
 	}
 	if result.IsOk() {
 		return nil
@@ -116,11 +116,11 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 	}
 	input := wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),
 		field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
-	results, err := p.callInterface(ctx, ScriptEngineInterface, "check", input)
+	value, err := p.callInterface(ctx, ScriptEngineInterface, "check", input)
 	if err != nil {
 		return nil, err
 	}
-	outcome, err := liftRecord(results[0], "script outcome")
+	outcome, err := liftRecord(value, "script outcome")
 	if err != nil {
 		return nil, err
 	}

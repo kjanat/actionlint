@@ -43,11 +43,11 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 	}
 	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
 	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
-	results, err := p.call(ctx, "analyze", lowerInput(input))
+	value, err := p.call(ctx, "analyze", lowerInput(input))
 	if err != nil {
 		return nil, err
 	}
-	diagnostics, err := liftAnalysis(results[0])
+	diagnostics, err := liftAnalysis(value)
 	valid := diagnostics[:0]
 	for _, finding := range diagnostics {
 		if finding.Rule != "" && finding.Rule != p.descriptor.Name {
@@ -63,17 +63,17 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 }
 
 func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
-	results, err := p.call(ctx, "describe")
+	value, err := p.call(ctx, "describe")
 	if err != nil {
 		return analyzer.Descriptor{}, err
 	}
-	descriptor, err := liftDescriptor(results[0])
+	descriptor, err := liftDescriptor(value)
 	if err != nil {
 		return analyzer.Descriptor{}, p.failure(ctx, err)
 	}
 	return descriptor, nil
 }
 
-func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) ([]wacogo.Val, error) {
+func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (wacogo.Val, error) {
 	return p.callInterface(ctx, AnalyzerInterface, name, args...)
 }

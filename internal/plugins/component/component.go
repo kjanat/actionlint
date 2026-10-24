@@ -15,7 +15,6 @@ import (
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
 	"actionlint.kjanat.dev/v2/runner"
 	"github.com/kjanat/wacogo"
-	"github.com/kjanat/wacogo/wasmparser"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental"
@@ -113,7 +112,8 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := checkImports(component.Imports()); err != nil {
+	required, err := validateImports(component.Imports())
+	if err != nil {
 		return err
 	}
 	if err := checkRoleContracts(data, roles.analyzer, roles.runner, roles.script); err != nil {
@@ -124,13 +124,10 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	if err != nil {
 		return err
 	}
-	for _, imported := range component.Imports() {
-		if wasmparser.CanonicalizeImportName(imported.Name) == wasmparser.CanonicalizeImportName(SourceAnnotationsInterface) {
-			p.annotationsFactory, err = annotationsbind.NewFactory(ctx, p.engine)
-			if err != nil {
-				return err
-			}
-			break
+	if required.sourceAnnotations {
+		p.annotationsFactory, err = annotationsbind.NewFactory(ctx, p.engine)
+		if err != nil {
+			return err
 		}
 	}
 	if roles.analyzer {
@@ -161,7 +158,7 @@ func (p *Plugin) Path() string { return p.path }
 // Limits returns the resource bounds for this plugin.
 func (p *Plugin) Limits() Limits { return p.limits }
 
-func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) ([]wacogo.Val, error) {
+func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) (wacogo.Val, error) {
 	if err := p.gate.Acquire(ctx, 1); err != nil {
 		return nil, p.failure(ctx, err)
 	}

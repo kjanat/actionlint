@@ -17,11 +17,11 @@ func TestCallCloseDoesNotRunGuestDestructors(t *testing.T) {
 			t.Cleanup(func() { _ = plugin.Close(context.Background()) })
 			baseline := plugin.memory.used
 			for range 2 {
-				results, err := plugin.call(t.Context(), operation)
+				value, err := plugin.call(t.Context(), operation)
 				if err != nil {
 					t.Fatalf("closing the guest invoked its %s destructor: %v", operation, err)
 				}
-				descriptor, err := liftDescriptor(results[0])
+				descriptor, err := liftDescriptor(value)
 				if err != nil || descriptor.Name != "close-fixture" {
 					t.Fatalf("call result: descriptor=%+v error=%v", descriptor, err)
 				}

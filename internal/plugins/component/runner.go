@@ -22,11 +22,11 @@ func (p *Plugin) RunnerDescriptor() runner.Descriptor {
 }
 
 func (p *Plugin) loadRunner(ctx context.Context) error {
-	results, err := p.callInterface(ctx, RunnerInterface, "describe")
+	value, err := p.callInterface(ctx, RunnerInterface, "describe")
 	if err != nil {
 		return err
 	}
-	descriptor, err := liftRunnerDescriptor(results[0])
+	descriptor, err := liftRunnerDescriptor(value)
 	if err != nil {
 		return err
 	}
@@ -42,11 +42,11 @@ func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) ([]
 	if err != nil {
 		return nil, err
 	}
-	values, err := p.callInterface(ctx, RunnerInterface, "resolve", input)
+	value, err := p.callInterface(ctx, RunnerInterface, "resolve", input)
 	if err != nil {
 		return nil, err
 	}
-	result, err := liftRecord(values[0], "runner outcome")
+	result, err := liftRecord(value, "runner outcome")
 	if err != nil {
 		return nil, err
 	}

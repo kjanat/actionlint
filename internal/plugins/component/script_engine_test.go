@@ -20,11 +20,11 @@ import (
 
 func TestScriptDescriptorShellValidation(t *testing.T) {
 	p := loadScriptFixture(t)
-	results, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
 	if err != nil {
 		t.Fatal(err)
 	}
-	original, err := liftRecord(results[0], "script descriptor")
+	original, err := liftRecord(value, "script descriptor")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,11 +70,11 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 
 func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 	p := loadScriptFixture(t)
-	results, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
 	if err != nil {
 		t.Fatal(err)
 	}
-	original, err := liftRecord(results[0], "script descriptor")
+	original, err := liftRecord(value, "script descriptor")
 	if err != nil {
 		t.Fatal(err)
 	}

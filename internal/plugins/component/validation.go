@@ -55,19 +55,29 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	return roles, nil
 }
 
-func checkImports(imports []wacogo.ImportDesc) error {
+type importRequirements struct {
+	sourceAnnotations bool
+}
+
+// validateImports checks grants and records optional host features in one pass.
+func validateImports(imports []wacogo.ImportDesc) (importRequirements, error) {
+	var required importRequirements
 	hostName := wasmparser.CanonicalizeImportName(HostInterface)
 	annotationsName := wasmparser.CanonicalizeImportName(SourceAnnotationsInterface)
 	for _, imported := range imports {
 		canonical := wasmparser.CanonicalizeImportName(imported.Name)
-		if canonical == hostName || canonical == annotationsName {
+		if canonical == annotationsName {
+			required.sourceAnnotations = true
+			continue
+		}
+		if canonical == hostName {
 			continue
 		}
 		if strings.HasPrefix(imported.Name, "kjanat:actionlint/host@") {
-			return fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, HostInterface)
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, HostInterface)
 		}
 		if strings.HasPrefix(imported.Name, "kjanat:actionlint/source-annotations@") {
-			return fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, SourceAnnotationsInterface)
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, SourceAnnotationsInterface)
 		}
 		granted := false
 		for _, prefix := range grantedImportPrefixes {
@@ -77,8 +87,8 @@ func checkImports(imports []wacogo.ImportDesc) error {
 			}
 		}
 		if !granted {
-			return fmt.Errorf("plugin imports %s, which this host does not grant", imported.Name)
+			return required, fmt.Errorf("plugin imports %s, which this host does not grant", imported.Name)
 		}
 	}
-	return nil
+	return required, nil
 }
