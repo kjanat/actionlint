@@ -87,7 +87,7 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 			t.Errorf("cleanup lost %v: %v", cause, result)
 		}
 	}
-	for _, label := range []string{"close component", "close source annotations", "close stdin", "close host imports"} {
+	for _, label := range []string{"close component", "close source annotations", "close stdin", "close host imports", "close runtime"} {
 		if !strings.Contains(result.Error(), label) {
 			t.Errorf("cleanup error missing %q: %v", label, result)
 		}

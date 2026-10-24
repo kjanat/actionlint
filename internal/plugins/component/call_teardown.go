@@ -19,12 +19,15 @@ func (c *callScope) finish(ctx context.Context, result *error) {
 	cleanup := context.WithoutCancel(ctx)
 	guestFailed := false
 	defer func() {
-		closeErr := c.discardImports(cleanup)
 		if guestFailed {
-			closeErr = errors.Join(closeErr, c.plugin.closeEngine(cleanup))
+			if err := c.plugin.closeEngine(cleanup); err != nil {
+				*result = errors.Join(*result, fmt.Errorf("plugin %s: close runtime: %w", c.plugin.path, err))
+			}
 		}
-		if closeErr != nil {
-			*result = errors.Join(*result, fmt.Errorf("plugin %s: close host imports: %w", c.plugin.path, closeErr))
+	}()
+	defer func() {
+		if err := c.discardImports(cleanup); err != nil {
+			*result = errors.Join(*result, fmt.Errorf("plugin %s: close host imports: %w", c.plugin.path, err))
 		}
 	}()
 	if output != nil {
