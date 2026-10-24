@@ -362,7 +362,7 @@ func (f *LockFile) checkReplacement(pin Pin, selectedRegistry string) error {
 		if (!SameRegistry(old.Registry, pin.Registry) && !SameRegistry(selectedRegistry, pin.Registry)) || old.RepositoryID != pin.RepositoryID || old.OwnerID != pin.OwnerID || old.PluginID != pin.PluginID {
 			return fmt.Errorf("publisher or plugin identity changed for %s; remove explicitly before switching", pin.Name)
 		}
-		if old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || old.Contract != pin.Contract || old.Kind != pin.Kind || old.Asset != pin.Asset) {
+		if old.Origin != "candidate" && old.Version == pin.Version && (old.SHA256 != pin.SHA256 || old.URL != pin.URL || old.Contract != pin.Contract || old.Kind != pin.Kind || old.Asset != pin.Asset) {
 			return fmt.Errorf("immutable version %s@%s changed", pin.Name, pin.Version)
 		}
 		previous := "v" + strings.TrimPrefix(old.Version, "v")
@@ -402,6 +402,11 @@ func (l Lock) Sync(ctx context.Context, options artifact.Options) error {
 		return err
 	}
 	for _, p := range l.Plugins {
+		if p.Origin == "candidate" {
+			if err := p.importCandidate(ctx, options); err != nil {
+				return fmt.Errorf("plugin %s@%s: %w", p.Name, p.Version, err)
+			}
+		}
 		a, err := artifact.Resolve(ctx, p.Source(), options)
 		if err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", p.Name, p.Version, err)

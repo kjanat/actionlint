@@ -85,9 +85,15 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 		display = redacted.String()
 	}
 	var data []byte
-	if local != "" {
+	switch {
+	case u != nil && u.Scheme == "sha256":
+		if options.CacheDir == "" {
+			return nil, errors.New("candidate execution requires an artifact cache")
+		}
+		data, err = readFile(ctx, filepath.Join(options.CacheDir, pin), options.MaxBytes)
+	case local != "":
 		data, err = readFile(ctx, local, options.MaxBytes)
-	} else {
+	default:
 		data, err = download(ctx, u, pin, options)
 	}
 	if err != nil {
@@ -148,6 +154,12 @@ func parseSource(source string) (*url.URL, string, string, error) {
 	}
 	u.Fragment, u.RawFragment = "", ""
 	switch u.Scheme {
+	case "sha256":
+		decoded, err := hex.DecodeString(u.Host)
+		if err != nil || len(decoded) != sha256.Size || u.Host != strings.ToLower(u.Host) || u.Path != "" || u.RawQuery != "" || u.ForceQuery || pin != "" {
+			return nil, "", "", errors.New("invalid cached artifact digest")
+		}
+		return u, "", u.Host, nil
 	case "http", "https":
 		if u.Host == "" {
 			return nil, "", "", errors.New("plugin URL requires a host")
@@ -169,6 +181,30 @@ func parseSource(source string) (*url.URL, string, string, error) {
 	default:
 		return nil, "", "", errors.New("plugin URI scheme must be file, http or https")
 	}
+}
+
+// Import verifies candidate bytes before adding them to the download cache.
+// Callers open local inputs within their selected catalogue root.
+func Import(ctx context.Context, input io.Reader, digest string, options Options) error {
+	decoded, err := hex.DecodeString(digest)
+	if err != nil || len(decoded) != sha256.Size || options.CacheDir == "" {
+		return errors.New("candidate import requires a digest and cache directory")
+	}
+	limit := options.MaxBytes
+	if limit <= 0 {
+		limit = 128 << 20
+	}
+	data, err := readBounded(input, limit)
+	if err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if fmt.Sprintf("%x", sha256.Sum256(data)) != digest {
+		return errors.New("candidate artifact SHA256 mismatch")
+	}
+	return cacheFile(ctx, filepath.Join(options.CacheDir, digest), data)
 }
 
 func readBounded(r io.Reader, limit int64) ([]byte, error) {

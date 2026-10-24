@@ -28,6 +28,7 @@ var (
 
 type Catalog struct {
 	SchemaVersion int             `json:"schema_version"`
+	Source        string          `json:"source,omitempty"`
 	Plugins       []CatalogPlugin `json:"plugins"`
 }
 
@@ -65,6 +66,7 @@ type identity struct {
 }
 
 type manifest struct {
+	Source   string    `json:"source,omitempty"`
 	Plugin   identity  `json:"plugin"`
 	Versions []Version `json:"versions"`
 }
@@ -90,6 +92,7 @@ type declaration struct {
 }
 
 type record struct {
+	Source        string       `json:"source,omitempty"`
 	RecordVersion int          `json:"record_version"`
 	Artifact      *declaration `json:"artifact"`
 	Validation    *declaration `json:"validation"`
@@ -115,11 +118,12 @@ type record struct {
 // Pin records selection intent separately from the exact artifact. Lint and sync
 // use only the latter; only install/update contact the catalogue.
 type Pin struct {
+	Origin       string        `json:"source,omitempty"`
 	Registry     string        `json:"registry"`
 	Name         string        `json:"name"`
 	Alias        string        `json:"alias,omitempty"`
-	RepositoryID string        `json:"repository_id"`
-	OwnerID      string        `json:"owner_id"`
+	RepositoryID string        `json:"repository_id,omitempty"`
+	OwnerID      string        `json:"owner_id,omitempty"`
 	PluginID     string        `json:"plugin_id"`
 	Selector     string        `json:"selector"`
 	Version      string        `json:"version"`
@@ -130,7 +134,12 @@ type Pin struct {
 	Contract     string        `json:"contract"`
 }
 
-func (p Pin) Source() string { return p.URL + "#sha256=" + p.SHA256 }
+func (p Pin) Source() string {
+	if p.Origin == "candidate" {
+		return "sha256://" + p.SHA256
+	}
+	return p.URL + "#sha256=" + p.SHA256
+}
 
 // Matches binds declaration intent to the recorded registry and repository.
 // An alias is accepted only when the lock explicitly records that lookup.
@@ -168,6 +177,12 @@ func canonicalName(name string) bool {
 }
 
 func (p Pin) Validate() error {
+	if p.Origin == "candidate" {
+		return p.validateCandidate()
+	}
+	if p.Origin != "" || strings.HasPrefix(p.Registry, "file:") {
+		return errors.New("invalid plugin source")
+	}
 	if _, err := registryURL(p.Registry); err != nil {
 		return err
 	}

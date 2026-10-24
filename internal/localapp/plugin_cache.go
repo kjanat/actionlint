@@ -57,6 +57,14 @@ func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 		if err != nil {
 			return PluginCachePlan{}, err
 		}
+		if location.Scheme == "sha256" {
+			decoded, err := hex.DecodeString(location.Host)
+			if err != nil || len(decoded) != 32 || location.Host != strings.ToLower(location.Host) || location.User != nil || location.Path != "" || location.RawQuery != "" || location.ForceQuery || location.Fragment != "" {
+				return PluginCachePlan{}, errors.New("cache URI must be sha256://<64 lowercase hex digits>")
+			}
+			plan.Artifacts = append(plan.Artifacts, location.Host)
+			continue
+		}
 		if location.Scheme != "https" && location.Scheme != "http" || location.Fragment == "" {
 			continue
 		}

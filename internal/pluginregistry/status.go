@@ -180,6 +180,9 @@ func writeStatusFile(path string, value any, immutable bool) (err error) {
 // RefreshStatuses fetches the registry's current sidecar and persists every
 // observed revocation before replacing its mutable snapshot.
 func (c *Client) RefreshStatuses(ctx context.Context) (StatusSnapshot, error) {
+	if c.base.Scheme == "file" {
+		return StatusSnapshot{SchemaVersion: 1, Releases: []ReleaseStatus{}}, ctx.Err()
+	}
 	bounded, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var snapshot StatusSnapshot
@@ -261,6 +264,9 @@ func (l Lock) CheckStatuses(ctx context.Context, options StatusOptions) error {
 		return err
 	}
 	for _, pin := range l.Plugins {
+		if pin.Origin == "candidate" {
+			continue
+		}
 		directory, err := statusDirectory(pin.Registry, options)
 		if err != nil {
 			return err
@@ -284,6 +290,9 @@ func (l Lock) RefreshStatuses(ctx context.Context, options StatusOptions) error 
 	}
 	seen := map[string]bool{}
 	for _, pin := range l.Plugins {
+		if pin.Origin == "candidate" {
+			continue
+		}
 		directory, err := statusDirectory(pin.Registry, options)
 		if err != nil {
 			return err

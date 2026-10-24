@@ -31,6 +31,14 @@ type Client struct {
 
 func registryURL(raw string) (*url.URL, error) {
 	u, err := url.Parse(raw)
+	if err == nil && u.Scheme == "file" {
+		if _, err := pluginref.LocalRegistryDirectory(raw); err != nil {
+			return nil, err
+		}
+		u.Path = strings.TrimSuffix(path.Clean(u.Path), "/") + "/"
+		u.RawPath = ""
+		return u, nil
+	}
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" || strings.Contains(u.Path, "\\") {
 		return nil, errors.New("registry must be an HTTPS directory URL without credentials, query or fragment")
 	}
@@ -109,11 +117,14 @@ func get[T *Catalog | *manifest | *record | *StatusSnapshot](ctx context.Context
 }
 
 func (c *Client) Search(ctx context.Context, query string) ([]CatalogPlugin, error) {
+	if c.base.Scheme == "file" {
+		return c.searchCandidates(ctx, query)
+	}
 	var index Catalog
 	if err := get(ctx, c, "index.json", &index); err != nil {
 		return nil, err
 	}
-	if index.SchemaVersion != 1 || index.Plugins == nil {
+	if index.SchemaVersion != 1 || index.Plugins == nil || index.Source != "" {
 		return nil, errors.New("unsupported registry catalogue")
 	}
 	seen := map[string]bool{}
@@ -157,7 +168,7 @@ func (c *Client) manifest(ctx context.Context, name string) (CatalogPlugin, mani
 			return p, m, err
 		}
 		i := m.Plugin
-		if i.SchemaVersion != 1 || i.Issuer == "" || i.Issuer != publisherIssuer(i.Provider) || !numericID(i.RepositoryID) || !numericID(i.OwnerID) || i.Provider+".com/"+i.Repository != p.Name || i.PluginID != p.PluginID || p.Manifest != "plugins/"+hash(i.Issuer+"\n"+i.RepositoryID)+"/index.json" || m.Versions == nil {
+		if m.Source != "" || i.SchemaVersion != 1 || i.Issuer == "" || i.Issuer != publisherIssuer(i.Provider) || !numericID(i.RepositoryID) || !numericID(i.OwnerID) || i.Provider+".com/"+i.Repository != p.Name || i.PluginID != p.PluginID || p.Manifest != "plugins/"+hash(i.Issuer+"\n"+i.RepositoryID)+"/index.json" || m.Versions == nil {
 			return p, m, errors.New("registry manifest disagrees with catalogue identity")
 		}
 		seen := map[string]bool{}
@@ -173,6 +184,10 @@ func (c *Client) manifest(ctx context.Context, name string) (CatalogPlugin, mani
 }
 
 func (c *Client) Versions(ctx context.Context, name string) ([]Version, error) {
+	if c.base.Scheme == "file" {
+		_, m, err := c.candidateManifest(ctx, name)
+		return m.Versions, err
+	}
 	_, m, err := c.manifest(ctx, name)
 	return m.Versions, err
 }
@@ -211,6 +226,9 @@ func selectVersion(versions []Version, selector string) (Version, error) {
 }
 
 func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error) {
+	if c.base.Scheme == "file" {
+		return c.resolveCandidate(ctx, name, selector)
+	}
 	statuses, err := c.RefreshStatuses(ctx)
 	if err != nil {
 		return Pin{}, err
@@ -283,6 +301,9 @@ func (c *Client) resolveVersion(ctx context.Context, p CatalogPlugin, m manifest
 		return Pin{}, err
 	}
 	d := r.Artifact
+	if r.Source != "" {
+		return Pin{}, errors.New("HTTPS registries cannot serve local candidates")
+	}
 	switch {
 	case r.RecordVersion == 2 && d != nil && r.Validation == nil:
 		if d.SHA256 != r.Submission.SHA256 {
