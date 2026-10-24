@@ -13,10 +13,10 @@ import (
 // The generated consumer asks for the complete canonical interface, including
 // named types and nested record/enum shapes, rather than only its export name.
 func checkContract(data []byte) error {
-	return checkRoleContracts(data, true, false, false)
+	return checkRoleContracts(data, extensionRoleSet{analyzer: true})
 }
 
-func checkRoleContracts(data []byte, analyzerRole, runnerRole, scriptRole bool) error {
+func checkRoleContracts(data []byte, roles extensionRoleSet) error {
 	parser := wasmparser.NewValidatingParser(bytes.NewReader(data), wasmparser.DefaultFeatures())
 	for {
 		_, err := parser.Next()
@@ -31,17 +31,17 @@ func checkRoleContracts(data []byte, analyzerRole, runnerRole, scriptRole bool) 
 	if component == nil {
 		return errors.New("missing component type")
 	}
-	if analyzerRole {
+	if roles.analyzer {
 		if err := expectedAnalyzerContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible analyzer contract: %w", err)
 		}
 	}
-	if runnerRole {
+	if roles.runner {
 		if err := expectedRunnerContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible runner contract: %w", err)
 		}
 	}
-	if scriptRole {
+	if roles.script {
 		if err := expectedScriptEngineContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible script-engine contract: %w", err)
 		}

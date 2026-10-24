@@ -11,7 +11,39 @@ import (
 	"github.com/kjanat/wacogo/wasi"
 	"github.com/kjanat/wacogo/wasi/cli/stdin"
 	"github.com/kjanat/wacogo/wasi/filesystem/preopens"
+	"github.com/tetratelabs/wazero/experimental"
 )
+
+func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) (wacogo.Val, error) {
+	if err := p.gate.Acquire(ctx, 1); err != nil {
+		return nil, p.failure(ctx, err)
+	}
+	defer p.gate.Release(1)
+	ctx, cancel := context.WithTimeout(ctx, p.limits.Timeout)
+	defer cancel()
+	if p.engine == nil {
+		return nil, fmt.Errorf("plugin %s is closed", p.path)
+	}
+	ctx = experimental.WithMemoryAllocator(ctx, p.memory)
+	ctx = wacogo.WithCoreTableAllocator(ctx, p.memory.allocateTables)
+	scope := callScope{plugin: p}
+	return scope.invoke(ctx, iface, name, args...)
+}
+
+func (p *Plugin) failure(ctx context.Context, err error) error {
+	name := filepath.Base(p.path)
+	if p.descriptor != nil {
+		name = p.descriptor.Name
+	}
+	switch {
+	case errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded):
+		return fmt.Errorf("plugin %s exceeded its time limit (%s): %w", name, p.limits, errors.Join(context.DeadlineExceeded, err))
+	case errors.Is(ctx.Err(), context.Canceled) || errors.Is(err, context.Canceled):
+		return fmt.Errorf("plugin %s was cancelled: %w", name, context.Canceled)
+	default:
+		return fmt.Errorf("plugin %s failed (%s): %w", name, p.limits, err)
+	}
+}
 
 // callScope owns every instance created for a single invocation.
 // Each acquisition is recorded before another allocation can fail.
