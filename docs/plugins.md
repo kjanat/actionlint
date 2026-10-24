@@ -407,16 +407,49 @@ Findings with other rule names are rejected as incomplete analysis while valid f
 An empty `rule` takes the plugin name, and an empty `path` means the analyzed document, so findings in a composite
 action copy `script.path`.
 
+Plugins can opt into the [`source-annotations`](../plugins/wit/source-annotations.wit) interface by selecting the
+`annotated-plugin` world. The existing `analyzer@0.1.0` interface and its contract digest are unchanged. The optional
+host function `comments` accepts a complete script source reference and returns physical YAML comments attached
+immediately before its declaration or after its scalar/header, with placement and Unicode source positions.
+Comments inside a scalar remain part of `script.text`; attached YAML comments never change that text or its spans.
+Queries are limited to the scripts supplied in the current analysis, including invoked composite actions. Unknown
+references and calls outside analysis return no comments. Alias-use comments belong to that declaration; fixes still
+target the anchored scalar containing the script.
+
+Each plugin interprets its own comment syntax. The ShellCheck plugin treats these YAML placements as script-wide
+ShellCheck directives:
+
+```yaml
+- name: Leading YAML directive
+  # shellcheck disable=SC2086
+  run: echo $HI
+- run: echo $HI # shellcheck disable=SC2086
+- run: | # shellcheck disable=SC2086
+    echo $HI
+```
+
+Native directives inside `run: |` keep ShellCheck's normal scope. A trailing directive inside a quoted scalar or
+block body is shell text and retains ShellCheck's placement error. Errors in attached directives point to the YAML
+comment; script diagnostics and fixes keep their original scalar spans and document revisions.
+
 ### Rust
 
 [`examples/plugins/pipe-to-shell.rs`](../examples/plugins/pipe-to-shell.rs) flags `curl ... | sh` patterns. It depends on
-the `wit-bindgen` crate only and builds with:
+[`actionlint-extension-api`](../crates/actionlint-extension-api), which provides the generated guest types,
+`Guest` trait, host imports and `export_plugin!` macro. Its README contains a complete consumer manifest and
+implementation. The example builds with:
 
 ```sh
 cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
 ```
 
 The component is `target/wasm32-wasip2/wasm/examples/pipe_to_shell.wasm` at the repository root.
+
+Enable the SDK's `source-annotations` feature to opt into the additional comment import. The default feature set
+continues to use the original analyzer world. The SDK's native `package` feature provides `package::Package`:
+pass the plugin's descriptor, Cargo identity, engine, capabilities, languages and license text, then call `write`
+with the component path and output directory. The SDK writes discovery metadata, schema and license sidecars,
+and checksums. Plugins do not implement their own Wasm section traversal or vendor the SDK's WIT contracts.
 
 ### Shared declaration facts
 
@@ -469,9 +502,9 @@ Run `make plugin-examples` from the repository root to build the Rust, C and Tin
 The Rust components are Cargo `[[example]]` targets. The C and TinyGo builds use their language toolchains.
 Tests load the components through the plugin interface.
 
-For an independent plugin, create a package with its own manifest and lockfile and vendor the public
-[`plugins/wit`](../plugins/wit) contract. Point its binding generator at that copy. The host's fixture
-workspace is not a dependency of external plugins.
+For an independent Rust analyzer, create a package with its own manifest and lockfile and depend on the SDK.
+Other languages can vendor the public [`plugins/wit`](../plugins/wit) contracts and point their binding generator
+at that copy. The host's fixture workspace is not a dependency of external plugins.
 
 ## Test a plugin
 

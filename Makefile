@@ -169,22 +169,29 @@ tools/matcher/testdata/want.json: $(TARGET)
 PLUGIN_FIXTURES := internal/plugins/component/testdata/plugins
 PLUGIN_WAT := $(wildcard internal/plugins/component/testdata/wat/*.wat internal/plugins/core/testdata/wat/*.wat)
 ENGINE_FIXTURES := internal/plugins/core/testdata/engines
-RUST_MANIFESTS := Cargo.toml $(wildcard testdata/plugins/*/Cargo.toml)
+RUST_MANIFESTS := Cargo.toml $(wildcard crates/*/Cargo.toml testdata/plugins/*/Cargo.toml)
 RUST_BUILD_INPUTS := $(RUST_MANIFESTS) Cargo.lock rust-toolchain.toml
+SDK_BUILD_INPUTS := $(wildcard crates/actionlint-extension-api/src/*.rs crates/actionlint-extension-api/wit/*.wit) crates/actionlint-extension-api/build.rs
 
 .PHONY: plugins-check-native
 plugins-check-native:
 	cargo check --workspace --locked --all-targets
 	cargo test --locked --example pipe-to-shell
+	cargo test --locked -p actionlint-extension-api
+	cargo test --locked -p actionlint-extension-api --all-features
 
 .PHONY: plugin-examples plugins
-plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm $(PLUGIN_FIXTURES)/script-engine.wasm $(PLUGIN_FIXTURES)/action-input.wasm $(PLUGIN_FIXTURES)/ruff-script-engine.wasm $(PLUGIN_FIXTURES)/ruff-action-input.wasm
+plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/source-annotations.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm $(PLUGIN_FIXTURES)/script-engine.wasm $(PLUGIN_FIXTURES)/action-input.wasm $(PLUGIN_FIXTURES)/ruff-script-engine.wasm $(PLUGIN_FIXTURES)/ruff-action-input.wasm
 
 plugins: plugin-examples $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
-$(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
+$(PLUGIN_FIXTURES)/pipe-to-shell.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
 	install -m 644 target/wasm32-wasip2/wasm/examples/pipe_to_shell.wasm $@
+
+$(PLUGIN_FIXTURES)/source-annotations.wasm: plugins/wit/analyzer.wit plugins/wit/source-annotations.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/source-annotations.rs
+	cargo build --locked --profile wasm --target wasm32-wasip2 --example source-annotations --features source-annotations-fixture --target-dir target/plugin-fixtures/source-annotations
+	install -m 644 target/plugin-fixtures/source-annotations/wasm32-wasip2/wasm/examples/source_annotations.wasm $@
 
 $(PLUGIN_FIXTURES)/pinned-actions.wasm: plugins/wit/analyzer.wit $(RUST_BUILD_INPUTS) examples/plugins/pinned-actions.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example pinned-actions

@@ -82,12 +82,14 @@ func (l *delayedSprintf) String() string {
 }
 
 type Parser struct {
-	ScalarDocument *yamlsource.Document
-	Errors         []*SyntaxError
-	SourceLines    []string
-	aliases        map[*yaml.Node]*yaml.Node
-	scalarContexts map[Pos]scalarContext
-	scalarSources  map[Pos]*ScriptSource
+	ScalarDocument     *yamlsource.Document
+	Errors             []*SyntaxError
+	SourceLines        []string
+	aliases            map[*yaml.Node]*yaml.Node
+	scalarContexts     map[Pos]scalarContext
+	scalarSources      map[Pos]*ScriptSource
+	scalarComments     map[Pos]scalarCommentNodes
+	scalarDeclarations map[Pos]scalarCommentNodes
 }
 
 func SplitSourceLines(b []byte) []string {
@@ -1574,7 +1576,7 @@ func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *ExecRun {
 		case "run":
 			ret.Run = p.parseString(e.val, false)
 			ret.RunPos = e.key.Pos
-			ret.Source = p.ScriptSource(e.val)
+			ret.Source = p.ScriptSourceForDeclaration(e.val, e.key.Pos)
 		case "shell":
 			ret.Shell = p.parseStaticString(e.val)
 		case "working-directory":

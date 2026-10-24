@@ -37,7 +37,16 @@ be checked through their public interfaces rather than a shared Cargo workspace.
 
 Examples build from the repository using Cargo and their own language toolchains.
 There is no custom manifest exporter or second implementation of Cargo inheritance.
-An external plugin owns its manifest and vendors the public WIT contract.
+An external Rust analyzer owns its manifest and consumes `actionlint-extension-api`.
+The SDK exposes guest bindings and an export macro; its optional native `package`
+feature handles discovery metadata and distribution files. Plugins supply their
+own descriptor, Cargo identity, engine, capabilities and license. Non-Rust guests
+can consume the canonical public WIT contracts directly.
+
+The SDK bundles WIT snapshots for standalone Cargo publication. `plugins/wit`
+remains canonical; the SDK build rejects stale snapshots in the host workspace.
+The `source-annotations` feature opts into an additional host import without
+changing the original analyzer interface or its contract digest.
 
 The workspace retains one set of dependency pins for host fixtures and examples.
 This avoids independent fixture lockfiles without coupling production providers to

@@ -15,6 +15,7 @@ type scalarContext = yamlsource.Context
 func (p *Parser) IndexScalarSources(root *yaml.Node) {
 	p.scalarContexts = make(map[Pos]scalarContext)
 	p.scalarSources = make(map[Pos]*ScriptSource)
+	p.indexScalarComments(root)
 	var visit func(*yaml.Node, scalarContext)
 	visit = func(n *yaml.Node, context scalarContext) {
 		if n == nil {
@@ -103,6 +104,7 @@ func (p *Parser) ScriptSource(n *yaml.Node) *ScriptSource {
 	source.Literal = decoded.Literal
 	source.ContentStart = Pos{Line: decoded.Start.Line, Col: decoded.Start.Column}
 	source.ScalarEnd = Pos{Line: decoded.End.Line, Col: decoded.End.Column}
+	source.Comments = p.scalarComments[key].comments(p.SourceLines, source)
 	for _, span := range decoded.Spans {
 		endColumn := 0
 		if span.Width != 0 {
