@@ -22,10 +22,11 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = p.Close(context.Background()) })
 	ctx := experimental.WithMemoryAllocator(t.Context(), p.memory)
-	if err := p.prepareImports(ctx); err != nil {
+	teardown := callScope{plugin: p}
+	if err := teardown.prepareImports(ctx); err != nil {
 		t.Fatal(err)
 	}
-	input, err := stdin.NewInstance(ctx, p.engine, p.world.Streams, p.world.Error, p.world.Poll, nil)
+	input, err := stdin.NewInstance(ctx, p.engine, teardown.world.Streams, teardown.world.Error, teardown.world.Poll, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +40,7 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	hostErr := errors.New("host cleanup")
 	input.RegisterResource(teardownDrop{t, "stdin", stdinErr, &order})
 	annotations.RegisterResource(teardownDrop{t, "annotations", annotationsErr, &order})
-	p.host.RegisterResource(teardownDrop{t, "host", hostErr, &order})
+	teardown.host.RegisterResource(teardownDrop{t, "host", hostErr, &order})
 
 	data, err := os.ReadFile(filepath.Join("testdata", "wat", "aggregate-tables.wasm"))
 	if err != nil {
@@ -73,7 +74,6 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	cancel()
 	primary := errors.New("analysis failed")
 	result := errors.Join(primary, context.Canceled)
-	teardown := callTeardown{plugin: p}
 	func() {
 		defer teardown.finish(cancelled, &result)
 		defer teardown.closeResource(cancelled, "stdin", input, &result)
@@ -94,44 +94,80 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	if !slices.Equal(order, wantOrder) {
 		t.Fatalf("cleanup order %v; want %v", order, wantOrder)
 	}
-	if p.engine != nil || p.host != nil || p.world != nil || p.output != nil || p.memory.used != 0 {
-		t.Fatalf("cleanup incomplete: runtime=%v host=%v world=%v output=%v memory=%d", p.engine != nil, p.host != nil, p.world != nil, p.output != nil, p.memory.used)
+	if p.engine != nil || teardown.host != nil || teardown.world != nil || teardown.output != nil || p.memory.used != 0 {
+		t.Fatalf("cleanup incomplete: runtime=%v host=%v world=%v output=%v memory=%d", p.engine != nil, teardown.host != nil, teardown.world != nil, teardown.output != nil, p.memory.used)
 	}
 	if _, err := compiled.Instantiate(t.Context()); err == nil {
 		t.Fatal("failed guest cleanup left the runtime usable")
 	}
 	// A later cleanup must tolerate the retired runtime and preserve the error.
-	before := result
+	before := result.Error()
 	teardown.finish(cancelled, &result)
-	if result != before {
+	if result.Error() != before {
 		t.Fatalf("repeated cleanup changed the result: %v", result)
 	}
 }
 
-func TestPrepareImportsStopsAfterPartialCleanupFailure(t *testing.T) {
+func TestCallScopeClosesPartialImportsAfterFailure(t *testing.T) {
 	p, err := Load(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = p.Close(context.Background()) })
-	p.host, err = p.factory.NewInstance(t.Context(), hostImplementation{}, nil)
+	teardown := callScope{plugin: p}
+	teardown.host, err = p.factory.NewInstance(t.Context(), hostImplementation{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	closeErr := errors.New("partial host cleanup")
 	var order []string
-	p.host.RegisterResource(teardownDrop{t, "host", closeErr, &order})
-	if err := p.prepareImports(t.Context()); !errors.Is(err, closeErr) {
+	teardown.host.RegisterResource(teardownDrop{t, "host", closeErr, &order})
+	if err := teardown.discardImports(t.Context()); !errors.Is(err, closeErr) {
 		t.Fatalf("partial cleanup failure: %v", err)
 	}
-	if !slices.Equal(order, []string{"host"}) || p.host != nil || p.world != nil || p.output != nil {
-		t.Fatalf("partial cleanup incomplete: order=%v host=%v world=%v output=%v", order, p.host != nil, p.world != nil, p.output != nil)
+	if !slices.Equal(order, []string{"host"}) || teardown.host != nil || teardown.world != nil || teardown.output != nil {
+		t.Fatalf("partial cleanup incomplete: order=%v host=%v world=%v output=%v", order, teardown.host != nil, teardown.world != nil, teardown.output != nil)
 	}
 	if _, err := p.call(t.Context(), "describe"); err != nil {
 		t.Fatalf("call after failed partial cleanup: %v", err)
 	}
 	if !slices.Equal(order, []string{"host"}) {
 		t.Fatalf("partial resource closed more than once: %v", order)
+	}
+}
+
+// A budget panic must retain errors collected while unwinding the invocation.
+func TestCallScopeMemoryPanicPreservesCleanupFailure(t *testing.T) {
+	p, err := Load(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = p.Close(context.Background()) })
+	data, err := os.ReadFile(filepath.Join("testdata", "wat", "aggregate-tables.wasm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.component, err = p.engine.LoadComponent(t.Context(), bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope := callScope{plugin: p}
+	cleanupErr := errors.New("host cleanup after memory panic")
+	var order []string
+	ctx := experimental.WithMemoryAllocator(t.Context(), p.memory)
+	ctx = wacogo.WithCoreTableAllocator(ctx, func(tables []wacogo.CoreTable) (func(), error) {
+		if scope.world != nil {
+			scope.host.RegisterResource(teardownDrop{t, "host", cleanupErr, &order})
+			panic(errMemoryBudget)
+		}
+		return p.memory.allocateTables(tables)
+	})
+	_, err = scope.invoke(ctx, AnalyzerInterface, "describe")
+	if !errors.Is(err, errMemoryBudget) || !errors.Is(err, cleanupErr) {
+		t.Fatalf("memory panic lost budget or cleanup error: %v", err)
+	}
+	if !slices.Equal(order, []string{"host"}) || p.engine != nil || p.memory.used != 0 {
+		t.Fatalf("cleanup incomplete: order=%v runtime=%v memory=%d", order, p.engine != nil, p.memory.used)
 	}
 }
 
