@@ -35,6 +35,10 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 		t.Fatal(err)
 	}
 	var order []string
+	teardown.output.log = func(string) { order = append(order, "output") }
+	if _, err := teardown.output.Write([]byte("pending line")); err != nil {
+		t.Fatal(err)
+	}
 	stdinErr := errors.New("stdin cleanup")
 	annotationsErr := errors.New("annotations cleanup")
 	hostErr := errors.New("host cleanup")
@@ -74,12 +78,8 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	cancel()
 	primary := errors.New("analysis failed")
 	result := errors.Join(primary, context.Canceled)
-	func() {
-		defer teardown.finish(cancelled, &result)
-		defer teardown.closeResource(cancelled, "stdin", input, &result)
-		defer teardown.closeResource(cancelled, "source annotations", annotations, &result)
-		defer teardown.closeGuest(cancelled, guest, &result)
-	}()
+	teardown.guest, teardown.annotations, teardown.stdin = guest, annotations, input
+	teardown.finish(cancelled, &result)
 	for _, cause := range []error{primary, context.Canceled, guestErr, annotationsErr, stdinErr, hostErr, runtimeErr} {
 		if !errors.Is(result, cause) {
 			t.Errorf("cleanup lost %v: %v", cause, result)
@@ -90,12 +90,15 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 			t.Errorf("cleanup error missing %q: %v", label, result)
 		}
 	}
-	wantOrder := []string{"guest", "guest", "annotations", "stdin", "host", "runtime", "runtime"}
+	wantOrder := []string{"guest", "guest", "annotations", "stdin", "output", "host", "runtime", "runtime"}
 	if !slices.Equal(order, wantOrder) {
 		t.Fatalf("cleanup order %v; want %v", order, wantOrder)
 	}
 	if p.engine != nil || teardown.host != nil || teardown.world != nil || teardown.output != nil || p.memory.used != 0 {
 		t.Fatalf("cleanup incomplete: runtime=%v host=%v world=%v output=%v memory=%d", p.engine != nil, teardown.host != nil, teardown.world != nil, teardown.output != nil, p.memory.used)
+	}
+	if teardown.guest != nil || teardown.annotations != nil || teardown.stdin != nil {
+		t.Fatal("cleanup retained call-owned instances")
 	}
 	if _, err := compiled.Instantiate(t.Context()); err == nil {
 		t.Fatal("failed guest cleanup left the runtime usable")

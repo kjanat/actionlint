@@ -11,17 +11,28 @@ import (
 	"github.com/kjanat/wacogo"
 )
 
-func (p *Plugin) HasAnalyzer() bool       { return p.analyzerRole }
-func (p *Plugin) HasRunnerProvider() bool { return p.runnerRole }
-func (p *Plugin) ArtifactDigest() string  { return p.digest }
+func (p *Plugin) HasRunnerProvider() bool { return p.roles.runner }
 func (p *Plugin) RunnerDescriptor() runner.Descriptor {
 	d := p.runnerDescriptor
 	d.Targets = slices.Clone(d.Targets)
 	return d
 }
 
+func (p *Plugin) loadRunner(ctx context.Context) error {
+	results, err := p.callInterface(ctx, RunnerInterface, "describe")
+	if err != nil {
+		return err
+	}
+	descriptor, err := liftRunnerDescriptor(results[0])
+	if err != nil {
+		return err
+	}
+	p.runnerDescriptor = descriptor
+	return nil
+}
+
 func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) ([]runner.Answer, error) {
-	if !p.runnerRole {
+	if !p.roles.runner {
 		return nil, errors.New("component does not implement the runner-provider role")
 	}
 	input, err := lowerRunnerRequest(request)

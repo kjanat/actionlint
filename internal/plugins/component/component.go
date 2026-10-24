@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/diagnostic"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
@@ -65,10 +64,8 @@ func (l Limits) String() string {
 // Plugin is a loaded component. It implements analyzer.Analyzer. Calls are
 // serialized; each analysis runs in a fresh instance.
 type Plugin struct {
-	analyzerRole     bool
-	runnerRole       bool
+	roles            extensionRoleSet
 	runnerDescriptor runner.Descriptor
-	scriptRole       bool
 	scriptDescriptor analyzer.ScriptEngineDescriptor
 	digest           string
 	path             string
@@ -129,7 +126,12 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 		wacogo.WithRuntimeConfig(config),
 		wacogo.WithLiftLimits(wacogo.LiftLimits{MaxBytes: maxLiftBytes, MaxValues: maxLiftValues}),
 	)
-	p := &Plugin{path: path, digest: artifact.Info.SHA256, limits: limits, log: logLine, engine: engine, gate: semaphore.NewWeighted(1), memory: &memoryBudget{limit: uint64(limits.MemoryPages) << 16}}
+	p := &Plugin{
+		path: path, digest: artifact.Info.SHA256,
+		limits: limits, log: logLine, engine: engine,
+		gate:   semaphore.NewWeighted(1),
+		memory: &memoryBudget{limit: uint64(limits.MemoryPages) << 16},
+	}
 	if err := p.load(ctx, data, staticMetadata); err != nil {
 		return nil, fmt.Errorf("plugin %s: %w", path, errors.Join(err, p.Close(context.WithoutCancel(ctx))))
 	}
@@ -152,7 +154,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		return err
 	}
 	p.component = component
-	p.analyzerRole, p.runnerRole, p.scriptRole = roles.analyzer, roles.runner, roles.script
+	p.roles = roles
 	p.factory, err = hostbind.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
@@ -167,38 +169,17 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		}
 	}
 	if roles.analyzer {
-		descriptor, err := p.describe(ctx)
-		if err != nil {
+		if err := p.loadAnalyzer(ctx); err != nil {
 			return err
 		}
-		if descriptor.Name == "" {
-			return errors.New("plugin describes itself with an empty name")
-		}
-		if err := validateSuppressionRuleName(descriptor.Name); err != nil {
-			return err
-		}
-		p.descriptor = descriptor
 	}
 	if roles.runner {
-		results, err := p.callInterface(ctx, RunnerInterface, "describe")
-		if err != nil {
-			return err
-		}
-		p.runnerDescriptor, err = liftRunnerDescriptor(results[0])
-		if err != nil {
+		if err := p.loadRunner(ctx); err != nil {
 			return err
 		}
 	}
 	if roles.script {
-		results, err := p.callInterface(ctx, ScriptEngineInterface, "describe")
-		if err != nil {
-			return err
-		}
-		p.scriptDescriptor, err = liftScriptDescriptor(results[0])
-		if err != nil {
-			return err
-		}
-		if err := p.verifyScriptMetadata(staticMetadata); err != nil {
+		if err := p.loadScriptEngine(ctx, staticMetadata); err != nil {
 			return err
 		}
 	}
@@ -206,61 +187,16 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	return nil
 }
 
+// ArtifactDigest returns the digest of the loaded snapshot.
+func (p *Plugin) ArtifactDigest() string { return p.digest }
+
 // Path returns the component file the plugin was loaded from.
 func (p *Plugin) Path() string { return p.path }
 
 // Limits returns the resource bounds for this plugin.
 func (p *Plugin) Limits() Limits { return p.limits }
 
-// Descriptor returns the identity the plugin declared when it was loaded.
-func (p *Plugin) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Descriptor: p.descriptor.Clone(), Requires: append([]analyzer.Fact(nil), p.descriptor.Requires...)}
-}
-
-// Analyze runs the plugin on one document in a fresh instance. A trap, an
-// exit, an exceeded limit or a refused call is returned as an error.
-func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
-	if !p.analyzerRole {
-		return nil, errors.New("component does not implement the analyzer role")
-	}
-	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
-	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
-	results, err := p.call(ctx, "analyze", lowerInput(input))
-	if err != nil {
-		return nil, err
-	}
-	diagnostics, err := liftAnalysis(results[0])
-	valid := diagnostics[:0]
-	for _, finding := range diagnostics {
-		if finding.Rule != "" && finding.Rule != p.descriptor.Name {
-			err = errors.Join(err, fmt.Errorf("undeclared diagnostic rule %q; use code for plugin-specific check identifiers", finding.Rule))
-			continue
-		}
-		valid = append(valid, finding)
-	}
-	if err != nil {
-		return valid, p.failure(ctx, err)
-	}
-	return valid, nil
-}
-
-func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
-	results, err := p.call(ctx, "describe")
-	if err != nil {
-		return analyzer.Descriptor{}, err
-	}
-	descriptor, err := liftDescriptor(results[0])
-	if err != nil {
-		return analyzer.Descriptor{}, p.failure(ctx, err)
-	}
-	return descriptor, nil
-}
-
-func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
-	return p.callInterface(ctx, AnalyzerInterface, name, args...)
-}
-
-func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
+func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) ([]wacogo.Val, error) {
 	if err := p.gate.Acquire(ctx, 1); err != nil {
 		return nil, p.failure(ctx, err)
 	}
@@ -306,9 +242,15 @@ func (p *Plugin) Close(ctx context.Context) error {
 		errs = append(errs, p.annotationsFactory.Close(ctx))
 		p.annotationsFactory = nil
 	}
-	if p.engine != nil {
-		errs = append(errs, p.engine.Close(ctx))
-		p.engine = nil
-	}
+	errs = append(errs, p.closeEngine(ctx))
 	return errors.Join(errs...)
+}
+
+func (p *Plugin) closeEngine(ctx context.Context) error {
+	engine := p.engine
+	p.engine = nil
+	if engine == nil {
+		return nil
+	}
+	return engine.Close(ctx)
 }
