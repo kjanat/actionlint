@@ -17,7 +17,7 @@ actionlint.overrideAttrs (old: {
     runHook preCheck
     export GOFLAGS=''${GOFLAGS//-trimpath/}
     export BASH_COMPLETION_FILE=${bash-completion}/share/bash-completion/bash_completion
-    go test -v -run '^(${old.passthru.completionTests})$' ./internal/cli
+    go test -v -run '^(${old.passthru.completionTests})$' ./internal/integration/cli
     runHook postCheck
   '';
 })
