@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
@@ -32,46 +31,18 @@ const HostInterface = hostbind.InterfaceName
 // SourceAnnotationsInterface provides optional, source-local YAML comments.
 const SourceAnnotationsInterface = annotationsbind.InterfaceName
 
-const (
-	// DefaultTimeout bounds guest execution after caller-controlled queue admission.
-	DefaultTimeout = 10 * time.Second
-	// DefaultMemoryPages bounds live linear memory and reserved core tables.
-	DefaultMemoryPages uint32 = 1024
-	maxLiftBytes              = 8 * 1024 * 1024
-	maxLiftValues             = 262144
-)
-
-// Options configures a loaded plugin. Zero values select the defaults.
-type Options struct {
-	// Artifact configures URI resolution and verified download caching.
-	Artifact    pluginartifact.Options
-	Timeout     time.Duration
-	MemoryPages uint32
-	// Log receives host log lines and the plugin's stdout and stderr lines.
-	Log func(string)
-}
-
-// Limits reports the resource bounds a plugin runs under.
-type Limits struct {
-	Timeout     time.Duration
-	MemoryPages uint32
-}
-
-func (l Limits) String() string {
-	return fmt.Sprintf("memory %d MiB, time %s", uint64(l.MemoryPages)*64/1024, l.Timeout)
-}
-
 // Plugin is a loaded component. It implements analyzer.Analyzer. Calls are
 // serialized; each analysis runs in a fresh instance.
 type Plugin struct {
-	roles            extensionRoleSet
-	runnerDescriptor runner.Descriptor
-	scriptDescriptor analyzer.ScriptEngineDescriptor
-	digest           string
-	path             string
-	descriptor       analyzer.Descriptor
-	limits           Limits
-	log              func(string)
+	// A non-nil descriptor identifies a validated, available role.
+	descriptor       *analyzer.Descriptor
+	runnerDescriptor *runner.Descriptor
+	scriptDescriptor *analyzer.ScriptEngineDescriptor
+
+	digest string
+	path   string
+	limits Limits
+	log    func(string)
 
 	engine             *wacogo.Engine
 	component          *wacogo.Component
@@ -84,39 +55,34 @@ type Plugin struct {
 
 // Load reads and validates a component and asks it to describe itself.
 func Load(ctx context.Context, path string, options Options) (*Plugin, error) {
-	if options.MemoryPages > 65536 {
-		return nil, fmt.Errorf("plugin memory limit %d exceeds WebAssembly maximum of 65536 pages", options.MemoryPages)
+	limits, err := options.limits()
+	if err != nil {
+		return nil, err
 	}
 	artifact, err := pluginartifact.Resolve(ctx, path, options.Artifact)
 	if err != nil {
 		return nil, err
 	}
-	return LoadArtifact(ctx, artifact, options)
+	return loadArtifact(ctx, artifact, limits, options.Log)
 }
 
 // LoadArtifact loads a resolved snapshot without reading its source again.
 func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, options Options) (*Plugin, error) {
-	path, data := artifact.Info.Source, artifact.Bytes
-	if options.MemoryPages > 65536 {
-		return nil, fmt.Errorf("plugin memory limit %d exceeds WebAssembly maximum of 65536 pages", options.MemoryPages)
+	limits, err := options.limits()
+	if err != nil {
+		return nil, err
 	}
+	return loadArtifact(ctx, artifact, limits, options.Log)
+}
+
+func loadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, limits Limits, logLine func(string)) (*Plugin, error) {
+	path, data := artifact.Info.Source, artifact.Bytes
 	kind, staticMetadata, err := pluginartifact.Sniff(data)
 	if err != nil {
 		return nil, err
 	}
 	if kind != pluginartifact.Component {
 		return nil, errors.New("plugin requires a WebAssembly component")
-	}
-	limits := Limits{Timeout: options.Timeout, MemoryPages: options.MemoryPages}
-	if limits.Timeout <= 0 {
-		limits.Timeout = DefaultTimeout
-	}
-	if limits.MemoryPages == 0 {
-		limits.MemoryPages = DefaultMemoryPages
-	}
-	logLine := options.Log
-	if logLine == nil {
-		logLine = func(string) {}
 	}
 	config := wazero.NewRuntimeConfig().
 		WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesExtendedConst).
@@ -154,7 +120,6 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		return err
 	}
 	p.component = component
-	p.roles = roles
 	p.factory, err = hostbind.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
@@ -213,9 +178,9 @@ func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...
 }
 
 func (p *Plugin) failure(ctx context.Context, err error) error {
-	name := p.descriptor.Name
-	if name == "" {
-		name = filepath.Base(p.path)
+	name := filepath.Base(p.path)
+	if p.descriptor != nil {
+		name = p.descriptor.Name
 	}
 	switch {
 	case errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded):

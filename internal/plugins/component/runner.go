@@ -11,9 +11,12 @@ import (
 	"github.com/kjanat/wacogo"
 )
 
-func (p *Plugin) HasRunnerProvider() bool { return p.roles.runner }
+func (p *Plugin) HasRunnerProvider() bool { return p.runnerDescriptor != nil }
 func (p *Plugin) RunnerDescriptor() runner.Descriptor {
-	d := p.runnerDescriptor
+	if p.runnerDescriptor == nil {
+		return runner.Descriptor{}
+	}
+	d := *p.runnerDescriptor
 	d.Targets = slices.Clone(d.Targets)
 	return d
 }
@@ -27,12 +30,12 @@ func (p *Plugin) loadRunner(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	p.runnerDescriptor = descriptor
+	p.runnerDescriptor = &descriptor
 	return nil
 }
 
 func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) ([]runner.Answer, error) {
-	if !p.roles.runner {
+	if !p.HasRunnerProvider() {
 		return nil, errors.New("component does not implement the runner-provider role")
 	}
 	input, err := lowerRunnerRequest(request)

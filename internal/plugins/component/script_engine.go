@@ -30,10 +30,13 @@ var (
 )
 
 // HasScriptEngine reports whether the component implements the snippet role.
-func (p *Plugin) HasScriptEngine() bool { return p.roles.script }
+func (p *Plugin) HasScriptEngine() bool { return p.scriptDescriptor != nil }
 
 // ScriptDescriptor returns transport-independent snippet engine metadata.
 func (p *Plugin) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	if p.scriptDescriptor == nil {
+		return analyzer.ScriptEngineDescriptor{}
+	}
 	return p.scriptDescriptor.Clone()
 }
 
@@ -46,13 +49,16 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 	if err != nil {
 		return err
 	}
-	p.scriptDescriptor = descriptor
-	return p.verifyScriptMetadata(staticMetadata)
+	if err := verifyScriptMetadata(staticMetadata, &descriptor); err != nil {
+		return err
+	}
+	p.scriptDescriptor = &descriptor
+	return nil
 }
 
 // ValidateConfig validates engine-specific JSON through the typed guest API.
 func (p *Plugin) ValidateConfig(ctx context.Context, config json.RawMessage) error {
-	if !p.roles.script {
+	if !p.HasScriptEngine() {
 		return errors.New("component does not implement the script-engine role")
 	}
 	options, err := scriptOptions(config)
@@ -94,7 +100,7 @@ func scriptOptions(config json.RawMessage) (string, error) {
 // Check analyzes a sanitized snippet. Findings and an incomplete-analysis error
 // remain independent; malformed findings are rejected before any are published.
 func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
-	if !p.roles.script {
+	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")
 	}
 	if request.Filename == "" || strings.ContainsRune(request.Filename, 0) ||
@@ -356,9 +362,9 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 	return d, nil
 }
 
-func (p *Plugin) verifyScriptMetadata(data []byte) error {
+func verifyScriptMetadata(data []byte, d *analyzer.ScriptEngineDescriptor) error {
 	if data == nil {
-		if len(p.scriptDescriptor.Shells) == 0 {
+		if len(d.Shells) == 0 {
 			return errors.New("script descriptor needs shell or static action-input selectors")
 		}
 		return nil
@@ -387,7 +393,6 @@ func (p *Plugin) verifyScriptMetadata(data []byte) error {
 	if err := jsonv2.Unmarshal(data, &declared); err != nil {
 		return fmt.Errorf("script engine metadata: %w", err)
 	}
-	d := p.scriptDescriptor
 	if declared.MetadataVersion != 1 || declared.Transport != "wasm-component" ||
 		declared.Interface != ScriptEngineInterface || declared.ContractSHA256 != scriptEngineContractDigest ||
 		declared.ID != d.ID || declared.PluginVersion != d.Version || declared.Name != d.Name ||
@@ -416,7 +421,7 @@ func (p *Plugin) verifyScriptMetadata(data []byte) error {
 		return errors.New("script descriptor needs shell or static action-input selectors")
 	}
 	// The host routes scripts using the artifact's static input selectors.
-	p.scriptDescriptor.ScriptInputs = slices.Clone(declared.Capabilities.ScriptInputs)
+	d.ScriptInputs = slices.Clone(declared.Capabilities.ScriptInputs)
 	return nil
 }
 

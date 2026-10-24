@@ -329,7 +329,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = p.verifyScriptMetadata(data)
+			err = verifyScriptMetadata(data, p.scriptDescriptor)
 			if (err == nil) != (key == "") {
 				t.Fatalf("metadata %q: %v", key, err)
 			}
@@ -342,7 +342,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := p.verifyScriptMetadata(data); (err == nil) != slices.Equal(shells, d.Shells) {
+			if err := verifyScriptMetadata(data, p.scriptDescriptor); (err == nil) != slices.Equal(shells, d.Shells) {
 				t.Fatalf("metadata shells=%v: %v", shells, err)
 			}
 		})

@@ -10,7 +10,7 @@ import (
 	"github.com/kjanat/wacogo"
 )
 
-func (p *Plugin) HasAnalyzer() bool { return p.roles.analyzer }
+func (p *Plugin) HasAnalyzer() bool { return p.descriptor != nil }
 
 func (p *Plugin) loadAnalyzer(ctx context.Context) error {
 	descriptor, err := p.describe(ctx)
@@ -23,19 +23,22 @@ func (p *Plugin) loadAnalyzer(ctx context.Context) error {
 	if err := validateSuppressionRuleName(descriptor.Name); err != nil {
 		return err
 	}
-	p.descriptor = descriptor
+	p.descriptor = &descriptor
 	return nil
 }
 
 // Descriptor returns the identity the plugin declared when it was loaded.
 func (p *Plugin) Descriptor() analyzer.Descriptor {
+	if p.descriptor == nil {
+		return analyzer.Descriptor{}
+	}
 	return analyzer.Descriptor{Descriptor: p.descriptor.Clone(), Requires: append([]analyzer.Fact(nil), p.descriptor.Requires...)}
 }
 
 // Analyze runs the plugin on one document in a fresh instance. A trap, an
 // exit, an exceeded limit or a refused call is returned as an error.
 func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
-	if !p.roles.analyzer {
+	if !p.HasAnalyzer() {
 		return nil, errors.New("component does not implement the analyzer role")
 	}
 	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
@@ -71,6 +74,6 @@ func (p *Plugin) describe(ctx context.Context) (analyzer.Descriptor, error) {
 	return descriptor, nil
 }
 
-func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) (results []wacogo.Val, err error) {
+func (p *Plugin) call(ctx context.Context, name string, args ...wacogo.Val) ([]wacogo.Val, error) {
 	return p.callInterface(ctx, AnalyzerInterface, name, args...)
 }
