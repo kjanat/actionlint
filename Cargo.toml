@@ -27,11 +27,11 @@ path       = "examples/plugins/pinned-actions.rs"
 test       = false
 
 [[example]]
-crate-type = ["cdylib"]
-name = "source-annotations"
-path = "examples/plugins/source-annotations.rs"
+crate-type        = ["cdylib"]
+name              = "source-annotations"
+path              = "examples/plugins/source-annotations.rs"
 required-features = ["source-annotations-fixture"]
-test = false
+test              = false
 
 [[example]]
 crate-type = ["cdylib"]
@@ -47,15 +47,15 @@ test       = false
 
 [dev-dependencies]
 actionlint-extension-api = { path = "crates/actionlint-extension-api" }
-serde                 = { version = "1", features = ["derive"] }
-serde_json            = "1"
-sha2                  = "0.10"
-wit-bindgen.workspace = true
+serde                    = { version = "1", features = ["derive"] }
+serde_json               = "1"
+sha2                     = "0.10"
+wit-bindgen.workspace    = true
 
 [features]
+action-input-fixture       = []
+ruff-fixture               = []
 source-annotations-fixture = ["actionlint-extension-api/source-annotations"]
-action-input-fixture = []
-ruff-fixture         = []
 
 [profile.wasm]
 inherits      = "release"

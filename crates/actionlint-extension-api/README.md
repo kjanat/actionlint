@@ -8,7 +8,7 @@ For development beside an actionlint checkout, use this plugin manifest:
 
 ```toml
 [package]
-name = "my-actionlint-extension"
+name    = "my-actionlint-extension"
 version = "0.1.0"
 edition = "2024"
 
