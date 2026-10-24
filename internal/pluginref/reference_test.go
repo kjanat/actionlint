@@ -128,3 +128,47 @@ func TestRegistryPreservesIPv6Zone(t *testing.T) {
 		}
 	}
 }
+
+// Equivalent directory spellings must produce one manifest and lock identity,
+// including paths whose names contain URL delimiters.
+func TestLocalRegistryNormalization(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "space # percent%", "catalogue")
+	u := url.URL{Scheme: "file", Path: filepath.ToSlash(directory)}
+	if !strings.HasPrefix(u.Path, "/") {
+		u.Path = "/" + u.Path
+	}
+	want := u.String() + "/"
+	for _, suffix := range []string{"", "/", "/./", "/discard/../", "/%2e/"} {
+		ref, err := New("Owner/Plugin", "v1", u.String()+suffix)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ref.Registry != want {
+			t.Fatalf("registry %q normalized to %q, want %q", suffix, ref.Registry, want)
+		}
+		got, err := LocalRegistryDirectory(ref.Registry)
+		if err != nil || got != directory {
+			t.Fatalf("directory changed: %q, %v", got, err)
+		}
+		normalized, err := ref.Normalize()
+		if err != nil || !normalized.Equal(ref) {
+			t.Fatalf("local reference changed on roundtrip: %+v, %v", normalized, err)
+		}
+	}
+}
+
+// Only local absolute directory URIs may opt into candidate installation.
+func TestLocalRegistryRejectsAuthorityAndAmbiguousPaths(t *testing.T) {
+	for _, value := range []string{
+		"", "catalogue", "file:", "file://", "file:catalogue", "file://catalogue", "file://localhost/catalogue",
+		"file://user:password@server/catalogue", "file:////server/share", "file:///%2fserver/share",
+		"file:///catalogue?", "file:///catalogue?version=1", "file:///catalogue#", "file:///catalogue#part",
+		"file:///catalogue%5cchild", "file:///catalogue%zz", "https://example.com/catalogue/",
+	} {
+		t.Run(value, func(t *testing.T) {
+			if directory, err := LocalRegistryDirectory(value); err == nil {
+				t.Fatalf("accepted %q as local directory %q", value, directory)
+			}
+		})
+	}
+}
