@@ -50,7 +50,7 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	} {
 		c := &cobra.Command{Use: item.use, Short: item.description, Args: item.args, RunE: a.capture(item.op)}
 		if item.op == operationPluginSearch || item.op == operationPluginVersions || item.op == operationPluginInstall || item.op == operationPluginUpdate || item.op == operationPluginRemove {
-			c.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "Registry catalogue URL (default "+pluginregistry.DefaultURL+")")
+			c.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+pluginregistry.DefaultURL+")")
 			annotateFlag(c.Flags(), "registry", "Registry")
 		}
 		if item.op != operationPluginSearch && item.op != operationPluginVersions {

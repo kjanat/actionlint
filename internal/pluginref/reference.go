@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -148,6 +150,14 @@ func New(name, version, registry string) (Reference, error) {
 		registry = DefaultRegistry
 	}
 	u, err := url.Parse(registry)
+	if err == nil && u.Scheme == "file" {
+		if _, err := LocalRegistryDirectory(registry); err != nil {
+			return Reference{}, err
+		}
+		u.Path = strings.TrimSuffix(path.Clean(u.Path), "/") + "/"
+		u.RawPath = ""
+		return Reference{Name: name, Version: version, Registry: u.String()}, nil
+	}
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil ||
 		u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" ||
 		strings.Contains(u.Path, "\\") || strings.Contains(registry, "#") {
@@ -161,6 +171,24 @@ func New(name, version, registry string) (Reference, error) {
 	u.Path = strings.TrimSuffix(path.Clean("/"+strings.TrimPrefix(u.Path, "/")), "/") + "/"
 	u.RawPath = ""
 	return Reference{Name: name, Version: version, Registry: u.String()}, nil
+}
+
+// LocalRegistryDirectory accepts an explicit absolute file URI. Local candidate
+// catalogues have no authenticated publisher and cannot substitute for HTTPS registries.
+func LocalRegistryDirectory(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "file" || u.Host != "" || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(raw, "#") || strings.Contains(u.Path, "\\") || strings.HasPrefix(u.Path, "//") {
+		return "", errors.New("local registry must be an absolute file URI without host, query or fragment")
+	}
+	name := u.Path
+	if runtime.GOOS == "windows" && len(name) >= 3 && name[0] == '/' && name[2] == ':' {
+		name = name[1:]
+	}
+	name = filepath.FromSlash(name)
+	if !filepath.IsAbs(name) {
+		return "", errors.New("local registry requires an absolute directory")
+	}
+	return filepath.Clean(name), nil
 }
 
 // String preserves the declared alias or full repository identity.

@@ -95,6 +95,26 @@ adds these defaults when `plugins` was omitted, respecting disabled checks and e
 All downloads must verify before the migrated config and lock are saved.
 See [configuration migration](config-migration.md) for preview and automatic migration behavior.
 
+### Try an unpublished candidate
+
+A local candidate catalogue installs packaged bytes before creating a release or registry submission:
+
+```sh
+actionlint plugin install owner/plugin@v1.2.3 --registry file:///absolute/path/to/candidate/
+actionlint check
+```
+
+On Windows, use `file:///C:/path/to/candidate/`. The registry's candidate exporter creates this directory
+from a packaged artifact. Installation creates the usual configuration and lockfile, verifies the artifact's
+digest and metadata, and imports it into the shared cache. The lock identifies the source as `candidate`;
+it makes no claim about publisher authentication or publication. Candidate catalogues are accepted only through
+an explicit local file URI. Their records and artifacts must stay within that directory.
+
+Checking uses the imported bytes even after the candidate directory is removed. A missing cache entry fails;
+`plugin sync` can restore it from the local catalogue. Use `plugin update owner/plugin` after rebuilding a candidate
+at the same version. Published versions still reject replacement. Run candidate checks in a temporary project
+to keep local paths out of a project's production configuration.
+
 ### Deprecated, withdrawn and revoked releases
 
 Registry status is separate from immutable release records. Deprecated versions remain installable

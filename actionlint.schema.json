@@ -8952,8 +8952,8 @@
                   },
                   "registry": {
                     "title": "registry",
-                    "description": "HTTPS catalogue directory URL. Omission uses the public actionlint registry.",
-                    "markdownDescription": "HTTPS catalogue directory URL. Omission uses the public actionlint registry.",
+                    "description": "HTTPS catalogue or absolute file URI for an unpublished local candidate. Omission uses the public actionlint registry.",
+                    "markdownDescription": "HTTPS catalogue or absolute file URI for an unpublished local candidate. Omission uses the public actionlint registry.",
                     "type": "string",
                     "minLength": 1
                   },

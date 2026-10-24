@@ -51,7 +51,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping := reflectMapping(struct {
 			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
 			Version  string `yaml:"version,omitempty" jsonschema:"minLength=1,description=Exact release tag or latest stable. Omission selects latest."`
-			Registry string `yaml:"registry,omitempty" jsonschema:"minLength=1,description=HTTPS catalogue directory URL. Omission uses the public actionlint registry."`
+			Registry string `yaml:"registry,omitempty" jsonschema:"minLength=1,description=HTTPS catalogue or absolute file URI for an unpublished local candidate. Omission uses the public actionlint registry."`
 		}{})
 		return &jsonschema.Schema{
 			Type: "array",

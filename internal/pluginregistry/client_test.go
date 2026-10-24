@@ -62,6 +62,8 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 		{"wrong owner", `"owner_id":5`, `"owner_id":6`, false},
 		{"wrong metadata ID", `"id":"no-sudo"`, `"id":"impostor"`, false},
 		{"unknown record", `"record_version":2`, `"record_version":3`, false},
+		{"remote candidate record", `"record_version":2`, `"record_version":2,"source":"candidate"`, false},
+		{"remote candidate catalogue", `"schema_version":1`, `"schema_version":1,"source":"candidate"`, true},
 		{"wrong artifact URL", `https://github.com/publisher/plugin/releases/`, `https://attacker.example/releases/`, false},
 		{"cross origin manifest", `"manifest":"plugins/`, `"manifest":"https://attacker.example/plugins/`, true},
 		{"path escape", `"manifest":"plugins/`, `"manifest":"../plugins/`, true},

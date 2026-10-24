@@ -1,6 +1,8 @@
 package pluginref
 
 import (
+	"net/url"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -87,8 +89,21 @@ func TestRegistry(t *testing.T) {
 	if ref.Registry != "https://example.com/catalog/" {
 		t.Fatalf("unexpected registry: %s", ref.Registry)
 	}
+	directory := t.TempDir()
+	local := url.URL{Scheme: "file", Path: filepath.ToSlash(directory)}
+	if !strings.HasPrefix(local.Path, "/") {
+		local.Path = "/" + local.Path
+	}
+	ref, err = New("owner/repo", "v1", local.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := LocalRegistryDirectory(ref.Registry); err != nil || got != directory {
+		t.Fatalf("local catalogue: %s, %v", got, err)
+	}
 	for _, registry := range []string{
-		"http://example.com/", "file:///catalog", "https://", "https://:443/", "https://user:secret@example.com/",
+		"http://example.com/", "https://", "https://:443/", "https://user:secret@example.com/",
+		"file://server/share", "file:////server/share", "file:relative", "file:///catalog?x=1", "file:///catalog#fragment",
 		"https://example.com/?x=1", "https://example.com/?", "https://example.com/#hash",
 		"https://example.com/#", "https://example.com/a%5Cb",
 	} {
