@@ -39,7 +39,6 @@ func TestSnapshotDoesNotBlockOnFIFO(t *testing.T) {
 		if err == nil {
 			_ = unix.Close(fd)
 		}
-		<-finished
-		t.Fatal("source read blocked opening a FIFO")
+		t.Fatalf("source read blocked opening a FIFO: %v", <-finished)
 	}
 }

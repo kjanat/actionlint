@@ -27,6 +27,8 @@ _module='actionlint.kjanat.dev/v2'
 # mise shims on the builder's PATH otherwise apply the repository's mise configs.
 _system_tools() {
 	export PATH="/usr/bin:${PATH}"
+	# Match the system go driver with its own compiler and standard library.
+	unset GOROOT
 	export MISE_IGNORED_CONFIG_PATHS="${srcdir}/actionlint${MISE_IGNORED_CONFIG_PATHS:+:${MISE_IGNORED_CONFIG_PATHS}}"
 }
 
