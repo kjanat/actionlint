@@ -49,7 +49,7 @@ func readCandidate[T *Catalog | *candidateManifest | *candidateRecord](ctx conte
 		return err
 	}
 	defer root.Close()
-	f, err := root.Open(name)
+	f, err := openCandidateFile(root, name)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (p Pin) importCandidate(ctx context.Context, options artifact.Options) erro
 		return err
 	}
 	defer root.Close()
-	f, err := root.Open(p.URL)
+	f, err := openCandidateFile(root, p.URL)
 	if err != nil {
 		return err
 	}

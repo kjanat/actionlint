@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 )
@@ -109,6 +111,17 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	}
 	if err := os.Remove(filepath.Join(cache, "actionlint", "artifacts", digest)); err != nil {
 		t.Fatal(err)
+	}
+	selected, err := (localapp.PluginSelection{}).SelectForCache(t.Context(), ".", application.Input{Kind: application.Files, Paths: []string{"workflow.yml"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := selected.CachePlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Directory != filepath.Join(cache, "actionlint", "artifacts") || len(plan.Artifacts) != 1 || plan.Artifacts[0] != digest {
+		t.Fatalf("candidate missing from restore plan: %+v", plan)
 	}
 	pluginCommandTest(t, 3, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
 	if len(network.Requests) != 0 {
