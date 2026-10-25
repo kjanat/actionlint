@@ -136,4 +136,4 @@ jobs:
         with:
           comment: "Applied fixes: ${{ steps.fixes.outputs.description }}. Please review the generated commit."
           commit-message: "chore: ${{ steps.fixes.outputs.description }}"
-          fail-fast: ${{ github.event_name == 'pull_request' }}
+          fail-fast: true # ${{ github.event_name == 'pull_request' }}
