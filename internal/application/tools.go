@@ -11,6 +11,10 @@ type ToolRequirements = workspace.ExternalToolRequirements
 
 // RequiredTools resolves configuration without parsing sources or loading runtimes.
 func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRequirements, error) {
+	options, err := ConfigureToolIntegrations(options)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := repoconfig.CompileIgnorePatterns(options.IgnorePatterns); err != nil {
 		return ToolRequirements{}, err
 	}

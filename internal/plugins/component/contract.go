@@ -36,6 +36,16 @@ func checkRoleContracts(data []byte, roles extensionRoleSet) error {
 			return fmt.Errorf("incompatible analyzer contract: %w", err)
 		}
 	}
+	if roles.toolIntegration {
+		if err := expectedToolIntegrationContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+			return fmt.Errorf("incompatible tool integration contract: %w", err)
+		}
+	}
+	if roles.templateEffects {
+		if err := expectedTemplateEffectsContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+			return fmt.Errorf("incompatible template effects contract: %w", err)
+		}
+	}
 	if roles.runner {
 		if err := expectedRunnerContract().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible runner contract: %w", err)

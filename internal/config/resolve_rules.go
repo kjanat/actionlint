@@ -100,11 +100,33 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) *
 	resolved := make(map[string]Level)
 	next.Lint.Rules.SetResolved(resolved)
 	descriptors := Rules()
+	replacements := map[string]bool{}
 	for _, descriptor := range registrations {
+		replaced := false
+		for i := range descriptors {
+			if descriptors[i].Name == descriptor.Name && descriptors[i].Group == "external" {
+				descriptors[i].Descriptor = descriptor
+				replacements[descriptor.Name] = true
+				replaced = true
+				break
+			}
+		}
+		if replaced {
+			continue
+		}
 		descriptors = append(descriptors, Rule{Descriptor: descriptor, Group: "plugins"})
 	}
 	for _, d := range descriptors {
-		setting := SettingFor(config, d, p, d.Group == "plugins")
+		setting := SettingFor(config, d, p, d.Group == "plugins" || replacements[d.Name])
+		if replacements[d.Name] && config != nil {
+			if explicit, ok := config.Lint.Rules.Plugins.Rules[d.Name]; ok && explicit.Level != "" && explicit.Level != "default" {
+				setting.Level = explicit.Level
+			}
+			// Global disabling remains authoritative over either configuration group.
+			if slices.Contains(config.Lint.Rules.Disable, d.Name) || config.Lint.Enabled != nil && !*config.Lint.Enabled {
+				setting.Level = "off"
+			}
+		}
 		resolved[d.Name] = setting.Level
 		if d.Configure != nil {
 			d.Configure(&next, setting)

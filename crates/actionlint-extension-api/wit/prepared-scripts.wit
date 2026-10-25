@@ -1,0 +1,33 @@
+package kjanat:actionlint@0.1.0;
+
+/// Shared preparation for shell analysis, scoped to supplied script references.
+/// Normative profile: ../schemas/shell-preparation-0.1.0.md.
+/// The host owns this transformation; guests must not repeat it or infer its
+/// results from the host version, package name, or diagnostic messages.
+interface prepared-scripts {
+    use source-annotations.{source-reference, position};
+    variant line {
+        script(u32),
+        comment(position),
+        startup,
+    }
+    record prepared {
+        /// Engine input, including attached directives and synthesized startup.
+        text: string,
+        /// Original script text with substitutions masked, before inserted lines.
+        sanitized: string,
+        /// Engine dialect override; none leaves selection to source directives.
+        dialect: option<string>,
+        shell: string,
+        startup: string,
+        /// One entry per physical input line; script indices refer to the raw
+        /// input script and comment positions to its declaring document.
+        lines: list<line>,
+        /// ShellCheck diagnostic numbers excluded by the preparation profile.
+        excluded: list<u32>,
+    }
+    /// None denotes a script unsupported by this preparation profile. References
+    /// must belong to this analyze call; unknown references return an error.
+    /// Line numbers and positions are one-based Unicode character coordinates.
+    prepare: func(reference: source-reference, dialect: option<string>) -> result<option<prepared>, string>;
+}

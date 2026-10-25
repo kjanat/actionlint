@@ -65,7 +65,9 @@ type Input struct {
 	// Files grants read-only filesystems for this call. Nil grants no file access.
 	// Mount paths are absolute guest paths; filesystem directories must implement
 	// descriptor-relative read operations when used by a component host.
-	Files []FileSystem
+	Files         []FileSystem
+	SourceRoots   []SourceRoot
+	PrepareScript ScriptPreparer
 }
 
 // FileSystem binds a caller-owned read-only filesystem to a guest path.

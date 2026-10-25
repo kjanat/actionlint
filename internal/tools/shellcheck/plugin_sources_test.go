@@ -2,7 +2,6 @@ package shellcheck
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -37,7 +36,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	var inputs []string
 	reader := fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
 	script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, AnalysisDir: root, Reader: reader}, Execution: tools.Execution{Directory: root, DirectoryKnown: true}, Key: &workflowlang.Pos{Line: 6}, Value: &workflowlang.Pos{Line: 6}}
-	sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script)
+	sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +89,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	if err := os.WriteFile(file, []byte("VALUE=changed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := (documentPluginRunner{}).sourceFiles(t.Context(), script)
+	fresh, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +131,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			var inputs []string
 			reader := fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
 			script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: reader}, Execution: tools.Execution{Directory: tc.directory, DirectoryKnown: true}, Key: &workflowlang.Pos{Line: 1}, Value: &workflowlang.Pos{Line: 1}}
-			sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script)
+			sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -144,15 +143,11 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			if input.Scripts[0].Runtime.Directory != "/sources/2" || len(input.Files) != 2 {
 				t.Fatalf("working directory not granted: %s", input.Scripts[0].Runtime.Directory)
 			}
-			var options documentPluginOptions
-			if err := json.Unmarshal(input.Options, &options); err != nil {
-				t.Fatal(err)
-			}
 			for _, host := range []string{tc.grant, resolved} {
-				if !slices.Contains(options.SourceRoots, pluginSourceRoot{Host: filepath.ToSlash(host), Guest: "/sources/2"}) {
-					t.Fatalf("source root missing: %s from %+v", host, options.SourceRoots)
+				if !slices.Contains(input.SourceRoots, analyzer.SourceRoot{Host: filepath.ToSlash(host), Guest: "/sources/2"}) {
+					t.Fatalf("source root missing: %s from %+v", host, input.SourceRoots)
 				}
-				for _, mapping := range options.SourceRoots {
+				for _, mapping := range input.SourceRoots {
 					if strings.HasPrefix(filepath.ToSlash(host)+"/shared.sh", mapping.Host+"/") {
 						if mapping.Guest != "/sources/2" {
 							t.Fatalf("source alias shadowed: %s by %+v", host, mapping)
@@ -190,7 +185,7 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: fsread.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: outside, DirectoryKnown: true}}
-	if _, err := (documentPluginRunner{}).sourceFiles(context.Background(), script); err == nil || !strings.Contains(err.Error(), "outside its source grants") {
+	if _, err := (documentPluginRunner{}).sourceFiles(context.Background(), script, requestedSourceGrants(script.Config)); err == nil || !strings.Contains(err.Error(), "outside its source grants") {
 		t.Fatalf("outside cwd granted: %v", err)
 	}
 	cfg, err = config.Parse([]byte(fmt.Sprintf("tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside))))
@@ -198,12 +193,92 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	script.Config = cfg
-	sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script)
+	sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer sources.close()
 	if sources.directory != "/sources/0" {
 		t.Fatalf("explicit directory not mapped: %s", sources.directory)
+	}
+}
+
+func requestedSourceGrants(cfg *config.Config) []analyzer.ToolResourceRequest {
+	resources := []analyzer.ToolResourceRequest{{Kind: analyzer.ToolWorkspace}}
+	for _, path := range cfg.Tools.Shellcheck.Config.Inline().SourcePath {
+		resources = append(resources, analyzer.ToolResourceRequest{Kind: analyzer.ToolDirectory, Path: path})
+	}
+	return resources
+}
+
+func TestPluginWorkingDirectoryUsesMostSpecificGrant(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "nested")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Parse([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: fsread.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: nested, DirectoryKnown: true}}
+	files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, []analyzer.ToolResourceRequest{{Kind: analyzer.ToolWorkspace}, {Kind: analyzer.ToolDirectory, Path: nested}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer files.close()
+	if files.directory != "/sources/0" {
+		t.Fatalf("directory=%s", files.directory)
+	}
+}
+
+func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
+	workspace, outside := t.TempDir(), t.TempDir()
+	nested := filepath.Join(workspace, "nested")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	escape := filepath.Join(workspace, "escape")
+	if err := os.Symlink(outside, escape); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, config, requested string
+		allowed                 bool
+	}{
+		{"no host permission", "{}", workspace, false},
+		{"explicit denial", "{external-sources: false}", workspace, false},
+		{"arbitrary external directory", "{external-sources: true}", outside, false},
+		{"symlink escape", "{external-sources: true}", escape, false},
+		{"nested directory", "{external-sources: true}", nested, true},
+		{"explicit external root", "{source-path: [" + strconv.Quote(outside) + "]}", outside, true},
+		{"explicit symlink root", "{source-path: [" + strconv.Quote(escape) + "]}", escape, true},
+		{"denial overrides configured paths", "{external-sources: false, source-path: [" + strconv.Quote(outside) + "]}", outside, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := config.Parse([]byte("tools: {shellcheck: {config: " + tc.config + "}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var recorded []string
+			script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: workspace, Reader: fsread.New(t.Context(), nil, func(name string) { recorded = append(recorded, name) })}, Execution: tools.Execution{Directory: workspace, DirectoryKnown: true}}
+			resources := []analyzer.ToolResourceRequest{{Kind: analyzer.ToolWorkspace}, {Kind: analyzer.ToolDirectory, Path: tc.requested}}
+			files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, resources)
+			if !tc.allowed {
+				if err == nil || files != nil {
+					t.Fatalf("unauthorized grant accepted: files=%v err=%v", files, err)
+				}
+				if slices.Contains(recorded, outside) {
+					t.Fatalf("unauthorized dependency recorded: %v", recorded)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := files.close(); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }

@@ -177,6 +177,12 @@ func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]to
 			failures = errors.Join(failures, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, r.registration.Descriptor.Name))
 			continue
 		}
+		// Legacy metadata does not advertise routes. Keep the configured native
+		// adapter's selectors instead of treating absent capability data as none.
+		if len(descriptor.Shells)+len(descriptor.ScriptInputs) == 0 {
+			nativeScripts[cfg] = nil
+			continue
+		}
 		shells, err := shellCatalogue(r.registration.Descriptor, descriptor.Shells)
 		if err != nil {
 			failures = errors.Join(failures, err)

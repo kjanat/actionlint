@@ -31,6 +31,7 @@ func Decode(data []byte) ([]Diagnostic, error) {
 		if d.Code == "" {
 			d.Code = d.Name
 		}
+		d.TemplateEffect = nativeTemplateEffect(d.Code)
 		if d.Code == "" || d.Message == "" || d.Location.Row < 1 || d.Location.Column < 1 {
 			return nil, fmt.Errorf("invalid Ruff diagnostic: %+v", d)
 		}

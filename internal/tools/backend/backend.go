@@ -51,7 +51,7 @@ func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer
 		inputs[input] = struct{}{}
 	}
 	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0, Build: func(c tools.Context) (tools.Runner, error) {
-		return runner{descriptor: descriptor.Rule, shells: selectors, inputs: inputs, backend: backend, enabled: enabled, context: c, prepareInput: prepareInput}, nil
+		return runner{descriptor: descriptor.Rule, templateContract: descriptor.TemplateContract, shells: selectors, inputs: inputs, backend: backend, enabled: enabled, context: c, prepareInput: prepareInput}, nil
 	}}, nil
 }
 
@@ -70,13 +70,14 @@ func shellCatalogue(descriptor rule.Descriptor, shells []string) (map[string]str
 }
 
 type runner struct {
-	descriptor   rule.Descriptor
-	shells       map[string]struct{}
-	inputs       map[analyzer.ScriptInput]struct{}
-	backend      analyzer.ScriptBackend
-	enabled      func(tools.Context) bool
-	context      tools.Context
-	prepareInput func(tools.Script) (tools.PreparedInput, error)
+	templateContract string
+	descriptor       rule.Descriptor
+	shells           map[string]struct{}
+	inputs           map[analyzer.ScriptInput]struct{}
+	backend          analyzer.ScriptBackend
+	enabled          func(tools.Context) bool
+	context          tools.Context
+	prepareInput     func(tools.Script) (tools.PreparedInput, error)
 }
 
 func (r runner) scriptEnabled(cfg *config.Config) bool {
@@ -140,6 +141,10 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if prepared.Skip {
 			continue
 		}
+		if prepared.TemplateContract != "" && prepared.TemplateContract != r.templateContract {
+			failures = errors.Join(failures, fmt.Errorf("tool %s requires template contract %q; backend declares %q", r.descriptor.Name, prepared.TemplateContract, r.templateContract))
+			continue
+		}
 		if err := analyzerhost.ValidateOptions(r.descriptor.OptionsSchema, options); err != nil {
 			failures = errors.Join(failures, fmt.Errorf("tool %s options: %w", r.descriptor.Name, err))
 			continue
@@ -157,6 +162,11 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		diagnostics, err := r.backend.Check(ctx, request)
 		failures = errors.Join(failures, err)
 		for _, d := range diagnostics {
+			if r.templateContract == analyzer.TemplateEffectsContract && !d.TemplateEffect.Valid() ||
+				r.templateContract != analyzer.TemplateEffectsContract && d.TemplateEffect != "" {
+				failures = errors.Join(failures, fmt.Errorf("tool %s returned an undeclared template effect %q", r.descriptor.Name, d.TemplateEffect))
+				continue
+			}
 			if d.Filename != "" && d.Filename != request.Filename {
 				failures = errors.Join(failures, fmt.Errorf("tool %s returned an unrelated source %q", r.descriptor.Name, d.Filename))
 				continue

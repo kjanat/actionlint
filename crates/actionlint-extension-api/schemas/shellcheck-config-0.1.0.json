@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kjanat:actionlint/shellcheck-config@0.1.0",
+  "title": "ShellCheck integration configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "shell": { "type": "string", "enum": ["bash", "sh", "dash", "ksh", "busybox"] },
+    "disable": { "type": "array", "items": { "type": "string", "pattern": "^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$" } },
+    "enable": { "type": "array", "items": { "type": "string" } },
+    "extended-analysis": { "type": "boolean" },
+    "external-sources": { "type": "boolean" },
+    "source-path": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "rc-file": { "type": "string", "minLength": 1 }
+  }
+}

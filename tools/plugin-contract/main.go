@@ -35,6 +35,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if err := generateRoleContract("tool-integration", "tool-integration", "ToolIntegrationInterface", "toolIntegrationContractDigest", "expectedToolIntegrationContract"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := generateRoleContract("template-effects", "template-effects", "TemplateEffectsInterface", "templateEffectsContractDigest", "expectedTemplateEffectsContract"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if *bindings {
 		if err := generateBindings(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -150,6 +158,9 @@ func (g *generator) value(value wit.Type) (string, error) {
 	case wit.String:
 		return "wp.ValTypeDesc{IsPrimitive:true, Primitive:wp.PrimString}", nil
 	case *wit.TypeDef:
+		if alias, ok := value.Kind.(*wit.TypeDef); ok {
+			return g.value(alias)
+		}
 		if name, ok := g.types[value]; ok {
 			return name, nil
 		}

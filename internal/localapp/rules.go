@@ -1,6 +1,8 @@
 package localapp
 
 import (
+	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"context"
 	"errors"
 	"io"
@@ -23,16 +25,15 @@ func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Des
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
+	if _, err := plugins.configureManaged(application.Options{Tools: (adapters.Options{}).Registrations(), Analyzers: plugins.registrations()}); err != nil {
+		return nil, err
+	}
 	var extensions []rule.Descriptor
 	for _, plugin := range plugins.plugins {
 		if !plugin.HasAnalyzer() {
 			continue
 		}
-		managed := false
-		for path := range sources.managed {
-			managed = managed || plugins.analyzerSources[path] == plugin
-		}
-		if managed {
+		if plugin.ToolIntegration() != nil {
 			continue
 		}
 		extensions = append(extensions, plugin.Descriptor().Descriptor)
@@ -40,6 +41,15 @@ func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Des
 	result, err = rulecatalog.Combine(extensions...)
 	if err != nil {
 		return nil, err
+	}
+	for _, plugin := range plugins.plugins {
+		if integration := plugin.ToolIntegration(); integration != nil {
+			for i := range result {
+				if result[i].Name == integration.Tool {
+					result[i] = plugin.Descriptor().Descriptor
+				}
+			}
+		}
 	}
 	seen := make(map[string]bool)
 	for _, engine := range plugins.engines {
@@ -67,11 +77,5 @@ func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Des
 }
 
 func engineDescriptor(metadata core.Metadata) rule.Descriptor {
-	descriptor := rule.Descriptor{Name: metadata.Engine.Name, Description: metadata.Name, Provider: metadata.ID}
-	for _, candidate := range metadata.Rules {
-		if candidate.Name == descriptor.Name {
-			return candidate.Clone()
-		}
-	}
-	return descriptor
+	return metadata.ScriptDescriptor().Rule
 }

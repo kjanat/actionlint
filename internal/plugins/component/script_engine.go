@@ -14,6 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/wacogo"
 )
@@ -53,6 +54,38 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 		return err
 	}
 	p.scriptDescriptor = &descriptor
+	return nil
+}
+
+func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte) error {
+	value, err := p.callInterface(ctx, analyzer.TemplateEffectsContract, "contract")
+	if err != nil {
+		return err
+	}
+	contract, ok := value.(wacogo.ValString)
+	if !ok || string(contract) != analyzer.TemplateEffectsContract {
+		return errors.New("unsupported template effects contract")
+	}
+	if err := verifyTemplateMetadata(staticMetadata, string(contract)); err != nil {
+		return err
+	}
+	p.scriptDescriptor.TemplateContract = string(contract)
+	return nil
+}
+
+func verifyTemplateMetadata(data []byte, contract string) error {
+	if len(data) == 0 {
+		return nil
+	}
+	var declared struct {
+		TemplateContract string `json:"template_contract"`
+	}
+	if err := jsonv2.Unmarshal(data, &declared); err != nil {
+		return err
+	}
+	if declared.TemplateContract != contract {
+		return errors.New("static template contract disagrees with exported contract")
+	}
 	return nil
 }
 
@@ -116,7 +149,11 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 	}
 	input := wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),
 		field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
-	value, err := p.callInterface(ctx, ScriptEngineInterface, "check", input)
+	contract := ScriptEngineInterface
+	if p.scriptDescriptor.TemplateContract != "" {
+		contract = analyzer.TemplateEffectsContract
+	}
+	value, err := p.callInterface(ctx, contract, "check", input)
 	if err != nil {
 		return nil, err
 	}
@@ -146,10 +183,28 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 	starts := scriptLineStarts(request.Source)
 	diagnostics := make([]analyzer.ScriptDiagnostic, 0, list.Len())
 	for i := range list.Len() {
-		finding, err := liftScriptDiagnostic(list.Get(i))
+		value := list.Get(i)
+		var effect analyzer.ScriptTemplateEffect
+		if p.scriptDescriptor.TemplateContract != "" {
+			wrapped, err := liftRecord(value, "template finding")
+			if err != nil {
+				return nil, err
+			}
+			value = wrapped.Field("diagnostic")
+			tag, err := liftRunnerEnum(wrapped.Field("effect"), template_effects_effect)
+			if err != nil {
+				return nil, err
+			}
+			effect = analyzer.ScriptTemplateEffect(tag)
+			if !effect.Valid() {
+				return nil, errors.New("unknown template effect")
+			}
+		}
+		finding, err := liftScriptDiagnostic(value)
 		if err != nil {
 			return nil, err
 		}
+		finding.TemplateEffect = effect
 		for _, text := range []string{finding.Filename, finding.Code, finding.Name, finding.Message, finding.URL} {
 			resultBytes += uint64(len(text))
 		}
@@ -191,26 +246,11 @@ func scriptLineWidths(source string) []int {
 }
 
 func scriptLineStarts(source string) []analyzer.ScriptPosition {
-	position := analyzer.ScriptPosition{Row: 1, Column: 1}
-	starts := []analyzer.ScriptPosition{position}
-	for i, character := range source {
-		if character == '\n' {
-			position.Row++
-			position.Column = 1
-			starts = append(starts, position)
-		} else {
-			position.Column++
-			if character == '\r' && (i+1 == len(source) || source[i+1] != '\n') {
-				starts = append(starts, position)
-			}
-		}
-	}
-	return starts
+	return scriptcoords.Starts(source)
 }
 
 func scriptSourcePosition(starts []analyzer.ScriptPosition, position analyzer.ScriptPosition) analyzer.ScriptPosition {
-	start := starts[position.Row-1]
-	return analyzer.ScriptPosition{Row: start.Row, Column: start.Column + position.Column - 1}
+	return scriptcoords.SourcePosition(starts, position)
 }
 
 func validScriptPosition(lines []int, position analyzer.ScriptPosition) bool {
@@ -376,7 +416,6 @@ func verifyScriptMetadata(data []byte, d *analyzer.ScriptEngineDescriptor) error
 		PluginVersion   string            `json:"plugin_version"`
 		Transport       string            `json:"transport"`
 		Interface       string            `json:"interface"`
-		ContractSHA256  string            `json:"contract_sha256"`
 		Rules           []rule.Descriptor `json:"rules"`
 		ConfigSchema    json.RawMessage   `json:"config_schema"`
 		Engine          struct {
@@ -394,7 +433,7 @@ func verifyScriptMetadata(data []byte, d *analyzer.ScriptEngineDescriptor) error
 		return fmt.Errorf("script engine metadata: %w", err)
 	}
 	if declared.MetadataVersion != 1 || declared.Transport != "wasm-component" ||
-		declared.Interface != ScriptEngineInterface || declared.ContractSHA256 != scriptEngineContractDigest ||
+		declared.Interface != ScriptEngineInterface ||
 		declared.ID != d.ID || declared.PluginVersion != d.Version || declared.Name != d.Name ||
 		declared.Engine.Name != d.Engine || declared.Engine.Version != d.EngineVersion ||
 		!slices.Equal(declared.Capabilities.ScriptShells, d.Shells) ||

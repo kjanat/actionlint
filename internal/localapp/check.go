@@ -9,7 +9,6 @@ import (
 	"io"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
 
@@ -27,8 +26,7 @@ func Check(ctx context.Context, options application.Options, input application.I
 	return CheckSources(ctx, options, input, PluginSources{Paths: paths})
 }
 
-// CheckSources preserves declared registry identities when choosing managed
-// tool replacements. Direct URLs and explicit files remain standalone analyzers.
+// CheckSources selects tool integrations from their exported WIT contracts.
 func CheckSources(ctx context.Context, options application.Options, input application.Input, sources PluginSources) (result *application.Result, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -51,7 +49,7 @@ func CheckSources(ctx context.Context, options application.Options, input applic
 	if err != nil {
 		return nil, err
 	}
-	options, err = plugins.configureManaged(options, sources.managed)
+	options, err = plugins.configureManaged(options)
 	if err != nil {
 		return nil, err
 	}
@@ -79,43 +77,23 @@ func RequiredToolsSources(ctx context.Context, options application.Options, path
 	if err != nil {
 		return nil, err
 	}
-	options, err = loaded.configureManaged(options, sources.managed)
+	options, err = loaded.configureManaged(options)
 	if err != nil {
 		return nil, err
 	}
 	return application.RequiredTools(ctx, options, paths)
 }
 
-func (l *loadedPlugins) configureManaged(options application.Options, managed map[string]string) (application.Options, error) {
-	options.Tools = slices.Clone(options.Tools)
-	for path, tool := range managed {
-		guest := l.analyzerSources[path]
-		if guest == nil {
-			return options, &PluginLoadError{fmt.Errorf("managed %s plugin does not export a document analyzer", tool)}
-		}
-		found := false
-		for i, registration := range options.Tools {
-			if registration.Descriptor.Name != tool {
-				continue
-			}
-			if registration.WithAnalyzer == nil {
-				return options, &PluginLoadError{fmt.Errorf("tool %q cannot use a document analyzer", tool)}
-			}
-			next, err := registration.WithAnalyzer(guest)
-			if err != nil {
-				return options, &PluginLoadError{err}
-			}
-			options.Tools[i], found = backend.Configure(next), true
-			break
-		}
-		if !found {
-			return options, &PluginLoadError{fmt.Errorf("managed plugin requires tool %q", tool)}
-		}
-		options.Analyzers = slices.DeleteFunc(slices.Clone(options.Analyzers), func(registration analyzer.Registration) bool {
-			return registration.Analyzer == guest
-		})
+func (l *loadedPlugins) configureManaged(options application.Options) (application.Options, error) {
+	occupied := make([]string, 0, len(l.engines))
+	for _, engine := range l.engines {
+		occupied = append(occupied, engine.descriptor.Engine)
 	}
-	return options, nil
+	configured, err := application.ConfigureToolIntegrations(options, occupied...)
+	if err != nil {
+		return options, &PluginLoadError{err}
+	}
+	return configured, nil
 }
 
 func (l *loadedPlugins) configure(options application.Options) (application.Options, error) {

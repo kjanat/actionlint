@@ -116,6 +116,9 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !valid {
 		return nil
 	}
+	if c.backend != nil && strings.Contains(script, "${{") && backendTemplateContract(c.backend) != analyzer.TemplateEffectsContract {
+		return fmt.Errorf("ruff expression masking requires template contract %q", analyzer.TemplateEffectsContract)
+	}
 	if c.beforeCheck != nil {
 		if available, err := c.beforeCheck(); err != nil || !available {
 			return err
@@ -149,6 +152,11 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 				diagnostic.Code = diagnostic.Name
 			}
 			if c.backend != nil {
+				contract := backendTemplateContract(c.backend)
+				if contract == analyzer.TemplateEffectsContract && !diagnostic.TemplateEffect.Valid() ||
+					contract != analyzer.TemplateEffectsContract && diagnostic.TemplateEffect != "" {
+					return fmt.Errorf("ruff backend returned undeclared template effect %q", diagnostic.TemplateEffect)
+				}
 				if diagnostic.Filename != stdinFilename || diagnostic.Code == "" || diagnostic.Message == "" || diagnostic.Location.Row < 1 || diagnostic.Location.Column < 1 {
 					return fmt.Errorf("invalid backend diagnostic for %s: %+v", stdinFilename, diagnostic)
 				}
@@ -327,19 +335,15 @@ func pythonShellTarget(shell string) string {
 }
 
 func arguments(config Config) []string {
-	target := config.TargetVersion
-	if target == "" {
-		target = "py314"
-	}
 	selectRules, ignoreRules := config.Select, config.Ignore
 	if selectRules != nil && len(selectRules) == 0 {
 		// An empty --select is invalid. Equal-specificity ALL selectors disable
 		// lint codes without suppressing Python syntax errors.
 		selectRules, ignoreRules = []string{"ALL"}, []string{"ALL"}
 	}
-	args := []string{"check", "--isolated", "--target-version=" + target, "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
-	if config.Native["target-version"] != nil {
-		args = append(args[:2], args[3:]...)
+	args := []string{"check", "--isolated", "--ignore-noqa", "--no-fix", "--no-cache", "--output-format", "json", "--stdin-filename", stdinFilename, "--extension", "py:python"}
+	if config.TargetVersion != "" && config.Native["target-version"] == nil {
+		args = append(args, "--target-version="+config.TargetVersion)
 	}
 	if selectRules != nil {
 		args = append(args, "--select="+strings.Join(selectRules, ","))
@@ -367,12 +371,12 @@ type templateMasks struct {
 }
 
 func (m *templateMasks) accept(d Diagnostic) bool {
-	if d.Code == "E501" && m.lines[d.Location.Row] {
+	if d.TemplateEffect == analyzer.TemplateEffectLineLength && m.lines[d.Location.Row] {
 		return false
 	}
 	// Opaque values, quoted annotations and exports may hide references.
 	// Comment-only templates add no masks; unrelated checks still apply.
-	if len(m.identifiers) > 0 && requiresCompleteReferences(d.Code) {
+	if len(m.identifiers) > 0 && d.TemplateEffect == analyzer.TemplateEffectCompleteReferences {
 		return false
 	}
 	if m.dynamicQuotedValue(d) {
@@ -380,41 +384,32 @@ func (m *templateMasks) accept(d Diagnostic) bool {
 	}
 	// A mask can manufacture undefined-name and useless-expression
 	// findings. Only its exact identifier range is excluded.
-	if width, ok := m.identifiers[d.Location]; ok && (d.Code == "F821" || d.Code == "B018") &&
+	if width, ok := m.identifiers[d.Location]; ok && d.TemplateEffect == analyzer.TemplateEffectOpaqueName &&
 		d.EndLocation == (Position{Row: d.Location.Row, Column: d.Location.Column + width}) {
 		return false
 	}
 	// UP034 can identify the wrapper added around an opaque value.
 	// Source parentheses extend outside this exact generated range.
-	if end, ok := m.parentheses[d.Location]; ok && d.Code == "UP034" && d.EndLocation == end {
+	if end, ok := m.parentheses[d.Location]; ok && d.TemplateEffect == analyzer.TemplateEffectOpaqueParentheses && d.EndLocation == end {
 		return false
 	}
 	return true
 }
 
-func requiresCompleteReferences(code string) bool {
-	switch code {
-	case "F401", "F811", "F841", "F842", "ARG001", "ARG002", "ARG003", "ARG004", "ARG005", "B007":
-		return true
-	default:
-		return false
-	}
-}
-
 func (m *templateMasks) dynamicQuotedValue(d Diagnostic) bool {
 	// Filter content-dependent findings only when their range contains a quoted mask.
-	contents := dynamicStringContentsRule(d.Code)
-	summary := d.Code == "D400" || d.Code == "D415"
-	conversion := d.Code == "F509" && strings.HasSuffix(d.Message, "`(`")
-	incompleteConversion := d.Code == "F501"
-	if !contents && !summary && !conversion && !incompleteConversion && d.Code != "F822" {
+	contents := d.TemplateEffect == analyzer.TemplateEffectStringContents
+	summary := d.TemplateEffect == analyzer.TemplateEffectDocstringSummary
+	export := d.TemplateEffect == analyzer.TemplateEffectExportedName
+	conversion := d.TemplateEffect == analyzer.TemplateEffectPercentConversion
+	if !contents && !summary && !export && !conversion {
 		return false
 	}
 	for start, name := range m.quoted {
 		end := Position{Row: start.Row, Column: start.Column + len(name)}
 		if (d.Location.Row < start.Row || d.Location.Row == start.Row && d.Location.Column <= start.Column) &&
 			(d.EndLocation.Row > end.Row || d.EndLocation.Row == end.Row && d.EndLocation.Column >= end.Column) &&
-			(contents || summary && m.inFirstParagraph(d.Location.Row, start.Row) || (conversion || incompleteConversion) && m.percentConversions[start] || d.Code == "F822" && strings.Contains(d.Message, name)) {
+			(contents || summary && m.inFirstParagraph(d.Location.Row, start.Row) || export || conversion && m.percentConversions[start]) {
 			return true
 		}
 	}
@@ -424,15 +419,6 @@ func (m *templateMasks) dynamicQuotedValue(d Diagnostic) bool {
 // Format-field parsing and argument consistency depend on the complete string.
 // Percent conversion characters and docstring layout are handled separately
 // so static mistakes surrounding a template remain visible.
-func dynamicStringContentsRule(code string) bool {
-	switch code {
-	case "F502", "F503", "F504", "F505", "F506", "F507", "F508", "F521", "F522", "F523", "F524", "F525", "F541":
-		return true
-	default:
-		return false
-	}
-}
-
 func (m *templateMasks) inFirstParagraph(first, line int) bool {
 	for row := first + 1; row < line; row++ {
 		if row <= len(m.sourceLines) && strings.TrimSpace(m.sourceLines[row-1]) == "" {
@@ -604,6 +590,12 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 				}
 			}
 			runes[0], runes[len(runes)-1] = '(', ')'
+			// A quoted mask in a percent conversion slot must be a valid
+			// conversion itself. This prevents a manufactured F509 without
+			// interpreting Ruff's human-readable diagnostic message.
+			if !inCode && state.quote != 0 && templateProvidesPercentConversion(src[:start]) {
+				runes[0] = 's'
+			}
 			var name string
 			for {
 				name = "_" + strconv.FormatUint(nextName, 36)

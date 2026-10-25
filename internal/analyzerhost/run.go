@@ -48,6 +48,7 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 			}
 			supplied.Dependencies = slices.Clone(input.Dependencies)
 			supplied.Files = slices.Clone(input.Files)
+			supplied.SourceRoots = slices.Clone(input.SourceRoots)
 			supplied.Mappings = slices.Clone(input.Mappings)
 			for i := range supplied.Mappings {
 				supplied.Mappings[i].Entries = slices.Clone(supplied.Mappings[i].Entries)

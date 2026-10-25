@@ -1,5 +1,5 @@
 // Package core runs core WebAssembly script engines that follow the
-// actionlint-plugin-ruff JSON ABI, version 1.
+// actionlint core JSON memory ABI, version 1, with versioned operations.
 package core
 
 import (
@@ -19,6 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/plugins/wasmbudget"
+	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/wacogo"
 	"github.com/tetratelabs/wazero"
@@ -76,17 +77,18 @@ type Interface struct {
 
 // Metadata is the discovery object an engine returns from its metadata export.
 type Metadata struct {
-	Rules           []rule.Descriptor      `json:"rules"`
-	MetadataVersion int                    `json:"metadata_version"`
-	ABIVersion      int                    `json:"abi_version"`
-	Transport       string                 `json:"transport"`
-	ID              string                 `json:"id"`
-	Name            string                 `json:"name"`
-	PluginVersion   string                 `json:"plugin_version"`
-	Engine          EngineVersion          `json:"engine"`
-	Interfaces      map[string][]Interface `json:"interfaces"`
-	Capabilities    Capabilities           `json:"capabilities"`
-	ConfigSchema    json.RawMessage        `json:"config_schema"`
+	Rules            []rule.Descriptor      `json:"rules"`
+	MetadataVersion  int                    `json:"metadata_version"`
+	ABIVersion       int                    `json:"abi_version"`
+	Transport        string                 `json:"transport"`
+	ID               string                 `json:"id"`
+	Name             string                 `json:"name"`
+	PluginVersion    string                 `json:"plugin_version"`
+	Engine           EngineVersion          `json:"engine"`
+	Interfaces       map[string][]Interface `json:"interfaces"`
+	Capabilities     Capabilities           `json:"capabilities"`
+	ConfigSchema     json.RawMessage        `json:"config_schema"`
+	TemplateContract string                 `json:"template_contract,omitempty"`
 }
 
 // EngineVersion identifies the linked analysis engine.
@@ -315,6 +317,9 @@ func (e *Engine) negotiate(raw []byte) error {
 	if err := analyzer.ValidateScriptInputs(metadata.Capabilities.ScriptInputs); err != nil {
 		return fmt.Errorf("metadata input selectors: %w", err)
 	}
+	if metadata.TemplateContract != "" && len(metadata.Capabilities.ScriptShells)+len(metadata.Capabilities.ScriptInputs) == 0 {
+		return errors.New("template-aware engines must declare shell or action-input routes")
+	}
 	for i, shell := range metadata.Capabilities.ScriptShells {
 		// Legacy core metadata accepted executable casing and Windows suffixes.
 		metadata.Capabilities.ScriptShells[i] = strings.TrimSuffix(strings.ToLower(shell), ".exe")
@@ -325,7 +330,14 @@ func (e *Engine) negotiate(raw []byte) error {
 	exports := e.compiled.ExportedFunctions()
 	resolve := func(operation string) (string, error) {
 		for _, candidate := range metadata.Interfaces[operation] {
-			if candidate.Version != 1 {
+			if operation == "check" && metadata.TemplateContract != "" {
+				if metadata.TemplateContract != analyzer.TemplateEffectsContract {
+					return "", errors.New("unsupported template effects contract")
+				}
+				if candidate.Version != 2 {
+					continue
+				}
+			} else if candidate.Version != 1 {
 				continue
 			}
 			if candidate.Export == "" {
@@ -344,6 +356,9 @@ func (e *Engine) negotiate(raw []byte) error {
 		return err
 	}
 	if check == "" {
+		if metadata.TemplateContract != "" {
+			return errors.New("metadata advertises no check version compatible with its template contract")
+		}
 		return errors.New("metadata advertises no check version this host supports (version 1)")
 	}
 	validate, err := resolve("validate_config")
@@ -380,6 +395,24 @@ func (e *Engine) Metadata() Metadata {
 	return metadata
 }
 
+// ScriptDescriptor exposes negotiated capabilities to every host entrypoint.
+func (e *Engine) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	return e.Metadata().ScriptDescriptor()
+}
+
+func (m Metadata) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
+	descriptor := rule.Descriptor{Name: m.Engine.Name, Description: m.Name, Provider: m.ID}
+	for _, candidate := range m.Rules {
+		if candidate.Name == m.Engine.Name {
+			descriptor = candidate.Clone()
+			break
+		}
+	}
+	return analyzer.ScriptEngineDescriptor{ID: m.ID, Version: m.PluginVersion, Name: m.Name,
+		Engine: m.Engine.Name, EngineVersion: m.Engine.Version, TemplateContract: m.TemplateContract,
+		Shells: slices.Clone(m.Capabilities.ScriptShells), ScriptInputs: slices.Clone(m.Capabilities.ScriptInputs), Rule: descriptor}
+}
+
 type response struct {
 	OK          bool                        `json:"ok"`
 	Diagnostics []analyzer.ScriptDiagnostic `json:"diagnostics"`
@@ -397,10 +430,18 @@ func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 		return nil, err
 	}
 	if !result.OK {
-		return result.Diagnostics, e.engineError(result.Errors)
+		err = e.engineError(result.Errors)
 	}
 	valid := result.Diagnostics[:0]
+	starts := scriptcoords.Starts(request.Source)
 	for i, finding := range result.Diagnostics {
+		if e.metadata.TemplateContract != "" && !finding.TemplateEffect.Valid() {
+			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d has invalid template effect %q", e.name(), i, finding.TemplateEffect))
+			continue
+		}
+		if e.metadata.TemplateContract == "" {
+			finding.TemplateEffect = ""
+		}
 		start, end := finding.Location, finding.EndLocation
 		if start.Row < 1 || start.Column < 1 || end != (analyzer.ScriptPosition{}) &&
 			(end.Row < 1 || end.Column < 1 || end.Row < start.Row || end.Row == start.Row && end.Column < start.Column) {
@@ -408,6 +449,13 @@ func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 			continue
 		}
 		valid = append(valid, finding)
+		last := &valid[len(valid)-1]
+		if last.Location.Row <= len(starts) {
+			last.Location = scriptcoords.SourcePosition(starts, last.Location)
+		}
+		if last.EndLocation.Row > 0 && last.EndLocation.Row <= len(starts) {
+			last.EndLocation = scriptcoords.SourcePosition(starts, last.EndLocation)
+		}
 	}
 	return valid, err
 }

@@ -1,0 +1,24 @@
+package kjanat:actionlint@0.1.0;
+
+/// Read-only mounts granted for this analysis. No access outside these roots.
+interface source-files {
+    record source-root {
+        /// Absolute source namespace path, slash normalized.
+        host: string,
+        /// Absolute WASI mount path.
+        guest: string,
+    }
+    /// Longest component-boundary prefix wins. Host paths translate to guest
+    /// paths for reads; diagnostic guest paths translate back by the same rule.
+    /// Single-dot components normalize before matching. Parent components stay
+    /// intact for filesystem resolution; WASI enforces the granted root bounds.
+    /// No roots outside an analyze call.
+    roots: func() -> list<source-root>;
+}
+
+world managed-plugin {
+    include annotated-plugin;
+    import source-files;
+    import prepared-scripts;
+    export tool-integration;
+}

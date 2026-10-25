@@ -24,7 +24,30 @@ type documentGuest struct {
 }
 
 func (*documentGuest) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Name: "shellcheck-rs", Recommended: true, Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Execution}}
+	return analyzer.Descriptor{Name: "shellcheck", Recommended: true, Requires: []analyzer.Fact{analyzer.Scripts, analyzer.Execution}}
+}
+
+func (*documentGuest) ToolIntegration() *analyzer.ToolIntegration {
+	return &analyzer.ToolIntegration{Tool: "shellcheck", Contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
+}
+
+func (*documentGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*analyzer.ToolNegotiation, error) {
+	var config struct {
+		RCFile  string   `json:"rc-file"`
+		Disable []string `json:"disable"`
+	}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
+	if config.RCFile != "" {
+		return nil, &analyzer.UnsupportedToolConfiguration{Reason: "fixture declines rc files"}
+	}
+	for _, code := range config.Disable {
+		if strings.Contains(code, "-") {
+			return nil, &analyzer.UnsupportedToolConfiguration{Reason: "fixture declines ranges"}
+		}
+	}
+	return &analyzer.ToolNegotiation{Options: data}, nil
 }
 
 func (g *documentGuest) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
@@ -33,7 +56,7 @@ func (g *documentGuest) Analyze(_ context.Context, input analyzer.Input) ([]diag
 	end, _ := input.Scripts[0].Position(1, 12, true)
 	reference := input.Scripts[0].Reference
 	result := []diagnostic.Diagnostic{{
-		Reference: &reference, Rule: "shellcheck-rs", Code: "SC2086", Message: "Quote variable", Path: input.Path, Start: start, End: end,
+		Reference: &reference, Rule: "shellcheck", Code: "SC2086", Message: "Quote variable", Path: input.Path, Start: start, End: end,
 		Fixes: []diagnostic.Fix{{
 			Description: "Quote", Applicability: "unsafe", Revisions: map[string]string{input.Path: input.Reference.Revision},
 			Edits: []diagnostic.Edit{{Path: input.Path, Start: start, End: end, Replacement: `"$VALUE"`}},

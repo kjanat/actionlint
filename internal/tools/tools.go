@@ -33,6 +33,8 @@ type Context struct {
 // Registration owns a tool's selection and construction policy. The host only
 // consumes capabilities; adding a provider does not change its control flow.
 type Registration struct {
+	// ToolIntegration identifies a negotiated document provider for this tool.
+	ToolIntegration   *analyzer.ToolIntegration
 	Descriptor        rule.Descriptor
 	ScriptInputs      []analyzer.ScriptInput
 	InputSelectors    func(Context) ([]analyzer.ScriptInput, error)
@@ -54,6 +56,7 @@ type Registration struct {
 // PreparedInput preserves the original scalar's coordinates when an adapter
 // inserts configuration directives. A nil OriginalLine leaves rows unchanged.
 type PreparedInput struct {
+	TemplateContract string
 	Source           string
 	Config           json.RawMessage
 	OriginalLine     func(int) int

@@ -187,6 +187,57 @@ func TestInputFilterCannotHideForeignSource(t *testing.T) {
 	}
 }
 
+func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
+	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
+	for _, contract := range []string{"", "unknown", analyzer.TemplateEffectsContract} {
+		calls := 0
+		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
+			return tools.PreparedInput{Source: script.Text, TemplateContract: analyzer.TemplateEffectsContract}, nil
+		}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
+		engine := routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+			calls++
+			return nil, nil
+		})
+		registration, err := WithScriptInputs(registration, analyzer.ScriptEngineDescriptor{TemplateContract: contract, ScriptInputs: []analyzer.ScriptInput{site}}, engine)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runner, err := registration.Build(tools.Context{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "masked"}}})
+		if contract == analyzer.TemplateEffectsContract {
+			if err != nil || calls != 1 {
+				t.Fatalf("declared contract rejected: calls=%d err=%v", calls, err)
+			}
+		} else if err == nil || calls != 0 {
+			t.Fatalf("undeclared semantics executed: contract=%q calls=%d err=%v", contract, calls, err)
+		}
+	}
+}
+
+func TestInputDeclaredContractRequiresExplicitEffect(t *testing.T) {
+	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
+	for _, effect := range []analyzer.ScriptTemplateEffect{"", "unknown", analyzer.TemplateEffectNone} {
+		engine := routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+			return []analyzer.ScriptDiagnostic{{Code: "custom", Message: "finding", Location: analyzer.ScriptPosition{Row: 1, Column: 1}, TemplateEffect: effect}}, nil
+		})
+		registration, err := RegisterEngine(analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, TemplateContract: analyzer.TemplateEffectsContract, ScriptInputs: []analyzer.ScriptInput{site}}, engine)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runner, err := registration.Build(tools.Context{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "source", Key: &workflowlang.Pos{Line: 1, Col: 1}}}})
+		if (err == nil) != (effect == analyzer.TemplateEffectNone) || (len(findings) == 1) != (effect == analyzer.TemplateEffectNone) {
+			t.Fatalf("effect %q: findings=%+v err=%v", effect, findings, err)
+		}
+	}
+}
+
 type describedRoutingBackend struct {
 	analyzer.ScriptBackend
 	descriptor analyzer.ScriptEngineDescriptor
@@ -194,6 +245,30 @@ type describedRoutingBackend struct {
 
 func (b describedRoutingBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
 	return b.descriptor
+}
+
+func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
+	engine := describedRoutingBackend{descriptor: analyzer.ScriptEngineDescriptor{Engine: "tool"}}
+	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
+		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+			if len(batch.Scripts) != 1 || batch.Scripts[0].Text != "native" {
+				t.Fatalf("legacy metadata discarded native route: %+v", batch.Scripts)
+			}
+			return []tools.Finding{{Rule: "tool", Message: "native"}}, nil
+		}), nil
+	}}
+	registration = WithConfiguredEngine(registration, func(tools.Context) (analyzer.ScriptBackend, error) { return engine, nil })
+	runner, err := registration.Build(tools.Context{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: "native", Execution: tools.Execution{Shell: "python"}}}})
+	if err != nil || len(findings) != 1 {
+		t.Fatalf("legacy native routing: %+v, %v", findings, err)
+	}
+	if _, err := RegisterEngine(analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}}, engine); err == nil {
+		t.Fatal("standalone engine without routes accepted")
+	}
 }
 
 func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {

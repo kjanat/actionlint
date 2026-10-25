@@ -38,7 +38,15 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			selected := PluginSources{Paths: []string{path}}
 			if tc.managed {
-				selected.managed = map[string]string{path: "shellcheck"}
+				data, err := os.ReadFile("../plugins/component/testdata/plugins/managed-no-sudo.wasm")
+				if err != nil {
+					t.Fatal(err)
+				}
+				renamed := filepath.Join(t.TempDir(), "unrelated-fork.wasm")
+				if err := os.WriteFile(renamed, data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				selected.Paths = []string{renamed}
 			}
 			overlay, err := config.ParseOverlay("config", []byte(tc.config))
 			if err != nil {
@@ -130,7 +138,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 }
 
 func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
-	plugin, err := filepath.Abs("../plugins/component/testdata/plugins/no-sudo.wasm")
+	plugin, err := filepath.Abs("../plugins/component/testdata/plugins/managed-no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +174,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				options := application.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations(), LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
 					return engine, nil
 				}}
-				sources := PluginSources{Paths: []string{plugin}, managed: map[string]string{plugin: "shellcheck"}}
+				sources := PluginSources{Paths: []string{plugin}}
 				input := application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}
 				var result *application.Result
 				if entrypoint == "editor" {

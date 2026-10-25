@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 )
 
 // Execute is the process adapter's only execution capability. It returns after
@@ -22,6 +24,7 @@ type ProcessBackend struct {
 	execute       Execute
 	compatibility *Compatibility
 	warning       func(error)
+	policy        versionProbe
 }
 
 // NewProcessBackend returns a native adapter and the launcher argument prefix.
@@ -35,6 +38,27 @@ func NewProcessBackend(execute Execute, executable string, args []string, direct
 
 func (p *ProcessBackend) OptionalVersion(check *Compatibility, warning func(error)) {
 	p.compatibility, p.warning = check, warning
+}
+
+// TemplateContract declares the adapter's output contract. Check validates the
+// executable version before producing any findings under this declaration.
+func (p *ProcessBackend) TemplateContract() string { return analyzer.TemplateEffectsContract }
+
+func (p *ProcessBackend) checkPolicy(ctx context.Context) error {
+	_, err := p.policy.run(ctx, func() (string, error) {
+		var version string
+		if p.compatibility != nil {
+			version = p.compatibility.probe.version()
+		} else {
+			output, err := p.execute(ctx, []string{"--version"}, "")
+			if err != nil {
+				return "", err
+			}
+			version = string(output)
+		}
+		return version, checkTemplateVersion(version)
+	}, p.warning)
+	return err
 }
 
 func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
@@ -56,6 +80,12 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 		if err != nil || !available {
 			return nil, err
 		}
+	}
+	if err := p.checkPolicy(ctx); err != nil {
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) && p.compatibility != nil {
+			return nil, nil
+		}
+		return nil, err
 	}
 	config := Config{}
 	if len(request.Config) != 0 {
@@ -114,6 +144,7 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 	if err != nil {
 		return nil, err
 	}
+	starts := scriptcoords.Starts(request.Source)
 	for i := range findings {
 		finding := &findings[i]
 		parent, err := os.Stat(filepath.Dir(finding.Filename))
@@ -121,6 +152,12 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 			return nil, fmt.Errorf("ruff output refers to unexpected file %q", finding.Filename)
 		}
 		finding.Filename = request.Filename
+		if finding.Location.Row <= len(starts) {
+			finding.Location = scriptcoords.SourcePosition(starts, finding.Location)
+		}
+		if finding.EndLocation.Row > 0 && finding.EndLocation.Row <= len(starts) {
+			finding.EndLocation = scriptcoords.SourcePosition(starts, finding.EndLocation)
+		}
 	}
 	return findings, nil
 }

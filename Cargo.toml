@@ -45,6 +45,13 @@ name       = "script-engine"
 path       = "examples/plugins/script-engine.rs"
 test       = false
 
+[[example]]
+crate-type        = ["cdylib"]
+name              = "managed-no-sudo"
+path              = "examples/plugins/managed-no-sudo.rs"
+required-features = ["tool-integration-fixture"]
+test              = false
+
 [dev-dependencies]
 actionlint-extension-api = { path = "crates/actionlint-extension-api" }
 serde                    = { version = "1", features = ["derive"] }
@@ -56,6 +63,7 @@ wit-bindgen.workspace    = true
 action-input-fixture       = []
 ruff-fixture               = []
 source-annotations-fixture = ["actionlint-extension-api/source-annotations"]
+tool-integration-fixture   = ["actionlint-extension-api/tool-integration"]
 
 [profile.wasm]
 inherits      = "release"
