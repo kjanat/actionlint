@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 type integratedAnalyzer struct {
@@ -23,7 +22,7 @@ type integratedAnalyzer struct {
 }
 
 func (a *integratedAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Descriptor: rule.Descriptor{Name: a.tool, Provider: "arbitrary-fork", OptionsSchema: a.schema}, Requires: []analyzer.Fact{analyzer.Scripts}}
+	return analyzer.Descriptor{Name: a.tool, Provider: "arbitrary-fork", OptionsSchema: a.schema, Requires: []analyzer.Fact{analyzer.Scripts}}
 }
 func (a *integratedAnalyzer) ToolIntegration() *analyzer.ToolIntegration {
 	return &analyzer.ToolIntegration{Tool: a.tool, Contract: a.contract, ConfigurationSchema: `{}`}
