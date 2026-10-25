@@ -157,8 +157,8 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 try {
 	const binaryPath = realpathSync(resolve(binary));
 	const buildRoot = realpathSync(process.env.RUNNER_TEMP || tempRoot);
-	const sourceRoot = realpathSync(source);
-	if (!binaryPath.startsWith(buildRoot + sep) && !binaryPath.startsWith(sourceRoot + sep)) {
+	const allowedRoot = binaryPath.startsWith(buildRoot + sep) ? buildRoot : realpathSync(source);
+	if (!binaryPath.startsWith(allowedRoot + sep)) {
 		throw new Error('Candidate binary must be inside the project or runner build directory');
 	}
 	await copyFile(binaryPath, candidate);
