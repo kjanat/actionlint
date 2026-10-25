@@ -3,6 +3,8 @@ package analysis_test
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analysis"
@@ -19,6 +21,31 @@ type integratedAnalyzer struct {
 	explicit       json.RawMessage
 	unsupported    bool
 	schema         json.RawMessage
+}
+
+func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
+	for _, tc := range []struct {
+		name, rules string
+		want        bool
+	}{
+		{"plugin enables fallback", "external: {shellcheck: off}, plugins: {shellcheck: on}", true},
+		{"plugin disables fallback", "external: {shellcheck: on}, plugins: {shellcheck: off}", false},
+		{"global disable wins", "disable: [shellcheck], external: {shellcheck: off}, plugins: {shellcheck: on}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			configPath := filepath.Join(root, "actionlint.yml")
+			if err := os.WriteFile(configPath, []byte("lint: {rules: {"+tc.rules+"}}\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: true}
+			options := application.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}
+			needed, err := application.RequiredTools(t.Context(), options, []string{"workflow.yml"})
+			if err != nil || needed["shellcheck"] != tc.want {
+				t.Fatalf("native fallback required=%v, want %t; error=%v", needed, tc.want, err)
+			}
+		})
+	}
 }
 
 func (a *integratedAnalyzer) Descriptor() analyzer.Descriptor {

@@ -14,6 +14,7 @@ interface source-files {
     /// intact for filesystem resolution; WASI enforces the granted root bounds.
     /// No roots outside an analyze call.
     roots: func() -> list<source-root>;
+    
 }
 
 world managed-plugin {

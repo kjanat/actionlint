@@ -590,9 +590,7 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 				}
 			}
 			runes[0], runes[len(runes)-1] = '(', ')'
-			// A quoted mask in a percent conversion slot must be a valid
-			// conversion itself. This prevents a manufactured F509 without
-			// interpreting Ruff's human-readable diagnostic message.
+			// Use a valid percent conversion to avoid a synthetic F509.
 			if !inCode && state.quote != 0 && templateProvidesPercentConversion(src[:start]) {
 				runes[0] = 's'
 			}
