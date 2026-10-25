@@ -16,6 +16,7 @@ const entrypoint = resolve(actionDirectory, 'action.mjs');
 const tempRoot = resolve(tmpdir());
 const workspace = await mkdtemp(join(tempRoot, 'actionlint-action-test-'));
 const shared = await mkdtemp(join(tempRoot, 'actionlint-shared-test-'));
+const candidate = join(shared, process.platform === 'win32' ? 'actionlint.exe' : 'actionlint');
 const outputFile = join(workspace, 'github-output');
 const summaryFile = join(workspace, 'github-summary');
 
@@ -90,7 +91,7 @@ async function installManagedShell(environment) {
 	);
 	await rm(join(workspace, '.github/actionlint.yaml'));
 	await rm(join(workspace, '.github/actionlint.plugins.lock.json'));
-	const install = spawnSync(resolve(binary), [
+	const install = spawnSync(candidate, [
 		'plugin',
 		'install',
 		'publisher/managed-shellcheck@v1.0.0',
@@ -119,7 +120,7 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 			...inputs,
 		})
 	) env[`INPUT_${name.toUpperCase()}`] = value;
-	env.ACTIONLINT_ACTION_BINARY = resolve(binary);
+	env.ACTIONLINT_ACTION_BINARY = candidate;
 	env.GITHUB_WORKSPACE = workspace;
 	env.GITHUB_OUTPUT = outputFile;
 	env.GITHUB_STEP_SUMMARY = summaryFile;
@@ -153,6 +154,7 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 }
 
 try {
+	await copyFile(resolve(binary), candidate);
 	const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 	const init = spawnSync('git', ['init', '--quiet', workspace], { encoding: 'utf8', env: gitEnv });
 	assert.equal(init.status, 0, `git init: ${init.error ?? init.stderr}`);
@@ -252,7 +254,7 @@ try {
 	const shellCache = join(workspace, 'shell-cache');
 	await mkdir(shellCache);
 	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
-	const installShell = spawnSync(resolve(binary), ['plugin', 'install', 'shellcheck@v0.1.1'], {
+	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.1.1'], {
 		cwd: workspace,
 		env: { ...process.env, ...shellEnvironment },
 		encoding: 'utf8',
@@ -465,7 +467,7 @@ try {
 		pluginEnvironment,
 	);
 	assert.deepEqual(warm.analysis.diagnostics, cold.analysis.diagnostics);
-	const install = spawnSync(resolve(binary), ['plugin', 'install', 'shellcheck@v0.1.1'], {
+	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.1.1'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',
@@ -486,7 +488,7 @@ try {
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const disabledDiagnostics = disabled.analysis.diagnostics;
 	assert.deepEqual(disabledDiagnostics, installedDiagnostics.filter(diagnostic => diagnostic.rule === 'shellcheck-rs'));
-	const installRuff = spawnSync(resolve(binary), ['plugin', 'install', 'ruff@v0.1.0'], {
+	const installRuff = spawnSync(candidate, ['plugin', 'install', 'ruff@v0.1.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',
