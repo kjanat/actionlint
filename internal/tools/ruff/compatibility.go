@@ -27,7 +27,7 @@ func CheckCompatibility(ctx context.Context, run Run, wait func() error) error {
 }
 
 func (c *Compatibility) available(ctx context.Context, run Run, wait func() error, warning func(error)) (bool, error) {
-	_, failure := c.probe.run(ctx, func() (string, error) {
+	failure := c.probe.run(ctx, func() (string, error) {
 		var version string
 		var failure error
 		run([]string{"--version"}, "", func(output []byte, err error) error {

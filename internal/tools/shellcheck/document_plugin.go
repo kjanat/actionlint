@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -43,7 +42,7 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 		if err == nil {
 			return false, nil
 		}
-		if _, ok := errors.AsType[*analyzer.UnsupportedToolConfiguration](err); !ok {
+		if _, ok := errors.AsType[*analyzer.UnsupportedToolConfigurationError](err); !ok {
 			return false, err
 		}
 		if o.ManagedOnly {
@@ -69,7 +68,7 @@ func negotiateDocument(ctx context.Context, guest analyzer.ToolIntegrator, cfg *
 	options := documentPluginOptions{}
 	if cfg != nil {
 		if cfg.Tools.Shellcheck.Backend != nil {
-			return nil, &analyzer.UnsupportedToolConfiguration{Reason: "explicit backend selected"}
+			return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
 		}
 		options.RCFile = cfg.Tools.Shellcheck.Config.Path()
 		if inline := cfg.Tools.Shellcheck.Config.Inline(); inline != nil {
@@ -106,7 +105,7 @@ func negotiateDocument(ctx context.Context, guest analyzer.ToolIntegrator, cfg *
 	}
 	negotiated, err := guest.NegotiateTool(ctx, data, pluginOptions)
 	if err == nil && negotiated == nil {
-		return nil, fmt.Errorf("tool negotiation returned no result")
+		return nil, errors.New("tool negotiation returned no result")
 	}
 	return negotiated, err
 }
@@ -143,7 +142,7 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 			continue
 		}
 		negotiated, negotiateErr := negotiateDocument(ctx, r.integrator, cfg, &script)
-		var unsupported *analyzer.UnsupportedToolConfiguration
+		var unsupported *analyzer.UnsupportedToolConfigurationError
 		if negotiateErr != nil && !errors.As(negotiateErr, &unsupported) {
 			return findings, errors.Join(failure, negotiateErr)
 		}
@@ -165,9 +164,7 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		if fileErr != nil {
 			return findings, errors.Join(failure, fileErr)
 		}
-		if err := files.configure(&input); err != nil {
-			return findings, errors.Join(failure, err, files.close())
-		}
+		files.configure(&input)
 		result, err := analyzerhost.Run(ctx, input, []analyzer.Registration{{Analyzer: r.guest, Options: input.Options}})
 		for _, finding := range result {
 			mapped, mapErr := files.finding(finding, script, i)

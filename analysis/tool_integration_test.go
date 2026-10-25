@@ -57,7 +57,7 @@ func (a *integratedAnalyzer) ToolIntegration() *analyzer.ToolIntegration {
 func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _ json.RawMessage, explicit json.RawMessage) (*analyzer.ToolNegotiation, error) {
 	a.explicit = explicit
 	if a.unsupported {
-		return nil, &analyzer.UnsupportedToolConfiguration{Reason: "unsupported test option"}
+		return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "unsupported test option"}
 	}
 	return &analyzer.ToolNegotiation{Options: json.RawMessage(`{}`)}, nil
 }

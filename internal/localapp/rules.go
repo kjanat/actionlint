@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/core"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/rule"
 )
@@ -74,8 +73,4 @@ func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Des
 		}
 	}
 	return result, nil
-}
-
-func engineDescriptor(metadata core.Metadata) rule.Descriptor {
-	return metadata.ScriptDescriptor().Rule
 }

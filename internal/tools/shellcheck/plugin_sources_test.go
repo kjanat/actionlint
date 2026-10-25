@@ -29,7 +29,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	external := writeShellcheckFixture(t, outside, "shared.sh", "SHARED=two\n")
-	cfg, err := config.Parse([]byte(fmt.Sprintf("tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(outside), strconv.Quote(filepath.Join(root, "missing")))))
+	cfg, err := config.Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(outside), strconv.Quote(filepath.Join(root, "missing"))))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,9 +42,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	}
 	defer sources.close()
 	input := analyzer.Input{Options: []byte("{}"), Scripts: []analyzer.Script{{Runtime: &analyzer.Runtime{Directory: root, DirectoryKnown: true}}}}
-	if err := sources.configure(&input); err != nil {
-		t.Fatal(err)
-	}
+	sources.configure(&input)
 	if input.Scripts[0].Runtime.Directory != "/workspace" || len(input.Files) != 2 {
 		t.Fatalf("wrong grants: %+v", input)
 	}
@@ -124,7 +122,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 		{"symlink before parent", resolved, link + string(os.PathSeparator) + ".."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg, err := config.Parse([]byte(fmt.Sprintf("tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant))))
+			cfg, err := config.Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -137,9 +135,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			}
 			defer sources.close()
 			input := analyzer.Input{Options: []byte("{}"), Scripts: []analyzer.Script{{Runtime: &analyzer.Runtime{Directory: tc.directory, DirectoryKnown: true}}}}
-			if err := sources.configure(&input); err != nil {
-				t.Fatal(err)
-			}
+			sources.configure(&input)
 			if input.Scripts[0].Runtime.Directory != "/sources/2" || len(input.Files) != 2 {
 				t.Fatalf("working directory not granted: %s", input.Scripts[0].Runtime.Directory)
 			}
@@ -188,7 +184,7 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 	if _, err := (documentPluginRunner{}).sourceFiles(context.Background(), script, requestedSourceGrants(script.Config)); err == nil || !strings.Contains(err.Error(), "outside its source grants") {
 		t.Fatalf("outside cwd granted: %v", err)
 	}
-	cfg, err = config.Parse([]byte(fmt.Sprintf("tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside))))
+	cfg, err = config.Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside)))
 	if err != nil {
 		t.Fatal(err)
 	}

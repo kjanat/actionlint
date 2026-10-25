@@ -123,6 +123,12 @@ type ScriptRequest struct {
 	Config   json.RawMessage `json:"config,omitempty"`
 }
 
+// ScriptTemplateValidator checks runtime support before template filtering.
+// False with no error means an optional backend is unavailable.
+type ScriptTemplateValidator interface {
+	ValidateTemplates(context.Context) (bool, error)
+}
+
 // ScriptPosition is one-based, counts Unicode scalar values and uses LF-delimited
 // decoded-source rows. End positions are exclusive. Transport adapters convert
 // engine CR/CRLF line conventions before returning findings.

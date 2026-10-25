@@ -3,12 +3,12 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
-	"actionlint.kjanat.dev/v2/internal/tools/backend"
 )
 
 // ConfigureToolIntegrations replaces registered tools using declared contracts.
@@ -42,7 +42,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 			}
 		}
 		if descriptor.Tool == "" || registration.Analyzer.Descriptor().Name != descriptor.Tool {
-			return options, fmt.Errorf("tool integration identifier must match analyzer rule identity")
+			return options, errors.New("tool integration identifier must match analyzer rule identity")
 		}
 		if seen[descriptor.Tool] {
 			return options, fmt.Errorf("multiple providers for tool integration %q", descriptor.Tool)
@@ -64,7 +64,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 			declared := *descriptor
 			replacement.ToolIntegration = &declared
 			replacement.Descriptor = registration.Analyzer.Descriptor().Descriptor
-			options.Tools[i] = backend.Configure(replacement)
+			options.Tools[i] = replacement
 			found = true
 			break
 		}

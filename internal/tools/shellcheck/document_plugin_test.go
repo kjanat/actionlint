@@ -40,11 +40,11 @@ func (*documentGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 		return nil, err
 	}
 	if config.RCFile != "" {
-		return nil, &analyzer.UnsupportedToolConfiguration{Reason: "fixture declines rc files"}
+		return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "fixture declines rc files"}
 	}
 	for _, code := range config.Disable {
 		if strings.Contains(code, "-") {
-			return nil, &analyzer.UnsupportedToolConfiguration{Reason: "fixture declines ranges"}
+			return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "fixture declines ranges"}
 		}
 	}
 	return &analyzer.ToolNegotiation{Options: data}, nil

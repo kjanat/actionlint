@@ -108,15 +108,41 @@ func TestNativeTemplatePolicyFailsClosed(t *testing.T) {
 				backend.OptionalVersion(&Compatibility{}, func(error) { warnings++ })
 			}
 			for range 2 {
-				findings, err := backend.Check(t.Context(), analyzer.ScriptRequest{Source: "print(1)", Filename: stdinFilename})
-				if len(findings) != 0 || (err == nil) != optional {
-					t.Fatalf("unexpected policy outcome: %v, %v", findings, err)
+				available, err := backend.ValidateTemplates(t.Context())
+				if available || (err == nil) != optional {
+					t.Fatalf("unexpected policy outcome: available=%v, error=%v", available, err)
 				}
 			}
 			if probes != 1 || warnings != boolCount(optional) {
 				t.Fatalf("policy repeated: probes=%d warnings=%d", probes, warnings)
 			}
 		})
+	}
+}
+
+func TestNativeTemplateValidationOnlyForMaskedScripts(t *testing.T) {
+	checks, probes := 0, 0
+	backend, _ := NewProcessBackend(func(_ context.Context, args []string, _ string) ([]byte, error) {
+		if slices.Equal(args, []string{"--version"}) {
+			probes++
+			return []byte("ruff 0.18.0"), nil
+		}
+		checks++
+		return []byte("[]"), nil
+	}, "ruff", nil, t.TempDir())
+	python := "python"
+	for _, source := range []string{"print(1)", "print(${{ inputs.value }})"} {
+		checker := NewBackend(t.Context(), backend, reviewExpressionEnd)
+		if err := checker.Check(source, &python, "test", Config{}, func(Diagnostic) {}); err != nil {
+			t.Fatal(err)
+		}
+		err := checker.Wait()
+		if (err != nil) != strings.Contains(source, "${{") {
+			t.Fatalf("source=%q error=%v", source, err)
+		}
+	}
+	if checks != 1 || probes != 1 {
+		t.Fatalf("checks=%d probes=%d", checks, probes)
 	}
 }
 
@@ -142,10 +168,13 @@ func TestNativeVersionProbeRetriesAfterCancellation(t *testing.T) {
 				backend.OptionalVersion(&Compatibility{}, func(error) { warnings++ })
 			}
 			request := analyzer.ScriptRequest{Source: "print(1)", Filename: stdinFilename}
-			if _, err := backend.Check(ctx, request); !errors.Is(err, context.Canceled) {
+			if _, err := backend.ValidateTemplates(ctx); !errors.Is(err, context.Canceled) {
 				t.Fatalf("first probe: %v", err)
 			}
 			for range 2 {
+				if available, err := backend.ValidateTemplates(t.Context()); err != nil || !available {
+					t.Fatalf("retry inherited canceled probe: available=%v error=%v", available, err)
+				}
 				if _, err := backend.Check(t.Context(), request); err != nil {
 					t.Fatalf("retry inherited canceled probe: %v", err)
 				}

@@ -22,7 +22,7 @@ func checkTemplateVersion(output string) error {
 	if len(fields) >= 2 && fields[0] == "ruff" && fields[1] == "0.17.0" {
 		return nil
 	}
-	return fmt.Errorf("Ruff template-effects adapter requires reviewed version 0.17.0; got %q", strings.TrimSpace(output))
+	return fmt.Errorf("ruff template-effects adapter requires reviewed version 0.17.0; got %q", strings.TrimSpace(output))
 }
 
 // nativeTemplateEffect is the reviewed Ruff 0.17.0 adapter for the versioned

@@ -36,7 +36,7 @@ func (preparedScripts) Prepare(ctx context.Context, ref annotationsbind.SourceRe
 	}
 	value, err := scope.prepare(ctx, reference, requested)
 	if err != nil {
-		return preparedbind.ResultOptionPreparedStringErr{Value: err.Error()}, nil
+		return preparationFailure(err)
 	}
 	if value == nil {
 		return preparedbind.ResultOptionPreparedStringOk{Value: preparedbind.NonePrepared()}, nil
@@ -64,4 +64,8 @@ func (preparedScripts) Prepare(ctx context.Context, ref annotationsbind.SourceRe
 		}
 	}
 	return preparedbind.ResultOptionPreparedStringOk{Value: preparedbind.SomePrepared(prepared)}, nil
+}
+
+func preparationFailure(err error) (preparedbind.ResultOptionPreparedString, error) {
+	return preparedbind.ResultOptionPreparedStringErr{Value: err.Error()}, nil
 }

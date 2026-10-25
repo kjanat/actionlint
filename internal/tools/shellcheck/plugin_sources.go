@@ -34,6 +34,14 @@ type sourceAuthority struct {
 	root        *os.Root
 }
 
+func resolveSourceDirectory(name string) (string, bool, error) {
+	resolved, err := filepath.EvalSymlinks(name)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return name, false, nil
+	}
+	return resolved, err == nil, err
+}
+
 func closeSourceAuthorities(authorities []sourceAuthority) error {
 	var failure error
 	for _, authority := range authorities {
@@ -145,23 +153,19 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 			}
 			host = sourceName(host, base)
 		}
-		resolved, resolveErr := filepath.EvalSymlinks(host)
-		if resolveErr != nil && !errors.Is(resolveErr, fs.ErrNotExist) && !errors.Is(resolveErr, syscall.ENOTDIR) {
-			return fmt.Errorf("ShellCheck source directory %q: %w", host, resolveErr)
+		resolved, exists, err := resolveSourceDirectory(host)
+		if err != nil {
+			return fmt.Errorf("ShellCheck source directory %q: %w", host, err)
 		}
 		var selected *sourceAuthority
 		var relative string
 		for i := range authorities {
 			authority := &authorities[i]
-			candidate := resolved
-			if resolveErr != nil {
-				candidate = host
-			}
-			rel, err := filepath.Rel(authority.host, candidate)
+			rel, err := filepath.Rel(authority.host, resolved)
 			if err == nil && filepath.IsLocal(rel) && (selected == nil || len(authority.host) > len(selected.host)) {
 				selected, relative = authority, rel
 			}
-			if resolveErr != nil && host == authority.alias && selected == nil {
+			if !exists && host == authority.alias && selected == nil {
 				selected, relative = authority, "."
 			}
 		}
@@ -171,7 +175,7 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 		if err := run.recordSources([]string{host}, directory); err != nil {
 			return err
 		}
-		if resolveErr != nil || selected.root == nil {
+		if !exists || selected.root == nil {
 			return nil
 		}
 		info, err := selected.root.Stat(relative)
@@ -185,13 +189,12 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 			return nil
 		}
 		snapshot, err := fsread.NewSnapshotAt(ctx, selected.root, relative, script.Scope.Reader, budget)
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-				return nil
-			}
+		if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR) {
 			return fmt.Errorf("ShellCheck source directory %q: %w", host, err)
 		}
-		files.mounts = append(files.mounts, pluginSourceMount{host: resolved, alias: host, guest: guest, files: snapshot})
+		if snapshot != nil {
+			files.mounts = append(files.mounts, pluginSourceMount{host: resolved, alias: host, guest: guest, files: snapshot})
+		}
 		return nil
 	}
 	directoryIndex := 0
@@ -234,9 +237,9 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 	return files, nil
 }
 
-func (f *pluginSourceFiles) configure(input *analyzer.Input) error {
+func (f *pluginSourceFiles) configure(input *analyzer.Input) {
 	if len(f.mounts) == 0 {
-		return nil
+		return
 	}
 	for _, mount := range f.mounts {
 		input.SourceRoots = append(input.SourceRoots, analyzer.SourceRoot{Host: filepath.ToSlash(mount.host), Guest: mount.guest})
@@ -251,7 +254,6 @@ func (f *pluginSourceFiles) configure(input *analyzer.Input) error {
 		input.Files = append(input.Files, analyzer.FileSystem{Path: mount.guest, FS: mount.files})
 	}
 	input.Scripts[0].Runtime.Directory = f.directory
-	return nil
 }
 
 func (f *pluginSourceFiles) close() error {

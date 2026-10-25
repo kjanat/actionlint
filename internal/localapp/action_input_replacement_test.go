@@ -74,6 +74,8 @@ func (b *inputReplacementBackend) Check(_ context.Context, request analyzer.Scri
 	return nil, nil
 }
 
+func (*inputReplacementBackend) TemplateContract() string { return analyzer.TemplateEffectsContract }
+
 func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 	for _, tc := range []struct {
 		name, shell, source, filename string
@@ -86,7 +88,7 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 			backend := &inputReplacementBackend{}
 			site := analyzer.ScriptInput{Action: "example/execute", Input: "code", Language: "javascript"}
 			plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: backend, descriptor: analyzer.ScriptEngineDescriptor{
-				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []analyzer.ScriptInput{site},
+				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []analyzer.ScriptInput{site}, TemplateContract: analyzer.TemplateEffectsContract,
 			}}}}
 			options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{tc.registration}})
 			if err != nil {

@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -55,10 +56,10 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 		return roles, fmt.Errorf("plugin does not export %s, %s or %s", AnalyzerInterface, RunnerInterface, ScriptEngineInterface)
 	}
 	if roles.toolIntegration && !roles.analyzer {
-		return roles, fmt.Errorf("tool integration requires analyzer interface")
+		return roles, errors.New("tool integration requires analyzer interface")
 	}
 	if roles.templateEffects && !roles.script {
-		return roles, fmt.Errorf("template effects requires script engine interface")
+		return roles, errors.New("template effects requires script engine interface")
 	}
 	return roles, nil
 }

@@ -40,12 +40,11 @@ func (p *ProcessBackend) OptionalVersion(check *Compatibility, warning func(erro
 	p.compatibility, p.warning = check, warning
 }
 
-// TemplateContract declares the adapter's output contract. Check validates the
-// executable version before producing any findings under this declaration.
+// TemplateContract declares the adapter's template-effects vocabulary.
 func (p *ProcessBackend) TemplateContract() string { return analyzer.TemplateEffectsContract }
 
 func (p *ProcessBackend) checkPolicy(ctx context.Context) error {
-	_, err := p.policy.run(ctx, func() (string, error) {
+	err := p.policy.run(ctx, func() (string, error) {
 		var version string
 		if p.compatibility != nil {
 			version = p.compatibility.probe.version()
@@ -61,6 +60,31 @@ func (p *ProcessBackend) checkPolicy(ctx context.Context) error {
 	return err
 }
 
+func (p *ProcessBackend) available(ctx context.Context) (bool, error) {
+	if p.compatibility == nil {
+		return true, ctx.Err()
+	}
+	run := func(args []string, source string, callback func([]byte, error) error) {
+		output, err := p.execute(ctx, args, source)
+		_ = callback(output, err)
+	}
+	return p.compatibility.available(ctx, run, func() error { return nil }, p.warning)
+}
+
+// ValidateTemplates restricts provenance filtering to the reviewed engine version.
+func (p *ProcessBackend) ValidateTemplates(ctx context.Context) (bool, error) {
+	if available, err := p.available(ctx); err != nil || !available {
+		return false, err
+	}
+	if err := p.checkPolicy(ctx); err != nil {
+		if p.compatibility != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -69,22 +93,6 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 		return nil, fmt.Errorf("unsupported Ruff virtual filename %q", request.Filename)
 	}
 	if err := p.protocol.validateCommand(request.Filename); err != nil {
-		return nil, err
-	}
-	if p.compatibility != nil {
-		run := func(args []string, source string, callback func([]byte, error) error) {
-			output, err := p.execute(ctx, args, source)
-			_ = callback(output, err)
-		}
-		available, err := p.compatibility.available(ctx, run, func() error { return nil }, p.warning)
-		if err != nil || !available {
-			return nil, err
-		}
-	}
-	if err := p.checkPolicy(ctx); err != nil {
-		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) && p.compatibility != nil {
-			return nil, nil
-		}
 		return nil, err
 	}
 	config := Config{}
@@ -135,6 +143,9 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 	}
 	if !directoryInfo.IsDir() {
 		return nil, fmt.Errorf("ruff working directory is not a directory: %q", directory)
+	}
+	if available, err := p.available(ctx); err != nil || !available {
+		return nil, err
 	}
 	output, err := p.execute(ctx, args, request.Source)
 	if err != nil {

@@ -116,7 +116,8 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 	if !valid {
 		return nil
 	}
-	if c.backend != nil && strings.Contains(script, "${{") && backendTemplateContract(c.backend) != analyzer.TemplateEffectsContract {
+	templates := strings.Contains(script, "${{")
+	if c.backend != nil && templates && backendTemplateContract(c.backend) != analyzer.TemplateEffectsContract {
 		return fmt.Errorf("ruff expression masking requires template contract %q", analyzer.TemplateEffectsContract)
 	}
 	if c.beforeCheck != nil {
@@ -190,6 +191,11 @@ func (c *Checker) Check(script string, shell *string, location string, config Co
 		c.pending = append(c.pending, func(ctx context.Context) ([]Diagnostic, error) {
 			if validator, ok := c.backend.(analyzer.ScriptConfigValidator); ok {
 				if err := validator.ValidateConfig(ctx, request.Config); err != nil {
+					return nil, err
+				}
+			}
+			if validator, ok := c.backend.(analyzer.ScriptTemplateValidator); ok && templates {
+				if available, err := validator.ValidateTemplates(ctx); err != nil || !available {
 					return nil, err
 				}
 			}

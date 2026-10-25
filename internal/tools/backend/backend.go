@@ -155,6 +155,13 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				continue
 			}
 		}
+		if validator, ok := r.backend.(analyzer.ScriptTemplateValidator); ok && prepared.TemplateContract != "" {
+			available, err := validator.ValidateTemplates(ctx)
+			if err != nil || !available {
+				failures = errors.Join(failures, err)
+				continue
+			}
+		}
 		request := analyzer.ScriptRequest{Source: prepared.Source, Filename: "actionlint-script", Config: options}
 		if script.Input != nil {
 			request.Filename = inputFilename(*script.Input)

@@ -44,10 +44,10 @@ type ToolNegotiation struct {
 	Resources []ToolResourceRequest
 }
 
-// UnsupportedToolConfiguration permits falling back to the native tool.
-type UnsupportedToolConfiguration struct{ Reason string }
+// UnsupportedToolConfigurationError permits falling back to the native tool.
+type UnsupportedToolConfigurationError struct{ Reason string }
 
-func (e *UnsupportedToolConfiguration) Error() string { return e.Reason }
+func (e *UnsupportedToolConfigurationError) Error() string { return e.Reason }
 
 // SourceRoot translates a source namespace to a granted WASI mount.
 type SourceRoot struct {

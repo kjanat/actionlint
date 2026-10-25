@@ -2,7 +2,7 @@ package shellcheck
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -22,7 +22,7 @@ func scriptPreparer(scripts []analyzer.Script) analyzer.ScriptPreparer {
 				return preparePluginScript(script, override)
 			}
 		}
-		return nil, fmt.Errorf("unknown script reference")
+		return nil, errors.New("unknown script reference")
 	}
 }
 

@@ -101,6 +101,15 @@ func Configure(registration tools.Registration) tools.Registration {
 		return registration
 	}
 	registration.ConfiguredBackend = nil
+	if replace := registration.WithAnalyzer; replace != nil {
+		registration.WithAnalyzer = func(guest analyzer.Analyzer) (tools.Registration, error) {
+			replacement, err := replace(guest)
+			if err != nil {
+				return tools.Registration{}, err
+			}
+			return Configure(replacement), nil
+		}
+	}
 	return WithConfiguredEngine(registration, load)
 }
 

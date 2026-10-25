@@ -23,9 +23,9 @@ func TestToolNegotiationPreservesExplicitGrants(t *testing.T) {
 	}
 }
 
-func TestUnsupportedToolConfigurationIsDistinctFromFailure(t *testing.T) {
+func TestUnsupportedToolConfigurationErrorIsDistinctFromFailure(t *testing.T) {
 	got, err := liftToolNegotiation(wacogo.ValResultErr(wacogo.ValString("unsupported option")))
-	var unsupported *analyzer.UnsupportedToolConfiguration
+	var unsupported *analyzer.UnsupportedToolConfigurationError
 	if got != nil || !errors.As(err, &unsupported) || unsupported.Reason != "unsupported option" {
 		t.Fatalf("got %v, %v", got, err)
 	}

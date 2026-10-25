@@ -87,7 +87,7 @@ func liftToolNegotiation(value wacogo.Val) (*analyzer.ToolNegotiation, error) {
 		if !ok {
 			return nil, liftError{"unsupported configuration", result.Err()}
 		}
-		return nil, &analyzer.UnsupportedToolConfiguration{Reason: string(reason)}
+		return nil, &analyzer.UnsupportedToolConfigurationError{Reason: string(reason)}
 	}
 	record, err := liftRecord(result.Ok(), "tool negotiation")
 	if err != nil {

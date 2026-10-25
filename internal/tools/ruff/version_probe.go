@@ -22,22 +22,22 @@ func (p *versionProbe) version() string {
 	return p.output
 }
 
-func (p *versionProbe) run(ctx context.Context, execute func() (string, error), warning func(error)) (string, error) {
+func (p *versionProbe) run(ctx context.Context, execute func() (string, error), warning func(error)) error {
 	for {
 		if err := ctx.Err(); err != nil {
-			return "", err
+			return err
 		}
 		p.mu.Lock()
 		if p.ready {
-			output, err := p.output, p.err
+			err := p.err
 			p.mu.Unlock()
-			return output, err
+			return err
 		}
 		if pending := p.pending; pending != nil {
 			p.mu.Unlock()
 			select {
 			case <-ctx.Done():
-				return "", ctx.Err()
+				return ctx.Err()
 			case <-pending:
 				continue
 			}
@@ -60,6 +60,6 @@ func (p *versionProbe) run(ctx context.Context, execute func() (string, error), 
 		if completed && err != nil && warning != nil {
 			warning(err)
 		}
-		return output, err
+		return err
 	}
 }
