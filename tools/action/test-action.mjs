@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const [actionDirectory, binary] = process.argv.slice(2);
@@ -154,7 +154,13 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 }
 
 try {
-	await copyFile(resolve(binary), candidate);
+	const binaryPath = await realpath(resolve(binary));
+	const buildRoot = await realpath(process.env.RUNNER_TEMP || tempRoot);
+	const sourceRoot = await realpath(source);
+	if (!binaryPath.startsWith(buildRoot + sep) && !binaryPath.startsWith(sourceRoot + sep)) {
+		throw new Error('Candidate binary must be inside the project or runner build directory');
+	}
+	await copyFile(binaryPath, candidate);
 	const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 	const init = spawnSync('git', ['init', '--quiet', workspace], { encoding: 'utf8', env: gitEnv });
 	assert.equal(init.status, 0, `git init: ${init.error ?? init.stderr}`);
