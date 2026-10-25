@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -154,9 +155,9 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 }
 
 try {
-	const binaryPath = await realpath(resolve(binary));
-	const buildRoot = await realpath(process.env.RUNNER_TEMP || tempRoot);
-	const sourceRoot = await realpath(source);
+	const binaryPath = realpathSync(resolve(binary));
+	const buildRoot = realpathSync(process.env.RUNNER_TEMP || tempRoot);
+	const sourceRoot = realpathSync(source);
 	if (!binaryPath.startsWith(buildRoot + sep) && !binaryPath.startsWith(sourceRoot + sep)) {
 		throw new Error('Candidate binary must be inside the project or runner build directory');
 	}
