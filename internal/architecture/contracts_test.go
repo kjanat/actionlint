@@ -77,7 +77,7 @@ func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
 		switch {
-		case dependency == "actionlint.kjanat.dev/v2/internal/plugins/component", strings.HasPrefix(dependency, "github.com/partite-ai/wacogo"), strings.HasPrefix(dependency, "github.com/kjanat/wacogo"), strings.HasPrefix(dependency, "github.com/tetratelabs/wazero"):
+		case dependency == "actionlint.kjanat.dev/v2/internal/plugins/component", strings.HasPrefix(dependency, "github.com/partite-ai/wacogo"), strings.HasPrefix(dependency, "github.com/kjanat/wacogo"), strings.HasPrefix(dependency, "github.com/tetratelabs/wazero"), strings.HasPrefix(dependency, "github.com/kjanat/wazero"):
 			t.Errorf("engine imports plugin runtime %s", dependency)
 		}
 	}
