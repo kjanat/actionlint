@@ -1,6 +1,7 @@
 package shellcheck
 
 import (
+	"context"
 	"errors"
 	"reflect"
 
@@ -51,7 +52,7 @@ func (o Options) Registration() tools.Registration {
 			}
 			return runner{adapter}, nil
 		},
-		NeedsProcess: func(cfg, project *config.Config, inside bool) (bool, error) {
+		NeedsProcess: func(_ context.Context, cfg, project *config.Config, inside bool) (bool, error) {
 			// ShellCheck skips the caller's composites when its rule or tool is off.
 			if o.Backend != nil || o.Runner != nil || config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools.Shellcheck.Enabled != nil && !*cfg.Tools.Shellcheck.Enabled {
 				return false, nil

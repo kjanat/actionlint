@@ -35,7 +35,7 @@ func TestPluginFallbackPlansCompositeProcessOverrides(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := registration.NeedsProcess(cfg, cfg, true)
+			got, err := registration.NeedsProcess(t.Context(), cfg, cfg, true)
 			if err != nil || got != tc.want {
 				t.Fatalf("needed=%v, want=%v, error=%v", got, tc.want, err)
 			}

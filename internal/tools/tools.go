@@ -40,7 +40,7 @@ type Registration struct {
 	InputSelectors    func(Context) ([]analyzer.ScriptInput, error)
 	ConfiguredBackend func(Context) (analyzer.ScriptBackend, error)
 	RequiresExecution bool
-	NeedsProcess      func(*config.Config, *config.Config, bool) (bool, error)
+	NeedsProcess      func(context.Context, *config.Config, *config.Config, bool) (bool, error)
 	Validate          func() error
 	Enabled           func(Context) bool
 	Required          func(Context) bool

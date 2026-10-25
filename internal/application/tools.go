@@ -44,7 +44,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 			if r.NeedsProcess == nil {
 				continue
 			}
-			needed, err := r.NeedsProcess(cfg, project, inside)
+			needed, err := r.NeedsProcess(ctx, cfg, project, inside)
 			if err != nil {
 				return nil, err
 			}
