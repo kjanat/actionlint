@@ -35,8 +35,11 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 	}
 	next := base
 	next.Descriptor = guest.Descriptor().Descriptor
-	next.NeedsProcess = func(cfg, project *config.Config, composite bool) (bool, error) {
-		_, err := negotiateDocument(context.Background(), integrator, cfg, nil)
+	next.NeedsProcess = func(ctx context.Context, cfg, project *config.Config, composite bool) (bool, error) {
+		if !base.Enabled(tools.Context{Config: cfg}) {
+			return false, nil
+		}
+		_, err := negotiateDocument(ctx, integrator, cfg, nil)
 		if err == nil {
 			return false, nil
 		}
@@ -46,7 +49,7 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 		if o.ManagedOnly {
 			return false, err
 		}
-		return base.NeedsProcess(cfg, project, composite)
+		return base.NeedsProcess(ctx, cfg, project, composite)
 	}
 	next.Required = func(c tools.Context) bool {
 		return true

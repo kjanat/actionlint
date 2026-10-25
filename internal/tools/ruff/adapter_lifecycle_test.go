@@ -58,7 +58,7 @@ func TestPluginFallbackRespectsDocumentBackend(t *testing.T) {
 	}
 	cfg.Tools.Ruff.Backend = &toolconfig.Backend{Process: &toolconfig.Command{Executable: filepath.Join(t.TempDir(), "missing-ruff")}}
 	ctx.Config = cfg
-	if needed, err := registration.NeedsProcess(cfg, nil, false); err != nil || !needed || !registration.Required(ctx) {
+	if needed, err := registration.NeedsProcess(t.Context(), cfg, nil, false); err != nil || !needed || !registration.Required(ctx) {
 		t.Fatalf("explicit process must be required: needed=%t err=%v", needed, err)
 	}
 	if _, err := registration.Build(ctx); err == nil {

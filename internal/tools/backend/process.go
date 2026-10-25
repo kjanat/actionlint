@@ -23,7 +23,7 @@ func Process(descriptor rule.Descriptor, shells []string, executable string, opt
 	}
 	return tools.Registration{
 		Descriptor: descriptor, RequiresExecution: true,
-		NeedsProcess: func(_ *config.Config, _ *config.Config, _ bool) (bool, error) { return true, nil },
+		NeedsProcess: func(context.Context, *config.Config, *config.Config, bool) (bool, error) { return true, nil },
 		Build: func(c tools.Context) (tools.Runner, error) {
 			if selectorErr != nil {
 				return nil, selectorErr

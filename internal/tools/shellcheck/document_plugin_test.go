@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -280,9 +281,193 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		needed, err := registration.NeedsProcess(nil, nil, false)
+		needed, err := registration.NeedsProcess(t.Context(), nil, nil, false)
 		if err != nil || !needed {
 			t.Fatalf("explicit invocation lost: %t %v", needed, err)
 		}
+	}
+}
+
+func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	for _, tc := range []struct {
+		name, rules, extra string
+		native             bool
+	}{
+		{"plugin enables legacy rule", "external: {shellcheck: off}, plugins: {shellcheck: on}", "", true},
+		{"plugin disables legacy rule", "external: {shellcheck: on}, plugins: {shellcheck: off}", "", false},
+		{"global lint disabled", "external: {shellcheck: off}, plugins: {shellcheck: on}", "lint: {enabled: false}", false},
+		{"global rule disabled", "disable: [shellcheck], external: {shellcheck: off}, plugins: {shellcheck: on}", "", false},
+		{"tool disabled", "external: {shellcheck: off}, plugins: {shellcheck: on}", "tools: {shellcheck: false}", false},
+		{"override enables plugin", "external: {shellcheck: off}, plugins: {shellcheck: off}", "overrides: [{includes: [ci.yml], lint: {rules: {plugins: {shellcheck: on}}}}]", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.WriteFile(filepath.Join(root, ".shellcheckrc"), []byte("shell=bash\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			base, err := config.ParseOverlay("config", []byte("tools: {shellcheck: {config: .shellcheckrc}}\nlint: {rules: {"+tc.rules+"}}"), "shellcheck")
+			if err != nil {
+				t.Fatal(err)
+			}
+			overlays := []config.Overlay{base}
+			if tc.extra != "" {
+				extra, err := config.ParseOverlay("config", []byte(tc.extra), "shellcheck")
+				if err != nil {
+					t.Fatal(err)
+				}
+				overlays = append(overlays, extra)
+			}
+			guest := &documentGuest{}
+			options := application.Options{
+				WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: overlays,
+				Tools:     []tools.Registration{(shellcheck.Options{Command: "shellcheck"}).Registration()},
+				Analyzers: []analyzer.Registration{{Analyzer: guest}},
+			}
+			needed, err := application.RequiredTools(t.Context(), options, []string{"ci.yml"})
+			if err != nil || needed["shellcheck"] != tc.native {
+				t.Fatalf("native fallback plan: %v, %v; want %t", needed, err, tc.native)
+			}
+			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			_, err = application.Check(t.Context(), options, application.Input{Kind: application.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
+			if tc.native {
+				if !errors.Is(err, exec.ErrNotFound) {
+					t.Fatalf("native fallback did not require the missing executable: %v", err)
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if len(guest.inputs) != 0 {
+				t.Fatal("guest analyzed a disabled rule or unsupported configuration")
+			}
+		})
+	}
+}
+
+func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
+	for _, setting := range []string{
+		"lint: {enabled: false}",
+		"lint: {rules: {disable: [shellcheck]}}",
+		"lint: {rules: {external: {shellcheck: off}}}",
+		"tools: {shellcheck: {enabled: false}}",
+		"overrides: [{includes: [ci.yml], tools: {shellcheck: false}}]",
+	} {
+		t.Run(setting, func(t *testing.T) {
+			base, err := config.ParseOverlay("config", []byte("tools: {shellcheck: {config: .shellcheckrc}}"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			disabled, err := config.ParseOverlay("config", []byte(setting))
+			if err != nil {
+				t.Fatal(err)
+			}
+			guest := &documentGuest{}
+			options := application.Options{
+				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []config.Overlay{base, disabled},
+				Tools:     []tools.Registration{(shellcheck.Options{Command: "shellcheck", ManagedOnly: true}).Registration()},
+				Analyzers: []analyzer.Registration{{Analyzer: guest}},
+			}
+			needed, err := application.RequiredTools(t.Context(), options, []string{"ci.yml"})
+			if err != nil || needed["shellcheck"] {
+				t.Fatalf("disabled managed plugin requested fallback: %v, %v", needed, err)
+			}
+			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
+			if _, err := application.Check(t.Context(), options, application.Input{Kind: application.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}); err != nil {
+				t.Fatal(err)
+			}
+			if len(guest.inputs) != 0 {
+				t.Fatal("disabled managed plugin analyzed the document")
+			}
+		})
+	}
+}
+
+func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	root := t.TempDir()
+	for _, directory := range []string{".git", ".github/workflows", "nested"} {
+		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(directory)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
+	for name, content := range map[string]string{
+		workflow: "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/nested\n",
+		filepath.Join(root, "nested", "action.yml"): "name: Nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n",
+	} {
+		if err := os.WriteFile(name, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	overlay, err := config.ParseOverlay("config", []byte("overrides: [{includes: ['nested/**'], tools: {shellcheck: {config: .shellcheckrc}}}]"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	guest := &documentGuest{}
+	options := application.Options{
+		WorkingDir: root, ConfigOverlays: []config.Overlay{overlay},
+		Tools:     []tools.Registration{(shellcheck.Options{Command: "shellcheck"}).Registration()},
+		Analyzers: []analyzer.Registration{{Analyzer: guest}},
+	}
+	needed, err := application.RequiredTools(t.Context(), options, []string{workflow})
+	if err != nil || !needed["shellcheck"] {
+		t.Errorf("composite native fallback was omitted: %v, %v", needed, err)
+	}
+	_, err = application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}})
+	if !errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("composite fallback did not require the missing executable: %v", err)
+	}
+	if len(guest.inputs) != 0 {
+		t.Fatal("guest analyzed the unsupported composite configuration")
+	}
+}
+
+type planningContextGuest struct {
+	documentGuest
+	contexts chan context.Context
+	release  <-chan struct{}
+}
+
+func (g *planningContextGuest) NegotiateTool(ctx context.Context, data, _ json.RawMessage) (*analyzer.ToolNegotiation, error) {
+	g.contexts <- ctx
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-g.release:
+		return &analyzer.ToolNegotiation{Options: data}, nil
+	}
+}
+
+func TestDocumentPluginPlanningPropagatesCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	release, finished := make(chan struct{}), make(chan struct{})
+	guest := &planningContextGuest{contexts: make(chan context.Context, 1), release: release}
+	options := application.Options{
+		WorkingDir: t.TempDir(), SkipProjectConfig: true,
+		Tools:     []tools.Registration{(shellcheck.Options{Command: "shellcheck"}).Registration()},
+		Analyzers: []analyzer.Registration{{Analyzer: guest}},
+	}
+	result := make(chan error, 1)
+	go func() {
+		defer close(finished)
+		_, err := application.RequiredTools(ctx, options, []string{"ci.yml"})
+		result <- err
+	}()
+	t.Cleanup(func() {
+		close(release)
+		<-finished
+	})
+	select {
+	case negotiationContext := <-guest.contexts:
+		if negotiationContext.Done() == nil {
+			t.Fatal("planning negotiation discarded cancellation")
+		}
+	case err := <-result:
+		t.Fatalf("planning returned before negotiation: %v", err)
+	}
+	cancel()
+	if err := <-result; !errors.Is(err, context.Canceled) {
+		t.Fatalf("planning lost cancellation: %v", err)
 	}
 }
