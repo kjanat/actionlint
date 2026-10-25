@@ -10,5 +10,5 @@ publish      = false
 [dependencies]
 serde_json    = "1"
 sha2          = "0.10"
-wasmtime      = { version = "=49.0.0", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
+wasmtime      = { version = "=49.0.4", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
 wasmtime-wasi = { version = "=49.0.0", default-features = false, features = ["p2"] }
