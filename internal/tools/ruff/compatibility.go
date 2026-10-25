@@ -2,17 +2,16 @@ package ruff
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 // Compatibility shares one automatic-discovery probe across an analysis.
 type Compatibility struct {
-	once sync.Once
-	err  error
+	probe versionProbe
 }
 
 // CheckCompatibility reports the same version-probe failure used by optional
@@ -28,26 +27,27 @@ func CheckCompatibility(ctx context.Context, run Run, wait func() error) error {
 }
 
 func (c *Compatibility) available(ctx context.Context, run Run, wait func() error, warning func(error)) (bool, error) {
-	c.once.Do(func() {
+	failure := c.probe.run(ctx, func() (string, error) {
+		var version string
+		var failure error
 		run([]string{"--version"}, "", func(output []byte, err error) error {
 			if err != nil {
-				c.err = err
+				failure = err
 			} else {
-				c.err = checkVersion(string(output))
+				version = string(output)
+				failure = checkVersion(version)
 			}
 			return nil
 		})
 		if err := wait(); err != nil {
-			c.err = err
+			failure = err
 		}
-		if c.err != nil && ctx.Err() == nil && warning != nil {
-			warning(c.err)
-		}
-	})
-	if err := ctx.Err(); err != nil {
-		return false, err
+		return version, failure
+	}, warning)
+	if errors.Is(failure, context.Canceled) || errors.Is(failure, context.DeadlineExceeded) {
+		return false, failure
 	}
-	return c.err == nil, nil
+	return failure == nil, nil
 }
 
 var ruffVersionPattern = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$`)

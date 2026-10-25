@@ -75,6 +75,10 @@ type Result = report.Analysis
 // Check owns the complete runtime lifetime, including failed input selection and
 // cancellation. A non-nil result with an error retains partial analysis findings.
 func Check(ctx context.Context, options Options, input Input) (result *Result, err error) {
+	options, err = ConfigureToolIntegrations(options)
+	if err != nil {
+		return nil, err
+	}
 	if options.Resolver != nil {
 		if factory, ok := options.Resolver.(resolver.SessionFactory); ok {
 			options.Resolver = factory.NewSession()

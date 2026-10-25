@@ -15,11 +15,13 @@ import (
 
 // Options selects ShellCheck's transport and source configuration.
 type Options struct {
-	Command  string
-	Process  *processconfig.Options
-	Backend  analyzer.ScriptBackend
-	Runner   func([]string, string) ([]byte, error)
-	Settings *toolconfig.ShellcheckSettings
+	// ManagedOnly permits a declared analyzer without authorizing native fallback.
+	ManagedOnly bool
+	Command     string
+	Process     *processconfig.Options
+	Backend     analyzer.ScriptBackend
+	Runner      func([]string, string) ([]byte, error)
+	Settings    *toolconfig.ShellcheckSettings
 }
 
 // Registration owns ShellCheck selection, transport construction and plugin replacement.

@@ -16,10 +16,9 @@ import (
 )
 
 type loadedPlugins struct {
-	plugins         []*component.Plugin
-	analyzerSources map[string]*component.Plugin
-	engines         []scriptEngineRegistration
-	core            []*corewasm.Engine
+	plugins []*component.Plugin
+	engines []scriptEngineRegistration
+	core    []*corewasm.Engine
 }
 
 type scriptEngineRegistration struct {
@@ -28,9 +27,8 @@ type scriptEngineRegistration struct {
 }
 
 func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debug bool) (*loadedPlugins, error) {
-	loaded := &loadedPlugins{analyzerSources: map[string]*component.Plugin{}}
+	loaded := &loadedPlugins{}
 	for _, path := range sources.Paths {
-		source := path
 		if err := pluginartifact.RequireRemotePin(path); err != nil {
 			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 		}
@@ -50,11 +48,7 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			}
 			metadata := engine.Metadata()
 			loaded.core = append(loaded.core, engine)
-			loaded.engines = append(loaded.engines, scriptEngineRegistration{engine, analyzer.ScriptEngineDescriptor{
-				ID: metadata.ID, Version: metadata.PluginVersion, Name: metadata.Name,
-				Engine: metadata.Engine.Name, EngineVersion: metadata.Engine.Version,
-				Shells: metadata.Capabilities.ScriptShells, ScriptInputs: metadata.Capabilities.ScriptInputs, Rule: engineDescriptor(metadata),
-			}})
+			loaded.engines = append(loaded.engines, scriptEngineRegistration{engine, metadata.ScriptDescriptor()})
 
 			continue
 		}
@@ -73,9 +67,6 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			_, _ = fmt.Fprintf(log, "[Linter] Loaded component from %s (%s)\n", path, plugin.Limits())
 		}
 		loaded.plugins = append(loaded.plugins, plugin)
-		if plugin.HasAnalyzer() {
-			loaded.analyzerSources[source] = plugin
-		}
 		if plugin.HasScriptEngine() {
 			loaded.engines = append(loaded.engines, scriptEngineRegistration{plugin, plugin.ScriptDescriptor()})
 		}
@@ -162,16 +153,7 @@ func loadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, 
 		metadata := engine.Metadata()
 		_, _ = fmt.Fprintf(log, "[Linter] Loaded engine %q (%s %s) from %s (%s)\n", metadata.ID, metadata.Engine.Name, metadata.Engine.Version, engine.Path(), engine.Limits())
 	}
-	return describedCore{engine}, nil
-}
-
-type describedCore struct{ *corewasm.Engine }
-
-func (e describedCore) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
-	m := e.Metadata()
-	return analyzer.ScriptEngineDescriptor{ID: m.ID, Version: m.PluginVersion, Name: m.Name,
-		Engine: m.Engine.Name, EngineVersion: m.Engine.Version, Shells: m.Capabilities.ScriptShells,
-		ScriptInputs: m.Capabilities.ScriptInputs, Rule: engineDescriptor(m)}
+	return engine, nil
 }
 
 func engineCacheDir() string {

@@ -101,6 +101,15 @@ func Configure(registration tools.Registration) tools.Registration {
 		return registration
 	}
 	registration.ConfiguredBackend = nil
+	if replace := registration.WithAnalyzer; replace != nil {
+		registration.WithAnalyzer = func(guest analyzer.Analyzer) (tools.Registration, error) {
+			replacement, err := replace(guest)
+			if err != nil {
+				return tools.Registration{}, err
+			}
+			return Configure(replacement), nil
+		}
+	}
 	return WithConfiguredEngine(registration, load)
 }
 
@@ -175,6 +184,11 @@ func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]to
 		descriptor := described.ScriptDescriptor()
 		if descriptor.Engine != r.registration.Descriptor.Name {
 			failures = errors.Join(failures, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, r.registration.Descriptor.Name))
+			continue
+		}
+		// Legacy engines without routes inherit the native adapter's selectors.
+		if len(descriptor.Shells)+len(descriptor.ScriptInputs) == 0 {
+			nativeScripts[cfg] = nil
 			continue
 		}
 		shells, err := shellCatalogue(r.registration.Descriptor, descriptor.Shells)

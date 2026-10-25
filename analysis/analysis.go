@@ -149,6 +149,32 @@ func fileOptions(options FileOptions) (application.Options, error) {
 	if options.ConfigFile != "" && !filepath.IsAbs(options.ConfigFile) {
 		options.ConfigFile = filepath.Join(root, options.ConfigFile)
 	}
+	managed := map[string]bool{}
+	for _, registration := range options.Analyzers {
+		if integrator, ok := registration.Analyzer.(analyzer.ToolIntegrator); ok {
+			if descriptor := integrator.ToolIntegration(); descriptor != nil {
+				managed[descriptor.Tool] = true
+			}
+		}
+	}
+	var managedOnly []string
+	for name, tool := range map[string]Tool{"shellcheck": options.ShellCheck, "ruff": options.Ruff} {
+		if managed[name] && tool.Process == nil && tool.Backend == nil {
+			managedOnly = append(managedOnly, name)
+		}
+	}
+	toolName := func(name string, tool Tool) string {
+		if managed[name] && tool.Process == nil && tool.Backend == nil {
+			return name
+		}
+		return configuredToolName(name, tool, options.LoadScriptEngine != nil)
+	}
+	processOptions := func(name string, tool Tool) *processconfig.Options {
+		if managed[name] && tool.Process == nil && tool.Backend == nil {
+			return nil
+		}
+		return backendProcessOptions(tool, options.LoadScriptEngine != nil)
+	}
 	return application.Options{
 		Resolver: options.Resolver, Analyzers: options.Analyzers, Runners: options.Runners, WorkingDir: root, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
@@ -158,10 +184,11 @@ func fileOptions(options FileOptions) (application.Options, error) {
 
 		Presets:        options.Presets,
 		IgnorePatterns: options.IgnorePatterns, Tools: adapters.Options{
-			ShellCheck:        configuredToolName("shellcheck", options.ShellCheck, options.LoadScriptEngine != nil),
-			Ruff:              configuredToolName("ruff", options.Ruff, options.LoadScriptEngine != nil),
-			ShellcheckOptions: backendProcessOptions(options.ShellCheck, options.LoadScriptEngine != nil),
-			RuffOptions:       backendProcessOptions(options.Ruff, options.LoadScriptEngine != nil), RuffBackend: options.Ruff.Backend,
+			ManagedOnly:       managedOnly,
+			ShellCheck:        toolName("shellcheck", options.ShellCheck),
+			Ruff:              toolName("ruff", options.Ruff),
+			ShellcheckOptions: processOptions("shellcheck", options.ShellCheck),
+			RuffOptions:       processOptions("ruff", options.Ruff), RuffBackend: options.Ruff.Backend,
 			ShellcheckBackend: options.ShellCheck.Backend,
 		}.Registrations(),
 	}, nil

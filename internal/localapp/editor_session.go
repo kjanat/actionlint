@@ -49,7 +49,7 @@ func newEditorSources(ctx context.Context, options application.Options, sources 
 	if err != nil {
 		return nil, errors.Join(err, plugins.close(context.WithoutCancel(ctx)))
 	}
-	options, err = plugins.configureManaged(options, sources.managed)
+	options, err = plugins.configureManaged(options)
 	if err != nil {
 		return nil, errors.Join(err, plugins.close(context.WithoutCancel(ctx)))
 	}

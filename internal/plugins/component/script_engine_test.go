@@ -318,7 +318,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 		"capabilities": map[string]any{"script_shells": d.Shells, "fixes": false, "format": false},
 		"rules":        []any{d.Rule}, "config_schema": d.Rule.OptionsSchema,
 	}
-	for _, key := range []string{"", "id", "plugin_version", "engine", "capabilities", "rules", "config_schema", "contract_sha256"} {
+	for _, key := range []string{"", "id", "plugin_version", "engine", "capabilities", "rules", "config_schema"} {
 		t.Run(key, func(t *testing.T) {
 			original := metadata[key]
 			if key != "" {
@@ -334,6 +334,16 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 				t.Fatalf("metadata %q: %v", key, err)
 			}
 		})
+	}
+	// Structural WIT validation defines compatibility; source formatting hashes
+	// identify build inputs but cannot reject a conforming fork.
+	metadata["contract_sha256"] = "independent-wit-source"
+	data, err := json.Marshal(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyScriptMetadata(data, p.scriptDescriptor); err != nil {
+		t.Fatal(err)
 	}
 	for _, shells := range [][]string{{"python"}, {"Python"}, {"python.exe"}, {"python", "Python"}} {
 		t.Run("shells="+strings.Join(shells, ","), func(t *testing.T) {

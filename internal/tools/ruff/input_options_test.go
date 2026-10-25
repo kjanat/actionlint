@@ -25,10 +25,10 @@ func TestPreparedInputSharesPythonTemplateMasks(t *testing.T) {
 		for end < len(prepared.Source) && (prepared.Source[end] == '_' || prepared.Source[end] >= '0' && prepared.Source[end] <= '9' || prepared.Source[end] >= 'a' && prepared.Source[end] <= 'z') {
 			end++
 		}
-		if source[6] != '\'' && prepared.AcceptDiagnostic(analyzer.ScriptDiagnostic{Code: "F821", Location: Position{Row: 1, Column: start + 1}, EndLocation: Position{Row: 1, Column: end + 1}}) {
+		if source[6] != '\'' && prepared.AcceptDiagnostic(analyzer.ScriptDiagnostic{Code: "F821", TemplateEffect: analyzer.TemplateEffectOpaqueName, Location: Position{Row: 1, Column: start + 1}, EndLocation: Position{Row: 1, Column: end + 1}}) {
 			t.Fatal("synthetic undefined-name finding escaped")
 		}
-		if !prepared.AcceptDiagnostic(analyzer.ScriptDiagnostic{Code: "F821", Location: Position{Row: 2, Column: 7}, EndLocation: Position{Row: 2, Column: 14}}) {
+		if !prepared.AcceptDiagnostic(analyzer.ScriptDiagnostic{Code: "F821", TemplateEffect: analyzer.TemplateEffectOpaqueName, Location: Position{Row: 2, Column: 7}, EndLocation: Position{Row: 2, Column: 14}}) {
 			t.Fatal("unrelated undefined name suppressed")
 		}
 	}

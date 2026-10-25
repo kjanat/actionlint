@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -23,9 +24,11 @@ func validateSuppressionRuleName(name string) error {
 }
 
 type extensionRoleSet struct {
-	analyzer bool
-	runner   bool
-	script   bool
+	analyzer        bool
+	runner          bool
+	script          bool
+	toolIntegration bool
+	templateEffects bool
 }
 
 func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
@@ -33,7 +36,7 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	supported := []struct {
 		name string
 		role *bool
-	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ScriptEngineInterface, &roles.script}}
+	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ScriptEngineInterface, &roles.script}, {ToolIntegrationInterface, &roles.toolIntegration}, {TemplateEffectsInterface, &roles.templateEffects}}
 	for _, export := range exports {
 		for _, candidate := range supported {
 			prefix, _, _ := strings.Cut(candidate.name, "@")
@@ -52,11 +55,19 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	if !roles.analyzer && !roles.runner && !roles.script {
 		return roles, fmt.Errorf("plugin does not export %s, %s or %s", AnalyzerInterface, RunnerInterface, ScriptEngineInterface)
 	}
+	if roles.toolIntegration && !roles.analyzer {
+		return roles, errors.New("tool integration requires analyzer interface")
+	}
+	if roles.templateEffects && !roles.script {
+		return roles, errors.New("template effects requires script engine interface")
+	}
 	return roles, nil
 }
 
 type importRequirements struct {
 	sourceAnnotations bool
+	sourceFiles       bool
+	preparedScripts   bool
 }
 
 // validateImports checks grants and records optional host features in one pass.
@@ -66,6 +77,20 @@ func validateImports(imports []wacogo.ImportDesc) (importRequirements, error) {
 	annotationsName := wasmparser.CanonicalizeImportName(SourceAnnotationsInterface)
 	for _, imported := range imports {
 		canonical := wasmparser.CanonicalizeImportName(imported.Name)
+		if canonical == wasmparser.CanonicalizeImportName(PreparedScriptsInterface) {
+			required.preparedScripts = true
+			continue
+		}
+		if strings.HasPrefix(imported.Name, "kjanat:actionlint/prepared-scripts@") {
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, PreparedScriptsInterface)
+		}
+		if canonical == wasmparser.CanonicalizeImportName(SourceFilesInterface) {
+			required.sourceFiles = true
+			continue
+		}
+		if strings.HasPrefix(imported.Name, "kjanat:actionlint/source-files@") {
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, SourceFilesInterface)
+		}
 		if canonical == annotationsName {
 			required.sourceAnnotations = true
 			continue

@@ -15,7 +15,7 @@ import (
 type Backend struct {
 	// Process configures native executable invocation.
 	Process *Command `yaml:"process,omitempty"`
-	// Wasm selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.
+	// Wasm selects a core WebAssembly engine using the versioned core JSON ABI.
 	Wasm *Module `yaml:"wasm,omitempty"`
 }
 

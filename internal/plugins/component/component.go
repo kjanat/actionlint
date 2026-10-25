@@ -8,7 +8,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
+	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/preparedscripts"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
+	filesbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourcefiles"
 	"actionlint.kjanat.dev/v2/runner"
 	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
@@ -30,6 +32,7 @@ type Plugin struct {
 	analyzerDescriptor *analyzer.Descriptor
 	runnerDescriptor   *runner.Descriptor
 	scriptDescriptor   *analyzer.ScriptEngineDescriptor
+	toolIntegration    *analyzer.ToolIntegration
 
 	digest string
 	path   string
@@ -40,6 +43,8 @@ type Plugin struct {
 	component          *wacogo.Component
 	hostFactory        *hostbind.Factory
 	annotationsFactory *annotationsbind.Factory
+	filesFactory       *filesbind.Factory
+	preparedFactory    *preparedbind.Factory
 
 	gate   *semaphore.Weighted
 	memory *memoryBudget
@@ -61,6 +66,14 @@ func (p *Plugin) Close(ctx context.Context) error {
 	}
 	defer p.gate.Release(1)
 	var errs []error
+	if p.preparedFactory != nil {
+		errs = append(errs, p.preparedFactory.Close(ctx))
+		p.preparedFactory = nil
+	}
+	if p.filesFactory != nil {
+		errs = append(errs, p.filesFactory.Close(ctx))
+		p.filesFactory = nil
+	}
 	if p.hostFactory != nil {
 		errs = append(errs, p.hostFactory.Close(ctx))
 		p.hostFactory = nil

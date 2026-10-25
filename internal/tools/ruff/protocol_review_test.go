@@ -151,7 +151,7 @@ func TestVersionedShellTarget(t *testing.T) {
 		{"python3.15 {0}", "", "py315"},
 		{"python3.6 {0}", "", "py36"},
 		{"python3.99 {0}", "", "py399"},
-		{"python3 {0}", "", "py314"},
+		{"python3 {0}", "", ""},
 		{"py -3.9 {0}", "", "py39"},
 		{"py -3.10 -u {0}", "", "py310"},
 		{"py.exe -V:3.9 {0}", "", "py39"},
@@ -167,26 +167,26 @@ func TestVersionedShellTarget(t *testing.T) {
 		{"py -3.10 '{0}'", "", "py310"},
 		{"py -3.9 {0}", "py314", "py314"},
 		{"py -3.10 {0}", "py39", "py39"},
-		{"py -3 {0}", "", "py314"},
-		{"py -V:3 {0}", "", "py314"},
+		{"py -3 {0}", "", ""},
+		{"py -V:3 {0}", "", ""},
 		{"py -3.6 {0}", "", "py36"},
 		{"py -3.99 {0}", "", "py399"},
-		{"py -3.9-invalid {0}", "", "py314"},
-		{"py -3.9-32-64 {0}", "", "py314"},
-		{"py -V:OtherCompany/3.9 {0}", "", "py314"},
-		{"py -PythonCore/3.9 {0}", "", "py314"},
-		{"py -V:PythonCore/3 {0}", "", "py314"},
-		{"py -V:PythonCore/ {0}", "", "py314"},
-		{`py "-3.9 {0}`, "", "py314"},
-		{"py -V:3.9.1 {0}", "", "py314"},
-		{"py 3.9 {0}", "", "py314"},
-		{"py # -3.9 {0}", "", "py314"},
-		{"py -u -3.9 {0}", "", "py314"},
-		{"py -W -3.9 {0}", "", "py314"},
-		{"py {0} -3.9", "", "py314"},
-		{"py -c 'print(\"-3.9\")' {0}", "", "py314"},
-		{"py -3.9", "", "py314"},
-		{"actions-shell python {0}", "", "py314"},
+		{"py -3.9-invalid {0}", "", ""},
+		{"py -3.9-32-64 {0}", "", ""},
+		{"py -V:OtherCompany/3.9 {0}", "", ""},
+		{"py -PythonCore/3.9 {0}", "", ""},
+		{"py -V:PythonCore/3 {0}", "", ""},
+		{"py -V:PythonCore/ {0}", "", ""},
+		{`py "-3.9 {0}`, "", ""},
+		{"py -V:3.9.1 {0}", "", ""},
+		{"py 3.9 {0}", "", ""},
+		{"py # -3.9 {0}", "", ""},
+		{"py -u -3.9 {0}", "", ""},
+		{"py -W -3.9 {0}", "", ""},
+		{"py {0} -3.9", "", ""},
+		{"py -c 'print(\"-3.9\")' {0}", "", ""},
+		{"py -3.9", "", ""},
+		{"actions-shell python {0}", "", ""},
 		{"actions-shells py -3.9 {0}", "", "py39"},
 		{"actions-shell py -3.10 -u {0}", "", "py310"},
 		{`C:\tools\ACTIONS-SHELLS.CMD py -V:PythonCore/3.9-64 {0}`, "", "py39"},
@@ -194,20 +194,26 @@ func TestVersionedShellTarget(t *testing.T) {
 		{" \tactions-shell\tpy\t-3.9\t{0} ", "", "py39"},
 		{"actions-shells py -3.9 {0}", "py310", "py310"},
 		{"actions-shells py -3.10 {0}", "py39", "py39"},
-		{"actions-shells python -3.9 {0}", "", "py314"},
-		{"actions-shells py -u -3.9 {0}", "", "py314"},
-		{"actions-shells py -W '-3.9' {0}", "", "py314"},
-		{"actions-shells py -V:OtherCompany/3.9 {0}", "", "py314"},
+		{"actions-shells python -3.9 {0}", "", ""},
+		{"actions-shells py -u -3.9 {0}", "", ""},
+		{"actions-shells py -W '-3.9' {0}", "", ""},
+		{"actions-shells py -V:OtherCompany/3.9 {0}", "", ""},
 		{"actions-shells py -3.99 {0}", "", "py399"},
-		{"actions-shells py -3 {0}", "", "py314"},
-		{"actions-shells py -V:3.9.1 {0}", "", "py314"},
-		{"actions-shells py -v:3.9 {0}", "", "py314"},
-		{"actions-shells py '-3.9 unrelated' {0}", "", "py314"},
+		{"actions-shells py -3 {0}", "", ""},
+		{"actions-shells py -V:3.9.1 {0}", "", ""},
+		{"actions-shells py -v:3.9 {0}", "", ""},
+		{"actions-shells py '-3.9 unrelated' {0}", "", ""},
 	} {
 		t.Run(tc.shell+tc.explicit, func(t *testing.T) {
 			calls := 0
 			checker := New(func(args []string, _ string, _ func([]byte, error) error) {
 				calls++
+				if tc.want == "" {
+					if slices.ContainsFunc(args, func(arg string) bool { return strings.HasPrefix(arg, "--target-version=") }) {
+						t.Fatalf("unspecified target must remain engine-owned: %v", args)
+					}
+					return
+				}
 				if !slices.Contains(args, "--target-version="+tc.want) {
 					t.Fatalf("target: %v; want %s", args, tc.want)
 				}

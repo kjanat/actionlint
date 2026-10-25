@@ -35,7 +35,6 @@ type PluginSources struct {
 	automatic bool
 	lock      *pluginregistry.Lock
 	configs   []*config.Config
-	managed   map[string]string
 	artifacts map[string]*pluginartifact.Artifact
 	overlays  []config.Overlay
 }
@@ -267,12 +266,9 @@ func sourcesFromPins(path string, lock pluginregistry.Lock, root string) (Plugin
 	if err := lock.Validate(); err != nil {
 		return PluginSources{}, err
 	}
-	selected := PluginSources{LockFile: path, root: root, automatic: root != "", lock: &lock, managed: map[string]string{}}
+	selected := PluginSources{LockFile: path, root: root, automatic: root != "", lock: &lock}
 	for _, p := range lock.Plugins {
 		selected.Paths = append(selected.Paths, p.Source())
-		if p.Name == "github.com/kjanat/actionlint-plugin-shellcheck" {
-			selected.managed[p.Source()] = "shellcheck"
-		}
 	}
 	return selected, nil
 }

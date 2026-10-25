@@ -3,7 +3,6 @@ package shellcheck
 import (
 	"cmp"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -27,30 +26,163 @@ type pluginSourceMount struct {
 
 type pluginSourceFiles struct {
 	mounts    []pluginSourceMount
-	paths     []string
 	directory string
 }
 
-type pluginSourceRoot struct {
-	Host  string `json:"host"`
-	Guest string `json:"guest"`
+type sourceAuthority struct {
+	alias, host string
+	root        *os.Root
 }
 
-func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Script) (*pluginSourceFiles, error) {
-	files := &pluginSourceFiles{}
-	budget := &fsread.SnapshotBudget{}
-	if script.Config == nil || script.Scope == nil || !script.Execution.DirectoryKnown {
-		return files, nil
+func (a sourceAuthority) checkLexical(name string) error {
+	relative, err := filepath.Rel(a.alias, name)
+	if err != nil || !filepath.IsLocal(relative) {
+		relative, err = filepath.Rel(a.host, name)
+	}
+	if err != nil || !filepath.IsLocal(relative) {
+		return fmt.Errorf("plugin source directory %q is outside workspace root %q", name, a.host)
+	}
+	return nil
+}
+
+func resolveSourceDirectory(name string) (string, bool, error) {
+	resolved, err := filepath.EvalSymlinks(name)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return name, false, nil
+	}
+	return resolved, err == nil, err
+}
+
+func closeSourceAuthorities(authorities []sourceAuthority) error {
+	var failure error
+	for _, authority := range authorities {
+		if authority.root != nil {
+			failure = errors.Join(failure, authority.root.Close())
+		}
+	}
+	return failure
+}
+
+func sourceAuthorities(script tools.Script, run *shellcheckRun, workspace, directory string) ([]sourceAuthority, error) {
+	if script.Config == nil {
+		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}
 	inline := script.Config.Tools.Shellcheck.Config.Inline()
 	if inline == nil || inline.ExternalSources != nil && !*inline.ExternalSources || inline.ExternalSources == nil && len(inline.SourcePath) == 0 {
-		return files, nil
+		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}
 	if len(inline.SourcePath) > 32 {
 		return nil, errors.New("ShellCheck source access exceeds 32 search directories")
 	}
+	names := []string{workspace}
+	for _, name := range inline.SourcePath {
+		expanded, err := run.pathContext().Expand(name)
+		if err != nil {
+			return nil, err
+		}
+		if expanded != "SCRIPTDIR" && !strings.HasPrefix(expanded, "SCRIPTDIR/") {
+			names = append(names, sourceName(expanded, directory))
+		}
+	}
+	var authorities []sourceAuthority
+	for _, name := range names {
+		if !filepath.IsAbs(name) {
+			base, err := os.Getwd()
+			if err != nil {
+				return nil, errors.Join(err, closeSourceAuthorities(authorities))
+			}
+			name = sourceName(name, base)
+		}
+		if len(authorities) != 0 {
+			if err := authorities[0].checkLexical(name); err != nil {
+				return nil, errors.Join(err, closeSourceAuthorities(authorities))
+			}
+		}
+		resolved, exists, err := resolveSourceDirectory(name)
+		if err != nil {
+			return nil, errors.Join(err, closeSourceAuthorities(authorities))
+		}
+		var relative string
+		if len(authorities) != 0 {
+			workspace := &authorities[0]
+			relative, err = filepath.Rel(workspace.host, resolved)
+			if !exists && (err != nil || !filepath.IsLocal(relative)) {
+				relative, err = filepath.Rel(workspace.alias, name)
+			}
+			if err != nil || !filepath.IsLocal(relative) {
+				return nil, errors.Join(fmt.Errorf("plugin source directory %q is outside workspace root %q", name, workspace.host), closeSourceAuthorities(authorities))
+			}
+		}
+		if !exists {
+			if len(authorities) == 0 {
+				return nil, fmt.Errorf("plugin workspace root %q does not exist", name)
+			}
+			authorities = append(authorities, sourceAuthority{alias: name, host: name})
+			continue
+		}
+		resolved, err = filepath.Abs(resolved)
+		if err != nil {
+			return nil, errors.Join(err, closeSourceAuthorities(authorities))
+		}
+		info, err := os.Stat(resolved)
+		if err != nil {
+			return nil, errors.Join(err, closeSourceAuthorities(authorities))
+		}
+		if !info.IsDir() {
+			if len(authorities) == 0 {
+				return nil, fmt.Errorf("plugin workspace root %q is not a directory", name)
+			}
+			authorities = append(authorities, sourceAuthority{alias: name, host: resolved})
+			continue
+		}
+		var root *os.Root
+		if len(authorities) == 0 {
+			root, err = os.OpenRoot(resolved)
+		} else {
+			root, err = authorities[0].root.OpenRoot(relative)
+		}
+		if err != nil && (len(authorities) == 0 || !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR)) {
+			return nil, errors.Join(err, closeSourceAuthorities(authorities))
+		}
+		authorities = append(authorities, sourceAuthority{alias: name, host: resolved, root: root})
+	}
+	return authorities, nil
+}
+
+func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Script, resources []analyzer.ToolResourceRequest) (result *pluginSourceFiles, failure error) {
+	files := &pluginSourceFiles{}
+	budget := &fsread.SnapshotBudget{}
+	if len(resources) == 0 {
+		return files, nil
+	}
+	if script.Scope == nil || !script.Execution.DirectoryKnown {
+		return nil, errors.New("source access requires a known workspace and working directory")
+	}
+	if len(resources) > 33 {
+		return nil, errors.New("ShellCheck source access exceeds 32 search directories")
+	}
 	directory := sourcePath(script.Execution.Directory, "")
 	run := &shellcheckRun{cfg: script.Config, actionPath: script.Scope.ActionPath, paths: runPaths{analysis: script.Scope.AnalysisDir, workspace: script.Scope.Workspace, reader: script.Scope.Reader}}
+	workspace := script.Scope.Workspace
+	if workspace == "" {
+		workspace = script.Scope.AnalysisDir
+	}
+	if workspace == "" {
+		return nil, errors.New("ShellCheck source access requires a workspace root")
+	}
+	authorities, err := sourceAuthorities(script, run, workspace, directory)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := closeSourceAuthorities(authorities); err != nil {
+			failure = errors.Join(failure, err)
+			if result != nil {
+				failure = errors.Join(failure, result.close())
+				result = nil
+			}
+		}
+	}()
 	add := func(host, guest string) error {
 		if !filepath.IsAbs(host) {
 			base, err := os.Getwd()
@@ -59,67 +191,85 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 			}
 			host = sourceName(host, base)
 		}
+		if err := authorities[0].checkLexical(host); err != nil {
+			return err
+		}
+		resolved, exists, err := resolveSourceDirectory(host)
+		if err != nil {
+			return fmt.Errorf("ShellCheck source directory %q: %w", host, err)
+		}
+		var selected *sourceAuthority
+		var relative string
+		for i := range authorities {
+			authority := &authorities[i]
+			rel, err := filepath.Rel(authority.host, resolved)
+			if err == nil && filepath.IsLocal(rel) && (selected == nil || len(authority.host) > len(selected.host)) {
+				selected, relative = authority, rel
+			}
+			if !exists && host == authority.alias && selected == nil {
+				selected, relative = authority, "."
+			}
+		}
+		if selected == nil {
+			return fmt.Errorf("plugin requested source directory %q outside host-authorized roots", host)
+		}
 		if err := run.recordSources([]string{host}, directory); err != nil {
 			return err
 		}
-		resolved, err := filepath.EvalSymlinks(host)
-		if err == nil {
-			resolved, err = filepath.Abs(resolved)
+		if !exists || selected.root == nil {
+			return nil
 		}
-		var info fs.FileInfo
-		if err == nil {
-			info, err = os.Stat(resolved)
-		}
+		info, err := selected.root.Stat(relative)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
 				return nil
 			}
-			return fmt.Errorf("ShellCheck source directory %q: %w", host, err)
+			return err
 		}
 		if !info.IsDir() {
 			return nil
 		}
-		snapshot, err := fsread.NewSnapshot(ctx, resolved, script.Scope.Reader, budget)
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-				return nil
-			}
+		snapshot, err := fsread.NewSnapshotAt(ctx, selected.root, relative, script.Scope.Reader, budget)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR) {
 			return fmt.Errorf("ShellCheck source directory %q: %w", host, err)
 		}
-		files.mounts = append(files.mounts, pluginSourceMount{host: resolved, alias: host, guest: guest, files: snapshot})
+		if snapshot != nil {
+			files.mounts = append(files.mounts, pluginSourceMount{host: resolved, alias: host, guest: guest, files: snapshot})
+		}
 		return nil
 	}
-	workspace := script.Scope.Workspace
-	if workspace == "" {
-		workspace = script.Scope.AnalysisDir
-	}
-	if workspace == "" {
-		return nil, errors.New("ShellCheck source access requires a workspace root")
-	}
-	if err := add(workspace, "/workspace"); err != nil {
-		return nil, err
-	}
-	for i, source := range inline.SourcePath {
+	directoryIndex := 0
+	for _, resource := range resources {
+		if resource.Kind == analyzer.ToolWorkspace {
+			if err := add(workspace, "/workspace"); err != nil {
+				return nil, errors.Join(err, files.close())
+			}
+			continue
+		}
+		if resource.Kind != analyzer.ToolDirectory {
+			return nil, errors.Join(errors.New("unknown source resource kind"), files.close())
+		}
+		source := resource.Path
 		source, err := run.pathContext().Expand(source)
 		if err != nil {
 			return nil, errors.Join(err, files.close())
 		}
 		if source == "SCRIPTDIR" || strings.HasPrefix(source, "SCRIPTDIR/") {
-			files.paths = append(files.paths, source)
 			continue
 		}
 		source = sourceName(source, directory)
-		guest := fmt.Sprintf("/sources/%d", i)
+		guest := fmt.Sprintf("/sources/%d", directoryIndex)
+		directoryIndex++
 		if err := add(source, guest); err != nil {
 			return nil, errors.Join(err, files.close())
 		}
-		files.paths = append(files.paths, guest)
 	}
+	matchedRootLength := -1
 	for _, mount := range files.mounts {
 		relative, err := filepath.Rel(mount.host, directory)
-		if err == nil && filepath.IsLocal(relative) {
+		if err == nil && filepath.IsLocal(relative) && len(mount.host) > matchedRootLength {
 			files.directory = path.Join(mount.guest, filepath.ToSlash(relative))
-			break
+			matchedRootLength = len(mount.host)
 		}
 	}
 	if files.directory == "" {
@@ -128,34 +278,23 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 	return files, nil
 }
 
-func (f *pluginSourceFiles) configure(input *analyzer.Input) error {
+func (f *pluginSourceFiles) configure(input *analyzer.Input) {
 	if len(f.mounts) == 0 {
-		return nil
+		return
 	}
-	var options documentPluginOptions
-	if err := json.Unmarshal(input.Options, &options); err != nil {
-		return err
-	}
-	options.ExternalSources, options.SourcePath = true, f.paths
 	for _, mount := range f.mounts {
-		options.SourceRoots = append(options.SourceRoots, pluginSourceRoot{Host: filepath.ToSlash(mount.host), Guest: mount.guest})
+		input.SourceRoots = append(input.SourceRoots, analyzer.SourceRoot{Host: filepath.ToSlash(mount.host), Guest: mount.guest})
 		if mount.alias != mount.host {
-			options.SourceRoots = append(options.SourceRoots, pluginSourceRoot{Host: filepath.ToSlash(mount.alias), Guest: mount.guest})
+			input.SourceRoots = append(input.SourceRoots, analyzer.SourceRoot{Host: filepath.ToSlash(mount.alias), Guest: mount.guest})
 		}
 	}
-	slices.SortStableFunc(options.SourceRoots, func(a, b pluginSourceRoot) int {
+	slices.SortStableFunc(input.SourceRoots, func(a, b analyzer.SourceRoot) int {
 		return cmp.Compare(len(b.Host), len(a.Host))
 	})
-	data, err := json.Marshal(options)
-	if err != nil {
-		return err
-	}
-	input.Options = data
 	for _, mount := range f.mounts {
 		input.Files = append(input.Files, analyzer.FileSystem{Path: mount.guest, FS: mount.files})
 	}
 	input.Scripts[0].Runtime.Directory = f.directory
-	return nil
 }
 
 func (f *pluginSourceFiles) close() error {

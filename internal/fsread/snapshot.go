@@ -49,10 +49,24 @@ func NewSnapshot(ctx context.Context, directory string, reader *Reader, budget *
 	if err != nil {
 		return nil, err
 	}
+	return newSnapshot(ctx, root, reader, budget), nil
+}
+
+// NewSnapshotAt opens a child grant through an already authorized root. The
+// parent stays caller-owned; the snapshot owns its independently opened child.
+func NewSnapshotAt(ctx context.Context, parent *os.Root, name string, reader *Reader, budget *SnapshotBudget) (*SnapshotFS, error) {
+	root, err := parent.OpenRoot(name)
+	if err != nil {
+		return nil, err
+	}
+	return newSnapshot(ctx, root, reader, budget), nil
+}
+
+func newSnapshot(ctx context.Context, root *os.Root, reader *Reader, budget *SnapshotBudget) *SnapshotFS {
 	if budget == nil {
 		budget = &SnapshotBudget{}
 	}
-	return &SnapshotFS{ctx: ctx, root: root, reader: reader, files: make(map[string]*snapshotData), names: make(map[string]snapshotName), budget: budget}, nil
+	return &SnapshotFS{ctx: ctx, root: root, reader: reader, files: make(map[string]*snapshotData), names: make(map[string]snapshotName), budget: budget}
 }
 
 func (s *SnapshotFS) Close() error {

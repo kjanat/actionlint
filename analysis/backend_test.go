@@ -19,6 +19,8 @@ func (f scriptBackend) Check(ctx context.Context, request analyzer.ScriptRequest
 	return f(ctx, request)
 }
 
+func (scriptBackend) TemplateContract() string { return analyzer.TemplateEffectsContract }
+
 func TestScriptBackendsWithoutCommands(t *testing.T) {
 	failure := errors.New("backend partially completed")
 	var mu sync.Mutex
@@ -42,7 +44,7 @@ func TestScriptBackendsWithoutCommands(t *testing.T) {
 				break
 			}
 		}
-		return []analyzer.ScriptDiagnostic{{Filename: request.Filename, Code: code, Message: "test finding", Severity: "warning", Location: analyzer.ScriptPosition{Row: row, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: row, Column: 2}}}, failure
+		return []analyzer.ScriptDiagnostic{{Filename: request.Filename, Code: code, Message: "test finding", Severity: "warning", Location: analyzer.ScriptPosition{Row: row, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: row, Column: 2}, TemplateEffect: analyzer.TemplateEffectNone}}, failure
 	})
 	cfg, err := config.Parse([]byte("tools:\n  ruff:\n    config:\n      target-version: py312\n      lint: {extend-select: [B]}\n"))
 	if err != nil {

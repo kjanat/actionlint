@@ -41,6 +41,7 @@ pub struct Capabilities {
     pub network: bool,
     pub fixes: bool,
     pub source_annotations: bool,
+    pub source_files: bool,
 }
 
 /// Extension-owned declarations and license for a component distribution.
@@ -267,6 +268,7 @@ mod tests {
                 network: false,
                 fixes: false,
                 source_annotations: false,
+                source_files: false,
             },
             descriptor,
             license_text: "Example license\n",

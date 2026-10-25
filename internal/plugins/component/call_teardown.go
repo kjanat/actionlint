@@ -17,6 +17,10 @@ func (c *callScope) finish(ctx context.Context, result *error) {
 	guest, annotations, input, output := c.guest, c.annotations, c.stdin, c.output
 	c.guest, c.annotations, c.stdin, c.output = nil, nil, nil, nil
 	cleanup := context.WithoutCancel(ctx)
+	files := c.files
+	c.files = nil
+	prepared := c.prepared
+	c.prepared = nil
 	guestFailed := false
 	defer func() {
 		if guestFailed {
@@ -43,6 +47,12 @@ func (c *callScope) finish(ctx context.Context, result *error) {
 	}
 	if annotations != nil {
 		defer c.closeResource(cleanup, "source annotations", annotations, result)
+	}
+	if files != nil {
+		defer c.closeResource(cleanup, "source files", files, result)
+	}
+	if prepared != nil {
+		defer c.closeResource(cleanup, "prepared scripts", prepared, result)
 	}
 	if guest != nil {
 		guestFailed = c.closeResource(cleanup, "component", guest, result)

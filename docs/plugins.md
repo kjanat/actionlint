@@ -7,6 +7,28 @@ call with the facts it declared and returns diagnostics. Components may instead 
 [`kjanat:actionlint/script-engine@0.1.0`](../crates/actionlint-extension-api/wit/script-engine.wit) interface. Components can implement multiple
 roles. Any language with a component toolchain can implement them.
 
+Tool integrations are discovered through the optional
+[`tool-integration`](../crates/actionlint-extension-api/wit/tool-integration.wit) export,
+regardless of repository name, registry alias or loading path. A conforming fork receives
+the same configuration, suppression and execution behavior. The plugin negotiates the
+versioned host configuration profile together with opaque caller options before execution;
+it declares resource requests and configurations it cannot support. Native fallback requires
+the caller to have enabled native execution.
+
+The [ShellCheck profile](../crates/actionlint-extension-api/schemas/shellcheck-config-0.1.0.md)
+uses typed `source-files` mount translations and `prepared-scripts` source preparation.
+Shell interpretation, masking, startup preparation and exclusions have one host implementation.
+Managed filesystem grants stay within the host-selected workspace. Configured
+source paths and symlink targets that resolve outside it fail analysis; missing paths receive no grant.
+Plugin options do not carry filesystem mount metadata. The
+[`template-effects`](../crates/actionlint-extension-api/wit/template-effects.wit) interface
+classifies snippet diagnostics for substitution-aware filtering; hosts never infer these
+effects from diagnostic wording or rule codes. Structural WIT types determine compatibility;
+source-file hashes are informational build provenance.
+
+The alternative [core JSON memory ABI and versioned operations](../crates/actionlint-extension-api/wit/core-json-abi.md)
+are specified alongside WIT. Check operation 2 carries the same template-effect semantics.
+
 ## Install from the registry
 
 Search the [published catalogue](https://plugins.actionlint.kjanat.dev/):
@@ -160,12 +182,11 @@ warnings and leave ordinary downloads available. Set `plugin-cache: false` to di
 optimization; compiled runtime state is never stored in this cache.
 
 The Action never installs native Ruff or ShellCheck executables or adds them to PATH.
-The official `shellcheck` dependency uses `tools.shellcheck` and the ordinary `shellcheck` rule
-controls. Explicit rc files retain a caller-provided native backend; source settings
-use scoped read-only filesystem grants.
-A ShellCheck component loaded through a direct URL or `--plugin` remains a standalone analyzer,
-configured under its `shellcheck-rs` plugin rule. Explicit plugin analyzers are independent of
-the Action's native-tool enable switches.
+Any component declaring the ShellCheck integration profile uses `tools.shellcheck` and
+the ordinary `shellcheck` rule controls. The component negotiates rc-file support and source
+grants. Direct URLs, `--plugin`, and registry declarations select identical integration behavior.
+Opaque plugin options use `lint.rules.plugins.shellcheck.options`; explicit library registration
+options take precedence. Components without a tool-integration export remain standalone analyzers.
 
 Check, fix, rules and LSP load declared plugins from their matching locked artifacts. Selection precedence:
 

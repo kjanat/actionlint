@@ -42,6 +42,8 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 		return nil, errors.New("component does not implement the analyzer role")
 	}
 	ctx = context.WithValue(ctx, fileSystemsKey{}, input.Files)
+	ctx = context.WithValue(ctx, sourceRootsKey{}, input.SourceRoots)
+	ctx = context.WithValue(ctx, preparedScriptsKey{}, preparationScope{prepare: input.PrepareScript, references: suppliedComments(input)})
 	ctx = context.WithValue(ctx, sourceCommentsKey{}, suppliedComments(input))
 	value, err := p.callAnalyzer(ctx, "analyze", lowerInput(input))
 	if err != nil {

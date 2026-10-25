@@ -2,6 +2,7 @@ package ruff
 
 import (
 	"encoding/json"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 
@@ -26,5 +27,9 @@ func prepareInput(script tools.Script) (tools.PreparedInput, error) {
 	if err != nil {
 		return tools.PreparedInput{}, err
 	}
-	return tools.PreparedInput{Source: source, Config: encoded, Skip: !valid, AcceptDiagnostic: func(d analyzer.ScriptDiagnostic) bool { return masks.accept(d) }}, nil
+	contract := ""
+	if strings.Contains(script.Text, "${{") {
+		contract = analyzer.TemplateEffectsContract
+	}
+	return tools.PreparedInput{Source: source, Config: encoded, Skip: !valid, TemplateContract: contract, AcceptDiagnostic: func(d analyzer.ScriptDiagnostic) bool { return masks.accept(d) }}, nil
 }

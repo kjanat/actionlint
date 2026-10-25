@@ -14,7 +14,6 @@ import (
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
-	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
 )
 
 // DefaultPluginOptions preserves invocation-level native selections during migration.
@@ -37,7 +36,7 @@ func DefaultPluginReferences(cfg *config.Config, options DefaultPluginOptions) (
 		name    string
 		enabled bool
 	}{
-		{"shellcheck", options.Shellcheck && shellcheck.SupportsDocumentPlugin(cfg) &&
+		{"shellcheck", options.Shellcheck && cfg.Tools.Shellcheck.Backend == nil &&
 			(cfg.Tools.Shellcheck.Enabled == nil || *cfg.Tools.Shellcheck.Enabled) && config.DiagnosticLevel(cfg, "shellcheck") != "off"},
 		{"ruff", options.Ruff && cfg.Tools.Ruff.Backend == nil &&
 			(cfg.Tools.Ruff.Enabled == nil || *cfg.Tools.Ruff.Enabled) && config.DiagnosticLevel(cfg, "ruff") != "off"},

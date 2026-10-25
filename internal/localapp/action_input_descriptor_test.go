@@ -160,6 +160,8 @@ func TestDisabledInputSelectorsDoNotConflict(t *testing.T) {
 
 type pythonInputBackend struct{}
 
+func (pythonInputBackend) TemplateContract() string { return analyzer.TemplateEffectsContract }
+
 func (pythonInputBackend) Check(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 	// Model Ruff's undefined-name ranges for the opaque identifier and real name.
 	var findings []analyzer.ScriptDiagnostic
@@ -167,12 +169,12 @@ func (pythonInputBackend) Check(_ context.Context, request analyzer.ScriptReques
 		before := request.Source[:match[0]]
 		row := strings.Count(before, "\n") + 1
 		column := match[0] - strings.LastIndex(before, "\n")
-		findings = append(findings, analyzer.ScriptDiagnostic{Filename: request.Filename, Code: "F821", Message: "undefined name", Location: analyzer.ScriptPosition{Row: row, Column: column}, EndLocation: analyzer.ScriptPosition{Row: row, Column: column + match[1] - match[0]}})
+		findings = append(findings, analyzer.ScriptDiagnostic{Filename: request.Filename, Code: "F821", Message: "undefined name", Location: analyzer.ScriptPosition{Row: row, Column: column}, EndLocation: analyzer.ScriptPosition{Row: row, Column: column + match[1] - match[0]}, TemplateEffect: analyzer.TemplateEffectOpaqueName})
 	}
 	return findings, nil
 }
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
-	plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: pythonInputBackend{}, descriptor: analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
+	plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: pythonInputBackend{}, descriptor: analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: analyzer.TemplateEffectsContract, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
 	options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{(ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()}})
 	if err != nil {
 		t.Fatal(err)

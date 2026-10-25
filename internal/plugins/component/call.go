@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/preparedscripts"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 	"github.com/kjanat/wacogo/wasi"
@@ -55,6 +56,8 @@ type callScope struct {
 	guest       *wacogo.ComponentInstance
 	stdin       *host.ComponentInstance
 	annotations *host.ComponentInstance
+	files       *host.ComponentInstance
+	prepared    *host.ComponentInstance
 }
 
 func (c *callScope) invoke(ctx context.Context, iface, name string, args ...wacogo.Val) (value wacogo.Val, err error) {
@@ -139,6 +142,22 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 		}
 		c.annotations = annotations
 		imports = append(imports, wacogo.WithInstanceImport(SourceAnnotationsInterface, annotations.Core()))
+	}
+	if p.filesFactory != nil {
+		files, err := p.filesFactory.NewInstance(ctx, sourceFiles{}, nil)
+		if err != nil {
+			return err
+		}
+		c.files = files
+		imports = append(imports, wacogo.WithInstanceImport(SourceFilesInterface, files.Core()))
+	}
+	if p.preparedFactory != nil {
+		prepared, err := p.preparedFactory.NewInstance(ctx, preparedScripts{}, &preparedbind.Deps{SourceAnnotations: c.annotations.Core()})
+		if err != nil {
+			return err
+		}
+		c.prepared = prepared
+		imports = append(imports, wacogo.WithInstanceImport(PreparedScriptsInterface, prepared.Core()))
 	}
 	guest, err := p.component.Instantiate(ctx, imports...)
 	if err != nil {

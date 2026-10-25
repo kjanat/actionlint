@@ -263,7 +263,7 @@ func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 		{"tools: {ruff: false}", "shellcheck"},
 		{"lint: {rules: {external: {shellcheck: off}}}", "ruff"},
 		{"tools: {ruff: {backend: {process: {executable: custom-ruff}}}}", "shellcheck"},
-		{"tools: {shellcheck: {config: .shellcheckrc}}", "ruff"},
+		{"tools: {shellcheck: {config: .shellcheckrc}}", "shellcheck,ruff"},
 		{"tools: {shellcheck: {config: {external-sources: true}}}", "shellcheck,ruff"},
 		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "shellcheck,ruff"},
 	} {

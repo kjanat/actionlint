@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -20,6 +21,10 @@ import (
 // process behavior. Configured sources and rc files are selected per document,
 // including overrides and invoked composite actions.
 func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, error) {
+	integrator, ok := guest.(analyzer.ToolIntegrator)
+	if !ok || integrator.ToolIntegration() == nil || integrator.ToolIntegration().Contract != "kjanat:actionlint/shellcheck-config@0.1.0" || integrator.ToolIntegration().Tool != "shellcheck" {
+		return tools.Registration{}, errors.New("analyzer does not advertise the shellcheck configuration contract")
+	}
 	base := o.Registration()
 	defaults := processconfig.Options{Optional: true}
 	if o.Process != nil {
@@ -31,62 +36,95 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 		return base, nil
 	}
 	next := base
+	next.Descriptor = guest.Descriptor().Descriptor
 	next.NeedsProcess = func(cfg, project *config.Config, composite bool) (bool, error) {
-		if SupportsDocumentPlugin(cfg) {
+		_, err := negotiateDocument(context.Background(), integrator, cfg, nil)
+		if err == nil {
 			return false, nil
+		}
+		if _, ok := errors.AsType[*analyzer.UnsupportedToolConfigurationError](err); !ok {
+			return false, err
+		}
+		if o.ManagedOnly {
+			return false, err
 		}
 		return base.NeedsProcess(cfg, project, composite)
 	}
 	next.Required = func(c tools.Context) bool {
-		return SupportsDocumentPlugin(c.Config) || base.Required(c)
+		return true
 	}
 	next.Build = func(c tools.Context) (tools.Runner, error) {
-		return documentPluginRunner{guest: guest, context: c, help: base.Descriptor.Help, native: func() (tools.Runner, error) { return base.Build(c) }}, nil
+		return documentPluginRunner{guest: guest, integrator: integrator, context: c, native: func() (tools.Runner, error) {
+			if o.ManagedOnly {
+				return nil, errors.New("plugin declined configuration; native fallback is not enabled")
+			}
+			return base.Build(c)
+		}}, nil
 	}
 	return next, nil
 }
 
-// SupportsDocumentPlugin reports whether ShellCheck's effective configuration
-// can run with host-supplied source files and without native rc files or process options.
-func SupportsDocumentPlugin(cfg *config.Config) bool {
-	if cfg == nil {
-		return true
+func negotiateDocument(ctx context.Context, guest analyzer.ToolIntegrator, cfg *config.Config, script *tools.Script) (*analyzer.ToolNegotiation, error) {
+	options := documentPluginOptions{}
+	if cfg != nil {
+		if cfg.Tools.Shellcheck.Backend != nil {
+			return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
+		}
+		options.RCFile = cfg.Tools.Shellcheck.Config.Path()
+		if inline := cfg.Tools.Shellcheck.Config.Inline(); inline != nil {
+			options.Shell, options.Disable, options.Enable = inline.Shell, inline.Disable, inline.Enable
+			options.ExtendedAnalysis, options.ExternalSources, options.SourcePath = inline.ExtendedAnalysis, inline.ExternalSources, inline.SourcePath
+		}
 	}
-	settings := cfg.Tools.Shellcheck
-	if settings.Backend != nil {
-		return false
+	if script != nil && script.Scope != nil && len(options.SourcePath) != 0 {
+		options.SourcePath = slices.Clone(options.SourcePath)
+		run := &shellcheckRun{actionPath: script.Scope.ActionPath, paths: runPaths{analysis: script.Scope.AnalysisDir, workspace: script.Scope.Workspace}}
+		for i, name := range options.SourcePath {
+			expanded, err := run.pathContext().Expand(name)
+			if err != nil {
+				return nil, err
+			}
+			if expanded != "SCRIPTDIR" && !strings.HasPrefix(expanded, "SCRIPTDIR/") {
+				expanded = sourceName(expanded, script.Execution.Directory)
+			}
+			options.SourcePath[i] = expanded
+		}
 	}
-	source := settings.Config
-	if source.Path() != "" {
-		return false
+	data, err := json.Marshal(options)
+	if err != nil {
+		return nil, err
 	}
-	if inline := source.Inline(); inline != nil {
-		// Native ShellCheck accepts ranges and "all"; the component accepts
-		// individual diagnostic codes. Preserve that native configuration.
-		for _, code := range inline.Disable {
-			if code == "all" || strings.Contains(code, "-") {
-				return false
+	var pluginOptions json.RawMessage
+	if cfg != nil {
+		if value := cfg.Lint.Rules.Plugins.Rules[guest.ToolIntegration().Tool].Options; value != nil {
+			pluginOptions, err = json.Marshal(value)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
-	return true
+	negotiated, err := guest.NegotiateTool(ctx, data, pluginOptions)
+	if err == nil && negotiated == nil {
+		return nil, errors.New("tool negotiation returned no result")
+	}
+	return negotiated, err
 }
 
 type documentPluginOptions struct {
-	Shell            *string            `json:"shell,omitempty"`
-	Disable          []string           `json:"disable,omitempty"`
-	Enable           []string           `json:"enable,omitempty"`
-	ExtendedAnalysis *bool              `json:"extended-analysis,omitempty"`
-	ExternalSources  bool               `json:"external-sources,omitempty"`
-	SourcePath       []string           `json:"source-path,omitempty"`
-	SourceRoots      []pluginSourceRoot `json:"source-roots,omitempty"`
+	Shell            *string  `json:"shell,omitempty"`
+	Disable          []string `json:"disable,omitempty"`
+	Enable           []string `json:"enable,omitempty"`
+	ExtendedAnalysis *bool    `json:"extended-analysis,omitempty"`
+	ExternalSources  *bool    `json:"external-sources,omitempty"`
+	SourcePath       []string `json:"source-path,omitempty"`
+	RCFile           string   `json:"rc-file,omitempty"`
 }
 
 type documentPluginRunner struct {
-	guest   analyzer.Analyzer
-	context tools.Context
-	help    string
-	native  func() (tools.Runner, error)
+	guest      analyzer.Analyzer
+	integrator analyzer.ToolIntegrator
+	context    tools.Context
+	native     func() (tools.Runner, error)
 }
 
 func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -103,7 +141,12 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		if config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools.Shellcheck.Enabled != nil && !*cfg.Tools.Shellcheck.Enabled {
 			continue
 		}
-		if !SupportsDocumentPlugin(cfg) {
+		negotiated, negotiateErr := negotiateDocument(ctx, r.integrator, cfg, &script)
+		var unsupported *analyzer.UnsupportedToolConfigurationError
+		if negotiateErr != nil && !errors.As(negotiateErr, &unsupported) {
+			return findings, errors.Join(failure, negotiateErr)
+		}
+		if unsupported != nil {
 			nativeBatch.Scripts = append(nativeBatch.Scripts, script)
 			nativeIndices = append(nativeIndices, i)
 			if !nativeScopes[script.Scope] {
@@ -115,21 +158,15 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		if script.Path == "" {
 			script.Path, script.Content = r.context.DocumentPath, r.context.DocumentContent
 		}
-		input, err := r.input(script)
-		if err != nil {
-			return findings, errors.Join(failure, err)
-		}
-		files, fileErr := r.sourceFiles(ctx, script)
+		input := r.input(script)
+		input.Options = negotiated.Options
+		files, fileErr := r.sourceFiles(ctx, script, negotiated.Resources)
 		if fileErr != nil {
 			return findings, errors.Join(failure, fileErr)
 		}
-		if err := files.configure(&input); err != nil {
-			return findings, errors.Join(failure, err, files.close())
-		}
+		files.configure(&input)
 		result, err := analyzerhost.Run(ctx, input, []analyzer.Registration{{Analyzer: r.guest, Options: input.Options}})
 		for _, finding := range result {
-			finding.Rule = "shellcheck"
-			finding.Help = r.help
 			mapped, mapErr := files.finding(finding, script, i)
 			if mapErr != nil {
 				err = errors.Join(err, mapErr)
@@ -156,17 +193,7 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 	return findings, failure
 }
 
-func (r documentPluginRunner) input(script tools.Script) (analyzer.Input, error) {
-	options := documentPluginOptions{}
-	if script.Config != nil {
-		if inline := script.Config.Tools.Shellcheck.Config.Inline(); inline != nil {
-			options = documentPluginOptions{Shell: inline.Shell, Disable: inline.Disable, Enable: inline.Enable, ExtendedAnalysis: inline.ExtendedAnalysis}
-		}
-	}
-	data, err := json.Marshal(options)
-	if err != nil {
-		return analyzer.Input{}, err
-	}
+func (r documentPluginRunner) input(script tools.Script) analyzer.Input {
 	start := diagnostic.Position{Line: script.Value.Line, Column: script.Value.Col}
 	supplied := analyzer.Script{
 		Text: script.Text, Path: script.Path, Start: start,
@@ -185,7 +212,6 @@ func (r documentPluginRunner) input(script tools.Script) (analyzer.Input, error)
 	input := analyzer.Input{
 		Path: script.Path, Content: string(script.Content), Kind: "workflow", ParseStatus: "complete",
 		Available: []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution},
-		Options:   data,
 	}
 	if r.context.Reference != nil {
 		input.Reference = r.context.Reference(script.Path, script.Content, diagnostic.Position{})
@@ -195,5 +221,6 @@ func (r documentPluginRunner) input(script tools.Script) (analyzer.Input, error)
 		input.Kind = "action"
 	}
 	input.Scripts = []analyzer.Script{supplied}
-	return input, nil
+	input.PrepareScript = scriptPreparer(input.Scripts)
+	return input
 }

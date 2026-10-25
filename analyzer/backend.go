@@ -36,14 +36,15 @@ type ScriptConfigValidator interface {
 // ScriptEngineDescriptor describes a portable snippet engine independently of
 // its transport. Rule names identify the host adapter it can replace.
 type ScriptEngineDescriptor struct {
-	ID            string
-	Version       string
-	Name          string
-	Engine        string
-	EngineVersion string
-	Shells        []string
-	ScriptInputs  []ScriptInput
-	Rule          rule.Descriptor
+	ID               string
+	Version          string
+	Name             string
+	Engine           string
+	EngineVersion    string
+	TemplateContract string
+	Shells           []string
+	ScriptInputs     []ScriptInput
+	Rule             rule.Descriptor
 }
 
 // ScriptInput identifies source code supplied to one action input, independently
@@ -122,22 +123,30 @@ type ScriptRequest struct {
 	Config   json.RawMessage `json:"config,omitempty"`
 }
 
-// ScriptPosition is one-based and counts Unicode scalar values. End positions
-// are exclusive. A transport adapter must convert other coordinate conventions.
+// ScriptTemplateValidator checks runtime support before template filtering.
+// False with no error means an optional backend is unavailable.
+type ScriptTemplateValidator interface {
+	ValidateTemplates(context.Context) (bool, error)
+}
+
+// ScriptPosition is one-based, counts Unicode scalar values and uses LF-delimited
+// decoded-source rows. End positions are exclusive. Transport adapters convert
+// engine CR/CRLF line conventions before returning findings.
 type ScriptPosition struct {
 	Row    int `json:"row"`
 	Column int `json:"column"`
 }
 
-// ScriptDiagnostic uses the Ruff plugin's check-v1 data shape. Diagnostics may
+// ScriptDiagnostic is a transport-independent snippet finding. Diagnostics may
 // accompany an error when a backend completes only part of its analysis.
 type ScriptDiagnostic struct {
-	Filename    string         `json:"filename"`
-	Code        string         `json:"code"`
-	Name        string         `json:"name,omitempty"`
-	Message     string         `json:"message"`
-	Severity    string         `json:"severity,omitempty"`
-	Location    ScriptPosition `json:"location"`
-	EndLocation ScriptPosition `json:"end_location"`
-	URL         string         `json:"url,omitempty"`
+	Filename       string               `json:"filename"`
+	Code           string               `json:"code"`
+	Name           string               `json:"name,omitempty"`
+	Message        string               `json:"message"`
+	Severity       string               `json:"severity,omitempty"`
+	Location       ScriptPosition       `json:"location"`
+	EndLocation    ScriptPosition       `json:"end_location"`
+	URL            string               `json:"url,omitempty"`
+	TemplateEffect ScriptTemplateEffect `json:"template_effect,omitempty"`
 }

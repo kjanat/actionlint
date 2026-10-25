@@ -8592,8 +8592,8 @@
                               },
                               "wasm": {
                                 "title": "wasm",
-                                "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
-                                "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "description": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
+                                "markdownDescription": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
                                 "type": "object",
                                 "required": [
                                   "path"
@@ -8791,8 +8791,8 @@
                               },
                               "wasm": {
                                 "title": "wasm",
-                                "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
-                                "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                                "description": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
+                                "markdownDescription": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
                                 "type": "object",
                                 "required": [
                                   "path"
@@ -9043,8 +9043,8 @@
                     },
                     "wasm": {
                       "title": "wasm",
-                      "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
-                      "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "description": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
+                      "markdownDescription": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
                       "type": "object",
                       "required": [
                         "path"
@@ -9242,8 +9242,8 @@
                     },
                     "wasm": {
                       "title": "wasm",
-                      "description": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
-                      "markdownDescription": "Selects a core WebAssembly engine that follows the actionlint-plugin-ruff JSON ABI.",
+                      "description": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
+                      "markdownDescription": "Selects a core WebAssembly engine using the versioned core JSON ABI.",
                       "type": "object",
                       "required": [
                         "path"

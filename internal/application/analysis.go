@@ -121,6 +121,13 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 	if _, err := rulecatalog.Combine(extensions...); err != nil {
 		return nil, err
 	}
+	for _, registration := range request.Tools {
+		if registration.ToolIntegration != nil {
+			if _, registered := rulecatalog.Find(registration.Descriptor.Name); registered {
+				extensions = append(extensions, registration.Descriptor)
+			}
+		}
+	}
 
 	for _, registration := range request.Tools {
 		if registration.Build == nil {

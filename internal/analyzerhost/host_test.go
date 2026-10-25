@@ -46,8 +46,10 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 	failure := errors.New("incomplete")
 	input := analyzer.Input{Path: "workflow.yml", Available: []analyzer.Fact{analyzer.Source, analyzer.Mappings}, Mappings: []analyzer.Mapping{{Entries: []analyzer.Entry{{Name: "original"}}}}}
 	changed := make(chan struct{})
+	input.SourceRoots = []analyzer.SourceRoot{{Host: "/source", Guest: "/workspace"}}
 	first := testAnalyzer{analyzer.Descriptor{Name: "first", Requires: []analyzer.Fact{analyzer.Mappings}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		in.Mappings[0].Entries[0].Name = "changed"
+		in.SourceRoots[0].Guest = "/changed"
 		close(changed)
 		return []diagnostic.Diagnostic{{Message: "partial"}}, failure
 	}}
@@ -55,6 +57,9 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 		<-changed
 		if in.Mappings[0].Entries[0].Name != "original" {
 			t.Error("shared mutable facts")
+		}
+		if in.SourceRoots[0].Guest != "/workspace" {
+			t.Error("shared mutable source roots")
 		}
 		return []diagnostic.Diagnostic{{Message: "complete"}}, nil
 	}}

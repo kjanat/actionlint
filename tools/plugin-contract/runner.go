@@ -25,7 +25,15 @@ func generateRoleContract(file, role, interfaceName, digestName, functionName st
 	if err != nil {
 		return err
 	}
-	resolved, err := wit.DecodeWIT(bytes.NewReader(data))
+	contractData := data
+	if file == "template-effects" {
+		dependency, err := os.ReadFile("../../crates/actionlint-extension-api/wit/script-engine.wit")
+		if err != nil {
+			return err
+		}
+		contractData = append(append([]byte{}, dependency...), []byte(strings.TrimPrefix(string(data), "package kjanat:actionlint@0.1.0;"))...)
+	}
+	resolved, err := wit.DecodeWIT(bytes.NewReader(contractData))
 	if err != nil {
 		return err
 	}

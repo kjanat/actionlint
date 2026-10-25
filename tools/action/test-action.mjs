@@ -3,9 +3,12 @@
 import assert from 'node:assert/strict';
 
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { realpathSync } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const [actionDirectory, binary] = process.argv.slice(2);
 if (!actionDirectory || !binary) throw new Error('Usage: test-action.mjs ACTION_DIRECTORY ACTIONLINT_BINARY');
@@ -14,8 +17,90 @@ const entrypoint = resolve(actionDirectory, 'action.mjs');
 const tempRoot = resolve(tmpdir());
 const workspace = await mkdtemp(join(tempRoot, 'actionlint-action-test-'));
 const shared = await mkdtemp(join(tempRoot, 'actionlint-shared-test-'));
+const candidate = join(shared, process.platform === 'win32' ? 'actionlint.exe' : 'actionlint');
 const outputFile = join(workspace, 'github-output');
 const summaryFile = join(workspace, 'github-summary');
+
+/** @param {Record<string, string>} environment */
+async function installManagedShell(environment) {
+	const registry = join(workspace, 'managed-catalogue');
+	const manifestDirectory = join(registry, 'plugins/shellcheck');
+	await mkdir(join(manifestDirectory, 'versions'), { recursive: true });
+	const contractDigest = createHash('sha256')
+		.update(await readFile(join(source, 'crates/actionlint-extension-api/wit/analyzer.wit')))
+		.digest('hex');
+	const metadata = {
+		metadata_version: 1,
+		id: 'shellcheck',
+		name: 'Managed ShellCheck fixture',
+		description: 'Action integration fixture',
+		license: 'MIT',
+		plugin_version: '1.0.0',
+		repository: 'https://github.com/publisher/managed-shellcheck',
+		transport: 'wasm-component',
+		interface: 'kjanat:actionlint/analyzer@0.1.0',
+		contract_sha256: contractDigest,
+	};
+	const metadataFile = join(registry, 'metadata.json');
+	const moduleFile = join(registry, 'plugin.wasm');
+	await writeFile(metadataFile, JSON.stringify(metadata));
+	const packageFixture = spawnSync('go', [
+		'run',
+		'./tools/plugin-fixture-metadata',
+		join(source, 'internal/plugins/component/testdata/plugins/managed-no-sudo.wasm'),
+		metadataFile,
+		moduleFile,
+	], { cwd: source, env: process.env, encoding: 'utf8' });
+	assert.equal(
+		packageFixture.status,
+		0,
+		`${packageFixture.error ?? ''}\n${packageFixture.stdout}\n${packageFixture.stderr}`,
+	);
+	const artifact = {
+		kind: 'component',
+		sha256: createHash('sha256').update(await readFile(moduleFile)).digest('hex'),
+		plugin_id: metadata.id,
+		plugin_version: metadata.plugin_version,
+		repository: metadata.repository,
+		contract: `${metadata.interface}#sha256=${contractDigest}`,
+		metadata,
+	};
+	await writeFile(
+		join(registry, 'index.json'),
+		JSON.stringify({
+			schema_version: 1,
+			source: 'candidate',
+			plugins: [{
+				name: 'github.com/publisher/managed-shellcheck',
+				plugin_id: metadata.id,
+				manifest: 'plugins/shellcheck/index.json',
+			}],
+		}),
+	);
+	await writeFile(
+		join(manifestDirectory, 'index.json'),
+		JSON.stringify({
+			source: 'candidate',
+			name: 'github.com/publisher/managed-shellcheck',
+			plugin_id: metadata.id,
+			versions: [{ version: 'v1.0.0', record: 'versions/v1.json' }],
+		}),
+	);
+	await writeFile(
+		join(manifestDirectory, 'versions/v1.json'),
+		JSON.stringify({ source: 'candidate', artifact, url: 'plugin.wasm' }),
+	);
+	await rm(join(workspace, '.github/actionlint.yaml'));
+	await rm(join(workspace, '.github/actionlint.plugins.lock.json'));
+	const install = spawnSync(candidate, [
+		'plugin',
+		'install',
+		'publisher/managed-shellcheck@v1.0.0',
+		'--registry',
+		pathToFileURL(`${registry}/`).href,
+	], { cwd: workspace, env: { ...process.env, ...environment }, encoding: 'utf8' });
+	assert.equal(install.status, 0, `${install.error ?? ''}\n${install.stdout}\n${install.stderr}`);
+}
 
 /** @param {Record<string, string>} inputs @param {number} expected @param {Record<string, string>} extraEnvironment */
 async function run(inputs, expected = 0, extraEnvironment = {}) {
@@ -36,7 +121,7 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 			...inputs,
 		})
 	) env[`INPUT_${name.toUpperCase()}`] = value;
-	env.ACTIONLINT_ACTION_BINARY = resolve(binary);
+	env.ACTIONLINT_ACTION_BINARY = candidate;
 	env.GITHUB_WORKSPACE = workspace;
 	env.GITHUB_OUTPUT = outputFile;
 	env.GITHUB_STEP_SUMMARY = summaryFile;
@@ -70,6 +155,13 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 }
 
 try {
+	const binaryPath = realpathSync(resolve(binary));
+	const buildRoot = realpathSync(process.env.RUNNER_TEMP || tempRoot);
+	const allowedRoot = binaryPath.startsWith(buildRoot + sep) ? buildRoot : realpathSync(source);
+	if (!binaryPath.startsWith(allowedRoot + sep)) {
+		throw new Error('Candidate binary must be inside the project or runner build directory');
+	}
+	await copyFile(binaryPath, candidate);
 	const gitEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
 	const init = spawnSync('git', ['init', '--quiet', workspace], { encoding: 'utf8', env: gitEnv });
 	assert.equal(init.status, 0, `git init: ${init.error ?? init.stderr}`);
@@ -169,7 +261,7 @@ try {
 	const shellCache = join(workspace, 'shell-cache');
 	await mkdir(shellCache);
 	const shellEnvironment = { HOME: shellCache, XDG_CACHE_HOME: shellCache, LOCALAPPDATA: shellCache, PATH: '' };
-	const installShell = spawnSync(resolve(binary), ['plugin', 'install', 'shellcheck@v0.1.1'], {
+	const installShell = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.1.1'], {
 		cwd: workspace,
 		env: { ...process.env, ...shellEnvironment },
 		encoding: 'utf8',
@@ -234,9 +326,39 @@ try {
 	assert.equal(fixable.analysis.sarif.runs[0].columnKind, 'unicodeCodePoints');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].artifactLocation.uri, 'shell-fix.yaml');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].replacements.length, quote.fixes[0].edits.length);
+	const legacyStandalone = await run(
+		{ files: 'shell-fix.yaml', shellcheck: 'false', pyflakes: 'false', 'fail-on-error': 'false' },
+		0,
+		shellEnvironment,
+	);
+	assert.ok(
+		legacyStandalone.analysis.diagnostics.some(
+			/** @param {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic} diagnostic */
+			diagnostic => diagnostic.rule === 'shellcheck-rs',
+		),
+		legacyStandalone.log,
+	);
+	await installManagedShell(shellEnvironment);
+	await writeFile(
+		join(workspace, 'managed-shell.yaml'),
+		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n',
+	);
+	const managedShell = await run(
+		{ files: 'managed-shell.yaml', pyflakes: 'false', 'fail-on-error': 'false' },
+		0,
+		shellEnvironment,
+	);
+	assert.equal(
+		managedShell.analysis.diagnostics.filter(
+			/** @param {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic} diagnostic */
+			diagnostic => diagnostic.rule === 'shellcheck',
+		).length,
+		1,
+		managedShell.log,
+	);
 	const noShell = await run(
 		{
-			files: 'testdata/err/shellcheck_default_shell_detection.yaml',
+			files: 'managed-shell.yaml',
 			shellcheck: 'false',
 			pyflakes: 'false',
 		},
@@ -246,7 +368,7 @@ try {
 	assert.equal(noShell.outputs.get('problem-count'), '0', noShell.log);
 	const configuredNoShell = await run(
 		{
-			files: 'testdata/err/shellcheck_default_shell_detection.yaml',
+			files: 'managed-shell.yaml',
 			config: 'tools: {shellcheck: {enabled: false}}',
 			pyflakes: 'false',
 		},
@@ -352,28 +474,28 @@ try {
 		pluginEnvironment,
 	);
 	assert.deepEqual(warm.analysis.diagnostics, cold.analysis.diagnostics);
-	const install = spawnSync(resolve(binary), ['plugin', 'install', 'shellcheck@v0.1.1'], {
+	const install = spawnSync(candidate, ['plugin', 'install', 'shellcheck@v0.1.1'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',
 	});
 	assert.equal(install.status, 0, `${install.error ?? ''}\n${install.stdout}\n${install.stderr}`);
-	const managed = await run(
+	const installed = await run(
 		{ ...pluginInputs, shellcheck: 'true', 'fail-on-error': 'false' },
 		0,
 		pluginEnvironment,
 	);
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
-	const managedDiagnostics = managed.analysis.diagnostics;
+	const installedDiagnostics = installed.analysis.diagnostics;
 	assert.ok(
-		managedDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086' && diagnostic.rule === 'shellcheck'),
-		managed.log,
+		installedDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086' && diagnostic.rule === 'shellcheck-rs'),
+		installed.log,
 	);
-	const disabled = await run(pluginInputs, 0, pluginEnvironment);
+	const disabled = await run(pluginInputs, 1, pluginEnvironment);
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const disabledDiagnostics = disabled.analysis.diagnostics;
-	assert.equal(disabledDiagnostics.some((diagnostic) => diagnostic.code === 'SC2086'), false, disabled.log);
-	const installRuff = spawnSync(resolve(binary), ['plugin', 'install', 'ruff@v0.1.0'], {
+	assert.deepEqual(disabledDiagnostics, installedDiagnostics.filter(diagnostic => diagnostic.rule === 'shellcheck-rs'));
+	const installRuff = spawnSync(candidate, ['plugin', 'install', 'ruff@v0.1.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',
@@ -396,7 +518,7 @@ try {
 	assert.equal(defaults.analysis.completed, true, defaults.log);
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const defaultDiagnostics = defaults.analysis.diagnostics;
-	for (const [rule, code] of [['shellcheck', 'SC2086'], ['ruff', 'F821']]) {
+	for (const [rule, code] of [['shellcheck-rs', 'SC2086'], ['ruff', 'F821']]) {
 		assert.ok(
 			defaultDiagnostics.some((diagnostic) => diagnostic.rule === rule && diagnostic.code === code),
 			`missing ${rule}/${code}: ${defaults.log}`,
