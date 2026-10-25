@@ -26,14 +26,15 @@ value takes precedence; when omitted, managed source access is enabled only if
 directory resources explicitly. These requests are not grants: host policy
 still controls access and must reject unsupported requests.
 
-Managed filesystem authority comes only from the host's ShellCheck configuration.
-Access must be enabled there; an explicit false denies every resource request.
-The workspace and configured source-path roots bound the grants. Requested
-subdirectories must remain within those roots after symlink resolution, and
-opening a child grant must preserve that containment against concurrent changes.
-Plugin options may narrow access but cannot authorize additional host paths or
-turn disabled host access on. Configured symlink roots authorize their resolved
-targets; incidental symlinks escaping an authorized root do not.
+Managed filesystem grants are confined to the workspace root selected by the
+host. ShellCheck configuration enables source access; an explicit false denies
+every resource request. Repository source paths and plugin options cannot expand
+the workspace boundary. Configured paths and requested subdirectories must stay
+within it after symlink resolution. Child grants open through the workspace's
+existing directory handle, preserving containment against concurrent changes.
+Source paths that resolve outside the workspace, including configured symlink
+escapes, fail analysis. Missing paths receive no filesystem grant. Native
+ShellCheck retains its separately selected process behavior.
 
 Negotiated options belong to the plugin. Host filesystem metadata never enters
 those options. The `source-files` WIT import supplies typed host/guest mount

@@ -18,6 +18,8 @@ the caller to have enabled native execution.
 The [ShellCheck profile](../crates/actionlint-extension-api/schemas/shellcheck-config-0.1.0.md)
 uses typed `source-files` mount translations and `prepared-scripts` source preparation.
 Shell interpretation, masking, startup preparation and exclusions have one host implementation.
+Managed filesystem grants stay within the host-selected workspace. Configured
+source paths and symlink targets that resolve outside it fail analysis; missing paths receive no grant.
 Plugin options do not carry filesystem mount metadata. The
 [`template-effects`](../crates/actionlint-extension-api/wit/template-effects.wit) interface
 classifies snippet diagnostics for substitution-aware filtering; hosts never infer these

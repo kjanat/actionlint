@@ -34,6 +34,17 @@ type sourceAuthority struct {
 	root        *os.Root
 }
 
+func (a sourceAuthority) checkLexical(name string) error {
+	relative, err := filepath.Rel(a.alias, name)
+	if err != nil || !filepath.IsLocal(relative) {
+		relative, err = filepath.Rel(a.host, name)
+	}
+	if err != nil || !filepath.IsLocal(relative) {
+		return fmt.Errorf("plugin source directory %q is outside workspace root %q", name, a.host)
+	}
+	return nil
+}
+
 func resolveSourceDirectory(name string) (string, bool, error) {
 	resolved, err := filepath.EvalSymlinks(name)
 	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
@@ -82,13 +93,32 @@ func sourceAuthorities(script tools.Script, run *shellcheckRun, workspace, direc
 			}
 			name = sourceName(name, base)
 		}
-		resolved, err := filepath.EvalSymlinks(name)
-		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-			authorities = append(authorities, sourceAuthority{alias: name, host: name})
-			continue
+		if len(authorities) != 0 {
+			if err := authorities[0].checkLexical(name); err != nil {
+				return nil, errors.Join(err, closeSourceAuthorities(authorities))
+			}
 		}
+		resolved, exists, err := resolveSourceDirectory(name)
 		if err != nil {
 			return nil, errors.Join(err, closeSourceAuthorities(authorities))
+		}
+		var relative string
+		if len(authorities) != 0 {
+			workspace := &authorities[0]
+			relative, err = filepath.Rel(workspace.host, resolved)
+			if !exists && (err != nil || !filepath.IsLocal(relative)) {
+				relative, err = filepath.Rel(workspace.alias, name)
+			}
+			if err != nil || !filepath.IsLocal(relative) {
+				return nil, errors.Join(fmt.Errorf("plugin source directory %q is outside workspace root %q", name, workspace.host), closeSourceAuthorities(authorities))
+			}
+		}
+		if !exists {
+			if len(authorities) == 0 {
+				return nil, fmt.Errorf("plugin workspace root %q does not exist", name)
+			}
+			authorities = append(authorities, sourceAuthority{alias: name, host: name})
+			continue
 		}
 		resolved, err = filepath.Abs(resolved)
 		if err != nil {
@@ -99,11 +129,19 @@ func sourceAuthorities(script tools.Script, run *shellcheckRun, workspace, direc
 			return nil, errors.Join(err, closeSourceAuthorities(authorities))
 		}
 		if !info.IsDir() {
+			if len(authorities) == 0 {
+				return nil, fmt.Errorf("plugin workspace root %q is not a directory", name)
+			}
 			authorities = append(authorities, sourceAuthority{alias: name, host: resolved})
 			continue
 		}
-		root, err := os.OpenRoot(resolved)
-		if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR) {
+		var root *os.Root
+		if len(authorities) == 0 {
+			root, err = os.OpenRoot(resolved)
+		} else {
+			root, err = authorities[0].root.OpenRoot(relative)
+		}
+		if err != nil && (len(authorities) == 0 || !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR)) {
 			return nil, errors.Join(err, closeSourceAuthorities(authorities))
 		}
 		authorities = append(authorities, sourceAuthority{alias: name, host: resolved, root: root})
@@ -152,6 +190,9 @@ func (r documentPluginRunner) sourceFiles(ctx context.Context, script tools.Scri
 				return err
 			}
 			host = sourceName(host, base)
+		}
+		if err := authorities[0].checkLexical(host); err != nil {
+			return err
 		}
 		resolved, exists, err := resolveSourceDirectory(host)
 		if err != nil {

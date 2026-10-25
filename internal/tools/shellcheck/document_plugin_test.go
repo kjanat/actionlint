@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -21,6 +25,108 @@ import (
 type documentGuest struct {
 	inputs []analyzer.Input
 	fail   bool
+}
+
+type sourceProbeGuest struct {
+	documentGuest
+	directory, file string
+}
+
+func (g *sourceProbeGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*analyzer.ToolNegotiation, error) {
+	return &analyzer.ToolNegotiation{Options: data, Resources: []analyzer.ToolResourceRequest{{Kind: analyzer.ToolWorkspace}, {Kind: analyzer.ToolDirectory, Path: g.directory}}}, nil
+}
+
+func (g *sourceProbeGuest) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	g.inputs = append(g.inputs, input)
+	content, err := fs.ReadFile(input.Files[len(input.Files)-1].FS, g.file)
+	if err != nil {
+		return nil, err
+	}
+	return []diagnostic.Diagnostic{{Message: string(content), Path: input.Path, Start: input.Scripts[0].Start}}, nil
+}
+
+func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) {
+	workspace, outside := t.TempDir(), t.TempDir()
+	secret := filepath.Join(outside, "secret.txt")
+	if err := os.WriteFile(secret, []byte("private-host-marker"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(workspace, "escape")
+	if err := os.Symlink(outside, alias); err != nil {
+		t.Fatal(err)
+	}
+	filesystemRoot := filepath.VolumeName(outside) + string(os.PathSeparator)
+	rootFile, err := filepath.Rel(filesystemRoot, secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, directory, file string }{
+		{"absolute directory", outside, "secret.txt"},
+		{"filesystem root", filesystemRoot, filepath.ToSlash(rootFile)},
+		{"configured symlink", alias, "secret.txt"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			guest := &sourceProbeGuest{directory: tc.directory, file: tc.file}
+			registration, err := (shellcheck.Options{Command: "shellcheck"}).Registration().WithAnalyzer(guest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			configPath := filepath.Join(workspace, "actionlint.yaml")
+			if err := os.WriteFile(configPath, []byte("tools: {shellcheck: {config: {external-sources: true, source-path: ["+strconv.Quote(tc.directory)+"]}}}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			options := application.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []tools.Registration{registration}}
+			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")})
+			if err == nil || len(guest.inputs) != 0 {
+				var messages []string
+				if result != nil {
+					for _, finding := range result.Diagnostics {
+						messages = append(messages, finding.Message)
+					}
+				}
+				t.Fatalf("outside source access reached guest: inputs=%d messages=%v error=%v", len(guest.inputs), messages, err)
+			}
+			if !strings.Contains(err.Error(), "workspace root") {
+				t.Fatalf("wrong rejection: %v", err)
+			}
+		})
+	}
+}
+
+func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
+	workspace := t.TempDir()
+	sources := filepath.Join(workspace, "sources")
+	if err := os.Mkdir(sources, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sources, "value.txt"), []byte("workspace-source-marker"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(workspace, "alias")
+	if err := os.Symlink(sources, alias); err != nil {
+		t.Fatal(err)
+	}
+	for _, directory := range []string{"sources", alias} {
+		t.Run(directory, func(t *testing.T) {
+			guest := &sourceProbeGuest{directory: directory, file: "value.txt"}
+			registration, err := (shellcheck.Options{Command: "shellcheck"}).Registration().WithAnalyzer(guest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			configPath := filepath.Join(workspace, "actionlint.yaml")
+			if err := os.WriteFile(configPath, []byte("tools: {shellcheck: {config: {source-path: ["+strconv.Quote(directory)+"]}}}"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			options := application.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []tools.Registration{registration}}
+			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(guest.inputs) != 1 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "workspace-source-marker" {
+				t.Fatalf("workspace source unavailable: inputs=%d diagnostics=%+v", len(guest.inputs), result.Diagnostics)
+			}
+		})
+	}
 }
 
 func (*documentGuest) Descriptor() analyzer.Descriptor {

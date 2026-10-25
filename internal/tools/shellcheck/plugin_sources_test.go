@@ -2,6 +2,7 @@ package shellcheck
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -20,7 +21,8 @@ import (
 )
 
 func TestPluginSourceGrantsAndMapping(t *testing.T) {
-	root, outside := t.TempDir(), t.TempDir()
+	root := t.TempDir()
+	shared := filepath.Join(root, "shared-sources")
 	file := writeShellcheckFixture(t, root, "lib/clean.sh", "VALUE=one\n")
 	if err := os.Mkdir(filepath.Join(root, "lib", "sub"), 0o700); err != nil {
 		t.Fatal(err)
@@ -28,8 +30,8 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	if err := os.Symlink(filepath.Join("lib", "sub"), filepath.Join(root, "link")); err != nil {
 		t.Fatal(err)
 	}
-	external := writeShellcheckFixture(t, outside, "shared.sh", "SHARED=two\n")
-	cfg, err := config.Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(outside), strconv.Quote(filepath.Join(root, "missing"))))
+	external := writeShellcheckFixture(t, shared, "shared.sh", "SHARED=two\n")
+	cfg, err := config.Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(shared), strconv.Quote(filepath.Join(root, "missing"))))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +56,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, path := range []string{sourcePath(file, root), sourcePath(external, outside), filepath.Join(root, "missing")} {
+	for _, path := range []string{sourcePath(file, root), sourcePath(external, shared), filepath.Join(root, "missing")} {
 		if !slices.Contains(inputs, path) {
 			t.Fatalf("dependency missing: %s from %v", path, inputs)
 		}
@@ -99,21 +101,22 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 }
 
 func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
-	root, outside := t.TempDir(), t.TempDir()
-	file := writeShellcheckFixture(t, outside, "shared.sh", "SHARED=two\n")
+	root := t.TempDir()
+	shared := filepath.Join(root, "shared-sources")
+	file := writeShellcheckFixture(t, shared, "shared.sh", "SHARED=two\n")
 	alias := filepath.Join(root, "shared")
-	if err := os.Symlink(outside, alias); err != nil {
+	if err := os.Symlink(shared, alias); err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := filepath.EvalSymlinks(outside)
+	resolved, err := filepath.EvalSymlinks(shared)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(filepath.Join(outside, "sub"), 0o700); err != nil {
+	if err := os.Mkdir(filepath.Join(shared, "sub"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(root, "link")
-	if err := os.Symlink(filepath.Join(outside, "sub"), link); err != nil {
+	if err := os.Symlink(filepath.Join(shared, "sub"), link); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ name, directory, grant string }{
@@ -155,7 +158,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			if _, err := fs.ReadFile(input.Files[1].FS, "shared.sh"); err != nil {
 				t.Fatal(err)
 			}
-			dependencies := []string{sourcePath(file, outside)}
+			dependencies := []string{sourcePath(file, shared)}
 			if tc.name == "symlink before parent" {
 				dependencies = append(dependencies, filepath.Join(sourcePath(root, root), "link"))
 			} else {
@@ -189,13 +192,8 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	script.Config = cfg
-	sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer sources.close()
-	if sources.directory != "/sources/0" {
-		t.Fatalf("explicit directory not mapped: %s", sources.directory)
+	if files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config)); err == nil || files != nil || !strings.Contains(err.Error(), "outside workspace root") {
+		t.Fatalf("configured outside cwd granted: files=%v error=%v", files, err)
 	}
 }
 
@@ -247,8 +245,8 @@ func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
 		{"arbitrary external directory", "{external-sources: true}", outside, false},
 		{"symlink escape", "{external-sources: true}", escape, false},
 		{"nested directory", "{external-sources: true}", nested, true},
-		{"explicit external root", "{source-path: [" + strconv.Quote(outside) + "]}", outside, true},
-		{"explicit symlink root", "{source-path: [" + strconv.Quote(escape) + "]}", escape, true},
+		{"repository external root", "{source-path: [" + strconv.Quote(outside) + "]}", outside, false},
+		{"repository symlink root", "{source-path: [" + strconv.Quote(escape) + "]}", escape, false},
 		{"denial overrides configured paths", "{external-sources: false, source-path: [" + strconv.Quote(outside) + "]}", outside, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -276,5 +274,32 @@ func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestMissingPluginSourcePathCannotGrantEscape(t *testing.T) {
+	workspace, outside := t.TempDir(), t.TempDir()
+	writeShellcheckFixture(t, outside, "secret.txt", "private-host-marker")
+	escape := filepath.Join(workspace, "escape")
+	if err := os.Symlink(outside, escape); err != nil {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(escape, "missing")
+	cfg, err := config.Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {source-path: [%s]}}}", strconv.Quote(missing)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: workspace, Reader: fsread.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: workspace, DirectoryKnown: true}}
+	files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer files.close()
+	if len(files.mounts) != 1 {
+		t.Fatalf("missing path granted: %d mounts", len(files.mounts))
+	}
+	content, err := fs.ReadFile(files.mounts[0].files, "escape/secret.txt")
+	if !errors.Is(err, fs.ErrPermission) || len(content) != 0 {
+		t.Fatalf("escape read: content=%q error=%v", content, err)
 	}
 }
