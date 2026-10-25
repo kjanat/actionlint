@@ -18,8 +18,8 @@ func TestSourceAnnotationsShareTheCallMemoryBudget(t *testing.T) {
 	if plugin.annotationsFactory == nil {
 		t.Fatal("annotated component did not create its optional import factory")
 	}
-	// Retained imports leave one page for stdin and none for annotations.
-	plugin.memory.limit = plugin.memory.used + 1<<16
+	// Leave one page beyond the host imports for stdin and none for annotations.
+	plugin.memory.limit = callImportMemory(t, plugin) + 1<<16
 	plugin.limits.MemoryPages = uint32(plugin.memory.limit >> 16)
 	if _, err := plugin.Analyze(t.Context(), analyzer.Input{}); !errors.Is(err, errMemoryBudget) {
 		t.Fatalf("annotations ignored the shared memory budget: %v", err)

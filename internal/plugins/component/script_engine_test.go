@@ -20,11 +20,11 @@ import (
 
 func TestScriptDescriptorShellValidation(t *testing.T) {
 	p := loadScriptFixture(t)
-	results, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
 	if err != nil {
 		t.Fatal(err)
 	}
-	original, err := liftRecord(results[0], "script descriptor")
+	original, err := liftRecord(value, "script descriptor")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,11 +70,11 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 
 func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 	p := loadScriptFixture(t)
-	results, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
+	value, err := p.callInterface(t.Context(), ScriptEngineInterface, "describe")
 	if err != nil {
 		t.Fatal(err)
 	}
-	original, err := liftRecord(results[0], "script descriptor")
+	original, err := liftRecord(value, "script descriptor")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +329,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = p.verifyScriptMetadata(data)
+			err = verifyScriptMetadata(data, p.scriptDescriptor)
 			if (err == nil) != (key == "") {
 				t.Fatalf("metadata %q: %v", key, err)
 			}
@@ -342,7 +342,7 @@ func TestScriptEngineStaticMetadataAgreement(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := p.verifyScriptMetadata(data); (err == nil) != slices.Equal(shells, d.Shells) {
+			if err := verifyScriptMetadata(data, p.scriptDescriptor); (err == nil) != slices.Equal(shells, d.Shells) {
 				t.Fatalf("metadata shells=%v: %v", shells, err)
 			}
 		})

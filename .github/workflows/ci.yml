@@ -92,7 +92,7 @@ jobs:
     if: ${{ !cancelled() }}
     name: Unit tests (${{ matrix.os }})
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix: { os: [ubuntu-26.04, ubuntu-26.04-arm, macos-latest, macos-26-intel, windows-2025-vs2026, windows-11-vs2026-arm] }
     # Keep every required platform check present without allocating its native runner when unselected.
     runs-on: ${{ (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['unit']) && matrix.os || 'ubuntu-slim' }}
@@ -400,7 +400,7 @@ jobs:
     if: ${{ !cancelled() && (needs.changes.result != 'success' || fromJSON(needs.changes.outputs.jobs)['action']) }}
     name: GitHub Action
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix: { os: [ubuntu-latest, macos-latest, windows-latest] }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20

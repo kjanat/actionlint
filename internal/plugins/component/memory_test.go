@@ -12,6 +12,25 @@ import (
 	"github.com/tetratelabs/wazero/experimental"
 )
 
+func callImportMemory(t *testing.T, plugin *Plugin) uint64 {
+	t.Helper()
+	baseline := plugin.memory.used
+	ctx := experimental.WithMemoryAllocator(t.Context(), plugin.memory)
+	ctx = wacogo.WithCoreTableAllocator(ctx, plugin.memory.allocateTables)
+	scope := callScope{plugin: plugin}
+	if err := scope.prepareImports(ctx); err != nil {
+		t.Fatal(err)
+	}
+	used := plugin.memory.used
+	if err := scope.discardImports(context.WithoutCancel(ctx)); err != nil {
+		t.Fatal(err)
+	}
+	if plugin.memory.used != baseline {
+		t.Fatalf("host cleanup left %d bytes accounted; want %d", plugin.memory.used, baseline)
+	}
+	return used
+}
+
 func TestComponentAggregateMemoryGrowthAndRelease(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("testdata", "wat", "aggregate-memory.wasm"))
 	if err != nil {

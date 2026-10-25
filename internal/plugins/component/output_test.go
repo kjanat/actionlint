@@ -27,17 +27,9 @@ func TestHostLogSharesOutputBudget(t *testing.T) {
 			t.Fatal("unbounded host log line")
 		}
 	}
-	w.reset()
-	lines = nil
-	if err := h.Log(context.Background(), "fresh"); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Join(lines, "|") != "fresh" {
-		t.Fatalf("cross-call log: %q", lines)
-	}
 }
 
-func TestOutputBoundsAndCallBoundary(t *testing.T) {
+func TestOutputBounds(t *testing.T) {
 	var lines []string
 	w := &lineWriter{log: func(line string) { lines = append(lines, line) }}
 	chunk := strings.Repeat("x", maxPluginLine)
@@ -59,14 +51,5 @@ func TestOutputBoundsAndCallBoundary(t *testing.T) {
 		if len(line) > maxPluginLine {
 			t.Fatal("unbounded log entry")
 		}
-	}
-	w.reset()
-	lines = nil
-	_, _ = w.Write([]byte("first call"))
-	w.flush()
-	w.reset()
-	_, _ = w.Write([]byte("second call\n"))
-	if strings.Join(lines, "|") != "first call|second call" {
-		t.Fatalf("partial output crossed calls: %q", lines)
 	}
 }

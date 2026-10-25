@@ -185,7 +185,7 @@ func TestFailuresAreReportedAndIsolated(t *testing.T) {
 			t.Fatalf("after %s: findings=%+v err=%v", options, recovered, err)
 		}
 	}
-	if _, err := misbehave(t, plugin, "hang"); err == nil || err.Error() != "plugin misbehave exceeded its time limit (memory 6 MiB, time 3s)" {
+	if _, err := misbehave(t, plugin, "hang"); !errors.Is(err, context.DeadlineExceeded) || !strings.HasPrefix(err.Error(), "plugin misbehave exceeded its time limit (memory 6 MiB, time 3s): ") {
 		t.Fatalf("hang: err=%v", err)
 	}
 	if _, err := misbehave(t, plugin, "error"); err == nil || !strings.HasSuffix(err.Error(), ": analysis failed on purpose") {

@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
-import { connect, type Socket } from 'node:net';
+import { createServer, request as forwardRequest, type Server } from 'node:http';
+import type { Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -28,7 +28,7 @@ test(
 		const original = new Map(variables.map((name) => [name, process.env[name]]));
 		const sockets = new Set<Socket>();
 		const requests: string[] = [];
-		const tunnels: string[] = [];
+		const proxyRequests: string[] = [];
 		const body = 'archive bytes from the proxy-only origin';
 		const origin = createServer((request, response) => {
 			requests.push(request.url ?? '');
@@ -64,18 +64,22 @@ test(
 			await rm(directory, { recursive: true, force: true });
 		});
 		const originPort = await listen(origin);
-		proxy.on('connect', (request, socket, head) => {
-			tunnels.push(request.url ?? '');
-			const upstream = connect(originPort, '127.0.0.1');
-			sockets.add(upstream);
-			upstream.once('close', () => sockets.delete(upstream));
-			upstream.once('error', () => socket.destroy());
-			socket.once('error', () => upstream.destroy());
-			upstream.once('connect', () => {
-				socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-				if (head.length) upstream.write(head);
-				socket.pipe(upstream).pipe(socket);
+		proxy.on('request', (request, response) => {
+			const target = new URL(request.url ?? '');
+			proxyRequests.push(target.href);
+			const upstream = forwardRequest({
+				hostname: '127.0.0.1',
+				port: originPort,
+				method: request.method,
+				path: target.pathname + target.search,
+				headers: request.headers,
+				agent: false,
+			}, (incoming) => {
+				response.writeHead(incoming.statusCode ?? 502, incoming.headers);
+				incoming.pipe(response);
 			});
+			upstream.once('error', (error) => response.destroy(error));
+			request.pipe(upstream);
 		});
 		const proxyPort = await listen(proxy);
 		for (const name of variables) delete process.env[name];
@@ -89,15 +93,14 @@ test(
 		);
 		assert.equal(await readFile(proxied, 'utf8'), body);
 		assert.deepEqual(requests, ['/redirect', '/archive']);
-		assert.ok(tunnels.length > 0);
-		assert.ok(tunnels.every((target) => target === 'proxy-only.invalid:80'));
+		assert.deepEqual(proxyRequests, ['http://proxy-only.invalid/redirect', 'http://proxy-only.invalid/archive']);
 		await assert.rejects(download('http://proxy-only.invalid/missing', join(directory, 'missing')), /HTTP 404/);
 		await assert.rejects(readFile(join(directory, 'missing')), { code: 'ENOENT' });
-		const beforeBypass = tunnels.length;
+		const beforeBypass = proxyRequests.length;
 		process.env.NO_PROXY = '127.0.0.1';
 		const direct = await download(`http://127.0.0.1:${originPort}/archive`, join(directory, 'direct'));
 		assert.equal(await readFile(direct, 'utf8'), body);
-		assert.equal(tunnels.length, beforeBypass);
+		assert.equal(proxyRequests.length, beforeBypass);
 	},
 );
 

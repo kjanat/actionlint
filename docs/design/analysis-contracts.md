@@ -210,8 +210,9 @@ The runtime is `wacogo` on `wazero`: pure Go, no cgo, and a component-model impl
 types this contract uses. `internal/plugins/component` loads a component, checks that it exports
 `kjanat:actionlint/analyzer@0.1.0` and imports only the host interface and the granted `wasi:cli`, `wasi:io`,
 `wasi:clocks`, `wasi:random` and `wasi:filesystem` interfaces, then calls `describe`. Every `analyze` call instantiates
-the component anew under a per-call deadline and a memory limit, with an empty environment, no preopened directories
-and stdio routed to the host log. Calls on one plugin are serialized. A trap, an exit through `wasi:cli/exit`, a
+the component and its host imports anew under a per-call deadline and a memory limit, with an empty environment,
+only explicitly granted filesystem snapshots, and stdio routed to the host log. Calls on one plugin are serialized.
+Each call closes its host resources without running guest resource destructors. A trap, an exit through `wasi:cli/exit`, a
 failed allocation, a deadline or a cancellation returns an error that names the plugin and its limits; the document's
 analysis reports the failure with its partial findings. The engine and the public `analysis` package do not import the
 runtime; the CLI loads plugins from `--plugin` and registers them as analyzers.
@@ -224,9 +225,10 @@ Architecture tests keep the engine free of the runtime and the loader free of th
 
 `wacogo` before https://github.com/partite-ai/wacogo/pull/12 rejected a null pointer from `cabi_realloc` for a
 zero-size request, which the canonical ABI allows and TinyGo produces (https://github.com/partite-ai/wacogo/issues/11).
-`go.mod` pins `github.com/kjanat/wacogo` and the repaired `github.com/kjanat/go-modules` loader under their
+`go.mod` pins `github.com/kjanat/wacogo` and the repaired `go-modules.kjanat.dev` loader under their
 fork module paths. This supports `go install` without module replacements. The runtime includes the fix above
-and the pending ownership and allocation fixes in upstream PRs https://github.com/partite-ai/wacogo/pull/13, https://github.com/partite-ai/wacogo/pull/14, https://github.com/partite-ai/wacogo/pull/15, and https://github.com/partite-ai/wacogo/pull/16.
+and upstream's ownership and shutdown fixes in https://github.com/partite-ai/wacogo/pull/13 and https://github.com/partite-ai/wacogo/pull/17,
+plus the pending allocation fixes in https://github.com/partite-ai/wacogo/pull/14, https://github.com/partite-ai/wacogo/pull/15, and https://github.com/partite-ai/wacogo/pull/16.
 `internal/plugins/component/runtime_limit_test.go` checks that an empty string lowers into a component whose realloc returns
 null for size 0.
 
