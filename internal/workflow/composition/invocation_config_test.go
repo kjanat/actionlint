@@ -220,7 +220,7 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 							t.Fatalf("nested %s used entry ignore config: %+v", outcome, finding)
 						}
 						if origin := finding.IgnoreOrigin; origin != nil && (origin.StepID != "nested" || origin.Uses != target) {
-							t.Fatalf("nested %s retained its caller's selectors: %+v", outcome, origin)
+							t.Fatalf("nested %s kept its caller's selectors: %+v", outcome, origin)
 						}
 					}
 					if found != 1 {

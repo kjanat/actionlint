@@ -122,7 +122,7 @@ func TestExplicitEmptySequenceReplacesPrefilledSliceHeader(t *testing.T) {
 		t.Errorf("explicit empty sequence = %#v (len=%d cap=%d); upstream len=%d cap=%d; want an empty reset slice", got.Empty, len(got.Empty), cap(got.Empty), len(want.Empty), cap(want.Empty))
 	}
 	if cap(got.Empty) != 0 && sliceBacking(got.Empty) == ownedBacking {
-		t.Error("explicit empty sequence retained the old backing array")
+		t.Error("explicit empty sequence reused the old backing array")
 	}
 }
 

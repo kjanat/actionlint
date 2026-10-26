@@ -337,7 +337,7 @@ export async function publishWinget(directory, version, env = process.env, reque
 			: new Error(
 				`${
 					String(error)
-				}; the shared submission lock has been retained because the PR state is uncertain. Inspect WinGet before removing it.`,
+				}; the shared submission lock remains held because the PR state is uncertain. Inspect WinGet before removing it.`,
 			);
 	} finally {
 		if (releaseLock) {

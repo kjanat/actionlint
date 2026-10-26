@@ -8,7 +8,6 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestActionMetadataKnownExpressions(t *testing.T) {
@@ -75,12 +74,12 @@ runs:
 				prefix = strings.Replace(base, "uses: actions/checkout@v6", "run: echo ok", 1)
 			}
 			source := []byte(prefix + "      " + tc.field + ": " + tc.value + "\n")
-			var meta actionmeta.Metadata
-			if err := codec.Unmarshal(source, &meta); err != nil {
+			meta, err := actionmeta.Parse("action.yml", source)
+			if err != nil {
 				t.Fatal(err)
 			}
 			meta.Filename, meta.Source = "action.yml", source
-			findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})
+			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
 			errs := findings
 			if tc.message == "" {
 				if len(errs) != 0 {

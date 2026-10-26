@@ -82,7 +82,7 @@ VALID: duplicate
 			}
 			p := &Parser{}
 			for entry := range p.parseSectionMapping("test", doc.Content[0], false, false) {
-				t.Fatalf("invalid entry retained: %v", entry)
+				t.Fatalf("invalid entry was returned: %v", entry)
 			}
 			if len(p.Errors) != 1 || strings.Contains(p.Errors[0].Message, "should not be empty") {
 				t.Fatalf("want only the invalid key diagnostic: %v", p.Errors)

@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
-	bind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
+	bind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/invocationcontext"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -199,13 +199,13 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 	calls[0].Ancestry[0] = "changed-call"
 	firstCall, ok := requireInvocationResult(api.CallByID(ctx, string(callIDs[0]))).(bind.ResultOptionCallStringOk)
 	if !ok || !firstCall.Value.IsSome || firstCall.Value.Value.Ancestry[0] != string(graph.Entry().ID) {
-		t.Fatal("call page ancestry mutation reached retained graph")
+		t.Fatal("call page ancestry mutation changed graph")
 	}
 	wantScriptAncestor := scripts[0].Ancestry[1]
 	scripts[0].Ancestry[1] = "changed-script"
 	firstScript, ok := requireInvocationResult(api.ScriptByID(ctx, string(scriptIDs[0]))).(bind.ResultOptionScriptOccurrenceStringOk)
 	if !ok || !firstScript.Value.IsSome || firstScript.Value.Value.Ancestry[1] != wantScriptAncestor {
-		t.Fatal("script page ancestry mutation reached retained graph")
+		t.Fatal("script page ancestry mutation changed graph")
 	}
 	unknownCallResult := requireInvocationResult(api.CallByID(ctx, "unknown"))
 	unknownCall, ok := unknownCallResult.(bind.ResultOptionCallStringOk)

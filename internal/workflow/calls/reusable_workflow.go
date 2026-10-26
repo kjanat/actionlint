@@ -444,13 +444,13 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 		Jobs        syntax.Node `yaml:"jobs"`
 	}
 
-	var doc syntax.Node
-	if err := codec.Unmarshal(src, &doc); err != nil {
+	doc, err := codec.Parse(src)
+	if err != nil {
 		return nil, err
 	}
 
 	var aliasErr error
-	workflowlang.ResolveYAMLAliases(&doc, func(n *syntax.Node, d workflowlang.YamlAliasDiagnostic, m string) {
+	workflowlang.ResolveYAMLAliases(doc, func(n *syntax.Node, d workflowlang.YamlAliasDiagnostic, m string) {
 		if d != workflowlang.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
 			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, m)
 		}
@@ -461,7 +461,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 
 	var w workflow
 	if doc.Kind != 0 {
-		n := &doc
+		n := doc
 		if n.Kind == syntax.DocumentNode && len(n.Content) > 0 {
 			n = n.Content[0]
 		}

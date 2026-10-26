@@ -34,7 +34,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			f.service.options.Scripts = scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}
 			f.service.options.Join = func() error {
 				joined = true
-				pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "retained finding")
+				pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "reported finding")
 				return joinFailure
 			}
 			result, err := f.service.analyze(func(c *compositeAnalyzer) error {
@@ -57,7 +57,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			if unfinished {
 				want = invocation.ErrUnfinished
 			}
-			if !errors.Is(err, want) || !errors.Is(err, joinFailure) || !joined || script.calls != 0 || result.Batch.Valid() || len(result.Findings) != 1 || result.Findings[0].Message != "retained finding" {
+			if !errors.Is(err, want) || !errors.Is(err, joinFailure) || !joined || script.calls != 0 || result.Batch.Valid() || len(result.Findings) != 1 || result.Findings[0].Message != "reported finding" {
 				t.Fatalf("invalid preparation escaped: error=%v joined=%v calls=%d result=%+v", err, joined, script.calls, result)
 			}
 		})

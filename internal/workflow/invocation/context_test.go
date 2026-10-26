@@ -107,9 +107,9 @@ func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
 		t.Fatal("caller mutation reached canonical facts")
 	}
 	projected.Background = false
-	retained, _ := stored.Facts()
-	if !retained.Background {
-		t.Fatal("returned facts alias retained facts")
+	storedFacts, _ := stored.Facts()
+	if !storedFacts.Background {
+		t.Fatal("returned facts alias stored facts")
 	}
 	if _, ok := graph.RootContext().Facts(); ok {
 		t.Fatal("entry fabricated call facts")

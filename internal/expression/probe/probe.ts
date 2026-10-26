@@ -686,7 +686,7 @@ async function collectSaved(output: string): Promise<void> {
 	const complete = session.results.length === session.requestedCases && session.results.every(measured)
 		&& session.errors.length === oldErrors;
 	console.log(
-		`${complete ? 'Complete' : 'Incomplete'} collected evidence: ${output}. Original capture retained in ${archive}`,
+		`${complete ? 'Complete' : 'Incomplete'} collected evidence: ${output}. Original capture saved in ${archive}`,
 	);
 	if (!complete) throw new Error('Collection remains incomplete; inspect summary.md. No cases were dispatched.');
 }

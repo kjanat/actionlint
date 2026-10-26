@@ -19,7 +19,7 @@ func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {
 			return []workflowvisit.Rule{&failAfterScheduling{Base: workflowvisit.NewBase("fail", ""), failure: failure}}
 		}, Tools: (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) {
 			completed.Store(true)
-			return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"code":9999,"level":"warning","message":"retained finding"}]}`), nil
+			return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"code":9999,"level":"warning","message":"reported finding"}]}`), nil
 		}}).Registrations(),
 	})
 	if !errors.Is(err, failure) || !completed.Load() || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" {

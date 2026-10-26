@@ -145,6 +145,6 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 	}
 	checker.SetContextTypes(nil)
 	if _, errs := checker.Check(custom); len(errs) == 0 {
-		t.Fatal("empty scope retained an old context")
+		t.Fatal("empty scope reused an old context")
 	}
 }

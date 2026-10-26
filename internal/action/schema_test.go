@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestSchemaActionDefinitionCoverage(t *testing.T) {
@@ -95,11 +93,11 @@ description: audit
 				if !found {
 					lines = append(lines, prefix+" "+invalid)
 				}
-				var meta Metadata
-				if err := codec.Unmarshal([]byte(strings.Join(lines, "\n")+"\n"), &meta); err != nil {
+				meta, err := Parse("action.yml", []byte(strings.Join(lines, "\n")+"\n"))
+				if err != nil {
 					return
 				}
-				if len(Validate(&meta)) == 0 {
+				if len(Validate(meta)) == 0 {
 					t.Fatal("invalid property shape was accepted")
 				}
 			})

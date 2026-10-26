@@ -248,7 +248,7 @@ runs:
 			{"placed", `      - uses: actions/checkout@v6
         with: {path: Source}
 `, "./source/LOCAL/nested"},
-			{"retained", `      - uses: actions/checkout@v6
+			{"repeated", `      - uses: actions/checkout@v6
         with: {path: Source}
       - uses: actions/checkout@v6
         with: {path: Mirror}

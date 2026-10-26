@@ -78,7 +78,7 @@ func (f gatedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, er
 	}
 }
 
-func TestConcurrentChecksBoundActiveAndRetainedInstances(t *testing.T) {
+func TestConcurrentChecksBoundActiveAndIdleInstances(t *testing.T) {
 	engine := pooledEngine(t)
 	entered := make(chan struct{}, 24)
 	release := make(chan struct{})
@@ -129,7 +129,7 @@ func TestConcurrentChecksBoundActiveAndRetainedInstances(t *testing.T) {
 		}
 	}
 	if len(engine.idle) > 4 {
-		t.Fatalf("retained %d instances after concurrent checks", len(engine.idle))
+		t.Fatalf("%d idle instances after concurrent checks", len(engine.idle))
 	}
 }
 

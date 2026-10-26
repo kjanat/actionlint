@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
@@ -37,8 +36,8 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 
 func TestMetadataPositionCache(t *testing.T) {
 	const source = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ github_repository }}\n      shell: bash\n"
-	var meta Metadata
-	if err := codec.Unmarshal([]byte(source), &meta); err != nil {
+	meta, err := Parse("action.yml", []byte(source))
+	if err != nil {
 		t.Fatal(err)
 	}
 	meta.Source = []byte(source)
@@ -46,7 +45,7 @@ func TestMetadataPositionCache(t *testing.T) {
 	if meta.positions == nil {
 		t.Fatal("parsed metadata has no position cache")
 	}
-	first := meta.positions.source(&meta, value)
+	first := meta.positions.source(meta, value)
 	if first == nil {
 		t.Fatal("plain scalar mapping missing")
 	}
@@ -54,10 +53,10 @@ func TestMetadataPositionCache(t *testing.T) {
 	var workers sync.WaitGroup
 	for range 8 {
 		workers.Go(func() {
-			if got := view.positions.source(&view, value); got != first {
+			if got := view.positions.source(view, value); got != first {
 				t.Errorf("copied metadata did not reuse scalar mapping")
 			}
-			if pos := ExpressionPosition(&view, value, 10); *pos != (workflowlang.Pos{Line: 6, Col: 21}) {
+			if pos := ExpressionPosition(view, value, 10); *pos != (workflowlang.Pos{Line: 6, Col: 21}) {
 				t.Errorf("position = %+v", pos)
 			}
 		})
@@ -68,14 +67,16 @@ func TestMetadataPositionCache(t *testing.T) {
 	}
 	mismatch := *value
 	mismatch.Value = "different value"
-	if got := meta.positions.source(&meta, &mismatch); got != nil {
+	if got := meta.positions.source(meta, &mismatch); got != nil {
 		t.Fatal("mapping reused for a different decoded scalar")
 	}
 	oldCache := meta.positions
-	if err := codec.Unmarshal([]byte(source), &meta); err != nil {
+	parsed, err := Parse("action.yml", []byte(source))
+	if err != nil {
 		t.Fatal(err)
 	}
+	meta = parsed
 	if meta.positions == oldCache || meta.positions.scalars != nil {
-		t.Fatal("reparsing metadata retained stale source mappings")
+		t.Fatal("reparsing metadata left stale source mappings")
 	}
 }

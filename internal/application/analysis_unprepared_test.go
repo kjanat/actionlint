@@ -23,7 +23,7 @@ func (p sourceOnlyProbe) Analyze(_ context.Context, input analyzer.Input) ([]dia
 	if input.Content != p.content || len(input.Available) != 1 {
 		return nil, errors.New("source-only input changed")
 	}
-	return []diagnostic.Diagnostic{{Message: "retained source finding"}}, nil
+	return []diagnostic.Diagnostic{{Message: "reported source finding"}}, nil
 }
 
 func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
@@ -49,7 +49,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 			}
 			var used []rule.Descriptor
 			findings, err := runDocumentAnalyzers(t.Context(), []analyzer.Registration{{Analyzer: sourceOnlyProbe{content}}}, input, nil, &used)
-			if err != nil || len(findings) != 1 || findings[0].Message != "retained source finding" {
+			if err != nil || len(findings) != 1 || findings[0].Message != "reported source finding" {
 				t.Fatalf("source analyzer skipped: %v %v", findings, err)
 			}
 		})

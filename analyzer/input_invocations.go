@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-// ValidateInvocations checks supplied facts against the retained occurrence graph.
+// ValidateInvocations checks supplied facts against the captured occurrence graph.
 func (input Input) ValidateInvocations() error {
 	available := slices.Contains(input.Available, Invocations)
 	if available != input.CallGraph.Valid() {

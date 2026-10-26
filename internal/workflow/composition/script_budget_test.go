@@ -91,7 +91,7 @@ func TestNestedBudgetStopRetainsConcurrentCancellation(t *testing.T) {
 	budget.MaxScripts = 1
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: cancellation\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
-		"inner/action.yml": "name: inner\ndescription: cancellation\nruns: {using: composite, steps: [{shell: bash, run: echo retained}, {uses: actions/github-script@v7, with: {script: console.log(1)}}]}\n",
+		"inner/action.yml": "name: inner\ndescription: cancellation\nruns: {using: composite, steps: [{shell: bash, run: echo initial}, {uses: actions/github-script@v7, with: {script: console.log(1)}}]}\n",
 	}, &budget)
 	f.service.options.ScriptInputsForConfig = func(*repoconfig.Config) ([]analyzer.ScriptInput, error) {
 		cancel()
@@ -105,7 +105,7 @@ func TestNestedBudgetStopRetainsConcurrentCancellation(t *testing.T) {
 	stop, stopped := graph.Stop()
 	calls := graph.Calls()
 	if !stopped || stop.Limit != invocation.LimitScripts || len(calls) != 2 || calls[0].Outcome.Kind() != invocation.OutcomeExpanded || calls[1].Outcome.Reason() != invocation.ReasonCanceled || len(graph.Scripts()) != 1 || len(result.Batch.Scripts()) != 1 {
-		t.Fatalf("nested unwind lost budget, cancellation or retained script: %+v", graph)
+		t.Fatalf("nested unwind lost budget, cancellation or earlier script: %+v", graph)
 	}
 }
 
@@ -215,17 +215,17 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/collect=%t", mode, collect), func(t *testing.T) {
 				budget := invocation.DefaultBudget()
 				budget.MaxScripts = 1
-				steps := "[{run: echo retained}, {run: echo rejected}, {uses: $/later}]"
+				steps := "[{run: echo initial}, {run: echo rejected}, {uses: $/later}]"
 				if mode == "action-input" {
-					steps = "[{run: echo retained}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {uses: $/later}]"
+					steps = "[{run: echo initial}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {uses: $/later}]"
 				}
 				workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: " + steps + "}, later: {runs-on: ubuntu-latest, steps: [{uses: $/later}]}}\n"
 				if mode == "nested" || mode == "nested-input" {
 					workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}, {uses: $/later}]}}\n"
 				}
-				innerSteps := "[{shell: bash, run: echo retained}, {shell: bash, run: echo rejected}, {uses: $/later}]"
+				innerSteps := "[{shell: bash, run: echo initial}, {shell: bash, run: echo rejected}, {uses: $/later}]"
 				if mode == "nested-input" {
-					innerSteps = "[{shell: bash, run: echo retained}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {uses: $/later}]"
+					innerSteps = "[{shell: bash, run: echo initial}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {uses: $/later}]"
 				}
 				f := newInvocationFixture(t, t.Context(), workflow, map[string]string{
 					"outer/action.yml": "name: outer\ndescription: budget\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
@@ -261,8 +261,8 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 				if collect {
 					wantUnits = 1
 				}
-				if len(result.Batch.Scripts()) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts()[0].Run.Run().Value() != "echo retained") {
-					t.Fatal("earlier script lost or rejected script retained")
+				if len(result.Batch.Scripts()) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts()[0].Run.Run().Value() != "echo initial") {
+					t.Fatal("earlier script missing or rejected script was published")
 				}
 				for _, call := range graph.Calls() {
 					if call.Outcome.Kind() != invocation.OutcomeExpanded {

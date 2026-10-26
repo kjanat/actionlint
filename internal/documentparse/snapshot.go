@@ -283,7 +283,7 @@ func (s *SourceSnapshots) Owns(step StepView) bool {
 }
 
 // CanonicalReferences returns detached index maps keyed by legacy traversal
-// cursors. References and positions are retained from the owned parse record.
+// cursors. References and positions come from the owned parse record.
 func (s *SourceSnapshot) CanonicalReferences() workflowfacts.References {
 	if s == nil || s.bound == nil {
 		return workflowfacts.References{}

@@ -112,7 +112,7 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			after, _ := batch.Fact(0, false)
 			fresh := batch.Scripts()
 			if !reflect.DeepEqual(before, after) || string(fresh[0].Content) != string(original) || fresh[0].Owner.Step.Line == 999 || fresh[0].Origin.StepPosition.Col == 999 {
-				t.Fatal("mutable inputs escaped into retained batch data")
+				t.Fatal("mutable inputs changed batch data")
 			}
 		})
 	}

@@ -90,7 +90,7 @@
 
 - Validate action manifests against generated runner schema constraints. Correct workflow expression contexts, matrix inference, function arity, expression depth, scalar decoding, required flags, schedule entries, and step ID checks.
 
-- Document the pinned workflow/action schema audit, complete definition coverage, regression evidence, and retained compatibility differences.
+- Document the pinned workflow/action schema audit, complete definition coverage, regression evidence, and existing compatibility differences.
 
 - Enable cache safety policies by default: report explicit writes on low-trust triggers that can use default-branch caches, reusable calls without an explicit cache limit on those triggers, and official cache actions disabled by an explicit mode. Each policy can be disabled in configuration or suppressed on a specific line with a rule name and a reason.
 

@@ -3,8 +3,6 @@ package action
 import (
 	"strings"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestActionMetadataInsertionDuplicates(t *testing.T) {
@@ -27,11 +25,11 @@ func TestActionMetadataInsertionDuplicates(t *testing.T) {
 				t.Run(section+"/"+directive+"/"+tc.name, func(t *testing.T) {
 					mapping := strings.ReplaceAll(tc.mapping, "INSERT", "'"+directive+"'")
 					source := "name: test\ndescription: test\ninputs:\n  extra:\n    description: extra\nruns:\n  using: composite\n  steps:\n    - uses: example/action@v1\n      " + section + ": " + mapping + "\n    - uses: example/action@v1\n      " + section + ": {FOO: separate}\n"
-					var meta Metadata
-					if err := codec.Unmarshal([]byte(source), &meta); err != nil {
+					meta, err := Parse("action.yml", []byte(source))
+					if err != nil {
 						t.Fatal(err)
 					}
-					errs := Validate(&meta)
+					errs := Validate(meta)
 					if len(errs) != tc.duplicates {
 						t.Fatalf("want %d duplicates, got %v", tc.duplicates, errs)
 					}

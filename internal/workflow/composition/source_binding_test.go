@@ -96,7 +96,7 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 		}
 	}
 	if result.Configs[outerPath] != outerConfig {
-		t.Fatalf("outer invocation config was not retained: %+v", result.Configs)
+		t.Fatalf("outer invocation config changed: %+v", result.Configs)
 	}
 	if !wantJobs["Release"] || !wantJobs["Verify"] {
 		t.Fatalf("prepared jobs did not preserve both original identifiers: %+v", wantJobs)
@@ -226,14 +226,14 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	if originalErr == nil || len(analysis.scriptScopes) != 0 {
 		t.Fatalf("failed deployment mutated scope collection: error=%v scopes=%+v", originalErr, analysis.scriptScopes)
 	}
-	retainedErr := analysis.interrupt(originalErr)
+	returnedErr := analysis.interrupt(originalErr)
 	graph, err := analysis.invocations.Publish()
 	if err != nil {
 		t.Fatal(err)
 	}
 	batch, batchErr := scriptexecution.NewBatch(graph, scriptexecution.Collection{Declarations: &registry, Scopes: analysis.scriptScopes})
-	if !errors.Is(retainedErr, scriptexecution.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes()) != 0 {
-		t.Fatalf("deployment failure was lost or produced an invalid interrupted batch: original=%v retained=%v batch=%v scopes=%+v", originalErr, retainedErr, batchErr, batch.Scopes())
+	if !errors.Is(returnedErr, scriptexecution.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes()) != 0 {
+		t.Fatalf("deployment failure was lost or produced an invalid interrupted batch: original=%v returned=%v batch=%v scopes=%+v", originalErr, returnedErr, batchErr, batch.Scopes())
 	}
 }
 

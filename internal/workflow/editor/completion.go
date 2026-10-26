@@ -24,11 +24,11 @@ func Complete(content string, offset int) []expr.Completion {
 		return nil
 	}
 	start := strings.LastIndex(before, "${{")
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(content), &root); err != nil {
+	root, err := codec.Parse([]byte(content))
+	if err != nil {
 		return nil
 	}
-	key := keyAt(&root, content, offset)
+	key := keyAt(root, content, offset)
 	if start >= 0 && !strings.Contains(before[start+3:], "}}") {
 		start += 3
 	} else {

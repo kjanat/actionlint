@@ -25,7 +25,7 @@ func TestDynamicStringContents(t *testing.T) {
 		{"percent conversion", `print("% ${{ inputs.conversion }}" % 1)`, nil},
 		{"percent adjacent conversion", `print("%${{ inputs.conversion }}" % 1)`, nil},
 		{"percent width conversion", `print("%03${{ inputs.conversion }}" % 1)`, nil},
-		{"static percent conversion retained", `print("%Q${{ inputs.suffix }}" % 1)`, []string{"F509"}},
+		{"static percent conversion remains flagged", `print("%Q${{ inputs.suffix }}" % 1)`, []string{"F509"}},
 		{"format positional", `print("${{ inputs.format }}".format("x"))`, nil},
 		{"format named", `print("${{ inputs.format }}".format(key="x"))`, nil},
 		{"format mixed", `print("prefix {} ${{ inputs.format }}".format("x", "y"))`, nil},
@@ -35,9 +35,9 @@ func TestDynamicStringContents(t *testing.T) {
 		{"multiline docstring", "def f():\n    \"\"\"${{\n inputs.docstring\n}}\"\"\"", nil},
 		{"dynamic first paragraph", "def f():\n    \"\"\"Return one.\n    ${{ inputs.summary }}\n    \"\"\"", nil},
 		{"static first paragraph", "def f():\n    \"\"\"Return one\n\n    ${{ inputs.body }}\n    \"\"\"", []string{"D400", "D415"}},
-		{"static percent retained", `print("${{ inputs.format }}" % "x"); print("static" % "x")`, []string{"F507"}},
-		{"static format retained", `print("${{ inputs.format }}".format("x")); print("static".format("x"))`, []string{"F523"}},
-		{"static docstring retained", "def f(): \"\"\"${{ inputs.docstring }}\"\"\"\ndef g(): \"\"\"Return one\"\"\"", []string{"D400", "D415"}},
+		{"static percent operation remains flagged", `print("${{ inputs.format }}" % "x"); print("static" % "x")`, []string{"F507"}},
+		{"static format operation remains flagged", `print("${{ inputs.format }}".format("x")); print("static".format("x"))`, []string{"F523"}},
+		{"static docstring remains flagged", "def f(): \"\"\"${{ inputs.docstring }}\"\"\"\ndef g(): \"\"\"Return one\"\"\"", []string{"D400", "D415"}},
 		{"quoted annotation reference", `def f(value: '${{ inputs.type }}'): pass`, nil},
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
@@ -159,7 +159,7 @@ func TestAsyncSyntaxTemplateSkipped(t *testing.T) {
 	}
 }
 
-func TestAsyncValueTemplateRetained(t *testing.T) {
+func TestAsyncValueTemplatePreserved(t *testing.T) {
 	for _, source := range []string{
 		"async with ${{ inputs.resource }}:\n    pass",
 		"async for item in ${{ inputs.values }}:\n    pass",

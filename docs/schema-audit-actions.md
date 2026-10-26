@@ -13,15 +13,15 @@ the complete schema from the audited runner revision.
 
 Every definition is represented in the generated structural table. The table
 and expression availability table now come from the same generator invocation.
-`internal/action.Validate` traverses raw YAML retained alongside the metadata
+`internal/action.Validate` traverses raw YAML stored alongside the metadata
 used for checking workflow callers. Existing precise runtime and composite-step
 diagnostics handle execution requirements.
 
 | Definition               | Fields or type                                                                                          | Handling                                                                                                                                  |
 | ------------------------ | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `action-root`            | `name`, `description`, `inputs`, `runs`, `outputs`; additional nonempty keys with arbitrary values      | Root shape and known fields checked; unknown extensions remain allowed, matching runner. Existing name/description checks retained.       |
+| `action-root`            | `name`, `description`, `inputs`, `runs`, `outputs`; additional nonempty keys with arbitrary values      | Root shape and known fields checked; unknown extensions remain allowed, matching runner. Existing name/description checks remain active.  |
 | `inputs`                 | Mapping of nonempty names to `input`                                                                    | Shape, names and duplicate input IDs checked.                                                                                             |
-| `input`                  | `default`; additional nonempty keys with arbitrary values                                               | Shape and default schema checked; existing public `required`, `description`, `deprecationMessage` metadata behavior retained.             |
+| `input`                  | `default`; additional nonempty keys with arbitrary values                                               | Shape and default schema checked; existing public `required`, `description`, `deprecationMessage` metadata behavior remains unchanged.    |
 | `input-default-context`  | String; github, strategy, matrix, job, runner; hashFiles(1-255)                                         | Context, function arity and expression syntax checked.                                                                                    |
 | `outputs`                | Mapping of nonempty names to `output-definition`                                                        | Shape, names and duplicate output IDs checked.                                                                                            |
 | `output-definition`      | `description`, `value`; closed mapping                                                                  | Unknown fields, nested value shape and expression restrictions checked.                                                                   |
@@ -31,7 +31,7 @@ diagnostics handle execution requirements.
 | `container-runs-args`    | Sequence of `container-runs-context`                                                                    | Sequence and every argument checked.                                                                                                      |
 | `container-runs-context` | String; inputs context                                                                                  | Container argument syntax/context checked.                                                                                                |
 | `container-runs-env`     | Mapping, nonempty keys/string values; inputs context                                                    | Shape, every key/value and expression availability checked.                                                                               |
-| `node-runs`              | `using`, `main`, `pre`, `pre-if`, `post`, `post-if`                                                     | All fields checked; main and local script files checked. Existing hook-pair diagnostics retained.                                         |
+| `node-runs`              | `using`, `main`, `pre`, `pre-if`, `post`, `post-if`                                                     | All fields checked; main and local script files checked. Existing hook-pair diagnostics remain available.                                 |
 | `plugin-runs`            | Nonempty `plugin`; closed mapping                                                                       | Runner-internal form represented and structurally validated. Plugin installation and execution require the internal runner loader.        |
 | `composite-runs`         | `using`, `steps`                                                                                        | Closed shape and required steps checked; empty sequence remains accepted by runner.                                                       |
 | `composite-steps`        | Sequence of `composite-step`                                                                            | Shape and every step checked.                                                                                                             |
@@ -92,7 +92,7 @@ The workflow expression rule checks the expression's known shape separately.
 - The runner schema deliberately leaves root extensions and most input
   documentation metadata open. Existing stricter checks for required action
   name/description, supported input metadata keys, required inputs, branding,
-  and deprecated-input messages are retained. This audit adds no blanket
+  and deprecated-input messages remain available. This audit adds no blanket
   "all documentation fields required" rule where the runtime schema is open.
   Input/output descriptions therefore remain optional to the runner validator.
 - `author` and other root extensions are accepted without being execution

@@ -494,10 +494,10 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	}
 	_, fresh := batch.Snapshot()
 	if fresh[0].Scope.Paths.Placements.Directory.Path != "original" {
-		t.Fatal("snapshot mutation reached retained checkout placement")
+		t.Fatal("snapshot mutation changed checkout placement")
 	}
 	if fresh[0].Content != nil || fresh[0].Owner.Step.Line != 6 || fresh[0].Origin.StepPosition.Line != 6 || fresh[0].Scope.Context.ID() != graph.RootID() {
-		t.Fatal("snapshot mutation reached retained provenance")
+		t.Fatal("snapshot mutation changed source provenance")
 	}
 }
 
@@ -649,7 +649,7 @@ func TestUnpreparedBatchCannotExecute(t *testing.T) {
 	}
 }
 
-func TestConcurrentBatchConsumersCannotMutateRetainedFacts(t *testing.T) {
+func TestConcurrentBatchConsumersCannotMutatePublishedFacts(t *testing.T) {
 	graph, collection := batchFixture(t, true)
 	run, _ := fixtureBodies(t, graph, collection)
 	run.Source.Comments = []workflowlang.ScalarComment{{Text: "forged", Pos: workflowlang.Pos{Line: 1, Col: 1}}}

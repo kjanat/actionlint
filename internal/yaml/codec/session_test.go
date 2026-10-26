@@ -3,6 +3,7 @@ package codec_test
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,12 +12,12 @@ import (
 	upstream "go.yaml.in/yaml/v4"
 )
 
-type retainedDecoderHook struct {
+type invocationDecoderHook struct {
 	decoder *codec.Decoder
 	node    *syntax.Node
 }
 
-func (h *retainedDecoderHook) UnmarshalYAML(d *codec.Decoder, node *syntax.Node) error {
+func (h *invocationDecoderHook) UnmarshalYAML(d *codec.Decoder, node *syntax.Node) error {
 	h.decoder = d
 	h.node = node
 	return nil
@@ -27,7 +28,7 @@ func TestDecoderRejectsUseAfterInvocation(t *testing.T) {
 	if err := codec.Unmarshal([]byte("hook: value\n"), &root); err != nil {
 		t.Fatalf("parse owned graph: %v", err)
 	}
-	var hook retainedDecoderHook
+	var hook invocationDecoderHook
 	if err := codec.Decode(&root, &hook); err != nil {
 		t.Fatalf("codec.Decode: %v", err)
 	}
@@ -250,5 +251,53 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 		if alias.Kind != syntax.AliasNode || alias.Alias != anchor {
 			t.Errorf("source alias occurrence %d changed during decode: %#v", i, alias)
 		}
+	}
+}
+
+func TestNestedHookAliasBudgetMatchesPlainDecode(t *testing.T) {
+	aliased := string(inheritedAliasSource())
+	oneAlias := strings.Replace(aliased, strings.Repeat("  - *payload\n", inheritedAliasOccurrences), "  - *payload\n", 1)
+	literal := "[" + strings.TrimSuffix(strings.Repeat("value, ", inheritedAliasWidth), ", ") + "]"
+	for _, tc := range []struct {
+		name   string
+		source string
+		limit  bool
+	}{
+		{"one alias below limit", oneAlias, false},
+		{"same values without expansion", "items:\n" + strings.Repeat("  - "+literal+"\n", inheritedAliasOccurrences), false},
+		{"ignored alias expansion", strings.Replace(aliased, "items:", "ignored:", 1) + "items: [[value]]\n", false},
+		{"aliased containing sequence", strings.Replace(aliased, "items:", "list: &list", 1) + "items: *list\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var plain inheritedAliasTarget
+			plainErr := upstream.Unmarshal([]byte(tc.source), &plain)
+			if tc.limit {
+				if plainErr == nil || !strings.Contains(plainErr.Error(), "excessive aliasing") {
+					t.Fatalf("upstream error = %v, want alias limit", plainErr)
+				}
+			} else if plainErr != nil {
+				t.Fatalf("upstream rejected valid input: %v", plainErr)
+			}
+
+			var hooked inheritedAliasHookTarget
+			err := codec.Unmarshal([]byte(tc.source), &hooked)
+			if tc.limit {
+				if err == nil || !strings.Contains(err.Error(), "excessive aliasing") {
+					t.Fatalf("codec error = %v, want alias limit", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("codec rejected valid input: %v", err)
+			}
+			if len(hooked.Items) != len(plain.Items) {
+				t.Fatalf("decoded %d items, want %d", len(hooked.Items), len(plain.Items))
+			}
+			for i, item := range hooked.Items {
+				if !slices.Equal(item.Values, plain.Items[i]) {
+					t.Errorf("item %d differs from upstream", i)
+				}
+			}
+		})
 	}
 }

@@ -5,14 +5,12 @@ import (
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestActionMappingInterpolationReview(t *testing.T) {
 	for _, field := range []string{"env", "with"} {
 		for _, value := range []string{"prefix-${{ inputs.value }}", "${{ inputs.value }}-suffix", "${{ inputs.value }}tail}}", "${{ inputs.value }}${{ inputs.value }}", "${{ fromJSON(inputs.value) }}", `${{ fromJSON('{"key":"${{"}') }}`} {
 			t.Run(field+"/"+value, func(t *testing.T) {
-				var meta actionmeta.Metadata
 				source := `name: test
 description: test
 inputs:
@@ -23,10 +21,11 @@ runs:
   steps:
     - uses: actions/checkout@v6
       ` + field + ": " + value + "\n"
-				if err := codec.Unmarshal([]byte(source), &meta); err != nil {
+				meta, err := actionmeta.Parse("action.yml", []byte(source))
+				if err != nil {
 					t.Fatal(err)
 				}
-				findings := actionmeta.Validate(&meta)
+				findings := actionmeta.Validate(meta)
 				want := 1
 				if strings.HasPrefix(value, "${{ fromJSON(") {
 					want = 0

@@ -49,7 +49,7 @@ func TestCallGraphPagesRetainOrderAndIsolateReaders(t *testing.T) {
 				collectedCalls[index].Ancestry[0] = "changed"
 				call, found := graph.Call(collectedCalls[index].ID)
 				if !found || call.Ancestry[0] != records.Entry.ID {
-					t.Fatal("reader mutation reached retained call ancestry")
+					t.Fatal("reader mutation changed call ancestry")
 				}
 			}
 			var collected []ScriptOccurrence
@@ -67,7 +67,7 @@ func TestCallGraphPagesRetainOrderAndIsolateReaders(t *testing.T) {
 				collected[index].Ancestry[0] = "changed"
 				script, found := graph.Script(collected[index].ID)
 				if !found || script.Ancestry[0] != records.Entry.ID {
-					t.Fatal("reader mutation reached retained ancestry")
+					t.Fatal("reader mutation changed ancestry")
 				}
 			}
 		})

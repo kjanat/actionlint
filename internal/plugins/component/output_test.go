@@ -38,7 +38,7 @@ func TestOutputBounds(t *testing.T) {
 			t.Fatalf("write=%d, %v", n, err)
 		}
 		if cap(w.pending) > maxPluginLine {
-			t.Fatalf("retained %d bytes", cap(w.pending))
+			t.Fatalf("pending buffer holds %d bytes", cap(w.pending))
 		}
 	}
 	if _, err := w.Write([]byte("overflow")); err == nil {

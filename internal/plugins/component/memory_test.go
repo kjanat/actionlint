@@ -66,7 +66,7 @@ func TestComponentAggregateMemoryGrowthAndRelease(t *testing.T) {
 			t.Fatal(err)
 		}
 		if budget.used != 0 {
-			t.Fatalf("closed instance retained %d accounted bytes", budget.used)
+			t.Fatalf("closed instance still accounts for %d bytes", budget.used)
 		}
 	}
 }

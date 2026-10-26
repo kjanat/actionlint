@@ -100,7 +100,7 @@ func TestShellcheckSourcesCanBeConstructed(t *testing.T) {
 	settings.Disable[0], settings.Enable[0], settings.SourcePath[0], shell = "SC2154", "check-set-e-suppressed", "other", "sh"
 	extended, external = false, true
 	if !reflect.DeepEqual(inline.Inline(), parsed.Tools.Shellcheck.Config.Inline()) {
-		t.Fatal("constructor retained mutable caller settings")
+		t.Fatal("constructor stored mutable caller settings")
 	}
 	for _, path := range []string{"", "bad\npath", "bad\x00path"} {
 		if _, err := config.ShellcheckConfigPath(path); err == nil {

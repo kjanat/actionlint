@@ -28,10 +28,10 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	if !bytes.Contains(source, []byte("actionlint:")) {
 		return nil
 	}
-	var root syntax.Node
 	// Normalizing line endings keeps YAML comment attachment consistent while
 	// preserving every source line and column used by diagnostics.
-	if err := codec.Unmarshal(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")), &root); err != nil {
+	root, err := codec.Parse(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")))
+	if err != nil {
 		return recoverInlineSuppressionComments(source)
 	}
 	lines := sourcemap.NewDocument(string(source)).Lines
@@ -50,7 +50,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	var comments []inlineSuppressionComment
 	blockEnds := map[int]int{}
 	scalarParser := workflowlang.NewSourceParser(source)
-	scalarParser.IndexScalarSources(&root)
+	scalarParser.IndexScalarSources(root)
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
@@ -139,7 +139,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 		}
 	}
-	visit(&root, documentEnd)
+	visit(root, documentEnd)
 	blockStarts := map[int]int{}
 	for first, last := range blockEnds {
 		if start, exists := blockStarts[last]; !exists || first < start {

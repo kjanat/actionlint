@@ -91,7 +91,7 @@ func TestShellcheckRetainsFindingsWhenAnotherScopeHasInvalidConfig(t *testing.T)
 		return scriptUnit{scope: scope, text: "echo test", key: pos, value: pos, execution: scriptExecution{shell: shellcheckShell{name: "bash {0}"}, directory: runDirectory{directoryKnown, root}}}
 	}
 	checker := &shellcheckAnalyzer{cmd: analyzerhost.NewProcessPool(t.Context(), 1).EmbeddedCommand("shellcheck", func([]string, string) ([]byte, error) {
-		return []byte(`{"comments":[{"line":1,"endLine":1,"column":1,"endColumn":2,"code":9999,"level":"warning","message":"retained"}]}`), nil
+		return []byte(`{"comments":[{"line":1,"endLine":1,"column":1,"endColumn":2,"code":9999,"level":"warning","message":"reported"}]}`), nil
 	})}
 	findings, err := checker.AnalyzeScripts(t.Context(), scriptBatch{scopes: []*scriptScope{validScope, invalidScope}, scripts: []scriptUnit{makeScript(validScope), makeScript(invalidScope)}})
 	if err == nil || len(findings) != 1 {

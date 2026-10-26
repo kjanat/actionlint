@@ -85,7 +85,7 @@ type CallOutcome struct{ value CallResolution }
 
 func (outcome CallOutcome) Value() CallResolution { return outcome.value }
 
-// NewCallOutcome accepts value variants only, so the retained payload is immutable.
+// NewCallOutcome accepts value variants only, so the stored payload is immutable.
 func NewCallOutcome(value CallResolution) (CallOutcome, error) {
 	valid, detail := false, ""
 	switch value := value.(type) {

@@ -45,7 +45,7 @@ func TestPluginManifestFormats(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		name, source, retained string
+		name, source, expectedFragment string
 	}{
 		{"config.yaml", "# intro\nplugins: [old/plugin] # dependencies\n# lint settings\nlint:\n  rules: {unknown-plugin-rule: warn}\n", "# lint settings\nlint:\n  rules: {unknown-plugin-rule: warn}\n"},
 		{"config.yml", "plugins:\n  - old/plugin\n\n# retain this\nother: 'quoted'\n", "\n# retain this\nother: 'quoted'\n"},
@@ -78,7 +78,7 @@ func TestPluginManifestFormats(t *testing.T) {
 				t.Fatal(err)
 			}
 			content := readManifestTest(t, path)
-			if !strings.Contains(content, test.retained) {
+			if !strings.Contains(content, test.expectedFragment) {
 				t.Fatalf("unrelated formatting lost:\n%s", content)
 			}
 			loaded, err := OpenPluginManifest(t.Context(), path)
@@ -215,7 +215,7 @@ func TestPluginManifestDirectoryAlias(t *testing.T) {
 				t.Fatal(err)
 			}
 			if manifest.Path != filepath.Join(physical, name) {
-				t.Fatalf("manifest retained directory alias: %q", manifest.Path)
+				t.Fatalf("manifest kept directory alias: %q", manifest.Path)
 			}
 			if err := manifest.Save(t.Context(), nil); err != nil {
 				t.Fatal(err)

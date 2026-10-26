@@ -222,7 +222,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
-				"outer/action.yml":  "name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo retained\n    - uses: $/nested\n",
+				"outer/action.yml":  "name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo initial\n    - uses: $/nested\n",
 				"nested/action.yml": "name: nested\ndescription: identity\nruns: {using: composite, steps: []}\n",
 			}, &tc.budget)
 			result, err := f.service.Workflow(f.root)
@@ -232,7 +232,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 			if len(f.parsed) != 1 || filepath.Base(filepath.Dir(f.parsed[0])) != "outer" {
 				t.Fatalf("validation fetched a body beyond the budget: %v", f.parsed)
 			}
-			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo retained" {
+			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo initial" {
 				t.Fatal("budget lost prior facts or incomplete state")
 			}
 			if tc.total {

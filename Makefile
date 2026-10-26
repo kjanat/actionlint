@@ -242,7 +242,7 @@ $(ENGINE_FIXTURES)/echo.wasm: $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/e
 	cargo build --locked --profile wasm --target wasm32-unknown-unknown -p actionlint-engine-echo
 	install -m 644 target/wasm32-unknown-unknown/wasm/actionlint_engine_echo.wasm $@
 
-internal/plugins/component/bindings/kjanat/actionlint/host/host.gen.go: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/source-annotations.wit internal/plugins/component/generate.go $(wildcard tools/plugin-contract/*.go)
+internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/host/host.gen.go: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/source-annotations.wit internal/plugins/component/generate.go $(wildcard tools/plugin-contract/*.go)
 	go generate ./internal/plugins/component
 
 internal/plugins/component/contract.gen.go internal/plugins/component/runner.gen.go internal/plugins/component/script_engine.gen.go &: crates/actionlint-extension-api/wit/analyzer.wit crates/actionlint-extension-api/wit/runner.wit crates/actionlint-extension-api/wit/script-engine.wit $(wildcard tools/plugin-contract/*.go) tools/plugin-contract/go.mod tools/plugin-contract/go.sum

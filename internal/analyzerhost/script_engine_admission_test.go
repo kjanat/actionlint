@@ -90,7 +90,7 @@ func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
 		}
 	}
 	if loads != 4 || len(engines.failed) != 4 {
-		t.Fatalf("loads=%d retained failures=%d", loads, len(engines.failed))
+		t.Fatalf("loads=%d recorded failures=%d", loads, len(engines.failed))
 	}
 	if _, err := engines.Load(t.Context(), "invalid-0.wasm"); !errors.Is(err, failure) || loads != 4 {
 		t.Fatalf("cached failure=%v loads=%d", err, loads)
@@ -159,7 +159,7 @@ func TestScriptEnginesSharesAdmissionBudgetAcrossSuccessAndFailure(t *testing.T)
 		t.Fatalf("mixed admissions bypassed budget: %v", err)
 	}
 	if loads != 4 || len(engines.loaded) != 2 || len(engines.failed) != 2 {
-		t.Fatalf("loads=%d retained engines=%d failures=%d", loads, len(engines.loaded), len(engines.failed))
+		t.Fatalf("loads=%d recorded engines=%d failures=%d", loads, len(engines.loaded), len(engines.failed))
 	}
 }
 

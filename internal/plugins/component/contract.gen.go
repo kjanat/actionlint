@@ -5,7 +5,7 @@ import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
 	canonicalAnalyzerInterface = "kjanat:actionlint/analyzer@0.2.0"
-	canonicalContractDigest    = "c0e479c7eb228f6db1cb1cd9a97709158284407cb07df68a21fe0ed243e24899"
+	canonicalContractDigest    = "4f3bfad82ef81650110ceaad751d245484899425e65c74cda1d919ea30828073"
 )
 
 func expectedAnalyzerContract() *wp.ComponentType {

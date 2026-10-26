@@ -348,8 +348,8 @@ func TestMetadataDiagnosticClaimIsConcurrentAndSeparateFromLookup(t *testing.T) 
 	if reports.Load() != 1 {
 		t.Fatalf("reported %d times, want 1", reports.Load())
 	}
-	retained, _ := cache.LookupMetadata("./broken")
-	if !errors.Is(retained.Err(), result.Err()) {
-		t.Fatal("reporting changed retained acquisition cause")
+	cached, _ := cache.LookupMetadata("./broken")
+	if !errors.Is(cached.Err(), result.Err()) {
+		t.Fatal("reporting changed cached acquisition cause")
 	}
 }

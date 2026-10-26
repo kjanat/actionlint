@@ -90,7 +90,7 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 			pointer := "/lint/rules/policy/require-commit-hash/level"
 			if tc.input == "config" {
 				if _, exists := report.Inspection.Origins[pointer]; exists {
-					t.Fatal("whole-config reset retained a removed rule origin")
+					t.Fatal("whole-config reset left a removed rule origin")
 				}
 				pointer = "/lint"
 			}

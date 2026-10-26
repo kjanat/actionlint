@@ -96,13 +96,13 @@ interface invocation-context {
         stop: option<stop>,
         entry-interruption: option<interruption>,
         /// True only when every call is expanded or opaque, without a stop or
-        /// entry interruption. Other outcomes retain explicit incomplete work.
+        /// entry interruption. Other outcomes describe incomplete work.
         /// Conditions describe each call's expression; skipped/runtime-dependent
         /// ancestors remain visible and do not prune descendants from this graph.
         complete: bool,
     }
     /// All queries return an error when invocation facts are unavailable.
-    /// Counts cover retained records only, including incomplete call outcomes.
+    /// Counts cover stored records only, including incomplete call outcomes.
     describe: func() -> result<summary, string>;
     /// Records remain stable in registration order; parents precede children.
     /// Offset may equal the count, returning an empty page.

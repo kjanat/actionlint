@@ -112,7 +112,7 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	}
 }
 
-func TestOwnedIndexIsRetainedAfterAnonymousStepMutation(t *testing.T) {
+func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n")
 	document := Workflow("ci.yml", content)
 	var snapshots SourceSnapshots
@@ -138,7 +138,7 @@ func TestOwnedIndexIsRetainedAfterAnonymousStepMutation(t *testing.T) {
 	}
 	refs.Steps[cursor] = source.Reference{}
 	if snapshot.CanonicalReferences().Steps[cursor] != view.Reference() {
-		t.Fatal("consumer mutated retained canonical index")
+		t.Fatal("consumer changed canonical index")
 	}
 }
 

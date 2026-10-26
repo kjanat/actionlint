@@ -2194,9 +2194,8 @@ func HandleYAMLUnmarshalError(err error) []*SyntaxError {
 // detected while parsing the input. It means that detecting one error does not stop parsing. Even
 // if one or more errors are detected, Parser will try to continue parsing and finding more errors.
 func Parse(b []byte) (*Workflow, []*SyntaxError) {
-	var n syntax.Node
-
-	if err := codec.Unmarshal(b, &n); err != nil {
+	n, err := codec.Parse(b)
+	if err != nil {
 		return nil, HandleYAMLUnmarshalError(err)
 	}
 
@@ -2204,10 +2203,10 @@ func Parse(b []byte) (*Workflow, []*SyntaxError) {
 	// dumpYAML(&n, 0)
 
 	p := NewSourceParser(b)
-	p.IndexScalarSources(&n)
-	p.checkFlowMappingNulls(&n, false)
-	w := p.parse(&n)
-	w.ExpressionSources = p.workflowExpressionSources(&n)
+	p.IndexScalarSources(n)
+	p.checkFlowMappingNulls(n, false)
+	w := p.parse(n)
+	w.ExpressionSources = p.workflowExpressionSources(n)
 
 	return w, p.Errors
 }

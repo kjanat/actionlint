@@ -22,7 +22,7 @@ type InvocationContext interface {
 	// Limit must be 1..256; invalid bounds return an error, never partial success.
 	Calls(ctx context.Context, offset uint32, limit uint32) (ResultListCallString, error)
 	// All queries return an error when invocation facts are unavailable.
-	// Counts cover retained records only, including incomplete call outcomes.
+	// Counts cover stored records only, including incomplete call outcomes.
 	Describe(ctx context.Context) (ResultSummaryString, error)
 	ScriptByID(ctx context.Context, id string) (ResultOptionScriptOccurrenceString, error)
 	Scripts(ctx context.Context, offset uint32, limit uint32) (ResultListScriptOccurrenceString, error)
@@ -455,7 +455,7 @@ type Summary struct {
 	Stop              OptionStop
 	EntryInterruption OptionInterruption
 	// True only when every call is expanded or opaque, without a stop or
-	// entry interruption. Other outcomes retain explicit incomplete work.
+	// entry interruption. Other outcomes describe incomplete work.
 	// Conditions describe each call's expression; skipped/runtime-dependent
 	// ancestors remain visible and do not prune descendants from this graph.
 	Complete bool

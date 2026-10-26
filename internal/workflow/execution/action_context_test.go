@@ -114,8 +114,8 @@ func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 			t.Fatalf("call effects: %+v", effects)
 		}
 		effects.Condition = invocation.ConditionInvalid
-		retained, _ := context.Facts()
-		if retained.Condition != tc.want {
+		storedFacts, _ := context.Facts()
+		if storedFacts.Condition != tc.want {
 			t.Fatal("caller mutated stored effects")
 		}
 	}

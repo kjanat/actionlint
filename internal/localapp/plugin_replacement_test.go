@@ -74,7 +74,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 				}
 			}()
 			if tc.managed && len(session.options.Analyzers) != 0 {
-				t.Fatal("editor retained standalone managed analyzer")
+				t.Fatal("editor kept standalone managed analyzer")
 			}
 			rules, err := RulesSources(t.Context(), selected)
 			if err != nil {

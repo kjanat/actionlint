@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
+	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/host"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
 	"github.com/kjanat/wazero/experimental"
@@ -41,7 +41,7 @@ func TestComponentTableReservationsShareLinearMemoryBudget(t *testing.T) {
 	}
 	memory.Free()
 	if budget.used != 0 {
-		t.Fatalf("closed allocations retained %d bytes", budget.used)
+		t.Fatalf("closed allocations still account for %d bytes", budget.used)
 	}
 	for _, table := range []wacogo.CoreTable{{Min: 0}, {Min: 0, Max: wasmparser.Some(uint32(math.MaxUint32))}} {
 		if _, err := budget.allocateTables([]wacogo.CoreTable{table}); err == nil || budget.used != 0 {

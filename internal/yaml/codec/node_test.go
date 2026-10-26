@@ -54,8 +54,8 @@ func TestPartialDecodeAndErrors(t *testing.T) {
 		A custom `yaml:"a"`
 		B bool   `yaml:"b"`
 	}
-	err := Unmarshal([]byte("a: retained\nb: []\n"), &result)
-	if err == nil || result.A.Value != "retained" {
+	err := Unmarshal([]byte("a: stored\nb: []\n"), &result)
+	if err == nil || result.A.Value != "stored" {
 		t.Fatalf("%+v %v", result, err)
 	}
 	decoded, ok := errors.AsType[*DecodeError](err)

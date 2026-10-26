@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
 
-func TestCompositeRetainedCheckoutLocations(t *testing.T) {
+func TestCompositeCheckoutLocations(t *testing.T) {
 	command := testutil.RequireShellcheck(t)
 	root, _ := testutil.ExecutableFixture(t)
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -199,7 +199,7 @@ runs:
 	}
 }
 
-func TestCompositeRetainedCheckoutChanges(t *testing.T) {
+func TestCompositeCheckoutChanges(t *testing.T) {
 	root, git := testutil.ExecutableFixture(t)
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test

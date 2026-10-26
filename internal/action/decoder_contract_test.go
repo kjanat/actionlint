@@ -2,6 +2,8 @@ package action
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
@@ -32,6 +34,50 @@ inputs:
 	}
 	if metadata.Name != "example" || metadata.Runs.Using != "node24" || metadata.Runs.Main != "index.js" || metadata.Branding.Icon != "book" || metadata.Inputs["token"] == nil || !metadata.Inputs["token"].Required {
 		t.Fatalf("alias-key metadata: %+v", metadata)
+	}
+}
+
+func TestAliasedRunsKeepsExpansionBudget(t *testing.T) {
+	var fields strings.Builder
+	for i := range 650 {
+		fmt.Fprintf(&fields, "key%d: value, ", i)
+	}
+	runs := "{using: docker, image: Dockerfile, env: {" + strings.TrimSuffix(fields.String(), ", ") + "}}"
+	for _, tc := range []struct {
+		name   string
+		source string
+		limit  bool
+	}{
+		{"literal", "runs: " + runs + "\n", false},
+		{"alias", "template: &runs " + runs + "\nruns: *runs\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var plain struct {
+				Runs struct {
+					Using string            `yaml:"using"`
+					Image string            `yaml:"image"`
+					Env   map[string]string `yaml:"env"`
+				} `yaml:"runs"`
+			}
+			baseline := codec.Unmarshal([]byte(tc.source), &plain)
+			if tc.limit {
+				if baseline == nil || !strings.Contains(baseline.Error(), "excessive aliasing") {
+					t.Fatalf("plain decode = %v, want alias limit", baseline)
+				}
+			} else if baseline != nil {
+				t.Fatal(baseline)
+			}
+			metadata, err := Parse("action.yml", []byte(tc.source))
+			if tc.limit {
+				if err == nil || !strings.Contains(err.Error(), "excessive aliasing") {
+					t.Fatalf("Parse = %v, want alias limit through runs", err)
+				}
+				return
+			}
+			if err != nil || len(metadata.Runs.Env) != len(plain.Runs.Env) {
+				t.Fatalf("Parse decoded %d env entries, error %v; want %d entries", len(metadata.Runs.Env), err, len(plain.Runs.Env))
+			}
+		})
 	}
 }
 

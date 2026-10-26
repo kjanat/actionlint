@@ -47,7 +47,7 @@ func TestScriptBudgetRetainsFirstBoundaryAndStopsCalls(t *testing.T) {
 				t.Fatalf("lost first script boundary: %+v", stop)
 			}
 			if scripts := g.Scripts(); len(scripts) != 1 || scripts[0].ID != first {
-				t.Fatalf("lost retained script: %+v", scripts)
+				t.Fatalf("script missing: %+v", scripts)
 			}
 			if _, interrupted := g.EntryInterruption(); interrupted {
 				t.Fatal("budget exhaustion became an operational interruption")
@@ -296,7 +296,7 @@ func TestInterruptedBuilderRejectsFurtherScripts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, retained := graph.Script(script); !retained || !graph.Incomplete() {
+	if _, present := graph.Script(script); !present || !graph.Incomplete() {
 		t.Fatal("interruption lost previously registered script facts")
 	}
 }

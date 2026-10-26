@@ -77,15 +77,15 @@ func (p *Parser) ScriptSource(n *syntax.Node) *ScriptSource {
 	}
 	if p.scalarContexts == nil {
 		// Standalone parser users can request a source map before parsing a tree.
-		var root syntax.Node
 		source := strings.Join(p.SourceLines, "\n")
 		if p.ScalarDocument != nil {
 			source = scalarDocumentSource(p.ScalarDocument)
 		}
-		if err := codec.Unmarshal([]byte(source), &root); err != nil {
+		root, err := codec.Parse([]byte(source))
+		if err != nil {
 			return nil
 		}
-		p.IndexScalarSources(&root)
+		p.IndexScalarSources(root)
 	}
 	key := *PosAt(n)
 	if source, exists := p.scalarSources[key]; exists {

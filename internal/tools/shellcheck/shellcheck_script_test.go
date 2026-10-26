@@ -29,7 +29,7 @@ func TestShellcheckDialectEnvironmentOverride(t *testing.T) {
 	t.Setenv("SHELLCHECK_OPTS", "--shell=sh")
 	cmd := externalCommand{Env: []string{"SHELLCHECK_OPTS="}}
 	if dialect, found := shellcheckDialect(&cmd); found {
-		t.Fatalf("empty child override retained parent dialect %q", dialect)
+		t.Fatalf("empty child override inherited parent dialect %q", dialect)
 	}
 }
 

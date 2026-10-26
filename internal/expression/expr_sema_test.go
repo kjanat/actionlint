@@ -2362,7 +2362,7 @@ func TestContextReplacementDispatchInputs(t *testing.T) {
 		checker.SetContextTypes(nil)
 		checker.UpdateDispatchInputs(NewStrictObjectType(map[string]Type{"again": StringType{}}))
 		if checker.vars["github"] != nil {
-			t.Fatal("context replacement retained github")
+			t.Fatal("context replacement left github available")
 		}
 	}
 }

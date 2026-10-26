@@ -17,7 +17,7 @@ import (
 func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	content := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n"
 	parsed := documentparse.Workflow("ci.yml", []byte(content))
-	entry := source.Reference{Document: "ci.yml", Revision: "retained", Node: "document"}
+	entry := source.Reference{Document: "ci.yml", Revision: "revision-one", Node: "document"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	}
 	var used []rule.Descriptor
 	findings, err := runDocumentAnalyzers(t.Context(), []analyzer.Registration{{Analyzer: sourceOnlyProbe{content}}}, input, nil, &used)
-	if err != nil || len(findings) != 1 || findings[0].Path != "ci.yml" || findings[0].Message != "retained source finding" {
+	if err != nil || len(findings) != 1 || findings[0].Path != "ci.yml" || findings[0].Message != "reported source finding" {
 		t.Fatalf("source-only fallback lost: %v %v", findings, err)
 	}
 }

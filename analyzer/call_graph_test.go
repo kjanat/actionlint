@@ -148,7 +148,7 @@ func TestCallGraphDetachesConstructionAndAccess(t *testing.T) {
 		t.Fatal("script page append overwrote neighbor")
 	}
 	if !reflect.DeepEqual(graph.Snapshot(), want) {
-		t.Fatal("mutable records reached retained graph")
+		t.Fatal("mutable records changed published graph")
 	}
 	copyHandle := graph
 	graph = CallGraph{}

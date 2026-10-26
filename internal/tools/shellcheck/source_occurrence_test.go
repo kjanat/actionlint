@@ -21,6 +21,6 @@ func TestSourceGrantsTranslateScriptsAndInvokedRuntimeWithoutMutatingFacts(t *te
 		}
 	}
 	if scriptRuntime.Directory != "script-host" || invokedRuntime.Directory != "invoked-host" {
-		t.Fatalf("translation mutated retained runtimes: script=%+v invoked=%+v", scriptRuntime, invokedRuntime)
+		t.Fatalf("translation mutated source runtimes: script=%+v invoked=%+v", scriptRuntime, invokedRuntime)
 	}
 }

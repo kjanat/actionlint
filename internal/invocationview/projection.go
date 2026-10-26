@@ -105,11 +105,11 @@ func New(graph invocation.Graph) (Projection, error) {
 		}
 		view.EntryInterruption = analyzer.Present(analyzer.Interruption{Reason: reason, Detail: interruption.Detail()})
 	}
-	retained, err := analyzer.NewCallGraph(view)
+	callGraph, err := analyzer.NewCallGraph(view)
 	if err != nil {
 		return Projection{}, err
 	}
-	return Projection{graph: retained}, nil
+	return Projection{graph: callGraph}, nil
 }
 
 func (projection Projection) Graph() analyzer.CallGraph { return projection.graph }

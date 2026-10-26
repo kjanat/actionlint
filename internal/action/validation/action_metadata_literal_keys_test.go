@@ -24,15 +24,15 @@ runs:
 		for _, spelling := range []string{key, strings.ToUpper(key)} {
 			t.Run(spelling, func(t *testing.T) {
 				input := strings.Replace(source, key+":", "${{ '"+spelling+"' }}:", 1)
-				var meta actionmeta.Metadata
-				if err := codec.Unmarshal([]byte(input), &meta); err != nil {
+				meta, err := actionmeta.Parse("action.yml", []byte(input))
+				if err != nil {
 					t.Fatal(err)
 				}
 				if meta.Runs.Using != "composite" || len(meta.Runs.Steps) != 1 || meta.Runs.Steps[0].Run == nil {
 					t.Fatalf("execution fields were lost: %#v", meta.Runs)
 				}
 				meta.Directory, meta.Filename = t.TempDir(), "action.yml"
-				findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})
+				findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
 				if errs := findings; len(errs) != 0 {
 					t.Fatalf("literal field key rejected: %v", errs)
 				}
@@ -70,7 +70,7 @@ runs:
 	}
 	root := document.Content[0]
 	var meta actionmeta.Metadata
-	if err := codec.Decode(root, &meta); err != nil {
+	if err := actionmeta.Decode(root, &meta); err != nil {
 		t.Fatal(err)
 	}
 	if meta.Root != root || root.Content[4].Value != "${{ 'Inputs' }}" {
@@ -115,9 +115,11 @@ runs:
       shell: bash
 `
 	var meta actionmeta.Metadata
-	if err := codec.Unmarshal([]byte(source), &meta); err != nil {
+	parsed, err := actionmeta.Parse("action.yml", []byte(source))
+	if err != nil {
 		t.Fatal(err)
 	}
+	meta = *parsed
 	meta.Directory, meta.Filename = t.TempDir(), "action.yml"
 	findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})
 	errs := findings

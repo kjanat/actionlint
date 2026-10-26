@@ -74,8 +74,8 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 				t.Fatalf("alias ownership collapsed: first=%+v second=%+v error=%v", left, right, err)
 			}
 			steps[0] = &workflowlang.Step{}
-			retained, _ := again.ActionSteps()
-			if _, err := again.StepReference(retained[0]); err != nil {
+			copiedSteps, _ := again.ActionSteps()
+			if _, err := again.StepReference(copiedSteps[0]); err != nil {
 				t.Fatal("consumer changed the snapshot's step sequence")
 			}
 			if plain.SourceMapped || !mapped.SourceMapped {

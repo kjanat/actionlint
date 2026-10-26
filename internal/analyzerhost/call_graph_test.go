@@ -69,6 +69,6 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(graph.Snapshot(), want) || input.SelectedScripts[0] != script {
-		t.Fatal("analyzer mutation reached retained graph")
+		t.Fatal("analyzer mutation changed published graph")
 	}
 }
