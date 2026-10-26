@@ -220,10 +220,10 @@ Automated tests are as follows.
 
 ## Linting
 
-[golangci-lint] runs the Go linters, configured by [`.golangci.toml`]. Install the binary as described in [its documentation]. The version is pinned in `.tool-versions` and `.custom-gcl.yml`. `make lint` rebuilds the custom binary and enables `actionlintarch` by default. See [architecture enforcement](analyzers/README.md).
+[golangci-lint] runs the Go linters, configured by [`.golangci.toml`]. Install the binary as described in [its documentation]. CI pins the version in [`ci.yml`].
 
 ```sh
-make lint
+golangci-lint run
 ```
 
 `.golangci.toml` turns on staticcheck's doc comment checks. A non-`main` package needs a package comment starting with `Package <name>`. A doc comment on an exported symbol must start with that symbol's name, with an optional leading article for types. An exported symbol carrying no doc comment at all is accepted.

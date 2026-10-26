@@ -52,7 +52,12 @@
       },
       "initialization_options": {
         "command": [
-          "./custom-gcl",
+          "mise",
+          "exec",
+          "--silent",
+          "golangci-lint@latest",
+          "--",
+          "golangci-lint",
           "run",
           "--output.json.path",
           "stdout",
