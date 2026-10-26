@@ -20,8 +20,8 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 	}
 	input.CallGraph = result.Batch.CallGraph()
 	if input.Reference == (source.Reference{}) {
-		input.Reference = input.CallGraph.Entry.Reference
-	} else if input.Reference != input.CallGraph.Entry.Reference {
+		input.Reference = input.CallGraph.Entry().Reference
+	} else if input.Reference != input.CallGraph.Entry().Reference {
 		return analyzer.Input{}, scriptexecution.ErrInvalidBatch
 	}
 	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies, analyzer.Invocations)
@@ -36,7 +36,7 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 			switch {
 			case script.Occurrence.Kind == analyzer.ActionInputScript:
 				input.ActionInputs = append(input.ActionInputs, analyzer.ActionInput{Script: script, Site: unit.Input.Site})
-			case script.Occurrence.Owner == input.CallGraph.Entry.ID:
+			case script.Occurrence.Owner == input.CallGraph.Entry().ID:
 				input.Scripts = append(input.Scripts, script)
 			default:
 				input.Invoked = append(input.Invoked, script)

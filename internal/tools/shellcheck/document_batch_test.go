@@ -10,12 +10,15 @@ import (
 
 func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
 	valid := documentBatchFixture(t, 1)
+	missingFact := valid
+	missingFact.Scripts = append([]tools.Script(nil), valid.Scripts...)
+	missingFact.Scripts[0].Fact = analyzer.Script{}
 	foreign := valid
 	foreign.Scripts = append([]tools.Script(nil), valid.Scripts...)
 	foreign.Scripts[0].Fact.Occurrence.ID = "unknown"
 	for name, batch := range map[string]tools.Batch{
 		"missing graph": {Scripts: []tools.Script{{}}},
-		"missing fact":  {CallGraph: valid.CallGraph, Scripts: valid.Scripts},
+		"missing fact":  missingFact,
 		"foreign fact":  foreign,
 	} {
 		t.Run(name, func(t *testing.T) {

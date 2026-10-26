@@ -26,8 +26,8 @@ func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	graph := projection.Snapshot()
-	if graph == nil {
+	graph := projection.Graph()
+	if !graph.Valid() {
 		t.Fatal("empty invocation graph was not projected")
 	}
 	for _, tc := range []struct {

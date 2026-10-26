@@ -208,31 +208,27 @@ func validateDocumentBatch(batch tools.Batch) error {
 	if len(batch.Scripts) == 0 {
 		return nil
 	}
-	if batch.CallGraph == nil {
+	if !batch.CallGraph.Valid() {
 		return fmt.Errorf("ShellCheck document batch: %w: missing call graph", analyzer.ErrInvalidCallGraph)
-	}
-	registered := make(map[analyzer.OccurrenceID]analyzer.ScriptOccurrence, len(batch.CallGraph.Scripts))
-	for _, occurrence := range batch.CallGraph.Scripts {
-		registered[occurrence.ID] = occurrence
 	}
 	for index, script := range batch.Scripts {
 		if script.Input != nil {
 			continue
 		}
 		occurrence := script.Fact.Occurrence
-		if want, exists := registered[occurrence.ID]; occurrence.ID == "" || !exists || occurrence.Kind != analyzer.RunScript || occurrence.Declaration != want.Declaration || script.Fact.Reference != want.Declaration {
+		if want, exists := batch.CallGraph.Script(occurrence.ID); occurrence.ID == "" || !exists || occurrence.Kind != analyzer.RunScript || occurrence.Declaration != want.Declaration || script.Fact.Reference != want.Declaration {
 			return fmt.Errorf("ShellCheck document batch script %d: %w: missing or foreign prepared occurrence", index, analyzer.ErrInvalidCallGraph)
 		}
 	}
 	return nil
 }
 
-func (r documentPluginRunner) input(script tools.Script, graph *analyzer.CallGraph) analyzer.Input {
+func (r documentPluginRunner) input(script tools.Script, graph analyzer.CallGraph) analyzer.Input {
 	input := r.context.Document
 	input.Available = []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution}
 	input.CallGraph = graph
 	input.SelectedScripts = []analyzer.OccurrenceID{script.Fact.Occurrence.ID}
-	if graph != nil && script.Fact.Occurrence.Owner == graph.Entry.ID {
+	if graph.Valid() && script.Fact.Occurrence.Owner == graph.Entry().ID {
 		input.Scripts = []analyzer.Script{script.Fact}
 	} else {
 		input.Invoked = []analyzer.Script{script.Fact}

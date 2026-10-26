@@ -14,8 +14,8 @@ type graphOwner struct {
 	hasBody  bool
 }
 
-// Validate checks transport invariants without generating or resolving identities.
-func (graph CallGraph) Validate() error {
+// validate checks transport invariants without generating or resolving identities.
+func (graph CallGraphData) validate() error {
 	entry, budget := graph.Entry, graph.Budget
 	if !validOccurrence(entry.ID) || !validSource(entry.Reference) || entry.Kind != WorkflowEntry && entry.Kind != ActionEntry {
 		return invalidGraph("invalid entry")

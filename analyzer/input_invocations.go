@@ -9,14 +9,14 @@ import (
 // ValidateInvocations checks supplied facts against the retained occurrence graph.
 func (input Input) ValidateInvocations() error {
 	available := slices.Contains(input.Available, Invocations)
-	if available != (input.CallGraph != nil) {
+	if available != input.CallGraph.Valid() {
 		return invalidGraph("invocations availability disagrees with graph presence")
 	}
 	textsAvailable := slices.Contains(input.Available, Scripts)
 	if len(input.Scripts)+len(input.Invoked)+len(input.ActionInputs) > 0 && !textsAvailable {
 		return invalidGraph("script text supplied without scripts fact")
 	}
-	if input.CallGraph == nil {
+	if !input.CallGraph.Valid() {
 		if input.SelectedScripts != nil {
 			return invalidGraph("script selection supplied without invocation graph")
 		}
@@ -34,27 +34,18 @@ func (input Input) ValidateInvocations() error {
 		}
 		return nil
 	}
-	if err := input.CallGraph.Validate(); err != nil {
-		return err
-	}
-	if input.Reference != input.CallGraph.Entry.Reference {
+	if input.Reference != input.CallGraph.Entry().Reference {
 		return invalidGraph("input reference disagrees with graph entry")
 	}
-	registered := make(map[OccurrenceID]ScriptOccurrence, len(input.CallGraph.Scripts))
-	for _, occurrence := range input.CallGraph.Scripts {
-		registered[occurrence.ID] = occurrence
-	}
-	selected := make(map[OccurrenceID]bool, len(registered))
-	if input.SelectedScripts == nil {
-		for id := range registered {
-			selected[id] = true
-		}
-	} else {
+	selected := make(map[OccurrenceID]bool, len(input.SelectedScripts))
+	expected := input.CallGraph.ScriptCount()
+	if input.SelectedScripts != nil {
 		if !textsAvailable {
 			return invalidGraph("script selection supplied without scripts fact")
 		}
+		expected = len(input.SelectedScripts)
 		for _, id := range input.SelectedScripts {
-			if _, exists := registered[id]; !exists || selected[id] {
+			if _, exists := input.CallGraph.script(id); !exists || selected[id] {
 				return invalidGraph("unknown or duplicate selected script %q", id)
 			}
 			selected[id] = true
@@ -63,11 +54,11 @@ func (input Input) ValidateInvocations() error {
 	seen := make(map[OccurrenceID]bool)
 	check := func(script Script, kind ScriptKind, entry bool) error {
 		actual := script.Occurrence
-		want, exists := registered[actual.ID]
-		if !exists || !selected[actual.ID] || seen[actual.ID] || actual.Owner != want.Owner || actual.Depth != want.Depth || actual.Declaration != want.Declaration || actual.Kind != want.Kind || actual.Input != want.Input || !slices.Equal(actual.Ancestry, want.Ancestry) || script.Reference != want.Declaration {
+		want, exists := input.CallGraph.script(actual.ID)
+		if !exists || (input.SelectedScripts != nil && !selected[actual.ID]) || seen[actual.ID] || actual.Owner != want.Owner || actual.Depth != want.Depth || actual.Declaration != want.Declaration || actual.Kind != want.Kind || actual.Input != want.Input || !slices.Equal(actual.Ancestry, want.Ancestry) || script.Reference != want.Declaration {
 			return invalidGraph("script %q disagrees with registered occurrence", actual.ID)
 		}
-		if actual.Kind != kind || kind == RunScript && (actual.Owner == input.CallGraph.Entry.ID) != entry {
+		if actual.Kind != kind || kind == RunScript && (actual.Owner == input.CallGraph.Entry().ID) != entry {
 			return invalidGraph("script %q is in the wrong input collection", actual.ID)
 		}
 		seen[actual.ID] = true
@@ -91,7 +82,7 @@ func (input Input) ValidateInvocations() error {
 			return invalidGraph("action input selector disagrees with occurrence")
 		}
 	}
-	if textsAvailable && len(seen) != len(selected) {
+	if textsAvailable && len(seen) != expected {
 		return invalidGraph("script text does not cover selected occurrences")
 	}
 	return nil

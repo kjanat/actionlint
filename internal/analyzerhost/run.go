@@ -40,10 +40,6 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 				}
 			}
 			supplied := input
-			if input.CallGraph != nil {
-				graph := input.CallGraph.Clone()
-				supplied.CallGraph = &graph
-			}
 			supplied.Available = slices.Clone(input.Available)
 			supplied.SelectedScripts = slices.Clone(input.SelectedScripts)
 			supplied.Options = slices.Clone(registration.Options)

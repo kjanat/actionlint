@@ -92,9 +92,9 @@ type InvocationStop struct {
 	Max    int
 }
 
-// CallGraph carries all registered occurrences, including when script text was
-// not collected. Complete describes expansion, independently of text collection.
-type CallGraph struct {
+// CallGraphData supplies records for validation and immutable storage.
+// Complete describes expansion independently of script text collection.
+type CallGraphData struct {
 	Entry             InvocationEntry
 	Budget            InvocationBudget
 	Calls             []Call
@@ -104,8 +104,7 @@ type CallGraph struct {
 	Complete          bool
 }
 
-// Clone detaches every ancestry range, including ranges shared by the input.
-func (graph CallGraph) Clone() CallGraph {
+func (graph CallGraphData) clone() CallGraphData {
 	graph.Calls = slices.Clone(graph.Calls)
 	graph.Scripts = slices.Clone(graph.Scripts)
 	total := 0
@@ -133,6 +132,136 @@ func (graph CallGraph) Clone() CallGraph {
 		graph.Scripts[i].Ancestry = copyAncestry(graph.Scripts[i].Ancestry)
 	}
 	return graph
+}
+
+// CallGraph is a value handle to validated, immutable occurrence records.
+// Accessors detach mutable slices; copying the handle shares only private storage.
+type CallGraph struct{ data *callGraphData }
+
+type callGraphData struct {
+	records CallGraphData
+	calls   map[OccurrenceID]int
+	scripts map[OccurrenceID]int
+}
+
+const MaxCallGraphPageSize = 256
+
+func NewCallGraph(records CallGraphData) (CallGraph, error) {
+	if err := records.validate(); err != nil {
+		return CallGraph{}, err
+	}
+	data := &callGraphData{
+		records: records.clone(),
+		calls:   make(map[OccurrenceID]int, len(records.Calls)),
+		scripts: make(map[OccurrenceID]int, len(records.Scripts)),
+	}
+	for index, call := range data.records.Calls {
+		data.calls[call.ID] = index
+	}
+	for index, script := range data.records.Scripts {
+		data.scripts[script.ID] = index
+	}
+	return CallGraph{data: data}, nil
+}
+
+func (graph CallGraph) Valid() bool { return graph.data != nil }
+func (graph CallGraph) Entry() InvocationEntry {
+	if !graph.Valid() {
+		return InvocationEntry{}
+	}
+	return graph.data.records.Entry
+}
+func (graph CallGraph) Budget() InvocationBudget {
+	if !graph.Valid() {
+		return InvocationBudget{}
+	}
+	return graph.data.records.Budget
+}
+func (graph CallGraph) Complete() bool { return graph.Valid() && graph.data.records.Complete }
+func (graph CallGraph) Stop() Optional[InvocationStop] {
+	if !graph.Valid() {
+		return Optional[InvocationStop]{}
+	}
+	return graph.data.records.Stop
+}
+func (graph CallGraph) EntryInterruption() Optional[Interruption] {
+	if !graph.Valid() {
+		return Optional[Interruption]{}
+	}
+	return graph.data.records.EntryInterruption
+}
+func (graph CallGraph) CallCount() int {
+	if !graph.Valid() {
+		return 0
+	}
+	return len(graph.data.records.Calls)
+}
+func (graph CallGraph) ScriptCount() int {
+	if !graph.Valid() {
+		return 0
+	}
+	return len(graph.data.records.Scripts)
+}
+func (graph CallGraph) Call(id OccurrenceID) (Call, bool) {
+	if !graph.Valid() {
+		return Call{}, false
+	}
+	index, found := graph.data.calls[id]
+	if !found {
+		return Call{}, false
+	}
+	call := graph.data.records.Calls[index]
+	call.Ancestry = slices.Clone(call.Ancestry)
+	return call, true
+}
+func (graph CallGraph) script(id OccurrenceID) (ScriptOccurrence, bool) {
+	if !graph.Valid() {
+		return ScriptOccurrence{}, false
+	}
+	index, found := graph.data.scripts[id]
+	if !found {
+		return ScriptOccurrence{}, false
+	}
+	return graph.data.records.Scripts[index], true
+}
+func (graph CallGraph) Script(id OccurrenceID) (ScriptOccurrence, bool) {
+	script, found := graph.script(id)
+	script.Ancestry = slices.Clone(script.Ancestry)
+	return script, found
+}
+func (graph CallGraph) Snapshot() CallGraphData {
+	if !graph.Valid() {
+		return CallGraphData{}
+	}
+	return graph.data.records.clone()
+}
+func (graph CallGraph) pageEnd(offset, limit, length int) (int, error) {
+	if !graph.Valid() || offset < 0 || offset > length || limit < 1 || limit > MaxCallGraphPageSize {
+		return 0, invalidGraph("invalid page offset %d or limit %d", offset, limit)
+	}
+	return offset + min(limit, length-offset), nil
+}
+func (graph CallGraph) CallsPage(offset, limit int) ([]Call, error) {
+	end, err := graph.pageEnd(offset, limit, graph.CallCount())
+	if err != nil {
+		return nil, err
+	}
+	records := slices.Clone(graph.data.records.Calls[offset:end])
+	for index := range records {
+		records[index].Ancestry = slices.Clone(records[index].Ancestry)
+	}
+	return records, nil
+}
+func (graph CallGraph) ScriptsPage(offset, limit int) ([]ScriptOccurrence, error) {
+	end, err := graph.pageEnd(offset, limit, graph.ScriptCount())
+	if err != nil {
+		return nil, err
+	}
+	records := slices.Clone(graph.data.records.Scripts[offset:end])
+	for index := range records {
+		records[index].Ancestry = slices.Clone(records[index].Ancestry)
+	}
+	return records, nil
 }
 
 func invalidGraph(format string, values ...any) error {

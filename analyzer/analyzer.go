@@ -60,7 +60,7 @@ type Input struct {
 	Scripts      []Script
 	Invoked      []Script
 	ActionInputs []ActionInput
-	CallGraph    *CallGraph
+	CallGraph    CallGraph
 	// SelectedScripts limits materialized text to these occurrences. Nil selects
 	// every graph script; an empty non-nil slice selects none.
 	SelectedScripts []OccurrenceID

@@ -93,7 +93,7 @@ type Script struct {
 	Execution  Execution
 }
 type Batch struct {
-	CallGraph *analyzer.CallGraph
+	CallGraph analyzer.CallGraph
 	Scopes    []*Scope
 	Scripts   []Script
 }

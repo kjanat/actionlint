@@ -44,7 +44,7 @@ func (run fallbackRunner) Analyze(ctx context.Context, batch tools.Batch) ([]too
 	return run(ctx, batch)
 }
 
-func documentBatchFixture(t *testing.T, count int) tools.Batch {
+func documentBatchFixture(t testing.TB, count int) tools.Batch {
 	t.Helper()
 	entry := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
 	graphData := analyzer.CallGraphData{Entry: analyzer.InvocationEntry{ID: analyzer.OccurrenceID(fmt.Sprintf("%064x", 1)), Kind: analyzer.WorkflowEntry, Reference: entry}, Budget: analyzer.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: count}, Complete: true}
@@ -115,7 +115,7 @@ func (*scalingGuest) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diag
 func BenchmarkDocumentPluginGraph(b *testing.B) {
 	for _, count := range []int{64, 256} {
 		b.Run(strconv.Itoa(count), func(b *testing.B) {
-			batch := documentBatchFixture(count)
+			batch := documentBatchFixture(b, count)
 			guest := &scalingGuest{}
 			runner := documentPluginRunner{guest: guest, integrator: guest, context: tools.Context{Document: analyzer.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}}
 			b.ReportAllocs()

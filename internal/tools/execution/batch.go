@@ -167,11 +167,11 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 
 func (batch Batch) Valid() bool { return batch.data != nil }
 
-func (batch Batch) CallGraph() *analyzer.CallGraph {
+func (batch Batch) CallGraph() analyzer.CallGraph {
 	if batch.data == nil {
-		return nil
+		return analyzer.CallGraph{}
 	}
-	return batch.data.projection.Snapshot()
+	return batch.data.projection.Graph()
 }
 
 func (batch Batch) Invocations() invocation.Graph {

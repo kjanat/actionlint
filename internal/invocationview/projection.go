@@ -3,7 +3,6 @@ package invocationview
 
 import (
 	"fmt"
-	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -12,8 +11,7 @@ import (
 
 // Projection retains private records; accessors return detached values.
 type Projection struct {
-	graph   analyzer.CallGraph
-	scripts map[invocation.ID]int
+	graph analyzer.CallGraph
 }
 
 func New(graph invocation.Graph) (Projection, error) {
@@ -25,7 +23,7 @@ func New(graph invocation.Graph) (Projection, error) {
 	if err != nil {
 		return Projection{}, err
 	}
-	view := analyzer.CallGraph{
+	view := analyzer.CallGraphData{
 		Entry:    analyzer.InvocationEntry{ID: analyzer.OccurrenceID(graph.RootID()), Kind: entryKind, Reference: entry.Reference},
 		Budget:   analyzer.InvocationBudget{MaxDepth: budget.MaxDepth, MaxCalls: budget.MaxCalls, MaxScripts: budget.MaxScripts},
 		Complete: !graph.Incomplete(),
@@ -78,7 +76,6 @@ func New(graph invocation.Graph) (Projection, error) {
 		}
 		paths[call.ID()] = path
 	}
-	indices := make(map[invocation.ID]int, len(scripts))
 	for i, script := range scripts {
 		kind, err := projectScriptKind(script.Kind)
 		if err != nil {
@@ -93,7 +90,6 @@ func New(graph invocation.Graph) (Projection, error) {
 			ID: analyzer.OccurrenceID(script.ID), Owner: analyzer.OccurrenceID(script.Owner), Ancestry: ancestry(parent, script.Owner), Depth: depth,
 			Declaration: script.Declaration, Kind: kind, Input: script.Input,
 		}
-		indices[script.ID] = i
 	}
 	if stop, exists := graph.Stop(); exists {
 		limit, err := projectLimit(stop.Limit)
@@ -109,28 +105,17 @@ func New(graph invocation.Graph) (Projection, error) {
 		}
 		view.EntryInterruption = analyzer.Present(analyzer.Interruption{Reason: reason, Detail: interruption.Detail()})
 	}
-	if err := view.Validate(); err != nil {
+	retained, err := analyzer.NewCallGraph(view)
+	if err != nil {
 		return Projection{}, err
 	}
-	return Projection{graph: view, scripts: indices}, nil
+	return Projection{graph: retained}, nil
 }
 
-func (projection Projection) Snapshot() *analyzer.CallGraph {
-	if projection.graph.Entry.ID == "" {
-		return nil
-	}
-	value := projection.graph.Clone()
-	return &value
-}
+func (projection Projection) Graph() analyzer.CallGraph { return projection.graph }
 
 func (projection Projection) Script(id invocation.ID) (analyzer.ScriptOccurrence, bool) {
-	index, exists := projection.scripts[id]
-	if !exists {
-		return analyzer.ScriptOccurrence{}, false
-	}
-	value := projection.graph.Scripts[index]
-	value.Ancestry = slices.Clone(value.Ancestry)
-	return value, true
+	return projection.graph.Script(analyzer.OccurrenceID(id))
 }
 
 func projectCondition(condition invocation.Condition) (analyzer.CallCondition, error) {

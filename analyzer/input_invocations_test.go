@@ -10,22 +10,22 @@ import (
 
 func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 	for name, change := range map[string]func(*Input){
-		"graph absent":       func(input *Input) { input.CallGraph = nil },
+		"graph absent":       func(input *Input) { input.CallGraph = CallGraph{} },
 		"fact absent":        func(input *Input) { input.Available = []Fact{Scripts} },
 		"text fact absent":   func(input *Input) { input.Available = []Fact{Invocations} },
 		"entry reference":    func(input *Input) { input.Reference.Node = "another" },
 		"unknown occurrence": func(input *Input) { input.Invoked[0].Occurrence.ID = "unknown" },
 		"reference":          func(input *Input) { input.Invoked[0].Reference.Revision = "stale" },
 		"ancestry":           func(input *Input) { input.Invoked[0].Occurrence.Ancestry[0] = "unknown" },
-		"owner":              func(input *Input) { input.Invoked[0].Occurrence.Owner = input.CallGraph.Entry.ID },
+		"owner":              func(input *Input) { input.Invoked[0].Occurrence.Owner = input.CallGraph.Entry().ID },
 		"duplicate":          func(input *Input) { input.Invoked = append(input.Invoked, input.Invoked[0]) },
 		"root collection":    func(input *Input) { input.Scripts, input.Invoked = input.Invoked, nil },
 		"missing text":       func(input *Input) { input.Invoked = nil },
 	} {
 		t.Run(name, func(t *testing.T) {
 			graph := graphFixture(t)
-			occurrence := graph.Clone().Scripts[0]
-			input := Input{Reference: graph.Entry.Reference, Available: []Fact{Scripts, Invocations}, CallGraph: &graph, Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
+			occurrence := graph.clone().Scripts[0]
+			input := Input{Reference: graph.Entry.Reference, Available: []Fact{Scripts, Invocations}, CallGraph: retainGraph(t, graph), Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
 			if err := input.ValidateInvocations(); err != nil {
 				t.Fatal(err)
 			}
@@ -39,7 +39,7 @@ func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 
 func TestInputScriptSelectionCoverage(t *testing.T) {
 	graph := graphFixture(t)
-	second := graph.Clone().Scripts[0]
+	second := graph.clone().Scripts[0]
 	second.ID = OccurrenceID(strings.Repeat("d", 64))
 	second.Declaration.Node = "second"
 	graph.Scripts = append(graph.Scripts, second)
@@ -61,13 +61,13 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 		{"unknown selection", []OccurrenceID{"unknown"}, nil, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			input := Input{Reference: graph.Entry.Reference, Available: []Fact{Invocations, Scripts}, CallGraph: &graph, SelectedScripts: test.selection, Invoked: test.scripts}
+			input := Input{Reference: graph.Entry.Reference, Available: []Fact{Invocations, Scripts}, CallGraph: retainGraph(t, graph), SelectedScripts: test.selection, Invoked: test.scripts}
 			if err := input.ValidateInvocations(); (err == nil) != test.valid {
 				t.Fatalf("valid=%v: %v", test.valid, err)
 			}
 		})
 	}
-	input := Input{Reference: graph.Entry.Reference, Available: []Fact{Invocations}, CallGraph: &graph}
+	input := Input{Reference: graph.Entry.Reference, Available: []Fact{Invocations}, CallGraph: retainGraph(t, graph)}
 	if err := input.ValidateInvocations(); err != nil {
 		t.Fatalf("graph without collected text: %v", err)
 	}
