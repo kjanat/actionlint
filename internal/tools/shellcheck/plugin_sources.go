@@ -294,7 +294,15 @@ func (f *pluginSourceFiles) configure(input *analyzer.Input) {
 	for _, mount := range f.mounts {
 		input.Files = append(input.Files, analyzer.FileSystem{Path: mount.guest, FS: mount.files})
 	}
-	input.Scripts[0].Runtime.Directory = f.directory
+	for _, scripts := range [][]analyzer.Script{input.Scripts, input.Invoked} {
+		for i := range scripts {
+			if scripts[i].Runtime != nil {
+				runtime := *scripts[i].Runtime
+				runtime.Directory = f.directory
+				scripts[i].Runtime = &runtime
+			}
+		}
+	}
 }
 
 func (f *pluginSourceFiles) close() error {

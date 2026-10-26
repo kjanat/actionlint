@@ -288,9 +288,13 @@ func (a *Session) ReadStdin(stdin io.Reader, normalizePath bool) (*Selection, er
 
 func (a *Session) Content(path string, content []byte, project *Project, normalizePath bool) (*Selection, error) {
 	if project == nil && path != "<stdin>" {
-		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		discoveryPath := path
+		if !filepath.IsAbs(discoveryPath) {
+			discoveryPath = filepath.Join(a.cwd, discoveryPath)
+		}
+		if _, err := os.Stat(discoveryPath); !errors.Is(err, os.ErrNotExist) {
 			var err error
-			project, err = a.projects.At(path)
+			project, err = a.projects.At(discoveryPath)
 			if err != nil {
 				return nil, err
 			}

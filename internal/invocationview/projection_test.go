@@ -415,3 +415,272 @@ func TestProjectionRejectsUnknownEnumsAndInvalidPublicOutcomes(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestProjectionOwnerEnumParity(t *testing.T) {
+	for _, entryKind := range []invocation.EntryKind{invocation.EntryWorkflow, invocation.EntryAction} {
+		t.Run(string(entryKind), func(t *testing.T) {
+			entry := ref("workflow.yml", "root")
+			if entryKind == invocation.EntryAction {
+				entry = ref("action.yml", "root")
+			}
+			b, err := invocation.NewBuilder(entryKind, entry, invocation.DefaultBudget())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := b.AddScript(b.RootContext(), ref(entry.Document, "run"), invocation.ScriptRun, ""); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := b.AddScript(b.RootContext(), ref(entry.Document, "input"), invocation.ScriptActionInput, "script"); err != nil {
+				t.Fatal(err)
+			}
+			conditions := []invocation.Condition{invocation.ConditionEnabled, invocation.ConditionSkipped, invocation.ConditionRuntimeDependent}
+			for i, condition := range conditions {
+				site := ref(entry.Document, []string{"call-enabled", "call-skipped", "call-runtime-dependent"}[i])
+				ticket, err := b.Begin(b.RootContext(), site, invocation.Facts{Uses: "owner/action", HasUses: true, Condition: condition})
+				if err != nil || ticket.Status() != invocation.Admitted {
+					t.Fatalf("Begin(%v): ticket=%+v err=%v", condition, ticket, err)
+				}
+				ctx, ok := ticket.Context()
+				if !ok {
+					t.Fatalf("Begin(%v) returned no context", condition)
+				}
+				opaque, err := invocation.Opaque(invocation.ReasonNonComposite, "")
+				if _, err := b.Resolve(ctx, mustOutcome(t, opaque, err)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			view, err := New(publish(t, b))
+			if err != nil {
+				t.Fatal(err)
+			}
+			graph := view.Snapshot()
+			if graph.Entry.Kind != analyzer.InvocationEntryKind(entryKind) {
+				t.Fatalf("entry kind=%q want %q", graph.Entry.Kind, entryKind)
+			}
+			if len(graph.Scripts) != 2 || graph.Scripts[0].Kind != analyzer.RunScript || graph.Scripts[0].Input != "" || graph.Scripts[1].Kind != analyzer.ActionInputScript || graph.Scripts[1].Input != "script" {
+				t.Fatalf("script kinds=%+v", graph.Scripts)
+			}
+			wantConditions := []analyzer.CallCondition{analyzer.CallEnabled, analyzer.CallSkipped, analyzer.CallRuntimeDependent}
+			for i, want := range wantConditions {
+				if graph.Calls[i].Condition != want {
+					t.Errorf("call %d condition=%q want %q", i, graph.Calls[i].Condition, want)
+				}
+			}
+		})
+	}
+}
+
+func TestOwnerRejectsUnknownInvocationKinds(t *testing.T) {
+	if _, err := invocation.NewBuilder(invocation.EntryKind("unknown"), ref("workflow.yml", "root"), invocation.DefaultBudget()); !errors.Is(err, invocation.ErrInvalidEntry) {
+		t.Fatalf("unknown entry kind error=%v", err)
+	}
+	b, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow.yml", "root"), invocation.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.AddScript(b.RootContext(), ref("workflow.yml", "script"), invocation.ScriptKind("unknown"), ""); !errors.Is(err, invocation.ErrInvalidScript) {
+		t.Fatalf("unknown script kind error=%v", err)
+	}
+}
+
+func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
+	tests := []struct {
+		name    string
+		owner   invocation.Reason
+		want    string
+		build   func(*testing.T, *invocation.Builder, invocation.Context)
+		inspect func(analyzer.CallResolution) string
+	}{
+		{"opaque-dockerfile", invocation.ReasonDockerfileOnly, string(analyzer.DockerfileOnly), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Opaque(invocation.ReasonDockerfileOnly, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.OpaqueCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"opaque-non-composite", invocation.ReasonNonComposite, string(analyzer.NonComposite), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Opaque(invocation.ReasonNonComposite, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.OpaqueCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unavailable-non-local", invocation.ReasonNonLocal, string(analyzer.NonLocal), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unavailable(invocation.ReasonNonLocal, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnavailableCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unavailable-not-fetched", invocation.ReasonNotFetched, string(analyzer.NotFetched), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unavailable(invocation.ReasonNotFetched, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnavailableCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unavailable-lookup-disabled", invocation.ReasonLookupDisabled, string(analyzer.LookupDisabled), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unavailable(invocation.ReasonLookupDisabled, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnavailableCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unavailable-placement", invocation.ReasonPlacementUncertain, string(analyzer.PlacementUncertain), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unavailable(invocation.ReasonPlacementUncertain, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnavailableCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unresolved-invalid-call", invocation.ReasonInvalidCall, string(analyzer.InvalidCall), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unresolved(invocation.ReasonInvalidCall, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnresolvedCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unresolved-missing-manifest", invocation.ReasonMissingManifest, string(analyzer.MissingManifest), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unresolved(invocation.ReasonMissingManifest, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnresolvedCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unresolved-read-failed", invocation.ReasonReadFailed, string(analyzer.ReadFailed), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unresolved(invocation.ReasonReadFailed, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnresolvedCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unresolved-parse-failed", invocation.ReasonParseFailed, string(analyzer.ParseFailed), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unresolved(invocation.ReasonParseFailed, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnresolvedCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"unresolved-mapping-failed", invocation.ReasonMappingFailed, string(analyzer.MappingFailed), func(t *testing.T, b *invocation.Builder, ctx invocation.Context) {
+			o, err := invocation.Unresolved(invocation.ReasonMappingFailed, "detail")
+			if _, err = b.Resolve(ctx, mustOutcome(t, o, err)); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.UnresolvedCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"interrupted-canceled", invocation.ReasonCanceled, string(analyzer.Canceled), func(t *testing.T, b *invocation.Builder, _ invocation.Context) {
+			if _, err := b.Interrupt(invocation.ReasonCanceled, "detail"); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.InterruptedCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+		{"interrupted-operational", invocation.ReasonOperational, string(analyzer.OperationalFailure), func(t *testing.T, b *invocation.Builder, _ invocation.Context) {
+			if _, err := b.Interrupt(invocation.ReasonOperational, "detail"); err != nil {
+				t.Fatal(err)
+			}
+		}, func(value analyzer.CallResolution) string {
+			if v, ok := value.(analyzer.InterruptedCall); ok && v.Detail == "detail" {
+				return string(v.Reason)
+			}
+			return ""
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow.yml", "root"), invocation.DefaultBudget())
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx := begin(t, b, b.RootContext(), ref("workflow.yml", "call"), "owner/action")
+			tt.build(t, b, ctx)
+			view, err := New(publish(t, b))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := tt.inspect(view.Snapshot().Calls[0].Outcome.Value()); got != tt.want {
+				t.Fatalf("reason=%q want %q", got, tt.want)
+			}
+		})
+	}
+
+	reasons := []invocation.Reason{
+		invocation.ReasonDockerfileOnly, invocation.ReasonNonComposite,
+		invocation.ReasonNonLocal, invocation.ReasonNotFetched, invocation.ReasonLookupDisabled, invocation.ReasonPlacementUncertain,
+		invocation.ReasonInvalidCall, invocation.ReasonMissingManifest, invocation.ReasonReadFailed, invocation.ReasonParseFailed, invocation.ReasonMappingFailed,
+		invocation.ReasonExpression, invocation.ReasonCanceled, invocation.ReasonOperational,
+		invocation.ReasonCycle, invocation.ReasonDepthLimit, invocation.Reason("unknown"),
+	}
+	for _, category := range []struct {
+		name  string
+		valid map[invocation.Reason]bool
+		check func(invocation.Reason) error
+	}{
+		{"opaque", map[invocation.Reason]bool{invocation.ReasonDockerfileOnly: true, invocation.ReasonNonComposite: true}, func(reason invocation.Reason) error { _, err := invocation.Opaque(reason, ""); return err }},
+		{"unavailable", map[invocation.Reason]bool{invocation.ReasonNonLocal: true, invocation.ReasonNotFetched: true, invocation.ReasonLookupDisabled: true, invocation.ReasonPlacementUncertain: true}, func(reason invocation.Reason) error { _, err := invocation.Unavailable(reason, ""); return err }},
+		{"unresolved", map[invocation.Reason]bool{invocation.ReasonInvalidCall: true, invocation.ReasonMissingManifest: true, invocation.ReasonReadFailed: true, invocation.ReasonParseFailed: true, invocation.ReasonMappingFailed: true}, func(reason invocation.Reason) error { _, err := invocation.Unresolved(reason, ""); return err }},
+		{"interrupted", map[invocation.Reason]bool{invocation.ReasonCanceled: true, invocation.ReasonOperational: true}, func(reason invocation.Reason) error {
+			b, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow.yml", "root"), invocation.DefaultBudget())
+			if err != nil {
+				return err
+			}
+			return b.InterruptEntry(reason, "")
+		}},
+	} {
+		for _, reason := range reasons {
+			t.Run(category.name+"/"+string(reason), func(t *testing.T) {
+				err := category.check(reason)
+				if category.valid[reason] && err != nil || !category.valid[reason] && !errors.Is(err, invocation.ErrInvalidOutcome) {
+					t.Fatalf("reason %q error=%v, accepted=%v", reason, err, category.valid[reason])
+				}
+			})
+		}
+	}
+}

@@ -2,24 +2,16 @@ package composition
 
 import (
 	"actionlint.kjanat.dev/v2/analyzer"
-	documentmodel "actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.References) (analyzer.Input, error) {
-	workflow, outline, units := document.Facts(), document.Outline, result.Batch.Scripts()
+	workflow, units := document.Facts(), result.Batch.Scripts()
 	refs := references[pathAbs]
-	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
-	switch outline := outline.(type) {
-	case documentmodel.Workflow:
-		input.ParseStatus = outline.ParseStatus
-	case documentmodel.Action:
-		input.Kind = "action"
-		input.ParseStatus = outline.ParseStatus
-	}
-	input.Reference = refs.Document
+	input := document.AnalyzerSource(path, content, refs.Document)
 	if workflow == nil {
 		return input, nil
 	}
@@ -27,7 +19,11 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 		return input, scriptexecution.ErrInvalidBatch
 	}
 	input.CallGraph = result.Batch.CallGraph()
-	input.Reference = input.CallGraph.Entry.Reference
+	if input.Reference == (source.Reference{}) {
+		input.Reference = input.CallGraph.Entry.Reference
+	} else if input.Reference != input.CallGraph.Entry.Reference {
+		return analyzer.Input{}, scriptexecution.ErrInvalidBatch
+	}
 	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies, analyzer.Invocations)
 	if result.Batch.CollectedScripts() {
 		input.Available = append(input.Available, analyzer.Scripts)

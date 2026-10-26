@@ -27,9 +27,11 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 		Stop:    analyzer.Present(analyzer.InvocationStop{Parent: call, Site: source.Reference{Document: "child", Node: "later"}, Limit: analyzer.ScriptLimit, Max: 1}),
 	}
 	input := analyzer.Input{Reference: ref, CallGraph: &graph, Available: []analyzer.Fact{analyzer.Invocations, analyzer.Scripts}, Invoked: []analyzer.Script{{Reference: graph.Scripts[0].Declaration, Occurrence: graph.Scripts[0]}}}
+	input.SelectedScripts = []analyzer.OccurrenceID{script}
 	want := graph.Clone()
 	changed := make(chan struct{})
 	first := testAnalyzer{analyzer.Descriptor{Name: "mutator"}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
+		in.SelectedScripts[0] = "changed"
 		in.CallGraph.Calls[0].Ancestry[0] = "changed"
 		if in.CallGraph.Scripts[0].Ancestry[0] != root {
 			t.Error("record ancestry storage overlaps")
@@ -49,6 +51,9 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	}}
 	second := testAnalyzer{analyzer.Descriptor{Name: "observer"}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		<-changed
+		if len(in.SelectedScripts) != 1 || in.SelectedScripts[0] != script {
+			t.Error("analyzer mutation reached sibling selection")
+		}
 		if !reflect.DeepEqual(*in.CallGraph, want) || !reflect.DeepEqual(in.Invoked[0].Occurrence, want.Scripts[0]) {
 			t.Error("analyzer mutation reached sibling input")
 		}
@@ -57,7 +62,7 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	if _, err := Run(t.Context(), input, []analyzer.Registration{{Analyzer: first}, {Analyzer: second}}); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(graph, want) {
+	if !reflect.DeepEqual(graph, want) || input.SelectedScripts[0] != script {
 		t.Fatal("analyzer mutation reached retained graph")
 	}
 }

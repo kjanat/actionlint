@@ -14,7 +14,7 @@ var ErrInvalidCallGraph = errors.New("analyzer: invalid invocation graph")
 // OccurrenceID is an opaque identity supplied by the host.
 type OccurrenceID string
 
-// Optional preserves absence without exposing mutable payload pointers.
+// Optional distinguishes absence from a present zero value.
 type Optional[T any] struct {
 	value   T
 	present bool

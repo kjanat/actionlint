@@ -45,6 +45,7 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 				supplied.CallGraph = &graph
 			}
 			supplied.Available = slices.Clone(input.Available)
+			supplied.SelectedScripts = slices.Clone(input.SelectedScripts)
 			supplied.Options = slices.Clone(registration.Options)
 			supplied.Scripts = cloneScripts(input.Scripts)
 			supplied.Invoked = cloneScripts(input.Invoked)

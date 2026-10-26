@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
 // withAnalyzer selects a document analyzer or native execution per document,
@@ -127,17 +126,30 @@ type documentPluginRunner struct {
 }
 
 func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+	if err := validateDocumentBatch(batch); err != nil {
+		return nil, err
+	}
 	var findings []tools.Finding
 	var failure error
-	nativeBatch := tools.Batch{}
+	nativeBatch := tools.Batch{CallGraph: batch.CallGraph}
 	var nativeIndices []int
 	nativeScopes := map[*tools.Scope]bool{}
 	for i, script := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
 			return findings, errors.Join(failure, err)
 		}
+		if script.Input != nil {
+			continue
+		}
 		cfg := script.Config
 		if config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools.Shellcheck.Enabled != nil && !*cfg.Tools.Shellcheck.Enabled {
+			continue
+		}
+		prepared, err := preparePluginScript(script.Fact, nil)
+		if err != nil {
+			return findings, errors.Join(failure, err)
+		}
+		if prepared == nil {
 			continue
 		}
 		negotiated, negotiateErr := negotiateDocument(ctx, r.integrator, cfg, &script)
@@ -155,9 +167,9 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 			continue
 		}
 		if script.Path == "" {
-			script.Path, script.Content = r.context.DocumentPath, r.context.DocumentContent
+			script.Path, script.Content = r.context.Document.Path, []byte(r.context.Document.Content)
 		}
-		input := r.input(script)
+		input := r.input(script, batch.CallGraph)
 		input.Options = negotiated.Options
 		files, fileErr := r.sourceFiles(ctx, script, negotiated.Resources)
 		if fileErr != nil {
@@ -192,34 +204,39 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 	return findings, failure
 }
 
-func (r documentPluginRunner) input(script tools.Script) analyzer.Input {
-	start := diagnostic.Position{Line: script.Value.Line, Column: script.Value.Col}
-	supplied := analyzer.Script{
-		Text: script.Text, Path: script.Path, Start: start,
-		Comments: workflowfacts.SourceComments(script.Source),
-		Runtime:  &analyzer.Runtime{Shell: script.Execution.Shell, ShellKnown: script.Execution.Shell != "", ShellImplicit: script.Execution.ImplicitShell, Directory: script.Execution.Directory, DirectoryKnown: script.Execution.DirectoryKnown},
+func validateDocumentBatch(batch tools.Batch) error {
+	if len(batch.Scripts) == 0 {
+		return nil
 	}
-	if script.Shell != nil {
-		supplied.Shell = *script.Shell
+	if batch.CallGraph == nil {
+		return fmt.Errorf("ShellCheck document batch: %w: missing call graph", analyzer.ErrInvalidCallGraph)
 	}
-	for _, span := range script.Source.LineSpans() {
-		supplied.Spans = append(supplied.Spans, analyzer.Span{
-			Line: span.Line, Start: span.Start, End: span.End,
-			Document: diagnostic.Position{Line: span.YamlLine, Column: span.YamlColumn}, DocumentEnd: diagnostic.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
-		})
+	registered := make(map[analyzer.OccurrenceID]analyzer.ScriptOccurrence, len(batch.CallGraph.Scripts))
+	for _, occurrence := range batch.CallGraph.Scripts {
+		registered[occurrence.ID] = occurrence
 	}
-	input := analyzer.Input{
-		Path: script.Path, Content: string(script.Content), Kind: "workflow", ParseStatus: "complete",
-		Available: []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution},
+	for index, script := range batch.Scripts {
+		if script.Input != nil {
+			continue
+		}
+		occurrence := script.Fact.Occurrence
+		if want, exists := registered[occurrence.ID]; occurrence.ID == "" || !exists || occurrence.Kind != analyzer.RunScript || occurrence.Declaration != want.Declaration || script.Fact.Reference != want.Declaration {
+			return fmt.Errorf("ShellCheck document batch script %d: %w: missing or foreign prepared occurrence", index, analyzer.ErrInvalidCallGraph)
+		}
 	}
-	if r.context.Reference != nil {
-		input.Reference = r.context.Reference(script.Path, script.Content, diagnostic.Position{})
-		supplied.Reference = r.context.Reference(script.Path, script.Content, script.Declaration)
+	return nil
+}
+
+func (r documentPluginRunner) input(script tools.Script, graph *analyzer.CallGraph) analyzer.Input {
+	input := r.context.Document
+	input.Available = []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution}
+	input.CallGraph = graph
+	input.SelectedScripts = []analyzer.OccurrenceID{script.Fact.Occurrence.ID}
+	if graph != nil && script.Fact.Occurrence.Owner == graph.Entry.ID {
+		input.Scripts = []analyzer.Script{script.Fact}
+	} else {
+		input.Invoked = []analyzer.Script{script.Fact}
 	}
-	if script.Scope != nil && script.Scope.Composite {
-		input.Kind = "action"
-	}
-	input.Scripts = []analyzer.Script{supplied}
-	input.PrepareScript = scriptPreparer(input.Scripts)
+	input.PrepareScript = scriptPreparer([]analyzer.Script{script.Fact})
 	return input
 }

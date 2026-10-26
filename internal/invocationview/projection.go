@@ -21,8 +21,12 @@ func New(graph invocation.Graph) (Projection, error) {
 		return Projection{}, fmt.Errorf("%w: unpublished graph", analyzer.ErrInvalidCallGraph)
 	}
 	entry, budget := graph.Entry(), graph.Budget()
+	entryKind, err := projectEntryKind(entry.Kind)
+	if err != nil {
+		return Projection{}, err
+	}
 	view := analyzer.CallGraph{
-		Entry:    analyzer.InvocationEntry{ID: analyzer.OccurrenceID(graph.RootID()), Kind: analyzer.InvocationEntryKind(entry.Kind), Reference: entry.Reference},
+		Entry:    analyzer.InvocationEntry{ID: analyzer.OccurrenceID(graph.RootID()), Kind: entryKind, Reference: entry.Reference},
 		Budget:   analyzer.InvocationBudget{MaxDepth: budget.MaxDepth, MaxCalls: budget.MaxCalls, MaxScripts: budget.MaxScripts},
 		Complete: !graph.Incomplete(),
 	}
@@ -76,6 +80,10 @@ func New(graph invocation.Graph) (Projection, error) {
 	}
 	indices := make(map[invocation.ID]int, len(scripts))
 	for i, script := range scripts {
+		kind, err := projectScriptKind(script.Kind)
+		if err != nil {
+			return Projection{}, err
+		}
 		parent, exists := paths[script.Owner]
 		if !exists {
 			return Projection{}, fmt.Errorf("%w: script owner not projected", analyzer.ErrInvalidCallGraph)
@@ -83,7 +91,7 @@ func New(graph invocation.Graph) (Projection, error) {
 		depth, _ := graph.Depth(script.Owner)
 		view.Scripts[i] = analyzer.ScriptOccurrence{
 			ID: analyzer.OccurrenceID(script.ID), Owner: analyzer.OccurrenceID(script.Owner), Ancestry: ancestry(parent, script.Owner), Depth: depth,
-			Declaration: script.Declaration, Kind: analyzer.ScriptKind(script.Kind), Input: script.Input,
+			Declaration: script.Declaration, Kind: kind, Input: script.Input,
 		}
 		indices[script.ID] = i
 	}
@@ -95,7 +103,11 @@ func New(graph invocation.Graph) (Projection, error) {
 		view.Stop = analyzer.Present(analyzer.InvocationStop{Parent: analyzer.OccurrenceID(stop.Parent), Site: stop.Site, Limit: limit, Max: stop.Max})
 	}
 	if interruption, exists := graph.EntryInterruption(); exists {
-		view.EntryInterruption = analyzer.Present(analyzer.Interruption{Reason: analyzer.InterruptionReason(interruption.Reason()), Detail: interruption.Detail()})
+		reason, err := projectInterruptionReason(interruption.Reason())
+		if err != nil {
+			return Projection{}, err
+		}
+		view.EntryInterruption = analyzer.Present(analyzer.Interruption{Reason: reason, Detail: interruption.Detail()})
 	}
 	if err := view.Validate(); err != nil {
 		return Projection{}, err
@@ -152,21 +164,37 @@ func projectOutcome(outcome invocation.Outcome) (analyzer.CallOutcome, error) {
 	case invocation.OutcomeExpanded:
 		value = analyzer.ExpandedCall{Target: target}
 	case invocation.OutcomeOpaque:
-		value = analyzer.OpaqueCall{Reason: analyzer.OpaqueReason(outcome.Reason()), Detail: outcome.Detail()}
+		reason, err := projectOpaqueReason(outcome.Reason())
+		if err != nil {
+			return analyzer.CallOutcome{}, err
+		}
+		value = analyzer.OpaqueCall{Reason: reason, Detail: outcome.Detail()}
 	case invocation.OutcomeUnavailable:
-		value = analyzer.UnavailableCall{Reason: analyzer.UnavailableReason(outcome.Reason()), Detail: outcome.Detail()}
+		reason, err := projectUnavailableReason(outcome.Reason())
+		if err != nil {
+			return analyzer.CallOutcome{}, err
+		}
+		value = analyzer.UnavailableCall{Reason: reason, Detail: outcome.Detail()}
 	case invocation.OutcomeUnresolved:
-		value = analyzer.UnresolvedCall{Reason: analyzer.UnresolvedReason(outcome.Reason()), Detail: outcome.Detail()}
+		reason, err := projectUnresolvedReason(outcome.Reason())
+		if err != nil {
+			return analyzer.CallOutcome{}, err
+		}
+		value = analyzer.UnresolvedCall{Reason: reason, Detail: outcome.Detail()}
 	case invocation.OutcomeDynamic:
 		value = analyzer.DynamicCall{Detail: outcome.Detail()}
 	case invocation.OutcomeCycle:
 		cycle, _ := outcome.Cycle()
 		value = analyzer.CycleCall{Target: target, Active: cycle.Active, Owner: analyzer.OccurrenceID(cycle.Owner), Closing: analyzer.OccurrenceID(cycle.Closing)}
 	case invocation.OutcomeDepthLimit:
-		_, max, _ := outcome.Limit()
-		value = analyzer.DepthLimitedCall{Max: max}
+		_, maximum, _ := outcome.Limit()
+		value = analyzer.DepthLimitedCall{Max: maximum}
 	case invocation.OutcomeInterrupted:
-		interrupted := analyzer.InterruptedCall{Reason: analyzer.InterruptionReason(outcome.Reason()), Detail: outcome.Detail()}
+		reason, err := projectInterruptionReason(outcome.Reason())
+		if err != nil {
+			return analyzer.CallOutcome{}, err
+		}
+		interrupted := analyzer.InterruptedCall{Reason: reason, Detail: outcome.Detail()}
 		if hasTarget {
 			interrupted.Target = analyzer.Present(target)
 		}

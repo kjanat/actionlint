@@ -11,7 +11,6 @@ import (
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/diagnostic"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/builtin"
@@ -25,14 +24,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workflow/composition"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/runner"
-	"actionlint.kjanat.dev/v2/source"
 )
 
 // analysisSession holds invocation resources assembled by the application.
@@ -187,25 +184,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			_, _ = fmt.Fprintln(s.logOut, "warning:", err)
 		}
 	}}
-	toolContext.DocumentPath, toolContext.DocumentContent = path, content
-	var mainReferences workflowfacts.References
-	var indexMain sync.Once
-	toolContext.Reference = func(filename string, snapshot []byte, position diagnostic.Position) source.Reference {
-		var refs workflowfacts.References
-		if filename != "" && filename != path && filename != sourcePath {
-			parsed := documentparse.Action(filename, filename, snapshot)
-			refs = documentparse.References(filename, snapshot, parsed, nil, fsread.PhysicalPath)[filename]
-		} else {
-			indexMain.Do(func() {
-				mainReferences = documentparse.References(sourcePath, content, document, nil, fsread.PhysicalPath)[sourcePath]
-			})
-			refs = mainReferences
-		}
-		if ref, ok := refs.Positions[[2]int{position.Line, position.Column}]; ok {
-			return ref
-		}
-		return refs.Document
-	}
+	toolContext.Document = document.AnalyzerSource(path, content, snapshot.Reference())
 	selected, err := s.buildChecks(context, toolContext, action)
 	if err != nil {
 		return result, err

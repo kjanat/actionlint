@@ -3,7 +3,6 @@ package execution
 import (
 	"context"
 
-	"actionlint.kjanat.dev/v2/diagnostic"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -17,15 +16,20 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 		return nil, ErrInvalidBatch
 	}
 	batchScopes, batchScripts := batch.Snapshot()
-	prepared := tools.Batch{}
+	prepared := tools.Batch{CallGraph: batch.CallGraph()}
 	scopes := map[*Scope]*tools.Scope{}
 	for _, scope := range batchScopes {
 		item := &tools.Scope{Config: scope.Config, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.Deployment.ActionPath(), Reader: scope.Paths.Reader, Composite: scope.Composite}
 		scopes[scope] = item
 		prepared.Scopes = append(prepared.Scopes, item)
 	}
-	for _, s := range batchScripts {
+	for index, s := range batchScripts {
 		script := tools.Script{Shell: s.Shell, Config: s.Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}}
+		fact, exists := batch.Fact(index, true)
+		if !exists {
+			return nil, ErrInvalidBatch
+		}
+		script.Fact = fact
 		if input := s.Input; input != nil {
 			site := input.Site
 			script.Input, script.Text, script.Source = &site, input.Value.Value.Value, input.Value.Source
@@ -33,9 +37,6 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 		} else {
 			script.Text, script.Source = s.Run.Run.Value, s.Run.Source
 			script.Key, script.Value = s.Run.RunPos, s.Run.Run.Pos
-		}
-		if s.Owner != nil && s.Owner.Step != nil {
-			script.Declaration = diagnostic.Position{Line: s.Owner.Step.Line, Column: s.Owner.Step.Col}
 		}
 		prepared.Scripts = append(prepared.Scripts, script)
 	}

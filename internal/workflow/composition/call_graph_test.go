@@ -1,11 +1,15 @@
 package composition
 
 import (
+	"errors"
 	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
@@ -39,6 +43,43 @@ func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
 		} else if len(input.Scripts)+len(input.Invoked)+len(input.ActionInputs) != 0 {
 			t.Fatal("uncollected text materialized")
 		}
+	}
+}
+
+func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
+	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}]}}\n", nil, nil)
+	result, err := f.service.Workflow(f.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, reference := f.root.Content(), f.root.Reference()
+	document := documentparse.Workflow("ci.yml", content)
+	for _, test := range []struct {
+		name      string
+		reference source.Reference
+		valid     bool
+	}{
+		{"matching", reference, true},
+		{"absent", source.Reference{}, true},
+		{"foreign document", source.Reference{Document: "other.yml", Revision: reference.Revision, Node: reference.Node, Address: reference.Address}, false},
+		{"stale revision", source.Reference{Document: reference.Document, Revision: "old", Node: reference.Node, Address: reference.Address}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			refs := map[string]workflowfacts.References{"ci.yml": {Document: test.reference}}
+			input, err := result.AnalyzerInput("ci.yml", "ci.yml", content, document, refs)
+			if !test.valid {
+				if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
+					t.Fatalf("mismatched identity accepted: %v", err)
+				}
+				return
+			}
+			if err != nil || input.Reference != reference {
+				t.Fatalf("document identity lost: %+v %v", input.Reference, err)
+			}
+			if err := input.ValidateInvocations(); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 

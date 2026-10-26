@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/rule"
-	"actionlint.kjanat.dev/v2/source"
 )
 
 // Context supplies invocation-owned resources to a registered adapter.
@@ -25,9 +24,7 @@ type Context struct {
 	Warn                    func(error)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
-	DocumentPath         string
-	DocumentContent      []byte
-	Reference            func(string, []byte, diagnostic.Position) source.Reference
+	Document             analyzer.Input
 }
 
 // Registration owns a tool's selection and construction policy. The host only
@@ -83,21 +80,22 @@ type Execution struct {
 
 // Script is a prepared snippet and its source map, not a workflow AST visitor.
 type Script struct {
-	Input       *analyzer.ScriptInput
-	Declaration diagnostic.Position
-	Text        string
-	Source      *workflow.ScriptSource
-	Key, Value  *workflow.Pos
-	Shell       *string
-	Config      *config.Config
-	Path        string
-	Content     []byte
-	Scope       *Scope
-	Execution   Execution
+	Input      *analyzer.ScriptInput
+	Fact       analyzer.Script
+	Text       string
+	Source     *workflow.ScriptSource
+	Key, Value *workflow.Pos
+	Shell      *string
+	Config     *config.Config
+	Path       string
+	Content    []byte
+	Scope      *Scope
+	Execution  Execution
 }
 type Batch struct {
-	Scopes  []*Scope
-	Scripts []Script
+	CallGraph *analyzer.CallGraph
+	Scopes    []*Scope
+	Scripts   []Script
 }
 
 // Finding binds a result to the invocation that produced it. Policy is applied

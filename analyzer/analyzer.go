@@ -61,8 +61,11 @@ type Input struct {
 	Invoked      []Script
 	ActionInputs []ActionInput
 	CallGraph    *CallGraph
-	Mappings     []Mapping
-	Dependencies []Dependency
+	// SelectedScripts limits materialized text to these occurrences. Nil selects
+	// every graph script; an empty non-nil slice selects none.
+	SelectedScripts []OccurrenceID
+	Mappings        []Mapping
+	Dependencies    []Dependency
 	// Files grants read-only filesystems for this call. Nil grants no file access.
 	// Mount paths are absolute guest paths; filesystem directories must implement
 	// descriptor-relative read operations when used by a component host.
