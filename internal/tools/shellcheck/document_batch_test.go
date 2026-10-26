@@ -9,10 +9,14 @@ import (
 )
 
 func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
+	valid := documentBatchFixture(t, 1)
+	foreign := valid
+	foreign.Scripts = append([]tools.Script(nil), valid.Scripts...)
+	foreign.Scripts[0].Fact.Occurrence.ID = "unknown"
 	for name, batch := range map[string]tools.Batch{
 		"missing graph": {Scripts: []tools.Script{{}}},
-		"missing fact":  {CallGraph: &analyzer.CallGraph{}, Scripts: []tools.Script{{}}},
-		"foreign fact":  {CallGraph: &analyzer.CallGraph{}, Scripts: []tools.Script{{Fact: analyzer.Script{Occurrence: analyzer.ScriptOccurrence{ID: "unknown"}}}}},
+		"missing fact":  {CallGraph: valid.CallGraph, Scripts: valid.Scripts},
+		"foreign fact":  foreign,
 	} {
 		t.Run(name, func(t *testing.T) {
 			// Nil callbacks prove invalid batches cannot reach negotiation or analysis.

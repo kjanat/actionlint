@@ -44,25 +44,31 @@ func (run fallbackRunner) Analyze(ctx context.Context, batch tools.Batch) ([]too
 	return run(ctx, batch)
 }
 
-func documentBatchFixture(count int) tools.Batch {
+func documentBatchFixture(t *testing.T, count int) tools.Batch {
+	t.Helper()
 	entry := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
-	graph := &analyzer.CallGraph{Entry: analyzer.InvocationEntry{ID: analyzer.OccurrenceID(fmt.Sprintf("%064x", 1)), Kind: analyzer.WorkflowEntry, Reference: entry}, Budget: analyzer.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: count}, Complete: true}
-	batch := tools.Batch{CallGraph: graph}
+	graphData := analyzer.CallGraphData{Entry: analyzer.InvocationEntry{ID: analyzer.OccurrenceID(fmt.Sprintf("%064x", 1)), Kind: analyzer.WorkflowEntry, Reference: entry}, Budget: analyzer.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: count}, Complete: true}
+	batch := tools.Batch{}
 	for index := range count {
 		declaration := entry
 		declaration.Node = fmt.Sprintf("run%d", index)
-		occurrence := analyzer.ScriptOccurrence{ID: analyzer.OccurrenceID(fmt.Sprintf("%064x", index+2)), Owner: graph.Entry.ID, Ancestry: []analyzer.OccurrenceID{graph.Entry.ID}, Declaration: declaration, Kind: analyzer.RunScript}
-		graph.Scripts = append(graph.Scripts, occurrence)
+		occurrence := analyzer.ScriptOccurrence{ID: analyzer.OccurrenceID(fmt.Sprintf("%064x", index+2)), Owner: graphData.Entry.ID, Ancestry: []analyzer.OccurrenceID{graphData.Entry.ID}, Declaration: declaration, Kind: analyzer.RunScript}
+		graphData.Scripts = append(graphData.Scripts, occurrence)
 		fact := analyzer.Script{Reference: declaration, Occurrence: occurrence, Text: "echo test", Runtime: &analyzer.Runtime{Shell: "bash", ShellKnown: true}}
 		batch.Scripts = append(batch.Scripts, tools.Script{Fact: fact, Text: fact.Text, Path: "workflow.yml"})
 	}
+	graph, err := analyzer.NewCallGraph(graphData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch.CallGraph = graph
 	return batch
 }
 
 func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T) {
-	batch := documentBatchFixture(3)
+	batch := documentBatchFixture(t, 3)
 	graph := batch.CallGraph
-	entry := graph.Entry.Reference
+	entry := graph.Entry().Reference
 	cfg, err := config.Parse([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +97,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		if len(input.SelectedScripts) != 1 || input.SelectedScripts[0] != graph.Scripts[want].ID || findings[index].Script != want {
+		if len(input.SelectedScripts) != 1 || input.SelectedScripts[0] != graph.Snapshot().Scripts[want].ID || findings[index].Script != want {
 			t.Fatal("plugin selection or finding index changed")
 		}
 	}
@@ -111,7 +117,7 @@ func BenchmarkDocumentPluginGraph(b *testing.B) {
 		b.Run(strconv.Itoa(count), func(b *testing.B) {
 			batch := documentBatchFixture(count)
 			guest := &scalingGuest{}
-			runner := documentPluginRunner{guest: guest, integrator: guest, context: tools.Context{Document: analyzer.Input{Reference: batch.CallGraph.Entry.Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}}
+			runner := documentPluginRunner{guest: guest, integrator: guest, context: tools.Context{Document: analyzer.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}}
 			b.ReportAllocs()
 			for b.Loop() {
 				if _, err := runner.Analyze(b.Context(), batch); err != nil {

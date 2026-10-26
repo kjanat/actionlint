@@ -49,8 +49,9 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		if len(input.Invoked) != 2 || len(input.CallGraph.Calls) != 6 {
-			t.Fatalf("incomplete nested input: %+v", input.CallGraph)
+		graph := input.CallGraph.Snapshot()
+		if len(input.Invoked) != 2 || input.CallGraph.CallCount() != 6 {
+			t.Fatalf("incomplete nested input: %+v", graph)
 		}
 		left, right := input.Invoked[0], input.Invoked[1]
 		if left.Reference != right.Reference || left.Occurrence.Owner == right.Occurrence.Owner || left.Occurrence.Ancestry[1] == right.Occurrence.Ancestry[1] {
@@ -58,7 +59,7 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 		}
 		for _, script := range input.Invoked {
 			occurrence := script.Occurrence
-			if occurrence.Depth != 3 || len(occurrence.Ancestry) != 4 || occurrence.Ancestry[0] != input.CallGraph.Entry.ID || occurrence.Ancestry[3] != occurrence.Owner || seen[occurrence.ID] {
+			if occurrence.Depth != 3 || len(occurrence.Ancestry) != 4 || occurrence.Ancestry[0] != input.CallGraph.Entry().ID || occurrence.Ancestry[3] != occurrence.Owner || seen[occurrence.ID] {
 				t.Fatalf("lost occurrence identity across entries: %+v", occurrence)
 			}
 			seen[occurrence.ID] = true

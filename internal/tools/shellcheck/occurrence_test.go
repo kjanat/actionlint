@@ -149,7 +149,7 @@ func TestDocumentPluginSkipsOtherToolInputsAndUnsupportedShells(t *testing.T) {
 	if len(observer.inputs) != 1 || observer.inputs[0].Occurrence.Kind != analyzer.ActionInputScript {
 		t.Fatalf("action-input route did not execute: %+v", observer.inputs)
 	}
-	if len(guest.inputs) != 1 || len(guest.inputs[0].Scripts) != 1 || guest.inputs[0].Scripts[0].Text != "echo shell" || len(guest.inputs[0].CallGraph.Scripts) != 3 {
+	if len(guest.inputs) != 1 || len(guest.inputs[0].Scripts) != 1 || guest.inputs[0].Scripts[0].Text != "echo shell" || guest.inputs[0].CallGraph.ScriptCount() != 3 {
 		t.Fatalf("ShellCheck processed an unrelated input: %+v", guest.inputs)
 	}
 }
@@ -181,7 +181,7 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 		t.Fatal("standalone scripts lost")
 	}
 	for _, input := range guest.inputs {
-		if input.Kind != "action" || input.Reference != observer.input.Reference || input.CallGraph.Entry.Kind != analyzer.ActionEntry || !reflect.DeepEqual(input.CallGraph, observer.input.CallGraph) {
+		if input.Kind != "action" || input.Reference != observer.input.Reference || input.CallGraph.Entry().Kind != analyzer.ActionEntry || !reflect.DeepEqual(input.CallGraph, observer.input.CallGraph) {
 			t.Fatal("standalone entry identity changed")
 		}
 	}

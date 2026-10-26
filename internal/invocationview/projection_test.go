@@ -82,8 +82,9 @@ func TestProjectionRepeatedDeclarationsKeepOccurrenceAncestry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot := graph.Snapshot()
-	if snapshot == nil || len(snapshot.Calls) != 4 || len(snapshot.Scripts) != 2 {
+	portable := graph.Graph()
+	snapshot := portable.Snapshot()
+	if portable.CallCount() != 4 || portable.ScriptCount() != 2 {
 		t.Fatalf("graph=%+v", snapshot)
 	}
 	first, second := snapshot.Scripts[0], snapshot.Scripts[1]
@@ -113,7 +114,7 @@ func TestProjectionRootScriptAndScopesOnlyOccurrences(t *testing.T) {
 		t.Fatal(err)
 	}
 	script, ok := view.Script(id)
-	if !ok || script.Depth != 0 || script.Owner != view.Snapshot().Entry.ID || len(script.Ancestry) != 1 || script.Ancestry[0] != script.Owner {
+	if !ok || script.Depth != 0 || script.Owner != view.Graph().Entry().ID || len(script.Ancestry) != 1 || script.Ancestry[0] != script.Owner {
 		t.Fatalf("root script=%+v found=%v", script, ok)
 	}
 	if _, ok := view.Script(invocation.ID("unknown")); ok {
@@ -224,7 +225,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			snapshot := view.Snapshot()
+			portable := view.Graph()
+			snapshot := portable.Snapshot()
 			calls := snapshot.Calls
 			if len(calls) != 1 && tt.name != "depth-limited" {
 				t.Fatalf("calls=%d", len(calls))
@@ -236,8 +238,8 @@ func TestProjectionAllCallOutcomesFromBuilder(t *testing.T) {
 				got = calls[0].Outcome.Value()
 			}
 			wantComplete := tt.name == "expanded" || tt.name == "opaque"
-			if snapshot.Complete != wantComplete {
-				t.Fatalf("complete=%v want %v", snapshot.Complete, wantComplete)
+			if portable.Complete() != wantComplete {
+				t.Fatalf("complete=%v want %v", portable.Complete(), wantComplete)
 			}
 			switch want := tt.want.(type) {
 			case analyzer.CycleCall:
@@ -313,7 +315,7 @@ func TestProjectionBudgetStopsAndEntryInterruption(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		stop, ok := view.Snapshot().Stop.Get()
+		stop, ok := view.Graph().Stop().Get()
 		if !ok || stop.Limit != analyzer.CallLimit || stop.Max != 1 || stop.Site.Node != "second" {
 			t.Fatalf("stop=%+v present=%v", stop, ok)
 		}
@@ -334,7 +336,7 @@ func TestProjectionBudgetStopsAndEntryInterruption(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		stop, ok := view.Snapshot().Stop.Get()
+		stop, ok := view.Graph().Stop().Get()
 		if !ok || stop.Limit != analyzer.ScriptLimit || stop.Max != 1 || stop.Site.Node != "second" {
 			t.Fatalf("stop=%+v present=%v", stop, ok)
 		}
@@ -351,10 +353,10 @@ func TestProjectionBudgetStopsAndEntryInterruption(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		snapshot := view.Snapshot()
-		interruption, ok := snapshot.EntryInterruption.Get()
-		if !ok || interruption.Reason != analyzer.Canceled || interruption.Detail != "stopped" || snapshot.Complete {
-			t.Fatalf("snapshot=%+v", snapshot)
+		portable := view.Graph()
+		interruption, ok := portable.EntryInterruption().Get()
+		if !ok || interruption.Reason != analyzer.Canceled || interruption.Detail != "stopped" || portable.Complete() {
+			t.Fatalf("interruption=%+v complete=%v", interruption, portable.Complete())
 		}
 	})
 }
@@ -380,7 +382,8 @@ func TestProjectionSnapshotsAndScriptAccessorsAreDetached(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := view.Snapshot()
+	portable := view.Graph()
+	first := portable.Snapshot()
 	first.Calls[0].Ancestry[0] = "corrupt-call"
 	first.Scripts[0].Ancestry[0] = "corrupt-script"
 	first.Scripts = append(first.Scripts, analyzer.ScriptOccurrence{ID: "extra"})
@@ -390,7 +393,7 @@ func TestProjectionSnapshotsAndScriptAccessorsAreDetached(t *testing.T) {
 	}
 	accessor.Ancestry[0] = "corrupt-accessor"
 	accessor.Ancestry = append(accessor.Ancestry, "extra")
-	second := view.Snapshot()
+	second := portable.Snapshot()
 	if len(second.Scripts) != 1 || second.Calls[0].Ancestry[0] != second.Entry.ID || second.Scripts[0].Ancestry[0] != second.Entry.ID {
 		t.Fatalf("projection changed through returned values: %+v", second)
 	}
@@ -453,9 +456,10 @@ func TestProjectionOwnerEnumParity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			graph := view.Snapshot()
-			if graph.Entry.Kind != analyzer.InvocationEntryKind(entryKind) {
-				t.Fatalf("entry kind=%q want %q", graph.Entry.Kind, entryKind)
+			portable := view.Graph()
+			graph := portable.Snapshot()
+			if portable.Entry().Kind != analyzer.InvocationEntryKind(entryKind) {
+				t.Fatalf("entry kind=%q want %q", portable.Entry().Kind, entryKind)
 			}
 			if len(graph.Scripts) != 2 || graph.Scripts[0].Kind != analyzer.RunScript || graph.Scripts[0].Input != "" || graph.Scripts[1].Kind != analyzer.ActionInputScript || graph.Scripts[1].Input != "script" {
 				t.Fatalf("script kinds=%+v", graph.Scripts)
@@ -645,7 +649,7 @@ func TestProjectionOwnerReasonEnumsAndInvalidReasons(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := tt.inspect(view.Snapshot().Calls[0].Outcome.Value()); got != tt.want {
+			if got := tt.inspect(view.Graph().Snapshot().Calls[0].Outcome.Value()); got != tt.want {
 				t.Fatalf("reason=%q want %q", got, tt.want)
 			}
 		})

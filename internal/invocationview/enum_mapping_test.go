@@ -34,9 +34,9 @@ func TestProjectionEntryOperationalInterruption(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	graph := projection.Snapshot()
-	interruption, exists := graph.EntryInterruption.Get()
-	if !exists || interruption.Reason != analyzer.OperationalFailure || interruption.Detail != "unavailable" || graph.Complete {
-		t.Fatalf("operational interruption lost: %+v", graph)
+	graph := projection.Graph()
+	interruption, exists := graph.EntryInterruption().Get()
+	if !exists || interruption.Reason != analyzer.OperationalFailure || interruption.Detail != "unavailable" || graph.Complete() {
+		t.Fatalf("operational interruption lost: %+v", graph.Snapshot())
 	}
 }
