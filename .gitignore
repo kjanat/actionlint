@@ -31,3 +31,7 @@ blockers.md
 docs/releases/vX.Y.Z.md
 node_modules/
 target/
+
+/custom-gcl
+/custom-gcl.exe
+/.bin/

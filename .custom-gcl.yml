@@ -1,0 +1,7 @@
+version: v2.15.0
+name: custom-gcl
+destination: .
+plugins:
+  - module: actionlint.kjanat.dev/v2/analyzers
+    import: actionlint.kjanat.dev/v2/analyzers/plugin
+    path: ./analyzers
