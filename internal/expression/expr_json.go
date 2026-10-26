@@ -25,7 +25,8 @@ func ordinalIgnoreCaseKey(s string) string {
 	}, s)
 }
 
-// JSONMemberCollisions retains the token stream to find repeated object members in order.
+// JSONMemberCollisions scans JSON tokens for case-insensitive duplicate keys.
+// Each collision records the first spelling and the later occurrence's offset.
 func JSONMemberCollisions(source string) []jsonMemberCollision {
 	dec := json.NewDecoder(strings.NewReader(source))
 	dec.UseNumber()

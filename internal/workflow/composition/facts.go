@@ -8,8 +8,8 @@ import (
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
-func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.References) analyzer.Input {
-	workflow, outline, units := document.Facts(), document.Outline, result.Batch.Scripts
+func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.References) (analyzer.Input, error) {
+	workflow, outline, units := document.Facts(), document.Outline, result.Batch.Scripts()
 	refs := references[pathAbs]
 	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
 	switch outline := outline.(type) {
@@ -21,13 +21,16 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 	}
 	input.Reference = refs.Document
 	if workflow == nil {
-		return input
+		return input, nil
+	}
+	if !result.Batch.Valid() {
+		return input, scriptexecution.ErrInvalidBatch
 	}
 	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies)
-	if result.CollectScripts {
+	if result.Batch.CollectedScripts() {
 		input.Available = append(input.Available, analyzer.Scripts, analyzer.Invocations)
-		for _, unit := range units {
-			script := scriptexecution.Fact(unit, result.Batch.Invocations, result.ResolveExecution)
+		for index, unit := range units {
+			script, _ := result.Batch.Fact(index, result.ResolveExecution)
 
 			switch {
 			case unit.Input != nil:
@@ -43,5 +46,5 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 		input.Available = append(input.Available, analyzer.Execution)
 	}
 	input.Mappings, input.Dependencies = workflowfacts.Declarations(content, workflow, refs)
-	return input
+	return input, nil
 }

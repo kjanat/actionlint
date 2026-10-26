@@ -11,7 +11,7 @@ import (
 )
 
 // Run isolates each analyzer's input and joins all started work. Results and
-// errors retain registration order regardless of execution order. A failing
+// errors are ordered by registration, not completion. A failing
 // analyzer does not discard findings from its peers.
 func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Registration) ([]diagnostic.Diagnostic, error) {
 	tasks := make([]Task[diagnostic.Diagnostic], len(registrations))

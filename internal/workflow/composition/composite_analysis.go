@@ -77,7 +77,7 @@ func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
 	knowledge := analysis.runners.Job(job)
 	analysis.scriptRunnerShell = execution.ShellValue{Kind: execution.ShellUnknown}
 	if analysis.runners == nil {
-		// Standalone composition retains its historical unspecified-shell default.
+		// Without runner knowledge, standalone composition assumes Bash.
 		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: "bash"})
 	}
 	if knowledge.Shell != "" {

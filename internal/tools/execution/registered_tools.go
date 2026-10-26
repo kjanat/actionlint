@@ -13,14 +13,18 @@ import (
 type Tool struct{ Runner tools.Runner }
 
 func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmodel.Finding, error) {
+	if !batch.Valid() {
+		return nil, ErrInvalidBatch
+	}
+	batchScopes, batchScripts := batch.Snapshot()
 	prepared := tools.Batch{}
 	scopes := map[*Scope]*tools.Scope{}
-	for _, scope := range batch.Scopes {
+	for _, scope := range batchScopes {
 		item := &tools.Scope{Config: scope.Config, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.ActionPath, Reader: scope.Paths.Reader, Composite: scope.Composite}
 		scopes[scope] = item
 		prepared.Scopes = append(prepared.Scopes, item)
 	}
-	for _, s := range batch.Scripts {
+	for _, s := range batchScripts {
 		script := tools.Script{Shell: s.Shell, Config: s.Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}}
 		if input := s.Input; input != nil {
 			site := input.Site
@@ -40,9 +44,9 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 	for _, result := range findings {
 		finding := findingmodel.FromDiagnostic(result.Diagnostic)
 		finding.Source, finding.RawScriptSource = result.Content, result.RawScript
-		if result.Script >= 0 && result.Script < len(batch.Scripts) {
-			finding.IgnoreOrigin = batch.Scripts[result.Script].Origin
-			finding.Owner = batch.Scripts[result.Script].Owner
+		if result.Script >= 0 && result.Script < len(batchScripts) {
+			finding.IgnoreOrigin = batchScripts[result.Script].Origin
+			finding.Owner = batchScripts[result.Script].Owner
 		}
 		if at := result.Suppression; at != nil {
 			finding.SuppressionOrigin = &findingmodel.SuppressionOrigin{Path: at.Path, First: at.First, Last: at.Last}

@@ -57,9 +57,8 @@ func (cache *metadataPositionCache) source(meta *Metadata, value *ExprString) *w
 	return source
 }
 
-// ExpressionPosition uses the same verified scalar mappings as script analyzers.
-// Missing source maps and folded expression strings retain the value position.
 // ExpressionPosition maps a decoded expression offset to its YAML source position.
+// If the offset cannot be mapped, it returns the start of the value.
 func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *workflowlang.Pos {
 	fallback := &workflowlang.Pos{Line: value.Line, Col: value.Column}
 	if offset <= 0 || offset > len(value.Value)+1 {

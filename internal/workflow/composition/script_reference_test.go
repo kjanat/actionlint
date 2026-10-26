@@ -2,6 +2,7 @@ package composition
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
@@ -28,7 +29,10 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 		t.Fatal(err)
 	}
 	references := documentparse.References("ci.yml", content, document, nil, func(path string) string { return path })
-	input := result.AnalyzerInput("ci.yml", "ci.yml", content, document, references)
+	input, err := result.AnalyzerInput("ci.yml", "ci.yml", content, document, references)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(input.Scripts) != 2 {
 		t.Fatalf("script count = %d, want 2", len(input.Scripts))
 	}
@@ -70,29 +74,29 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Batch.Scripts) != 4 {
-		t.Fatalf("script count = %d, want 4", len(result.Batch.Scripts))
+	if len(result.Batch.Scripts()) != 4 {
+		t.Fatalf("script count = %d, want 4", len(result.Batch.Scripts()))
 	}
 	indexes := documentparse.References(path, content, document, result.Sources, fsread.PhysicalPath)
 	declarations := map[source.Reference]bool{}
 	for _, reference := range indexes[actionPath].Steps {
 		declarations[reference] = true
 	}
-	for i, unit := range result.Batch.Scripts {
+	for i, unit := range result.Batch.Scripts() {
 		if !declarations[unit.Reference] {
 			t.Fatalf("script %d drifted from source index: %+v", i, unit.Reference)
 		}
 		if i >= 2 {
-			original := result.Batch.Scripts[i-2]
-			if unit.Reference != original.Reference || unit.Run != original.Run {
-				t.Fatal("mapped lookup did not share the original indexed declaration")
+			original := result.Batch.Scripts()[i-2]
+			if unit.Reference != original.Reference || !reflect.DeepEqual(unit.Run, original.Run) {
+				t.Fatal("mapped snapshot changed its declaration or script value")
 			}
 		}
 	}
-	if result.Batch.Scripts[0].Reference == result.Batch.Scripts[1].Reference {
+	if result.Batch.Scripts()[0].Reference == result.Batch.Scripts()[1].Reference {
 		t.Fatal("aliased action declarations collapsed")
 	}
-	if result.Batch.Scripts[0].Scope.ActionPath != filepath.Dir(actionPath) || result.Batch.Scripts[2].Scope.ActionPath != "" {
+	if result.Batch.Scripts()[0].Scope.ActionPath != filepath.Dir(actionPath) || result.Batch.Scripts()[2].Scope.ActionPath != "" {
 		t.Fatal("source reuse contaminated per-lookup deployment paths")
 	}
 }

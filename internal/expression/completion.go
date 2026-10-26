@@ -19,8 +19,8 @@ var (
 	completionRoot   = regexp.MustCompile(`(?i)[a-z_][a-z0-9_-]*$`)
 )
 
-// Complete uses the same checker scope and property types as diagnostics. It
-// accepts unfinished dot/bracket access and retains UTF-8 byte edit positions.
+// Complete suggests names from the checker's scope for unfinished dot/bracket
+// access. The offset and returned edit positions count UTF-8 bytes.
 func (sema *Checker) Complete(source string, offset int) []Completion {
 	if offset < 0 || offset > len(source) {
 		return nil

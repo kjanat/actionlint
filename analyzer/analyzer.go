@@ -70,8 +70,8 @@ type Input struct {
 	PrepareScript ScriptPreparer
 }
 
-// FileSystem binds a caller-owned read-only filesystem to a guest path.
-// The caller retains ownership and keeps it open until Analyze returns.
+// FileSystem mounts a read-only filesystem at a guest path for one Analyze call.
+// The caller must keep FS open until Analyze returns.
 type FileSystem struct {
 	Path string
 	FS   fs.FS
@@ -101,8 +101,7 @@ type Script struct {
 	Spans      []Span
 	Invocation *Invocation
 	Runtime    *Runtime
-	// Comments are supplied through the optional source-annotations interface;
-	// the original analyzer component contract and Text remain unchanged.
+	// Comments supplies YAML comments through the optional source-annotations interface.
 	Comments []SourceComment
 }
 

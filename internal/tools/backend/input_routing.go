@@ -11,7 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools"
 )
 
-// WithScriptInputs retains native run preparation and adds the engine's input-only route.
+// WithScriptInputs routes run steps through the registration and action inputs
+// through the supplied engine.
 func WithScriptInputs(registration tools.Registration, descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
 	// This registration already binds the selected backend and its complete catalogue.
 	registration.ConfiguredBackend = nil

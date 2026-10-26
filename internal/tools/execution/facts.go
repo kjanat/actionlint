@@ -9,7 +9,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
-func Fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Script {
+// Fact projects a validated script; false means the batch or index is unavailable.
+func (batch Batch) Fact(index int, includeExecution bool) (analyzer.Script, bool) {
+	if !batch.Valid() || index < 0 || index >= len(batch.data.scripts) {
+		return analyzer.Script{}, false
+	}
+	return fact(batch.data.scripts[index], batch.data.graph, includeExecution), true
+}
+
+func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Script {
 	run := unit.Run
 	var script analyzer.Script
 	var source *workflowlang.ScriptSource

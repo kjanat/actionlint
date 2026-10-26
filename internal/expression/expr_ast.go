@@ -16,7 +16,7 @@ type Span struct {
 
 type exprNodeSpan struct{ span Span }
 
-// Span returns the source range retained by the expression parser.
+// Span returns the node's range in the parsed expression.
 func (n *exprNodeSpan) Span() Span { return n.span }
 
 func (n *exprNodeSpan) setSpan(span Span) { n.span = span }
@@ -127,7 +127,8 @@ type ObjectDerefNode struct {
 	propertyToken *Token
 }
 
-// PropertyName retains the source spelling independently of case-insensitive lookup.
+// PropertyName returns the property's spelling in source, falling back to
+// Property for nodes constructed without a token.
 func (n ObjectDerefNode) PropertyName() string {
 	if n.propertyToken != nil {
 		return n.propertyToken.Value

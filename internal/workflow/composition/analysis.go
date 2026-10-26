@@ -40,7 +40,7 @@ type Options struct {
 	Paths                 execution.Paths
 	Config                *repoconfig.Config
 	// ConfigForFile resolves each physical manifest once, including no-script scopes.
-	// Errors interrupt the entry; previously collected findings and facts remain available.
+	// Errors interrupt the entry without discarding collected findings and facts.
 	ConfigForFile func(string) (*repoconfig.Config, error)
 	// CollectScripts supplies execution units. Registration, selector errors and
 	// script budgets apply even when no script analyzer consumes the occurrences.
@@ -50,11 +50,11 @@ type Options struct {
 }
 
 type Result struct {
-	Findings                         []*findingmodel.Finding
-	Batch                            scriptexecution.Batch
-	CollectScripts, ResolveExecution bool
-	Sources                          map[string][]byte
-	// Configs retains successful configuration lookups by expanded source path.
+	Findings         []*findingmodel.Finding
+	Batch            scriptexecution.Batch
+	ResolveExecution bool
+	Sources          map[string][]byte
+	// Configs caches successful configuration lookups by expanded source path.
 	Configs map[string]*repoconfig.Config
 }
 
@@ -166,9 +166,19 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		graph, publishErr = c.invocations.Publish()
 		err = errors.Join(err, publishErr)
 	}
-	batch := scriptexecution.Batch{Scopes: c.scriptScopes, Scripts: c.scripts, Invocations: graph}
-	findings, scriptErr := options.Scripts.Run(options.Context, batch)
-	err = errors.Join(err, scriptErr, join())
+	var batch scriptexecution.Batch
+	var findings []*findingmodel.Finding
+	if graph.Has(graph.RootID()) {
+		var prepareErr error
+		batch, prepareErr = scriptexecution.NewBatch(graph, c.scriptScopes, c.scripts, c.collectScripts)
+		err = errors.Join(err, prepareErr)
+		if prepareErr == nil {
+			var scriptErr error
+			findings, scriptErr = options.Scripts.Run(options.Context, batch)
+			err = errors.Join(err, scriptErr)
+		}
+	}
+	err = errors.Join(err, join())
 	joined = true
 	for _, r := range options.Rules {
 		findings = append(findings, r.Errs()...)
@@ -186,7 +196,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 			}
 		}
 	}
-	return Result{Findings: findings, Batch: batch, CollectScripts: c.collectScripts, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), Configs: configs}, err
+	return Result{Findings: findings, Batch: batch, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), Configs: configs}, err
 }
 
 func scriptInputCatalogue(additional []analyzer.ScriptInput) ([]analyzer.ScriptInput, error) {

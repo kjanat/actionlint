@@ -1,6 +1,6 @@
 // Package action owns action-manifest syntax, source positions, schema validation,
 // expression availability and runtime metadata. It does not load repository files
-// or retain workflow caller state.
+// or track workflow callers.
 package action
 
 import (
@@ -354,10 +354,8 @@ func Key(n *yaml.Node) string {
 	return n.Value
 }
 
-// Fields normalizes schema field names in a shallow copy for
-// YAML struct decoding. User-defined mapping keys and source nodes retain
-// their spelling; the schema validator reads the original tree.
-// Fields normalizes literal keys without changing the original YAML source tree.
+// Fields copies a mapping's keys and normalizes their spelling for struct decoding.
+// Nested mappings and the original tree are not modified.
 func Fields(node *yaml.Node) *yaml.Node {
 	n := Node(node)
 	if n.Kind != yaml.MappingNode {
@@ -387,7 +385,7 @@ type Metadata struct {
 	Directory string `yaml:"-" json:"-"`
 	Filename  string `yaml:"-" json:"-"`
 	Source    []byte `yaml:"-" json:"-"`
-	// Root retains physical declarations for schema checks and source mapping.
+	// Root is the original YAML tree used for schema checks and source mapping.
 	Root      *yaml.Node `yaml:"-" json:"-"`
 	positions *metadataPositionCache
 	// Name is "name" field of action.yaml.
@@ -502,7 +500,7 @@ func expectedMapping(where string, n *yaml.Node) error {
 	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowlang.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
-// Parse decodes one manifest and retains its source and lazy scalar mappings.
+// Parse decodes a manifest and initializes source mappings on demand.
 // Partially decoded declarations accompany errors for callers that inspect broken metadata.
 func Parse(path string, content []byte) (*Metadata, error) {
 	metadata := &Metadata{positions: &metadataPositionCache{}}

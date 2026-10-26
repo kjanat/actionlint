@@ -15,13 +15,13 @@ import (
 // mechanism: a process, an in-process engine, or a WebAssembly instance.
 // It must finish its work before returning, honor cancellation, and support
 // concurrent calls. A serialized WASM instance can be guarded or pooled by its
-// adapter. The host retains YAML mapping, suppression, and scheduling.
+// adapter. The host handles YAML mapping, suppression, and scheduling.
 type ScriptBackend interface {
 	Check(context.Context, ScriptRequest) ([]ScriptDiagnostic, error)
 }
 
 // DescribedScriptBackend exposes the selectors of a configured engine before
-// script collection. Backends without this capability retain native run routing.
+// script collection. Backends without this capability use native run routing.
 type DescribedScriptBackend interface {
 	ScriptBackend
 	ScriptDescriptor() ScriptEngineDescriptor

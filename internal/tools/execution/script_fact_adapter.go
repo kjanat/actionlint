@@ -11,15 +11,19 @@ import (
 type FactAnalyzer struct{ Analyzer analyzer.Analyzer }
 
 func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmodel.Finding, error) {
+	if !batch.Valid() {
+		return nil, ErrInvalidBatch
+	}
 	var findings []*findingmodel.Finding
-	for _, unit := range batch.Scripts {
+	for index, unit := range batch.Scripts() {
 		if unit.Input != nil {
 			continue
 		}
 		if err := ctx.Err(); err != nil {
 			return findings, err
 		}
-		input := analyzer.Input{Scripts: []analyzer.Script{Fact(unit, batch.Invocations, false)}}
+		script, _ := batch.Fact(index, false)
+		input := analyzer.Input{Scripts: []analyzer.Script{script}}
 		diagnostics, err := adapter.Analyzer.Analyze(ctx, input)
 		for _, d := range diagnostics {
 			finding := findingmodel.FromDiagnostic(d)

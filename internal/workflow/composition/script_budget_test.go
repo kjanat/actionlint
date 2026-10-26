@@ -12,18 +12,26 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func TestSelectorFailureWithoutCollectionPreservesRegisteredFacts(t *testing.T) {
-	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {run: echo later}]}}\n", nil, nil)
-	f.service.options.CollectScripts = false
-	failure := errors.New("selector configuration failed")
-	f.service.options.ScriptInputsForConfig = func(*repoconfig.Config) ([]analyzer.ScriptInput, error) {
-		return nil, failure
-	}
-	result, err := f.service.Workflow(f.root)
-	graph := result.Batch.Invocations
-	interruption, stopped := graph.EntryInterruption()
-	if !errors.Is(err, failure) || !stopped || interruption.Reason() != invocation.ReasonOperational || len(graph.Scripts()) != 1 || len(result.Batch.Scripts) != 0 {
-		t.Fatalf("selector failure without collection: %v, graph=%+v", err, graph)
+func TestSelectorFailurePreservesRegisteredFacts(t *testing.T) {
+	for _, collect := range []bool{false, true} {
+		t.Run(fmt.Sprintf("collect=%t", collect), func(t *testing.T) {
+			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {run: echo later}]}}\n", nil, nil)
+			f.service.options.CollectScripts = collect
+			failure := errors.New("selector configuration failed")
+			f.service.options.ScriptInputsForConfig = func(*repoconfig.Config) ([]analyzer.ScriptInput, error) {
+				return nil, failure
+			}
+			result, err := f.service.Workflow(f.root)
+			graph := result.Batch.Invocations()
+			interruption, stopped := graph.EntryInterruption()
+			wantUnits := 0
+			if collect {
+				wantUnits = 1
+			}
+			if !errors.Is(err, failure) || !stopped || interruption.Reason() != invocation.ReasonOperational || len(graph.Scripts()) != 1 || len(result.Batch.Scripts()) != wantUnits {
+				t.Fatalf("selector failure without collection: %v, graph=%+v", err, graph)
+			}
+		})
 	}
 }
 
@@ -35,8 +43,8 @@ func TestParallelScriptsRegisterWithoutCollection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := result.Batch.Invocations.Scripts()
-	if len(scripts) != 2 || scripts[0].ID == scripts[1].ID || scripts[0].Declaration == scripts[1].Declaration || scripts[0].Kind != invocation.ScriptRun || scripts[1].Kind != invocation.ScriptActionInput || len(result.Batch.Scripts) != 0 {
+	scripts := result.Batch.Invocations().Scripts()
+	if len(scripts) != 2 || scripts[0].ID == scripts[1].ID || scripts[0].Declaration == scripts[1].Declaration || scripts[0].Kind != invocation.ScriptRun || scripts[1].Kind != invocation.ScriptActionInput || len(result.Batch.Scripts()) != 0 {
 		t.Fatalf("parallel declaration registration lost: %+v", scripts)
 	}
 }
@@ -56,13 +64,13 @@ func TestCompositionExactlyAtScriptLimit(t *testing.T) {
 				}, &budget)
 				f.service.options.CollectScripts = collect
 				result, err := f.service.Workflow(f.root)
-				graph := result.Batch.Invocations
+				graph := result.Batch.Invocations()
 				_, stopped := graph.Stop()
 				wantUnits := 0
 				if collect {
 					wantUnits = 3
 				}
-				if err != nil || stopped || graph.Incomplete() != withInput || len(graph.Scripts()) != 3 || len(result.Batch.Scripts) != wantUnits {
+				if err != nil || stopped || graph.Incomplete() != withInput || len(graph.Scripts()) != 3 || len(result.Batch.Scripts()) != wantUnits {
 					t.Fatalf("exact limit rejected: %v, graph=%+v", err, graph)
 				}
 				if withInput {
@@ -93,10 +101,10 @@ func TestNestedBudgetStopRetainsConcurrentCancellation(t *testing.T) {
 	if !errors.Is(err, invocation.ErrScriptBudget) || !errors.Is(err, context.Canceled) || errors.Is(err, invocation.ErrUnfinished) {
 		t.Fatalf("nested unwind lost a simultaneous failure: %v", err)
 	}
-	graph := result.Batch.Invocations
+	graph := result.Batch.Invocations()
 	stop, stopped := graph.Stop()
 	calls := graph.Calls()
-	if !stopped || stop.Limit != invocation.LimitScripts || len(calls) != 2 || calls[0].Outcome.Kind() != invocation.OutcomeExpanded || calls[1].Outcome.Reason() != invocation.ReasonCanceled || len(graph.Scripts()) != 1 || len(result.Batch.Scripts) != 1 {
+	if !stopped || stop.Limit != invocation.LimitScripts || len(calls) != 2 || calls[0].Outcome.Kind() != invocation.OutcomeExpanded || calls[1].Outcome.Reason() != invocation.ReasonCanceled || len(graph.Scripts()) != 1 || len(result.Batch.Scripts()) != 1 {
 		t.Fatalf("nested unwind lost budget, cancellation or retained script: %+v", graph)
 	}
 }
@@ -105,6 +113,7 @@ func TestCallVisitPreservesExistingScriptStop(t *testing.T) {
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 1
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {run: echo second}, {uses: $/later}]}}\n", nil, &budget)
+	f.service.options.CollectScripts = false
 	result, err := f.service.analyze(func(c *compositeAnalyzer) error {
 		if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 			return err
@@ -129,7 +138,7 @@ func TestCallVisitPreservesExistingScriptStop(t *testing.T) {
 	if !errors.Is(err, invocation.ErrScriptBudget) || errors.Is(err, invocation.ErrCallBudget) {
 		t.Fatalf("call visit replaced stop cause: %v", err)
 	}
-	if _, interrupted := result.Batch.Invocations.EntryInterruption(); interrupted {
+	if _, interrupted := result.Batch.Invocations().EntryInterruption(); interrupted {
 		t.Fatal("expected stop became an operational interruption")
 	}
 }
@@ -141,6 +150,7 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 			budget.MaxScripts = 1
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", nil, &budget)
 			var scriptID, owner invocation.ID
+			f.service.options.CollectScripts = false
 			result, err := f.service.analyze(func(c *compositeAnalyzer) error {
 				if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 					return err
@@ -177,7 +187,7 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 			if !errors.Is(err, invocation.ErrScriptBudget) || errors.Is(err, invocation.ErrUnfinished) || errors.Is(err, context.Canceled) != canceled {
 				t.Fatalf("joined failure lost or graph unpublished: %v", err)
 			}
-			graph := result.Batch.Invocations
+			graph := result.Batch.Invocations()
 			script, exists := graph.Script(scriptID)
 			call, found := graph.Call(owner)
 			if !exists || !found || script.Owner != owner || call.Outcome.Kind() != invocation.OutcomeInterrupted {
@@ -234,7 +244,7 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 				if !errors.Is(err, invocation.ErrScriptBudget) || errors.Is(err, invocation.ErrUnfinished) {
 					t.Fatalf("budget failed to unwind traversal: %v", err)
 				}
-				graph := result.Batch.Invocations
+				graph := result.Batch.Invocations()
 				stop, exists := graph.Stop()
 				if !exists || stop.Limit != invocation.LimitScripts || stop.Max != 1 || !graph.Incomplete() || !graph.Has(stop.Parent) {
 					t.Fatalf("missing script boundary: %+v", stop)
@@ -246,7 +256,7 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 				if collect {
 					wantUnits = 1
 				}
-				if len(result.Batch.Scripts) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts[0].Run.Run.Value != "echo retained") {
+				if len(result.Batch.Scripts()) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts()[0].Run.Run.Value != "echo retained") {
 					t.Fatal("earlier script lost or rejected script retained")
 				}
 				for _, call := range graph.Calls() {

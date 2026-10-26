@@ -32,7 +32,7 @@ func (rule *validator) Errorf(pos *workflowlang.Pos, format string, args ...any)
 }
 
 // Check validates a manifest reached from a workflow call site. Findings which
-// cannot point inside the manifest retain the caller's uses position.
+// cannot point inside the manifest point to the caller's uses position.
 func Check(meta *actionmeta.Metadata, caller *workflowlang.Pos) []*findingmodel.Finding {
 	rule := validator{}
 	rule.checkLocalActionMetadata(meta, &workflowlang.ExecAction{Uses: &workflowlang.String{Pos: caller}})
@@ -495,7 +495,7 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 }
 
 // Missing fields point at their nearest declared parent. Existing fields point
-// at their key. Workflow-call diagnostics retain their original uses: position.
+// at their key. Workflow-call diagnostics point to the caller's uses: value.
 func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields ...string) *workflowlang.Pos {
 	if rule.standalone == nil {
 		return fallback

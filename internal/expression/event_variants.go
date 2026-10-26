@@ -13,8 +13,8 @@ type EventVariant struct {
 	Payload       *ObjectType
 }
 
-// NewEventType projects the properties accessible across possible events while
-// retaining the alternatives for guarded expressions. Inputs are immutable.
+// NewEventType merges event payloads and attaches the variants for guard narrowing.
+// It does not mutate the supplied payloads.
 func NewEventType(variants []EventVariant) *ObjectType {
 	var result Type
 	for _, variant := range variants {
@@ -28,8 +28,8 @@ func NewEventType(variants []EventVariant) *ObjectType {
 	return NewEmptyObjectType()
 }
 
-// A missing member on one variant does not erase a known member on another:
-// Actions permits reading absent properties. Conflicting types remain open.
+// Actions permits reading absent properties, so a member known in one variant
+// is included even if another omits it. Incompatible types merge to AnyType.
 func combineEventTypes(a, b Type) Type {
 	if a == nil {
 		return b

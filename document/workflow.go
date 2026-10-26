@@ -17,7 +17,7 @@ type Workflow struct {
 	Jobs        []Job    `json:"jobs"`
 }
 
-// Job retains declared IDs and references, including unresolved expressions.
+// Job describes a job declaration without evaluating expressions in its fields.
 // Jobs appear in source order. Start points to the job key, when available.
 type Job struct {
 	ID        string               `json:"id"`

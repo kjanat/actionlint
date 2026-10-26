@@ -24,9 +24,9 @@ func ExpressionTruthy(value any) bool {
 	}
 }
 
-// ConditionConstantValue evaluates a conservative subset shared by condition
-// diagnostics and invocation reachability. Unsupported functions, ambiguous
-// JSON members and mode-dependent serialization remain unknown.
+// ConditionConstantValue evaluates the subset used by condition diagnostics and
+// invocation reachability. It reports unknown for unsupported functions,
+// ambiguous JSON members and mode-dependent serialization.
 func ConditionConstantValue(expr Node) (any, bool) {
 	switch n := expr.(type) {
 	case *NullNode:

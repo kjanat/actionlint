@@ -90,7 +90,8 @@ func copyEventObject(event *ObjectType) *ObjectType {
 	return &ObjectType{Props: maps.Clone(event.Props), Mapped: event.Mapped, DisplayName: event.DisplayName, PropertyNames: maps.Clone(event.PropertyNames), EventVariants: event.EventVariants}
 }
 
-// eventReference retains numeric and wildcard paths for payload diagnostics.
+// eventReference formats a payload access path for diagnostics, using [] for
+// non-string indexes and .* for array projections.
 func eventReference(n Node) string {
 	switch n := n.(type) {
 	case *VariableNode:

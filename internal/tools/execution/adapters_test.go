@@ -3,14 +3,12 @@ package execution
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
-	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 type partialFactAnalyzer struct {
@@ -44,18 +42,20 @@ func (a partialTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Find
 }
 
 func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
-	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
-	parsed := documentparse.Workflow("ci.yml", content)
-	run := parsed.Workflow.Jobs["test"].Steps[0].Exec
-	owner := &findingmodel.Owner{Job: "test", Step: parsed.Workflow.Jobs["test"].Steps[0].Pos}
+	graph, scopes, units := batchFixture(t, false)
+	owner, content := units[0].Owner, units[0].Content
+	batch, err := NewBatch(graph, scopes, units, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	failure := errors.New("partial analysis failure")
 	for name, adapter := range map[string]Analyzer{
 		"fact": FactAnalyzer{Analyzer: partialFactAnalyzer{t: t, failure: failure}},
 		"tool": Tool{Runner: partialTool{t: t, failure: failure}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			findings, err := (Service{Analyzers: []Analyzer{adapter}}).Run(t.Context(), Batch{Scripts: []Unit{{Run: run.(*workflowlang.ExecRun), Path: "ci.yml", Content: content, Owner: owner}}})
-			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || findings[0].Owner != owner || findings[0].IgnoreOrigin != nil || string(findings[0].Source) != string(content) {
+			findings, err := (Service{Analyzers: []Analyzer{adapter}}).Run(t.Context(), batch)
+			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || !reflect.DeepEqual(findings[0].Owner, owner) || findings[0].IgnoreOrigin != nil || string(findings[0].Source) != string(content) {
 				t.Fatalf("partial finding lost its independent owner or source: %+v %v", findings, err)
 			}
 		})
