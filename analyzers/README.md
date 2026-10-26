@@ -4,12 +4,12 @@ The analyzer consumes Go type information and SSA. There is no architecture
 manifest, package-layer assignment, protected-type registry or retired-field
 list. It also works in modules unrelated to Actionlint.
 
-| Code | Rule |
-| --- | --- |
+| Code   | Rule                                                                                                                                                                         |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ARC001 | Public API signatures, aliases, fields and constraints cannot expose types from an `internal` package. Implementation imports and private representation fields are allowed. |
-| ARC002 | An exported struct with private representation or receiver-mutating methods cannot expose writable fields. Plain value records without either property are allowed. |
-| ARC003 | Exported methods cannot return mutable storage reachable from their receiver. Return detached storage or an opaque value handle. |
-| ARC004 | A reference-returning call without a source summary prevents establishing detachment from the receiver. The unresolved flow fails explicitly. |
+| ARC002 | An exported struct with private representation or receiver-mutating methods cannot expose writable fields. Plain value records without either property are allowed.          |
+| ARC003 | Exported methods cannot return mutable storage reachable from their receiver. Return detached storage or an opaque value handle.                                             |
+| ARC004 | A reference-returning call without a source summary prevents establishing detachment from the receiver. The unresolved flow fails explicitly.                                |
 
 ARC003 follows assignments, branches, field/index access, pointer loads,
 interfaces, closures, containers and function results. Parameter/result and

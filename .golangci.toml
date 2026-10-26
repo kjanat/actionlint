@@ -55,7 +55,7 @@ forbid = [
 ]
 
 [linters.settings.custom.actionlintarch]
-type = "module"
+type        = "module"
 description = "Check source-derived representation ownership and public API boundaries"
 
 [linters.settings.exhaustive]
