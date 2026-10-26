@@ -13,6 +13,9 @@ import (
 // Run isolates each analyzer's input and joins all started work.
 // Findings and errors follow registration order.
 func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Registration) ([]diagnostic.Diagnostic, error) {
+	if err := input.ValidateInvocations(); err != nil {
+		return nil, err
+	}
 	tasks := make([]Task[diagnostic.Diagnostic], len(registrations))
 	for i, registration := range registrations {
 		tasks[i] = func(ctx context.Context) ([]diagnostic.Diagnostic, error) {
@@ -37,6 +40,10 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 				}
 			}
 			supplied := input
+			if input.CallGraph != nil {
+				graph := input.CallGraph.Clone()
+				supplied.CallGraph = &graph
+			}
 			supplied.Available = slices.Clone(input.Available)
 			supplied.Options = slices.Clone(registration.Options)
 			supplied.Scripts = cloneScripts(input.Scripts)
@@ -85,6 +92,7 @@ func cloneScripts(scripts []analyzer.Script) []analyzer.Script {
 	}
 	cloned := make([]analyzer.Script, len(scripts))
 	for i, script := range scripts {
+		script.Occurrence.Ancestry = slices.Clone(script.Occurrence.Ancestry)
 		script.Spans = slices.Clone(script.Spans)
 		script.Comments = slices.Clone(script.Comments)
 		if script.Invocation != nil {

@@ -60,6 +60,7 @@ type Input struct {
 	Scripts      []Script
 	Invoked      []Script
 	ActionInputs []ActionInput
+	CallGraph    *CallGraph
 	Mappings     []Mapping
 	Dependencies []Dependency
 	// Files grants read-only filesystems for this call. Nil grants no file access.
@@ -92,6 +93,7 @@ type ActionInput struct {
 // composite action call. Runtime is set when the Execution fact was requested.
 type Script struct {
 	Reference  source.Reference
+	Occurrence ScriptOccurrence
 	JobID      string
 	StepID     string
 	Text       string

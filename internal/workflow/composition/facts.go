@@ -26,16 +26,21 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 	if !result.Batch.Valid() {
 		return input, scriptexecution.ErrInvalidBatch
 	}
-	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies)
+	input.CallGraph = result.Batch.CallGraph()
+	input.Reference = input.CallGraph.Entry.Reference
+	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies, analyzer.Invocations)
 	if result.Batch.CollectedScripts() {
-		input.Available = append(input.Available, analyzer.Scripts, analyzer.Invocations)
+		input.Available = append(input.Available, analyzer.Scripts)
 		for index, unit := range units {
-			script, _ := result.Batch.Fact(index, result.ResolveExecution)
+			script, exists := result.Batch.Fact(index, result.ResolveExecution)
+			if !exists {
+				return analyzer.Input{}, scriptexecution.ErrInvalidBatch
+			}
 
 			switch {
-			case unit.Input != nil:
+			case script.Occurrence.Kind == analyzer.ActionInputScript:
 				input.ActionInputs = append(input.ActionInputs, analyzer.ActionInput{Script: script, Site: unit.Input.Site})
-			case script.Path == "":
+			case script.Occurrence.Owner == input.CallGraph.Entry.ID:
 				input.Scripts = append(input.Scripts, script)
 			default:
 				input.Invoked = append(input.Invoked, script)

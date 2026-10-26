@@ -14,7 +14,14 @@ func (batch Batch) Fact(index int, includeExecution bool) (analyzer.Script, bool
 	if !batch.Valid() || index < 0 || index >= len(batch.data.scripts) {
 		return analyzer.Script{}, false
 	}
-	return fact(batch.data.scripts[index], batch.data.graph, includeExecution), true
+	unit := batch.data.scripts[index]
+	occurrence, exists := batch.data.projection.Script(unit.Occurrence)
+	if !exists || occurrence.Declaration != unit.Reference || (occurrence.Kind == analyzer.ActionInputScript) != (unit.Input != nil) {
+		return analyzer.Script{}, false
+	}
+	script := fact(unit, batch.data.graph, includeExecution)
+	script.Occurrence = occurrence
+	return script, true
 }
 
 func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Script {
