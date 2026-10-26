@@ -7,6 +7,9 @@ version = "2"
 [linters]
 default = "standard"
 enable  = [
+  "actionlintarch",
+  "contextcheck",
+  "exhaustive",
   "asasalint",
   "asciicheck",
   "bidichk",
@@ -93,3 +96,10 @@ paths = ["node_modules"]
 [issues]
 max-issues-per-linter = 0
 max-same-issues       = 0
+
+[linters.settings.custom.actionlintarch]
+type = "module"
+description = "Enforce actionlint architecture and expose migration debt"
+
+[linters.settings.exhaustive]
+default-signifies-exhaustive = false
