@@ -482,3 +482,7 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [the script README]: ./tools/release/bump-version/README.md
 [the upstream project]: https://github.com/rhysd/actionlint
 [the usage document]: docs/usage.md
+
+## Architecture checks
+
+`make lint` builds the custom golangci-lint runner. The [structural analyzers](analyzers/README.md) check public API types and representation ownership directly from source; no package inventory is required. Run `make test-analyzers` when changing them. Product findings fail CI.

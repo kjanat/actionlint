@@ -7,6 +7,10 @@ version = "2"
 [linters]
 default = "standard"
 enable  = [
+  "actionlintarch",
+  "contextcheck",
+  "exhaustive",
+  "dupl",
   "asasalint",
   "asciicheck",
   "bidichk",
@@ -49,6 +53,13 @@ forbid = [
   { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through fsread.Reader" },
   { pattern = '^fsread\.(Disk|ProbeDir)$', msg = "fsread.Disk and fsread.ProbeDir skip recording; read through fsread.Reader" },
 ]
+
+[linters.settings.custom.actionlintarch]
+type = "module"
+description = "Check source-derived representation ownership and public API boundaries"
+
+[linters.settings.exhaustive]
+default-signifies-exhaustive = false
 
 [linters.settings.staticcheck]
 checks = ["all", "-ST1003"]

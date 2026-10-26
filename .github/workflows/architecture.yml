@@ -1,0 +1,48 @@
+name: Architecture
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  analyzers:
+    name: Architecture analyzer tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: analyzers/go.mod
+      - run: go test -C analyzers -count=1 ./...
+      - run: go vet -C analyzers ./...
+  architecture:
+    name: Architecture enforcement
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version-file: .tool-versions
+          install-only: true
+      - name: Build both architecture runners
+        id: build
+        run: make lint-build
+      - name: Verify source-derived checks in an unrelated module
+        env:
+          ACTIONLINT_CUSTOM_GCL: ${{ github.workspace }}/custom-gcl
+        run: go test -C analyzers ./plugin -run TestUnrelatedModule -count=1
+      - name: Enforce architecture without suppression filters
+        run: ./.bin/actionlintarch ./...
+      - name: Run default linters including the architecture plugin
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: ./custom-gcl run
