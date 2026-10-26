@@ -9,13 +9,13 @@ to the distributed application.
 
 ## Checks
 
-| Code | Rule |
-| --- | --- |
-| ALA101 | Reject dependency paths from a domain to a forbidden package. |
-| ALA102 | Reject host and parser dependencies in portable domains. |
-| ALA103 | Restrict construction and field mutation to each type's declared owners. |
+| Code   | Rule                                                                                 |
+| ------ | ------------------------------------------------------------------------------------ |
+| ALA101 | Reject dependency paths from a domain to a forbidden package.                        |
+| ALA102 | Reject host and parser dependencies in portable domains.                             |
+| ALA103 | Restrict construction and field mutation to each type's declared owners.             |
 | ALA104 | Reject the old engine facades and duplicated invocation fields in `execution.Scope`. |
-| ALA105 | Restrict `context.Background` and `context.TODO` to entrypoints and generators. |
+| ALA105 | Restrict `context.Background` and `context.TODO` to entrypoints and generators.      |
 
 `contextcheck` checks context propagation. `exhaustive` requires explicit enum
 cases, including switches with a default branch.
