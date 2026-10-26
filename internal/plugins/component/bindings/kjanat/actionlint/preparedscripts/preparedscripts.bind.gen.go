@@ -50,6 +50,9 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	typPrepared_ := b_.AddType("prepared", host.Record{Fields: []host.Field{{Name: "text", Type: host.String}, {Name: "sanitized", Type: host.String}, {Name: "dialect", Type: host.Option{Inner: host.String}}, {Name: "shell", Type: host.String}, {Name: "startup", Type: host.String}, {Name: "lines", Type: host.List{Elem: typLine_}}, {Name: "excluded", Type: host.List{Elem: host.U32}}}})
 	_ = typPrepared_
 
+	typOccurrenceID_ := b_.AddType("occurrence-id", host.String)
+	_ = typOccurrenceID_
+
 	b_.AddFunction("prepare", &host.FuncType{
 		Params:  []host.Param{{Name: "occurrence", Type: host.String}, {Name: "dialect", Type: host.Option{Inner: host.String}}},
 		Results: []host.ResultDecl{{Name: "", Type: host.Result{Ok: host.Option{Inner: typPrepared_}, Err: host.String}}},

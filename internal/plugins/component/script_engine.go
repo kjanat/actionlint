@@ -58,7 +58,7 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 }
 
 func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte) error {
-	value, err := p.callInterface(ctx, analyzer.TemplateEffectsContract, "contract")
+	value, err := p.callInterface(ctx, TemplateEffectsInterface, "contract")
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 		field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
 	contract := ScriptEngineInterface
 	if p.scriptDescriptor.TemplateContract != "" {
-		contract = analyzer.TemplateEffectsContract
+		contract = TemplateEffectsInterface
 	}
 	value, err := p.callInterface(ctx, contract, "check", input)
 	if err != nil {
