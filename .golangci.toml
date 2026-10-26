@@ -56,6 +56,13 @@ forbid = [
 [linters.settings.staticcheck]
 checks = ["all", "-ST1003"]
 
+[linters.settings.custom.actionlintarch]
+type        = "module"
+description = "Enforce actionlint architecture and expose migration debt"
+
+[linters.settings.exhaustive]
+default-signifies-exhaustive = false
+
 [linters.exclusions]
 generated = "lax"
 presets   = ["std-error-handling"]
@@ -96,10 +103,3 @@ paths = ["node_modules"]
 [issues]
 max-issues-per-linter = 0
 max-same-issues       = 0
-
-[linters.settings.custom.actionlintarch]
-type = "module"
-description = "Enforce actionlint architecture and expose migration debt"
-
-[linters.settings.exhaustive]
-default-signifies-exhaustive = false

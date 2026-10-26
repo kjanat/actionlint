@@ -17,14 +17,14 @@ platform/build-tag coverage requires the corresponding CI lanes.
 
 ## Rules
 
-| Code | Enforcement |
-| --- | --- |
-| ALA100 | Exact package inventory. A new package requires an explicit policy update; new children do not inherit registration. This records package placement, not proof of semantic ownership. |
-| ALA101 | Forbidden domain dependencies through project import chains, including aliases and helper packages. Initial boundaries come from the existing architecture tests, which remain in place. |
+| Code   | Enforcement                                                                                                                                                                                                                                                                                                                                          |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ALA100 | Exact package inventory. A new package requires an explicit policy update; new children do not inherit registration. This records package placement, not proof of semantic ownership.                                                                                                                                                                |
+| ALA101 | Forbidden domain dependencies through project import chains, including aliases and helper packages. Initial boundaries come from the existing architecture tests, which remain in place.                                                                                                                                                             |
 | ALA102 | Portable domains cannot import host-effect or parser packages directly or through project helpers. Test harness effects (such as reading fixtures) are allowed; test imports still obey domain dependency rules. Standard-library implementation details are not traversed; `net/url`, `net/netip` and `net/textproto` are allowed value operations. |
-| ALA103 | Nonempty construction and direct field writes of source references, invocation projections and runtime facts are restricted to declared owners/wire adapters, resolved using Go types rather than spelling. Empty absence/error values are allowed. |
-| ALA104 | Retired engine facades and the four duplicated identity fields on execution.Scope are rejected. These rules deliberately expose the unfinished migration on master. |
-| ALA105 | Background/TODO context references outside explicit entrypoint/generator packages are rejected, including import aliases and storing the function in a variable. |
+| ALA103 | Nonempty construction and direct field writes of source references, invocation projections and runtime facts are restricted to declared owners/wire adapters, resolved using Go types rather than spelling. Empty absence/error values are allowed.                                                                                                  |
+| ALA104 | Retired engine facades and the four duplicated identity fields on execution.Scope are rejected. These rules deliberately expose the unfinished migration on master.                                                                                                                                                                                  |
+| ALA105 | Background/TODO context references outside explicit entrypoint/generator packages are rejected, including import aliases and storing the function in a variable.                                                                                                                                                                                     |
 
 The standard `contextcheck` and `exhaustive` linters are also enabled. Enum default
 branches do not count as exhaustive. These are additional checks, not a claim of
