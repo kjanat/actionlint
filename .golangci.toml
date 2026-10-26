@@ -60,6 +60,9 @@ checks = ["all", "-ST1003"]
 type        = "module"
 description = "Enforce actionlint architecture and expose migration debt"
 
+[linters.settings.custom.actionlintarch.settings]
+contract = "architecture.json"
+
 [linters.settings.exhaustive]
 default-signifies-exhaustive = false
 

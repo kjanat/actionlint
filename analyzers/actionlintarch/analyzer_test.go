@@ -1,12 +1,33 @@
 package actionlintarch
 
 import (
-	"golang.org/x/tools/go/analysis/analysistest"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/analyzers/architecture"
+	"golang.org/x/tools/go/analysis/analysistest"
 )
 
 func TestArchitecture(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), Analyzer,
-		module+"/internal/tools/shellcheck", module+"/internal/tools/execution", module+"/internal/engine",
-		module+"/internal/expression", module+"/internal/cli", module+"/internal/sourceid")
+	contract, err := architecture.Load("../../architecture.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	packages := []string{
+		"internal/cli",
+		"internal/engine",
+		"internal/expression",
+		"internal/expression/context/generate",
+		"internal/expression/newcheck",
+		"internal/expressionish",
+		"internal/semantics/newrule",
+		"internal/sourceid",
+		"internal/tools/execution",
+		"internal/tools/shellcheck",
+		"internal/undecided",
+		"newdomain",
+	}
+	for i := range packages {
+		packages[i] = module + "/" + packages[i]
+	}
+	analysistest.Run(t, analysistest.TestData(), New(contract), packages...)
 }

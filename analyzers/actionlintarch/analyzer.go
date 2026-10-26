@@ -9,10 +9,14 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/analyzers/architecture"
 	"golang.org/x/tools/go/analysis"
 )
 
-var Analyzer = &analysis.Analyzer{Name: "actionlintarch", Doc: "enforce package, semantic, identity and cancellation ownership", Run: run, FactTypes: []analysis.Fact{new(dependencyFact)}}
+// New binds the checks to a validated repository contract.
+func New(contract *architecture.Contract) *analysis.Analyzer {
+	return &analysis.Analyzer{Name: "actionlintarch_" + contract.Fingerprint(), Doc: "enforce dependency layers, value ownership and cancellation", Run: func(pass *analysis.Pass) (any, error) { return run(pass, contract) }, FactTypes: []analysis.Fact{new(dependencyFact)}}
+}
 
 func report(pass *analysis.Pass, pos token.Pos, code, message string) {
 	pass.Report(analysis.Diagnostic{Pos: pos, Category: code, Message: code + ": " + message})
@@ -73,7 +77,7 @@ func dependencies(pass *analysis.Pass) {
 	}
 }
 
-func run(pass *analysis.Pass) (any, error) {
+func run(pass *analysis.Pass, contract *architecture.Contract) (any, error) {
 	// The go tool synthesizes a main package for each test binary.
 	if pass.Pkg.Name() == "main" && strings.HasSuffix(pass.Pkg.Path(), ".test") {
 		return nil, nil
@@ -83,11 +87,15 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 	dependencies(pass)
+	layer, classified := contract.Layer(path)
+	if !classified && len(pass.Files) > 0 {
+		report(pass, pass.Files[0].Package, "ALA100", "package "+path+" has no architecture layer; declare its responsibility in architecture.json")
+	}
 	for _, file := range pass.Files {
 		// Behavioral fixtures may deliberately construct invalid values. Test imports
 		// still participate in package boundary checks below.
 		test := strings.HasSuffix(pass.Fset.Position(file.Pos()).Filename, "_test.go")
-		checkImports(pass, file, path, test)
+		checkImports(pass, file, path, test, contract)
 		if test {
 			continue
 		}
@@ -99,7 +107,7 @@ func run(pass *analysis.Pass) (any, error) {
 				}
 			case *ast.Ident:
 				// Check references, including functions assigned to variables.
-				if fn, ok := pass.TypesInfo.Uses[n].(*types.Func); ok && fn.Pkg() != nil && fn.Pkg().Path() == "context" && (fn.Name() == "Background" || fn.Name() == "TODO") && !contextBoundary(path) {
+				if fn, ok := pass.TypesInfo.Uses[n].(*types.Func); ok && fn.Pkg() != nil && fn.Pkg().Path() == "context" && (fn.Name() == "Background" || fn.Name() == "TODO") && !layer.EntryPoint {
 					report(pass, n.Pos(), "ALA105", "context."+fn.Name()+" discards caller cancellation; receive and propagate the analysis context")
 				}
 			case *ast.AssignStmt:
@@ -177,7 +185,8 @@ func checkConstruction(pass *analysis.Pass, path string, n ast.Node, e ast.Expr)
 	report(pass, n.Pos(), "ALA103", "construction or mutation of "+key+" outside its owner; consume the canonical value (owners: "+strings.Join(owners, ", ")+")")
 }
 
-func checkImports(pass *analysis.Pass, file *ast.File, path string, test bool) {
+func checkImports(pass *analysis.Pass, file *ast.File, path string, test bool, contract *architecture.Contract) {
+	layer, classified := contract.Layer(path)
 	for _, spec := range file.Imports {
 		imported, err := strconv.Unquote(spec.Path.Value)
 		if err != nil {
@@ -191,6 +200,10 @@ func checkImports(pass *analysis.Pass, file *ast.File, path string, test bool) {
 			}
 		}
 		if pkg == nil {
+			continue
+		}
+		// Test support may exercise several layers; production imports cannot use it.
+		if support, ok := contract.Layer(imported); test && ok && support.TestOnly {
 			continue
 		}
 		chains := map[string][]string{imported: {imported}}
@@ -210,21 +223,15 @@ func checkImports(pass *analysis.Pass, file *ast.File, path string, test bool) {
 		sort.Strings(targets)
 		for _, target := range targets {
 			chain := chains[target]
-			domains := make([]string, 0, len(dependencyBans))
-			for domain := range dependencyBans {
-				domains = append(domains, domain)
-			}
-			sort.Strings(domains)
-			for _, domain := range domains {
-				if within(path, internal(domain)) {
-					for _, forbidden := range dependencyBans[domain] {
-						if within(target, internal(forbidden)) {
-							report(pass, spec.Pos(), "ALA101", "forbidden dependency: "+strings.Join(append([]string{path}, chain...), " -> "))
-						}
-					}
+			if contract.Contains(target) && classified && !contract.Allows(path, target) {
+				targetLayer, known := contract.Layer(target)
+				reason := "unclassified package"
+				if known {
+					reason = "layer " + targetLayer.Name
 				}
+				report(pass, spec.Pos(), "ALA101", "layer "+layer.Name+" cannot depend on "+reason+": "+strings.Join(append([]string{path}, chain...), " -> "))
 			}
-			if !test && pure(path) && forbiddenEffect(target) {
+			if !test && layer.Portable && forbiddenEffect(target) {
 				report(pass, spec.Pos(), "ALA102", "host/parser dependency in portable domain: "+strings.Join(append([]string{path}, chain...), " -> "))
 			}
 		}

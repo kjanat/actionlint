@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: analyzers/go.mod
-      - run: go test -C analyzers ./...
+      - run: go test -C analyzers -count=1 ./...
       - run: go vet -C analyzers ./...
   architecture:
     name: Architecture enforcement
@@ -37,6 +37,10 @@ jobs:
       - name: Build both architecture runners
         id: build
         run: make lint-build
+      - name: Verify contract reload and fail-closed startup
+        env:
+          ACTIONLINT_CUSTOM_GCL: ${{ github.workspace }}/custom-gcl
+        run: go test -C analyzers ./plugin -run TestContractReload -count=1
       - name: Enforce architecture without suppression filters
         run: ./.bin/actionlintarch ./...
       - name: Run default linters including the architecture plugin
