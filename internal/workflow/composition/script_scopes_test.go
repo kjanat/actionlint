@@ -28,17 +28,23 @@ jobs:
     steps:
       - run: print('inherited')
 `
-	workflow, errors := documentparse.Parse([]byte(source))
-	if len(errors) != 0 {
-		t.Fatal(errors)
+	content := []byte(source)
+	document := documentparse.Workflow("fixture.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
 	}
-	snapshot := workflowSnapshot(t, workflow)
+	workflow := document.Workflow
+	snapshot := workflowSnapshot(t, content, document)
 	collector := &compositeAnalyzer{collectScripts: true, actions: actionlocal.NewResolver(nil, nil)}
 	startWorkflowEntry(t, collector, snapshot)
-	collector.beginWorkflow(workflow)
+	if err := collector.beginWorkflow(workflow); err != nil {
+		t.Fatal(err)
+	}
 	for _, id := range []string{"first", "second"} {
 		job := workflow.Jobs[id]
-		collector.beginJob(job)
+		if err := collector.beginJob(job); err != nil {
+			t.Fatal(err)
+		}
 		for _, step := range job.Steps {
 			if err := collector.collectScript(step, nil, collector.jobScriptShell, collector.workflowScriptShell); err != nil {
 				t.Fatal(err)

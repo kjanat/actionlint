@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestActionMappingInterpolationReview(t *testing.T) {
@@ -23,7 +23,7 @@ runs:
   steps:
     - uses: actions/checkout@v6
       ` + field + ": " + value + "\n"
-				if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
+				if err := codec.Unmarshal([]byte(source), &meta); err != nil {
 					t.Fatal(err)
 				}
 				findings := actionmeta.Validate(&meta)

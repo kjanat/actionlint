@@ -27,6 +27,17 @@ func TestLocalActionSourceMappings(t *testing.T) {
 		if _, ok := view.usedSources[first]; !ok {
 			t.Fatal("source manifest not recorded")
 		}
+		documents := view.SourceDocuments()
+		document, ok := documents[first]
+		if !ok || document.Path() != first || len(documents) != 1 {
+			t.Fatalf("mapped source provenance is missing or duplicated: %#v", documents)
+		}
+	}
+	sourceDocument := view.SourceDocuments()[first]
+	content := sourceDocument.Content()
+	content[0] = 'X'
+	if got := string(view.SourceDocuments()[first].Content()); !strings.HasPrefix(got, "name: Source\n") {
+		t.Fatalf("mutating returned source bytes changed cached revision: %q", got)
 	}
 	second := &Resolver{base: base, sourceMappings: map[string]string{"./generated": "./other"}}
 	meta, _, err := second.FindMetadata("./generated")

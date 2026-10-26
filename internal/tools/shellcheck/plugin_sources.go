@@ -331,7 +331,7 @@ func (f *pluginSourceFiles) finding(finding diagnostic.Diagnostic, script tools.
 		result.Reference, result.Fixes = nil, nil
 		result.Content, result.RawScript = content, true
 		last := script.Value.Line
-		for _, span := range script.Source.LineSpans() {
+		for span := range script.Source.LineSpans() {
 			last = max(last, span.YamlLine)
 		}
 		result.Suppression = &tools.Suppression{Path: script.Path, First: script.Key.Line, Last: last}

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
@@ -38,7 +38,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 func TestMetadataPositionCache(t *testing.T) {
 	const source = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ github_repository }}\n      shell: bash\n"
 	var meta Metadata
-	if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
+	if err := codec.Unmarshal([]byte(source), &meta); err != nil {
 		t.Fatal(err)
 	}
 	meta.Source = []byte(source)
@@ -72,7 +72,7 @@ func TestMetadataPositionCache(t *testing.T) {
 		t.Fatal("mapping reused for a different decoded scalar")
 	}
 	oldCache := meta.positions
-	if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
+	if err := codec.Unmarshal([]byte(source), &meta); err != nil {
 		t.Fatal(err)
 	}
 	if meta.positions == oldCache || meta.positions.scalars != nil {

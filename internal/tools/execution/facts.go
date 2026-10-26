@@ -3,7 +3,7 @@ package execution
 import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -27,13 +27,13 @@ func (batch Batch) Fact(index int, includeExecution bool) (analyzer.Script, bool
 func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Script {
 	run := unit.Run
 	var script analyzer.Script
-	var source *workflowlang.ScriptSource
+	var source documentparse.ScriptSourceView
 	if input := unit.Input; input != nil {
-		script = analyzer.Script{Text: input.Value.Value.Value, Start: workflowfacts.Position(input.Value.Value.Pos)}
-		source = input.Value.Source
+		script = analyzer.Script{Text: input.Value.Value().Value(), Start: workflowfacts.Position(positionPointer(input.Value.Value().Pos()))}
+		source = input.Value.Source()
 	} else {
-		script = analyzer.Script{Text: run.Run.Value, Shell: stringValue(run.Shell), Start: workflowfacts.Position(run.Run.Pos)}
-		source = run.Source
+		script = analyzer.Script{Text: run.Run().Value(), Shell: run.Shell().Value(), Start: workflowfacts.Position(positionPointer(run.Run().Pos()))}
+		source = run.Source()
 	}
 	if unit.Origin != nil {
 		script.JobID, script.StepID = unit.Origin.Job, unit.Origin.StepID
@@ -41,14 +41,14 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Scr
 	if unit.Reference.Document != graph.Entry().Reference.Document {
 		script.Path = unit.Path
 	}
-	for _, span := range source.LineSpans() {
+	for span := range source.LineSpans() {
 		script.Spans = append(script.Spans, analyzer.Span{
 			Line: span.Line, Start: span.Start, End: span.End,
 			Document:    diagmodel.Position{Line: span.YamlLine, Column: span.YamlColumn},
 			DocumentEnd: diagmodel.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
 		})
 	}
-	script.Comments = workflowfacts.SourceComments(source)
+	script.Comments = workflowfacts.SourceComments(source.Comments())
 	script.Reference = unit.Reference
 	record, _ := graph.Script(unit.Occurrence)
 	if call, exists := graph.Call(record.Owner); exists {
@@ -66,11 +66,4 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Scr
 		}
 	}
 	return script
-}
-
-func stringValue(value *workflowlang.String) string {
-	if value == nil {
-		return ""
-	}
-	return value.Value
 }

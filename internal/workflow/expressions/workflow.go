@@ -4,7 +4,6 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/eventpayload"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
@@ -182,16 +181,14 @@ func (rule *Checker) VisitJobPre(n *workflowlang.Job) error {
 	//       runs-on: ${{ matrix.os }}
 	if n.Strategy != nil {
 		if n.Strategy.Expression != nil {
-			rule.matrixScriptSafe = safeMatrixScriptReferences(matrixcheck.KnownStrategy(n.Strategy.Expression))
-			ty := rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", schema.Strategy)
-			rule.matrixTy = exprlang.NewEmptyObjectType()
-			if object, ok := ty.(*exprlang.ObjectType); ok {
-				rule.matrixTy = schema.MatrixType(schema.Property(object.Props, "matrix"))
-			}
+			resolution := rule.matrixResolution(n.Strategy)
+			rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", schema.Strategy)
+			rule.matrixTy = matrixTypeFromResolution(resolution)
+			rule.matrixScriptSafe = safeMatrixScriptReferences(resolution)
 		} else if n.Strategy.Matrix != nil {
 			// Check and guess type of the matrix.
-			rule.matrixTy = rule.checkMatrix(n.Strategy.Matrix)
-			rule.matrixScriptSafe = safeMatrixScriptReferences(n.Strategy.Matrix)
+			rule.matrixTy = rule.checkMatrix(n.Strategy.Matrix, rule.matrixResolution(n.Strategy))
+			rule.matrixScriptSafe = safeMatrixScriptReferences(rule.matrixResolution(n.Strategy))
 		}
 	}
 
@@ -287,7 +284,15 @@ func (rule *Checker) VisitStep(n *workflowlang.Step) error {
 	var spec *workflowlang.String
 	switch e := n.Exec.(type) {
 	case *workflowlang.ExecRun:
-		rule.checkScriptString(e.Run, "jobs.<job_id>.steps.run", rule.scriptShell(e))
+		shell := ""
+		if rule.dependencies.SourceSnapshot != nil {
+			declaration, err := rule.dependencies.SourceSnapshot.StepView(n)
+			if err != nil {
+				return err
+			}
+			shell = rule.scriptShell(declaration)
+		}
+		rule.checkScriptString(e.Run, "jobs.<job_id>.steps.run", shell)
 		rule.checkString(e.Shell, "")
 		rule.checkString(e.WorkingDirectory, "jobs.<job_id>.steps.working-directory")
 	case *workflowlang.ExecAction:
@@ -295,7 +300,7 @@ func (rule *Checker) VisitStep(n *workflowlang.Step) error {
 		for _, name := range e.InputNameExpressions {
 			rule.checkString(name, "jobs.<job_id>.steps.with")
 		}
-		rule.checkActionInputs(workflowlang.InputMapping(e), e.Uses)
+		rule.checkActionInputs(e, e.Uses)
 		if !e.EntrypointEvaluated {
 			rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
 		}

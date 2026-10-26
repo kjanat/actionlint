@@ -1,27 +1,37 @@
 package composition
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // A standalone manifest has no workflow caller or supplied inputs. Validate its
 // declarations directly, then use the same composite script lifecycle as uses:.
-func visitStandaloneAction(meta *actionmeta.Metadata, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
-	deployment, err := scriptexecution.NewDeployment(analysis.sourceSnapshot, meta.Path(), meta.SourceMapped)
-	if err != nil {
-		return err
+func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution.Deployment, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
+	snapshot := analysis.sourceSnapshot
+	if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+		return errors.New("action source snapshot is unavailable")
+	}
+	view, available := snapshot.ActionView()
+	if !available {
+		return errors.New("action declaration is unavailable")
+	}
+	original, hasOriginal := meta.OriginalSource()
+	if !hasOriginal || original != string(snapshot.Content()) || meta.Path() != deployment.SourcePath() || meta.SourceMapped != (deployment.ActionPath() == "") {
+		return fmt.Errorf("%w: action metadata provenance disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
 	}
 	workflow := &workflowlang.Workflow{}
-	analysis.beginWorkflow(workflow)
-	analysis.scriptScope.Deployment = deployment
-	execution.ActionOrigin(&analysis.scriptScope.Paths, analysis.context, deployment.ActionPath())
+	if err := analysis.beginAction(deployment); err != nil {
+		return err
+	}
 	var scripts []workflowvisit.Rule
 	for _, rule := range rules {
 		if err := rule.VisitWorkflowPre(workflow); err != nil {
@@ -34,7 +44,7 @@ func visitStandaloneAction(meta *actionmeta.Metadata, rules []workflowvisit.Rule
 			scripts = append(scripts, participant)
 		}
 	}
-	if strings.EqualFold(meta.Runs.Using, "composite") {
+	if strings.EqualFold(view.Using(), "composite") {
 		if err := analysis.visitMetadataScripts(meta, analysis.invocations.RootContext(), scripts); err != nil {
 			return err
 		}

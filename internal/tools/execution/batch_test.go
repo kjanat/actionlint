@@ -145,10 +145,15 @@ func TestBatchRejectsForgedEntryPaths(t *testing.T) {
 
 func batchFixture(t *testing.T, withInput bool) (invocation.Graph, Collection) {
 	t.Helper()
-	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
+	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # original\n")
 	if withInput {
 		content = append(content, []byte("      - uses: actions/github-script@v7\n        with: {script: console.log(1)}\n")...)
 	}
+	return batchSourceFixture(t, content)
+}
+
+func batchSourceFixture(t *testing.T, content []byte) (invocation.Graph, Collection) {
+	t.Helper()
 	parsed := documentparse.Workflow("ci.yml", content)
 	if len(parsed.Findings) != 0 {
 		t.Fatal(parsed.Findings)
@@ -192,7 +197,7 @@ func batchFixture(t *testing.T, withInput bool) (invocation.Graph, Collection) {
 	return graph, Collection{Declarations: &snapshots, Scopes: []*Scope{scope}, Scripts: requests, Collected: true}
 }
 
-func TestBatchRejectsForeignOrMalformedInputs(t *testing.T) {
+func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
 	for name, mutate := range map[string]func(*invocation.Graph, *Collection, *workflowlang.ExecRun, *workflowlang.Input){
 		"missing run mapping": func(_ *invocation.Graph, _ *Collection, r *workflowlang.ExecRun, _ *workflowlang.Input) {
 			r.Source = nil
@@ -254,12 +259,177 @@ func TestBatchRejectsForeignOrMalformedInputs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			graph, collection := batchFixture(t, true)
 			run, input := fixtureBodies(t, graph, collection)
+			baseline, err := NewBatch(graph, collection)
+			if err != nil {
+				t.Fatal(err)
+			}
+			originalRun, _ := baseline.Fact(0, false)
+			originalInput, _ := baseline.Fact(1, false)
 			mutate(&graph, &collection, run, input)
 			batch, err := NewBatch(graph, collection)
+			switch name {
+			case "missing run mapping", "missing run position", "missing run key", "missing input mapping", "missing input position", "missing input key", "missing body", "missing input name":
+				if err != nil {
+					t.Fatalf("legacy mutation contaminated canonical declaration: %v", err)
+				}
+				actualRun, _ := batch.Fact(0, false)
+				actualInput, _ := batch.Fact(1, false)
+				if !reflect.DeepEqual(originalRun, actualRun) || !reflect.DeepEqual(originalInput, actualInput) {
+					t.Fatal("legacy mutation changed canonical body, mapping, or provenance")
+				}
+				return
+			}
 			if !errors.Is(err, ErrInvalidBatch) || batch.Valid() {
 				t.Fatalf("invalid input bound: %v", err)
 			}
 		})
+	}
+}
+
+func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
+	for _, tc := range []struct {
+		name, identity, content string
+		kind                    invocation.EntryKind
+		scriptKind              invocation.ScriptKind
+		input                   string
+	}{
+		{
+			name:       "run",
+			identity:   "ci.yml",
+			content:    "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: {script: echo ok}\n",
+			kind:       invocation.EntryWorkflow,
+			scriptKind: invocation.ScriptRun,
+		},
+		{
+			name:       "action input",
+			identity:   "action.yml",
+			content:    "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with:\n        script: {source: console.log(1)}\n",
+			kind:       invocation.EntryAction,
+			scriptKind: invocation.ScriptActionInput,
+			input:      "script",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			content := []byte(tc.content)
+			var document documentparse.Document
+			if tc.kind == invocation.EntryWorkflow {
+				document = documentparse.Workflow(tc.identity, content)
+			} else {
+				document = documentparse.Action(tc.identity, tc.identity, content)
+			}
+			if !document.CanAnalyze() {
+				t.Fatalf("parsed fixture cannot be analyzed: %v", document.Findings)
+			}
+			var registry documentparse.SourceSnapshots
+			snapshot, err := registry.Document(tc.identity, content, document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			facts := document.Facts()
+			job := "test"
+			if tc.kind == invocation.EntryAction {
+				job = ""
+			}
+			var declaration *documentparse.StepView
+			for _, step := range facts.Jobs[job].Steps {
+				reference, err := snapshot.StepReference(step)
+				if err != nil {
+					t.Fatal(err)
+				}
+				candidate, exists := registry.Declaration(reference)
+				if !exists {
+					t.Fatalf("canonical declaration %q is missing", reference)
+				}
+				if tc.scriptKind == invocation.ScriptRun {
+					run, exists := candidate.Run()
+					if exists {
+						if run.Source().Present() {
+							t.Fatal("non-scalar run unexpectedly has a scalar source mapping")
+						}
+						declaration = &candidate
+						break
+					}
+				} else if action, exists := candidate.Action(); exists {
+					declaration = &candidate
+					inputs, _ := action.InputNames()
+					for name, input := range inputs {
+						if name == tc.input {
+							if input.Source().Present() {
+								t.Fatal("non-scalar action input unexpectedly has a scalar source mapping")
+							}
+						}
+					}
+					break
+				}
+			}
+			if declaration == nil {
+				t.Fatalf("fixture has no canonical script declaration: steps=%#v metadata=%#v findings=%v", facts.Jobs[job].Steps, document.Metadata, document.Findings)
+			}
+			builder, err := invocation.NewBuilder(tc.kind, snapshot.Reference(), invocation.DefaultBudget())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := builder.AddScript(builder.RootContext(), declaration.Reference(), tc.scriptKind, tc.input); err != nil {
+				t.Fatal(err)
+			}
+			graph, err := builder.Publish()
+			if err != nil {
+				t.Fatal(err)
+			}
+			scope := &Scope{Context: builder.RootContext(), Composite: tc.kind == invocation.EntryAction}
+			if tc.kind == invocation.EntryAction {
+				scope.Deployment, err = NewDeployment(snapshot, tc.identity, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				workflowexecution.ActionOrigin(&scope.Paths, scope.Context, scope.Deployment.ActionPath())
+			}
+			request := ScriptRequest{Occurrence: graph.Scripts()[0].ID}
+			if tc.scriptKind == invocation.ScriptActionInput {
+				request.Input = &analyzer.ScriptInput{Action: "actions/github-script", Input: tc.input, Language: "javascript"}
+			}
+			collection := Collection{Declarations: &registry, Scopes: []*Scope{scope}, Scripts: []ScriptRequest{request}, Collected: true}
+			if _, err := NewBatch(graph, collection); !errors.Is(err, ErrInvalidBatch) {
+				t.Fatalf("unmapped parsed %s accepted: %v", tc.name, err)
+			}
+		})
+	}
+}
+
+func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
+	graph, collection := batchFixture(t, true)
+	for _, record := range graph.Scripts() {
+		declaration, exists := collection.Declarations.Declaration(record.Declaration)
+		if !exists {
+			t.Fatalf("declaration %q is missing", record.Declaration)
+		}
+		if record.Kind == invocation.ScriptRun {
+			run, isRun := declaration.Run()
+			_, hasBodyPosition := run.Run().Pos()
+			_, hasKeyPosition := run.RunPos()
+			if !isRun || !run.Source().Present() || !hasBodyPosition || !hasKeyPosition {
+				t.Fatalf("scalar run lacks parser-owned mapping or positions: run=%v body=%v key=%v", isRun, hasBodyPosition, hasKeyPosition)
+			}
+			continue
+		}
+		action, isAction := declaration.Action()
+		if !isAction {
+			t.Fatal("action input declaration is not an action")
+		}
+		inputs, _ := action.InputNames()
+		var input documentparse.InputView
+		var inputExists bool
+		for name, candidate := range inputs {
+			if name == record.Input {
+				input, inputExists = candidate, true
+				break
+			}
+		}
+		_, hasNamePosition := input.Name().Pos()
+		_, hasValuePosition := input.Value().Pos()
+		if !inputExists || !input.Name().Present() || !input.Value().Present() || !input.Source().Present() || !hasNamePosition || !hasValuePosition {
+			t.Fatalf("scalar input lacks parser-owned mapping or positions: found=%v name=%v value=%v source=%v", inputExists, hasNamePosition, hasValuePosition, input.Source().Present())
+		}
 	}
 }
 
@@ -301,6 +471,7 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	if !ok {
 		t.Fatal("missing input fact")
 	}
+	assertBatchFactsMatchCanonicalDeclarations(t, batch, collection.Declarations)
 	run.Run.Value = "corrupt original"
 	run.Source.Spans[0].YamlLine = 999
 	argument.Value.Value = "corrupt input"
@@ -314,9 +485,6 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	}
 	clonedScopes[0].Context = invocation.Context{}
 	clonedScopes[0].Paths.Placements.Directory.Path = "corrupt returned placement"
-	clonedUnits[0].Run.Run = nil
-	clonedUnits[0].Run.Source.Spans[0].YamlLine = 888
-	clonedUnits[1].Input.Value.Value.Value = "corrupt returned input"
 	clonedUnits[0].Owner.Step.Line = 888
 	clonedUnits[0].Origin.StepPosition.Line = 777
 	after, _ := batch.Fact(0, false)
@@ -330,6 +498,87 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	}
 	if fresh[0].Content != nil || fresh[0].Owner.Step.Line != 6 || fresh[0].Origin.StepPosition.Line != 6 || fresh[0].Scope.Context.ID() != graph.RootID() {
 		t.Fatal("snapshot mutation reached retained provenance")
+	}
+}
+
+func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, registry *documentparse.SourceSnapshots) {
+	t.Helper()
+	_, units := batch.Snapshot()
+	for index, unit := range units {
+		declaration, exists := registry.Declaration(unit.Reference)
+		if !exists {
+			t.Fatalf("canonical declaration %q is missing", unit.Reference)
+		}
+		entry, ok := registry.Lookup(batch.data.graph.Entry().Reference)
+		if !ok {
+			t.Fatal("entry snapshot is missing")
+		}
+		var cursor *workflowlang.Step
+		if entry.Kind() == documentparse.KindWorkflow {
+			parsed, ok := entry.Workflow()
+			if !ok {
+				t.Fatal("entry workflow is unavailable")
+			}
+			for _, job := range parsed.Jobs {
+				for _, step := range job.Steps {
+					reference, err := entry.StepReference(step)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if reference == unit.Reference {
+						cursor = step
+					}
+				}
+			}
+		} else {
+			steps, ok := entry.ActionSteps()
+			if !ok {
+				t.Fatal("entry action is unavailable")
+			}
+			for _, step := range steps {
+				reference, err := entry.StepReference(step)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if reference == unit.Reference {
+					cursor = step
+				}
+			}
+		}
+		if cursor == nil {
+			t.Fatalf("legacy cursor for declaration %q is missing", unit.Reference)
+		}
+		cursorView, err := entry.StepView(cursor)
+		if err != nil || cursorView != declaration {
+			t.Fatalf("registry declaration is not its canonical cursor view: %v", err)
+		}
+		projected := unit
+		if run, isRun := declaration.Run(); isRun {
+			projected.Run, projected.Input = run, nil
+		} else if input, isInput := declaration.Action(); isInput && unit.Input != nil {
+			inputs, _ := input.InputNames()
+			var found documentparse.InputView
+			for name, candidate := range inputs {
+				if name == unit.Input.Site.Input {
+					found = candidate
+					break
+				}
+			}
+			projected.Run = documentparse.ExecRunView{}
+			projected.Input = &ActionInput{Site: unit.Input.Site, Value: found}
+		} else {
+			t.Fatalf("canonical declaration kind disagrees with batch unit %d", index)
+		}
+		want := fact(projected, batch.data.graph, false)
+		occurrence, found := batch.data.projection.Script(unit.Occurrence)
+		if !found {
+			t.Fatalf("script occurrence %q is missing from projection", unit.Occurrence)
+		}
+		want.Occurrence = occurrence
+		got, exists := batch.Fact(index, false)
+		if !exists || !reflect.DeepEqual(got, want) {
+			t.Fatalf("fact %d differs from canonical declaration: got=%+v want=%+v", index, got, want)
+		}
 	}
 }
 
@@ -403,7 +652,7 @@ func TestUnpreparedBatchCannotExecute(t *testing.T) {
 func TestConcurrentBatchConsumersCannotMutateRetainedFacts(t *testing.T) {
 	graph, collection := batchFixture(t, true)
 	run, _ := fixtureBodies(t, graph, collection)
-	run.Source.Comments = []workflowlang.ScalarComment{{Text: "original", Pos: workflowlang.Pos{Line: 1, Col: 1}}}
+	run.Source.Comments = []workflowlang.ScalarComment{{Text: "forged", Pos: workflowlang.Pos{Line: 1, Col: 1}}}
 	batch, err := NewBatch(graph, collection)
 	if err != nil {
 		t.Fatal(err)
@@ -413,13 +662,13 @@ func TestConcurrentBatchConsumersCannotMutateRetainedFacts(t *testing.T) {
 			t.Parallel()
 			for range 25 {
 				fact, ok := batch.Fact(0, false)
-				if !ok || fact.Text != "echo ok" || fact.Comments[0].Text != "original" || fact.Spans[0].Document.Line == 999 {
+				if !ok || fact.Text != "echo ok" || fact.Comments[0].Text != "# original" || fact.Spans[0].Document.Line == 999 {
 					t.Fatal("shared mutable fact")
 				}
 				fact.Comments[0].Text = "changed"
 				fact.Spans[0].Document.Line = 999
 				_, snapshot := batch.Snapshot()
-				snapshot[0].Run.Run.Value = "changed"
+				snapshot[0].Run = documentparse.ExecRunView{}
 				snapshot[0].Owner.Step.Line = 999
 			}
 		})

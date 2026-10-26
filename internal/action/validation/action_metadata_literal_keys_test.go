@@ -7,7 +7,8 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestActionMetadataLiteralKeys(t *testing.T) {
@@ -24,7 +25,7 @@ runs:
 			t.Run(spelling, func(t *testing.T) {
 				input := strings.Replace(source, key+":", "${{ '"+spelling+"' }}:", 1)
 				var meta actionmeta.Metadata
-				if err := yaml.Unmarshal([]byte(input), &meta); err != nil {
+				if err := codec.Unmarshal([]byte(input), &meta); err != nil {
 					t.Fatal(err)
 				}
 				if meta.Runs.Using != "composite" || len(meta.Runs.Steps) != 1 || meta.Runs.Steps[0].Run == nil {
@@ -63,13 +64,13 @@ runs:
       ${{ 'Env' }}:
         ${{ 'MixedEnv' }}: value
 `
-	var document yaml.Node
-	if err := yaml.Unmarshal([]byte(source), &document); err != nil {
+	var document syntax.Node
+	if err := codec.Unmarshal([]byte(source), &document); err != nil {
 		t.Fatal(err)
 	}
 	root := document.Content[0]
 	var meta actionmeta.Metadata
-	if err := root.Decode(&meta); err != nil {
+	if err := codec.Decode(root, &meta); err != nil {
 		t.Fatal(err)
 	}
 	if meta.Root != root || root.Content[4].Value != "${{ 'Inputs' }}" {
@@ -114,7 +115,7 @@ runs:
       shell: bash
 `
 	var meta actionmeta.Metadata
-	if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
+	if err := codec.Unmarshal([]byte(source), &meta); err != nil {
 		t.Fatal(err)
 	}
 	meta.Directory, meta.Filename = t.TempDir(), "action.yml"

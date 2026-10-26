@@ -57,7 +57,7 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 		t.Fatal("standalone entry fabricated a runner")
 	}
 	lookup, _ := f.cache.LookupMetadata("$/outer")
-	result, err := f.service.Action(lookup.Metadata())
+	result, err := standaloneActionForTest(t, f.service, lookup.Metadata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	metadata.SourceMapped = false
 	var declarations documentparse.SourceSnapshots
 	f.service.options.SourceSnapshots = &declarations
-	result, err := f.service.Action(&metadata)
+	result, err := standaloneActionForTest(t, f.service, &metadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 				}
 				var declarations documentparse.SourceSnapshots
 				service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: &declarations, CollectScripts: collect})
-				result, err := service.Action(meta)
+				result, err := standaloneActionForTest(t, service, meta)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -254,7 +254,7 @@ func TestStandalonePreHookFailureKeepsValidDeployment(t *testing.T) {
 		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: &declarations,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 	})
-	result, err := service.Action(meta)
+	result, err := standaloneActionForTest(t, service, meta)
 	if !errors.Is(err, failure) || !result.Batch.Valid() || len(result.Batch.Scripts()) != 0 {
 		t.Fatalf("pre-hook failure or prepared action batch lost: error=%v result=%+v", err, result)
 	}
@@ -338,8 +338,12 @@ func TestSharedCallDeclarationRetainsPlatformSpecificFacts(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner, env: {Path: custom}}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
-	w, available := f.root.Workflow()
-	if !available || f.service.options.Runners.Job(w.Jobs["linux"]).Platform != runnerlang.MacOrLinux || f.service.options.Runners.Job(w.Jobs["windows"]).Platform != runnerlang.Windows {
+	_, available := f.root.Workflow()
+	declaration, declared := f.root.WorkflowView()
+	linux, linuxPresent := declaration.Job("linux")
+	windows, windowsPresent := declaration.Job("windows")
+	if !available || !declared || !linuxPresent || !windowsPresent ||
+		f.service.options.Runners.Job(linux).Platform != runnerlang.MacOrLinux || f.service.options.Runners.Job(windows).Platform != runnerlang.Windows {
 		t.Fatal("fixture did not resolve distinct runner platforms")
 	}
 	result, err := f.service.Workflow(f.root)

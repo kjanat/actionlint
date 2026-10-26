@@ -7,8 +7,9 @@ import (
 	"slices"
 	"sync"
 
-	documentmodel "actionlint.kjanat.dev/v2/document"
+	"actionlint.kjanat.dev/v2/analyzer"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/documentparse/internal/frozen"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
@@ -24,6 +25,7 @@ type SourceSnapshot struct {
 	steps        map[*workflowlang.Step]source.Reference
 	declarations map[source.Reference]StepDeclaration
 	action       bool
+	bound        *frozen.Bound
 }
 
 // StepDeclaration is a read-only view of an indexed declaration and its source.
@@ -81,6 +83,18 @@ func (s *SourceSnapshots) Lookup(reference source.Reference) (*SourceSnapshot, b
 	return snapshot, true
 }
 
+// LookupDocument finds the one canonical revision already admitted for identity.
+// Reference-based callers still use Lookup to validate every reference field.
+func (s *SourceSnapshots) LookupDocument(identity string) (*SourceSnapshot, bool) {
+	if s == nil || identity == "" {
+		return nil, false
+	}
+	s.mu.Lock()
+	snapshot, ok := s.documents[sourceid.Document(identity)]
+	s.mu.Unlock()
+	return snapshot, ok
+}
+
 func (s *SourceSnapshots) Step(reference source.Reference) (StepDeclaration, bool) {
 	if s == nil {
 		return StepDeclaration{}, false
@@ -112,60 +126,61 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 // Document returns the canonical indexed AST for this source revision.
 // Callers must traverse that snapshot, including when supplied a fresh decode.
 func (s *SourceSnapshots) Document(identity string, content []byte, document Document) (*SourceSnapshot, error) {
-	if document.Workflow != nil && document.Metadata != nil {
-		return nil, errors.New("source document contains both workflow and action declarations")
+	if document.record == nil {
+		return nil, errors.New("source document has no parse provenance")
 	}
-	action := document.Metadata != nil
-	switch document.Outline.(type) {
-	case documentmodel.Action:
-		if document.Workflow != nil {
-			return nil, errors.New("action outline contains workflow declarations")
-		}
-		action = true
-	case documentmodel.Workflow:
-		if document.Metadata != nil {
-			return nil, errors.New("workflow outline contains action declarations")
-		}
-	case nil:
-		if document.Workflow == nil && document.Metadata == nil {
-			return nil, errors.New("source document kind is unavailable")
-		}
-	default:
-		return nil, errors.New("unsupported source document outline")
+	if !bytes.Equal(content, []byte(document.record.Text())) {
+		return nil, errors.New("source content disagrees with parsed revision")
 	}
-	return s.bind(identity, content, action, document.Facts)
+	return s.bind(identity, document.record, document.traversal)
 }
 
 func (s *SourceSnapshots) Action(identity string, metadata *actionmeta.Metadata) (*SourceSnapshot, error) {
 	if metadata == nil {
 		return nil, errors.New("action metadata is unavailable")
 	}
-	if metadata.Source == nil {
-		return nil, errors.New("action source bytes are unavailable")
+	text, parsed := metadata.OriginalSource()
+	if !parsed {
+		return nil, errors.New("action source has no parse provenance")
 	}
-	return s.bind(identity, metadata.Source, true, func() *workflowlang.Workflow {
-		return actionFacts(metadata)
-	})
+	if identity == "" {
+		return nil, errors.New("source document identity is empty")
+	}
+	s.mu.Lock()
+	previous, err := s.storedLocked(sourceid.Document(identity), sourceid.Digest([]byte(text)), true)
+	s.mu.Unlock()
+	if err != nil || previous != nil {
+		return previous, err
+	}
+	// Reparse only the private original text. Mutable metadata is a lookup view,
+	// never declaration provenance. Parsing and publication happen outside mu.
+	// Metadata admission historically includes recovered declarations even when
+	// decoding reports an error; document analysis separately controls eligibility.
+	recovered, _ := actionmeta.Parse(metadata.Path(), []byte(text))
+	traversal := actionFacts(recovered)
+	record := frozen.Publish(text, traversal, true, recovered.Runs.Using)
+	return s.bind(identity, record, traversal)
 }
 
-func (s *SourceSnapshots) bind(identity string, content []byte, action bool, declarations func() *workflowlang.Workflow) (*SourceSnapshot, error) {
+func (s *SourceSnapshots) bind(identity string, record *frozen.Record, legacy *workflowlang.Workflow) (*SourceSnapshot, error) {
 	if identity == "" {
 		return nil, errors.New("source document identity is empty")
 	}
 	document := sourceid.Document(identity)
+	content := []byte(record.Text())
 	revision := sourceid.Digest(content)
+	action := record.Action()
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	previous, err := s.storedLocked(document, revision, action)
+	s.mu.Unlock()
 	if err != nil || previous != nil {
 		return previous, err
 	}
-	owned := bytes.Clone(content)
-	facts := declarations()
-	references := workflowfacts.Index(document, owned, facts, action)
+	bound := record.Bind(document)
+	references := bound.CursorReferences()
 	snapshot := &SourceSnapshot{
 		registry:  s,
-		reference: references.Document, content: owned, facts: facts,
+		reference: references.Document, content: content, facts: legacy, bound: bound,
 		steps: references.Steps, action: action,
 		declarations: make(map[source.Reference]StepDeclaration, len(references.Steps)),
 	}
@@ -175,9 +190,110 @@ func (s *SourceSnapshots) bind(identity string, content []byte, action bool, dec
 		}
 		snapshot.declarations[reference] = StepDeclaration{Source: snapshot, Step: step, Job: references.StepJobs[step]}
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	previous, err = s.storedLocked(document, revision, action)
+	if err != nil || previous != nil {
+		return previous, err
+	}
 	if s.documents == nil {
 		s.documents = make(map[string]*SourceSnapshot)
 	}
 	s.documents[document] = snapshot
 	return snapshot, nil
+}
+
+type DocumentKind uint8
+
+const (
+	KindUnknown DocumentKind = iota
+	KindWorkflow
+	KindAction
+)
+
+func (s *SourceSnapshot) Kind() DocumentKind {
+	if s == nil || s.bound == nil {
+		return KindUnknown
+	}
+	if s.action {
+		return KindAction
+	}
+	return KindWorkflow
+}
+
+func (s *SourceSnapshot) WorkflowView() (WorkflowView, bool) {
+	if s.Kind() != KindWorkflow {
+		return WorkflowView{}, false
+	}
+	view := s.bound.Workflow()
+	return view, view.Present()
+}
+
+func (s *SourceSnapshot) ActionView() (ActionBodyView, bool) {
+	if s.Kind() != KindAction {
+		return ActionBodyView{}, false
+	}
+	view := s.bound.ActionBody()
+	return view, view.Present()
+}
+
+func (s *SourceSnapshot) StepView(cursor *workflowlang.Step) (StepView, error) {
+	if s == nil || s.bound == nil {
+		return StepView{}, errors.New("source snapshot is unavailable")
+	}
+	view, ok := s.bound.StepCursor(cursor)
+	if !ok {
+		return StepView{}, fmt.Errorf("step does not belong to source snapshot %q", s.reference.Document)
+	}
+	return view, nil
+}
+
+func (s *SourceSnapshot) JobView(cursor *workflowlang.Job) (JobView, error) {
+	if s == nil || s.bound == nil {
+		return JobView{}, errors.New("source snapshot is unavailable")
+	}
+	view, ok := s.bound.JobCursor(cursor)
+	if !ok {
+		return JobView{}, fmt.Errorf("job does not belong to source snapshot %q", s.reference.Document)
+	}
+	return view, nil
+}
+
+func (s *SourceSnapshots) Declaration(reference source.Reference) (StepView, bool) {
+	if s == nil {
+		return StepView{}, false
+	}
+	s.mu.Lock()
+	snapshot := s.documents[reference.Document]
+	s.mu.Unlock()
+	if snapshot == nil || snapshot.bound == nil {
+		return StepView{}, false
+	}
+	return snapshot.bound.Step(reference)
+}
+
+func (s *SourceSnapshots) Owns(step StepView) bool {
+	if s == nil || !step.Present() {
+		return false
+	}
+	s.mu.Lock()
+	snapshot := s.documents[step.SourceReference().Document]
+	s.mu.Unlock()
+	return snapshot != nil && snapshot.bound != nil && snapshot.bound.Owns(step)
+}
+
+// CanonicalReferences returns detached index maps keyed by legacy traversal
+// cursors. References and positions are retained from the owned parse record.
+func (s *SourceSnapshot) CanonicalReferences() workflowfacts.References {
+	if s == nil || s.bound == nil {
+		return workflowfacts.References{}
+	}
+	return s.bound.CursorReferences()
+}
+
+func (s *SourceSnapshot) Declarations() ([]analyzer.Mapping, []analyzer.Dependency) {
+	if s == nil || s.bound == nil {
+		return nil, nil
+	}
+	return s.bound.Declarations()
 }

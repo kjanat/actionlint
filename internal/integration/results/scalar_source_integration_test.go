@@ -17,7 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
@@ -96,8 +97,8 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 				fmt.Fprintf(&source, "K%d: '${{ github.actor }}',", i)
 			}
 			source.WriteString("}\n")
-			var root yaml.Node
-			if err := yaml.Unmarshal([]byte(source.String()), &root); err != nil {
+			var root syntax.Node
+			if err := codec.Unmarshal([]byte(source.String()), &root); err != nil {
 				b.Fatal(err)
 			}
 			mapping := root.Content[0].Content[1]

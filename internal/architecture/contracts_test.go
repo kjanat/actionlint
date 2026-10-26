@@ -26,7 +26,7 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/v2/internal/expression",
 		"actionlint.kjanat.dev/v2/internal/workflow",
 		"actionlint.kjanat.dev/v2/internal/expression/context",
-		"actionlint.kjanat.dev/v2/internal/yamlscalar",
+		"actionlint.kjanat.dev/v2/internal/yaml/schema",
 		"actionlint.kjanat.dev/v2/internal/stringutil",
 	}
 	output, err := exec.CommandContext(t.Context(), "go", append([]string{"list", "-json"}, packages...)...).Output()
@@ -191,6 +191,31 @@ func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
 						t.Errorf("semantic check %s depends on adapter or host %s", pkg.ImportPath, dependency)
 					}
 				}
+			}
+		}
+	}
+}
+
+func TestYAMLParserIsConfinedToCodec(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/yaml/...", "actionlint.kjanat.dev/v2/internal/source/text").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath string
+			Deps       []string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		if pkg.ImportPath == "actionlint.kjanat.dev/v2/internal/yaml/codec" {
+			continue
+		}
+		for _, dependency := range pkg.Deps {
+			if strings.HasPrefix(dependency, "go.yaml.in/") || strings.HasPrefix(dependency, "gopkg.in/yaml.") || dependency == "actionlint.kjanat.dev/v2/internal/yaml/codec" {
+				t.Errorf("YAML model or source mapping %s imports codec dependency %s", pkg.ImportPath, dependency)
 			}
 		}
 	}

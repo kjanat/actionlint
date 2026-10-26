@@ -20,7 +20,7 @@ import (
 	"time"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 // List of known outdated actions which cannot be detected from 'runs' in action.yml
@@ -171,7 +171,7 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 		}
 		spec := req.action.spec(req.tag)
 		var meta actionmeta.Metadata
-		if err := yaml.Unmarshal(body, &meta); err != nil && !onlyUnknownInputFields(err) {
+		if err := codec.Unmarshal(body, &meta); err != nil && !onlyUnknownInputFields(err) {
 			return &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
 		}
 		if req.action.SkipInputs {
@@ -262,7 +262,7 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 // Input decoding preserves supported fields when it reports unknown input keys.
 // Registry extraction can use that metadata without relaxing local validation.
 func onlyUnknownInputFields(err error) bool {
-	issues, ok := errors.AsType[*yaml.DecodeError](err)
+	issues, ok := errors.AsType[*codec.DecodeError](err)
 	if !ok || len(issues.Errors) == 0 {
 		return false
 	}

@@ -1,6 +1,7 @@
 package local
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,14 +12,16 @@ import (
 	"sync"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 type metadataSource struct {
-	path    string
-	content []byte
+	path     string
+	content  []byte
+	document documentparse.Document
 }
 
 type ParseError struct {
@@ -164,14 +167,15 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 		c.debug("No action metadata found in %s", dir)
 		return c.writeCache(spec, MetadataResult{status: MetadataMissingManifest, cause: missingLocalActionMetadata(spec)}, metadataSource{})
 	}
-	source := metadataSource{path: filepath.Join(dir, f), content: b}
-
-	meta, parseErr := actionmeta.Parse(filepath.Join(dir, f), b)
+	source := metadataSource{path: filepath.Join(dir, f), content: bytes.Clone(b)}
+	document := documentparse.Action(source.path, source.path, b)
+	source.document = document
+	meta, parseErr := document.Metadata, document.ActionParseError()
 	loaded := MetadataResult{status: MetadataResolved, metadata: meta}
 	if err := parseErr; err != nil {
 		// Unwrap load errors when a single error occurs to simplify the error message
 		var m string
-		if es, ok := errors.AsType[*yaml.DecodeError](err); ok {
+		if es, ok := errors.AsType[*codec.DecodeError](err); ok {
 			if len(es.Errors) == 1 {
 				e := es.Errors[0]
 				if e.Mark.Line > 0 {

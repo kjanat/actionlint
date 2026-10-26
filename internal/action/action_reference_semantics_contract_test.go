@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestCompositeOutputCaseCollisions(t *testing.T) {
@@ -22,7 +22,7 @@ runs:
     - run: echo ok
       shell: bash
 `
-		err := yaml.Unmarshal([]byte(source), &meta)
+		err := codec.Unmarshal([]byte(source), &meta)
 		if second == "APPROVED" {
 			if err == nil || !strings.Contains(err.Error(), `output "APPROVED" is duplicated`) {
 				t.Fatal(err)

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 )
 
 func TestRunnerMatrixIncludeExcludeParity(t *testing.T) {
@@ -31,11 +31,21 @@ jobs:
     steps:
       - run: echo ok
 `
-				workflow, parseErrors := workflowlang.ParseDocument([]byte(source))
-				if len(parseErrors) != 0 {
-					t.Fatal(parseErrors)
+				content := []byte(source)
+				parsed := documentparse.Workflow("workflow.yml", content)
+				if len(parsed.Findings) != 0 {
+					t.Fatal(parsed.Findings)
 				}
-				rule := builtin.NewRuleRunnerLabel()
+				var snapshots documentparse.SourceSnapshots
+				snapshot, err := snapshots.Document("workflow.yml", content, parsed)
+				if err != nil {
+					t.Fatal(err)
+				}
+				workflow, present := snapshot.Workflow()
+				if !present {
+					t.Fatal("workflow source snapshot unavailable")
+				}
+				rule := builtin.NewRuleRunnerLabel(snapshot)
 				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
 				}

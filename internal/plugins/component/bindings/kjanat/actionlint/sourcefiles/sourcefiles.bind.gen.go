@@ -51,7 +51,7 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 // NewInstance creates a fresh component instance backed by impl. Pass
 // inst.Core() to wacogo.WithInstanceImport to wire the instance into a
 // composite world. deps may be nil only when SourceFiles has no
-// imports.
+// resource imports.
 func (f *Factory) NewInstance(ctx context.Context, impl SourceFiles, deps *Deps, opts ...host.InstantiateOption) (*host.ComponentInstance, error) {
 	_ = deps
 	state_ := &instanceState{impl: impl}

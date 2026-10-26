@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 func TestStepCanRunAfterFailure(t *testing.T) {
-	if CanRunAfterFailure(nil) {
+	if CanRunAfterFailure(value.Value{}) {
 		t.Fatal("missing condition must require success")
 	}
 	for _, tc := range []struct {
@@ -36,7 +36,7 @@ func TestStepCanRunAfterFailure(t *testing.T) {
 		{"before ${{ failure() }}", true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
-			if got := CanRunAfterFailure(&workflowlang.String{Value: tc.condition}); got != tc.want {
+			if got := CanRunAfterFailure(value.Condition(tc.condition, value.Origin{})); got != tc.want {
 				t.Fatalf("stepCanRunAfterFailure() = %v, want %v", got, tc.want)
 			}
 		})
@@ -71,7 +71,7 @@ func TestInvocationCondition(t *testing.T) {
 		{"success() && github.event_name == 'push'", false, false},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
-			enabled, known := Condition(&workflowlang.String{Value: tc.condition})
+			enabled, known := Condition(value.Condition(tc.condition, value.Origin{}))
 			if enabled != tc.enabled || known != tc.known {
 				t.Fatalf("invocationCondition() = %v, %v; want %v, %v", enabled, known, tc.enabled, tc.known)
 			}
@@ -98,11 +98,7 @@ func TestJobInvocationCondition(t *testing.T) {
 		{"case(false, false, true)", true, true, true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
-			job := &workflowlang.Job{If: &workflowlang.String{Value: tc.condition}}
-			if tc.dependencies {
-				job.Needs = []*workflowlang.String{{Value: "build"}}
-			}
-			enabled, known := JobCondition(job)
+			enabled, known := JobCondition(value.Condition(tc.condition, value.Origin{}), tc.dependencies)
 			if enabled != tc.enabled || known != tc.known {
 				t.Fatalf("jobInvocationCondition() = %v, %v; want %v, %v", enabled, known, tc.enabled, tc.known)
 			}

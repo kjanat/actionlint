@@ -4,7 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestScalarAttachedComments(t *testing.T) {
@@ -30,8 +31,8 @@ func TestScalarAttachedComments(t *testing.T) {
 		for _, newline := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+newline, func(t *testing.T) {
 				input := strings.ReplaceAll(tc.input, "\n", newline)
-				var root yaml.Node
-				if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+				var root syntax.Node
+				if err := codec.Unmarshal([]byte(input), &root); err != nil {
 					t.Fatal(err)
 				}
 				mapping := root.Content[0]
@@ -57,8 +58,8 @@ func TestScalarAttachedComments(t *testing.T) {
 
 func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
 	const input = "script: &script echo $HI # shellcheck disable=SC2034\n# shellcheck disable=SC2086\nrun: *script\nnext: *script # shellcheck shell=sh\n"
-	var root yaml.Node
-	if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+	var root syntax.Node
+	if err := codec.Unmarshal([]byte(input), &root); err != nil {
 		t.Fatal(err)
 	}
 	parser := NewSourceParser([]byte(input))

@@ -6,14 +6,14 @@ import (
 	"unicode/utf8"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // The cache belongs to parsed source metadata, never to an action invocation.
 // Metadata views may copy its pointer; initialization and lazy mappings are synchronized.
 type metadataPositionCache struct {
 	mu      sync.Mutex
-	scalars map[workflowlang.Pos]*yaml.Node
+	scalars map[workflowlang.Pos]*syntax.Node
 	sources map[workflowlang.Pos]*workflowlang.ScriptSource
 	parser  *workflowlang.Parser
 }
@@ -22,16 +22,16 @@ func (cache *metadataPositionCache) source(meta *Metadata, value *ExprString) *w
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 	if cache.scalars == nil {
-		cache.scalars = make(map[workflowlang.Pos]*yaml.Node)
+		cache.scalars = make(map[workflowlang.Pos]*syntax.Node)
 		cache.sources = make(map[workflowlang.Pos]*workflowlang.ScriptSource)
 		cache.parser = workflowlang.NewSourceParser(meta.Source)
 		cache.parser.IndexScalarSources(meta.Root)
-		var visit func(*yaml.Node)
-		visit = func(node *yaml.Node) {
+		var visit func(*syntax.Node)
+		visit = func(node *syntax.Node) {
 			if node == nil {
 				return
 			}
-			if node.Kind == yaml.ScalarNode {
+			if node.Kind == syntax.ScalarNode {
 				key := workflowlang.Pos{Line: node.Line, Col: node.Column}
 				if _, exists := cache.scalars[key]; !exists {
 					cache.scalars[key] = node

@@ -9,7 +9,8 @@ import (
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
 	workflow "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/eventpayload"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // Complete returns expression property edits against the supplied buffer.
@@ -23,8 +24,8 @@ func Complete(content string, offset int) []expr.Completion {
 		return nil
 	}
 	start := strings.LastIndex(before, "${{")
-	var root yaml.Node
-	if err := yaml.Unmarshal([]byte(content), &root); err != nil {
+	var root syntax.Node
+	if err := codec.Unmarshal([]byte(content), &root); err != nil {
 		return nil
 	}
 	key := keyAt(&root, content, offset)
@@ -74,23 +75,23 @@ func Complete(content string, offset int) []expr.Completion {
 // keyAt follows the owned YAML tree to the scalar preceding the cursor. Block
 // scalars keep their mapping address across lines; sequence indices do not enter
 // the context-availability vocabulary.
-func keyAt(root *yaml.Node, content string, offset int) string {
+func keyAt(root *syntax.Node, content string, offset int) string {
 	before := content[:offset]
 	line := strings.Count(before, "\n") + 1
 	column := utf8.RuneCountInString(before[strings.LastIndexByte(before, '\n')+1:]) + 1
 	bestLine, bestColumn := 0, 0
 	key := ""
-	var walk func(*yaml.Node, []string)
-	walk = func(n *yaml.Node, path []string) {
+	var walk func(*syntax.Node, []string)
+	walk = func(n *syntax.Node, path []string) {
 		if n == nil {
 			return
 		}
 		switch n.Kind {
-		case yaml.DocumentNode, yaml.SequenceNode:
+		case syntax.DocumentNode, syntax.SequenceNode:
 			for _, child := range n.Content {
 				walk(child, path)
 			}
-		case yaml.MappingNode:
+		case syntax.MappingNode:
 			for i := 0; i+1 < len(n.Content); i += 2 {
 				name := n.Content[i].Value
 				if len(path) == 1 && path[0] == "jobs" {
@@ -102,7 +103,7 @@ func keyAt(root *yaml.Node, content string, offset int) string {
 				next := append(append([]string{}, path...), name)
 				walk(n.Content[i+1], next)
 			}
-		case yaml.ScalarNode:
+		case syntax.ScalarNode:
 			if (n.Line < line || n.Line == line && n.Column <= column) && (n.Line > bestLine || n.Line == bestLine && n.Column > bestColumn) {
 				bestLine, bestColumn = n.Line, n.Column
 				key = strings.Join(path, ".")

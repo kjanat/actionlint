@@ -8,121 +8,158 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
+
+func (rule *Checker) checkMatrixSourceKey(source *workflowlang.String, evaluated bool) {
+	if source != nil && !evaluated {
+		rule.checkString(source, "jobs.<job_id>.strategy")
+	}
+}
+
+func matrixKeyName(fallback string, source *workflowlang.String, evaluated bool) (string, bool) {
+	if source == nil {
+		return strings.ToLower(fallback), fallback != ""
+	}
+	semantic := workflowlang.SemanticValue(source)
+	if evaluated {
+		semantic = value.YAMLScalar(source.Value, workflowlang.YamlTagStr, semantic.Origin())
+	}
+	name, state := mapping.ResolveKey(semantic)
+	return strings.ToLower(name), state == mapping.KnownKey
+}
 
 func (rule *Checker) checkMatrixExpression(expr *workflowlang.String) *exprlang.ObjectType {
 	ty := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
 	return schema.MatrixType(ty)
 }
 
-func (rule *Checker) checkMatrix(m *workflowlang.Matrix) *exprlang.ObjectType {
+func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.Resolution) *exprlang.ObjectType {
+	if m == nil {
+		return exprlang.NewEmptyStrictObjectType()
+	}
 	if m.Expression != nil {
-		return rule.checkMatrixExpression(m.Expression)
-	}
-
-	for _, filters := range []*workflowlang.MatrixCombinations{m.Include, m.Exclude} {
-		if filters != nil {
-			mapping.CheckSourceKey(filters.Name, filters.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
-		}
-	}
-
-	// Check types of "exclude" but they are not used to guess type of matrix
-	if m.Exclude != nil {
-		if m.Exclude.Expression != nil {
-			if ty, ok := rule.checkArrayExpression(m.Exclude.Expression, "exclude", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
-				rule.checkObjectTy(ty.Elem, m.Exclude.Expression.Pos, "exclude")
-			}
-		} else {
-			for _, combi := range m.Exclude.Combinations {
-				if combi.Expression != nil {
-					rule.checkMatrixCombinationExpression(combi.Expression, "exclude")
-					continue
+		rule.checkMatrixExpression(m.Expression)
+	} else {
+		if m.Exclude != nil {
+			rule.checkMatrixSourceKey(m.Exclude.Name, m.Exclude.Evaluated)
+			if m.Exclude.Expression != nil {
+				if ty, ok := rule.checkArrayExpression(m.Exclude.Expression, "exclude", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
+					rule.checkObjectTy(ty.Elem, m.Exclude.Expression.Pos, "exclude")
 				}
-				for _, a := range combi.Assigns {
-					mapping.CheckSourceKey(a.Key, combi.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
-					rule.checkRawYAMLValue(a.Value)
-				}
-			}
-		}
-	}
-
-	o := exprlang.NewEmptyStrictObjectType()
-	for _, insertion := range m.Insertions {
-		var inserted *exprlang.ObjectType
-		if insertion.Expression != nil {
-			ty := rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", schema.Matrix)
-			inserted = schema.MatrixType(ty)
-		} else {
-			inserted = rule.checkMatrix(insertion)
-		}
-		if merged, ok := o.Merge(inserted).(*exprlang.ObjectType); ok {
-			o = merged
-		} else {
-			o.Loose()
-		}
-	}
-	for n, r := range m.Rows {
-		ty := rule.checkMatrixRow(r)
-		if name, known := matrixcheck.RowName(n, r); known {
-			o.Props[name] = ty
-		} else {
-			o.Loose()
-		}
-	}
-
-	if m.Include == nil {
-		return o
-	}
-
-	if m.Include.Expression != nil {
-		if a, ok := rule.checkOneExpression(m.Include.Expression, "include", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
-			if ret, ok := o.Merge(a.Elem).(*exprlang.ObjectType); ok {
-				return ret
-			}
-		}
-		return exprlang.NewEmptyObjectType()
-	}
-
-	for _, combi := range m.Include.Combinations {
-		if combi.Expression != nil {
-			ty := rule.checkMatrixCombinationExpression(combi.Expression, "include")
-			if ty == nil {
-				continue
-			}
-			if merged, ok := o.Merge(ty).(*exprlang.ObjectType); ok {
-				o = merged
 			} else {
-				o.Loose()
+				for _, combination := range m.Exclude.Combinations {
+					rule.checkMatrixCombination(combination, "exclude")
+				}
 			}
+		}
+		for _, row := range m.Rows {
+			rule.checkMatrixSourceKey(row.Name, row.Evaluated)
+			rule.checkMatrixRow(row)
+		}
+		for _, insertion := range m.Insertions {
+			if insertion.Expression != nil {
+				rule.checkWorkflowExpression(insertion.Expression, "matrix insertion", "jobs.<job_id>.strategy", schema.Matrix)
+			} else {
+				rule.checkMatrix(insertion, resolution)
+			}
+		}
+		if m.Include != nil {
+			rule.checkMatrixSourceKey(m.Include.Name, m.Include.Evaluated)
+			if m.Include.Expression != nil {
+				rule.checkMatrixCombinationExpression(m.Include.Expression, "include")
+			} else {
+				for _, combination := range m.Include.Combinations {
+					rule.checkMatrixCombination(combination, "include")
+				}
+			}
+		}
+	}
+
+	return matrixTypeFromResolution(resolution)
+}
+
+func matrixTypeFromResolution(resolution matrixcheck.Resolution) *exprlang.ObjectType {
+	object := exprlang.NewEmptyStrictObjectType()
+	for name := range resolution.ReachableNames() {
+		reach := resolution.Reachable(name)
+		var ty exprlang.Type
+		for _, candidate := range reach.Values {
+			candidateType := matrixValueType(candidate)
+			if ty == nil {
+				ty = candidateType
+			} else {
+				ty = ty.Merge(candidateType)
+			}
+		}
+		if ty == nil {
+			ty = exprlang.AnyType{}
+		}
+		object.Props[name] = ty
+	}
+	if resolution.Open() {
+		object.Loose()
+	}
+	return object
+}
+
+func (rule *Checker) checkMatrixCombination(combination *workflowlang.MatrixCombination, section string) {
+	if combination == nil {
+		return
+	}
+	if combination.Expression != nil {
+		rule.checkMatrixCombinationExpression(combination.Expression, section)
+		return
+	}
+	for _, assignment := range combination.Assigns {
+		if assignment == nil {
 			continue
 		}
+		rule.checkMatrixSourceKey(assignment.Key, combination.Evaluated)
+		rule.checkRawYAMLValue(assignment.Value)
+	}
+}
 
-		for n, assign := range combi.Assigns {
-			mapping.CheckSourceKey(assign.Key, combi.Evaluated, func(source *workflowlang.String) { rule.checkString(source, "jobs.<job_id>.strategy") })
-			key := workflowlang.InputResolver.ResolveKey(assign.Key, combi.Evaluated)
-			if key.State == mapping.KnownKey {
-				n = strings.ToLower(key.Name.Value)
+func matrixValueType(item value.Value) exprlang.Type {
+	if !item.Known() {
+		return exprlang.AnyType{}
+	}
+	switch item.Kind() {
+	case value.Null:
+		return exprlang.NullType{}
+	case value.Bool:
+		return exprlang.BoolType{}
+	case value.Number:
+		return exprlang.NumberType{}
+	case value.String:
+		return exprlang.StringType{}
+	case value.Object:
+		properties := map[string]exprlang.Type{}
+		for name, property := range item.Props() {
+			properties[name] = matrixValueType(property)
+		}
+		return exprlang.NewStrictObjectType(properties)
+	case value.Array:
+		var element exprlang.Type
+		for child := range item.Items() {
+			t := matrixValueType(child)
+			if element == nil {
+				element = t
 			} else {
-				o.Loose()
-			}
-			ty := rule.checkRawYAMLValue(assign.Value)
-			if t, ok := o.Props[n]; ok {
-				// When the combination exists in 'matrix' section, merge type with existing one
-				ty = t.Merge(ty)
-			}
-			if key.State == mapping.KnownKey {
-				o.Props[n] = ty
+				element = element.Merge(t)
 			}
 		}
+		if element == nil {
+			element = exprlang.AnyType{}
+		}
+		return &exprlang.ArrayType{Elem: element, Deref: false}
+	default:
+		return exprlang.AnyType{}
 	}
-
-	return o
 }
 
 func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) exprlang.Type {
-	mapping.CheckSourceKey(r.Name, r.Evaluated, func(source *workflowlang.String) {
-		rule.checkString(source, "jobs.<job_id>.strategy")
-	})
+	rule.checkMatrixSourceKey(r.Name, r.Evaluated)
 	if r.Expression != nil {
 		if a, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
 			return a.Elem

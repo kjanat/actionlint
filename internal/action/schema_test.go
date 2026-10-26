@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestSchemaActionDefinitionCoverage(t *testing.T) {
@@ -96,7 +96,7 @@ description: audit
 					lines = append(lines, prefix+" "+invalid)
 				}
 				var meta Metadata
-				if err := yaml.Unmarshal([]byte(strings.Join(lines, "\n")+"\n"), &meta); err != nil {
+				if err := codec.Unmarshal([]byte(strings.Join(lines, "\n")+"\n"), &meta); err != nil {
 					return
 				}
 				if len(Validate(&meta)) == 0 {

@@ -3,6 +3,7 @@ package execution
 import (
 	"maps"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
@@ -44,8 +45,9 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 }
 
 // ForkComposite creates isolated execution state for an action entry or call and its resolved paths.
-func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths Paths) *ExecutableChecker {
+func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths Paths, source *documentparse.SourceSnapshot) *ExecutableChecker {
 	scoped := NewExecutableChecker(rule.context)
+	scoped.context.SourceSnapshot = source
 	scoped.executableState = rule.executableState
 	scoped.unix, scoped.caseInsensitive, scoped.shIsDash = rule.unix, rule.caseInsensitive, rule.shIsDash
 	effects, isCall := context.Facts()

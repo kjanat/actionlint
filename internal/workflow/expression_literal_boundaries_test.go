@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestCheckStringRejectsRawTagReview(t *testing.T) {
 	for _, allowEmpty := range []bool{false, true} {
 		p := &workflowlang.Parser{}
-		n := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!custom", Value: "max", Style: yaml.TaggedStyle, Line: 1, Column: 1}
+		n := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!custom", Value: "max", Style: syntax.TaggedStyle, Line: 1, Column: 1}
 		if p.CheckString(n, allowEmpty) {
 			t.Fatal("invalid tag accepted")
 		}

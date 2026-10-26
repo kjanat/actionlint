@@ -61,7 +61,7 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 			if collect {
 				wantScripts = 1
 			}
-			if len(result.Batch.Scripts()) != wantScripts || (collect && result.Batch.Scripts()[0].Run.Run.Value != "echo before") {
+			if len(result.Batch.Scripts()) != wantScripts || (collect && result.Batch.Scripts()[0].Run.Run().Value() != "echo before") {
 				t.Fatal("interruption lost preceding facts or collected scripts after the failing call")
 			}
 		})

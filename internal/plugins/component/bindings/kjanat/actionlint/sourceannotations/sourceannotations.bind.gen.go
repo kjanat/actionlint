@@ -21,15 +21,12 @@ type Factory struct {
 }
 
 type instanceState struct {
-	impl              SourceAnnotations
-	invocationContext *wacogo.ComponentInstance
+	impl SourceAnnotations
 }
 
 // Deps groups the cross-component dependencies required to instantiate
 // SourceAnnotations. Pass a populated value via NewInstance.
-type Deps struct {
-	InvocationContext *wacogo.ComponentInstance
-}
+type Deps struct{}
 
 // NewFactory creates a Factory bound to e. A single Factory may be
 // reused to build multiple instances backed by different implementations.
@@ -37,19 +34,17 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	f_ := &Factory{engine: e}
 	b_ := e.NewHostBuilder("kjanat_actionlint_source-annotations")
 
-	typSourceReference_ := b_.AddType("source-reference", host.Record{Fields: []host.Field{{Name: "document", Type: host.String}, {Name: "revision", Type: host.String}, {Name: "node", Type: host.String}, {Name: "address", Type: host.String}}})
-	_ = typSourceReference_
-	typPosition_ := b_.AddType("position", host.Record{Fields: []host.Field{{Name: "line", Type: host.U32}, {Name: "column", Type: host.U32}}})
-	_ = typPosition_
-
 	typPlacement_ := b_.AddType("placement", host.Enum{Cases: []string{"leading", "trailing"}})
 	_ = typPlacement_
-
-	typComment_ := b_.AddType("comment", host.Record{Fields: []host.Field{{Name: "text", Type: host.String}, {Name: "start", Type: typPosition_}, {Name: "placement", Type: typPlacement_}}})
+	typ_invocationcontext_Position_ := b_.AddType("position", host.Record{Fields: []host.Field{{Name: "line", Type: host.U32}, {Name: "column", Type: host.U32}}})
+	_ = typ_invocationcontext_Position_
+	typComment_ := b_.AddType("comment", host.Record{Fields: []host.Field{{Name: "text", Type: host.String}, {Name: "start", Type: typ_invocationcontext_Position_}, {Name: "placement", Type: typPlacement_}}})
 	_ = typComment_
+	typ_invocationcontext_SourceReference_ := b_.AddType("source-reference", host.Record{Fields: []host.Field{{Name: "document", Type: host.String}, {Name: "revision", Type: host.String}, {Name: "node", Type: host.String}, {Name: "address", Type: host.String}}})
+	_ = typ_invocationcontext_SourceReference_
 
 	b_.AddFunction("comments", &host.FuncType{
-		Params:  []host.Param{{Name: "reference", Type: typSourceReference_}},
+		Params:  []host.Param{{Name: "reference", Type: typ_invocationcontext_SourceReference_}},
 		Results: []host.ResultDecl{{Name: "", Type: host.List{Elem: typComment_}}},
 	}, wrapComments(f_))
 
@@ -64,20 +59,10 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 // NewInstance creates a fresh component instance backed by impl. Pass
 // inst.Core() to wacogo.WithInstanceImport to wire the instance into a
 // composite world. deps may be nil only when SourceAnnotations has no
-// imports.
+// resource imports.
 func (f *Factory) NewInstance(ctx context.Context, impl SourceAnnotations, deps *Deps, opts ...host.InstantiateOption) (*host.ComponentInstance, error) {
-	if deps == nil {
-		panic("sourceannotations.NewInstance: deps is nil")
-	}
-	var missing_ []string
-	if deps.InvocationContext == nil {
-		missing_ = append(missing_, "InvocationContext")
-	}
-	if len(missing_) > 0 {
-		panic(fmt.Sprintf("sourceannotations.NewInstance: deps missing fields: %v", missing_))
-	}
-	state_ := &instanceState{impl: impl, invocationContext: deps.InvocationContext}
-
+	_ = deps
+	state_ := &instanceState{impl: impl}
 	opts = append(opts, host.WithUserState(state_))
 	inst_, err_ := f.comp.Instantiate(ctx, opts...)
 	if err_ != nil {

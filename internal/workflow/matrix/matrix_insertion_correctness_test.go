@@ -49,7 +49,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			findings := matrixcheck.Check(workflow.Jobs["test"], false)
+			findings := matrixcheck.Resolve(workflow.Jobs["test"].Strategy).Check(false)
 			if tc.want == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected diagnostics: %v", findings)

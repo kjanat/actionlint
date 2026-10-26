@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/localaction"
+	"actionlint.kjanat.dev/v2/internal/action/reference"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -19,7 +19,7 @@ func normalizeLocalActionSourceNode(node *yaml.Node) {
 		return
 	}
 	for i := 0; i < len(node.Content); i += 2 {
-		if normalized, err := localaction.Normalize(node.Content[i].Value); err == nil {
+		if normalized, err := reference.NormalizeLocalDirectory(node.Content[i].Value); err == nil {
 			node.Content[i].Value = normalized
 		}
 	}
@@ -55,11 +55,11 @@ func (sources *LocalActionSources) UnmarshalYAML(node *yaml.Node) error {
 		if key.ShortTag() != "!!str" || value.ShortTag() != "!!str" {
 			return errors.New("local-actions paths must be strings")
 		}
-		from, err := localaction.Normalize(key.Value)
+		from, err := reference.NormalizeLocalDirectory(key.Value)
 		if err != nil {
 			return err
 		}
-		to, err := localaction.Normalize(value.Value)
+		to, err := reference.NormalizeLocalDirectory(value.Value)
 		if err != nil {
 			return err
 		}

@@ -4,28 +4,27 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
-
-type scalarContext = yamlsource.Context
 
 // IndexScalarSources records structural context before alias resolution changes the physical tree.
 // Decode lazily: most workflow scalars never need source-level diagnostics.
-func (p *Parser) IndexScalarSources(root *yaml.Node) {
-	p.scalarContexts = make(map[Pos]scalarContext)
+func (p *Parser) IndexScalarSources(root *syntax.Node) {
+	p.scalarContexts = make(map[Pos]sourcemap.Context)
 	p.scalarSources = make(map[Pos]*ScriptSource)
 	p.indexScalarComments(root)
-	var visit func(*yaml.Node, scalarContext)
-	visit = func(n *yaml.Node, context scalarContext) {
+	var visit func(*syntax.Node, sourcemap.Context)
+	visit = func(n *syntax.Node, context sourcemap.Context) {
 		if n == nil {
 			return
 		}
-		if n.Kind == yaml.ScalarNode {
+		if n.Kind == syntax.ScalarNode {
 			p.scalarContexts[*PosAt(n)] = context
 		}
-		if n.Kind == yaml.MappingNode || n.Kind == yaml.SequenceNode {
-			context.Flow = context.Flow || n.Style&yaml.FlowStyle != 0
+		if n.Kind == syntax.MappingNode || n.Kind == syntax.SequenceNode {
+			context.Flow = context.Flow || n.Style&syntax.FlowStyle != 0
 			if !context.Flow {
 				context.Indent = scalarCollectionIndent(n, p.SourceLines)
 			}
@@ -34,19 +33,19 @@ func (p *Parser) IndexScalarSources(root *yaml.Node) {
 			visit(child, context)
 		}
 	}
-	visit(root, scalarContext{Indent: -1})
+	visit(root, sourcemap.Context{Indent: -1})
 }
 
 // Collection positions can point at properties preceding their first entry.
 // Recover the structural indentation once for all scalar consumers.
-func scalarCollectionIndent(node *yaml.Node, lines []string) int {
+func scalarCollectionIndent(node *syntax.Node, lines []string) int {
 	indent := node.Column - 1
 	if len(node.Content) == 0 {
 		return indent
 	}
 	first := node.Content[0]
-	if node.Kind == yaml.MappingNode {
-		if node.Anchor != "" || node.Style&yaml.TaggedStyle != 0 {
+	if node.Kind == syntax.MappingNode {
+		if node.Anchor != "" || node.Style&syntax.TaggedStyle != 0 {
 			indent = first.Column - 1
 			if len(node.Content) > 1 && node.Content[1].Line > first.Line {
 				declaration := lines[node.Content[1].Line-1]
@@ -72,14 +71,18 @@ func scalarCollectionIndent(node *yaml.Node, lines []string) int {
 	return indent
 }
 
-func (p *Parser) ScriptSource(n *yaml.Node) *ScriptSource {
-	if n == nil || n.Kind != 0 && n.Kind != yaml.ScalarNode {
+func (p *Parser) ScriptSource(n *syntax.Node) *ScriptSource {
+	if n == nil || n.Kind != 0 && n.Kind != syntax.ScalarNode {
 		return nil
 	}
 	if p.scalarContexts == nil {
 		// Standalone parser users can request a source map before parsing a tree.
-		var root yaml.Node
-		if err := yaml.Unmarshal([]byte(strings.Join(p.SourceLines, "\n")), &root); err != nil {
+		var root syntax.Node
+		source := strings.Join(p.SourceLines, "\n")
+		if p.ScalarDocument != nil {
+			source = scalarDocumentSource(p.ScalarDocument)
+		}
+		if err := codec.Unmarshal([]byte(source), &root); err != nil {
 			return nil
 		}
 		p.IndexScalarSources(&root)
@@ -96,7 +99,7 @@ func (p *Parser) ScriptSource(n *yaml.Node) *ScriptSource {
 	if !exists {
 		return nil
 	}
-	decoded, err := p.ScalarDocument.Decode(yamlsource.Position{Line: n.Line, Column: n.Column}, context)
+	decoded, err := p.ScalarDocument.Decode(sourcemap.Position{Line: n.Line, Column: n.Column}, context)
 	if err != nil || decoded.Value != n.Value {
 		return nil
 	}
@@ -118,4 +121,15 @@ func (p *Parser) ScriptSource(n *yaml.Node) *ScriptSource {
 	}
 	p.scalarSources[key] = source
 	return source
+}
+
+func scalarDocumentSource(document *sourcemap.Document) string {
+	var source strings.Builder
+	for i, line := range document.Lines {
+		source.WriteString(line)
+		if i < len(document.Breaks) {
+			source.WriteString(document.Breaks[i])
+		}
+	}
+	return source.String()
 }

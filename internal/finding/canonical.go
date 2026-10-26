@@ -2,7 +2,8 @@ package finding
 
 import (
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/source/text"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 )
 
 // Canonical resolves source extents and fix paths into the public diagnostic contract.
@@ -12,9 +13,9 @@ func (e *Finding) Canonical(source []byte) diagnostic.Diagnostic {
 	if end == (diagnostic.Position{}) {
 		end = diagnostic.Position{Line: e.Start.Line, Column: e.Start.Column + 1}
 	}
-	snippet, _ := yamlsource.DiagnosticLine(source, e.Start.Line, e.RawScriptSource)
+	snippet, _ := sourcemap.DiagnosticLine(source, e.Start.Line, e.RawScriptSource)
 	if e.End == (diagnostic.Position{}) && snippet != "" {
-		end.Column = yamlsource.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
+		end.Column = text.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
 	}
 	if e.EndPosition != nil {
 		end = diagnostic.Position{Line: e.EndPosition.Line, Column: e.EndPosition.Col}

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	workflow "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 )
 
 func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
@@ -22,11 +22,22 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 		for _, collect := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/%s/collect=%t", tc.action, tc.selector, collect), func(t *testing.T) {
 				analysis := compositeAnalyzer{collectScripts: collect, scriptInputs: []analyzer.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}
-				action := &workflow.ExecAction{Uses: &workflow.String{Value: tc.action}, Inputs: map[string]*workflow.Input{
-					"code": {Name: &workflow.String{Value: "code"}, Value: &workflow.String{Value: "missing()"}, Source: &workflow.ScriptSource{}},
-				}}
-				step := &workflow.Step{Exec: action}
-				startWorkflowEntry(t, &analysis, workflowSnapshot(t, &workflow.Workflow{Jobs: map[string]*workflow.Job{"test": {Steps: []*workflow.Step{step}}}}))
+				content := []byte(fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n        with: {code: 'missing()'}\n", tc.action))
+				parsed := documentparse.Workflow("fixture.yml", content)
+				var snapshots documentparse.SourceSnapshots
+				snapshot, err := snapshots.Document("fixture.yml", content, parsed)
+				if err != nil {
+					t.Fatal(err)
+				}
+				startWorkflowEntry(t, &analysis, snapshot)
+				step, err := snapshot.StepView(parsed.Workflow.Jobs["test"].Steps[0])
+				if err != nil {
+					t.Fatal(err)
+				}
+				action, present := step.Action()
+				if !present {
+					t.Fatal("fixture has no action")
+				}
 				if err := analysis.collectActionInputs(step, action, nil); err != nil {
 					t.Fatal(err)
 				}

@@ -9,9 +9,9 @@ import (
 	"unicode/utf8"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/yaml"
-	yamlscalar "actionlint.kjanat.dev/v2/internal/yamlscalar"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/source/text"
+	"actionlint.kjanat.dev/v2/internal/yaml/schema"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // Pos represents a position in the file.
@@ -86,7 +86,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	l := s.Lines[line-1]
-	rel, ok := yamlsource.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
+	rel, ok := text.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
 	if !ok {
 		return nil, false
 	}
@@ -154,6 +154,28 @@ func (p *Pos) IsBefore(other *Pos) bool {
 }
 
 // String represents generic String value in YAML file with Position.
+// SourceScalarKind describes the YAML node kind captured when a String came from source.
+type SourceScalarKind uint8
+
+const (
+	SourceScalarUnknown SourceScalarKind = iota
+	SourceScalarDocument
+	SourceScalarSequence
+	SourceScalarMapping
+	SourceScalarScalar
+	SourceScalarAlias
+)
+
+// SourceScalar is an immutable, pointer-free snapshot of a YAML node at parse time.
+type SourceScalar struct {
+	HasSource bool
+	Evaluated bool
+	Kind      SourceScalarKind
+	Tag       string
+	Value     string
+	Pos       Pos
+}
+
 type String struct {
 	// Value is a raw value of the String.
 	Value string
@@ -161,6 +183,8 @@ type String struct {
 	Quoted bool
 	// Pos is a Position of the String in source.
 	Pos *Pos
+	// SourceScalar records the original YAML node before normalization or folding.
+	SourceScalar SourceScalar
 }
 
 // ContainsExpression returns whether the String contains at least one ${{ }} expression.
@@ -698,11 +722,11 @@ type RawYAMLValueKind int
 
 const (
 	// RawYAMLValueKindObject is Kind for an object value of raw YAML value.
-	RawYAMLValueKindObject = RawYAMLValueKind(yaml.MappingNode)
+	RawYAMLValueKindObject = RawYAMLValueKind(syntax.MappingNode)
 	// RawYAMLValueKindArray is Kind for an array value of raw YAML value.
-	RawYAMLValueKindArray = RawYAMLValueKind(yaml.SequenceNode)
+	RawYAMLValueKindArray = RawYAMLValueKind(syntax.SequenceNode)
 	// RawYAMLValueKindString is Kind for a String value of raw YAML value.
-	RawYAMLValueKindString = RawYAMLValueKind(yaml.ScalarNode)
+	RawYAMLValueKindString = RawYAMLValueKind(syntax.ScalarNode)
 )
 
 // RawYAMLValue is a value at Matrix variation. Any value can be put at Matrix variations
@@ -849,15 +873,15 @@ func (s *RawYAMLString) Equals(other RawYAMLValue) bool {
 func (s *RawYAMLString) ScalarValue() any {
 	switch s.Tag {
 	case YamlTagBool:
-		if yamlscalar.IsCoreSchemaBool(s.Value) {
+		if schema.IsCoreSchemaBool(s.Value) {
 			return strings.EqualFold(s.Value, "true")
 		}
 	case YamlTagNull:
-		if yamlscalar.IsCoreSchemaNull(s.Value) {
+		if schema.IsCoreSchemaNull(s.Value) {
 			return nil
 		}
 	case YamlTagInt, YamlTagFloat:
-		if !yamlscalar.IsCoreSchemaNumber(s.Value) {
+		if !schema.IsCoreSchemaNumber(s.Value) {
 			break
 		}
 		switch strings.ToLower(s.Value) {

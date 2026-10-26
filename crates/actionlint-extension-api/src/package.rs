@@ -18,8 +18,9 @@ pub const METADATA_SECTION: &str = "actionlint.plugin";
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-/// Package identity supplied by the extension's Cargo manifest.
+/// Stable package identity and release metadata.
 pub struct Identity<'a> {
+    pub id: &'a str,
     pub name: &'a str,
     pub description: &'a str,
     pub license: &'a str,
@@ -74,6 +75,17 @@ fn options_schema(raw: &str) -> Result<Option<serde_json::Value>> {
 impl Package<'_> {
     /// Serialize discovery metadata from the same descriptor the guest exports.
     pub fn metadata(&self) -> Result<Vec<u8>> {
+        let id = self.identity.id;
+        if !(1..=128).contains(&id.len())
+            || !id.bytes().all(|byte| {
+                byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'/' | b'-')
+            })
+        {
+            return Err(
+                "package id must contain 1 to 128 ASCII letters, digits, '.', '_', '/' or '-'"
+                    .into(),
+            );
+        }
         let rule = self.descriptor;
         let requires: Vec<_> = rule
             .requires
@@ -120,7 +132,7 @@ impl Package<'_> {
         }
         pretty_json(&json!({
             "metadata_version": 1,
-            "id": rule.name,
+            "id": id,
             "name": self.identity.name,
             "description": self.identity.description,
             "license": self.identity.license,
@@ -252,6 +264,7 @@ mod tests {
     fn package(descriptor: &Descriptor) -> Package<'_> {
         Package {
             identity: Identity {
+                id: "example-package",
                 name: "Example",
                 description: "",
                 license: "MIT",
@@ -273,6 +286,54 @@ mod tests {
             descriptor,
             license_text: "Example license\n",
         }
+    }
+
+    #[test]
+    fn package_identity_is_independent_of_rule_and_display_names() -> Result<()> {
+        let descriptor = descriptor("");
+        let metadata: serde_json::Value =
+            serde_json::from_slice(&package(&descriptor).metadata()?)?;
+        assert_eq!(metadata["id"], "example-package");
+        assert_eq!(metadata["name"], "Example");
+        assert_eq!(metadata["descriptor"]["name"], descriptor.name);
+        assert_ne!(metadata["id"], metadata["descriptor"]["name"]);
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_package_ids_do_not_write_files() -> Result<()> {
+        let temporary = TestDirectory::new()?;
+        let input = temporary.0.join("input.wasm");
+        let output = temporary.0.join("package");
+        fs::write(&input, Component::new().finish())?;
+        let descriptor = descriptor("");
+        let oversized = "a".repeat(129);
+        for id in [
+            "",
+            " with-space",
+            "with space",
+            "line\nbreak",
+            "caf\u{e9}",
+            "back\\slash",
+            "colon:id",
+            oversized.as_str(),
+        ] {
+            let mut package = package(&descriptor);
+            package.identity.id = id;
+            assert!(package.metadata().is_err(), "{id:?}");
+            assert!(package.write(&input, &output).is_err(), "{id:?}");
+            assert!(!output.exists(), "{id:?}");
+        }
+        for id in [
+            "a".to_string(),
+            "a".repeat(128),
+            "owner/package-1.2_3".to_string(),
+        ] {
+            let mut package = package(&descriptor);
+            package.identity.id = &id;
+            assert!(package.metadata().is_ok(), "{id:?}");
+        }
+        Ok(())
     }
 
     #[test]

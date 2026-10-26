@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/source/text"
 )
 
 func applyDiagnosticFix(t *testing.T, input string, fix DiagnosticFix) string {
@@ -20,7 +20,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix DiagnosticFix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := yamlsource.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := text.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}

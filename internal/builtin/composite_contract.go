@@ -3,6 +3,7 @@ package builtin
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
@@ -14,6 +15,7 @@ type Invocation struct {
 	Context    invocation.Context
 	ActionPath string
 	Actions    *actionlocal.Resolver
+	Source     *documentparse.SourceSnapshot
 }
 
 type CompositeParticipant interface {

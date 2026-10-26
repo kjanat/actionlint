@@ -15,7 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/semantics/identifier"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 type validator struct {
@@ -431,9 +432,17 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, actio
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
 func (rule *validator) checkAction(meta *actionmeta.Metadata, exec *workflowlang.ExecAction, describe func(*actionmeta.Metadata) string) {
-	inputs, known := workflowlang.ActionInputNames(exec)
+	inputs := workflowlang.ResolvedActionInputs(exec)
+	known := inputs.Complete()
 	// Check specified inputs are defined in action's inputs spec
-	for id, i := range inputs {
+	for key := range inputs.KeyedEntries() {
+		name, scalar := key.ScalarString()
+		if !scalar {
+			continue
+		}
+		id := strings.ToLower(name)
+		position := key.Origin().Span.Start
+		pos := &workflowlang.Pos{Line: position.Line, Col: position.Column}
 		m, ok := meta.Inputs[id]
 		if !ok {
 			ns := make([]string, 0, len(meta.Inputs))
@@ -441,9 +450,9 @@ func (rule *validator) checkAction(meta *actionmeta.Metadata, exec *workflowlang
 				ns = append(ns, i.Name)
 			}
 			rule.Errorf(
-				i.Name.Pos,
+				pos,
 				"input %q is not defined in action %s. available inputs are %s",
-				i.Name.Value,
+				name,
 				describe(meta),
 				stringutil.SortedQuotes(ns),
 			)
@@ -452,21 +461,21 @@ func (rule *validator) checkAction(meta *actionmeta.Metadata, exec *workflowlang
 			// happen normally).
 			msg := fmt.Sprintf(
 				"avoid using deprecated input %q in action %s",
-				i.Name.Value,
+				name,
 				describe(meta),
 			)
 			d := reNewlineWithIndent.ReplaceAllString(strings.TrimRight(m.DeprecationMessage, ". "), " ")
 			if d != "" {
 				msg += ": " + d
 			}
-			rule.Error(i.Name.Pos, msg)
+			rule.Error(pos, msg)
 		}
 	}
 
 	// Check mandatory inputs are specified
 	for id, i := range meta.Inputs {
 		if i.Required && known {
-			if _, ok := inputs[id]; !ok {
+			if inputs.Lookup(id).State() == value.Missing {
 				ns := make([]string, 0, len(meta.Inputs))
 				for _, i := range meta.Inputs {
 					if i.Required {
@@ -503,10 +512,10 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 	node := actionmeta.Node(rule.standalone.Root)
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	for _, field := range fields {
-		if node == nil || node.Kind != yaml.MappingNode {
+		if node == nil || node.Kind != syntax.MappingNode {
 			break
 		}
-		var next *yaml.Node
+		var next *syntax.Node
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			if strings.EqualFold(actionmeta.Key(key), field) {

@@ -89,7 +89,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}).Action(meta)
+			result, err := standaloneActionForTest(t, New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}), meta)
 			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes()) != 1 || len(result.Batch.Scripts()) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}

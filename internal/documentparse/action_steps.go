@@ -3,7 +3,7 @@ package documentparse
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // ActionStep decodes a composite step with its own declared shell.
@@ -19,7 +19,7 @@ func ActionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflo
 		return opaque
 	}
 	// Reuse the step decoder for scalar coercion and source mapping.
-	node, ok := cloneActionNode(metadata.Node, make(map[*yaml.Node]bool), make(map[*yaml.Node]*yaml.Node))
+	node, ok := cloneActionNode(metadata.Node, make(map[*syntax.Node]bool), make(map[*syntax.Node]*syntax.Node))
 	if !ok {
 		return opaque
 	}
@@ -38,9 +38,9 @@ func ActionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflo
 
 // Alias expansion must not mutate the shared metadata cache. Keep original
 // scalar positions so script findings still point into the metadata source.
-func cloneActionNode(node *yaml.Node, active map[*yaml.Node]bool, done map[*yaml.Node]*yaml.Node) (*yaml.Node, bool) {
+func cloneActionNode(node *syntax.Node, active map[*syntax.Node]bool, done map[*syntax.Node]*syntax.Node) (*syntax.Node, bool) {
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind == yaml.AliasNode || active[node] {
+	if node == nil || node.Kind == syntax.AliasNode || active[node] {
 		return nil, false
 	}
 	if cloned, ok := done[node]; ok {
@@ -49,7 +49,7 @@ func cloneActionNode(node *yaml.Node, active map[*yaml.Node]bool, done map[*yaml
 	active[node] = true
 	defer delete(active, node)
 	cloned := *node
-	cloned.Content = make([]*yaml.Node, len(node.Content))
+	cloned.Content = make([]*syntax.Node, len(node.Content))
 	for i, child := range node.Content {
 		resolved, ok := cloneActionNode(child, active, done)
 		if !ok {

@@ -23,7 +23,8 @@ func newRuleExecutableBit(c Context) *RuleExecutableBit {
 	}
 	r := &RuleExecutableBit{tag: "executable-bit"}
 	r.ExecutableChecker = execution.NewExecutableChecker(execution.ExecutableContext{
-		Context: ctx, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
+		SourceSnapshot: c.SourceSnapshot,
+		Context:        ctx, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
 		Reader: c.Reader, Index: c.Index, Log: r.Debug, Runners: c.Runners,
 	})
 	return r
@@ -41,7 +42,7 @@ func (rule *RuleExecutableBit) DeferActionInvocation() bool                    {
 func (rule *RuleExecutableBit) ForComposite(invocation Invocation) (workflowvisit.Rule, error) {
 	paths := *rule.Paths()
 	paths = invocation.Actions.ApplyCheckout(paths)
-	return &RuleExecutableBit{ExecutableChecker: rule.ForkComposite(invocation.Context, invocation.ActionPath, paths)}, nil
+	return &RuleExecutableBit{ExecutableChecker: rule.ForkComposite(invocation.Context, invocation.ActionPath, paths, invocation.Source)}, nil
 }
 
 func (rule *RuleExecutableBit) JoinCompositeResult(context invocation.Context, result workflowvisit.Rule) {

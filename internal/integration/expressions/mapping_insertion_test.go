@@ -7,7 +7,7 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
-	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	matrixlang "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
 
 func TestActionInputMappingInsertions(t *testing.T) {
@@ -97,7 +97,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			combinations, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy)
+			combinations, known := matrixlang.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
 			if tc.count < 0 {
 				if known {
 					t.Fatal("unknown insertion became a closed matrix")
@@ -235,14 +235,21 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 					}
 				case "with":
 					action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-					inputs, known := workflowlang.ActionInputNames(action)
-					if !known || len(inputs) != 2 || inputs["second"] == nil {
+					inputs := workflowlang.ResolvedActionInputs(action)
+					second := false
+					for name := range inputs.KeyedEntries() {
+						text, ok := name.ScalarString()
+						second = second || ok && strings.EqualFold(text, "second")
+					}
+					if !inputs.Complete() || !second {
 						t.Fatalf("insertion lost: %+v", inputs)
 					}
 				case "matrix":
-					matrix, known := matrixcheck.Expand(workflow.Jobs["test"].Strategy.Matrix)
-					if !known || len(matrix.Rows) != 2 || matrix.Rows["second"] == nil {
-						t.Fatalf("insertion lost: %+v", matrix)
+					resolved := matrixcheck.Resolve(workflow.Jobs["test"].Strategy)
+					combinations, known := resolved.Combinations(16)
+					second := resolved.Reachable("second")
+					if !known || len(combinations) != 1 || !second.Complete || len(second.Values) != 1 {
+						t.Fatalf("insertion lost: combinations=%v second=%+v", combinations, second)
 					}
 				}
 			})

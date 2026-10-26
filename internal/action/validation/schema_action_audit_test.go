@@ -8,7 +8,7 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
@@ -171,7 +171,7 @@ runs:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var meta actionmeta.Metadata
-			err := yaml.Unmarshal([]byte(tc.source), &meta)
+			err := codec.Unmarshal([]byte(tc.source), &meta)
 			var findings []*findingmodel.Finding
 			if err == nil {
 				meta.Filename = "action.yml"
@@ -191,7 +191,7 @@ func TestActionStepValueShapes(t *testing.T) {
 		t.Run(declaration, func(t *testing.T) {
 			source := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - " + declaration + "\n")
 			var meta actionmeta.Metadata
-			if err := yaml.Unmarshal(source, &meta); err != nil {
+			if err := codec.Unmarshal(source, &meta); err != nil {
 				t.Fatal(err)
 			}
 			findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})

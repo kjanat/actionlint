@@ -45,11 +45,10 @@ func environment(env *workflow.Env) []Finding {
 		return nil
 	}
 	var entries []analyzer.Entry
-	workflow.InputResolver.Walk(workflow.EnvMappingView(env), nil, func(entry mapping.Entry[*workflow.String]) {
-		if entry.Name != nil {
-			entries = append(entries, analyzer.Entry{Name: entry.Name.Value, State: analyzer.KnownKey, Start: position(entry.Name.Pos)})
-		}
-	})
+	resolved := mapping.Resolve(workflow.EnvMappingView(env))
+	for name, item := range resolved.Entries() {
+		entries = append(entries, analyzer.Entry{Name: name, State: analyzer.KnownKey, Start: item.Origin().Span.Start})
+	}
 	return findings(envname.Check(entries))
 }
 

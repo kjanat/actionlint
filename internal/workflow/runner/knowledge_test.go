@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
@@ -26,13 +27,42 @@ func (p *testProvider) ResolveRunners(_ context.Context, r runnerapi.Request) ([
 	return p.resolve(r)
 }
 
-func runnerWorkflow(t *testing.T, selection string) *workflowlang.Workflow {
+type runnerFixture struct {
+	Jobs     map[string]*workflowlang.Job
+	Snapshot *documentparse.SourceSnapshot
+	Views    map[string]documentparse.JobView
+}
+
+func runnerWorkflow(t *testing.T, selection string) *runnerFixture {
 	t.Helper()
-	w, errs := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: " + selection + "\n    steps:\n      - run: echo ok\n"))
-	if len(errs) != 0 {
-		t.Fatal(errs)
+	return runnerSource(t, "on: push\njobs:\n  test:\n    runs-on: "+selection+"\n    steps:\n      - run: echo ok\n")
+}
+
+func runnerSource(t *testing.T, source string) *runnerFixture {
+	t.Helper()
+	content := []byte(source)
+	document := documentparse.Workflow("runner.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
 	}
-	return w
+	var registry documentparse.SourceSnapshots
+	snapshot, err := registry.Document("runner.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, available := snapshot.WorkflowView()
+	if !available {
+		t.Fatal("workflow snapshot is unavailable")
+	}
+	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]documentparse.JobView{}}
+	for id := range fixture.Jobs {
+		view, ok := workflow.JobsAt(id)
+		if !ok {
+			t.Fatalf("job view %q is unavailable", id)
+		}
+		fixture.Views[id] = view
+	}
+	return fixture
 }
 
 func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
@@ -55,7 +85,7 @@ func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
 	} {
 		t.Run(tc.selection, func(t *testing.T) {
 			workflow := runnerWorkflow(t, tc.selection)
-			knowledge, err := Prepare(t.Context(), workflow, tc.custom, runnerapi.Options{}, "scope")
+			knowledge, err := Prepare(t.Context(), workflow.Snapshot, tc.custom, runnerapi.Options{}, "scope")
 			if err != nil || len(knowledge.Report.Answers) != 1 {
 				t.Fatalf("knowledge=%+v err=%v", knowledge, err)
 			}
@@ -77,11 +107,11 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 	for _, label := range []string{"self-32vcpu-windows-2022", "buildjet-8vcpu-windows-2022", "namespace-profile-8x16-windows", "my-WINDOWS-box"} {
 		t.Run(label, func(t *testing.T) {
 			workflow := runnerWorkflow(t, label)
-			knowledge, err := Prepare(t.Context(), workflow, []string{label}, runnerapi.Options{}, "scope")
+			knowledge, err := Prepare(t.Context(), workflow.Snapshot, []string{label}, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}
-			job := knowledge.Job(workflow.Jobs["test"])
+			job := knowledge.Job(workflow.Views["test"])
 			if job.Platform != Windows || job.Shell != "pwsh" || !job.PathsKnown || !job.CaseInsensitive || len(job.Findings) != 0 {
 				t.Fatalf("configured Windows label lost execution facts: %#v", job)
 			}
@@ -101,11 +131,11 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 	} {
 		t.Run(tc.selection, func(t *testing.T) {
 			workflow := runnerWorkflow(t, tc.selection)
-			knowledge, err := Prepare(t.Context(), workflow, tc.custom, runnerapi.Options{}, "scope")
+			knowledge, err := Prepare(t.Context(), workflow.Snapshot, tc.custom, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}
-			job := knowledge.Job(workflow.Jobs["test"])
+			job := knowledge.Job(workflow.Views["test"])
 			if job.Platform != Any || job.Shell != "" || job.PathsKnown || len(job.Findings) != tc.findings {
 				t.Fatalf("unproven or contradictory label inferred execution facts: %#v", job)
 			}
@@ -144,11 +174,11 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 			p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 				return []runnerapi.Answer{{Resolution: tc.resolution, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: tc.fresh, Complete: tc.complete}}}, tc.failure
 			}}
-			k, err := Prepare(t.Context(), w, nil, runnerapi.Options{Target: "buildkite", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, Identity: "artifact"}}}, "scope")
+			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Target: "buildkite", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, Identity: "artifact"}}}, "scope")
 			if (err != nil) != (tc.failure != nil) {
 				t.Fatal(err)
 			}
-			job := k.Job(w.Jobs["test"])
+			job := k.Job(w.Views["test"])
 			if job.Shell != tc.wantShell || len(job.Findings) != tc.wantFindings {
 				t.Fatalf("knowledge = %#v", job)
 			}
@@ -181,11 +211,11 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 				return []runnerapi.Answer{{Resolution: runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "bundled", OS: runnerapi.Windows, DefaultShell: "pwsh", CaseSensitivity: runnerapi.CaseInsensitive}}}, Evidence: runnerapi.Evidence{Dataset: "bundled", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 			}}
 			options := runnerapi.Options{Target: "buildkite", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p}}}
-			k, err := Prepare(t.Context(), w, nil, options, "scope")
+			k, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := k.Job(w.Jobs["test"]); got.PathsKnown != tc.known || (got.Shell == "pwsh") != tc.known {
+			if got := k.Job(w.Views["test"]); got.PathsKnown != tc.known || (got.Shell == "pwsh") != tc.known {
 				t.Fatalf("snapshot knowledge = %#v, want known=%t", got, tc.known)
 			}
 			if k.Report.Snapshot != p.request.Snapshot.Identity() {
@@ -193,7 +223,7 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 			}
 			if tc.snapshot != (runnerapi.Snapshot{}) {
 				options.Snapshot.Freshness = tc.fresh
-				normalized, err := Prepare(t.Context(), w, nil, options, "scope")
+				normalized, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 				if err != nil || normalized.Report.Identity != k.Report.Identity {
 					t.Fatalf("equivalent snapshot freshness changed cache identity: %v", err)
 				}
@@ -204,11 +234,11 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 
 func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
 	w := runnerWorkflow(t, "ubuntu-latest")
-	k, err := Prepare(t.Context(), w, nil, runnerapi.Options{}, "scope")
+	k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 	if err != nil {
 		t.Fatal(err)
 	}
-	job := k.Job(w.Jobs["test"])
+	job := k.Job(w.Views["test"])
 	if !job.PathsKnown || job.Platform != MacOrLinux || job.Shell != "bash" || len(job.Answers) != 1 || job.Answers[0].Evidence.Freshness != runnerapi.Fresh {
 		t.Fatalf("absent host snapshot weakened bundled catalogue: %#v", job)
 	}
@@ -222,13 +252,13 @@ func TestProviderEmptyNoMatch(t *testing.T) {
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 					return []runnerapi.Answer{{Resolution: runnerapi.NoMatch{}, Evidence: runnerapi.Evidence{Dataset: "v1", Scope: r.Scope, Freshness: freshness, Complete: complete}}}, nil
 				}}
-				k, err := Prepare(t.Context(), w, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
+				k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Target: "buildkite", Providers: []runnerapi.Registration{{Provider: p}}}, "scope")
 				if freshness == runnerapi.Fresh {
 					if err == nil || !strings.Contains(err.Error(), "no rejections") {
 						t.Fatalf("empty no-match must fail provider validation: %v", err)
 					}
-				} else if err != nil || len(k.Job(w.Jobs["test"]).Findings) != 0 {
-					t.Fatalf("uncertain no-match became a definitive rejection: %v %#v", err, k.Job(w.Jobs["test"]))
+				} else if err != nil || len(k.Job(w.Views["test"]).Findings) != 0 {
+					t.Fatalf("uncertain no-match became a definitive rejection: %v %#v", err, k.Job(w.Views["test"]))
 				}
 			})
 		}
@@ -242,53 +272,53 @@ func TestProviderSelectionAndEvidenceIdentity(t *testing.T) {
 		return []runnerapi.Answer{{Resolution: runnerapi.Unknown{Reason: "unknown"}, Evidence: runnerapi.Evidence{Dataset: dataset, Scope: r.Scope, Freshness: runnerapi.Fresh}}}, nil
 	}}
 	options := runnerapi.Options{Providers: []runnerapi.Registration{{Provider: p, Identity: "first"}}}
-	k, err := Prepare(t.Context(), w, nil, options, "scope")
+	k, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 	if err != nil || k.Report.Provider.Name != "github" || p.request.Target != "" {
 		t.Fatalf("loading a provider changed authority: %v %#v", err, k.Report)
 	}
 	options.Target = "buildkite"
-	first, err := Prepare(t.Context(), w, nil, options, "scope")
+	first, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 	if err != nil {
 		t.Fatal(err)
 	}
 	options.Providers[0].Identity = "second"
-	second, err := Prepare(t.Context(), w, nil, options, "scope")
+	second, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 	if err != nil || first.Report.Identity == second.Report.Identity {
 		t.Fatal("artifact identity not tracked", err)
 	}
 	options.Snapshot.Content = "updated"
 	options.Snapshot.Scope = "scope"
-	third, err := Prepare(t.Context(), w, nil, options, "scope")
+	third, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 	if err != nil || second.Report.Identity == third.Report.Identity {
 		t.Fatal("snapshot identity not tracked", err)
 	}
 	dataset = "v2"
-	fourth, err := Prepare(t.Context(), w, nil, options, "scope")
+	fourth, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope")
 	if err != nil || third.Report.Identity == fourth.Report.Identity {
 		t.Fatal("dataset identity not tracked", err)
 	}
 	options.Providers = append(options.Providers, options.Providers[0])
-	if _, err := Prepare(t.Context(), w, nil, options, "scope"); err == nil || !strings.Contains(err.Error(), "conflicting") {
+	if _, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope"); err == nil || !strings.Contains(err.Error(), "conflicting") {
 		t.Fatal(err)
 	}
 	options.Providers = options.Providers[:1]
 	options.Snapshot.Scope = "other"
-	if _, err := Prepare(t.Context(), w, nil, options, "scope"); err == nil {
+	if _, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope"); err == nil {
 		t.Fatal("accepted unrelated snapshot scope")
 	}
 	options.Snapshot.Scope = ""
-	if _, err := Prepare(t.Context(), w, nil, options, "scope"); err == nil {
+	if _, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope"); err == nil {
 		t.Fatal("accepted supplied snapshot without requested scope")
 	}
 	options.Snapshot.Scope = "scope"
 	options.Snapshot.Freshness = "frehs"
-	if _, err := Prepare(t.Context(), w, nil, options, "scope"); err == nil {
+	if _, err := Prepare(t.Context(), w.Snapshot, nil, options, "scope"); err == nil {
 		t.Fatal("accepted invalid freshness")
 	}
 }
 
 func TestProviderSelectorsPreserveGroupAndMatrix(t *testing.T) {
-	w, errs := workflowlang.Parse([]byte(`on: push
+	w := runnerSource(t, `on: push
 jobs:
   test:
     strategy:
@@ -298,11 +328,8 @@ jobs:
           - {runner: {labels: [buildkite-linux, arm64], group: linux}}
     runs-on: ${{ matrix.runner }}
     steps: [{run: echo ok}]
-`))
-	if len(errs) != 0 {
-		t.Fatal(errs)
-	}
-	selectors := Selectors(w.Jobs["test"])
+`)
+	selectors := Selectors(w.Views["test"])
 	if len(selectors) != 2 {
 		t.Fatalf("%#v", selectors)
 	}
@@ -323,7 +350,7 @@ jobs:
 		}
 	}
 	constant := runnerWorkflow(t, `${{ fromJSON('{"labels":["buildkite-windows"],"group":"build"}') }}`)
-	s := Selectors(constant.Jobs["test"])[0]
+	s := Selectors(constant.Views["test"])[0]
 	if s.Expression != "" || s.Group == nil || len(s.Labels) != 1 {
 		t.Fatalf("constant object unresolved: %#v", s)
 	}
@@ -343,11 +370,11 @@ func TestPreparedRunnerGroupUncertainty(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := runnerWorkflow(t, "\n      labels: "+tc.label+"\n      group: "+tc.group)
-			k, err := Prepare(t.Context(), w, nil, runnerapi.Options{}, "scope")
+			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)
 			}
-			job := k.Job(w.Jobs["test"])
+			job := k.Job(w.Views["test"])
 			if job.Shell != tc.shell || len(job.Findings) != tc.findings {
 				t.Fatalf("group knowledge = %#v", job)
 			}

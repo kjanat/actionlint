@@ -29,7 +29,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	ownedyaml "actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 
 	"github.com/google/go-cmp/cmp"
 	"go.yaml.in/yaml/v4"
@@ -425,7 +425,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		return upstreamDiagnostics(errs)
 	case "action":
 		var meta actionmeta.Metadata
-		if err := ownedyaml.Unmarshal([]byte(c.Input), &meta); err != nil {
+		if err := codec.Unmarshal([]byte(c.Input), &meta); err != nil {
 			return []string{err.Error()}
 		}
 		root := t.TempDir()

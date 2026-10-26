@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -21,9 +22,11 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workflow/composition"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
@@ -109,15 +112,41 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 
 	all := document.Findings
 	var analysisErr error
-	composed := composition.Result{Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
+	snapshots := &documentparse.SourceSnapshots{}
+	snapshot, err := snapshots.Document(fsread.PhysicalPath(sourcePath), content, document)
+	if err != nil {
+		return all, outline, err
+	}
+	composed := composition.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
-		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
+		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
 			return nil, outline, analysisErr
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := documentparse.References(sourcePath, content, document, composed.Sources, fsread.PhysicalPath)
+	references := map[string]workflowfacts.References{sourcePath: snapshot.CanonicalReferences()}
+	for path, source := range composed.Sources {
+		sourceDocument, exists := composed.SourceDocuments[path]
+		if !exists {
+			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q has no admitted parse provenance", path))
+			continue
+		}
+		if !bytes.Equal(source, sourceDocument.Content()) {
+			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q disagrees with its admitted declaration revision", path))
+			continue
+		}
+		nested, err := snapshots.Document(fsread.PhysicalPath(path), source, sourceDocument.Document())
+		if err != nil {
+			analysisErr = errors.Join(analysisErr, fmt.Errorf("admit source %q parse provenance: %w", path, err))
+			continue
+		}
+		if !bytes.Equal(source, nested.Content()) {
+			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q disagrees with its admitted declaration revision", path))
+			continue
+		}
+		references[path] = nested.CanonicalReferences()
+	}
 	if len(registrations) != 0 {
 		input, inputErr := composed.AnalyzerInput(path, sourcePath, content, document, references)
 		analysisErr = errors.Join(analysisErr, inputErr)
@@ -135,7 +164,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 	return all, outline, analysisErr
 }
 
-func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, action bool,
+func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot *documentparse.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {
@@ -148,11 +177,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			resultErr = errors.Join(resultErr, process.Finish())
 		}
 	}()
-	snapshots := &documentparse.SourceSnapshots{}
-	snapshot, err := snapshots.Document(fsread.PhysicalPath(sourcePath), content, document)
-	if err != nil {
-		return result, err
-	}
+	snapshots := snapshot.Registry()
 	var mappings map[string]string
 	if cfg != nil {
 		mappings = cfg.LocalActions
@@ -162,7 +187,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if cfg != nil {
 		customLabels = cfg.SelfHostedRunner.Labels
 	}
-	runners, runnerErr := runnerlang.Prepare(s.ctx, document.Workflow, customLabels, s.runners, root)
+	runners, runnerErr := runnerlang.Prepare(s.ctx, snapshot, customLabels, s.runners, root)
 	if runners.Report.Identity != "" {
 		report := runners.Report
 		report.Path = path
@@ -172,7 +197,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
 	resolvedActions.Runners = runners
-	context := builtin.Context{Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
+	context := builtin.Context{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
@@ -212,7 +237,11 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),
 	})
 	if action {
-		result, err = service.Action(document.Metadata)
+		deployment, deploymentErr := scriptexecution.NewDeployment(snapshot, document.Metadata.Path(), document.Metadata.SourceMapped)
+		if deploymentErr != nil {
+			return result, deploymentErr
+		}
+		result, err = service.Action(snapshot, deployment, document.Metadata)
 	} else {
 		result, err = service.Workflow(snapshot)
 	}

@@ -4,7 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
@@ -76,8 +77,8 @@ func TestFlowMappingNullsPhysicalTree(t *testing.T) {
 		{"{missing: &empty , ok: *empty}", 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
-			var root yaml.Node
-			if err := yaml.Unmarshal([]byte(tc.source), &root); err != nil {
+			var root syntax.Node
+			if err := codec.Unmarshal([]byte(tc.source), &root); err != nil {
 				t.Fatal(err)
 			}
 			parser := NewSourceParser([]byte(tc.source))

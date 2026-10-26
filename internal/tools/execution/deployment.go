@@ -22,7 +22,7 @@ func NewDeployment(snapshot *documentparse.SourceSnapshot, displayPath string, m
 	if snapshot == nil || displayPath == "" {
 		return Deployment{}, fmt.Errorf("%w: action deployment needs a source and path", ErrInvalidBatch)
 	}
-	if _, action := snapshot.ActionSteps(); !action || snapshot.Reference().Document != sourceid.Document(fsread.PhysicalPath(displayPath)) {
+	if snapshot.Kind() != documentparse.KindAction || snapshot.Reference().Document != sourceid.Document(fsread.PhysicalPath(displayPath)) {
 		return Deployment{}, fmt.Errorf("%w: action deployment path disagrees with source", ErrInvalidBatch)
 	}
 	d := Deployment{reference: snapshot.Reference(), sourcePath: displayPath}

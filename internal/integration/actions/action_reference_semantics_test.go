@@ -9,7 +9,7 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestSelfRepositoryReferenceSuffix(t *testing.T) {
@@ -39,7 +39,7 @@ runs:
   using: composite
   steps:
     - uses: ` + spec + "\n"
-			if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
+			if err := codec.Unmarshal([]byte(source), &meta); err != nil {
 				t.Fatal(err)
 			}
 			findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})

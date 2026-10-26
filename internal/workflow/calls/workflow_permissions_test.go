@@ -6,7 +6,8 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -177,9 +178,9 @@ jobs:
 			fromAST := ResolvePermissionsAST(w.Permissions)
 
 			var n struct {
-				Permissions yaml.Node `yaml:"permissions"`
+				Permissions syntax.Node `yaml:"permissions"`
 			}
-			if err := yaml.Unmarshal([]byte(src), &n); err != nil {
+			if err := codec.Unmarshal([]byte(src), &n); err != nil {
 				t.Fatal(err)
 			}
 			fromYAML := ResolvePermissionsYAML(&n.Permissions)
@@ -206,9 +207,9 @@ permissions:
 	}
 
 	var n struct {
-		Permissions yaml.Node `yaml:"permissions"`
+		Permissions syntax.Node `yaml:"permissions"`
 	}
-	if err := yaml.Unmarshal(src, &n); err != nil {
+	if err := codec.Unmarshal(src, &n); err != nil {
 		t.Fatal(err)
 	}
 
@@ -233,10 +234,10 @@ func TestResolvePermissionsAbsent(t *testing.T) {
 	if have := ResolvePermissionsYAML(nil); have.Kind != PermissionsAbsent {
 		t.Errorf("nil YAML node should be absent but got %v", have.Kind)
 	}
-	if have := ResolvePermissionsYAML(&yaml.Node{}); have.Kind != PermissionsAbsent {
+	if have := ResolvePermissionsYAML(&syntax.Node{}); have.Kind != PermissionsAbsent {
 		t.Errorf("zero YAML node should be absent but got %v", have.Kind)
 	}
-	if have := ResolvePermissionsYAML(&yaml.Node{Kind: yaml.SequenceNode}); have.Kind != PermissionsInvalid {
+	if have := ResolvePermissionsYAML(&syntax.Node{Kind: syntax.SequenceNode}); have.Kind != PermissionsInvalid {
 		t.Errorf("sequence YAML node should be invalid but got %v", have.Kind)
 	}
 }

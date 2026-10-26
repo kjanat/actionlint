@@ -7,27 +7,42 @@ import (
 
 	"mvdan.cc/sh/v3/syntax"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-func (rule *Checker) scriptShell(run *workflowlang.ExecRun) string {
-	var jobShell, workflowShell, runnerShell execution.ShellValue
-	if rule.workflow != nil {
-		workflowShell = execution.DefaultShell(rule.workflow.Defaults)
+func (rule *Checker) scriptShell(step documentparse.StepView) string {
+	run, ok := step.Run()
+	if !ok {
+		return ""
 	}
-	if rule.scriptJob != nil {
-		jobShell = execution.DefaultShell(rule.scriptJob.Defaults)
-		runnerShell = execution.ContainerShell(rule.scriptJob.Container)
-		if runnerShell.Kind == execution.ShellUnspecified {
-			runnerShell = execution.ShellValue{Kind: execution.ShellUnknown}
-			if shell := rule.dependencies.Runners.Job(rule.scriptJob).Shell; shell != "" {
-				runnerShell = execution.ShellValueOf(&workflowlang.String{Value: shell})
+	var jobShell, workflowShell, runnerShell value.Value
+	if !rule.compositeScript {
+		if snapshot := rule.dependencies.SourceSnapshot; snapshot != nil {
+			if workflow, present := snapshot.WorkflowView(); present {
+				workflowShell = execution.DefaultShell(workflow.Defaults().Run().Semantic())
 			}
+			if rule.scriptJob != nil {
+				if job, err := snapshot.JobView(rule.scriptJob); err == nil {
+					jobShell = execution.DefaultShell(job.Defaults().Run().Semantic())
+					runnerShell = execution.ContainerShell(job.Container().Semantic())
+					if runnerShell.State() == value.Missing {
+						runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
+						if rule.dependencies.Runners != nil {
+							if shell := rule.dependencies.Runners.Job(job).Shell; shell != "" {
+								runnerShell = value.YAMLScalar(shell, "!!str", value.Origin{})
+							}
+						}
+					}
+				}
+			}
+		} else {
+			runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
 		}
 	}
-	return execution.ResolveShell(run, jobShell, workflowShell, runnerShell).Name
+	return execution.ResolveShell(run.Shell().Semantic(), jobShell, workflowShell, runnerShell).Name
 }
 
 func scriptShellVariant(shell string) (syntax.LangVariant, bool) {

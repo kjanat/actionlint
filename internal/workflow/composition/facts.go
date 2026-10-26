@@ -9,16 +9,19 @@ import (
 )
 
 func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.References) (analyzer.Input, error) {
-	workflow, units := document.Facts(), result.Batch.Scripts()
+	units := result.Batch.Scripts()
 	refs := references[pathAbs]
 	input := document.AnalyzerSource(path, content, refs.Document)
-	if workflow == nil {
+	if !document.CanAnalyze() {
 		return input, nil
 	}
-	if !result.Batch.Valid() {
+	if !result.Batch.Valid() || result.EntrySnapshot == nil {
 		return input, scriptexecution.ErrInvalidBatch
 	}
 	input.CallGraph = result.Batch.CallGraph()
+	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
+		return document.AnalyzerSource(path, content, refs.Document), scriptexecution.ErrInvalidBatch
+	}
 	if input.Reference == (source.Reference{}) {
 		input.Reference = input.CallGraph.Entry().Reference
 	} else if input.Reference != input.CallGraph.Entry().Reference {
@@ -46,6 +49,6 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 	if result.ResolveExecution {
 		input.Available = append(input.Available, analyzer.Execution)
 	}
-	input.Mappings, input.Dependencies = workflowfacts.Declarations(content, workflow, refs)
+	input.Mappings, input.Dependencies = result.EntrySnapshot.Declarations()
 	return input, nil
 }

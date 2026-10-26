@@ -50,9 +50,11 @@ type Options struct {
 
 type Result struct {
 	Findings         []*findingmodel.Finding
+	EntrySnapshot    *documentparse.SourceSnapshot
 	Batch            scriptexecution.Batch
 	ResolveExecution bool
 	Sources          map[string][]byte
+	SourceDocuments  map[string]actionlocal.SourceDocument
 	// Configs is keyed by expanded source path.
 	Configs map[string]*repoconfig.Config
 }
@@ -84,22 +86,18 @@ func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, erro
 	})
 }
 
-func (s *Service) Action(metadata *actionmeta.Metadata) (Result, error) {
+func (s *Service) Action(snapshot *documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
 	return s.analyze(func(c *compositeAnalyzer) error {
+		if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+			return errors.New("action source snapshot is unavailable")
+		}
 		if metadata == nil {
 			return errors.New("action metadata is unavailable")
-		}
-		if c.sourceSnapshots == nil {
-			c.sourceSnapshots = &documentparse.SourceSnapshots{}
-		}
-		snapshot, err := c.sourceSnapshots.Action(fsread.PhysicalPath(metadata.Path()), metadata)
-		if err != nil {
-			return err
 		}
 		if err := c.startEntry(invocation.EntryAction, snapshot); err != nil {
 			return err
 		}
-		return visitStandaloneAction(metadata, s.options.Rules, c)
+		return visitStandaloneAction(metadata, deployment, s.options.Rules, c)
 	})
 }
 
@@ -197,7 +195,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 			}
 		}
 	}
-	return Result{Findings: findings, Batch: batch, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), Configs: configs}, err
+	return Result{Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), SourceDocuments: options.Actions.SourceDocuments(), Configs: configs}, err
 }
 
 func scriptInputCatalogue(additional []analyzer.ScriptInput) ([]analyzer.ScriptInput, error) {

@@ -15,10 +15,11 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
-func expectedMapping(where string, n *yaml.Node) error {
+func expectedMapping(where string, n *syntax.Node) error {
 	return fmt.Errorf(
 		"yaml: %s must be mapping node but %s node was found at line:%d, col:%d",
 		where,
@@ -38,8 +39,8 @@ type Input struct {
 	Type exprlang.Type
 }
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (input *Input) UnmarshalYAML(n *yaml.Node) error {
+// UnmarshalYAML implements codec.Unmarshaler.
+func (input *Input) UnmarshalYAML(d *codec.Decoder, n *syntax.Node) error {
 	type metadata struct {
 		Required bool    `yaml:"required"`
 		Default  *string `yaml:"default"`
@@ -47,7 +48,7 @@ func (input *Input) UnmarshalYAML(n *yaml.Node) error {
 	}
 
 	var md metadata
-	if err := n.Decode(&md); err != nil {
+	if err := d.Decode(n, &md); err != nil {
 		return err
 	}
 
@@ -70,9 +71,9 @@ func (input *Input) UnmarshalYAML(n *yaml.Node) error {
 // keys are in lower case since input names of workflow calls are case insensitive.
 type Inputs map[string]*Input
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (inputs *Inputs) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.MappingNode {
+// UnmarshalYAML implements codec.Unmarshaler.
+func (inputs *Inputs) UnmarshalYAML(d *codec.Decoder, n *syntax.Node) error {
+	if n.Kind != syntax.MappingNode {
 		return expectedMapping("on.workflow_call.inputs", n)
 	}
 
@@ -81,7 +82,7 @@ func (inputs *Inputs) UnmarshalYAML(n *yaml.Node) error {
 		k, v := n.Content[i], n.Content[i+1]
 
 		var m Input
-		if err := v.Decode(&m); err != nil {
+		if err := d.Decode(v, &m); err != nil {
 			return err
 		}
 		m.Name = k.Value
@@ -109,9 +110,9 @@ type Secret struct {
 // The keys are in lower case since secret names of workflow calls are case insensitive.
 type Secrets map[string]*Secret
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (secrets *Secrets) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.MappingNode {
+// UnmarshalYAML implements codec.Unmarshaler.
+func (secrets *Secrets) UnmarshalYAML(d *codec.Decoder, n *syntax.Node) error {
+	if n.Kind != syntax.MappingNode {
 		return expectedMapping("on.workflow_call.secrets", n)
 	}
 
@@ -120,7 +121,7 @@ func (secrets *Secrets) UnmarshalYAML(n *yaml.Node) error {
 		k, v := n.Content[i], n.Content[i+1]
 
 		var s Secret
-		if err := v.Decode(&s); err != nil {
+		if err := d.Decode(v, &s); err != nil {
 			return err
 		}
 		s.Name = k.Value
@@ -142,9 +143,9 @@ type Output struct {
 // The keys are in lower case since output names of workflow calls are case insensitive.
 type Outputs map[string]*Output
 
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (outputs *Outputs) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind != yaml.MappingNode {
+// UnmarshalYAML implements codec.Unmarshaler.
+func (outputs *Outputs) UnmarshalYAML(_ *codec.Decoder, n *syntax.Node) error {
+	if n.Kind != syntax.MappingNode {
 		return expectedMapping("on.workflow_call.outputs", n)
 	}
 
@@ -437,19 +438,19 @@ func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflow
 
 func ParseMetadata(src []byte) (*Metadata, error) {
 	type workflow struct {
-		On          yaml.Node `yaml:"on"`
-		Permissions yaml.Node `yaml:"permissions"`
-		CacheMode   yaml.Node `yaml:"cache-mode"`
-		Jobs        yaml.Node `yaml:"jobs"`
+		On          syntax.Node `yaml:"on"`
+		Permissions syntax.Node `yaml:"permissions"`
+		CacheMode   syntax.Node `yaml:"cache-mode"`
+		Jobs        syntax.Node `yaml:"jobs"`
 	}
 
-	var doc yaml.Node
-	if err := yaml.Unmarshal(src, &doc); err != nil {
+	var doc syntax.Node
+	if err := codec.Unmarshal(src, &doc); err != nil {
 		return nil, err
 	}
 
 	var aliasErr error
-	workflowlang.ResolveYAMLAliases(&doc, func(n *yaml.Node, d workflowlang.YamlAliasDiagnostic, m string) {
+	workflowlang.ResolveYAMLAliases(&doc, func(n *syntax.Node, d workflowlang.YamlAliasDiagnostic, m string) {
 		if d != workflowlang.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
 			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, m)
 		}
@@ -461,16 +462,16 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	var w workflow
 	if doc.Kind != 0 {
 		n := &doc
-		if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+		if n.Kind == syntax.DocumentNode && len(n.Content) > 0 {
 			n = n.Content[0]
 		}
-		if n.Kind == yaml.MappingNode {
+		if n.Kind == syntax.MappingNode {
 			first := *n
-			first.Content = make([]*yaml.Node, 0, len(n.Content))
+			first.Content = make([]*syntax.Node, 0, len(n.Content))
 			seen := map[string]bool{}
 			for i := 0; i+1 < len(n.Content); i += 2 {
 				key := n.Content[i]
-				if key.Kind != yaml.ScalarNode || key.Value == "" || key.Value == "<<" || workflowlang.RawYAMLTagError(key) != "" {
+				if key.Kind != syntax.ScalarNode || key.Value == "" || key.Value == "<<" || workflowlang.RawYAMLTagError(key) != "" {
 					continue
 				}
 				// Match the workflow parser's first-value handling of duplicate keys.
@@ -482,7 +483,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 			}
 			n = &first
 		}
-		if err := n.Decode(&w); err != nil {
+		if err := codec.Decode(n, &w); err != nil {
 			return nil, err
 		}
 	}
@@ -494,25 +495,25 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 
 	var m *Metadata
 	switch n.Kind {
-	case yaml.MappingNode:
+	case syntax.MappingNode:
 		// on:
 		//   workflow_call:
 		for i := 0; i < len(n.Content); i += 2 {
 			k := strings.ToLower(n.Content[i].Value)
 			if k == "workflow_call" {
 				m = &Metadata{}
-				if err := n.Content[i+1].Decode(m); err != nil {
+				if err := codec.Decode(n.Content[i+1], m); err != nil {
 					return nil, err
 				}
 				break
 			}
 		}
-	case yaml.ScalarNode:
+	case syntax.ScalarNode:
 		// on: workflow_call
 		if v := strings.ToLower(n.Value); v == "workflow_call" {
 			m = &Metadata{}
 		}
-	case yaml.SequenceNode:
+	case syntax.SequenceNode:
 		// on: [workflow_call]
 		for _, c := range n.Content {
 			e := strings.ToLower(c.Value)
@@ -530,7 +531,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	wp := ResolvePermissionsYAML(&w.Permissions)
 	wc := workflowlang.CacheModeFromYAML(&w.CacheMode)
 	stepParser := workflowlang.NewSourceParser(src)
-	if w.Jobs.Kind == yaml.MappingNode {
+	if w.Jobs.Kind == syntax.MappingNode {
 		seenJobs := map[string]bool{}
 		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {
 			id, job := w.Jobs.Content[i], w.Jobs.Content[i+1]
@@ -539,7 +540,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 				continue
 			}
 			seenJobs[key] = true
-			if job.Kind != yaml.MappingNode {
+			if job.Kind != syntax.MappingNode {
 				continue
 			}
 			p := wp
@@ -565,7 +566,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 				case "cache-mode":
 					mode = workflowlang.CacheModeFromYAML(job.Content[k+1])
 				case "uses":
-					if n := job.Content[k+1]; n.Kind == yaml.ScalarNode {
+					if n := job.Content[k+1]; n.Kind == syntax.ScalarNode {
 						uses = n.Value
 						if literal := exprlang.LiteralExpressionValue(uses); literal != nil {
 							uses = *literal

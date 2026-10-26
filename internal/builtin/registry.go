@@ -8,6 +8,7 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	workflowcommands "actionlint.kjanat.dev/v2/internal/workflow/commands"
@@ -20,6 +21,7 @@ import (
 // Context supplies resolved document inputs and observations to built-in adapters.
 // It contains no process pool, application session or engine implementation.
 type Context struct {
+	SourceSnapshot                *documentparse.SourceSnapshot
 	Runners                       *runnerlang.Knowledge
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
@@ -50,10 +52,19 @@ func ruleBehaviours() map[string]behaviour {
 		"workflow-run-names": {Build: func(c Context) workflowvisit.Rule {
 			return &workflowRunNamesRule{Base: builtinRuleBase("workflow-run-names"), root: absolutePath(c.ProjectRoot), index: c.WorkflowNames}
 		}, Enabled: workflowRunNamesAvailable},
-		"matrix":         {Build: func(c Context) workflowvisit.Rule { return NewRuleMatrix() }},
-		"credentials":    {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
-		"shell-name":     {Build: func(c Context) workflowvisit.Rule { r := NewRuleShellName(); r.runners = c.Runners; return r }},
-		"runner-label":   {Build: func(c Context) workflowvisit.Rule { r := NewRuleRunnerLabel(); r.runners = c.Runners; return r }},
+		"matrix":      {Build: func(c Context) workflowvisit.Rule { return NewRuleMatrix(c.SourceSnapshot) }},
+		"credentials": {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
+		"shell-name": {Build: func(c Context) workflowvisit.Rule {
+			r := NewRuleShellName()
+			r.runners = c.Runners
+			r.source = c.SourceSnapshot
+			return r
+		}},
+		"runner-label": {Build: func(c Context) workflowvisit.Rule {
+			r := NewRuleRunnerLabel(c.SourceSnapshot)
+			r.runners = c.Runners
+			return r
+		}},
 		"events":         {Build: func(c Context) workflowvisit.Rule { return NewRuleEvents() }},
 		"job-needs":      {Build: func(c Context) workflowvisit.Rule { return NewRuleJobNeeds() }},
 		"parallel-steps": {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},
@@ -61,12 +72,14 @@ func ruleBehaviours() map[string]behaviour {
 		"executable-bit": {Build: func(c Context) workflowvisit.Rule {
 			return newRuleExecutableBit(c)
 		}, Enabled: func(c Context) bool { return c.ProjectRoot != "" && c.Index != nil }},
-		"env-var":             {Build: func(c Context) workflowvisit.Rule { return NewRuleEnvVar() }},
-		"id":                  {Build: func(c Context) workflowvisit.Rule { return NewRuleID() }},
-		"glob":                {Build: func(c Context) workflowvisit.Rule { return NewRuleGlob() }},
-		"permissions":         {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
-		"workflow-call":       {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.Path, c.Workflows) }},
-		"expression":          {Build: func(c Context) workflowvisit.Rule { return newRuleExpression(c.Actions, c.Workflows, c.Runners) }},
+		"env-var":       {Build: func(c Context) workflowvisit.Rule { return NewRuleEnvVar() }},
+		"id":            {Build: func(c Context) workflowvisit.Rule { return NewRuleID() }},
+		"glob":          {Build: func(c Context) workflowvisit.Rule { return NewRuleGlob() }},
+		"permissions":   {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
+		"workflow-call": {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.Path, c.Workflows) }},
+		"expression": {Build: func(c Context) workflowvisit.Rule {
+			return newRuleExpression(c.Actions, c.Workflows, c.Runners, c.SourceSnapshot)
+		}},
 		"deprecated-commands": {Script: workflowcommands.Analyzer{}},
 		"if-cond":             {Build: func(c Context) workflowvisit.Rule { return NewRuleIfCond() }},
 		"require-commit-hash": {Build: func(c Context) workflowvisit.Rule {

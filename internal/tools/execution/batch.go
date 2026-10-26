@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/invocationview"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/source"
@@ -21,7 +20,7 @@ import (
 type Unit struct {
 	Occurrence invocation.ID
 	Reference  source.Reference
-	Run        *workflowlang.ExecRun
+	Run        documentparse.ExecRunView
 	Input      *ActionInput
 	Shell      *string
 	Config     *repoconfig.Config
@@ -36,7 +35,7 @@ type Unit struct {
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  analyzer.ScriptInput
-	Value *workflowlang.Input
+	Value documentparse.InputView
 }
 
 // ScriptRequest contains invocation policy; declarations come from the source registry.
@@ -183,7 +182,8 @@ func (batch Batch) Invocations() invocation.Graph {
 
 func (batch Batch) CollectedScripts() bool { return batch.data != nil && batch.data.collected }
 
-// Snapshot copies mutable source values, preserving scope links within the copy.
+// Snapshot copies invocation data and retains immutable declaration views.
+// Scope links are preserved within the copy.
 func (batch Batch) Snapshot() ([]*Scope, []Unit) {
 	if batch.data == nil {
 		return nil, nil

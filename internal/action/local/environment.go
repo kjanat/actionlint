@@ -3,36 +3,42 @@ package local
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/mapping"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 
 	"mvdan.cc/sh/v3/syntax"
 )
 
 // ObserveExecution tracks environment-file effects across steps and composite returns.
-// Prove only simple literal shell commands cannot write them; do not execute code.
-func (c *Resolver) ObserveExecution(step *workflowlang.Step) {
-	if enabled, known := execution.Condition(step.If); known && !enabled {
+func (c *Resolver) ObserveExecution(step documentparse.StepView) {
+	if enabled, known := execution.Condition(step.Condition()); known && !enabled {
 		return
 	}
-	run, ok := step.Exec.(*workflowlang.ExecRun)
+	run, ok := step.Run()
 	if !ok {
 		return
 	}
-	if c.shellEnvUnknown || c.shellEnvironmentUnknown(step.Env) || !c.runPreservesEnvironment(run) {
+	if c.shellEnvUnknown || c.shellEnvironmentUnknown(step.Env().Mapping()) || !c.runPreservesEnvironment(run.Run().Semantic(), run.Shell().Semantic()) {
 		c.persistentEnvUnknown = true
 	}
 }
 
-func (c *Resolver) shellEnvironmentUnknown(env *workflowlang.Env) bool {
+func (c *Resolver) shellEnvironmentUnknown(env mapping.Mapping) bool {
 	return execution.ShellEnvironmentUnknownForPlatform(env, c.platform) || execution.ShellPathUnknownForPlatform(env, c.platform)
 }
 
-func (c *Resolver) runPreservesEnvironment(run *workflowlang.ExecRun) bool {
-	if run.Run == nil || run.Run.ContainsExpression() {
+func (c *Resolver) runPreservesEnvironment(run, runShell value.Value) bool {
+	source, known := run.Text()
+	if !known {
 		return false
 	}
-	shell := execution.ResolveShell(run, execution.ShellValueOf(&workflowlang.String{Value: c.checkoutShell.Name}), execution.ShellValue{}, execution.ShellValue{Kind: execution.ShellUnknown})
+	checkoutShell := value.DynamicValue("", value.KindUnknown, value.Origin{})
+	if c.checkoutShell.Name != "" {
+		checkoutShell = value.YAMLScalar(c.checkoutShell.Name, "!!str", value.Origin{})
+	}
+	shell := execution.ResolveShell(runShell, value.Value{}, value.Value{}, checkoutShell)
 	variant := syntax.LangBash
 	switch strings.ToLower(shell.Name) {
 	case "bash":
@@ -41,7 +47,7 @@ func (c *Resolver) runPreservesEnvironment(run *workflowlang.ExecRun) bool {
 	default:
 		return false
 	}
-	file, err := syntax.NewParser(syntax.Variant(variant)).Parse(strings.NewReader(run.Run.Value), "")
+	file, err := syntax.NewParser(syntax.Variant(variant)).Parse(strings.NewReader(source), "")
 	if err != nil {
 		return false
 	}
@@ -79,12 +85,13 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 }
 
 // ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
-func (c *Resolver) ObserveOpaqueAction(step *workflowlang.Step, action *workflowlang.ExecAction) {
-	if enabled, known := execution.Condition(step.If); known && !enabled {
+func (c *Resolver) ObserveOpaqueAction(step documentparse.StepView, action documentparse.ExecActionView) {
+	if enabled, known := execution.Condition(step.Condition()); known && !enabled {
 		return
 	}
-	if action.Uses != nil {
-		name, _, versioned := strings.Cut(action.Uses.Value, "@")
+	uses := action.Uses()
+	if uses.Present() {
+		name, _, versioned := strings.Cut(uses.Value(), "@")
 		if versioned && strings.EqualFold(name, "actions/checkout") {
 			return
 		}

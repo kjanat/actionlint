@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -200,7 +200,7 @@ runs:
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			var have Metadata
-			if err := yaml.Unmarshal([]byte(tc.input), &have); err != nil {
+			if err := codec.Unmarshal([]byte(tc.input), &have); err != nil {
 				t.Fatal(err)
 			}
 			testDiffActionMetadata(t, &tc.want, &have, cmpopts.IgnoreFields(Step{}, "Shell", "ContinueOnError", "WithExpression", "EnvExpression", "ID", "Node"))
@@ -225,7 +225,7 @@ inputs: "foo"`,
 			input: `name: Test
 inputs:
   input1: "foo"`,
-			want: "into action.actionInputMetadata",
+			want: "input definition must be mapping node but scalar node was found at line:3, col:11",
 		},
 		{
 			what: "invalid outputs",
@@ -246,7 +246,7 @@ inputs:
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			var data Metadata
-			err := yaml.Unmarshal([]byte(tc.input), &data)
+			err := codec.Unmarshal([]byte(tc.input), &data)
 			if err == nil {
 				t.Fatal("error did not occur")
 			}
@@ -267,7 +267,7 @@ func TestActionMetadataPreservesPartialDecode(t *testing.T) {
 		t.Run(using, func(t *testing.T) {
 			src := bytes.ReplaceAll(fixture, []byte("node16"), []byte(using))
 			var md Metadata
-			err := yaml.Unmarshal(src, &md)
+			err := codec.Unmarshal(src, &md)
 			if err == nil || !strings.Contains(err.Error(), "unexpected key") || !strings.Contains(err.Error(), `input "temporaryPublicStorage"`) {
 				t.Fatalf("expected the upstream typo error, got %v", err)
 			}

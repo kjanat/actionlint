@@ -238,7 +238,7 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 				wantCalls, wantDocuments := 0, 0
 				if mode == "standalone" {
 					metadata, _ := f.cache.LookupMetadata("$/inner")
-					result, err = f.service.Action(metadata.Metadata())
+					result, err = standaloneActionForTest(t, f.service, metadata.Metadata())
 					wantDocuments = 1
 				} else {
 					result, err = f.service.Workflow(f.root)
@@ -261,7 +261,7 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 				if collect {
 					wantUnits = 1
 				}
-				if len(result.Batch.Scripts()) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts()[0].Run.Run.Value != "echo retained") {
+				if len(result.Batch.Scripts()) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts()[0].Run.Run().Value() != "echo retained") {
 					t.Fatal("earlier script lost or rejected script retained")
 				}
 				for _, call := range graph.Calls() {

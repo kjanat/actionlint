@@ -160,7 +160,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 		run := *base
 		run.scriptIndex = i
 		runs[i] = &run
-		if err := run.runShellcheck(script.run.Run.Value, script.run.Source, script.execution.shell, script.execution.directory, script.run.RunPos, script.run.Run.Pos); err != nil {
+		if err := run.runShellcheck(script.text, script.source, script.execution.shell, script.execution.directory, script.key, script.value); err != nil {
 			failure = errors.Join(failure, err)
 			break
 		}

@@ -15,7 +15,6 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -33,9 +32,20 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	action, ok := call.Exec.(*workflowlang.ExecAction)
+	if analysis.sourceSnapshot == nil {
+		return errors.New("action call source snapshot is unavailable")
+	}
+	declaration, err := analysis.sourceSnapshot.StepView(call)
+	if err != nil {
+		return err
+	}
+	actionView, ok := declaration.Action()
 	if !ok {
 		return nil
+	}
+	action, ok := call.Exec.(*workflowlang.ExecAction)
+	if !ok {
+		return errors.New("canonical action step has no legacy callback cursor")
 	}
 	site, facts, err := analysis.describeCall(call)
 	if err != nil {
@@ -55,7 +65,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 				deferred = append(deferred, rule)
 			}
 		}
-		return analysis.visitOpaqueAction(call, action, deferred)
+		return analysis.visitOpaqueAction(call, action, declaration, actionView, deferred)
 	}
 	callContext, admitted := ticket.Context()
 	if !admitted {
@@ -78,7 +88,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 			return err
 		}
 	}
-	meta, outcome, err := analysis.resolveAction(action)
+	meta, outcome, err := analysis.resolveAction(actionView)
 	if err != nil {
 		return err
 	}
@@ -87,17 +97,17 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		return err
 	}
 	if outcome.Kind() != invocation.OutcomeExpanded {
-		return analysis.visitOpaqueAction(call, action, parents)
+		return analysis.visitOpaqueAction(call, action, declaration, actionView, parents)
 	}
 	opened = true
 	return analysis.visitMetadataScripts(meta, callContext, parents)
 }
 
-func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, action *workflowlang.ExecAction, parents []workflowvisit.Rule) error {
-	analysis.actions.ObserveOpaqueAction(call, action)
+func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, action *workflowlang.ExecAction, declaration documentparse.StepView, actionView documentparse.ExecActionView, parents []workflowvisit.Rule) error {
+	analysis.actions.ObserveOpaqueAction(declaration, actionView)
 	for _, rule := range parents {
 		compositeCheckoutPaths(rule, analysis.actions)
-		if err := checks.VisitWithOrigin(rule, findingmodel.StepOrigin(analysis.jobID, call), checks.HasConfiguredIgnores(analysis.scriptConfig), func() error { return rule.VisitStep(call) }); err != nil {
+		if err := checks.VisitWithOrigin(rule, canonicalStepOrigin(declaration, analysis.jobID), checks.HasConfiguredIgnores(analysis.scriptConfig), func() error { return rule.VisitStep(call) }); err != nil {
 			return err
 		}
 	}
@@ -160,7 +170,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		if !ok {
 			continue
 		}
-		child, err := participant.ForComposite(builtin.Invocation{Context: callContext, ActionPath: deployment.ActionPath(), Actions: analysis.actions})
+		child, err := participant.ForComposite(builtin.Invocation{Context: callContext, ActionPath: deployment.ActionPath(), Actions: analysis.actions, Source: snapshot})
 		if err != nil {
 			return err
 		}
@@ -172,12 +182,16 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		if err := analysis.cancelled(); err != nil {
 			return err
 		}
-		analysis.actions.ObserveExecution(step)
-		analysis.actions.ObserveCheckout(step)
+		declaration, err := snapshot.StepView(step)
+		if err != nil {
+			return err
+		}
+		analysis.actions.ObserveExecution(declaration)
+		analysis.actions.ObserveCheckout(declaration)
 		if err := analysis.collectScript(step, scriptConfig, nil, nil); err != nil {
 			return err
 		}
-		if _, action := step.Exec.(*workflowlang.ExecAction); action {
+		if _, action := declaration.Action(); action {
 			if err := analysis.visitActionScripts(step, children, func() error { return analysis.validateMetadataStep(meta, step, scriptConfig) }); err != nil {
 				return err
 			}
@@ -185,7 +199,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		}
 		for _, rule := range children {
 			compositeCheckoutPaths(rule, analysis.actions)
-			if err := checks.VisitWithOrigin(rule, findingmodel.StepOrigin(analysis.jobID, step), checks.HasConfiguredIgnores(scriptConfig), func() error { return rule.VisitStep(step) }); err != nil {
+			if err := checks.VisitWithOrigin(rule, canonicalStepOrigin(declaration, analysis.jobID), checks.HasConfiguredIgnores(scriptConfig), func() error { return rule.VisitStep(step) }); err != nil {
 				return err
 			}
 		}
@@ -199,10 +213,17 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 }
 
 func (analysis *compositeAnalyzer) validateMetadataStep(meta *actionmeta.Metadata, step *workflowlang.Step, config *repoconfig.Config) error {
+	if analysis.sourceSnapshot == nil {
+		return errors.New("metadata step source snapshot is unavailable")
+	}
+	declaration, err := analysis.sourceSnapshot.StepView(step)
+	if err != nil {
+		return err
+	}
 	for _, pass := range analysis.passes {
 		if parent, enabled := pass.(builtin.MetadataParticipant); enabled {
 			validation := parent.ForMetadata(analysis.actions)
-			if err := checks.VisitWithOrigin(validation, findingmodel.StepOrigin(analysis.jobID, step), checks.HasConfiguredIgnores(config), func() error { return validation.VisitStep(step) }); err != nil {
+			if err := checks.VisitWithOrigin(validation, canonicalStepOrigin(declaration, analysis.jobID), checks.HasConfiguredIgnores(config), func() error { return validation.VisitStep(step) }); err != nil {
 				return err
 			}
 			analysis.rules = append(analysis.rules, compositeScriptRules{meta, []workflowvisit.Rule{validation}})
@@ -232,6 +253,10 @@ func (analysis *compositeAnalyzer) describeCall(step *workflowlang.Step) (source
 	if err != nil {
 		return source.Reference{}, invocation.Facts{}, err
 	}
-	facts, err := execution.CallFacts(step, analysis.actions.Platform())
+	declaration, err := analysis.sourceSnapshot.StepView(step)
+	if err != nil {
+		return source.Reference{}, invocation.Facts{}, err
+	}
+	facts, err := execution.CallFacts(declaration, analysis.actions.Platform())
 	return site, facts, err
 }

@@ -1,7 +1,7 @@
 package kjanat:actionlint@0.2.0;
 
 /// Shared preparation for shell analysis, scoped to supplied script occurrences.
-/// Normative profile: ../schemas/shell-preparation-0.1.0.md.
+/// Normative profile: ../schemas/shell-preparation-0.2.0.md.
 /// The host owns this transformation; guests must not repeat it or infer its
 /// results from the host version, package name, or diagnostic messages.
 interface prepared-scripts {

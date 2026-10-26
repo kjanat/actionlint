@@ -22,8 +22,8 @@ type Visitor struct {
 // Hooks lets a caller observe document/job entry and own step expansion.
 // ParallelBoundary invalidates caller-owned assumptions between parallel branches.
 type Hooks struct {
-	Workflow         func(*workflowlang.Workflow)
-	Job              func(*workflowlang.Job)
+	Workflow         func(*workflowlang.Workflow) error
+	Job              func(*workflowlang.Job) error
 	Step             func(*workflowlang.Step) error
 	ParallelBoundary func()
 }
@@ -56,7 +56,9 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 	}
 
 	if v.Hooks.Workflow != nil {
-		v.Hooks.Workflow(n)
+		if err := v.Hooks.Workflow(n); err != nil {
+			return err
+		}
 	}
 	for _, p := range v.passes {
 		if err := p.VisitWorkflowPre(n); err != nil {
@@ -114,7 +116,9 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 
 func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	if v.Hooks.Job != nil {
-		v.Hooks.Job(n)
+		if err := v.Hooks.Job(n); err != nil {
+			return err
+		}
 	}
 	var t time.Time
 	if v.dbg != nil {

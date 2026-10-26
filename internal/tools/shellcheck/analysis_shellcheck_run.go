@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -117,7 +118,7 @@ func sanitizeExpressionsInScript(src string) string {
 	}
 }
 
-func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptSource, shell shellcheckShell, directory runDirectory, pos, valuePos *workflowlang.Pos) error {
+func (run *shellcheckRun) runShellcheck(src string, source documentparse.ScriptSourceView, shell shellcheckShell, directory runDirectory, pos, valuePos *workflowlang.Pos) error {
 	dialect, setup := shell.analysis()
 	header, _, directiveShell := shellcheckHeader(src)
 	if dialect == "" && !directiveShell {
@@ -226,8 +227,8 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 	if valuePos != nil {
 		origin.last = max(origin.last, valuePos.Line)
 	}
-	if source != nil {
-		for _, span := range source.Spans {
+	if source.Present() {
+		for span := range source.Spans() {
 			origin.last = max(origin.last, span.YamlLine)
 		}
 	}
@@ -260,7 +261,7 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 			start, startOK := source.Position(line, err.Column)
 			end, endOK := source.EndPos(script.originalLine(err.EndLine), err.EndColumn)
 			if startOK && endOK {
-				run.addFinding(start, end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
+				run.addFinding(&start, &end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 			} else {
 				run.addFinding(pos, nil, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 			}

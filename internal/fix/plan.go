@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 )
 
 type Change struct {
@@ -116,7 +116,7 @@ func Offset(content []byte, p diagnostic.Position) (int, error) {
 	if p.Line < 1 || p.Column < 1 || !utf8.Valid(content) {
 		return 0, fmt.Errorf("invalid source position %v", p)
 	}
-	document := yamlsource.NewDocument(string(content))
+	document := sourcemap.NewDocument(string(content))
 	if p.Line > len(document.Lines) {
 		return 0, fmt.Errorf("source position %v is outside the document", p)
 	}

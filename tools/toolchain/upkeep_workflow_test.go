@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestUpkeepGoToolchain(t *testing.T) {
@@ -30,7 +30,7 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			}
 		}
 	}
-	if err := yaml.Unmarshal(data, &workflow); err != nil {
+	if err := codec.Unmarshal(data, &workflow); err != nil {
 		t.Fatal(err)
 	}
 	var script string

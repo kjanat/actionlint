@@ -7,7 +7,7 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestExpressionWhitespaceActionMappingBoundaries(t *testing.T) {
@@ -31,7 +31,7 @@ runs:
     - uses: actions/checkout@v6
       ` + field + ": " + tc.value + "\n")
 				var meta actionmeta.Metadata
-				if err := yaml.Unmarshal(source, &meta); err != nil {
+				if err := codec.Unmarshal(source, &meta); err != nil {
 					t.Fatal(err)
 				}
 				meta.Filename, meta.Source = "action.yml", source

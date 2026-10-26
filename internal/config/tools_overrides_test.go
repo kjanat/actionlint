@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestFileOverrideToolSettings(t *testing.T) {
@@ -31,7 +31,7 @@ overrides:
 		if got.Tools.Shellcheck.Enabled == nil || *got.Tools.Shellcheck.Enabled {
 			t.Fatalf("switch was lost: %+v", got.Tools)
 		}
-		encoded, err := yaml.Marshal(got.Tools)
+		encoded, err := codec.Marshal(got.Tools)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -49,7 +49,7 @@ overrides:
 		if config.Tools.Shellcheck.Enabled == nil || !*config.Tools.Shellcheck.Enabled {
 			t.Fatal("mutated parent tool config")
 		}
-		encoded, err = yaml.Marshal(config)
+		encoded, err = codec.Marshal(config)
 		if err != nil {
 			t.Fatal(err)
 		}

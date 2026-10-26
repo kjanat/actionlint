@@ -10,7 +10,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestConfigExtends(t *testing.T) {
@@ -52,7 +52,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if cfg.IncludesFile(".github/workflows/skip.yml", root) || !cfg.IncludesFile(".github/workflows/ci.yml", root) {
 		t.Fatal(cfg.Files)
 	}
-	encoded, err := yaml.Marshal(cfg.Tools.Shellcheck.Config)
+	encoded, err := codec.Marshal(cfg.Tools.Shellcheck.Config)
 	if err != nil {
 		t.Fatal(err)
 	}

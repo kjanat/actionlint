@@ -2,7 +2,6 @@ package expressions
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -22,7 +21,7 @@ func TestUnknownMatrixKeysPreserveKnownTypes(t *testing.T) {
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
-			ty := rule.checkMatrix(workflow.Jobs["test"].Strategy.Matrix)
+			ty := rule.checkMatrix(workflow.Jobs["test"].Strategy.Matrix, matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
 			if !ty.IsLoose() || len(ty.Props) != 1 {
 				t.Fatalf("want open object with only the known axis, got %#v", ty)
 			}
@@ -43,7 +42,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 			}
 			rule := newTestChecker()
 			for _, job := range workflow.Jobs {
-				ty := rule.checkMatrix(job.Strategy.Matrix)
+				ty := rule.checkMatrix(job.Strategy.Matrix, matrixcheck.Resolve(job.Strategy))
 				if !ty.IsStrict() || len(ty.Props) != 1 || ty.Props["os"] == nil {
 					t.Fatalf("known key lost or object loosened: %#v", ty)
 				}
@@ -52,16 +51,19 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 	}
 	// Preserve expression delimiters in evaluated keys as literal data.
 	const key = "${{ vars.AXIS }}"
-	matrix, complete := matrixcheck.Expand(&workflowlang.Matrix{Expression: &workflowlang.String{
+	strategy := &workflowlang.Strategy{Matrix: &workflowlang.Matrix{Expression: &workflowlang.String{
 		Value: `${{ fromJSON('{"${{ vars.AXIS }}":["ubuntu-latest"]}') }}`,
 		Pos:   &workflowlang.Pos{Line: 1, Col: 1},
-	}})
-	if matrix == nil || !complete {
+	}}}
+	resolution := matrixcheck.Resolve(strategy)
+	if combinations, complete := resolution.Combinations(8); !complete || len(combinations) != 1 {
 		t.Fatal("literal matrix rejected")
 	}
-	rule := newTestChecker()
-	ty := rule.checkMatrix(matrix)
-	if !ty.IsStrict() || len(ty.Props) != 1 || ty.Props[strings.ToLower(key)] == nil || len(rule.Findings()) != 0 {
-		t.Fatalf("evaluated key reinterpreted: %#v, %v", ty, rule.Findings())
+	reachable := resolution.Reachable(key)
+	if !reachable.Complete || len(reachable.Values) != 1 {
+		t.Fatalf("evaluated key reinterpreted: %#v", reachable)
+	}
+	if got, ok := reachable.Values[0].ScalarString(); !ok || got != "ubuntu-latest" {
+		t.Fatalf("evaluated key value changed: %q, %v", got, ok)
 	}
 }

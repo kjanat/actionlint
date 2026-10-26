@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // PermissionLevel is an access level of a single permission scope of the GITHUB_TOKEN.
@@ -137,18 +137,18 @@ func ResolvePermissionsAST(p *workflowlang.Permissions) ResolvedPermissions {
 
 // ResolvePermissionsYAML resolves a raw "permissions:" YAML node. A nil node or a node with a zero
 // Kind means the section is absent.
-func ResolvePermissionsYAML(n *yaml.Node) ResolvedPermissions {
+func ResolvePermissionsYAML(n *syntax.Node) ResolvedPermissions {
 	if n == nil || n.Kind == 0 {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
 	}
 	switch n.Kind {
-	case yaml.MappingNode:
+	case syntax.MappingNode:
 		ss := make(map[string]string, len(n.Content)/2)
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			ss[n.Content[i].Value] = strings.ToLower(n.Content[i+1].Value)
 		}
 		return resolvePermissions(permissionsSource{scopes: ss})
-	case yaml.ScalarNode:
+	case syntax.ScalarNode:
 		return resolvePermissions(permissionsSource{all: strings.ToLower(n.Value)})
 	default:
 		return ResolvedPermissions{Kind: PermissionsInvalid}

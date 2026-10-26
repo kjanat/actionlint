@@ -1,216 +1,168 @@
 package runner
 
 import (
-	"strings"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
-// Selectors preserves conjunctions, groups, correlated alternatives and sources.
-func Selectors(job *workflowlang.Job) []runnerapi.Selector {
-	if job.RunsOn == nil {
+func Selectors(job documentparse.JobView) []runnerapi.Selector {
+	if !job.Present() || !job.RunsOn().Present() {
 		return nil
 	}
-	combinations, known := MatrixCombinations(job.Strategy)
-	if !known {
-		combinations = []runnerMatrixCombination{nil}
+	selection := job.RunsOn().Selection()
+	strategy := job.Strategy().MatrixResolution()
+	combinations, complete := strategy.Combinations(256)
+	if complete {
+		if len(combinations) == 0 {
+			combinations = []matrix.Combination{{}}
+		}
+		result := make([]runnerapi.Selector, 0, len(combinations))
+		for _, combination := range combinations {
+			result = append(result, selectorFor(selection, combination, false))
+		}
+		return result
 	}
-	var selectors []runnerapi.Selector
-	for _, combination := range combinations {
-		selectors = append(selectors, selectorForRunner(job.RunsOn, combination))
-	}
-	// An incomplete matrix can still supply alternatives for individual labels.
-	if !known && job.Strategy != nil {
-		for _, label := range append(append([]*workflowlang.String{}, job.RunsOn.Labels...), job.RunsOn.Expression, job.RunsOn.LabelsExpr) {
-			if label == nil || runnerMatrixProperty(label) == "" {
-				continue
-			}
-			property := runnerMatrixProperty(label)
-			for _, value := range partialMatrixValues(job.Strategy, property) {
-				s := selectorForRunner(job.RunsOn, runnerMatrixCombination{property: value})
-				s.Incomplete = true
-				selectors = append(selectors, s)
-			}
+	result := []runnerapi.Selector{selectorFor(selection, matrix.Combination{}, true)}
+	for _, candidate := range selectionValues(selection) {
+		property := runnerMatrixProperty(candidate.Source())
+		if property == "" {
+			continue
+		}
+		reachable := strategy.Reachable(property)
+		for _, item := range reachable.Values {
+			result = append(result, selectorFor(selection, (matrix.Combination{}).With(property, item), true))
 		}
 	}
-	return selectors
+	return result
 }
 
-func selectorForRunner(r *workflowlang.Runner, combination runnerMatrixCombination) runnerapi.Selector {
-	s := runnerapi.Selector{}
-	if r.Group != nil {
-		group := selectorConstraint(r.Group, combination)
-		s.Group = &group
-	}
-	switch {
-	case r.Expression != nil:
-		if raw, ok := selectorValue(r.Expression, combination); !ok || !fillSelector(&s, raw, runnerMatrixProperty(r.Expression) != "") {
-			s = runnerapi.Selector{Expression: r.Expression.Value}
+func selectorFor(selection value.Value, combination matrix.Combination, incomplete bool) runnerapi.Selector {
+	result := runnerapi.Selector{Incomplete: incomplete}
+	candidate := selection
+	if selection.Known() && selection.Kind() == value.Object {
+		if group, ok := selection.Prop("group"); ok {
+			constraint := groupConstraint(group, combination)
+			result.Group = &constraint
 		}
-	case r.LabelsExpr != nil:
-		s.Labels = selectorLabels(r.LabelsExpr, combination)
-	default:
-		for _, label := range r.Labels {
-			s.Labels = append(s.Labels, selectorLabels(label, combination)...)
+		labels, ok := selection.Prop("labels")
+		if !ok {
+			return result
 		}
+		candidate = labels
 	}
-	return s
-}
-
-func partialMatrixValues(strategy *workflowlang.Strategy, property string) []workflowlang.RawYAMLValue {
-	m := strategy.Matrix
-	if strategy.Expression != nil {
-		m = matrixcheck.KnownStrategy(strategy.Expression)
-	}
-	if m == nil {
-		return nil
-	}
-	m, _ = matrixcheck.Expand(m)
-	if m == nil {
-		return nil
-	}
-	var values []workflowlang.RawYAMLValue
-	appendValue := func(value workflowlang.RawYAMLValue, expressions bool) {
-		if !expressions || !exprlang.ContainsExpression(value.String()) {
-			values = append(values, value)
+	resolved, ok := resolveMatrixValue(candidate, combination)
+	if !ok {
+		if selection.Kind() == value.Object {
+			result.Labels = []runnerapi.Constraint{selectorConstraint(candidate, combination)}
+		} else {
+			result.Expression = candidate.Source()
 		}
+		return result
 	}
-	if row := m.Rows[property]; row != nil {
-		elements, _ := matrixcheck.RowElements(row, true)
-		for _, element := range elements {
-			appendValue(element.Value, element.Expressions)
-		}
-	}
-	for _, combination := range matrixcheck.Combinations(m.Include, true) {
-		if assign := combination.Combination.Assigns[property]; assign != nil {
-			appendValue(assign.Value, combination.Expressions)
-		}
-	}
-	return values
-}
-
-func literalConstraint(text string, pos *workflowlang.Pos) runnerapi.Constraint {
-	var position diagnostic.Position
-	if pos != nil {
-		position = diagnostic.Position{Line: pos.Line, Column: pos.Col}
-	}
-	return runnerapi.Constraint{Value: runnerapi.Literal(text), Position: position}
-}
-
-func selectorConstraint(value *workflowlang.String, combination runnerMatrixCombination) runnerapi.Constraint {
-	if !value.ContainsExpression() {
-		return literalConstraint(value.Value, value.Pos)
-	}
-	if raw, known := selectorValue(value, combination); known {
-		if scalar, ok := raw.(*workflowlang.RawYAMLString); ok && scalar.ScalarValue() != nil {
-			if text, ok := workflowlang.WorkflowScalarString(scalar.ScalarValue()); ok {
-				return literalConstraint(text, scalar.Pos())
+	if resolved.Known() && resolved.Kind() == value.Object {
+		if result.Group == nil {
+			if group, ok := resolved.Prop("group"); ok {
+				constraint := groupConstraint(group, combination)
+				result.Group = &constraint
 			}
 		}
 	}
-	c := literalConstraint(value.Value, value.Pos)
-	c.Value = runnerapi.Expression(value.Value)
-	return c
-}
-
-func selectorLabels(value *workflowlang.String, combination runnerMatrixCombination) []runnerapi.Constraint {
-	if raw, known := selectorValue(value, combination); known {
-		if constraints, valid := rawConstraints(raw, runnerMatrixProperty(value) != ""); valid {
-			return constraints
-		}
-	}
-	return []runnerapi.Constraint{selectorConstraint(value, combination)}
-}
-
-func selectorValue(value *workflowlang.String, combination runnerMatrixCombination) (workflowlang.RawYAMLValue, bool) {
-	if property := runnerMatrixProperty(value); property != "" {
-		if raw, ok := combination[property]; ok {
-			return raw, true
-		}
-	}
-	literal, known := workflowlang.WorkflowExpressionLiteral(value)
-	if !known {
-		return nil, false
-	}
-	var node yaml.Node
-	if err := node.Encode(literal); err != nil {
-		return nil, false
-	}
-	var position func(*yaml.Node)
-	position = func(n *yaml.Node) {
-		if value.Pos != nil {
-			n.Line, n.Column = value.Pos.Line, value.Pos.Col
-		}
-		for _, child := range n.Content {
-			position(child)
-		}
-	}
-	position(&node)
-	return (&workflowlang.Parser{}).ParseRawYAMLValue(&node), true
-}
-
-func rawConstraints(raw workflowlang.RawYAMLValue, nullIsLabel bool) ([]runnerapi.Constraint, bool) {
-	var result []runnerapi.Constraint
-	if array, ok := raw.(*workflowlang.RawYAMLArray); ok {
-		for _, child := range array.Elems {
-			constraint, valid := rawConstraint(child, nullIsLabel)
-			if !valid {
-				return nil, false
-			}
-			result = append(result, constraint)
-		}
-		return result, true
-	}
-	constraint, valid := rawConstraint(raw, nullIsLabel)
+	constraints, valid := constraintsFor(resolved, hasMatrixReference(candidate), combination)
 	if !valid {
-		return nil, false
+		if selection.Kind() == value.Object {
+			result.Labels = []runnerapi.Constraint{selectorConstraint(candidate, combination)}
+		} else {
+			result.Expression = candidate.Source()
+		}
+		return result
 	}
-	return []runnerapi.Constraint{constraint}, true
+	result.Labels = constraints
+	return result
 }
 
-func rawConstraint(raw workflowlang.RawYAMLValue, nullIsLabel bool) (runnerapi.Constraint, bool) {
-	if scalar, ok := raw.(*workflowlang.RawYAMLString); ok && (nullIsLabel || scalar.ScalarValue() != nil) {
-		if text, valid := workflowlang.WorkflowScalarString(scalar.ScalarValue()); valid {
-			return literalConstraint(text, scalar.Pos()), true
+func selectorConstraint(source value.Value, combination matrix.Combination) runnerapi.Constraint {
+	resolved, ok := resolveMatrixValue(source, combination)
+	if ok {
+		if text, scalar := resolved.ScalarString(); scalar {
+			return runnerapi.Constraint{Value: runnerapi.Literal(text), Position: resolved.Origin().Span.Start}
 		}
 	}
-	return runnerapi.Constraint{}, false
+	constraint := runnerapi.Constraint{Value: runnerapi.Expression(source.Source()), Position: source.Origin().Span.Start}
+	return constraint
 }
 
-func fillSelector(s *runnerapi.Selector, raw workflowlang.RawYAMLValue, nullIsLabel bool) bool {
-	if object, ok := raw.(*workflowlang.RawYAMLObject); ok {
-		seen := make(map[string]bool)
-		for name, value := range object.Props {
-			name = strings.ToLower(name)
-			if seen[name] {
-				return false
-			}
-			seen[name] = true
-			switch name {
-			case "labels":
-				labels, valid := rawConstraints(value, nullIsLabel)
-				if !valid {
-					return false
-				}
-				s.Labels = labels
-			case "group":
-				group, valid := rawConstraint(value, false)
-				if !valid {
-					return false
-				}
-				s.Group = &group
-			default:
-				return false
-			}
-		}
-		return len(seen) != 0
+func groupConstraint(source value.Value, combination matrix.Combination) runnerapi.Constraint {
+	if source.Kind() == value.Null {
+		return runnerapi.Constraint{Value: runnerapi.Expression(source.Source()), Position: source.Origin().Span.Start}
 	}
-	labels, valid := rawConstraints(raw, nullIsLabel)
-	s.Labels = labels
-	return valid
+	return selectorConstraint(source, combination)
 }
+
+func resolveMatrixValue(source value.Value, combination matrix.Combination) (value.Value, bool) {
+	if property := runnerMatrixProperty(source.Source()); property != "" {
+		if item, ok := combination.Get(property); ok {
+			return item, true
+		}
+	}
+	if source.Known() {
+		return source, true
+	}
+	return value.Value{}, false
+}
+
+func constraintsFor(candidate value.Value, nullIsLabel bool, combination matrix.Combination) ([]runnerapi.Constraint, bool) {
+	if candidate.Known() && candidate.Kind() == value.Object {
+		labels, ok := candidate.Prop("labels")
+		if !ok {
+			return nil, false
+		}
+		candidate = labels
+	}
+	var values []value.Value
+	if candidate.Known() && candidate.Kind() == value.Array {
+		values = slices.Collect(candidate.Items())
+	} else {
+		values = []value.Value{candidate}
+	}
+	result := make([]runnerapi.Constraint, 0, len(values))
+	for _, item := range values {
+		if item.Kind() == value.Null && !nullIsLabel {
+			continue
+		}
+		resolved, ok := resolveMatrixValue(item, combination)
+		if !ok {
+			return nil, false
+		}
+		text, ok := resolved.ScalarString()
+		if !ok {
+			return nil, false
+		}
+		result = append(result, runnerapi.Constraint{Value: runnerapi.Literal(text), Position: resolved.Origin().Span.Start})
+	}
+	return result, true
+}
+
+func selectionValues(selection value.Value) []value.Value {
+	candidate := selection
+	if selection.Known() && selection.Kind() == value.Object {
+		labels, ok := selection.Prop("labels")
+		if !ok {
+			return nil
+		}
+		candidate = labels
+	}
+	if candidate.Known() && candidate.Kind() == value.Array {
+		return slices.Collect(candidate.Items())
+	}
+	if candidate.State() == value.Missing {
+		return nil
+	}
+	return []value.Value{candidate}
+}
+
+func selectorPosition(source value.Value) diagnostic.Position { return source.Origin().Span.Start }

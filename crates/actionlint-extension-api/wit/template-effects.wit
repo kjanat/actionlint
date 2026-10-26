@@ -36,9 +36,8 @@ interface template-effects {
         filename: string,
         config: string,
     }
-
     enum effect {
-        /// The finding is independent of template substitution.
+        /// The finding is valid regardless of template substitution.
         none,
         /// Line width is uncertain when that line contains a substitution.
         line-length,

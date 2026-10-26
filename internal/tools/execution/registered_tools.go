@@ -32,11 +32,11 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 		script.Fact = fact
 		if input := s.Input; input != nil {
 			site := input.Site
-			script.Input, script.Text, script.Source = &site, input.Value.Value.Value, input.Value.Source
-			script.Key, script.Value = input.Value.Name.Pos, input.Value.Value.Pos
+			script.Input, script.Text, script.Source = &site, input.Value.Value().Value(), input.Value.Source()
+			script.Key, script.Value = positionPointer(input.Value.Name().Pos()), positionPointer(input.Value.Value().Pos())
 		} else {
-			script.Text, script.Source = s.Run.Run.Value, s.Run.Source
-			script.Key, script.Value = s.Run.RunPos, s.Run.Run.Pos
+			script.Text, script.Source = s.Run.Run().Value(), s.Run.Source()
+			script.Key, script.Value = positionPointer(s.Run.RunPos()), positionPointer(s.Run.Run().Pos())
 		}
 		prepared.Scripts = append(prepared.Scripts, script)
 	}

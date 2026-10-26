@@ -1,10 +1,12 @@
 package composition
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 )
 
 // Regression for #409
@@ -93,42 +95,37 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
 
-			w := &workflowlang.Workflow{}
+			var source strings.Builder
+			source.WriteString("on: push\n")
 			if tc.workflow != "" {
-				w.Defaults = &workflowlang.Defaults{
-					Run: &workflowlang.DefaultsRun{
-						Shell: &workflowlang.String{Value: tc.workflow},
-					},
-				}
+				fmt.Fprintf(&source, "defaults: {run: {shell: %q}}\n", tc.workflow)
 			}
-			collector.beginWorkflow(w)
-
-			j := &workflowlang.Job{}
+			source.WriteString("jobs:\n  test:\n")
 			if tc.job != "" {
-				j.Defaults = &workflowlang.Defaults{
-					Run: &workflowlang.DefaultsRun{
-						Shell: &workflowlang.String{Value: tc.job},
-					},
-				}
+				fmt.Fprintf(&source, "    defaults: {run: {shell: %q}}\n", tc.job)
 			}
 			if tc.runner != "" {
-				j.RunsOn = &workflowlang.Runner{
-					Labels: []*workflowlang.String{
-						{Value: tc.runner},
-					},
-				}
+				fmt.Fprintf(&source, "    runs-on: %q\n", tc.runner)
 			}
-			collector.beginJob(j)
-
-			e := &workflowlang.ExecRun{}
+			source.WriteString("    steps:\n      - run: echo ok\n")
 			if tc.step != "" {
-				e.Shell = &workflowlang.String{Value: tc.step}
+				fmt.Fprintf(&source, "        shell: %q\n", tc.step)
 			}
-			e.Run = &workflowlang.String{Value: "echo ok"}
-			step := &workflowlang.Step{Exec: e}
-			j.Steps = []*workflowlang.Step{step}
-			w.Jobs = map[string]*workflowlang.Job{"test": j}
-			startWorkflowEntry(t, collector, workflowSnapshot(t, w))
+			content := []byte(source.String())
+			document := documentparse.Workflow("fixture.yml", content)
+			w := document.Workflow
+			if w == nil {
+				t.Fatal(document.Findings)
+			}
+			j := w.Jobs["test"]
+			step := j.Steps[0]
+			startWorkflowEntry(t, collector, workflowSnapshot(t, content, document))
+			if err := collector.beginWorkflow(w); err != nil {
+				t.Fatal(err)
+			}
+			if err := collector.beginJob(j); err != nil {
+				t.Fatal(err)
+			}
 			if err := collector.collectScript(step, nil, nil, nil); err != nil {
 				t.Fatal(err)
 			}

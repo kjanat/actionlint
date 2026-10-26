@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestActionMetadataContextSuggestion(t *testing.T) {
@@ -23,7 +23,7 @@ runs:
       shell: bash
 `
 	var meta actionmeta.Metadata
-	if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
+	if err := codec.Unmarshal([]byte(source), &meta); err != nil {
 		t.Fatal(err)
 	}
 	meta.Filename, meta.Source = "action.yml", []byte(source)

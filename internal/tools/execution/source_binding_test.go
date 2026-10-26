@@ -71,9 +71,10 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 				t.Fatal(err)
 			}
 			scopes, units := batch.Snapshot()
+			assertBatchFactsMatchCanonicalDeclarations(t, batch, collection.Declarations)
 			for i, text := range []string{"echo first", "echo second"} {
 				unit := units[i]
-				if unit.Run.Run.Value != text || unit.Occurrence != graph.Scripts()[i].ID || unit.Path != path || string(unit.Content) != string(original) || unit.Config != collection.Scopes[0].Config || unit.Scope != scopes[0] || unit.Owner.Job != "" || unit.Origin.Job != "" {
+				if unit.Run.Run().Value() != text || unit.Occurrence != graph.Scripts()[i].ID || unit.Path != path || string(unit.Content) != string(original) || unit.Config != collection.Scopes[0].Config || unit.Scope != scopes[0] || unit.Owner.Job != "" || unit.Origin.Job != "" {
 					t.Fatalf("source binding changed action provenance: %+v", unit)
 				}
 				if unit.Shell == nil || *unit.Shell != []string{"bash", "sh"}[i] {
@@ -96,8 +97,6 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			}
 			before, _ := batch.Fact(0, false)
 			units[0].Content[0] = 'X'
-			units[0].Run.Run.Value = "changed"
-			units[0].Run.Source.Spans[0].YamlLine = 999
 			units[0].Owner.Step.Line = 999
 			units[0].Origin.StepPosition.Col = 999
 			if string(snapshot.Content()) != string(original) {

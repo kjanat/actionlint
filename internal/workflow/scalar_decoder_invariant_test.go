@@ -5,9 +5,10 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/source/text"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 var scalarDecoderInvariantCorpus = []string{
@@ -37,7 +38,7 @@ var scalarDecoderInvariantCorpus = []string{
 	"- |2-\n  first\n- >2\n  second\n",
 	"run: !!str &script \"echo \\u0024HOME\"\ncopy: *script\n",
 	"run: &script # comment\n  !!str\n  'echo hello'\n",
-	"run: !<tag:yaml.org,2002:str> hello\n",
+	"run: !<tag:syntax.org,2002:str> hello\n",
 	"{plain: hello, 'quoted:key': [one, \"two\"], last: end}\n",
 	"{a: {b: c}, d: [e, f]}\n",
 	"? multi\n  line\n: value\n",
@@ -70,8 +71,8 @@ var scalarDecoderInvariantCorpus = []string{
 func TestScalarDecoderInvariants(t *testing.T) {
 	for _, input := range scalarDecoderInvariantCorpus {
 		t.Run(input, func(t *testing.T) {
-			var root yaml.Node
-			if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+			var root syntax.Node
+			if err := codec.Unmarshal([]byte(input), &root); err != nil {
 				t.Fatal(err)
 			}
 			checkScalarDecoderInvariants(t, input, &root)
@@ -87,21 +88,21 @@ func FuzzScalarDecoderInvariants(f *testing.F) {
 		if len(input) > 64*1024 {
 			t.Skip()
 		}
-		var root yaml.Node
-		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+		var root syntax.Node
+		if err := codec.Unmarshal([]byte(input), &root); err != nil {
 			return
 		}
 		checkScalarDecoderInvariants(t, input, &root)
 	})
 }
 
-func checkScalarDecoderInvariants(t *testing.T, input string, root *yaml.Node) {
+func checkScalarDecoderInvariants(t *testing.T, input string, root *syntax.Node) {
 	t.Helper()
 	p := workflowlang.NewSourceParser([]byte(input))
 	p.IndexScalarSources(root)
-	var visit func(*yaml.Node)
-	visit = func(node *yaml.Node) {
-		if node.Kind == yaml.ScalarNode {
+	var visit func(*syntax.Node)
+	visit = func(node *syntax.Node) {
+		if node.Kind == syntax.ScalarNode {
 			// An implicit empty value has no scalar token to locate.
 			if node.Value == "" && node.Style == 0 {
 				return
@@ -115,7 +116,7 @@ func checkScalarDecoderInvariants(t *testing.T, input string, root *yaml.Node) {
 	visit(root)
 }
 
-func checkScalarDecoderMapping(t *testing.T, p *workflowlang.Parser, node *yaml.Node) {
+func checkScalarDecoderMapping(t *testing.T, p *workflowlang.Parser, node *syntax.Node) {
 	t.Helper()
 	source := p.ScriptSource(node)
 	if source == nil {
@@ -128,7 +129,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowlang.Parser, node *yaml.
 		if pos.Line < 1 || pos.Line > len(p.SourceLines) {
 			t.Fatalf("scalar boundary outside source: %+v", pos)
 		}
-		if _, ok := yamlsource.ByteOffsetAtColumn(p.SourceLines[pos.Line-1], pos.Col); !ok {
+		if _, ok := text.ByteOffsetAtColumn(p.SourceLines[pos.Line-1], pos.Col); !ok {
 			t.Fatalf("scalar boundary outside line: %+v", pos)
 		}
 	}
@@ -146,7 +147,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowlang.Parser, node *yaml.
 			t.Fatalf("span outside source lines: %+v", span)
 		}
 		rawLine := p.SourceLines[span.YamlLine-1]
-		start, ok := yamlsource.ByteOffsetAtColumn(rawLine, span.YamlColumn)
+		start, ok := text.ByteOffsetAtColumn(rawLine, span.YamlColumn)
 		if !ok {
 			t.Fatalf("span starts outside source line: %+v", span)
 		}
@@ -164,16 +165,16 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowlang.Parser, node *yaml.
 				t.Fatalf("copied span %+v decodes to %q, source is %q", span, value, rawLine[start:])
 			}
 		default:
-			end, ok := yamlsource.ByteOffsetAtColumn(rawLine, span.YamlEndColumn)
+			end, ok := text.ByteOffsetAtColumn(rawLine, span.YamlEndColumn)
 			if !ok || end < start {
 				t.Fatalf("escape ends outside source line: %+v", span)
 			}
 			quote := "\""
-			if node.Style&yaml.SingleQuotedStyle != 0 {
+			if node.Style&syntax.SingleQuotedStyle != 0 {
 				quote = "'"
 			}
 			var decoded string
-			if err := yaml.Unmarshal([]byte(quote+rawLine[start:end]+quote), &decoded); err != nil {
+			if err := codec.Unmarshal([]byte(quote+rawLine[start:end]+quote), &decoded); err != nil {
 				t.Fatalf("escape %+v cannot independently decode: %v", span, err)
 			}
 			if decoded != value {

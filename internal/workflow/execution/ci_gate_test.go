@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestCIActionResultGate(t *testing.T) {
@@ -18,9 +19,9 @@ func TestCIActionResultGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	var workflow struct {
-		Jobs map[string]yaml.Node
+		Jobs map[string]syntax.Node
 	}
-	if err := yaml.Unmarshal(source, &workflow); err != nil {
+	if err := codec.Unmarshal(source, &workflow); err != nil {
 		t.Fatal(err)
 	}
 	var gate struct {
@@ -35,7 +36,7 @@ func TestCIActionResultGate(t *testing.T) {
 	if !exists {
 		t.Fatal("missing Action aggregate")
 	}
-	if err := node.Decode(&gate); err != nil {
+	if err := codec.Decode(&node, &gate); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(gate.Needs, []string{"action", "action-slim"}) || len(gate.Steps) != 1 {

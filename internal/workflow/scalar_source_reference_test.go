@@ -10,7 +10,8 @@ import (
 	"time"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -66,8 +67,8 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 				t.Fatal("reference did not return the expected parsed YAML mapping")
 			}
 			want := response.Engines[0].YAML.Items[0].Value
-			var root yaml.Node
-			if err := yaml.Unmarshal([]byte(request.Input), &root); err != nil {
+			var root syntax.Node
+			if err := codec.Unmarshal([]byte(request.Input), &root); err != nil {
 				t.Fatal(err)
 			}
 			node := root.Content[0].Content[1]

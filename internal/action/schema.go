@@ -9,7 +9,8 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/schemapath"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 type actionSchemaKind uint8
@@ -33,8 +34,8 @@ type actionSchemaDefinition struct {
 }
 
 // Node resolves one YAML alias level without following recursive anchors.
-func Node(n *yaml.Node) *yaml.Node {
-	for n != nil && n.Kind == yaml.AliasNode && n.Alias != nil && n.Alias.Kind != yaml.AliasNode {
+func Node(n *syntax.Node) *syntax.Node {
+	for n != nil && n.Kind == syntax.AliasNode && n.Alias != nil && n.Alias.Kind != syntax.AliasNode {
 		n = n.Alias
 	}
 	return n
@@ -43,7 +44,7 @@ func Node(n *yaml.Node) *yaml.Node {
 // Scalar mirrors TemplateReader.Validate: null, booleans and
 // numbers are converted to strings when a string definition is expected.
 // Scalar returns the runner-compatible scalar value, including literal expressions.
-func Scalar(n *yaml.Node) *string {
+func Scalar(n *syntax.Node) *string {
 	v := actionSchemaLiteralScalar(n)
 	if v != nil {
 		if literal := exprlang.LiteralExpressionValue(*v); literal != nil {
@@ -53,9 +54,9 @@ func Scalar(n *yaml.Node) *string {
 	return v
 }
 
-func actionSchemaLiteralScalar(n *yaml.Node) *string {
+func actionSchemaLiteralScalar(n *syntax.Node) *string {
 	n = Node(n)
-	if n == nil || n.Kind != yaml.ScalarNode {
+	if n == nil || n.Kind != syntax.ScalarNode {
 		return nil
 	}
 	v := n.Value
@@ -71,8 +72,8 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	}
 	// Inspect physical YAML nodes once. Alias targets already occur in this tree;
 	// following aliases here would recurse through self-referential anchors.
-	var checkTags func(*yaml.Node)
-	checkTags = func(n *yaml.Node) {
+	var checkTags func(*syntax.Node)
+	checkTags = func(n *syntax.Node) {
 		if message := workflowlang.RawYAMLTagError(n); message != "" {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s in action metadata", message)
 		}
@@ -84,16 +85,16 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemapath.Path{}, 0, false)
 }
 
-func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *yaml.Node, path schemapath.Path, message string) {
+func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemapath.Path, message string) {
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
-func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *yaml.Node, definition string, location schemapath.Path, depth int, evaluated bool) {
+func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *syntax.Node, definition string, location schemapath.Path, depth int, evaluated bool) {
 	rule.checkActionSchemaMappingValue(meta, node, definition, location, depth, evaluated, nil)
 }
 
 // Insertions share their enclosing mapping namespace; child values start a new one.
-func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *yaml.Node, definition string, location schemapath.Path, depth int, evaluated bool, seen map[string]bool) {
+func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *syntax.Node, definition string, location schemapath.Path, depth int, evaluated bool, seen map[string]bool) {
 	path := location.Schema()
 	n := Node(node)
 	if n == nil || definition == "any" {
@@ -159,13 +160,13 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *y
 				return // Conditions use expression truthiness, including object and array values.
 			}
 			if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: value.Value}); known {
-				var result yaml.Node
-				if err := result.Encode(literal); err != nil {
+				result, err := codec.Encode(literal)
+				if err != nil {
 					rule.actionSchemaError(meta, n, location, fmt.Sprintf("could not validate expression value: %v", err))
 					return
 				}
-				actionSchemaSetPosition(&result, n.Line, n.Column)
-				n, evaluated = &result, true
+				actionSchemaSetPosition(result, n.Line, n.Column)
+				n, evaluated = result, true
 			} else if d.kind == actionSchemaString || exprlang.ParseAssignedExpression(value.Value) != nil {
 				return // The runner validates the evaluated value's type at runtime.
 			}
@@ -192,11 +193,11 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *y
 			rule.actionSchemaError(meta, n, location, "expected a non-empty string")
 		}
 	case actionSchemaBoolean:
-		if n.Kind != yaml.ScalarNode || n.Tag != "!!bool" {
+		if n.Kind != syntax.ScalarNode || n.Tag != "!!bool" {
 			rule.actionSchemaError(meta, n, location, "expected a boolean or expression")
 		}
 	case actionSchemaSequence:
-		if n.Kind != yaml.SequenceNode {
+		if n.Kind != syntax.SequenceNode {
 			// Missing/null composite steps already has a precise runtime diagnostic.
 			if path != "runs.steps" {
 				rule.actionSchemaError(meta, n, location, "expected a sequence")
@@ -207,8 +208,8 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *y
 			rule.checkActionSchemaValue(meta, value, d.item, location.Index(index), depth+1, evaluated)
 		}
 	case actionSchemaMapping:
-		if n.Kind != yaml.MappingNode {
-			if path != "runs.steps.*" && (path != "runs" || n.Kind != yaml.ScalarNode || n.Tag != "!!null") {
+		if n.Kind != syntax.MappingNode {
+			if path != "runs.steps.*" && (path != "runs" || n.Kind != syntax.ScalarNode || n.Tag != "!!null") {
 				rule.actionSchemaError(meta, n, location, "expected a mapping")
 			}
 			return
@@ -271,7 +272,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *y
 	}
 }
 
-func actionSchemaSetPosition(n *yaml.Node, line, column int) {
+func actionSchemaSetPosition(n *syntax.Node, line, column int) {
 	n.Line, n.Column = line, column
 	for _, child := range n.Content {
 		actionSchemaSetPosition(child, line, column)

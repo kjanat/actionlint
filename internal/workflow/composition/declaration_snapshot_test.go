@@ -13,10 +13,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
-func workflowSnapshot(t *testing.T, workflow *workflowlang.Workflow) *documentparse.SourceSnapshot {
+func workflowSnapshot(t *testing.T, content []byte, document documentparse.Document) *documentparse.SourceSnapshot {
 	t.Helper()
 	var snapshots documentparse.SourceSnapshots
-	snapshot, err := snapshots.Document("fixture.yml", nil, documentparse.Document{Workflow: workflow})
+	snapshot, err := snapshots.Document("fixture.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,15 +49,23 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 				first, second = second, first
 			}
 			analysis := &compositeAnalyzer{ctx: t.Context(), collectScripts: true, actions: actionlocal.NewResolver(nil, nil)}
-			calls := []*workflowlang.Step{
-				{Pos: &workflowlang.Pos{Line: 1, Col: 1}, Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "$/source"}}},
-				{Pos: &workflowlang.Pos{Line: 2, Col: 1}, Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "$/source"}}},
+			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/source\n      - uses: $/source\n")
+			document := documentparse.Workflow("fixture.yml", content)
+			if len(document.Findings) != 0 {
+				t.Fatal(document.Findings)
 			}
-			workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": {Steps: calls}}}
-			startWorkflowEntry(t, analysis, workflowSnapshot(t, workflow))
-			analysis.beginWorkflow(workflow)
+			workflow := document.Workflow
+			calls := workflow.Jobs["test"].Steps
+			startWorkflowEntry(t, analysis, workflowSnapshot(t, content, document))
+			if err := analysis.beginWorkflow(workflow); err != nil {
+				t.Fatal(err)
+			}
 			for i, target := range []*actionmeta.Metadata{first, second} {
-				facts, err := execution.CallFacts(calls[i], analysis.actions.Platform())
+				view, err := analysis.sourceSnapshot.StepView(calls[i])
+				if err != nil {
+					t.Fatal(err)
+				}
+				facts, err := execution.CallFacts(view, analysis.actions.Platform())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -113,7 +121,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			case *workflowlang.ExecRun:
 				for i, target := range []*actionmeta.Metadata{first, second} {
 					unit := units[i]
-					if unit.Run == nil || unit.Run.Run.Value != run.Run.Value || unit.Origin.StepPosition.Line != steps[0].Pos.Line {
+					if !unit.Run.Present() || unit.Run.Run().Value() != run.Run.Value || unit.Origin.StepPosition.Line != steps[0].Pos.Line {
 						t.Fatal("script occurrence was decoded outside its declaration snapshot")
 					}
 					want := filepath.Dir(metadata.Path())

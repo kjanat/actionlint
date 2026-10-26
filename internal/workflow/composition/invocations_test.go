@@ -26,6 +26,7 @@ type invocationFixture struct {
 	cache      *actionlocal.Cache
 	parsed     []string
 	afterParse func(string)
+	mutateMeta func(*actionmeta.Metadata)
 }
 
 func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, actions map[string]string, budget *invocation.Budget) *invocationFixture {
@@ -47,8 +48,11 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 	for path, content := range actions {
 		sources[fsread.PhysicalPath(filepath.Join(directory, filepath.FromSlash(path)))] = []byte(content)
 	}
-	f.cache.Configure(actionlocal.Options{Sources: sources, OnDocument: func(path string, _ *actionmeta.Metadata, _ error) {
+	f.cache.Configure(actionlocal.Options{Sources: sources, OnDocument: func(path string, metadata *actionmeta.Metadata, _ error) {
 		f.parsed = append(f.parsed, path)
+		if f.mutateMeta != nil {
+			f.mutateMeta(metadata)
+		}
 		if f.afterParse != nil {
 			f.afterParse(path)
 		}
@@ -189,7 +193,7 @@ jobs:
 func TestStandaloneEntryCycleHasNoSyntheticCall(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo unused}]}}\n", map[string]string{"self/action.yml": "name: self\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo root\n    - uses: $/self\n"}, nil)
 	metadata, _ := f.cache.LookupMetadata("$/self")
-	result, err := f.service.Action(metadata.Metadata())
+	result, err := standaloneActionForTest(t, f.service, metadata.Metadata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +232,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 			if len(f.parsed) != 1 || filepath.Base(filepath.Dir(f.parsed[0])) != "outer" {
 				t.Fatalf("validation fetched a body beyond the budget: %v", f.parsed)
 			}
-			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Value != "echo retained" {
+			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo retained" {
 				t.Fatal("budget lost prior facts or incomplete state")
 			}
 			if tc.total {

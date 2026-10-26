@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	matrixlang "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
 
 func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
@@ -30,7 +30,7 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			if _, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy); known {
+			if _, known := matrixlang.Resolve(workflow.Jobs["test"].Strategy).Combinations(256); known {
 				t.Fatal("opaque insertion produced complete combinations")
 			}
 		})
@@ -165,9 +165,15 @@ func TestActionInputResolutionAcrossConsumers(t *testing.T) {
 				}
 				workflow, _ := workflowlang.ParseDocument([]byte(source))
 				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-				names, complete := workflowlang.ActionInputNames(action)
-				if !complete || names["script"] == nil || len(names) != 1 {
-					t.Fatalf("metadata resolved different names: %v, %v", names, complete)
+				names := workflowlang.ResolvedActionInputs(action)
+				found, count := false, 0
+				for name := range names.KeyedEntries() {
+					text, ok := name.ScalarString()
+					found = found || ok && strings.EqualFold(text, "script")
+					count++
+				}
+				if !names.Complete() || !found || count != 1 {
+					t.Fatalf("metadata resolved different names: %v, complete=%v", count, names.Complete())
 				}
 				if _, known := workflowlang.ActionInputValue(action, "script"); known {
 					t.Fatal("untrusted script value was treated as a constant")

@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -28,11 +29,23 @@ func TestShellcheckRetainsPreparationFailureOnCancellation(t *testing.T) {
 }
 
 func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {
-	workflow, failures := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"))
-	if len(failures) != 0 {
-		t.Fatal(failures)
+	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n")
+	document := documentparse.Workflow("ci.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
 	}
-	run := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecRun)
+	run := document.Workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecRun)
+	var registry documentparse.SourceSnapshots
+	snapshot, err := registry.Document("ci.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	step, err := snapshot.StepView(document.Workflow.Jobs["test"].Steps[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownedRun, _ := step.Run()
+
 	for _, endpoints := range []struct {
 		name       string
 		start, end int
@@ -44,7 +57,7 @@ func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {
 				return fmt.Appendf(nil, `{"comments":[{"line":1,"column":%d,"endLine":%d,"endColumn":2,"code":9999,"level":"warning","message":"range"}]}`, endpoints.start, endpoints.end), nil
 			})
 			invocation := &shellcheckRun{cmd: cmd, rcArgs: []string{"--norc"}}
-			if err := invocation.runShellcheck(run.Run.Value, run.Source, shellcheckShell{name: "bash {0}"}, runDirectory{directoryKnown, t.TempDir()}, run.RunPos, run.Run.Pos); err != nil {
+			if err := invocation.runShellcheck(run.Run.Value, ownedRun.Source(), shellcheckShell{name: "bash {0}"}, runDirectory{directoryKnown, t.TempDir()}, run.RunPos, run.Run.Pos); err != nil {
 				t.Fatal(err)
 			}
 			if err := cmd.Wait(); err != nil {
@@ -74,9 +87,8 @@ func TestShellcheckRetainsFindingsWhenAnotherScopeHasInvalidConfig(t *testing.T)
 	validScope := &scriptScope{paths: runPaths{analysis: root, workspace: root}}
 	invalidScope := &scriptScope{paths: validScope.paths, config: invalid, composite: true}
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
-	run := &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo test", Pos: pos}, RunPos: pos}
 	makeScript := func(scope *scriptScope) scriptUnit {
-		return scriptUnit{scope: scope, run: run, execution: scriptExecution{shell: shellcheckShell{name: "bash {0}"}, directory: runDirectory{directoryKnown, root}}}
+		return scriptUnit{scope: scope, text: "echo test", key: pos, value: pos, execution: scriptExecution{shell: shellcheckShell{name: "bash {0}"}, directory: runDirectory{directoryKnown, root}}}
 	}
 	checker := &shellcheckAnalyzer{cmd: analyzerhost.NewProcessPool(t.Context(), 1).EmbeddedCommand("shellcheck", func([]string, string) ([]byte, error) {
 		return []byte(`{"comments":[{"line":1,"endLine":1,"column":1,"endColumn":2,"code":9999,"level":"warning","message":"retained"}]}`), nil

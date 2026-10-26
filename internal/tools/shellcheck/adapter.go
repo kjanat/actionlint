@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/config/rules"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
@@ -84,13 +85,15 @@ type scriptExecution struct {
 	directory runDirectory
 }
 type scriptUnit struct {
-	run       *workflowlang.ExecRun
-	shell     *string
-	config    *Config
-	path      string
-	content   []byte
-	scope     *scriptScope
-	execution scriptExecution
+	text       string
+	source     documentparse.ScriptSourceView
+	key, value *workflowlang.Pos
+	shell      *string
+	config     *Config
+	path       string
+	content    []byte
+	scope      *scriptScope
+	execution  scriptExecution
 }
 type scriptBatch struct {
 	scopes  []*scriptScope
@@ -137,7 +140,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if s.Execution.DirectoryKnown {
 			kind = directoryKnown
 		}
-		private.scripts = append(private.scripts, scriptUnit{run: &workflowlang.ExecRun{Run: &workflowlang.String{Value: s.Text, Pos: s.Value}, Source: s.Source, RunPos: s.Key}, shell: s.Shell, config: s.Config, path: s.Path, content: s.Content, scope: scopes[s.Scope], execution: scriptExecution{shell: shellcheckShell{name: s.Execution.Shell, implicit: s.Execution.ImplicitShell}, directory: runDirectory{kind: kind, path: s.Execution.Directory}}})
+		private.scripts = append(private.scripts, scriptUnit{text: s.Text, source: s.Source, key: s.Key, value: s.Value, shell: s.Shell, config: s.Config, path: s.Path, content: s.Content, scope: scopes[s.Scope], execution: scriptExecution{shell: shellcheckShell{name: s.Execution.Shell, implicit: s.Execution.ImplicitShell}, directory: runDirectory{kind: kind, path: s.Execution.Directory}}})
 	}
 	findings, err := r.check.AnalyzeScripts(ctx, private)
 	result := make([]tools.Finding, 0, len(findings))

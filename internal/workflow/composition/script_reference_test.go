@@ -105,7 +105,7 @@ func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	indexed := documentparse.Workflow("ci.yml", content)
 	foreign := documentparse.Workflow("ci.yml", content)
-	analysis := compositeAnalyzer{collectScripts: true, sourceSnapshot: workflowSnapshot(t, indexed.Workflow)}
+	analysis := compositeAnalyzer{collectScripts: true, sourceSnapshot: workflowSnapshot(t, content, indexed)}
 	if err := analysis.collectScript(foreign.Workflow.Jobs["test"].Steps[0], nil, nil, nil); err == nil {
 		t.Fatal("accepted independently decoded declaration")
 	}

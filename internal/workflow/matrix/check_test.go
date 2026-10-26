@@ -61,7 +61,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			errs := Check(w.Jobs["test"], false)
+			errs := Resolve(w.Jobs["test"].Strategy).Check(false)
 			if tc.want == "" {
 				if len(errs) != 0 {
 					t.Fatal(errs)

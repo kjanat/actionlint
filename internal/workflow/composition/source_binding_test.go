@@ -109,7 +109,7 @@ func TestStandaloneNestedScriptHasNoJobIdentity(t *testing.T) {
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
 	lookup, _ := f.cache.LookupMetadata("$/outer")
-	result, err := f.service.Action(lookup.Metadata())
+	result, err := standaloneActionForTest(t, f.service, lookup.Metadata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,14 +141,22 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	if err := analysis.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 		t.Fatal(err)
 	}
-	analysis.beginWorkflow(workflow)
-	analysis.beginJob(job)
+	if err := analysis.beginWorkflow(workflow); err != nil {
+		t.Fatal(err)
+	}
+	if err := analysis.beginJob(job); err != nil {
+		t.Fatal(err)
+	}
 	call := job.Steps[0]
 	reference, err := f.root.StepReference(call)
 	if err != nil {
 		t.Fatal(err)
 	}
-	facts, err := execution.CallFacts(call, analysis.actions.Platform())
+	view, err := f.root.StepView(call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts, err := execution.CallFacts(view, analysis.actions.Platform())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +218,11 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	}
 	foreign := *meta
 	foreign.Directory = "foreign"
-	originalErr := visitStandaloneAction(&foreign, nil, analysis)
+	deployment, err := scriptexecution.NewDeployment(snapshot, meta.Path(), meta.SourceMapped)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalErr := visitStandaloneAction(&foreign, deployment, nil, analysis)
 	if originalErr == nil || len(analysis.scriptScopes) != 0 {
 		t.Fatalf("failed deployment mutated scope collection: error=%v scopes=%+v", originalErr, analysis.scriptScopes)
 	}
@@ -242,7 +254,9 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	if err := analysis.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 		t.Fatal(err)
 	}
-	analysis.beginWorkflow(workflow)
+	if err := analysis.beginWorkflow(workflow); err != nil {
+		t.Fatal(err)
+	}
 	analysis.jobID = "corrupted collector value"
 	if err := analysis.collectScript(workflow.Jobs["build"].Steps[0], nil, nil, nil); err != nil {
 		t.Fatal(err)

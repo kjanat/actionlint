@@ -10,10 +10,10 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
-	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot *documentparse.SourceSnapshot) error {
@@ -84,54 +84,62 @@ func metadataOutcome(result actionlocal.MetadataResult) (invocation.Outcome, err
 	}
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction) (*actionmeta.Metadata, invocation.Outcome, error) {
-	if action.Uses == nil || action.Uses.Value == "" {
+func (analysis *compositeAnalyzer) resolveAction(action documentparse.ExecActionView) (*actionmeta.Metadata, invocation.Outcome, error) {
+	uses := action.Uses()
+	if !uses.Present() || uses.Value() == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")
 		return nil, outcome, err
 	}
-	if action.Uses.ContainsExpression() {
-		outcome, err := invocation.Dynamic(action.Uses.Value)
+	spec := uses.Value()
+	if exprlang.ContainsExpression(spec) {
+		outcome, err := invocation.Dynamic(spec)
 		return nil, outcome, err
 	}
-	if invalidActionReference(action) {
+	position, hasPosition := uses.Pos()
+	if invalidActionReference(spec, position, hasPosition) {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference has invalid syntax")
 		return nil, outcome, err
 	}
-	lookup, _ := analysis.actions.LookupMetadata(action.Uses.Value)
+	lookup, _ := analysis.actions.LookupMetadata(spec)
 	if errors.Is(lookup.Err(), context.Canceled) || errors.Is(lookup.Err(), context.DeadlineExceeded) {
 		return nil, invocation.Outcome{}, lookup.Err()
 	}
 	if err := analysis.cancelled(); err != nil {
 		return nil, invocation.Outcome{}, err
 	}
+	sourceDocument, hasSource := analysis.actions.SourceDocument(lookup)
+	var snapshot *documentparse.SourceSnapshot
+	if hasSource {
+		admitted, err := analysis.sourceSnapshots.Document(fsread.PhysicalPath(sourceDocument.Path()), sourceDocument.Content(), sourceDocument.Document())
+		if err != nil {
+			return nil, invocation.Outcome{}, err
+		}
+		snapshot = admitted
+	}
 	if lookup.Status() != actionlocal.MetadataResolved {
 		outcome, err := metadataOutcome(lookup)
 		return nil, outcome, err
 	}
 	meta := lookup.Metadata()
-	if !strings.EqualFold(meta.Runs.Using, "composite") {
-		outcome, err := invocation.Opaque(invocation.ReasonNonComposite, meta.Runs.Using)
-		return meta, outcome, err
+	if meta == nil {
+		return nil, invocation.Outcome{}, errors.New("resolved action metadata is unavailable")
 	}
-	snapshot, err := analysis.sourceSnapshots.Action(fsread.PhysicalPath(meta.Path()), meta)
-	if err != nil {
-		return nil, invocation.Outcome{}, err
+	if snapshot == nil {
+		return nil, invocation.Outcome{}, errors.New("resolved action source document is unavailable")
+	}
+	actionView, available := snapshot.ActionView()
+	if !available {
+		return nil, invocation.Outcome{}, errors.New("resolved action source has no action view")
+	}
+	using := actionView.Using()
+	if !strings.EqualFold(using, "composite") {
+		outcome, err := invocation.Opaque(invocation.ReasonNonComposite, using)
+		return meta, outcome, err
 	}
 	outcome, err := invocation.Expanded(snapshot.Reference())
 	return meta, outcome, err
 }
 
-func invalidActionReference(action *workflowlang.ExecAction) bool {
-	spec := action.Uses.Value
-	switch {
-	case strings.HasPrefix(spec, "./"):
-		return false
-	case strings.HasPrefix(spec, "$/"):
-		_, valid := references.SelfRepositoryLocal(spec)
-		return !valid
-	case strings.HasPrefix(spec, "docker://"):
-		return len(actioncheck.Docker(action)) != 0
-	default:
-		return len(actioncheck.Repository(action, nil, nil)) != 0
-	}
+func invalidActionReference(spec string, position workflowlang.Pos, hasPosition bool) bool {
+	return actioncheck.InvalidActionReference(spec, position, hasPosition)
 }
