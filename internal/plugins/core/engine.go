@@ -22,8 +22,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/wacogo"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero"
+	"github.com/kjanat/wazero/api"
 )
 
 const (

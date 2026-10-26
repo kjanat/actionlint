@@ -16,6 +16,14 @@ func (input Input) ValidateInvocations() error {
 	if len(input.Scripts)+len(input.Invoked)+len(input.ActionInputs) > 0 && !textsAvailable {
 		return invalidGraph("script text supplied without scripts fact")
 	}
+	for _, actionInput := range input.ActionInputs {
+		if actionInput.Shell != "" || actionInput.Runtime != nil {
+			return invalidGraph("action input contains shell execution facts")
+		}
+		if err := ValidateScriptInput(actionInput.Site); err != nil {
+			return invalidGraph("invalid action input selector: %v", err)
+		}
+	}
 	if !input.CallGraph.Valid() {
 		if input.SelectedScripts != nil {
 			return invalidGraph("script selection supplied without invocation graph")
@@ -54,12 +62,24 @@ func (input Input) ValidateInvocations() error {
 	seen := make(map[OccurrenceID]bool)
 	check := func(script Script, kind ScriptKind, entry bool) error {
 		actual := script.Occurrence
-		want, exists := input.CallGraph.script(actual.ID)
-		if !exists || (input.SelectedScripts != nil && !selected[actual.ID]) || seen[actual.ID] || actual.Owner != want.Owner || actual.Depth != want.Depth || actual.Declaration != want.Declaration || actual.Kind != want.Kind || actual.Input != want.Input || !slices.Equal(actual.Ancestry, want.Ancestry) || script.Reference != want.Declaration {
+		if err := input.CallGraph.ValidateOccurrence(actual); err != nil {
+			return err
+		}
+		if (input.SelectedScripts != nil && !selected[actual.ID]) || seen[actual.ID] || script.Reference != actual.Declaration {
 			return invalidGraph("script %q disagrees with registered occurrence", actual.ID)
 		}
 		if actual.Kind != kind || kind == RunScript && (actual.Owner == input.CallGraph.Entry().ID) != entry {
 			return invalidGraph("script %q is in the wrong input collection", actual.ID)
+		}
+		if legacy := script.Invocation; legacy != nil {
+			call, found := input.CallGraph.Call(actual.Owner)
+			caller := ""
+			if call.Site.Document != input.CallGraph.Entry().Reference.Document {
+				caller = call.Site.Document
+			}
+			if !found || legacy.Reference != call.Site || legacy.Depth != call.Depth || legacy.Step != call.Step || legacy.Uses != call.Uses || legacy.Caller != caller {
+				return invalidGraph("script %q has conflicting legacy invocation", actual.ID)
+			}
 		}
 		seen[actual.ID] = true
 		return nil

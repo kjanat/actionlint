@@ -22,7 +22,7 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 	if input.Reference == (source.Reference{}) {
 		input.Reference = input.CallGraph.Entry().Reference
 	} else if input.Reference != input.CallGraph.Entry().Reference {
-		return analyzer.Input{}, scriptexecution.ErrInvalidBatch
+		return document.AnalyzerSource(path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
 	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies, analyzer.Invocations)
 	if result.Batch.CollectedScripts() {
@@ -30,7 +30,7 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 		for index, unit := range units {
 			script, exists := result.Batch.Fact(index, result.ResolveExecution)
 			if !exists {
-				return analyzer.Input{}, scriptexecution.ErrInvalidBatch
+				return document.AnalyzerSource(path, content, refs.Document), scriptexecution.ErrInvalidBatch
 			}
 
 			switch {

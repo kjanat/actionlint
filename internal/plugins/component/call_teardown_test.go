@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasi/cli/stdin"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/experimental"
 )
 
 func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
@@ -30,7 +31,12 @@ func TestCallTeardownPreservesFailuresAndClosesRuntimeLast(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, nil)
+	invocations, err := p.invocationFactory.NewInstance(ctx, invocationContext{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	teardown.invocations = invocations
+	annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, &annotationsbind.Deps{InvocationContext: invocations.Core()})
 	if err != nil {
 		t.Fatal(err)
 	}

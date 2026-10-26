@@ -13,7 +13,7 @@ import (
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/experimental"
 	"golang.org/x/sync/semaphore"
 )
 

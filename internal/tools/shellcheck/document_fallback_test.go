@@ -79,7 +79,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 	runner := documentPluginRunner{guest: guest, integrator: guest, context: tools.Context{Document: analyzer.Input{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func() (tools.Runner, error) {
 		return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {
 			nativeCalls++
-			if selected.CallGraph != graph || len(selected.Scripts) != 1 || !reflect.DeepEqual(selected.Scripts[0].Fact, batch.Scripts[1].Fact) {
+			if len(selected.Scopes) != 0 || selected.CallGraph != graph || len(selected.Scripts) != 1 || !reflect.DeepEqual(selected.Scripts[0].Fact, batch.Scripts[1].Fact) {
 				t.Fatal("native fallback lost graph or script fact")
 			}
 			return []tools.Finding{{Script: 0, Message: "native"}}, nil

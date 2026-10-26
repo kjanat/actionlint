@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero"
+	"github.com/kjanat/wazero/api"
 )
 
 func pooledEngine(t *testing.T) *Engine {

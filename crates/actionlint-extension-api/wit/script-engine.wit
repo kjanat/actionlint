@@ -1,4 +1,4 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
 /// A snippet engine. The host owns shell selection, expression masking, source
 /// mapping, suppression and scheduling. No document or filesystem access is implied.

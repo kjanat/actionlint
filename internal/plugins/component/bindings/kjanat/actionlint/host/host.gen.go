@@ -9,7 +9,7 @@ import (
 
 // InterfaceName is the canonical WIT id of the interface this binding
 // was generated from.
-const InterfaceName = "kjanat:actionlint/host@0.1.0"
+const InterfaceName = "kjanat:actionlint/host@0.2.0"
 
 // Capabilities granted to every plugin.
 type Host interface {

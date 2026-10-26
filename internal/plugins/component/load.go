@@ -8,13 +8,14 @@ import (
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
+	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/preparedscripts"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
 	filesbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourcefiles"
 	"github.com/kjanat/wacogo"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero"
+	"github.com/kjanat/wazero/api"
+	"github.com/kjanat/wazero/experimental"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -90,7 +91,13 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	if err != nil {
 		return err
 	}
-	if required.sourceAnnotations || required.preparedScripts {
+	if required.invocations || required.preparedScripts || required.sourceAnnotations {
+		p.invocationFactory, err = invocationbind.NewFactory(ctx, p.engine)
+		if err != nil {
+			return err
+		}
+	}
+	if required.sourceAnnotations {
 		p.annotationsFactory, err = annotationsbind.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err

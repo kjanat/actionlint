@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -34,7 +35,7 @@ func suppliedComments(input analyzer.Input) map[source.Reference][]analyzer.Sour
 
 type sourceAnnotations struct{}
 
-func (sourceAnnotations) Comments(ctx context.Context, reference annotationsbind.SourceReference) ([]annotationsbind.Comment, error) {
+func (sourceAnnotations) Comments(ctx context.Context, reference invocationbind.SourceReference) ([]annotationsbind.Comment, error) {
 	comments, _ := ctx.Value(sourceCommentsKey{}).(map[source.Reference][]analyzer.SourceComment)
 	key := source.Reference{Document: reference.Document, Revision: reference.Revision, Node: reference.Node, Address: reference.Address}
 	var result []annotationsbind.Comment
@@ -53,7 +54,7 @@ func (sourceAnnotations) Comments(ctx context.Context, reference annotationsbind
 		}
 		result = append(result, annotationsbind.Comment{
 			Text: comment.Text, Placement: placement,
-			Start: annotationsbind.Position{Line: uint32(lowerU32(comment.Start.Line)), Column: uint32(lowerU32(comment.Start.Column))},
+			Start: invocationbind.Position{Line: uint32(lowerU32(comment.Start.Line)), Column: uint32(lowerU32(comment.Start.Column))},
 		})
 	}
 	return result, nil

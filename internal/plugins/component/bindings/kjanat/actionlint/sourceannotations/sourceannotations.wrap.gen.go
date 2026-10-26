@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 )
@@ -29,14 +30,14 @@ func WrapInstance(caller *host.ComponentInstance, callee *wacogo.ComponentInstan
 	return w_
 }
 
-func (w *sourceAnnotationsWrapper) Comments(ctx context.Context, reference SourceReference) ([]Comment, error) {
+func (w *sourceAnnotationsWrapper) Comments(ctx context.Context, reference invocationcontext.SourceReference) ([]Comment, error) {
 	var resVal_ []Comment
 	var resErr_ error
 	arg0_ := reference
 	{
 		callErr_ := w.fnComments.CallRaw(ctx, w.callerInst,
 			func(caller, callee *host.CallContext, stack []uint64) {
-				if err_ := lowerFlatSourceReference(ctx, caller, callee, w.callerInst, w.fnComments.ParamType(0), stack[0:8], arg0_); err_ != nil {
+				if err_ := lowerFlatInvocationcontextSourceReference(ctx, caller, callee, w.callerInst, w.fnComments.ParamType(0), stack[0:8], arg0_); err_ != nil {
 					resErr_ = err_
 					return
 				}

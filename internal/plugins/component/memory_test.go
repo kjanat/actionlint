@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/kjanat/wacogo"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/experimental"
 )
 
 func callImportMemory(t *testing.T, plugin *Plugin) uint64 {

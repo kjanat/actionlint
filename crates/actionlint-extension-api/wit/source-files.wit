@@ -1,4 +1,4 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
 /// Read-only mounts granted for this analysis. No access outside these roots.
 interface source-files {

@@ -83,6 +83,24 @@ func retainGraph(t *testing.T, records CallGraphData) CallGraph {
 
 func TestCallGraphDetachesConstructionAndAccess(t *testing.T) {
 	records := graphFixture(t)
+	firstCall := records.Calls[0]
+	firstScript := records.Scripts[0]
+	nestedCallID := OccurrenceID(strings.Repeat("d", 64))
+	nestedCall := firstCall
+	nestedCall.ID = nestedCallID
+	nestedCall.Parent = firstCall.ID
+	nestedCall.Depth = 2
+	nestedCall.Ancestry = []OccurrenceID{records.Entry.ID, firstCall.ID}
+	nestedCall.Site.Document = "action"
+	records.Calls = append(records.Calls, nestedCall)
+	nestedScript := firstScript
+	nestedScript.ID = OccurrenceID(strings.Repeat("e", 64))
+	nestedScript.Owner = nestedCallID
+	nestedScript.Depth = 2
+	nestedScript.Ancestry = []OccurrenceID{records.Entry.ID, firstCall.ID, nestedCallID}
+	nestedScript.Declaration.Node = "nested script"
+	records.Scripts = append(records.Scripts, nestedScript)
+	records.Budget = InvocationBudget{MaxDepth: 2, MaxCalls: 2, MaxScripts: 2}
 	records.Calls[0].Ancestry = records.Scripts[0].Ancestry[:1]
 	graph := retainGraph(t, records)
 	want := graph.Snapshot()
@@ -93,27 +111,42 @@ func TestCallGraphDetachesConstructionAndAccess(t *testing.T) {
 	if snapshot.Scripts[0].Ancestry[0] != want.Entry.ID {
 		t.Fatal("snapshot records overlap")
 	}
-	snapshot.Scripts[0].Ancestry = append(snapshot.Scripts[0].Ancestry, "changed")
-	call, found := graph.Call(want.Calls[0].ID)
+	snapshot.Calls[0].Ancestry = append(snapshot.Calls[0].Ancestry, "appended")
+	if !reflect.DeepEqual(snapshot.Calls[1], want.Calls[1]) || !reflect.DeepEqual(snapshot.Scripts, want.Scripts) {
+		t.Error("snapshot call append overwrote a neighboring record")
+	}
+	snapshot.Scripts[0].Ancestry = append(snapshot.Scripts[0].Ancestry, "appended")
+	if !reflect.DeepEqual(snapshot.Scripts[1], want.Scripts[1]) {
+		t.Error("snapshot script append overwrote a neighboring record")
+	}
+	call, found := graph.Call(nestedCallID)
 	if !found {
 		t.Fatal("call missing")
 	}
 	call.Ancestry[0] = "changed"
-	script, found := graph.Script(want.Scripts[0].ID)
+	script, found := graph.Script(nestedScript.ID)
 	if !found {
 		t.Fatal("script missing")
 	}
 	script.Ancestry[0] = "changed"
 	calls, err := graph.CallsPage(0, MaxCallGraphPageSize)
-	if err != nil || len(calls) != 1 {
+	if err != nil || len(calls) != 2 {
 		t.Fatalf("calls page: %v, %v", calls, err)
 	}
 	calls[0].Ancestry[0] = "changed"
+	calls[0].Ancestry = append(calls[0].Ancestry, "appended")
+	if !reflect.DeepEqual(calls[1], want.Calls[1]) {
+		t.Fatal("call page append overwrote neighbor")
+	}
 	scripts, err := graph.ScriptsPage(0, MaxCallGraphPageSize)
-	if err != nil || len(scripts) != 1 {
+	if err != nil || len(scripts) != 2 {
 		t.Fatalf("scripts page: %v, %v", scripts, err)
 	}
 	scripts[0].Ancestry[0] = "changed"
+	scripts[0].Ancestry = append(scripts[0].Ancestry, "appended")
+	if !reflect.DeepEqual(scripts[1], want.Scripts[1]) {
+		t.Fatal("script page append overwrote neighbor")
+	}
 	if !reflect.DeepEqual(graph.Snapshot(), want) {
 		t.Fatal("mutable records reached retained graph")
 	}
@@ -134,10 +167,10 @@ func TestCallGraphPageBoundaries(t *testing.T) {
 			t.Errorf("script bounds %v accepted: %v", bounds, err)
 		}
 	}
-	if calls, err := graph.CallsPage(1, 1); err != nil || len(calls) != 0 {
+	if calls, err := graph.CallsPage(1, 1); err != nil || calls != nil {
 		t.Fatalf("end call page: %v, %v", calls, err)
 	}
-	if scripts, err := graph.ScriptsPage(1, 1); err != nil || len(scripts) != 0 {
+	if scripts, err := graph.ScriptsPage(1, 1); err != nil || scripts != nil {
 		t.Fatalf("end script page: %v, %v", scripts, err)
 	}
 	if _, found := graph.Call("unknown"); found {
@@ -145,6 +178,21 @@ func TestCallGraphPageBoundaries(t *testing.T) {
 	}
 	if _, found := graph.Script("unknown"); found {
 		t.Fatal("unknown script found")
+	}
+}
+
+func TestEmptyCallGraphPagesAreNil(t *testing.T) {
+	records := graphFixture(t)
+	records.Calls = nil
+	records.Scripts = nil
+	graph := retainGraph(t, records)
+	calls, err := graph.CallsPage(0, 1)
+	if err != nil || calls != nil {
+		t.Fatalf("empty call page: %#v, %v", calls, err)
+	}
+	scripts, err := graph.ScriptsPage(0, 1)
+	if err != nil || scripts != nil {
+		t.Fatalf("empty script page: %#v, %v", scripts, err)
 	}
 }
 

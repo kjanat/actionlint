@@ -58,7 +58,7 @@ func generateBindings() error {
 		}
 		data, err = orderHostTypes(data)
 		if err != nil {
-			return err
+			return fmt.Errorf("order binding %s: %w", relative, err)
 		}
 		data, err = format.Source(data, format.Options{})
 		if err != nil {

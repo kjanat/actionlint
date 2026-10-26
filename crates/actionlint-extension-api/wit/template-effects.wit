@@ -1,4 +1,4 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
 /// Optional provenance semantics for diagnostics on expression-masked snippets.
 /// Engines classify findings semantically; hosts must never infer an effect from

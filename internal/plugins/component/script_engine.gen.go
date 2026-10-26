@@ -4,8 +4,8 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	ScriptEngineInterface      = "kjanat:actionlint/script-engine@0.1.0"
-	scriptEngineContractDigest = "fc83d48085f27a1249d9a8d9259968da4484b8ebabd1137f13bdf6895d0039e0"
+	ScriptEngineInterface      = "kjanat:actionlint/script-engine@0.2.0"
+	scriptEngineContractDigest = "ae63499eceb1350f8c7fa2ef8afab4d7e21a96271d24c88e7bbe7570483c6cc6"
 )
 
 func expectedScriptEngineContract() *wp.ComponentType {

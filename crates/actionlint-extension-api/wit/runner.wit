@@ -1,4 +1,4 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
 /// Runner knowledge is separate from analyzer identity and diagnostic policy.
 /// One call uses one fixed evidence snapshot. The host grants no networking.

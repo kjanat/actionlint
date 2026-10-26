@@ -36,6 +36,10 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 		t.Fatalf("valid action input rejected: %v", err)
 	}
 	for name, change := range map[string]func(*Input){
+		"action input shell":    func(input *Input) { input.ActionInputs[0].Shell = "bash" },
+		"action input runtime":  func(input *Input) { input.ActionInputs[0].Runtime = &Runtime{} },
+		"action input action":   func(input *Input) { input.ActionInputs[0].Site.Action = "invalid" },
+		"action input language": func(input *Input) { input.ActionInputs[0].Site.Language = "" },
 		"entry run in invoked collection": func(input *Input) {
 			input.Scripts = nil
 			input.Invoked = []Script{rootText, invokedText}

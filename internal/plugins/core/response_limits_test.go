@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero/api"
 )
 
 type responseModule struct {

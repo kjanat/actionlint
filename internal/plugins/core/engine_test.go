@@ -16,8 +16,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/api"
+	"github.com/kjanat/wazero/experimental"
 )
 
 func enginePath(name string) string {

@@ -9,7 +9,8 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/google/go-cmp v0.7.0
 	github.com/invopop/jsonschema v0.14.0
-	github.com/kjanat/wacogo v0.1.1
+	github.com/kjanat/wacogo v0.1.2-0.20261025202354-2854ac48d3b7
+	github.com/kjanat/wazero v1.11.1-0.20261025184245-2dce1ead9408
 	github.com/mattn/go-colorable v0.1.16
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mattn/go-runewidth v0.0.31
@@ -19,7 +20,6 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/tetratelabs/wazero v1.11.1-0.20260418165552-5cb4bb3ec0c1
 	github.com/yuin/goldmark v1.8.6
 	go.yaml.in/yaml/v4 v4.0.0-rc.6
 	golang.org/x/mod v0.42.0
@@ -38,7 +38,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
-	go-modules.kjanat.dev v0.8.0 // indirect
+	go-modules.kjanat.dev v0.8.1-0.20261025190330-2e183b7fc3f2 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 )
 

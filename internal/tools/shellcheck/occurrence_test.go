@@ -98,7 +98,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		if input.Reference != observer.input.Reference || input.Path != filename || input.Content != workflow || input.Kind != "workflow" || input.ParseStatus != observer.input.ParseStatus || !reflect.DeepEqual(input.CallGraph, observer.input.CallGraph) {
+		if input.Reference != observer.input.Reference || input.Path != filename || input.Content != workflow || input.Kind != "workflow" || input.ParseStatus != observer.input.ParseStatus || input.CallGraph != observer.input.CallGraph {
 			t.Fatal("adapter rebuilt source header or graph")
 		}
 		if len(input.SelectedScripts) != 1 {
@@ -181,7 +181,7 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 		t.Fatal("standalone scripts lost")
 	}
 	for _, input := range guest.inputs {
-		if input.Kind != "action" || input.Reference != observer.input.Reference || input.CallGraph.Entry().Kind != analyzer.ActionEntry || !reflect.DeepEqual(input.CallGraph, observer.input.CallGraph) {
+		if input.Kind != "action" || input.Reference != observer.input.Reference || input.CallGraph.Entry().Kind != analyzer.ActionEntry || input.CallGraph != observer.input.CallGraph {
 			t.Fatal("standalone entry identity changed")
 		}
 	}

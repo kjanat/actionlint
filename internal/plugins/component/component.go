@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
+	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/preparedscripts"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
 	filesbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourcefiles"
@@ -45,6 +46,7 @@ type Plugin struct {
 	annotationsFactory *annotationsbind.Factory
 	filesFactory       *filesbind.Factory
 	preparedFactory    *preparedbind.Factory
+	invocationFactory  *invocationbind.Factory
 
 	gate   *semaphore.Weighted
 	memory *memoryBudget
@@ -81,6 +83,10 @@ func (p *Plugin) Close(ctx context.Context) error {
 	if p.annotationsFactory != nil {
 		errs = append(errs, p.annotationsFactory.Close(ctx))
 		p.annotationsFactory = nil
+	}
+	if p.invocationFactory != nil {
+		errs = append(errs, p.invocationFactory.Close(ctx))
+		p.invocationFactory = nil
 	}
 	errs = append(errs, p.closeEngine(ctx))
 	return errors.Join(errs...)

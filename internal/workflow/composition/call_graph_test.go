@@ -69,6 +69,9 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 				if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 					t.Fatalf("mismatched identity accepted: %v", err)
 				}
+				if input.Content != string(content) || input.Path != "ci.yml" || input.Reference != test.reference || len(input.Available) != 1 || input.Available[0] != analyzer.Source || input.CallGraph.Valid() {
+					t.Fatalf("invalid graph did not retain source-only input: %+v", input)
+				}
 				return
 			}
 			if err != nil || input.Reference != reference {

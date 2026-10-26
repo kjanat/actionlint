@@ -31,7 +31,7 @@ func generateRoleContract(file, role, interfaceName, digestName, functionName st
 		if err != nil {
 			return err
 		}
-		contractData = append(append([]byte{}, dependency...), []byte(strings.TrimPrefix(string(data), "package kjanat:actionlint@0.1.0;"))...)
+		contractData = append(append([]byte{}, dependency...), []byte(strings.TrimPrefix(string(data), "package kjanat:actionlint@0.2.0;"))...)
 	}
 	resolved, err := wit.DecodeWIT(bytes.NewReader(contractData))
 	if err != nil {

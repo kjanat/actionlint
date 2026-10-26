@@ -126,7 +126,7 @@ type documentPluginRunner struct {
 }
 
 func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
-	if err := validateDocumentBatch(batch); err != nil {
+	if err := r.validateDocumentBatch(batch); err != nil {
 		return nil, err
 	}
 	var findings []tools.Finding
@@ -134,6 +134,7 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 	nativeBatch := tools.Batch{CallGraph: batch.CallGraph}
 	var nativeIndices []int
 	nativeScopes := map[*tools.Scope]bool{}
+	negotiatedScopes := map[*tools.Scope]bool{}
 	for i, script := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
 			return findings, errors.Join(failure, err)
@@ -147,20 +148,25 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		}
 		prepared, err := preparePluginScript(script.Fact, nil)
 		if err != nil {
-			return findings, errors.Join(failure, err)
+			failure = errors.Join(failure, err)
+			continue
 		}
 		if prepared == nil {
 			continue
 		}
 		negotiated, negotiateErr := negotiateDocument(ctx, r.integrator, cfg, &script)
+		if script.Scope != nil && script.Scope.Config == cfg {
+			negotiatedScopes[script.Scope] = true
+		}
 		var unsupported *analyzer.UnsupportedToolConfigurationError
 		if negotiateErr != nil && !errors.As(negotiateErr, &unsupported) {
-			return findings, errors.Join(failure, negotiateErr)
+			failure = errors.Join(failure, negotiateErr)
+			continue
 		}
 		if unsupported != nil {
 			nativeBatch.Scripts = append(nativeBatch.Scripts, script)
 			nativeIndices = append(nativeIndices, i)
-			if !nativeScopes[script.Scope] {
+			if script.Scope != nil && !nativeScopes[script.Scope] {
 				nativeScopes[script.Scope] = true
 				nativeBatch.Scopes = append(nativeBatch.Scopes, script.Scope)
 			}
@@ -173,7 +179,8 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		input.Options = negotiated.Options
 		files, fileErr := r.sourceFiles(ctx, script, negotiated.Resources)
 		if fileErr != nil {
-			return findings, errors.Join(failure, fileErr)
+			failure = errors.Join(failure, fileErr)
+			continue
 		}
 		files.configure(&input)
 		result, err := analyzerhost.Run(ctx, input, []analyzer.Registration{{Analyzer: r.guest, Options: input.Options}})
@@ -187,7 +194,27 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		}
 		failure = errors.Join(failure, err, files.close())
 	}
-	if len(nativeIndices) != 0 {
+	// Scopes without analyzed runs still negotiate configuration. Source grants
+	// are materialized only for scripts that need them.
+	for _, scope := range batch.Scopes {
+		if err := ctx.Err(); err != nil {
+			return findings, errors.Join(failure, err)
+		}
+		if scope == nil || negotiatedScopes[scope] || config.DiagnosticLevel(scope.Config, "shellcheck") == "off" || scope.Config != nil && scope.Config.Tools.Shellcheck.Enabled != nil && !*scope.Config.Tools.Shellcheck.Enabled {
+			continue
+		}
+		negotiatedScopes[scope] = true
+		_, err := negotiateDocument(ctx, r.integrator, scope.Config, nil)
+		if _, unsupported := errors.AsType[*analyzer.UnsupportedToolConfigurationError](err); unsupported {
+			if !nativeScopes[scope] {
+				nativeScopes[scope] = true
+				nativeBatch.Scopes = append(nativeBatch.Scopes, scope)
+			}
+		} else {
+			failure = errors.Join(failure, err)
+		}
+	}
+	if len(nativeIndices) != 0 || len(nativeBatch.Scopes) != 0 {
 		native, err := r.native()
 		if err != nil {
 			return findings, errors.Join(failure, err)
@@ -204,19 +231,25 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 	return findings, failure
 }
 
-func validateDocumentBatch(batch tools.Batch) error {
+func (r documentPluginRunner) validateDocumentBatch(batch tools.Batch) error {
 	if len(batch.Scripts) == 0 {
 		return nil
 	}
 	if !batch.CallGraph.Valid() {
 		return fmt.Errorf("ShellCheck document batch: %w: missing call graph", analyzer.ErrInvalidCallGraph)
 	}
+	if r.context.Document.Reference != batch.CallGraph.Entry().Reference {
+		return fmt.Errorf("ShellCheck document batch: %w: document header disagrees with graph entry", analyzer.ErrInvalidCallGraph)
+	}
 	for index, script := range batch.Scripts {
 		if script.Input != nil {
 			continue
 		}
 		occurrence := script.Fact.Occurrence
-		if want, exists := batch.CallGraph.Script(occurrence.ID); occurrence.ID == "" || !exists || occurrence.Kind != analyzer.RunScript || occurrence.Declaration != want.Declaration || script.Fact.Reference != want.Declaration {
+		if err := batch.CallGraph.ValidateOccurrence(occurrence); err != nil {
+			return fmt.Errorf("ShellCheck document batch script %d: %w", index, err)
+		}
+		if occurrence.Kind != analyzer.RunScript || script.Fact.Reference != occurrence.Declaration {
 			return fmt.Errorf("ShellCheck document batch script %d: %w: missing or foreign prepared occurrence", index, analyzer.ErrInvalidCallGraph)
 		}
 	}

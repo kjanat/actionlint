@@ -4,8 +4,8 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	RunnerInterface      = "kjanat:actionlint/runner-provider@0.1.0"
-	runnerContractDigest = "4d8a53c83af4cc69656c9cbd1fc09b7e9bc79aaeaba6db5a0e5b9998290cb0bf"
+	RunnerInterface      = "kjanat:actionlint/runner-provider@0.2.0"
+	runnerContractDigest = "e878dabfe378501abbeb932235e183ebfcfbd3b4446b5a67a39e07698d5c6953"
 )
 
 func expectedRunnerContract() *wp.ComponentType {

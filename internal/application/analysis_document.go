@@ -120,9 +120,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 	references := documentparse.References(sourcePath, content, document, composed.Sources, fsread.PhysicalPath)
 	if len(registrations) != 0 {
 		input, inputErr := composed.AnalyzerInput(path, sourcePath, content, document, references)
-		if analysisErr == nil {
-			analysisErr = inputErr
-		}
+		analysisErr = errors.Join(analysisErr, inputErr)
 		external, err := runDocumentAnalyzers(s.ctx, registrations, input, composed.Sources, usedRules)
 		all = append(all, external...)
 		analysisErr = errors.Join(analysisErr, err)

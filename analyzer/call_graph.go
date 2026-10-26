@@ -147,11 +147,12 @@ type callGraphData struct {
 const MaxCallGraphPageSize = 256
 
 func NewCallGraph(records CallGraphData) (CallGraph, error) {
+	records = records.clone()
 	if err := records.validate(); err != nil {
 		return CallGraph{}, err
 	}
 	data := &callGraphData{
-		records: records.clone(),
+		records: records,
 		calls:   make(map[OccurrenceID]int, len(records.Calls)),
 		scripts: make(map[OccurrenceID]int, len(records.Scripts)),
 	}
@@ -229,6 +230,16 @@ func (graph CallGraph) Script(id OccurrenceID) (ScriptOccurrence, bool) {
 	script.Ancestry = slices.Clone(script.Ancestry)
 	return script, found
 }
+
+// ValidateOccurrence checks every supplied field against the registered execution.
+func (graph CallGraph) ValidateOccurrence(actual ScriptOccurrence) error {
+	want, exists := graph.script(actual.ID)
+	if !exists || actual.Owner != want.Owner || actual.Depth != want.Depth || actual.Declaration != want.Declaration || actual.Kind != want.Kind || actual.Input != want.Input || !slices.Equal(actual.Ancestry, want.Ancestry) {
+		return invalidGraph("script %q disagrees with registered occurrence", actual.ID)
+	}
+	return nil
+}
+
 func (graph CallGraph) Snapshot() CallGraphData {
 	if !graph.Valid() {
 		return CallGraphData{}
@@ -241,10 +252,15 @@ func (graph CallGraph) pageEnd(offset, limit, length int) (int, error) {
 	}
 	return offset + min(limit, length-offset), nil
 }
+
+// CallsPage returns up to limit records in registration order; an end page is nil.
 func (graph CallGraph) CallsPage(offset, limit int) ([]Call, error) {
 	end, err := graph.pageEnd(offset, limit, graph.CallCount())
 	if err != nil {
 		return nil, err
+	}
+	if offset == end {
+		return nil, nil
 	}
 	records := slices.Clone(graph.data.records.Calls[offset:end])
 	for index := range records {
@@ -252,10 +268,15 @@ func (graph CallGraph) CallsPage(offset, limit int) ([]Call, error) {
 	}
 	return records, nil
 }
+
+// ScriptsPage returns up to limit records in registration order; an end page is nil.
 func (graph CallGraph) ScriptsPage(offset, limit int) ([]ScriptOccurrence, error) {
 	end, err := graph.pageEnd(offset, limit, graph.ScriptCount())
 	if err != nil {
 		return nil, err
+	}
+	if offset == end {
+		return nil, nil
 	}
 	records := slices.Clone(graph.data.records.Scripts[offset:end])
 	for index := range records {
