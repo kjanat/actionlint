@@ -26,7 +26,12 @@ type ParseError struct {
 	Cause error
 }
 
-func (e *ParseError) Error() string { return e.Cause.Error() }
+func (e *ParseError) Error() string {
+	if e.Cause == nil {
+		return fmt.Sprintf("could not parse action metadata in %q", e.Path)
+	}
+	return e.Cause.Error()
+}
 func (e *ParseError) Unwrap() error { return e.Cause }
 
 // Cache shares parsed manifests and raw source snapshots for one repository.
@@ -38,19 +43,21 @@ type Cache struct {
 	customReader    bool
 	mu              sync.RWMutex
 	root            string
-	cache           map[string]*actionmeta.Metadata
-	missing         sync.Map
+	cache           map[string]metadataEntry
 	sources         map[string]metadataSource
 	dbg             io.Writer
 }
 
 // Options provides source snapshots, a recording reader and a document observer.
 // The observer receives syntax values and errors without a reporting-model dependency.
+// Published manifests are observed once; different documents may notify concurrently.
 type Options struct {
 	Reader       *fsread.Reader
 	CustomReader bool
 	Sources      map[string][]byte
-	OnDocument   func(string, *actionmeta.Metadata, error)
+	// OnDocument completes before the publishing lookup returns. Cache hits can
+	// return during notification; consumers join all lookups before reading outlines.
+	OnDocument func(string, *actionmeta.Metadata, error)
 }
 
 // Configure installs shared input resources before any lookups start.
@@ -68,7 +75,7 @@ func NewCache(root string, dbg io.Writer) *Cache {
 	return &Cache{
 		reader:  fsread.New(context.Background(), nil, nil),
 		root:    root,
-		cache:   map[string]*actionmeta.Metadata{},
+		cache:   map[string]metadataEntry{},
 		sources: map[string]metadataSource{},
 		dbg:     dbg,
 	}
@@ -87,38 +94,52 @@ func (c *Cache) debug(format string, args ...any) {
 	_, _ = fmt.Fprintf(c.dbg, format, args...)
 }
 
-func (c *Cache) readCache(key string) (*actionmeta.Metadata, bool) {
+func (c *Cache) readCache(key string) (MetadataResult, bool) {
 	c.mu.RLock()
 	m, ok := c.cache[key]
 	c.mu.RUnlock()
-	return m, ok
+	return m.result, ok
 }
 
-func (c *Cache) writeCache(key string, val *actionmeta.Metadata) {
+func (c *Cache) writeCache(key string, result MetadataResult, source metadataSource) (MetadataResult, bool) {
+	if errors.Is(result.cause, context.Canceled) || errors.Is(result.cause, context.DeadlineExceeded) {
+		return result, false
+	}
+	result.cacheSpec = key
 	c.mu.Lock()
-	c.cache[key] = val
+	if previous, exists := c.cache[key]; exists {
+		c.mu.Unlock()
+		return previous.result, true
+	}
+	c.cache[key] = metadataEntry{result: result}
+	if source.path != "" {
+		c.sources[key] = source
+	}
 	c.mu.Unlock()
+	return result, false
 }
 
-// FindMetadata finds metadata for a local action, specified with "./" or "$/".
-// The first return value can be nil even if error did not occur.
-// Missing manifests are cached and reported at every reference. Other metadata errors
-// are reported on the first lookup; later lookups return the cached nil result.
-// Calling this method is thread-safe.
+// FindMetadata reports missing manifests at each reference and other cached failures once.
 func (c *Cache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
+	result, cached := c.LookupMetadata(spec)
+	return result.Metadata(), cached, c.reportMetadataError(result)
+}
+
+// LookupMetadata preserves failure causes without consuming their diagnostics.
+func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	if local, ok := references.SelfRepositoryLocal(spec); ok {
 		spec = local
 	}
-	if c == nil || c.root == "" || !strings.HasPrefix(spec, "./") {
-		return nil, false, nil
+	if c == nil || c.root == "" {
+		return MetadataResult{status: MetadataLookupDisabled}, false
+	}
+	if !strings.HasPrefix(spec, "./") {
+		return MetadataResult{status: MetadataNonLocal}, false
 	}
 
 	if m, ok := c.readCache(spec); ok {
-		c.debug("Cache hit for %s: %v", spec, m)
-		if _, missing := c.missing.Load(spec); missing {
-			return nil, true, missingLocalActionMetadata(spec)
-		}
-		return m, true, nil
+		c.debug("Cache hit for %s: %v", spec, m.Metadata())
+		return m, true
 	}
 
 	dir := filepath.Join(c.root, filepath.FromSlash(spec))
@@ -129,35 +150,25 @@ func (c *Cache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
 	}
 	b, f, err := c.readLocalActionMetadataFile(dir)
 	if err != nil {
-		c.writeCache(spec, nil)
-		return nil, false, err
+		return c.writeCache(spec, MetadataResult{status: MetadataReadFailed, cause: err}, metadataSource{})
 	}
 	if f == "" {
 		docker, err := c.hasDockerfile(dir)
 		if err != nil {
-			return nil, false, err
+			return c.writeCache(spec, MetadataResult{status: MetadataReadFailed, cause: err}, metadataSource{})
 		}
 		if docker {
 			// Dockerfile-only actions execute without declaring inputs or outputs.
-			c.writeCache(spec, nil)
-			return nil, false, nil
+			return c.writeCache(spec, MetadataResult{status: MetadataDockerfileOnly}, metadataSource{})
 		}
 		c.debug("No action metadata found in %s", dir)
-		c.missing.Store(spec, true)
-		c.writeCache(spec, nil)
-		return nil, false, missingLocalActionMetadata(spec)
+		return c.writeCache(spec, MetadataResult{status: MetadataMissingManifest, cause: missingLocalActionMetadata(spec)}, metadataSource{})
 	}
-	c.mu.Lock()
-	c.sources[spec] = metadataSource{path: filepath.Join(dir, f), content: b}
-	c.mu.Unlock()
+	source := metadataSource{path: filepath.Join(dir, f), content: b}
 
 	meta, parseErr := actionmeta.Parse(filepath.Join(dir, f), b)
-	if c.onDocument != nil {
-		c.onDocument(filepath.Join(dir, f), meta, parseErr)
-	}
+	loaded := MetadataResult{status: MetadataResolved, metadata: meta}
 	if err := parseErr; err != nil {
-		c.writeCache(spec, nil) // Remember action was invalid
-
 		// Unwrap load errors when a single error occurs to simplify the error message
 		var m string
 		if es, ok := errors.AsType[*yaml.DecodeError](err); ok {
@@ -175,11 +186,16 @@ func (c *Cache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
 			m = err.Error()
 		}
 
-		return nil, false, &ParseError{Path: filepath.Join(dir, f), Cause: fmt.Errorf("could not parse action metadata in %q: %s", dir, m)}
+		cause := &ParseError{Path: filepath.Join(dir, f), Cause: fmt.Errorf("could not parse action metadata in %q: %s", dir, m)}
+		loaded = MetadataResult{status: MetadataParseFailed, cause: cause}
+	} else {
+		c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
 	}
-	c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
-	c.writeCache(spec, meta)
-	return meta, false, nil
+	result, cached := c.writeCache(spec, loaded, source)
+	if !cached && c.onDocument != nil {
+		c.onDocument(source.path, meta, parseErr)
+	}
+	return result, cached
 }
 
 func (c *Cache) hasDockerfile(dir string) (bool, error) {

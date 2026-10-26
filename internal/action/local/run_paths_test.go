@@ -26,7 +26,11 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			actions.restoreCheckout(&execution.CheckoutPlacement{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true})
 			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState(), Reader: fsread.New(t.Context(), nil, nil)}
 			call := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.spec}}}
-			execution.ActionOrigin(&paths, call, filepath.Join(root, "local", "Nested"))
+			context, err := execution.ActionCall(call, paths.Platform)
+			if err != nil {
+				t.Fatal(err)
+			}
+			execution.ActionOrigin(&paths, context, filepath.Join(root, "local", "Nested"))
 			if paths.ActionRunnerPath != tc.want {
 				t.Fatalf("runner action path=%q, want %q", paths.ActionRunnerPath, tc.want)
 			}

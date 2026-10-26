@@ -14,25 +14,31 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/checks"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 type Options struct {
-	Runners                          *runnerlang.Knowledge
-	ScriptInputs                     []analyzer.ScriptInput
-	ScriptInputsForConfig            func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
-	Context                          context.Context
-	Actions                          *actionlocal.Resolver
-	Rules                            []workflowvisit.Rule
-	Scripts                          scriptexecution.Service
-	Paths                            execution.Paths
-	Config                           *repoconfig.Config
+	Budget                *invocation.Budget
+	SourceSnapshots       *documentparse.SourceSnapshots
+	Runners               *runnerlang.Knowledge
+	ScriptInputs          []analyzer.ScriptInput
+	ScriptInputsForConfig func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
+	Context               context.Context
+	Actions               *actionlocal.Resolver
+	Rules                 []workflowvisit.Rule
+	Scripts               scriptexecution.Service
+	Paths                 execution.Paths
+	Config                *repoconfig.Config
+	// ConfigForFile resolves each physical manifest once, including no-script scopes.
+	// Errors stop that expansion; successful configs are retained in Result.Configs.
 	ConfigForFile                    func(string) (*repoconfig.Config, error)
 	CollectScripts, ResolveExecution bool
 	Join                             func() error
@@ -52,8 +58,18 @@ type Service struct{ options Options }
 func New(options Options) *Service { return &Service{options: options} }
 
 // Workflow enters the workflow pass lifecycle. Action never uses this path.
-func (s *Service) Workflow(w *workflowlang.Workflow) (Result, error) {
+func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, error) {
 	return s.analyze(func(c *compositeAnalyzer) error {
+		if snapshot == nil {
+			return errors.New("workflow source snapshot is unavailable")
+		}
+		w, available := snapshot.Workflow()
+		if !available {
+			return errors.New("workflow source snapshot has no workflow declarations")
+		}
+		if err := c.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
+			return err
+		}
 		v := engine.NewVisitor()
 		v.Hooks = engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout}
 		for _, pass := range s.options.Rules {
@@ -65,7 +81,19 @@ func (s *Service) Workflow(w *workflowlang.Workflow) (Result, error) {
 }
 
 func (s *Service) Action(metadata *actionmeta.Metadata) (Result, error) {
-	return s.analyze(func(c *compositeAnalyzer) error { return visitStandaloneAction(metadata, s.options.Rules, c) })
+	return s.analyze(func(c *compositeAnalyzer) error {
+		if metadata == nil {
+			return errors.New("action metadata is unavailable")
+		}
+		snapshot, err := c.sourceSnapshots.Action(fsread.PhysicalPath(metadata.Path()), metadata)
+		if err != nil {
+			return err
+		}
+		if err := c.startEntry(invocation.EntryAction, snapshot); err != nil {
+			return err
+		}
+		return visitStandaloneAction(metadata, s.options.Rules, c)
+	})
 }
 
 func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, err error) {
@@ -97,20 +125,43 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		runners:      options.Runners,
 		scriptConfig: options.Config, scriptPaths: options.Paths,
 		collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
+		budget:                invocation.DefaultBudget(),
 		scriptInputs:          scriptInputs,
 		scriptInputsForConfig: options.ScriptInputsForConfig,
+		scriptCatalogues:      map[*repoconfig.Config][]analyzer.ScriptInput{},
+		sourceSnapshots:       options.SourceSnapshots,
+	}
+	if c.sourceSnapshots == nil {
+		c.sourceSnapshots = &documentparse.SourceSnapshots{}
+	}
+	if options.Budget != nil {
+		c.budget = *options.Budget
 	}
 	if options.ConfigForFile != nil {
+		physicalConfigs := map[string]*repoconfig.Config{}
 		c.configForFile = func(path string) (*repoconfig.Config, error) {
-			config, err := options.ConfigForFile(path)
-			if err == nil {
+			physical := fsread.PhysicalPath(path)
+			if config, exists := physicalConfigs[physical]; exists {
 				configs[path] = config
+				return config, nil
 			}
-			return config, err
+			config, err := options.ConfigForFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("load configuration for action %q: %w", path, err)
+			}
+			physicalConfigs[physical], configs[path] = config, config
+			return config, nil
 		}
 	}
 	err = visit(c)
-	batch := scriptexecution.Batch{Scopes: c.scriptScopes, Scripts: c.scripts}
+	err = c.interrupt(err)
+	var graph invocation.Graph
+	if c.invocations != nil {
+		var publishErr error
+		graph, publishErr = c.invocations.Publish()
+		err = errors.Join(err, publishErr)
+	}
+	batch := scriptexecution.Batch{Scopes: c.scriptScopes, Scripts: c.scripts, Invocations: graph}
 	findings, scriptErr := options.Scripts.Run(options.Context, batch)
 	err = errors.Join(err, scriptErr, join())
 	joined = true

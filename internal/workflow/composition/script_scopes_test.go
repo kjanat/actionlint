@@ -30,6 +30,7 @@ jobs:
 		t.Fatal(errors)
 	}
 	collector := &compositeAnalyzer{collectScripts: true}
+	startWorkflowEntry(t, collector, workflowSnapshot(t, workflow))
 	collector.beginWorkflow(workflow)
 	var shells []string
 	for _, id := range []string{"first", "second"} {
@@ -42,7 +43,9 @@ jobs:
 	}
 	// Composite scripts have their own declared shell and never inherit callers.
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
-	if err := collector.collectScript(&workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo composite", Pos: pos}, RunPos: pos}}, nil, "action.yml", nil, nil, nil); err != nil {
+	step := &workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo composite", Pos: pos}, RunPos: pos}}
+	startWorkflowEntry(t, collector, workflowSnapshot(t, &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": {Steps: []*workflowlang.Step{step}}}}))
+	if err := collector.collectScript(step, nil, "action.yml", nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, script := range collector.scripts {

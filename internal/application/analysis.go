@@ -343,12 +343,9 @@ type actionDocuments struct {
 }
 
 func (d *actionDocuments) add(document documentmodel.Action) {
+	path := fsread.PhysicalPath(document.Path)
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	path := absPath(document.Path)
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		path = resolved
-	}
 	d.byPath[path] = document
 }
 

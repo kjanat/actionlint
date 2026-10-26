@@ -26,6 +26,7 @@ jobs:
 		t.Fatal(errors)
 	}
 	collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
+	startWorkflowEntry(t, collector, workflowSnapshot(t, workflow))
 	collector.beginWorkflow(workflow)
 	for _, id := range []string{"python", "bash"} {
 		job := workflow.Jobs[id]

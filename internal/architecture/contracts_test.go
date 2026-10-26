@@ -70,6 +70,29 @@ func TestExpressionDependencyDirection(t *testing.T) {
 	}
 }
 
+func TestInvocationOwnerDependencyDirection(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/workflow/invocation").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg struct{ Imports, Deps []string }
+	if err := json.Unmarshal(output, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	for _, dependency := range pkg.Deps {
+		if strings.Contains(strings.Split(dependency, "/")[0], ".") && dependency != "actionlint.kjanat.dev/v2/source" {
+			t.Errorf("invocation owner imports implementation dependency %s", dependency)
+		}
+	}
+	for _, dependency := range pkg.Imports {
+		for _, capability := range []string{"os", "io", "net", "syscall", "unsafe", "crypto/rand", "math/rand"} {
+			if dependency == capability || strings.HasPrefix(dependency, capability+"/") {
+				t.Errorf("invocation owner imports host capability %s", dependency)
+			}
+		}
+	}
+}
+
 func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
 	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/v2/internal/engine", "actionlint.kjanat.dev/v2/internal/application", "actionlint.kjanat.dev/v2/analysis").Output()
 	if err != nil {

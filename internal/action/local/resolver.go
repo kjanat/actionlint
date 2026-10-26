@@ -46,15 +46,28 @@ func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
 
 // FindMetadata translates a reference using this invocation's checkout and source mappings.
 func (c *Resolver) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
+	result, cached := c.LookupMetadata(spec)
+	if c == nil {
+		return result.Metadata(), cached, result.Err()
+	}
+	return result.Metadata(), cached, c.base.reportMetadataError(result)
+}
+
+// LookupMetadata retains acquisition outcomes without consuming validation diagnostics.
+func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 	if c == nil || c.base == nil {
-		return nil, false, nil
+		return MetadataResult{status: MetadataLookupDisabled}, false
 	}
 	if local, ok := references.SelfRepositoryLocal(spec); ok {
 		return c.findRepositoryMetadata(local, true)
 	}
 	local, ok := c.localSpec(spec)
 	if !ok {
-		return nil, false, nil
+		status := MetadataNonLocal
+		if strings.HasPrefix(spec, "./") {
+			status = MetadataNotFetched
+		}
+		return MetadataResult{status: status}, false
 	}
 	certain := true
 	if state := c.CheckoutState(); state != nil {
@@ -105,7 +118,7 @@ func missingLocalActionMetadata(spec string) error {
 	return UnresolvedError(fmt.Sprintf("local action %q has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting", spec))
 }
 
-func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (*actionmeta.Metadata, bool, error) {
+func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataResult, bool) {
 	original := spec
 	mapped := false
 	if normalized, err := localaction.Normalize(spec); err == nil {
@@ -121,7 +134,7 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (*actionmet
 				}
 			}
 			if matches > 1 {
-				return nil, false, MappingError{fmt.Errorf("source mapping for local action %q is ambiguous under case-insensitive lookup", original)}
+				return MetadataResult{status: MetadataMappingFailed, cause: MappingError{fmt.Errorf("source mapping for local action %q is ambiguous under case-insensitive lookup", original)}}, false
 			}
 		}
 	}
@@ -129,39 +142,43 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (*actionmet
 	if c.caseInsensitive && c.base.root != "" && !c.base.customReader && !explicit {
 		local, err := execution.CaseInsensitiveRepositoryPath(c.base.root, spec, c.base.reader)
 		if err != nil {
+			_, ambiguous := errors.AsType[execution.AmbiguousPathError](err)
+			if !errors.Is(err, os.ErrNotExist) && !ambiguous {
+				return MetadataResult{status: MetadataReadFailed, cause: fmt.Errorf("resolve local action %q: %w", original, err)}, false
+			}
 			if mapped {
 				if errors.Is(err, os.ErrNotExist) {
-					return nil, false, missingMappedLocalAction(original, spec)
+					return MetadataResult{status: MetadataMappingFailed, cause: missingMappedLocalAction(original, spec)}, false
 				}
-				return nil, false, MappingError{fmt.Errorf("source mapping for local action %q: cannot resolve source %q under case-insensitive lookup", original, spec)}
+				return MetadataResult{status: MetadataMappingFailed, cause: MappingError{fmt.Errorf("source mapping for local action %q: cannot resolve source %q under case-insensitive lookup: %w", original, spec, err)}}, false
 			}
 			if !certain && errors.Is(err, os.ErrNotExist) {
-				return nil, false, nil
+				return MetadataResult{status: MetadataPlacementUncertain}, false
 			}
-			return nil, false, UnresolvedError(fmt.Sprintf("cannot resolve local action %q: its path is missing or ambiguous under case-insensitive lookup", spec))
+			return MetadataResult{status: MetadataMissingManifest, cause: UnresolvedError(fmt.Sprintf("cannot resolve local action %q: its path is missing or ambiguous under case-insensitive lookup", spec))}, false
 		}
 		spec = local
 	}
 	if mapped && c.base.root != "" && !c.base.customReader && !explicit {
 		if err := localaction.CheckSource(c.base.root, spec); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return nil, false, missingMappedLocalAction(original, spec)
+				return MetadataResult{status: MetadataMappingFailed, cause: missingMappedLocalAction(original, spec)}, false
 			}
-			return nil, false, MappingError{fmt.Errorf("source mapping for local action %q: %w", original, err)}
+			return MetadataResult{status: MetadataMappingFailed, cause: MappingError{fmt.Errorf("source mapping for local action %q: %w", original, err)}}, false
 		}
 	}
-	metadata, cached, err := c.base.FindMetadata(spec)
-	if _, missing := errors.AsType[UnresolvedError](err); missing {
+	result, cached := c.base.LookupMetadata(spec)
+	if _, missing := errors.AsType[UnresolvedError](result.Err()); missing {
 		if mapped {
-			err = missingMappedLocalAction(original, spec)
+			result.status, result.cause = MetadataMappingFailed, missingMappedLocalAction(original, spec)
 		} else if !certain {
-			err = nil
+			result.status, result.cause = MetadataPlacementUncertain, nil
 		}
 	}
-	if mapped && metadata != nil {
-		mappedMetadata := *metadata
+	if mapped && result.metadata != nil {
+		mappedMetadata := *result.metadata
 		mappedMetadata.SourceMapped = true
-		metadata = &mappedMetadata
+		result.metadata = &mappedMetadata
 	}
 	if c.usedSources != nil {
 		c.base.mu.RLock()
@@ -173,7 +190,7 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (*actionmet
 			c.mu.Unlock()
 		}
 	}
-	return metadata, cached, err
+	return result, cached
 }
 
 func missingMappedLocalAction(alias, source string) error {

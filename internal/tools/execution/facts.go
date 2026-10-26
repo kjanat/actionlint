@@ -6,9 +6,10 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
-func Fact(unit Unit, document, documentAbs string, includeExecution bool) analyzer.Script {
+func Fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Script {
 	run := unit.Run
 	var script analyzer.Script
 	var source *workflowlang.ScriptSource
@@ -22,7 +23,7 @@ func Fact(unit Unit, document, documentAbs string, includeExecution bool) analyz
 	if unit.Origin != nil {
 		script.JobID, script.StepID = unit.Origin.Job, unit.Origin.StepID
 	}
-	if unit.Path != "" && unit.Path != document && unit.Path != documentAbs {
+	if unit.Reference.Document != graph.Entry().Reference.Document {
 		script.Path = unit.Path
 	}
 	for _, span := range source.LineSpans() {
@@ -33,15 +34,16 @@ func Fact(unit Unit, document, documentAbs string, includeExecution bool) analyz
 		})
 	}
 	script.Comments = workflowfacts.SourceComments(source)
-	if scope := unit.Scope; scope != nil && script.Path != "" && scope.Call != nil {
-		invocation := &analyzer.Invocation{Step: workflowfacts.Position(scope.Call.Pos), Depth: scope.Depth}
-		if scope.Caller != document && scope.Caller != documentAbs {
-			invocation.Caller = scope.Caller
+	script.Reference = unit.Reference
+	if scope := unit.Scope; scope != nil {
+		if call, exists := graph.Call(scope.Occurrence); exists {
+			effects, _ := scope.Context.Effects()
+			projected := &analyzer.Invocation{Reference: call.Site, Step: effects.Step, Depth: call.Depth, Uses: call.Uses}
+			if call.Site.Document != graph.Entry().Reference.Document {
+				projected.Caller = call.Site.Document
+			}
+			script.Invocation = projected
 		}
-		if action, ok := scope.Call.Exec.(*workflowlang.ExecAction); ok && action.Uses != nil {
-			invocation.Uses = action.Uses.Value
-		}
-		script.Invocation = invocation
 	}
 	if includeExecution && unit.Input == nil {
 		script.Runtime = &analyzer.Runtime{

@@ -9,6 +9,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
+// AmbiguousPathError identifies multiple filesystem entries matching one runner path.
+type AmbiguousPathError string
+
+func (e AmbiguousPathError) Error() string {
+	return fmt.Sprintf("ambiguous case-insensitive path %q", string(e))
+}
+
 // Use on-disk spelling for cache keys and diagnostics, even on a Linux host.
 // Multiple case-equivalent entries cannot identify a unique runner action.
 func caseInsensitiveRepositoryPath(root, spec string, reader *fsread.Reader) (string, bool) {
@@ -34,7 +41,7 @@ func CaseInsensitiveRepositoryPath(root, spec string, reader *fsread.Reader) (st
 				continue
 			}
 			if match != "" {
-				return "", fmt.Errorf("ambiguous case-insensitive path %q", spec)
+				return "", AmbiguousPathError(spec)
 			}
 			match = name
 		}

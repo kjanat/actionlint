@@ -3,6 +3,7 @@ package local
 import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
@@ -26,24 +27,32 @@ func (c *Resolver) BeginJob(workflowEnv *workflowlang.Env, workflowShell executi
 }
 
 // EnterComposite saves invocation-local assumptions and returns their branch join.
-// Call the returned function when the composite finishes, including on an error.
-func (c *Resolver) EnterComposite(call *workflowlang.Step) func() {
+// An action entry has no caller to join with. Call the returned function when
+// the composite finishes, including on an error.
+func (c *Resolver) EnterComposite(context execution.ActionContext) func() {
+	effects, isCall := context.Effects()
 	checkout := c.CheckoutState()
 	checkoutEnv := c.checkoutEnvUnknown
 	persistentEnv := c.persistentEnvUnknown
 	shellEnv, checkoutShell := c.shellEnvUnknown, c.checkoutShell
-	c.checkoutEnvUnknown = checkoutEnv || execution.CheckoutEnvironmentUnknown(call.Env, c.platform)
-	c.shellEnvUnknown = shellEnv || c.shellEnvironmentUnknown(call.Env)
+	if isCall {
+		c.checkoutEnvUnknown = checkoutEnv || effects.CheckoutEnvironmentUnknown
+		c.shellEnvUnknown = shellEnv || effects.LookupEnvironmentUnknown
+	}
 	c.checkoutShell = execution.Shell{}
 	return func() {
 		c.checkoutEnvUnknown = checkoutEnv
 		c.shellEnvUnknown, c.checkoutShell = shellEnv, checkoutShell
-		enabled, known := execution.Condition(call.If)
-		if known && !enabled {
+		if !isCall {
+			return
+		}
+		if effects.Condition == invocation.ConditionSkipped {
 			c.persistentEnvUnknown = persistentEnv
 			c.restoreCheckout(checkout)
-		} else if (!known || execution.BoolMayBeTrue(call.ContinueOnError) || execution.BoolMayBeTrue(call.Background)) && checkout != c.CheckoutState() {
-			mayFail := execution.BoolMayBeTrue(call.ContinueOnError) || execution.BoolMayBeTrue(call.Background)
+			return
+		}
+		mayFail := effects.ContinueOnError || effects.Background
+		if (effects.Condition == invocation.ConditionRuntimeDependent || mayFail) && checkout != c.CheckoutState() {
 			c.restoreCheckout(execution.MergeCheckoutBranches(checkout, c.CheckoutState(), mayFail))
 		}
 	}

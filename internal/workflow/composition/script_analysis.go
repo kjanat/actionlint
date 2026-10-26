@@ -1,6 +1,7 @@
 package composition
 
 import (
+	"errors"
 	"maps"
 	"slices"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
 func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
@@ -32,6 +34,17 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 	if !ok || run.Run == nil {
 		return nil
 	}
+	if analysis.sourceSnapshot == nil {
+		return errors.New("script source snapshot is unavailable")
+	}
+	reference, err := analysis.sourceSnapshot.StepReference(step)
+	if err != nil {
+		return err
+	}
+	occurrence, err := invocation.NewScriptID(analysis.occurrence, reference, invocation.ScriptRun, "")
+	if err != nil {
+		return err
+	}
 	shell := jobShell
 	if shell == nil {
 		shell = workflowShell
@@ -39,7 +52,7 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 	if run.Shell != nil {
 		shell = &run.Shell.Value
 	}
-	unit := scriptexecution.Unit{Run: run, Shell: shell, Config: cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step), Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope}
+	unit := scriptexecution.Unit{Occurrence: occurrence, Reference: reference, Run: run, Shell: shell, Config: cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step), Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope}
 	if unit.Scope != nil && analysis.resolveScriptExecution {
 		paths := unit.Scope.Paths
 		if analysis.actions != nil {
@@ -75,22 +88,19 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 	}
 	parts[0], parts[1] = strings.ToLower(parts[0]), strings.ToLower(parts[1])
 	name = strings.Join(parts, "/")
-	catalogue := analysis.scriptInputs
-	if analysis.scriptInputsForConfig != nil {
-		additional, err := analysis.scriptInputsForConfig(cfg)
-		if err != nil {
-			return err
-		}
-		catalogue, err = scriptInputCatalogue(additional)
-		if err != nil {
-			return err
-		}
-	}
 	inputs, _ := workflowlang.ActionInputNames(action)
+	var catalogue []analyzer.ScriptInput
 	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
 		input := inputs[inputName]
 		if input.Value == nil || input.Source == nil {
 			continue // Expression-created values have no physical script scalar.
+		}
+		if catalogue == nil {
+			var err error
+			catalogue, err = analysis.actionInputCatalogue(cfg)
+			if err != nil {
+				return err
+			}
 		}
 		var site analyzer.ScriptInput
 		for _, candidate := range catalogue {
@@ -102,11 +112,43 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 		if site.Language == "" {
 			continue
 		}
+		if analysis.sourceSnapshot == nil {
+			return errors.New("action-input source snapshot is unavailable")
+		}
+		reference, err := analysis.sourceSnapshot.StepReference(step)
+		if err != nil {
+			return err
+		}
+		occurrence, err := invocation.NewScriptID(analysis.occurrence, reference, invocation.ScriptActionInput, site.Input)
+		if err != nil {
+			return err
+		}
 		analysis.scripts = append(analysis.scripts, scriptexecution.Unit{
-			Input:  &scriptexecution.ActionInput{Site: site, Value: input},
-			Config: cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step),
+			Occurrence: occurrence,
+			Reference:  reference,
+			Input:      &scriptexecution.ActionInput{Site: site, Value: input},
+			Config:     cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step),
 			Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope,
 		})
 	}
 	return nil
+}
+
+func (analysis *compositeAnalyzer) actionInputCatalogue(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
+	if analysis.scriptInputsForConfig == nil {
+		return analysis.scriptInputs, nil
+	}
+	if catalogue, exists := analysis.scriptCatalogues[cfg]; exists {
+		return catalogue, nil
+	}
+	additional, err := analysis.scriptInputsForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	catalogue, err := scriptInputCatalogue(append(slices.Clone(analysis.scriptInputs), additional...))
+	if err != nil {
+		return nil, err
+	}
+	analysis.scriptCatalogues[cfg] = catalogue
+	return catalogue, nil
 }

@@ -40,11 +40,11 @@ func (rule *RuleExecutableBit) DeferActionInvocation() bool                    {
 func (rule *RuleExecutableBit) ForComposite(invocation Invocation) (workflowvisit.Rule, error) {
 	paths := *rule.Paths()
 	paths = invocation.Actions.ApplyCheckout(paths)
-	return &RuleExecutableBit{ExecutableChecker: rule.ForkComposite(invocation.Call, invocation.ActionPath, paths)}, nil
+	return &RuleExecutableBit{ExecutableChecker: rule.ForkComposite(invocation.Context, invocation.ActionPath, paths)}, nil
 }
 
-func (rule *RuleExecutableBit) JoinCompositeResult(call *workflowlang.Step, result workflowvisit.Rule) {
+func (rule *RuleExecutableBit) JoinCompositeResult(context execution.ActionContext, result workflowvisit.Rule) {
 	if child, ok := result.(*RuleExecutableBit); ok {
-		rule.JoinComposite(call, child.ExecutableChecker)
+		rule.JoinComposite(context, child.ExecutableChecker)
 	}
 }

@@ -45,3 +45,25 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 		})
 	}
 }
+
+func TestParsedMixedCaseJobReference(t *testing.T) {
+	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
+	workflow, findings := workflowlang.Parse(content)
+	if len(findings) != 0 {
+		t.Fatal(findings)
+	}
+	job := workflow.Jobs["build"]
+	if job == nil || job.ID == nil || job.ID.Value != "Build" {
+		t.Fatalf("parsed job identity missing: %+v", workflow.Jobs)
+	}
+	refs := workflowfacts.Index("ci.yml", content, workflow, false)
+	finding := &findingmodel.Finding{
+		Start: diagnostic.Position{Line: 1, Column: 1},
+		Owner: &findingmodel.Owner{Job: job.ID.Value},
+	}
+	InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]workflowfacts.References{"ci.yml": refs})
+	want := refs.Jobs["build"]
+	if want.Node == "" || finding.Reference == nil || *finding.Reference != want {
+		t.Fatalf("mixed-case job reference = %+v, want %+v", finding.Reference, want)
+	}
+}

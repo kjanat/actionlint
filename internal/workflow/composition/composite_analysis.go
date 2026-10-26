@@ -11,9 +11,11 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -23,6 +25,7 @@ import (
 type compositeAnalyzer struct {
 	scriptInputs                      []analyzer.ScriptInput
 	scriptInputsForConfig             func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
+	scriptCatalogues                  map[*repoconfig.Config][]analyzer.ScriptInput
 	runners                           *runnerlang.Knowledge
 	resolveScriptExecution            bool
 	scripts                           []scriptexecution.Unit
@@ -43,6 +46,12 @@ type compositeAnalyzer struct {
 	workflowShell                     execution.ShellValue
 	configForFile                     func(string) (*repoconfig.Config, error)
 	jobID                             string
+	sourceSnapshots                   *documentparse.SourceSnapshots
+	sourceSnapshot                    *documentparse.SourceSnapshot
+	invocations                       *invocation.Builder
+	occurrence                        invocation.ID
+	budget                            invocation.Budget
+	interrupted                       bool
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {
@@ -53,7 +62,7 @@ func (analysis *compositeAnalyzer) cancelled() error {
 }
 
 func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) {
-	analysis.scriptScope = &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: analysis.scriptConfig}
+	analysis.scriptScope = &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: analysis.scriptConfig, Occurrence: analysis.occurrence}
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(workflow.Defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(workflow.Defaults)
@@ -97,6 +106,19 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	if err := analysis.collectScript(step, analysis.scriptConfig, "", nil, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
 		return err
 	}
+	if _, action := step.Exec.(*workflowlang.ExecAction); !action {
+		return analysis.visitStepPasses(step)
+	}
+	var scripts []workflowvisit.Rule
+	for _, pass := range analysis.passes {
+		if participant, ok := pass.(builtin.CompositeParticipant); ok {
+			scripts = append(scripts, participant)
+		}
+	}
+	return analysis.visitActionScripts(step, scripts, func() error { return analysis.visitStepPasses(step) })
+}
+
+func (analysis *compositeAnalyzer) visitStepPasses(step *workflowlang.Step) error {
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
 		if participant, ok := pass.(builtin.InvocationParticipant); ok && participant.DeferActionInvocation() {
@@ -108,14 +130,5 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 			return err
 		}
 	}
-	if _, action := step.Exec.(*workflowlang.ExecAction); !action {
-		return nil
-	}
-	var scripts []workflowvisit.Rule
-	for _, pass := range analysis.passes {
-		if participant, ok := pass.(builtin.CompositeParticipant); ok {
-			scripts = append(scripts, participant)
-		}
-	}
-	return analysis.visitActionScripts(step, scripts, make(map[string]bool))
+	return nil
 }

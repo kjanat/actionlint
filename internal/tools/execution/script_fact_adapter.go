@@ -19,7 +19,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		if err := ctx.Err(); err != nil {
 			return findings, err
 		}
-		input := analyzer.Input{Scripts: []analyzer.Script{Fact(unit, unit.Path, unit.Path, false)}}
+		input := analyzer.Input{Scripts: []analyzer.Script{Fact(unit, batch.Invocations, false)}}
 		diagnostics, err := adapter.Analyzer.Analyze(ctx, input)
 		for _, d := range diagnostics {
 			finding := findingmodel.FromDiagnostic(d)

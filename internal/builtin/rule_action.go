@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -53,8 +54,7 @@ func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
 
 	if strings.HasPrefix(spec, "./") {
 		// Relative to repository root
-		rule.checkLocalAction(spec, spec, e)
-		return nil
+		return rule.checkLocalAction(spec, spec, e)
 	}
 
 	if strings.HasPrefix(spec, "$/") {
@@ -65,8 +65,7 @@ func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
 			rule.Findings = append(rule.Findings, actioncheck.InvalidReference(e.Uses.Pos, spec, "self-repository references do not support an '@ref' suffix"))
 			return nil
 		}
-		rule.checkLocalAction(local, spec, e)
-		return nil
+		return rule.checkLocalAction(local, spec, e)
 	}
 
 	if strings.HasPrefix(spec, "docker://") {
@@ -80,11 +79,14 @@ func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *workflowlang.ExecAction) {
+func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *workflowlang.ExecAction) error {
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
 	meta, _, err := rule.cache.FindMetadata(localSpec)
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
 	if err != nil {
 		if _, unresolved := errors.AsType[actionlocal.UnresolvedError](err); unresolved {
 			rule.Findings = append(rule.Findings, findingmodel.At(action.Uses.Pos, "missing-local-action", err.Error()))
@@ -95,10 +97,10 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 			}
 			rule.Findings = append(rule.Findings, finding)
 		}
-		return
+		return nil
 	}
 	if meta == nil {
-		return
+		return nil
 	}
 
 	rule.replayMetadataFindings(meta, action, displaySpec)
@@ -106,6 +108,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 	rule.Findings = append(rule.Findings, actioncheck.Inputs(meta, action, func(m *actionmeta.Metadata) string {
 		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)
 	})...)
+	return nil
 }
 
 func (rule *RuleAction) ForMetadata(actions *actionlocal.Resolver) workflowvisit.Rule {

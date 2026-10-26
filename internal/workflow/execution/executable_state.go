@@ -3,7 +3,7 @@ package execution
 import (
 	"maps"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
 // executableState tracks when indexed modes still describe execution. Workspace
@@ -44,38 +44,44 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 	}
 }
 
-// ForkComposite creates isolated execution state for a composite call and its resolved paths.
-func (rule *ExecutableChecker) ForkComposite(call *workflowlang.Step, actionPath string, paths Paths) *ExecutableChecker {
+// ForkComposite creates isolated execution state for an action entry or call and its resolved paths.
+func (rule *ExecutableChecker) ForkComposite(context ActionContext, actionPath string, paths Paths) *ExecutableChecker {
 	scoped := NewExecutableChecker(rule.context)
 	scoped.executableState = rule.executableState
 	scoped.unix, scoped.caseInsensitive, scoped.shIsDash = rule.unix, rule.caseInsensitive, rule.shIsDash
-	if CanRunAfterFailure(call.If) {
+	effects, isCall := context.Effects()
+	if isCall && effects.AfterFailure {
 		scoped.afterPossibleFailure()
 	}
 	scoped.paths = paths
-	ActionOrigin(&scoped.paths, call, actionPath)
-	enabled, conditionKnown := Condition(call.If)
-	scoped.skipFindings = rule.skipFindings || conditionKnown && !enabled
+	ActionOrigin(&scoped.paths, context, actionPath)
+	scoped.skipFindings = rule.skipFindings
+	scoped.jobEnv, scoped.jobGitEnv, scoped.jobPathUnknown = rule.jobEnv, rule.jobGitEnv, rule.jobPathUnknown
+	if !isCall {
+		return scoped
+	}
+	scoped.skipFindings = rule.skipFindings || effects.Condition == invocation.ConditionSkipped
 	// Conditional calls cannot mutate their caller's maps until branches join.
-	if !conditionKnown || !enabled {
+	if effects.Condition != invocation.ConditionEnabled {
 		scoped.changed = maps.Clone(rule.changed)
 		scoped.actionChanged = maps.Clone(rule.actionChanged)
 	}
-	scoped.jobEnv = rule.jobEnv || ShellEnvironmentUnknown(call.Env)
-	scoped.jobGitEnv = rule.jobGitEnv || CheckoutEnvironmentUnknown(call.Env, scoped.paths.Platform)
-	scoped.jobPathUnknown = rule.jobPathUnknown || ShellPathUnknown(call.Env)
-	if conditionKnown && !enabled || BoolMayBeTrue(call.Background) {
+	scoped.jobEnv = rule.jobEnv || effects.ShellEnvironmentUnknown
+	scoped.jobGitEnv = rule.jobGitEnv || effects.CheckoutEnvironmentUnknown
+	scoped.jobPathUnknown = rule.jobPathUnknown || effects.ShellPathUnknown
+	if effects.Condition == invocation.ConditionSkipped || effects.Background {
 		scoped.afterConcurrentExecution()
 	}
 	return scoped
 }
 
-// JoinComposite merges conditional mode changes back into the caller.
-func (rule *ExecutableChecker) JoinComposite(call *workflowlang.Step, child *ExecutableChecker) {
-	enabled, conditionKnown := Condition(call.If)
-	if conditionKnown && !enabled {
+// JoinComposite merges conditional mode changes of a call back into the caller.
+func (rule *ExecutableChecker) JoinComposite(context ActionContext, child *ExecutableChecker) {
+	effects, isCall := context.Effects()
+	if !isCall || effects.Condition == invocation.ConditionSkipped {
 		return
 	}
+	conditionKnown := effects.Condition == invocation.ConditionEnabled
 	if !conditionKnown {
 		// Either branch can retain changed modes; a child checkout only resets
 		// them when that branch actually runs.
@@ -84,7 +90,7 @@ func (rule *ExecutableChecker) JoinComposite(call *workflowlang.Step, child *Exe
 	}
 	rule.actionPristine = rule.actionPristine && child.actionPristine
 	rule.repositoryUnknown = child.repositoryUnknown
-	if BoolMayBeTrue(call.ContinueOnError) {
+	if effects.ContinueOnError {
 		// The caller may continue after a failed child checkout.
 		rule.pristine, rule.repositoryUnknown = false, true
 		rule.sequential = child.sequential

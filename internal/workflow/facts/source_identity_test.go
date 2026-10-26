@@ -47,6 +47,39 @@ func TestStepIdentityIgnoresPresentation(t *testing.T) {
 	}
 }
 
+func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
+	const first = "on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        uses: $/outer\n"
+	for _, test := range []struct {
+		name, suffix, secondJob, secondAddress string
+		secondStep                             int
+	}{
+		{name: "same job", suffix: "      - *shared\n", secondJob: "build", secondStep: 1, secondAddress: `jobs["build"].steps[1]`},
+		{name: "different jobs", suffix: "  Other:\n    runs-on: ubuntu-latest\n    steps:\n      - *shared\n", secondJob: "other", secondAddress: `jobs["other"].steps[0]`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			content := []byte(first + test.suffix)
+			workflow, findings := workflowlang.ParseDocument(content)
+			if len(findings) != 0 {
+				t.Fatal(findings)
+			}
+			first := workflow.Jobs["build"].Steps[0]
+			second := workflow.Jobs[test.secondJob].Steps[test.secondStep]
+			refs := workflowfacts.Index("ci.yml", content, workflow, false)
+			left, right := refs.Steps[first], refs.Steps[second]
+			if left.Node == "" || right.Node == "" || left.Node == right.Node {
+				t.Fatalf("aliased calls lost their owners: first=%+v second=%+v", left, right)
+			}
+			if left.Address != `jobs["build"].steps[0]` || right.Address != test.secondAddress {
+				t.Fatalf("owning addresses = %q, %q", left.Address, right.Address)
+			}
+			repeated := workflowfacts.Index("ci.yml", content, workflow, false)
+			if repeated.Steps[first] != left || repeated.Steps[second] != right {
+				t.Fatal("declaration identities changed across indexing")
+			}
+		})
+	}
+}
+
 func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 	t.Helper()
 	var text strings.Builder

@@ -150,6 +150,11 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			resultErr = errors.Join(resultErr, process.Finish())
 		}
 	}()
+	snapshots := &documentparse.SourceSnapshots{}
+	snapshot, err := snapshots.Document(fsread.PhysicalPath(sourcePath), content, document)
+	if err != nil {
+		return result, err
+	}
 	var mappings map[string]string
 	if cfg != nil {
 		mappings = cfg.LocalActions
@@ -209,7 +214,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	requires := checks.RequiredFacts(registrations)
 	service := composition.New(composition.Options{
-		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
+		SourceSnapshots: snapshots,
+		Context:         s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
 		ScriptInputsForConfig: func(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, cfg)
@@ -228,7 +234,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if action {
 		result, err = service.Action(document.Metadata)
 	} else {
-		result, err = service.Workflow(document.Workflow)
+		result, err = service.Workflow(snapshot)
 	}
 	*usedRules = append(*usedRules, selected.ScriptInfo...)
 	*usedRules = append(*usedRules, checks.Describe(selected.Rules)...)
