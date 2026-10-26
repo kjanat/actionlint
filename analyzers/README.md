@@ -27,8 +27,8 @@ cases, including switches with a default branch.
 package roots and allowed dependency directions. The contract follows the
 [analysis ownership](../docs/design/analysis-ownership.md) and
 [application boundary](../docs/design/application-boundary.md) decisions. Its
-assignments describe the target responsibilities; existing violations must be
-fixed in the product, not added as exceptions.
+assignments describe the target responsibilities. Existing violations require
+changes to the product code.
 
 Each layer has `roots` and `uses`. A root covers its entire package subtree;
 the longest matching root wins. `.` matches only the module package. `uses`
@@ -61,7 +61,10 @@ This contract controls dependencies between layers. It does not establish that
 code inside an allowed package implements the right responsibility. The
 remaining type ownership and retired-API checks are actionlint-specific.
 ALA103 uses resolved Go types, including aliases and inferred literal types.
-It checks field assignment, increment and decrement. Empty values are allowed.
+It checks field assignments, range assignments, increments and decrements,
+including promoted fields. Conversions from other types into a protected type
+also require ownership. Same-type copies, nil pointers and empty literals are
+allowed.
 Pointer alias analysis and synchronization require separate verification.
 Tests may read fixtures and import packages in a `testonly` layer, such as
 `internal/testutil`. Those helpers can exercise the application. Other test

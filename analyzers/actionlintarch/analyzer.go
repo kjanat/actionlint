@@ -103,7 +103,7 @@ func run(pass *analysis.Pass, contract *architecture.Contract) (any, error) {
 			switch n := n.(type) {
 			case *ast.CompositeLit:
 				if len(n.Elts) > 0 {
-					checkConstruction(pass, path, n, n)
+					checkOwnership(pass, path, n, pass.TypesInfo.TypeOf(n))
 				}
 			case *ast.Ident:
 				// Check references, including functions assigned to variables.
@@ -114,6 +114,13 @@ func run(pass *analysis.Pass, contract *architecture.Contract) (any, error) {
 				for _, lhs := range n.Lhs {
 					checkMutation(pass, path, lhs)
 				}
+			case *ast.RangeStmt:
+				if n.Tok == token.ASSIGN {
+					checkMutation(pass, path, n.Key)
+					checkMutation(pass, path, n.Value)
+				}
+			case *ast.CallExpr:
+				checkConversion(pass, path, n)
 			case *ast.IncDecStmt:
 				checkMutation(pass, path, n.X)
 			case *ast.TypeSpec:
@@ -147,42 +154,72 @@ func run(pass *analysis.Pass, contract *architecture.Contract) (any, error) {
 }
 
 func checkMutation(pass *analysis.Pass, path string, expr ast.Expr) {
-	for {
-		parens, ok := expr.(*ast.ParenExpr)
-		if !ok {
-			break
-		}
-		expr = parens.X
+	field, ok := ast.Unparen(expr).(*ast.SelectorExpr)
+	if !ok {
+		return
 	}
-	if field, ok := expr.(*ast.SelectorExpr); ok {
-		checkConstruction(pass, path, field, field.X)
+	selection := pass.TypesInfo.Selections[field]
+	if selection == nil || selection.Kind() != types.FieldVal {
+		return
+	}
+	t := selection.Recv()
+	// Follow embedded fields to the struct whose field is being written.
+	for _, index := range selection.Index() {
+		if checkOwnership(pass, path, field, t) {
+			return
+		}
+		structure, ok := dereference(t).Underlying().(*types.Struct)
+		if !ok {
+			return
+		}
+		t = structure.Field(index).Type()
 	}
 }
 
-func checkConstruction(pass *analysis.Pass, path string, n ast.Node, e ast.Expr) {
-	t := pass.TypesInfo.TypeOf(e)
-	if t == nil {
+func checkConversion(pass *analysis.Pass, path string, call *ast.CallExpr) {
+	if len(call.Args) != 1 || !pass.TypesInfo.Types[call.Fun].IsType() {
 		return
 	}
+	target := pass.TypesInfo.TypeOf(call)
+	operand := pass.TypesInfo.TypeOf(call.Args[0])
+	if types.Identical(operand, types.Typ[types.UntypedNil]) || types.Identical(dereference(target), dereference(operand)) {
+		return
+	}
+	if literal, ok := ast.Unparen(call.Args[0]).(*ast.CompositeLit); ok && len(literal.Elts) == 0 {
+		return
+	}
+	checkOwnership(pass, path, call, target)
+}
+
+func dereference(t types.Type) types.Type {
 	t = types.Unalias(t)
-	if p, ok := t.(*types.Pointer); ok {
-		t = types.Unalias(p.Elem())
+	if pointer, ok := t.Underlying().(*types.Pointer); ok {
+		return types.Unalias(pointer.Elem())
 	}
-	named, ok := t.(*types.Named)
+	return t
+}
+
+// checkOwnership reports unauthorized writes and returns whether it reported one.
+func checkOwnership(pass *analysis.Pass, path string, n ast.Node, t types.Type) bool {
+	if t == nil {
+		return false
+	}
+	named, ok := dereference(t).(*types.Named)
 	if !ok || named.Obj().Pkg() == nil {
-		return
+		return false
 	}
 	key := named.Obj().Pkg().Path() + "." + named.Obj().Name()
 	owners, restricted := constructors[key]
 	if !restricted {
-		return
+		return false
 	}
 	for _, owner := range owners {
 		if path == owner {
-			return
+			return false
 		}
 	}
 	report(pass, n.Pos(), "ALA103", "construction or mutation of "+key+" outside its owner; consume the canonical value (owners: "+strings.Join(owners, ", ")+")")
+	return true
 }
 
 func checkImports(pass *analysis.Pass, file *ast.File, path string, test bool, contract *architecture.Contract) {

@@ -9,3 +9,13 @@ type Scope struct {
 }
 
 func runtime() analyzer.Runtime { return analyzer.Runtime{Shell: "sh"} }
+
+type localRuntime analyzer.Runtime
+type runtimeWrapper struct{ analyzer.Runtime }
+
+func ownedMutations(w *runtimeWrapper, value localRuntime) analyzer.Runtime {
+	w.Shell = "bash"
+	for _, w.Shell = range []string{"sh", "bash"} {
+	}
+	return analyzer.Runtime(value)
+}
