@@ -50,7 +50,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		return err
 	}
 	if ticket.Status() == invocation.Stopped {
-		return fmt.Errorf("%w: maximum %d calls per entry", errCallBudget, analysis.budget.MaxCalls)
+		return ticket.Err()
 	}
 	if ticket.Status() == invocation.DepthLimited {
 		var deferred []workflowvisit.Rule
@@ -67,7 +67,9 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 	defer func() {
 		err = analysis.interrupt(err)
 		if opened {
-			err = errors.Join(err, analysis.invocations.Close(ticket.ID()))
+			if closeErr := analysis.invocations.Close(ticket.ID()); closeErr != nil {
+				err = errors.Join(err, closeErr)
+			}
 		}
 		analysis.occurrence = parent
 	}()

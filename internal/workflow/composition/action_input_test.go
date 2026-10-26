@@ -19,20 +19,29 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 		{"OWNER/REPO/Foo/Bar@v1", "owner/repo/Foo/Bar", true},
 		{"owner/repo/Foo/bar@v1", "owner/repo/Foo/Bar", false},
 	} {
-		t.Run(tc.action+"/"+tc.selector, func(t *testing.T) {
-			analysis := compositeAnalyzer{scriptInputs: []analyzer.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}
-			action := &workflow.ExecAction{Uses: &workflow.String{Value: tc.action}, Inputs: map[string]*workflow.Input{
-				"code": {Name: &workflow.String{Value: "code"}, Value: &workflow.String{Value: "missing()"}, Source: &workflow.ScriptSource{}},
-			}}
-			step := &workflow.Step{Exec: action}
-			startWorkflowEntry(t, &analysis, workflowSnapshot(t, &workflow.Workflow{Jobs: map[string]*workflow.Job{"test": {Steps: []*workflow.Step{step}}}}))
-			if err := analysis.collectActionInputs(step, action, nil, "workflow.yml", nil); err != nil {
-				t.Fatal(err)
-			}
-			if (len(analysis.scripts) == 1) != tc.matches {
-				t.Fatalf("case-sensitive selector match=%t, want=%t", len(analysis.scripts) == 1, tc.matches)
-			}
-		})
+		for _, collect := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/%s/collect=%t", tc.action, tc.selector, collect), func(t *testing.T) {
+				analysis := compositeAnalyzer{collectScripts: collect, scriptInputs: []analyzer.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}
+				action := &workflow.ExecAction{Uses: &workflow.String{Value: tc.action}, Inputs: map[string]*workflow.Input{
+					"code": {Name: &workflow.String{Value: "code"}, Value: &workflow.String{Value: "missing()"}, Source: &workflow.ScriptSource{}},
+				}}
+				step := &workflow.Step{Exec: action}
+				startWorkflowEntry(t, &analysis, workflowSnapshot(t, &workflow.Workflow{Jobs: map[string]*workflow.Job{"test": {Steps: []*workflow.Step{step}}}}))
+				if err := analysis.collectActionInputs(step, action, nil, "workflow.yml", nil); err != nil {
+					t.Fatal(err)
+				}
+				graph, err := analysis.invocations.Publish()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if (len(graph.Scripts()) == 1) != tc.matches {
+					t.Fatalf("registered match=%t, want=%t", len(graph.Scripts()) == 1, tc.matches)
+				}
+				if (len(analysis.scripts) == 1) != (tc.matches && collect) {
+					t.Fatalf("case-sensitive selector match=%t, want=%t", len(analysis.scripts) == 1, tc.matches)
+				}
+			})
+		}
 	}
 }
 

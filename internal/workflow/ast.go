@@ -448,8 +448,8 @@ type WorkflowCallEvent struct {
 	// struct since its order is important when checking the default values of inputs.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinputs
 	Inputs []*WorkflowCallEventInput
-	// Secrets is a map from name of secret to secret configuration. When 'secrets' is omitted, nil is set to this
-	// field. Keys are in lower case since they are case-insensitive.
+	// Secrets is a map from name of secret to secret configuration. When 'secrets' is omitted, nil is set to this field.
+	// Keys are in lower case since they are case-insensitive.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callsecrets
 	Secrets map[string]*WorkflowCallEventSecret
 	// Outputs is a map from name of Output to Output configuration. Keys are in lower case since they are case-insensitive.
@@ -680,8 +680,8 @@ func (e *ExecCancel) Kind() ExecKind {
 	return ExecKindCancel
 }
 
-// ExecParallel is configuration of a Step that runs a group of steps in parallel. It corresponds to
-// the 'parallel' Step.
+// ExecParallel is configuration of a Step that runs a group of steps in parallel.
+// It corresponds to the 'parallel' Step.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 type ExecParallel struct {
 	// Steps is the group of steps to run in parallel, given by the 'parallel' field.
@@ -819,8 +819,8 @@ func (a *RawYAMLArray) String() string {
 type RawYAMLString struct {
 	// Value is String representation of the scalar node.
 	Value string
-	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int". A tag the parser rejects
-	// is recorded as "!!str".
+	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int".
+	// A tag rejected by the parser is recorded as "!!str".
 	Tag      string
 	Position *Pos
 }

@@ -24,9 +24,6 @@ func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
 }
 
 func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, path string, content []byte, jobShell, workflowShell *string) error {
-	if !analysis.collectScripts {
-		return nil
-	}
 	if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
 		return analysis.collectActionInputs(step, action, cfg, path, content)
 	}
@@ -41,9 +38,12 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 	if err != nil {
 		return err
 	}
-	occurrence, err := invocation.NewScriptID(analysis.occurrence, reference, invocation.ScriptRun, "")
+	occurrence, err := analysis.invocations.AddScript(analysis.occurrence, reference, invocation.ScriptRun, "")
 	if err != nil {
 		return err
+	}
+	if !analysis.collectScripts {
+		return nil
 	}
 	shell := jobShell
 	if shell == nil {
@@ -119,9 +119,12 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 		if err != nil {
 			return err
 		}
-		occurrence, err := invocation.NewScriptID(analysis.occurrence, reference, invocation.ScriptActionInput, site.Input)
+		occurrence, err := analysis.invocations.AddScript(analysis.occurrence, reference, invocation.ScriptActionInput, site.Input)
 		if err != nil {
 			return err
+		}
+		if !analysis.collectScripts {
+			continue
 		}
 		analysis.scripts = append(analysis.scripts, scriptexecution.Unit{
 			Occurrence: occurrence,

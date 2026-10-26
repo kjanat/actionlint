@@ -20,6 +20,9 @@ var (
 	ErrInvalidBudget      = errors.New("invocation: invalid budget")
 	ErrInvalidID          = errors.New("invocation: invalid id")
 	ErrInvalidScript      = errors.New("invocation: invalid script identity")
+	ErrDuplicateScript    = errors.New("invocation: duplicate script traversal")
+	ErrScriptBudget       = errors.New("invocation: script budget exhausted")
+	ErrCallBudget         = errors.New("invocation: call budget exhausted")
 	ErrUnknownParent      = errors.New("invocation: unknown parent")
 	ErrParentNotOpen      = errors.New("invocation: parent is not an open expanded call")
 	ErrDuplicateCall      = errors.New("invocation: duplicate call traversal")
@@ -81,28 +84,32 @@ func (c Condition) valid() bool {
 	return c == ConditionEnabled || c == ConditionSkipped || c == ConditionRuntimeDependent
 }
 
-// Budget bounds expansion of one entry. The entry consumes neither limit.
+// Budget bounds expansion of one entry, including scripts in the entry itself.
 type Budget struct {
 	// MaxDepth is the maximum number of call edges from the entry.
 	MaxDepth int
 	// MaxCalls is the maximum number of recorded call occurrences.
 	MaxCalls int
+	// MaxScripts bounds run and action-input occurrences, including when no
+	// script analyzer consumes them. Exhaustion stops the entry.
+	MaxScripts int
 }
 
 // Application defaults per entry.
 const (
-	DefaultMaxDepth = 10
-	DefaultMaxCalls = 10000
+	DefaultMaxDepth   = 10
+	DefaultMaxCalls   = 10000
+	DefaultMaxScripts = 10000
 )
 
 // DefaultBudget returns the application composition budget.
 func DefaultBudget() Budget {
-	return Budget{MaxDepth: DefaultMaxDepth, MaxCalls: DefaultMaxCalls}
+	return Budget{MaxDepth: DefaultMaxDepth, MaxCalls: DefaultMaxCalls, MaxScripts: DefaultMaxScripts}
 }
 
 func (b Budget) validate() error {
-	if b.MaxDepth <= 0 || b.MaxCalls <= 0 {
-		return fmt.Errorf("%w: limits must be positive (depth %d, calls %d)", ErrInvalidBudget, b.MaxDepth, b.MaxCalls)
+	if b.MaxDepth <= 0 || b.MaxCalls <= 0 || b.MaxScripts <= 0 {
+		return fmt.Errorf("%w: limits must be positive (depth %d, calls %d, scripts %d)", ErrInvalidBudget, b.MaxDepth, b.MaxCalls, b.MaxScripts)
 	}
 	return nil
 }
@@ -204,7 +211,7 @@ type Call struct {
 	Outcome   Outcome
 }
 
-// Stop is the single boundary stored when the total call budget is exhausted.
+// Stop identifies the first declaration rejected by a call or script budget.
 type Stop struct {
 	Parent ID
 	Site   source.Reference
@@ -212,17 +219,30 @@ type Stop struct {
 	Max    int
 }
 
+// budgetError retains the first exhausted resource and rejected declaration.
+type budgetError struct{ stop Stop }
+
+func (e budgetError) Error() string {
+	return fmt.Sprintf("invocation: %s budget exhausted (maximum %d per entry)", e.stop.Limit, e.stop.Max)
+}
+
+func (e budgetError) Is(target error) bool {
+	return e.stop.Limit == LimitTotal && target == ErrCallBudget || e.stop.Limit == LimitScripts && target == ErrScriptBudget
+}
+
 // Graph is an immutable published invocation graph. Accessors return copies.
 type Graph struct {
-	entry      Entry
-	root       ID
-	budget     Budget
-	calls      []Call
-	index      map[ID]int
-	stop       Stop
-	hasStop    bool
-	entryStop  Outcome
-	incomplete bool
+	entry       Entry
+	root        ID
+	budget      Budget
+	calls       []Call
+	index       map[ID]int
+	scripts     []Script
+	scriptIndex map[ID]int
+	stop        Stop
+	hasStop     bool
+	entryStop   Outcome
+	incomplete  bool
 }
 
 // Entry returns the analysis entry.
@@ -309,7 +329,7 @@ func (g Graph) Chain(id ID) ([]ID, bool) {
 	return chain, true
 }
 
-// Stop returns the total-budget boundary, if the budget was exhausted.
+// Stop returns the first exhausted call or script budget boundary.
 func (g Graph) Stop() (Stop, bool) { return g.stop, g.hasStop }
 
 // EntryInterruption returns interruption outside an unfinished call.
@@ -319,14 +339,6 @@ func (g Graph) EntryInterruption() (Outcome, bool) {
 
 // Incomplete reports unavailable bodies, unresolved calls or interrupted expansion.
 func (g Graph) Incomplete() bool { return g.incomplete }
-
-// ScriptID returns the script occurrence ID for an entry or call in this graph.
-func (g Graph) ScriptID(owner ID, decl source.Reference, kind ScriptKind, input string) (ID, error) {
-	if !g.Has(owner) {
-		return "", fmt.Errorf("%w: owner %q", ErrUnknownCall, string(owner))
-	}
-	return NewScriptID(owner, decl, kind, input)
-}
 
 type recordState uint8
 
@@ -349,6 +361,8 @@ type Builder struct {
 	budget      Budget
 	records     []record
 	index       map[ID]int
+	scripts     []Script
+	scriptIndex map[ID]int
 	stop        Stop
 	hasStop     bool
 	entryStop   Outcome
@@ -379,6 +393,30 @@ func NewBuilder(kind EntryKind, ref source.Reference, budget Budget) (*Builder, 
 // RootID returns the entry occurrence ID, the parent of top-level calls.
 func (b *Builder) RootID() ID { return b.root }
 
+// IsBudgetStop accepts wrappers only when every cause is this builder's stop.
+func (b *Builder) IsBudgetStop(err error) bool {
+	if !b.hasStop || err == nil {
+		return false
+	}
+	if group, ok := errors.AsType[interface {
+		error
+		Unwrap() []error
+	}](err); ok {
+		causes := group.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !b.IsBudgetStop(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	exhausted, ok := errors.AsType[budgetError](err)
+	return ok && exhausted.stop == b.stop
+}
+
 // Admission describes what Begin did with an attempted call.
 type Admission uint8
 
@@ -388,7 +426,7 @@ const (
 	Admitted Admission = iota + 1
 	// DepthLimited means a final non-expanded frontier record was stored.
 	DepthLimited
-	// Stopped means the total budget is exhausted and no call was allocated.
+	// Stopped means a call or script budget was exhausted; no call was allocated.
 	Stopped
 )
 
@@ -396,6 +434,7 @@ const (
 type Ticket struct {
 	id     ID
 	status Admission
+	err    error
 }
 
 // ID returns the call ID, or empty when the attempt was Stopped.
@@ -403,6 +442,9 @@ func (t Ticket) ID() ID { return t.id }
 
 // Status returns the admission result.
 func (t Ticket) Status() Admission { return t.status }
+
+// Err returns the original budget error for a stopped admission, otherwise nil.
+func (t Ticket) Err() error { return t.err }
 
 // Begin admits a call under parent (the entry ID or an open expanded call).
 // It checks parent and site validity and duplicate traversal, then the total
@@ -441,13 +483,14 @@ func (b *Builder) Begin(parent ID, site source.Reference, uses string, condition
 	if parent != b.current {
 		return Ticket{}, ErrTraversal
 	}
+	if b.hasStop {
+		return Ticket{status: Stopped, err: budgetError{b.stop}}, nil
+	}
 
 	if len(b.records) >= b.budget.MaxCalls {
-		if !b.hasStop {
-			b.stop = Stop{Parent: parent, Site: site, Limit: LimitTotal, Max: b.budget.MaxCalls}
-			b.hasStop = true
-		}
-		return Ticket{status: Stopped}, nil
+		b.stop = Stop{Parent: parent, Site: site, Limit: LimitTotal, Max: b.budget.MaxCalls}
+		b.hasStop = true
+		return Ticket{status: Stopped, err: budgetError{b.stop}}, nil
 	}
 
 	call := Call{ID: id, Parent: parent, Depth: parentDepth + 1, Site: site, Uses: uses, Condition: condition}
@@ -626,6 +669,13 @@ func (b *Builder) Publish() (Graph, error) {
 		entryStop: b.entryStop,
 	}
 	g.incomplete = b.hasStop || b.entryStop.Valid()
+	if len(b.scripts) != 0 {
+		g.scripts = slices.Clone(b.scripts)
+		g.scriptIndex = make(map[ID]int, len(g.scripts))
+		for index, script := range g.scripts {
+			g.scriptIndex[script.ID] = index
+		}
+	}
 	for i := range b.records {
 		c := b.records[i].call
 		g.calls[i] = c

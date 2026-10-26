@@ -26,10 +26,12 @@ import (
 )
 
 type Options struct {
-	Budget                *invocation.Budget
-	SourceSnapshots       *documentparse.SourceSnapshots
-	Runners               *runnerlang.Knowledge
-	ScriptInputs          []analyzer.ScriptInput
+	Budget          *invocation.Budget
+	SourceSnapshots *documentparse.SourceSnapshots
+	Runners         *runnerlang.Knowledge
+	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
+	ScriptInputs []analyzer.ScriptInput
+	// ScriptInputsForConfig loads lazily once per immutable config, including nil.
 	ScriptInputsForConfig func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
 	Context               context.Context
 	Actions               *actionlocal.Resolver
@@ -38,8 +40,10 @@ type Options struct {
 	Paths                 execution.Paths
 	Config                *repoconfig.Config
 	// ConfigForFile resolves each physical manifest once, including no-script scopes.
-	// Errors stop that expansion; successful configs are retained in Result.Configs.
-	ConfigForFile                    func(string) (*repoconfig.Config, error)
+	// Errors interrupt the entry; previously collected findings and facts remain available.
+	ConfigForFile func(string) (*repoconfig.Config, error)
+	// CollectScripts supplies execution units. Registration, selector errors and
+	// script budgets apply even when no script analyzer consumes the occurrences.
 	CollectScripts, ResolveExecution bool
 	Join                             func() error
 	Debug                            io.Writer
@@ -50,7 +54,8 @@ type Result struct {
 	Batch                            scriptexecution.Batch
 	CollectScripts, ResolveExecution bool
 	Sources                          map[string][]byte
-	Configs                          map[string]*repoconfig.Config
+	// Configs retains successful configuration lookups by expanded source path.
+	Configs map[string]*repoconfig.Config
 }
 
 type Service struct{ options Options }

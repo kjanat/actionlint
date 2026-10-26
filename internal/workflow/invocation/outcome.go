@@ -68,6 +68,7 @@ const (
 	LimitInvalid LimitKind = iota
 	LimitDepth
 	LimitTotal
+	LimitScripts
 )
 
 // String returns a stable name for the limit.
@@ -77,6 +78,8 @@ func (k LimitKind) String() string {
 		return "depth"
 	case LimitTotal:
 		return "total"
+	case LimitScripts:
+		return "scripts"
 	default:
 		return "invalid"
 	}

@@ -16,8 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
-var errCallBudget = errors.New("composite call budget exhausted")
-
 func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot *documentparse.SourceSnapshot) error {
 	graph, err := invocation.NewBuilder(kind, snapshot.Reference(), analysis.budget)
 	if err != nil {
@@ -28,7 +26,13 @@ func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapsho
 }
 
 func (analysis *compositeAnalyzer) interrupt(err error) error {
-	if err == nil || errors.Is(err, errCallBudget) || analysis.interrupted || analysis.invocations == nil {
+	if err == nil || analysis.interrupted || analysis.invocations == nil {
+		return err
+	}
+	if canceled := analysis.cancelled(); canceled != nil && !errors.Is(err, canceled) {
+		err = errors.Join(err, canceled)
+	}
+	if analysis.invocations.IsBudgetStop(err) {
 		return err
 	}
 	reason := invocation.ReasonOperational

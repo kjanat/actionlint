@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	documentmodel "actionlint.kjanat.dev/v2/document"
@@ -12,7 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
-func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
+func virtualActionPaths(t *testing.T) (string, string, string) {
+	t.Helper()
 	root := t.TempDir()
 	physical := filepath.Join(root, "physical")
 	if err := os.Mkdir(physical, 0o755); err != nil {
@@ -22,6 +24,39 @@ func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	manifest := filepath.Join(physical, "virtual", "action.yml")
+	return root, manifest, filepath.Join(root, "alias", "virtual", "action.yml")
+}
+
+func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
+	_, physical, alias := virtualActionPaths(t)
+	for _, concurrent := range []bool{false, true} {
+		for _, reversed := range []bool{false, true} {
+			t.Run(fmt.Sprintf("concurrent=%t/reversed=%t", concurrent, reversed), func(t *testing.T) {
+				paths := []string{physical, alias}
+				if reversed {
+					paths = []string{alias, physical}
+				}
+				documents := actionDocuments{byPath: map[string]documentmodel.Action{}}
+				var workers sync.WaitGroup
+				for _, path := range paths {
+					if concurrent {
+						workers.Go(func() { documents.add(documentmodel.Action{Path: path, Name: "virtual"}) })
+					} else {
+						documents.add(documentmodel.Action{Path: path, Name: "virtual"})
+					}
+				}
+				workers.Wait()
+				outlines := documents.list()
+				if len(outlines) != 1 || outlines[0].DocumentPath() != alias {
+					t.Fatalf("document spelling depends on publication order: %+v", outlines)
+				}
+			})
+		}
+	}
+}
+
+func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
+	root, manifest, _ := virtualActionPaths(t)
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
 		Sources: []sourceUnit{{
@@ -43,7 +78,7 @@ func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
 		t.Fatalf("one virtual manifest produced duplicate outlines through parent aliases: %+v", result.Documents)
 	}
 	outline, ok := result.Documents[1].(documentmodel.Action)
-	if !ok || outline.Name != "virtual" || outline.ParseStatus != "complete" {
+	if !ok || outline.Name != "virtual" || outline.ParseStatus != "complete" || outline.Path != filepath.Join("alias", "virtual", "action.yml") {
 		t.Fatalf("virtual action outline missing: %+v", result.Documents)
 	}
 }

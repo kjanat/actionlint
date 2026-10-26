@@ -3,7 +3,8 @@ package composition
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"path/filepath"
+	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -14,10 +15,29 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
+type configVisitProbe struct {
+	workflowvisit.Base
+	steps    []string
+	finished bool
+}
+
+func (probe *configVisitProbe) VisitStep(step *workflowlang.Step) error {
+	probe.steps = append(probe.steps, step.ID.Value)
+	return nil
+}
+
+func (probe *configVisitProbe) VisitWorkflowPost(*workflowlang.Workflow) error {
+	probe.finished = true
+	return nil
+}
+
 func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 	for _, collect := range []bool{false, true} {
 		t.Run(fmt.Sprintf("scripts=%t", collect), func(t *testing.T) {
-			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: []}\n"}, nil)
+			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - {id: before, run: echo before}\n      - {id: broken, uses: $/outer}\n      - {id: after, run: echo after}\n  later:\n    runs-on: ubuntu-latest\n    steps: [{id: later-job, run: echo later}]\n"
+			f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: []}\n"}, nil)
+			probe := &configVisitProbe{Base: workflowvisit.NewBase("config-visits", "")}
+			f.service.options.Rules = append(f.service.options.Rules, probe)
 			failure := errors.New("invalid action configuration")
 			loads := 0
 			f.service.options.CollectScripts = collect
@@ -26,12 +46,23 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 				return nil, failure
 			}
 			result, err := f.service.Workflow(f.root)
-			if !errors.Is(err, failure) || !strings.Contains(err.Error(), "outer") || loads != 1 || !result.Batch.Invocations.Incomplete() || len(result.Sources) != 1 {
+			want := fmt.Sprintf("load configuration for action %q: %s", filepath.Join(f.service.options.Paths.Workspace, "outer", "action.yml"), failure)
+			if !errors.Is(err, failure) || err.Error() != want || loads != 1 || !result.Batch.Invocations.Incomplete() || len(result.Sources) != 1 {
 				t.Fatalf("configuration failure lost or hidden: error=%v loads=%d result=%+v", err, loads, result)
 			}
 			calls := result.Batch.Invocations.Calls()
-			if len(calls) != 1 || !strings.Contains(calls[0].Outcome.Detail(), "outer") {
+			if len(calls) != 1 || calls[0].Outcome.Detail() != want {
 				t.Fatalf("interruption lost the action path: %+v", calls)
+			}
+			if !slices.Equal(probe.steps, []string{"before", "broken"}) || probe.finished {
+				t.Fatalf("entry continued after config failure: steps=%v workflow-post=%v", probe.steps, probe.finished)
+			}
+			wantScripts := 0
+			if collect {
+				wantScripts = 1
+			}
+			if len(result.Batch.Scripts) != wantScripts || (collect && result.Batch.Scripts[0].Run.Run.Value != "echo before") {
+				t.Fatal("interruption lost preceding facts or collected scripts after the failing call")
 			}
 		})
 	}
@@ -108,16 +139,14 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := []*repoconfig.Config{rootConfig, childConfig, rootConfig}
+			if !slices.Equal(seen, []*repoconfig.Config{rootConfig, childConfig}) || len(result.Batch.Invocations.Scripts()) != len(want) {
+				t.Fatal("semantic registration must use each declaring config even without script analysis")
+			}
 			if !collect {
 				want = nil
 			}
-			if len(seen) != min(2, len(want)) || len(result.Batch.Scripts) != len(want) {
-				t.Fatalf("catalogue calls=%d scripts=%d, want at most two loads for %d scripts", len(seen), len(result.Batch.Scripts), len(want))
-			}
-			for index, config := range seen {
-				if config != want[index] {
-					t.Fatalf("catalogue %d uses a foreign configuration", index)
-				}
+			if len(result.Batch.Scripts) != len(want) {
+				t.Fatalf("collected %d script units, want %d", len(result.Batch.Scripts), len(want))
 			}
 			for index, config := range want {
 				unit := result.Batch.Scripts[index]
@@ -163,7 +192,7 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 					}
 					if outcome == "depth" {
 						target = "$/nested"
-						budget = &invocation.Budget{MaxDepth: 1, MaxCalls: 10}
+						budget = &invocation.Budget{MaxDepth: 1, MaxCalls: 10, MaxScripts: invocation.DefaultMaxScripts}
 					}
 					f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{id: outer, uses: $/outer}]}}\n", map[string]string{"outer/action.yml": "name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - id: nested\n      uses: " + target + "\n"}, budget)
 					rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}

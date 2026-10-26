@@ -109,6 +109,15 @@ jobs:
 			if graph.Incomplete() || len(result.Batch.Scripts) != 6 {
 				t.Fatalf("incomplete=%v scripts=%d", graph.Incomplete(), len(result.Batch.Scripts))
 			}
+			if len(graph.Scripts()) != len(result.Batch.Scripts) {
+				t.Fatal("traversal bypassed the canonical script owner")
+			}
+			for _, script := range result.Batch.Scripts {
+				registered, exists := graph.Script(script.Occurrence)
+				if !exists || registered.Declaration != script.Reference || registered.Owner != script.Scope.Occurrence {
+					t.Fatalf("script occurrence differs from its owning graph: %+v", script)
+				}
+			}
 			root, _ := f.root.Workflow()
 			var rootSites []source.Reference
 			for _, step := range slices.Concat(root.Jobs["first"].Steps, root.Jobs["second"].Steps) {
@@ -167,7 +176,7 @@ jobs:
 						t.Fatalf("script %d edge %d: %+v", i, edge, call)
 					}
 				}
-				want, err := graph.ScriptID(unit.Scope.Occurrence, declaration, invocation.ScriptRun, "")
+				want, err := invocation.NewScriptID(unit.Scope.Occurrence, declaration, invocation.ScriptRun, "")
 				if err != nil || unit.Reference != declaration || unit.Occurrence != want || seen[unit.Occurrence] {
 					t.Fatalf("script %d lost declaration/occurrence identity: %+v, %v", i, unit, err)
 				}
@@ -204,8 +213,8 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 		budget invocation.Budget
 		total  bool
 	}{
-		{"depth", invocation.Budget{MaxDepth: 1, MaxCalls: 10}, false},
-		{"total", invocation.Budget{MaxDepth: 10, MaxCalls: 1}, true},
+		{"depth", invocation.Budget{MaxDepth: 1, MaxCalls: 10, MaxScripts: invocation.DefaultMaxScripts}, false},
+		{"total", invocation.Budget{MaxDepth: 10, MaxCalls: 1, MaxScripts: invocation.DefaultMaxScripts}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
@@ -213,7 +222,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 				"nested/action.yml": "name: nested\ndescription: identity\nruns: {using: composite, steps: []}\n",
 			}, &tc.budget)
 			result, err := f.service.Workflow(f.root)
-			if errors.Is(err, errCallBudget) != tc.total || err != nil && !tc.total {
+			if errors.Is(err, invocation.ErrCallBudget) != tc.total || err != nil && !tc.total {
 				t.Fatal(err)
 			}
 			if len(f.parsed) != 1 || filepath.Base(filepath.Dir(f.parsed[0])) != "outer" {

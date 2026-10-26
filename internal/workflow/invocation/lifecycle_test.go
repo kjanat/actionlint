@@ -97,7 +97,7 @@ func TestInterruptionBetweenTopLevelCalls(t *testing.T) {
 			name = "exhausted-budget"
 		}
 		t.Run(name, func(t *testing.T) {
-			b := builder(t, invocation.EntryWorkflow, invocation.Budget{MaxDepth: 10, MaxCalls: 1})
+			b := builder(t, invocation.EntryWorkflow, invocation.Budget{MaxDepth: 10, MaxCalls: 1, MaxScripts: invocation.DefaultMaxScripts})
 			first := begin(t, b, b.RootID(), reference("entry", "first"))
 			opaque(t, b, first)
 			if exhausted {

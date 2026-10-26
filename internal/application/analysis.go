@@ -346,7 +346,9 @@ func (d *actionDocuments) add(document documentmodel.Action) {
 	path := fsread.PhysicalPath(document.Path)
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.byPath[path] = document
+	if previous, exists := d.byPath[path]; !exists || document.Path < previous.Path {
+		d.byPath[path] = document
+	}
 }
 
 func (d *actionDocuments) list() documentmodel.Outlines {

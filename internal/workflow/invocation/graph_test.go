@@ -43,6 +43,7 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	var branches [][]invocation.ID
 	var sites [][]source.Reference
+	var scripts []invocation.ID
 	for _, branch := range []string{"left", "right"} {
 		parent := b.RootID()
 		chain := []invocation.ID{parent}
@@ -57,6 +58,11 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 			parent = ticket.ID()
 			chain = append(chain, parent)
 		}
+		script, err := b.AddScript(parent, reference("inner", "run"), invocation.ScriptRun, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		scripts = append(scripts, script)
 		for i := len(chain) - 1; i > 0; i-- {
 			closeCall(t, b, chain[i])
 		}
@@ -89,13 +95,10 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 	if left.ID == right.ID || left.Site != right.Site || leftTarget != rightTarget {
 		t.Fatal("repeated declaration must retain source identity and have distinct occurrences")
 	}
-	leftScript, err := g.ScriptID(left.ID, reference("inner", "run"), invocation.ScriptRun, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rightScript, err := g.ScriptID(right.ID, reference("inner", "run"), invocation.ScriptRun, "")
-	if err != nil || rightScript == leftScript {
-		t.Fatalf("repeated scripts share occurrence identity: %v", err)
+	leftScript, foundLeft := g.Script(scripts[0])
+	rightScript, foundRight := g.Script(scripts[1])
+	if !foundLeft || !foundRight || rightScript.ID == leftScript.ID || leftScript.Owner != left.ID || rightScript.Owner != right.ID || leftScript.Declaration != rightScript.Declaration {
+		t.Fatalf("repeated scripts lost their distinct owners or shared declaration: %+v %+v", leftScript, rightScript)
 	}
 	mutated := g.Calls()
 	mutated[0].Site.Document = "corrupted"
@@ -136,7 +139,7 @@ func TestDepthBudgetStopsBeforeLookup(t *testing.T) {
 	for _, kind := range []invocation.EntryKind{invocation.EntryWorkflow, invocation.EntryAction} {
 		for _, maxDepth := range []int{1, invocation.DefaultMaxDepth} {
 			t.Run(fmt.Sprintf("%s/%d", kind, maxDepth), func(t *testing.T) {
-				b := builder(t, kind, invocation.Budget{MaxDepth: maxDepth, MaxCalls: 100})
+				b := builder(t, kind, invocation.Budget{MaxDepth: maxDepth, MaxCalls: 100, MaxScripts: invocation.DefaultMaxScripts})
 				parent := b.RootID()
 				var expanded []invocation.ID
 				for depth := 1; depth <= maxDepth; depth++ {
@@ -167,7 +170,7 @@ func TestDepthBudgetStopsBeforeLookup(t *testing.T) {
 }
 
 func TestTotalBudgetRetainsOneBoundary(t *testing.T) {
-	b := builder(t, invocation.EntryWorkflow, invocation.Budget{MaxDepth: 10, MaxCalls: 2})
+	b := builder(t, invocation.EntryWorkflow, invocation.Budget{MaxDepth: 10, MaxCalls: 2, MaxScripts: invocation.DefaultMaxScripts})
 	for i := range 2 {
 		opaque(t, b, begin(t, b, b.RootID(), reference("entry", strconv.Itoa(i))))
 	}
