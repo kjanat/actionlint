@@ -18,8 +18,7 @@ func ActionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflo
 	if metadata.Run != nil && (metadata.Shell == nil || metadata.Uses != nil) {
 		return opaque
 	}
-	// Reuse the step decoder for scalar coercion and source mapping. Metadata
-	// validation remains responsible for the composite-specific key grammar.
+	// Reuse the step decoder for scalar coercion and source mapping.
 	node, ok := cloneActionNode(metadata.Node, make(map[*yaml.Node]bool), make(map[*yaml.Node]*yaml.Node))
 	if !ok {
 		return opaque

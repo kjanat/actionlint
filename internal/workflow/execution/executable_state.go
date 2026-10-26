@@ -45,11 +45,11 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 }
 
 // ForkComposite creates isolated execution state for an action entry or call and its resolved paths.
-func (rule *ExecutableChecker) ForkComposite(context ActionContext, actionPath string, paths Paths) *ExecutableChecker {
+func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths Paths) *ExecutableChecker {
 	scoped := NewExecutableChecker(rule.context)
 	scoped.executableState = rule.executableState
 	scoped.unix, scoped.caseInsensitive, scoped.shIsDash = rule.unix, rule.caseInsensitive, rule.shIsDash
-	effects, isCall := context.Effects()
+	effects, isCall := context.Facts()
 	if isCall && effects.AfterFailure {
 		scoped.afterPossibleFailure()
 	}
@@ -76,8 +76,8 @@ func (rule *ExecutableChecker) ForkComposite(context ActionContext, actionPath s
 }
 
 // JoinComposite merges conditional mode changes of a call back into the caller.
-func (rule *ExecutableChecker) JoinComposite(context ActionContext, child *ExecutableChecker) {
-	effects, isCall := context.Effects()
+func (rule *ExecutableChecker) JoinComposite(context invocation.Context, child *ExecutableChecker) {
+	effects, isCall := context.Facts()
 	if !isCall || effects.Condition == invocation.ConditionSkipped {
 		return
 	}

@@ -19,7 +19,6 @@ type File struct {
 }
 
 // Collect completes and deduplicates findings across documents in source order.
-// It retains only visible findings on each supplied file.
 func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report.DiagnosticSource) {
 	type location struct {
 		project, path, rule string

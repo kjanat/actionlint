@@ -1,5 +1,4 @@
-// Package pluginregistry consumes the registry's static catalogue. Admission
-// metadata identifies artifacts; runtime compatibility remains the loader's job.
+// Package pluginregistry resolves plugin declarations against registry catalogues.
 package pluginregistry
 
 import (
@@ -153,8 +152,8 @@ func (p Pin) Matches(ref pluginref.Reference) bool {
 	return strings.EqualFold(p.Name, ref.Name)
 }
 
-// SameRegistry compares validated catalogue endpoints. Hosts are insensitive to
-// case, while paths retain their case-sensitive identity.
+// SameRegistry compares catalogue endpoints with case-insensitive hosts and
+// case-sensitive paths.
 func SameRegistry(left, right string) bool {
 	a, err := registryURL(left)
 	if err != nil {

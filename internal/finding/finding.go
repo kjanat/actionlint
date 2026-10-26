@@ -22,7 +22,7 @@ type Finding struct {
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	Source []byte
-	// rawScriptSource retains the external checker's LF-based source coordinates.
+	// RawScriptSource selects LF-only line splitting for external checker positions.
 	RawScriptSource bool
 	// suppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
@@ -90,7 +90,6 @@ func Compare(lhs, rhs *Finding) int {
 func Equal(lhs, rhs *Finding) bool {
 	left, right := lhs.Diagnostic, rhs.Diagnostic
 	// Aliases can reach one declaration through different invocation owners.
-	// Explicit analyzer references remain part of diagnostic identity.
 	if lhs.InferredReference && rhs.InferredReference {
 		left.Reference, right.Reference = nil, nil
 	}

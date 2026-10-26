@@ -307,8 +307,7 @@ func (d *decoder) whitespace(quote byte, continued bool) bool {
 	return true
 }
 
-// Flow and block scalars share line normalization and folding. LS and PS retain
-// their original values in YAML; other physical breaks normalize to LF.
+// YAML normalizes physical line breaks to LF except for LS and PS.
 func (d *decoder) emitBreaks(rows []int, fold bool) {
 	for i, row := range rows {
 		value := d.document.Breaks[row]

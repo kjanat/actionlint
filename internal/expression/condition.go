@@ -5,8 +5,7 @@ import (
 	"unicode/utf8"
 )
 
-// ConditionSource unwraps a single string literal and defaults blank conditions
-// to success(). It does not evaluate computed strings.
+// ConditionSource unwraps a single string literal and defaults blank conditions to success().
 func ConditionSource(source string) string {
 	if literal := LiteralExpressionValue(source); literal != nil {
 		source = *literal

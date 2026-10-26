@@ -24,8 +24,8 @@ type Result struct {
 	Rules          []Rule
 }
 
-// Prepare adapts an analysis snapshot for display. Presentation-only inclusive
-// columns are computed here; analysis retains canonical half-open spans.
+// Prepare adapts an analysis snapshot for display, converting half-open spans
+// to inclusive columns.
 func Prepare(analysis report.Analysis) Result {
 	r := Result{
 		FileCount: analysis.FileCount, Diagnostics: analysis.Diagnostics,
@@ -76,7 +76,6 @@ type CheckSummary struct {
 }
 
 // NewCheckResult initializes a result with a consistent status and non-null lists.
-// FileCount remains null until input selection is known. Unknown exit codes mean failure.
 func NewCheckResult(code int) CheckResult {
 	r := CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []diagnostic.Diagnostic{}, Configs: []ResultConfig{}, Hints: []string{}}
 	switch code {

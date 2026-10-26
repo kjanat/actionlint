@@ -18,7 +18,6 @@ var (
 )
 
 // Normalize the boolean shorthand before merging so it only overrides enabled.
-// Expanded YAML nodes retain their source positions, including alias/merge origins.
 func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
 	var rewrite func(*yaml.Node, []string, bool) *yaml.Node
 	rewrite = func(node *yaml.Node, keys []string, backend bool) *yaml.Node {

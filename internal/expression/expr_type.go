@@ -223,8 +223,7 @@ func NewStrictObjectType(props map[string]Type) *ObjectType {
 	return &ObjectType{Props: props}
 }
 
-// Named contexts normalize lookup keys. Raw JSON objects require exact keys
-// for structural validation and case-collision diagnostics.
+// newNamedObjectType normalizes property names for case-insensitive context lookup.
 func newNamedObjectType(props map[string]Type) *ObjectType {
 	ty := NewEmptyStrictObjectType()
 	for name, t := range props {
@@ -360,7 +359,6 @@ func (ty *ObjectType) Assignable(other Type) bool {
 }
 
 // Merge unions object properties and recursively merges types for shared keys.
-// A non-object operand produces AnyType.
 func (ty *ObjectType) Merge(other Type) Type {
 	switch other := other.(type) {
 	case *ObjectType:
@@ -458,9 +456,7 @@ func (ty *ArrayType) Assignable(other Type) bool {
 	}
 }
 
-// Merge combines array element types and clears the projection marker.
-// If either element type is AnyType, it returns that array unchanged.
-// A non-array operand produces AnyType.
+// Merge combines array element types, returning AnyType for non-array operands.
 func (ty *ArrayType) Merge(other Type) Type {
 	switch other := other.(type) {
 	case *ArrayType:

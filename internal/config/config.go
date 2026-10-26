@@ -64,8 +64,8 @@ type PathConfig struct {
 }
 
 // Policy configures checks for cache safety and repository conventions.
-// Cache policies are enabled by default; the remaining checks are opt-in.
-// An omitted or null setting retains the check's default.
+// Cache checks default to enabled; repository conventions are opt-in.
+// Omission and null select the default.
 type Policy struct {
 	// CacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
 	// Enabled by default. Set false to disable it; null or omission keeps the default.
@@ -78,7 +78,7 @@ type Policy struct {
 	CacheWriteUntrusted *bool `yaml:"cache-write-untrusted" jsonschema:"nullable,default=true"`
 	// DisallowSuppressions restricts inline and configured diagnostic exceptions.
 	// `true` or `{}` reports each prohibited directive or matching config exception
-	// and retains its original violations. Omission, null, or false permits exceptions.
+	// as well as the violations it would suppress. Omission, null, or false permits exceptions.
 	// Both ignore and ignore-next-line are covered equally.
 	//
 	// Use `{rules: [cache-call-unrestricted], report: all}` to restrict selected rule IDs.

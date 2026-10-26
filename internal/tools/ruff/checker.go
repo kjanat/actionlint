@@ -72,7 +72,6 @@ func (c *Checker) Fork() *Checker {
 func (c *Checker) WorkingDirectory(directory string) { c.workingDirectory = directory }
 
 // OptionalVersion skips incompatible automatically discovered executables.
-// Explicit commands retain their configured invocation contract.
 func (c *Checker) OptionalVersion(check *Compatibility, ctx context.Context, warning func(error)) {
 	c.beforeCheck = func() (bool, error) { return check.available(ctx, c.run, c.wait, warning) }
 }
@@ -422,9 +421,6 @@ func (m *templateMasks) dynamicQuotedValue(d Diagnostic) bool {
 	return false
 }
 
-// Format-field parsing and argument consistency depend on the complete string.
-// Percent conversion characters and docstring layout are handled separately
-// so static mistakes surrounding a template remain visible.
 func (m *templateMasks) inFirstParagraph(first, line int) bool {
 	for row := first + 1; row < line; row++ {
 		if row <= len(m.sourceLines) && strings.TrimSpace(m.sourceLines[row-1]) == "" {
@@ -567,8 +563,6 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *templateMas
 			}
 		}
 		if state.comment || state.fieldComment {
-			// Each physical line remains comment text, including the suffix
-			// after the template. Empty lines can remain empty.
 			first := true
 			for i, r := range runes {
 				if r == '\n' {

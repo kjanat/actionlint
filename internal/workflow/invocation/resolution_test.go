@@ -45,7 +45,11 @@ func TestResolutionOutcomesRemainDistinctWithoutScripts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := b.Resolve(call.ID(), outcome); err != nil {
+			callContext, admitted := call.Context()
+			if !admitted {
+				t.Fatal("call ticket was not admitted")
+			}
+			if _, err := b.Resolve(callContext, outcome); err != nil {
 				t.Fatal(err)
 			}
 			g := publish(t, b)
@@ -74,7 +78,11 @@ func TestCycleBetweenAncestorsAndRepeatedSibling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := b.Resolve(closing.ID(), target)
+	closingContext, admitted := closing.Context()
+	if !admitted {
+		t.Fatal("cycle ticket was not admitted")
+	}
+	result, err := b.Resolve(closingContext, target)
 	cycle, ok := result.Cycle()
 	if err != nil || !ok || cycle.Owner != first.ID() || cycle.Closing != closing.ID() {
 		t.Fatalf("wrong ancestor cycle: %+v, %v", cycle, err)

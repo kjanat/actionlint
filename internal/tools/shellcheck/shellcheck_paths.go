@@ -28,7 +28,7 @@ func (run *shellcheckRun) prepareConfigPath() error {
 	base := run.pathContext().ConfigDir
 	if run.config != nil && run.config.Config != nil {
 		selection = run.config.Config
-		base = "" // Application paths retain their process-working-directory origin.
+		base = ""
 	} else if config := run.cfg; config != nil {
 		if path := config.Tools.Shellcheck.Config.Path(); path != "" {
 			selection = ShellcheckRCFile(path)

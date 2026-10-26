@@ -8,7 +8,6 @@ import (
 )
 
 // InferReferences enriches completed findings from source indexes supplied by the caller.
-// Explicit provider references and raw script positions retain their own identities.
 func InferReferences(all []*findingmodel.Finding, path string, references map[string]workflowfacts.References) {
 	for _, finding := range all {
 		if finding.Reference != nil {

@@ -17,7 +17,11 @@ type Script struct {
 }
 
 // AddScript registers a declaration while its owner is the current traversal body.
-func (b *Builder) AddScript(owner ID, declaration source.Reference, kind ScriptKind, input string) (ID, error) {
+func (b *Builder) AddScript(context Context, declaration source.Reference, kind ScriptKind, input string) (ID, error) {
+	if !b.Owns(context) {
+		return "", ErrForeignContext
+	}
+	owner := context.ID()
 	if b.published {
 		return "", ErrPublished
 	}

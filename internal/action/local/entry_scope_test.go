@@ -2,6 +2,8 @@ package local
 
 import (
 	"testing"
+	"actionlint.kjanat.dev/v2/source"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
@@ -10,7 +12,9 @@ func TestActionEntryHasNoCallerBranchJoin(t *testing.T) {
 	resolver := NewResolver(nil, nil)
 	resolver.checkoutEnvUnknown, resolver.shellEnvUnknown, resolver.persistentEnvUnknown = true, true, true
 	resolver.checkoutShell = execution.Shell{Name: "bash"}
-	leave := resolver.EnterComposite(execution.ActionEntry())
+	builder, err := invocation.NewBuilder(invocation.EntryAction, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+	if err != nil { t.Fatal(err) }
+	leave := resolver.EnterComposite(builder.RootContext())
 	if resolver.checkoutShell.Name != "" {
 		t.Fatal("entry inherited the caller checkout shell")
 	}

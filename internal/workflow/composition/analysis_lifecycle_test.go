@@ -47,10 +47,10 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 					return err
 				}
 				if unfinished {
-					_, err = c.invocations.Begin(c.invocations.RootID(), ref, "$/child", invocation.ConditionEnabled)
+					_, err = c.invocations.Begin(c.invocations.RootContext(), ref, invocation.Facts{Uses: "$/child", HasUses: true, Condition: invocation.ConditionEnabled})
 					return err
 				}
-				_, err = c.invocations.AddScript(c.invocations.RootID(), ref, invocation.ScriptRun, "")
+				_, err = c.invocations.AddScript(c.invocations.RootContext(), ref, invocation.ScriptRun, "")
 				return err
 			})
 			want := scriptexecution.ErrInvalidBatch

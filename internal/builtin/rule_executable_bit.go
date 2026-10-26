@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"context"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -43,7 +44,7 @@ func (rule *RuleExecutableBit) ForComposite(invocation Invocation) (workflowvisi
 	return &RuleExecutableBit{ExecutableChecker: rule.ForkComposite(invocation.Context, invocation.ActionPath, paths)}, nil
 }
 
-func (rule *RuleExecutableBit) JoinCompositeResult(context execution.ActionContext, result workflowvisit.Rule) {
+func (rule *RuleExecutableBit) JoinCompositeResult(context invocation.Context, result workflowvisit.Rule) {
 	if child, ok := result.(*RuleExecutableBit); ok {
 		rule.JoinComposite(context, child.ExecutableChecker)
 	}

@@ -125,7 +125,7 @@ func TestCallVisitPreservesExistingScriptStop(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			_, err = c.invocations.AddScript(c.occurrence, ref, invocation.ScriptRun, "")
+			_, err = c.invocations.AddScript(c.context, ref, invocation.ScriptRun, "")
 			if i == 0 && err != nil || i == 1 && !errors.Is(err, invocation.ErrScriptBudget) {
 				t.Fatalf("setup script %d: %v", i, err)
 			}
@@ -149,17 +149,20 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 			budget := invocation.DefaultBudget()
 			budget.MaxScripts = 1
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", nil, &budget)
-			var scriptID, owner invocation.ID
+			var scriptID invocation.ID
+			var owner invocation.Context
 			f.service.options.CollectScripts = false
 			result, err := f.service.analyze(func(c *compositeAnalyzer) error {
 				if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 					return err
 				}
-				ticket, err := c.invocations.Begin(c.occurrence, f.root.Reference(), "$/child", invocation.ConditionEnabled)
+				ticket, err := c.invocations.Begin(c.context, f.root.Reference(), invocation.Facts{Uses: "$/child", HasUses: true, Condition: invocation.ConditionEnabled})
 				if err != nil {
 					return err
 				}
-				owner = ticket.ID()
+				var admitted bool
+				owner, admitted = ticket.Context()
+				if !admitted { t.Fatal("fixture call was not admitted") }
 				ref := source.Reference{Document: "child", Revision: "revision", Node: "root"}
 				expanded, err := invocation.Expanded(ref)
 				if err != nil {
@@ -175,7 +178,7 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 				}
 				ref.Node = "second"
 				_, stopErr := c.invocations.AddScript(owner, ref, invocation.ScriptRun, "")
-				other := c.invocations.Close(c.invocations.RootID())
+				other := c.invocations.Close(c.invocations.RootContext())
 				if canceled {
 					other = context.Canceled
 				}
@@ -189,8 +192,8 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 			}
 			graph := result.Batch.Invocations()
 			script, exists := graph.Script(scriptID)
-			call, found := graph.Call(owner)
-			if !exists || !found || script.Owner != owner || call.Outcome.Kind() != invocation.OutcomeInterrupted {
+			call, found := graph.Call(owner.ID())
+			if !exists || !found || script.Owner != owner.ID() || call.Outcome.Kind() != invocation.OutcomeInterrupted {
 				t.Fatal("joined failure lost registered script or its interrupted owner")
 			}
 			want := invocation.ReasonOperational

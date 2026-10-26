@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// ShellCheck remains responsible for validating the original directive and value.
 var shellcheckShellDirective = regexp.MustCompile(`^[\t ]*#[\t ]*shellcheck[\t ]+(?:[a-z-]+=(?:"[^"\r\n]*"|'[^'\r\n]*'|[^'"#\t \r\n][^#\t \r\n]*)[\t ]+)*?shell=`)
 
 func shellcheckHeaderDialect(header string) string {

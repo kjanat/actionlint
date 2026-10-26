@@ -9,7 +9,7 @@ import (
 )
 
 // recoverInlineSuppressionComments reads lexical comments when malformed YAML
-// prevents node construction. Quoted scalars and block bodies remain opaque.
+// prevents node construction.
 func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment {
 	document := yamlsource.NewDocument(string(source))
 	lines := document.Lines

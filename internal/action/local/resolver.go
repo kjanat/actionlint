@@ -53,7 +53,7 @@ func (c *Resolver) FindMetadata(spec string) (*actionmeta.Metadata, bool, error)
 	return result.Metadata(), cached, c.base.reportMetadataError(result)
 }
 
-// LookupMetadata returns a cached acquisition result without consuming validation diagnostics.
+// LookupMetadata looks up action metadata without emitting validation diagnostics.
 func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 	if c == nil || c.base == nil {
 		return MetadataResult{status: MetadataLookupDisabled}, false
@@ -244,8 +244,6 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 		return "", false
 	}
 	if checkout.Kind == execution.DirectoryUnknown {
-		// Literal metadata can be validated without a known checkout location.
-		// Script rules cannot infer runtime paths from this fallback.
 		return spec, true
 	}
 	if checkout.Path == "" || checkout.Path == "." {

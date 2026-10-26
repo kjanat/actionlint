@@ -40,7 +40,6 @@ type Options struct {
 	Paths                 execution.Paths
 	Config                *repoconfig.Config
 	// ConfigForFile resolves each physical manifest once, including no-script scopes.
-	// Errors interrupt the entry without discarding collected findings and facts.
 	ConfigForFile func(string) (*repoconfig.Config, error)
 	// CollectScripts supplies execution units. Registration, selector errors and
 	// script budgets apply even when no script analyzer consumes the occurrences.
@@ -54,7 +53,7 @@ type Result struct {
 	Batch            scriptexecution.Batch
 	ResolveExecution bool
 	Sources          map[string][]byte
-	// Configs caches successful configuration lookups by expanded source path.
+	// Configs is keyed by expanded source path.
 	Configs map[string]*repoconfig.Config
 }
 

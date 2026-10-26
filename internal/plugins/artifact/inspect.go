@@ -1,5 +1,5 @@
 // Package artifact resolves and inspects WebAssembly artifacts without
-// compiling or executing them. Runtime hosts remain responsible for ABI checks.
+// compiling or executing them.
 package artifact
 
 import (

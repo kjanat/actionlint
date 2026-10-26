@@ -17,9 +17,8 @@ import (
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
-// withAnalyzer retains native execution where the caller explicitly selected
-// process behavior. Configured sources and rc files are selected per document,
-// including overrides and invoked composite actions.
+// withAnalyzer selects a document analyzer or native execution per document,
+// accounting for source and rc-file settings in overrides and composite actions.
 func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, error) {
 	integrator, ok := guest.(analyzer.ToolIntegrator)
 	if !ok || integrator.ToolIntegration() == nil || integrator.ToolIntegration().Contract != "kjanat:actionlint/shellcheck-config@0.1.0" || integrator.ToolIntegration().Tool != "shellcheck" {

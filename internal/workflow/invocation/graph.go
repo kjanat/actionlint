@@ -201,14 +201,8 @@ func NewScriptID(owner ID, decl source.Reference, kind ScriptKind, input string)
 // Call is one recorded call occurrence. Caller and target declarations stay
 // separate: Site is the caller's declaration, the target lives in Outcome.
 type Call struct {
-	ID     ID
-	Parent ID
-	// Depth is the number of call edges from the entry.
-	Depth     int
-	Site      source.Reference
-	Uses      string
-	Condition Condition
-	Outcome   Outcome
+	Context
+	Outcome Outcome
 }
 
 // Stop identifies the first declaration rejected by a call or script budget.
@@ -234,6 +228,7 @@ func (e budgetError) Is(target error) bool {
 type Graph struct {
 	entry       Entry
 	root        ID
+	rootContext Context
 	budget      Budget
 	calls       []Call
 	index       map[ID]int
@@ -281,14 +276,14 @@ func (g Graph) Depth(id ID) (int, bool) {
 		return 0, true
 	}
 	c, ok := g.Call(id)
-	return c.Depth, ok
+	return c.Depth(), ok
 }
 
 // Children returns the direct calls of id in creation order.
 func (g Graph) Children(id ID) []Call {
 	var out []Call
 	for _, c := range g.calls {
-		if c.Parent == id {
+		if c.Parent() == id {
 			out = append(out, c)
 		}
 	}
@@ -305,11 +300,11 @@ func (g Graph) Path(id ID) ([]Call, bool) {
 	if !ok {
 		return nil, false
 	}
-	path := make([]Call, c.Depth)
-	for i := c.Depth - 1; i >= 0; i-- {
+	path := make([]Call, c.Depth())
+	for i := c.Depth() - 1; i >= 0; i-- {
 		path[i] = c
 		if i > 0 {
-			c = g.calls[g.index[c.Parent]]
+			c = g.calls[g.index[c.Parent()]]
 		}
 	}
 	return path, true
@@ -324,7 +319,7 @@ func (g Graph) Chain(id ID) ([]ID, bool) {
 	chain := make([]ID, 0, len(path)+1)
 	chain = append(chain, g.root)
 	for _, c := range path {
-		chain = append(chain, c.ID)
+		chain = append(chain, c.ID())
 	}
 	return chain, true
 }
@@ -358,6 +353,7 @@ type record struct {
 type Builder struct {
 	entry       Entry
 	root        ID
+	rootContext Context
 	budget      Budget
 	records     []record
 	index       map[ID]int
@@ -382,11 +378,12 @@ func NewBuilder(kind EntryKind, ref source.Reference, budget Budget) (*Builder, 
 		return nil, err
 	}
 	return &Builder{
-		entry:   Entry{Kind: kind, Reference: ref},
-		root:    root,
-		current: root,
-		budget:  budget,
-		index:   make(map[ID]int),
+		entry:       Entry{Kind: kind, Reference: ref},
+		root:        root,
+		rootContext: Context{data: &contextData{id: root, site: ref}},
+		current:     root,
+		budget:      budget,
+		index:       make(map[ID]int),
 	}, nil
 }
 
@@ -432,13 +429,18 @@ const (
 
 // Ticket is the result of Begin.
 type Ticket struct {
-	id     ID
-	status Admission
-	err    error
+	context Context
+	status  Admission
+	err     error
 }
 
 // ID returns the call ID, or empty when the attempt was Stopped.
-func (t Ticket) ID() ID { return t.id }
+func (t Ticket) ID() ID { return t.context.ID() }
+
+func (t Ticket) Context() (Context, bool) {
+	if t.status != Admitted { return Context{}, false }
+	return t.context, true
+}
 
 // Status returns the admission result.
 func (t Ticket) Status() Admission { return t.status }
@@ -449,13 +451,18 @@ func (t Ticket) Err() error { return t.err }
 // Begin admits a call under parent (the entry ID or an open expanded call).
 // It checks parent and site validity and duplicate traversal, then the total
 // budget, then depth, all before metadata acquisition.
-func (b *Builder) Begin(parent ID, site source.Reference, uses string, condition Condition) (Ticket, error) {
+func (b *Builder) Begin(parentContext Context, site source.Reference, facts Facts) (Ticket, error) {
 	if b.published {
 		return Ticket{}, ErrPublished
 	}
 	if b.interrupted {
 		return Ticket{}, ErrInterrupted
 	}
+	if !b.Owns(parentContext) {
+		return Ticket{}, ErrForeignContext
+	}
+	parent := parentContext.ID()
+	body := b.entry.Reference
 	parentDepth := 0
 	if parent != b.root {
 		i, ok := b.index[parent]
@@ -465,20 +472,21 @@ func (b *Builder) Begin(parent ID, site source.Reference, uses string, condition
 		if b.records[i].state != stateOpen {
 			return Ticket{}, fmt.Errorf("%w: %q", ErrParentNotOpen, string(parent))
 		}
-		parentDepth = b.records[i].call.Depth
+		parentDepth = b.records[i].call.Depth()
+		body, _ = b.records[i].call.Outcome.Target()
+	}
+	if site.Document != body.Document || site.Revision != body.Revision {
+		return Ticket{}, fmt.Errorf("%w: call site does not belong to its parent source snapshot", ErrInvalidSource)
 	}
 	id, err := NewCallID(parent, site)
 	if err != nil {
 		return Ticket{}, err
 	}
-	if !utf8.ValidString(uses) {
-		return Ticket{}, fmt.Errorf("%w: uses is not valid UTF-8", ErrInvalidSource)
-	}
 	if _, dup := b.index[id]; dup {
 		return Ticket{}, fmt.Errorf("%w: %q", ErrDuplicateCall, string(id))
 	}
-	if !condition.valid() {
-		return Ticket{}, ErrInvalidCondition
+	if err := facts.validate(); err != nil {
+		return Ticket{}, err
 	}
 	if parent != b.current {
 		return Ticket{}, ErrTraversal
@@ -493,26 +501,31 @@ func (b *Builder) Begin(parent ID, site source.Reference, uses string, condition
 		return Ticket{status: Stopped, err: budgetError{b.stop}}, nil
 	}
 
-	call := Call{ID: id, Parent: parent, Depth: parentDepth + 1, Site: site, Uses: uses, Condition: condition}
-	if call.Depth > b.budget.MaxDepth {
+	context := Context{data: &contextData{id: id, parent: parent, depth: parentDepth + 1, site: site, facts: facts}}
+	call := Call{Context: context}
+	if call.Depth() > b.budget.MaxDepth {
 		call.Outcome = depthLimit(b.budget.MaxDepth)
 		b.add(record{call: call, state: stateFinal})
-		return Ticket{id: id, status: DepthLimited}, nil
+		return Ticket{context: context, status: DepthLimited}, nil
 	}
 	b.add(record{call: call, state: statePending})
 	b.current = id
-	return Ticket{id: id, status: Admitted}, nil
+	return Ticket{context: context, status: Admitted}, nil
 }
 
 func (b *Builder) add(r record) {
-	b.index[r.call.ID] = len(b.records)
+	b.index[r.call.ID()] = len(b.records)
 	b.records = append(b.records, r)
 }
 
 // Resolve records the lookup outcome of a pending call. It returns the stored
 // outcome: an expanded target that is already active becomes a cycle. Descend
 // into the call only when the result is expanded.
-func (b *Builder) Resolve(id ID, lookup Outcome) (Outcome, error) {
+func (b *Builder) Resolve(context Context, lookup Outcome) (Outcome, error) {
+	if !b.Owns(context) {
+		return Outcome{}, ErrForeignContext
+	}
+	id := context.ID()
 	if b.published {
 		return Outcome{}, ErrPublished
 	}
@@ -530,7 +543,7 @@ func (b *Builder) Resolve(id ID, lookup Outcome) (Outcome, error) {
 		return Outcome{}, fmt.Errorf("%w: %s cannot be resolved by a caller", ErrInvalidOutcome, lookup.kind)
 	}
 	if lookup.kind == OutcomeExpanded {
-		if owner, active, found := b.activeOwner(rec.call.Parent, lookup.target); found {
+		if owner, active, found := b.activeOwner(rec.call.Parent(), lookup.target); found {
 			lookup = cycleOutcome(lookup.target, active, owner, id)
 		}
 	}
@@ -540,7 +553,7 @@ func (b *Builder) Resolve(id ID, lookup Outcome) (Outcome, error) {
 		return lookup, nil
 	}
 	rec.state = stateFinal
-	b.current = rec.call.Parent
+	b.current = rec.call.Parent()
 	return lookup, nil
 }
 
@@ -556,7 +569,7 @@ func (b *Builder) activeOwner(parent ID, target source.Reference) (ID, source.Re
 		if t, ok := rec.call.Outcome.Target(); ok && rec.call.Outcome.kind == OutcomeExpanded && sameDeclaration(t, target) {
 			return p, t, true
 		}
-		p = rec.call.Parent
+		p = rec.call.Parent()
 	}
 	if b.entry.Kind == EntryAction && sameDeclaration(b.entry.Reference, target) {
 		return b.root, b.entry.Reference, true
@@ -566,7 +579,11 @@ func (b *Builder) activeOwner(parent ID, target source.Reference) (ID, source.Re
 
 // Close ends the body of an expanded call. Every child must be final. Closing
 // an interrupted call is a no-op so callers can unwind uniformly.
-func (b *Builder) Close(id ID) error {
+func (b *Builder) Close(context Context) error {
+	if !b.Owns(context) {
+		return ErrForeignContext
+	}
+	id := context.ID()
 	if b.published {
 		return ErrPublished
 	}
@@ -585,7 +602,7 @@ func (b *Builder) Close(id ID) error {
 		return fmt.Errorf("%w: child call of %q", ErrUnfinished, string(id))
 	}
 	rec.state = stateFinal
-	b.current = rec.call.Parent
+	b.current = rec.call.Parent()
 	return nil
 }
 
@@ -593,30 +610,30 @@ func (b *Builder) Close(id ID) error {
 // A pending call becomes interrupted; an open expanded call keeps its target
 // on the interrupted outcome and is closed. Ancestors stay expanded and must
 // still be closed.
-func (b *Builder) Interrupt(cause Reason, detail string) (ID, error) {
+func (b *Builder) Interrupt(cause Reason, detail string) (Context, error) {
 	if b.published {
-		return "", ErrPublished
+		return Context{}, ErrPublished
 	}
 	if b.interrupted {
-		return "", ErrInterrupted
+		return Context{}, ErrInterrupted
 	}
 	if b.current == b.root {
 		if err := b.InterruptEntry(cause, detail); err != nil {
-			return "", err
+			return Context{}, err
 		}
-		return b.root, nil
+		return b.rootContext, nil
 	}
 	rec := &b.records[b.index[b.current]]
 	target, hasTarget := rec.call.Outcome.Target()
 	o, err := interrupted(cause, detail, target, hasTarget)
 	if err != nil {
-		return "", err
+		return Context{}, err
 	}
 	rec.call.Outcome = o
 	rec.state = stateFinal
-	b.current = rec.call.Parent
+	b.current = rec.call.Parent()
 	b.interrupted = true
-	return rec.call.ID, nil
+	return rec.call.Context, nil
 }
 
 // InterruptEntry records interruption before or between top-level calls.
@@ -659,14 +676,15 @@ func (b *Builder) Publish() (Graph, error) {
 	}
 
 	g := Graph{
-		entry:     b.entry,
-		root:      b.root,
-		budget:    b.budget,
-		calls:     make([]Call, len(b.records)),
-		index:     make(map[ID]int, len(b.records)),
-		stop:      b.stop,
-		hasStop:   b.hasStop,
-		entryStop: b.entryStop,
+		entry:       b.entry,
+		root:        b.root,
+		rootContext: b.rootContext,
+		budget:      b.budget,
+		calls:       make([]Call, len(b.records)),
+		index:       make(map[ID]int, len(b.records)),
+		stop:        b.stop,
+		hasStop:     b.hasStop,
+		entryStop:   b.entryStop,
 	}
 	g.incomplete = b.hasStop || b.entryStop.Valid()
 	if len(b.scripts) != 0 {
@@ -679,7 +697,7 @@ func (b *Builder) Publish() (Graph, error) {
 	for i := range b.records {
 		c := b.records[i].call
 		g.calls[i] = c
-		g.index[c.ID] = i
+		g.index[c.ID()] = i
 		if k := c.Outcome.kind; k != OutcomeExpanded && k != OutcomeOpaque {
 			g.incomplete = true
 		}

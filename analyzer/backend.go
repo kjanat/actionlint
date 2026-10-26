@@ -11,11 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/rule"
 )
 
-// ScriptBackend checks a sanitized snippet. The adapter owns its execution
-// mechanism: a process, an in-process engine, or a WebAssembly instance.
-// It must finish its work before returning, honor cancellation, and support
-// concurrent calls. A serialized WASM instance can be guarded or pooled by its
-// adapter. The host handles YAML mapping, suppression, and scheduling.
+// ScriptBackend checks sanitized snippets. Check must honor cancellation,
+// support concurrent calls, and finish all work before returning.
 type ScriptBackend interface {
 	Check(context.Context, ScriptRequest) ([]ScriptDiagnostic, error)
 }

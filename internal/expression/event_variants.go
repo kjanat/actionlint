@@ -14,7 +14,6 @@ type EventVariant struct {
 }
 
 // NewEventType merges event payloads and attaches the variants for guard narrowing.
-// It does not mutate the supplied payloads.
 func NewEventType(variants []EventVariant) *ObjectType {
 	var result Type
 	for _, variant := range variants {
@@ -29,7 +28,7 @@ func NewEventType(variants []EventVariant) *ObjectType {
 }
 
 // Actions permits reading absent properties, so a member known in one variant
-// is included even if another omits it. Incompatible types merge to AnyType.
+// is included even if another omits it.
 func combineEventTypes(a, b Type) Type {
 	if a == nil {
 		return b

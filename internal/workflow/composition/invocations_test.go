@@ -114,7 +114,7 @@ jobs:
 			}
 			for _, script := range result.Batch.Scripts() {
 				registered, exists := graph.Script(script.Occurrence)
-				if !exists || registered.Declaration != script.Reference || registered.Owner != script.Scope.Occurrence {
+				if !exists || registered.Declaration != script.Reference || registered.Owner != script.Scope.Context.ID() {
 					t.Fatalf("script occurrence differs from its owning graph: %+v", script)
 				}
 			}
@@ -166,17 +166,17 @@ jobs:
 					}
 					chain = append(chain, id)
 				}
-				actual, exists := graph.Chain(unit.Scope.Occurrence)
+				actual, exists := graph.Chain(unit.Scope.Context.ID())
 				if !exists || !reflect.DeepEqual(actual, chain) {
 					t.Fatalf("script %d chain %v, want %v", i, actual, chain)
 				}
-				path, _ := graph.Path(unit.Scope.Occurrence)
+				path, _ := graph.Path(unit.Scope.Context.ID())
 				for edge, call := range path {
-					if call.Site != sites[edge] || call.Parent != chain[edge] || call.Depth != edge+1 {
+					if call.Site() != sites[edge] || call.Parent() != chain[edge] || call.Depth() != edge+1 {
 						t.Fatalf("script %d edge %d: %+v", i, edge, call)
 					}
 				}
-				want, err := invocation.NewScriptID(unit.Scope.Occurrence, declaration, invocation.ScriptRun, "")
+				want, err := invocation.NewScriptID(unit.Scope.Context.ID(), declaration, invocation.ScriptRun, "")
 				if err != nil || unit.Reference != declaration || unit.Occurrence != want || seen[unit.Occurrence] {
 					t.Fatalf("script %d lost declaration/occurrence identity: %+v, %v", i, unit, err)
 				}
@@ -199,10 +199,10 @@ func TestStandaloneEntryCycleHasNoSyntheticCall(t *testing.T) {
 	}
 	call := graph.Calls()[0]
 	cycle, ok := call.Outcome.Cycle()
-	if !ok || cycle.Owner != graph.RootID() || call.Depth != 1 || call.Parent != graph.RootID() || !graph.Incomplete() {
+	if !ok || cycle.Owner != graph.RootID() || call.Depth() != 1 || call.Parent() != graph.RootID() || !graph.Incomplete() {
 		t.Fatalf("standalone cycle: %+v", call)
 	}
-	if result.Batch.Scripts()[0].Scope.Occurrence != graph.RootID() {
+	if result.Batch.Scripts()[0].Scope.Context.ID() != graph.RootID() {
 		t.Fatal("root script attached to a fabricated call")
 	}
 }

@@ -21,7 +21,7 @@ func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapsho
 	if err != nil {
 		return err
 	}
-	analysis.invocations, analysis.occurrence, analysis.sourceSnapshot = graph, graph.RootID(), snapshot
+	analysis.invocations, analysis.context, analysis.sourceSnapshot = graph, graph.RootContext(), snapshot
 	return nil
 }
 

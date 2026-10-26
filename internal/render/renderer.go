@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// Renderer formats results and retains rule metadata across calls.
+// Renderer formats analysis results.
 type Renderer struct {
 	format    Format
 	oneline   bool

@@ -38,7 +38,7 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 	if err != nil {
 		return err
 	}
-	occurrence, err := analysis.invocations.AddScript(analysis.occurrence, reference, invocation.ScriptRun, "")
+	occurrence, err := analysis.invocations.AddScript(analysis.context, reference, invocation.ScriptRun, "")
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 		if err != nil {
 			return err
 		}
-		occurrence, err := analysis.invocations.AddScript(analysis.occurrence, reference, invocation.ScriptActionInput, site.Input)
+		occurrence, err := analysis.invocations.AddScript(analysis.context, reference, invocation.ScriptActionInput, site.Input)
 		if err != nil {
 			return err
 		}

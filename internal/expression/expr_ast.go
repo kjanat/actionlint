@@ -127,8 +127,7 @@ type ObjectDerefNode struct {
 	propertyToken *Token
 }
 
-// PropertyName returns the property's spelling in source, falling back to
-// Property for nodes constructed without a token.
+// PropertyName returns the property's spelling in source.
 func (n ObjectDerefNode) PropertyName() string {
 	if n.propertyToken != nil {
 		return n.propertyToken.Value

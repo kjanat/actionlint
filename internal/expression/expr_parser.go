@@ -448,7 +448,6 @@ func ParseAssignedExpression(s string) Node {
 }
 
 // IsMappingInsertion recognizes insert only as the complete expression in a mapping key.
-// Other uses of insert undergo ordinary variable validation.
 //
 // Mapping insertion syntax reference (Azure Pipelines):
 // https://learn.microsoft.com/en-us/azure/devops/pipelines/process/template-expressions?view=azure-devops&source=recommendations#insertion

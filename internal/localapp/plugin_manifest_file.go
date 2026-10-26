@@ -22,8 +22,8 @@ import (
 
 const maxPluginManifestBytes = 4 << 20
 
-// PluginManifest edits the selected config's plugin declarations, retaining
-// inherited inputs so edits cannot silently use an obsolete dependency graph.
+// PluginManifest edits plugin declarations and checks inherited inputs for
+// concurrent changes before saving.
 type PluginManifest struct {
 	Path       string
 	References []pluginref.Reference
@@ -246,7 +246,7 @@ func (m *PluginManifest) OriginalBytes() []byte {
 }
 
 // Save writes an explicit leaf-level list, including [] when removing the last
-// plugin. Other root settings and inherited files remain unchanged.
+// plugin.
 func (m *PluginManifest) Save(ctx context.Context, refs []pluginref.Reference) (err error) {
 	data, err := editPluginManifest(m.Path, m.original, refs)
 	if err != nil {

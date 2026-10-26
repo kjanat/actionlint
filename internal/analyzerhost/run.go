@@ -10,9 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
-// Run isolates each analyzer's input and joins all started work. Results and
-// errors are ordered by registration, not completion. A failing
-// analyzer does not discard findings from its peers.
+// Run isolates each analyzer's input and joins all started work.
+// Findings and errors follow registration order.
 func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Registration) ([]diagnostic.Diagnostic, error) {
 	tasks := make([]Task[diagnostic.Diagnostic], len(registrations))
 	for i, registration := range registrations {

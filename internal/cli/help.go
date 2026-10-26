@@ -172,8 +172,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 	writeHelpDestinations(out, heading, links)
 }
 
-// Root help is an overview. The registered flags remain available to the parser,
-// completions and JSON help, while check --help lists all checking options.
+// Root help shows an overview; check --help lists the checking options.
 func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	heading := helpStyle(colored, color.Bold, color.FgCyan)
 	command := helpStyle(colored, color.Bold)

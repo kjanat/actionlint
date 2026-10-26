@@ -21,18 +21,18 @@ func TestScriptBudgetRetainsFirstBoundaryAndStopsCalls(t *testing.T) {
 				expand(t, b, call, reference("action", "document"))
 				owner, document = call.ID(), "action"
 			}
-			first, err := b.AddScript(owner, reference(document, "first"), invocation.ScriptRun, "")
+			first, err := addScript(t, b, owner, reference(document, "first"), invocation.ScriptRun, "")
 			if err != nil {
 				t.Fatal(err)
 			}
 			boundary := reference(document, "second")
-			if id, err := b.AddScript(owner, boundary, invocation.ScriptActionInput, "script"); id != "" || !errors.Is(err, invocation.ErrScriptBudget) {
+			if id, err := addScript(t, b, owner, boundary, invocation.ScriptActionInput, "script"); id != "" || !errors.Is(err, invocation.ErrScriptBudget) {
 				t.Fatalf("exhaustion allocated a script or lost its cause: %q %v", id, err)
 			}
-			if _, err := b.AddScript(owner, reference(document, "third"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrScriptBudget) {
+			if _, err := addScript(t, b, owner, reference(document, "third"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrScriptBudget) {
 				t.Fatalf("lost script stop cause: %v", err)
 			}
-			if _, err := b.AddScript(owner, reference("stale", "third"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInvalidSource) {
+			if _, err := addScript(t, b, owner, reference("stale", "third"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInvalidSource) {
 				t.Fatalf("stop concealed invalid source: %v", err)
 			}
 			if ticket := begin(t, b, owner, reference(document, "later-call")); ticket.Status() != invocation.Stopped || ticket.ID() != "" || !errors.Is(ticket.Err(), invocation.ErrScriptBudget) {
@@ -60,18 +60,18 @@ func TestScriptBudgetIsSharedAcrossOwners(t *testing.T) {
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 2
 	b := builder(t, invocation.EntryWorkflow, budget)
-	if _, err := b.AddScript(b.RootID(), reference("entry", "run"), invocation.ScriptRun, ""); err != nil {
+	if _, err := addScript(t, b, b.RootID(), reference("entry", "run"), invocation.ScriptRun, ""); err != nil {
 		t.Fatal(err)
 	}
 	first := begin(t, b, b.RootID(), reference("entry", "first-call"))
 	expand(t, b, first, reference("action", "document"))
-	if _, err := b.AddScript(first.ID(), reference("action", "run"), invocation.ScriptRun, ""); err != nil {
+	if _, err := addScript(t, b, first.ID(), reference("action", "run"), invocation.ScriptRun, ""); err != nil {
 		t.Fatal(err)
 	}
 	closeCall(t, b, first.ID())
 	second := begin(t, b, b.RootID(), reference("entry", "second-call"))
 	expand(t, b, second, reference("action", "document"))
-	if _, err := b.AddScript(second.ID(), reference("action", "run"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrScriptBudget) {
+	if _, err := addScript(t, b, second.ID(), reference("action", "run"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrScriptBudget) {
 		t.Fatalf("new owner reset script budget: %v", err)
 	}
 	closeCall(t, b, second.ID())
@@ -86,7 +86,7 @@ func TestInvalidScriptAttemptsDoNotConsumeBudget(t *testing.T) {
 	budget.MaxScripts = 2
 	b := builder(t, invocation.EntryWorkflow, budget)
 	first := reference("entry", "first")
-	if _, err := b.AddScript(b.RootID(), first, invocation.ScriptRun, ""); err != nil {
+	if _, err := addScript(t, b, b.RootID(), first, invocation.ScriptRun, ""); err != nil {
 		t.Fatal(err)
 	}
 	for _, attempt := range []struct {
@@ -96,13 +96,17 @@ func TestInvalidScriptAttemptsDoNotConsumeBudget(t *testing.T) {
 	}{
 		{b.RootID(), first, invocation.ErrDuplicateScript},
 		{b.RootID(), reference("wrong", "run"), invocation.ErrInvalidSource},
-		{"invalid", first, invocation.ErrUnknownCall},
+		{"invalid", first, invocation.ErrForeignContext},
 	} {
-		if _, err := b.AddScript(attempt.owner, attempt.ref, invocation.ScriptRun, ""); !errors.Is(err, attempt.want) {
+		owner := invocation.Context{}
+		if attempt.owner == b.RootID() {
+			owner = b.RootContext()
+		}
+		if _, err := b.AddScript(owner, attempt.ref, invocation.ScriptRun, ""); !errors.Is(err, attempt.want) {
 			t.Fatalf("invalid attempt: %v, want %v", err, attempt.want)
 		}
 	}
-	if _, err := b.AddScript(b.RootID(), reference("entry", "second"), invocation.ScriptRun, ""); err != nil {
+	if _, err := addScript(t, b, b.RootID(), reference("entry", "second"), invocation.ScriptRun, ""); err != nil {
 		t.Fatal(err)
 	}
 	g := publish(t, b)
@@ -117,7 +121,7 @@ func TestCallBudgetRemainsCauseOfRejectedScript(t *testing.T) {
 	b := builder(t, invocation.EntryWorkflow, budget)
 	opaque(t, b, begin(t, b, b.RootID(), reference("entry", "call")))
 	ticket := begin(t, b, b.RootID(), reference("entry", "boundary"))
-	if _, err := b.AddScript(b.RootID(), reference("entry", "script"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrCallBudget) || !errors.Is(err, ticket.Err()) {
+	if _, err := addScript(t, b, b.RootID(), reference("entry", "script"), invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrCallBudget) || !errors.Is(err, ticket.Err()) {
 		t.Fatalf("script replaced call-budget stop: %v", err)
 	}
 	g := publish(t, b)
@@ -131,7 +135,7 @@ func TestInterruptedScriptOwnerRetainsRegisteredScripts(t *testing.T) {
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	call := begin(t, b, b.RootID(), reference("entry", "call"))
 	expand(t, b, call, reference("action", "document"))
-	id, err := b.AddScript(call.ID(), reference("action", "run"), invocation.ScriptRun, "")
+	id, err := addScript(t, b, call.ID(), reference("action", "run"), invocation.ScriptRun, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +145,7 @@ func TestInterruptedScriptOwnerRetainsRegisteredScripts(t *testing.T) {
 	g := publish(t, b)
 	script, exists := g.Script(id)
 	owner, hasOwner := g.Call(script.Owner)
-	if !exists || !hasOwner || owner.ID != call.ID() || owner.Outcome.Kind() != invocation.OutcomeInterrupted || !g.Incomplete() {
+	if !exists || !hasOwner || owner.ID() != call.ID() || owner.Outcome.Kind() != invocation.OutcomeInterrupted || !g.Incomplete() {
 		t.Fatal("interruption lost the script's owning call")
 	}
 }
@@ -160,10 +164,10 @@ func TestBudgetStopClassificationPreservesOtherCauses(t *testing.T) {
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 1
 	b := builder(t, invocation.EntryWorkflow, budget)
-	if _, err := b.AddScript(b.RootID(), reference("entry", "first"), invocation.ScriptRun, ""); err != nil {
+	if _, err := addScript(t, b, b.RootID(), reference("entry", "first"), invocation.ScriptRun, ""); err != nil {
 		t.Fatal(err)
 	}
-	_, stop := b.AddScript(b.RootID(), reference("entry", "second"), invocation.ScriptRun, "")
+	_, stop := addScript(t, b, b.RootID(), reference("entry", "second"), invocation.ScriptRun, "")
 	if !errors.Is(stop, invocation.ErrScriptBudget) {
 		t.Fatal(stop)
 	}
@@ -205,46 +209,50 @@ func TestRegisteredScriptsFollowTheirOwningBodies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rootScript, err := builder.AddScript(builder.RootID(), declaration, invocation.ScriptRun, "")
+	rootScript, err := addScript(t, builder, builder.RootID(), declaration, invocation.ScriptRun, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := builder.AddScript(builder.RootID(), declaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrDuplicateScript) {
+	if _, err := addScript(t, builder, builder.RootID(), declaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrDuplicateScript) {
 		t.Fatalf("duplicate traversal: %v", err)
 	}
-	ticket, err := builder.Begin(builder.RootID(), callSite, "$/action", invocation.ConditionEnabled)
+	ticket, err := builder.Begin(builder.RootContext(), callSite, invocation.Facts{Uses: "$/action", HasUses: true, Condition: invocation.ConditionEnabled})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := builder.AddScript(ticket.ID(), childDeclaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrParentNotOpen) {
+	ticketContext, admitted := ticket.Context()
+	if !admitted {
+		t.Fatal("call ticket was not admitted")
+	}
+	if _, err := builder.AddScript(ticketContext, childDeclaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrParentNotOpen) {
 		t.Fatalf("pending call admitted a script: %v", err)
 	}
 	outcome, err := invocation.Expanded(child)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := builder.Resolve(ticket.ID(), outcome); err != nil {
+	if _, err := builder.Resolve(ticketContext, outcome); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := builder.AddScript(builder.RootID(), declaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrTraversal) {
+	if _, err := addScript(t, builder, builder.RootID(), declaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrTraversal) {
 		t.Fatalf("ancestor body admitted a script while its child was current: %v", err)
 	}
-	if _, err := builder.AddScript(ticket.ID(), declaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInvalidSource) {
+	if _, err := builder.AddScript(ticketContext, declaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInvalidSource) {
 		t.Fatalf("call admitted another document's declaration: %v", err)
 	}
 	wrongRevision := childDeclaration
 	wrongRevision.Revision = "stale-revision"
-	if _, err := builder.AddScript(ticket.ID(), wrongRevision, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInvalidSource) {
+	if _, err := builder.AddScript(ticketContext, wrongRevision, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInvalidSource) {
 		t.Fatalf("call admitted a stale declaration: %v", err)
 	}
-	childScript, err := builder.AddScript(ticket.ID(), childDeclaration, invocation.ScriptActionInput, "script")
+	childScript, err := builder.AddScript(ticketContext, childDeclaration, invocation.ScriptActionInput, "script")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := builder.Close(ticket.ID()); err != nil {
+	if err := builder.Close(ticketContext); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := builder.AddScript(ticket.ID(), childDeclaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrParentNotOpen) {
+	if _, err := builder.AddScript(ticketContext, childDeclaration, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrParentNotOpen) {
 		t.Fatalf("closed call admitted a script: %v", err)
 	}
 	graph, err := builder.Publish()
@@ -263,7 +271,7 @@ func TestRegisteredScriptsFollowTheirOwningBodies(t *testing.T) {
 	if _, exists := graph.Script(ticket.ID()); exists {
 		t.Fatal("call ID was accepted as a script occurrence")
 	}
-	if _, err := builder.AddScript(builder.RootID(), declaration, invocation.ScriptActionInput, "another"); !errors.Is(err, invocation.ErrPublished) {
+	if _, err := addScript(t, builder, builder.RootID(), declaration, invocation.ScriptActionInput, "another"); !errors.Is(err, invocation.ErrPublished) {
 		t.Fatalf("published builder admitted a script: %v", err)
 	}
 }
@@ -274,14 +282,14 @@ func TestInterruptedBuilderRejectsFurtherScripts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	script, err := builder.AddScript(builder.RootID(), entry, invocation.ScriptRun, "")
+	script, err := addScript(t, builder, builder.RootID(), entry, invocation.ScriptRun, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := builder.InterruptEntry(invocation.ReasonCanceled, "cancelled after the first script"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := builder.AddScript(builder.RootID(), entry, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInterrupted) {
+	if _, err := addScript(t, builder, builder.RootID(), entry, invocation.ScriptRun, ""); !errors.Is(err, invocation.ErrInterrupted) {
 		t.Fatalf("interrupted builder admitted a script: %v", err)
 	}
 	graph, err := builder.Publish()

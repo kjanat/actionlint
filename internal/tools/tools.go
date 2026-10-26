@@ -48,8 +48,7 @@ type Registration struct {
 	WithBackend       func(analyzer.ScriptBackend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(Script) (PreparedInput, error)
-	// WithAnalyzer replaces an engine with a document analyzer while retaining
-	// the tool's configuration and diagnostic policy.
+	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
 	WithAnalyzer func(analyzer.Analyzer) (Registration, error)
 }
 

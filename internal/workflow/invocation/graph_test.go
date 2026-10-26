@@ -14,7 +14,7 @@ import (
 
 func closeCall(t *testing.T, b *invocation.Builder, id invocation.ID) {
 	t.Helper()
-	if err := b.Close(id); err != nil {
+	if err := b.Close(contextFor(t, b, id)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -34,7 +34,11 @@ func opaque(t *testing.T, b *invocation.Builder, ticket invocation.Ticket) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := b.Resolve(ticket.ID(), o); err != nil {
+	ctx, admitted := ticket.Context()
+	if !admitted {
+		t.Fatal("opaque ticket was not admitted")
+	}
+	if _, err := b.Resolve(ctx, o); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -58,7 +62,7 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 			parent = ticket.ID()
 			chain = append(chain, parent)
 		}
-		script, err := b.AddScript(parent, reference("inner", "run"), invocation.ScriptRun, "")
+		script, err := b.AddScript(contextFor(t, b, parent), reference("inner", "run"), invocation.ScriptRun, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +87,7 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 			t.Fatalf("branch %d path: %v", branch, path)
 		}
 		for i, call := range path {
-			if call.Site != sites[branch][i] || call.Parent != chain[i] || call.Depth != i+1 {
+			if call.Site() != sites[branch][i] || call.Parent() != chain[i] || call.Depth() != i+1 {
 				t.Errorf("branch %d edge %d lost its source or parent: %+v", branch, i, call)
 			}
 		}
@@ -92,18 +96,19 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 	right, _ := g.Call(branches[1][3])
 	leftTarget, _ := left.Outcome.Target()
 	rightTarget, _ := right.Outcome.Target()
-	if left.ID == right.ID || left.Site != right.Site || leftTarget != rightTarget {
+	if left.ID() == right.ID() || left.Site() != right.Site() || leftTarget != rightTarget {
 		t.Fatal("repeated declaration must retain source identity and have distinct occurrences")
 	}
 	leftScript, foundLeft := g.Script(scripts[0])
 	rightScript, foundRight := g.Script(scripts[1])
-	if !foundLeft || !foundRight || rightScript.ID == leftScript.ID || leftScript.Owner != left.ID || rightScript.Owner != right.ID || leftScript.Declaration != rightScript.Declaration {
+	if !foundLeft || !foundRight || rightScript.ID == leftScript.ID || leftScript.Owner != left.ID() || rightScript.Owner != right.ID() || leftScript.Declaration != rightScript.Declaration {
 		t.Fatalf("repeated scripts lost their distinct owners or shared declaration: %+v %+v", leftScript, rightScript)
 	}
 	mutated := g.Calls()
-	mutated[0].Site.Document = "corrupted"
+	mutatedContextSite := mutated[0].Context.Site()
+	mutatedContextSite.Document = "corrupted"
 	stored, _ := g.Call(branches[0][1])
-	if stored.Site.Document != "entry" {
+	if stored.Site().Document != "entry" {
 		t.Fatal("caller mutated graph snapshot")
 	}
 }
@@ -117,7 +122,11 @@ func TestStandaloneEntryDepthAndCycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outcome, err := b.Resolve(closing.ID(), target)
+	closingContext, admitted := closing.Context()
+	if !admitted {
+		t.Fatal("cycle ticket was not admitted")
+	}
+	outcome, err := b.Resolve(closingContext, target)
 	cycle, ok := outcome.Cycle()
 	if err != nil || !ok || cycle.Owner != b.RootID() || cycle.Closing != closing.ID() {
 		t.Fatalf("standalone cycle: %+v, %v", cycle, err)
@@ -141,18 +150,21 @@ func TestDepthBudgetStopsBeforeLookup(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/%d", kind, maxDepth), func(t *testing.T) {
 				b := builder(t, kind, invocation.Budget{MaxDepth: maxDepth, MaxCalls: 100, MaxScripts: invocation.DefaultMaxScripts})
 				parent := b.RootID()
+				document := "entry"
 				var expanded []invocation.ID
 				for depth := 1; depth <= maxDepth; depth++ {
-					ticket := begin(t, b, parent, reference(strconv.Itoa(depth-1), "call"))
-					expand(t, b, ticket, reference(strconv.Itoa(depth), "document"))
+					ticket := begin(t, b, parent, reference(document, "call"))
+					document = strconv.Itoa(depth)
+					expand(t, b, ticket, reference(document, "document"))
 					expanded = append(expanded, ticket.ID())
 					parent = ticket.ID()
 				}
-				frontier := begin(t, b, parent, reference("frontier", "call"))
+				frontier := begin(t, b, parent, reference(document, "call"))
 				if frontier.Status() != invocation.DepthLimited {
 					t.Fatal("depth frontier requested metadata lookup")
 				}
-				if _, err := b.Resolve(frontier.ID(), invocation.Outcome{}); !errors.Is(err, invocation.ErrNotPending) {
+				frontierContext := contextFor(t, b, frontier.ID())
+				if _, err := b.Resolve(frontierContext, invocation.Outcome{}); !errors.Is(err, invocation.ErrNotPending) {
 					t.Fatalf("frontier can be resolved: %v", err)
 				}
 				for _, e := range slices.Backward(expanded) {
@@ -161,7 +173,7 @@ func TestDepthBudgetStopsBeforeLookup(t *testing.T) {
 				g := publish(t, b)
 				call, ok := g.Call(frontier.ID())
 				limit, maximum, limited := call.Outcome.Limit()
-				if !ok || call.Depth != maxDepth+1 || !limited || limit != invocation.LimitDepth || maximum != maxDepth || !g.Incomplete() {
+				if !ok || call.Depth() != maxDepth+1 || !limited || limit != invocation.LimitDepth || maximum != maxDepth || !g.Incomplete() {
 					t.Fatalf("wrong depth frontier: %+v", call)
 				}
 			})
@@ -180,7 +192,7 @@ func TestTotalBudgetRetainsOneBoundary(t *testing.T) {
 			t.Fatal("total budget allocated a rejected call")
 		}
 	}
-	if _, err := b.Begin(b.RootID(), reference("entry", "0"), "./duplicate", invocation.ConditionEnabled); !errors.Is(err, invocation.ErrDuplicateCall) {
+	if _, err := b.Begin(b.RootContext(), reference("entry", "0"), invocation.Facts{Uses: "./duplicate", HasUses: true, Condition: invocation.ConditionEnabled}); !errors.Is(err, invocation.ErrDuplicateCall) {
 		t.Fatalf("budget hid duplicate traversal: %v", err)
 	}
 	g := publish(t, b)
@@ -202,9 +214,9 @@ func TestInterruptionPreservesAncestorsAndCompletedCalls(t *testing.T) {
 			if resolved {
 				expand(t, b, inner, reference("inner", "document"))
 			}
-			id, err := b.Interrupt(invocation.ReasonCanceled, "context canceled")
-			if err != nil || id != inner.ID() {
-				t.Fatalf("interrupted %s: %v", id, err)
+			ctx, err := b.Interrupt(invocation.ReasonCanceled, "context canceled")
+			if err != nil || ctx.ID() != inner.ID() {
+				t.Fatalf("interrupted %s: %v", ctx.ID(), err)
 			}
 			closeCall(t, b, inner.ID())
 			closeCall(t, b, outer.ID())
@@ -224,7 +236,7 @@ func TestConditionIsIndependentOfResolution(t *testing.T) {
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	conditions := []invocation.Condition{invocation.ConditionEnabled, invocation.ConditionSkipped, invocation.ConditionRuntimeDependent}
 	for i, condition := range conditions {
-		ticket, err := b.Begin(b.RootID(), reference("entry", strconv.Itoa(i)), "./action", condition)
+		ticket, err := b.Begin(b.RootContext(), reference("entry", strconv.Itoa(i)), invocation.Facts{Uses: "./action", HasUses: true, Condition: condition})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -232,7 +244,7 @@ func TestConditionIsIndependentOfResolution(t *testing.T) {
 	}
 	g := publish(t, b)
 	for i, call := range g.Calls() {
-		if call.Condition != conditions[i] || call.Outcome.Kind() != invocation.OutcomeOpaque {
+		if call.Condition() != conditions[i] || call.Outcome.Kind() != invocation.OutcomeOpaque {
 			t.Fatalf("lost condition on %+v", call)
 		}
 	}
@@ -245,22 +257,26 @@ func TestInvalidBudgetsAndAdmission(t *testing.T) {
 		}
 	}
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
-	if _, err := b.Begin("unknown", reference("entry", "call"), "./x", invocation.ConditionEnabled); !errors.Is(err, invocation.ErrUnknownParent) {
+	if _, err := b.Begin(invocation.Context{}, reference("entry", "call"), invocation.Facts{Uses: "./x", HasUses: true, Condition: invocation.ConditionEnabled}); !errors.Is(err, invocation.ErrForeignContext) {
 		t.Fatalf("unknown parent: %v", err)
 	}
-	if _, err := b.Begin(b.RootID(), reference("entry", "call"), "./x", invocation.ConditionInvalid); !errors.Is(err, invocation.ErrInvalidCondition) {
+	if _, err := b.Begin(b.RootContext(), reference("entry", "call"), invocation.Facts{Uses: "./x", HasUses: true, Condition: invocation.ConditionInvalid}); !errors.Is(err, invocation.ErrInvalidCondition) {
 		t.Fatalf("invalid condition: %v", err)
 	}
 	first := begin(t, b, b.RootID(), reference("entry", "call"))
 	if _, err := b.Publish(); !errors.Is(err, invocation.ErrUnfinished) {
 		t.Fatalf("published pending reservation: %v", err)
 	}
-	if _, err := b.Resolve(first.ID(), invocation.Outcome{}); !errors.Is(err, invocation.ErrInvalidOutcome) {
+	firstContext, admitted := first.Context()
+	if !admitted {
+		t.Fatal("first ticket was not admitted")
+	}
+	if _, err := b.Resolve(firstContext, invocation.Outcome{}); !errors.Is(err, invocation.ErrInvalidOutcome) {
 		t.Fatalf("accepted missing resolution: %v", err)
 	}
 	opaque(t, b, first)
 	publish(t, b)
-	if _, err := b.Begin(b.RootID(), reference("entry", "later"), "./later", invocation.ConditionEnabled); !errors.Is(err, invocation.ErrPublished) {
+	if _, err := b.Begin(b.RootContext(), reference("entry", "later"), invocation.Facts{Uses: "./later", HasUses: true, Condition: invocation.ConditionEnabled}); !errors.Is(err, invocation.ErrPublished) {
 		t.Fatalf("mutated published graph: %v", err)
 	}
 }

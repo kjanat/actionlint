@@ -73,7 +73,7 @@ func configEnabled(name string, config *repoconfig.Config) bool {
 	return repoconfig.DiagnosticLevel(config, name) != "off" && (enabled == nil || *enabled)
 }
 
-// ConfigCandidates retains precedence-relevant configurations for a script tool.
+// ConfigCandidates enumerates tool-selection states across configuration overrides.
 func ConfigCandidates(name string, config *repoconfig.Config) ([]*repoconfig.Config, error) {
 	if config == nil {
 		return []*repoconfig.Config{nil}, nil
@@ -102,7 +102,6 @@ func ConfigCandidates(name string, config *repoconfig.Config) ([]*repoconfig.Con
 			}
 			candidates[i] = resolved
 		}
-		// Retain precedence-bearing gate states while collapsing unrelated options.
 		seen := make(map[toolGateState]bool, len(candidates))
 		unique := candidates[:0]
 		for _, candidate := range candidates {

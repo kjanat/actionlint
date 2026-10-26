@@ -131,8 +131,7 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 	}
 	inferred := dialect
 	dialectOrigin := "workflow shell"
-	// Explicit flags retain native precedence over script directives. Do not append
-	// an inferred --shell after them and silently change the requested analysis.
+	// An explicit --shell takes precedence over directives and inferred dialects.
 	var flagShell string
 	explicitShell := false
 	if run.cmd != nil {
@@ -250,7 +249,6 @@ func (run *shellcheckRun) runShellcheck(src string, source *workflowlang.ScriptS
 				continue
 			}
 			// Dialect overrides can make generated startup options non-portable.
-			// Their warnings have no workflow source location; errors remain configuration failures.
 			line := script.originalLine(err.Line)
 			if line == 0 {
 				if err.Line != script.startupLine || err.Level == "error" {

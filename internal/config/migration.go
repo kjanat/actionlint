@@ -17,8 +17,7 @@ import (
 var legacyKeys = []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"}
 
 // NormalizeForMerge expands and canonicalizes one document before inheritance
-// merging. It does not bind plugin rules or validate unrelated settings, so
-// manifest editing can retain options whose provider is not installed yet.
+// merging. Plugin-rule binding is deferred until providers are installed.
 // Callers must validate the resulting configuration before analysis.
 func NormalizeForMerge(node *yaml.Node) (*yaml.Node, error) {
 	expanded, err := configtree.Expand(node, map[*yaml.Node]bool{})
@@ -29,7 +28,7 @@ func NormalizeForMerge(node *yaml.Node) (*yaml.Node, error) {
 	return canonical, err
 }
 
-// Migration is a pure conversion result. Content retains the input format.
+// Migration contains converted configuration in the input's format.
 type Migration struct {
 	Content []byte   `json:"content"`
 	Changed bool     `json:"changed"`

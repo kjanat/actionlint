@@ -57,8 +57,7 @@ func (p Policy) Apply(all []*findingmodel.Finding, metadataSources map[string][]
 		if findingPath == "" {
 			findingPath = path
 		} else if p.ProjectRoot != "" && filepath.IsAbs(findingPath) {
-			// Tools run in the resolved working directory. Compare both
-			// paths physically so checkout aliases retain project-relative filters.
+			// Resolve checkout aliases before matching project-relative filters.
 			if resolved, err := filepath.EvalSymlinks(findingPath); err == nil {
 				findingPath = resolved
 			}

@@ -21,13 +21,30 @@ func builder(t *testing.T, kind invocation.EntryKind, budget invocation.Budget) 
 	return b
 }
 
+func contextFor(t *testing.T, b *invocation.Builder, id invocation.ID) invocation.Context {
+	t.Helper()
+	if id == b.RootID() {
+		return b.RootContext()
+	}
+	ctx, ok := b.Context(id)
+	if !ok {
+		t.Fatalf("missing context for %q", id)
+	}
+	return ctx
+}
+
 func begin(t *testing.T, b *invocation.Builder, parent invocation.ID, site source.Reference) invocation.Ticket {
 	t.Helper()
-	ticket, err := b.Begin(parent, site, "./action", invocation.ConditionEnabled)
+	ticket, err := b.Begin(contextFor(t, b, parent), site, invocation.Facts{Uses: "./action", HasUses: true, Condition: invocation.ConditionEnabled})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return ticket
+}
+
+func addScript(t *testing.T, b *invocation.Builder, owner invocation.ID, declaration source.Reference, kind invocation.ScriptKind, input string) (invocation.ID, error) {
+	t.Helper()
+	return b.AddScript(contextFor(t, b, owner), declaration, kind, input)
 }
 
 func expand(t *testing.T, b *invocation.Builder, ticket invocation.Ticket, target source.Reference) {
@@ -36,7 +53,11 @@ func expand(t *testing.T, b *invocation.Builder, ticket invocation.Ticket, targe
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := b.Resolve(ticket.ID(), outcome)
+	ctx, admitted := ticket.Context()
+	if !admitted {
+		t.Fatal("expanded ticket was not admitted")
+	}
+	resolved, err := b.Resolve(ctx, outcome)
 	if err != nil || resolved.Kind() != invocation.OutcomeExpanded {
 		t.Fatalf("expand: %v, %v", resolved, err)
 	}
@@ -60,7 +81,7 @@ func TestInterruptionStopsAdmission(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if _, err := b.Begin(b.RootID(), reference("entry", "after-cancel"), "./later", invocation.ConditionEnabled); err == nil {
+			if _, err := b.Begin(b.RootContext(), reference("entry", "after-cancel"), invocation.Facts{Uses: "./later", HasUses: true, Condition: invocation.ConditionEnabled}); err == nil {
 				t.Fatal("admitted a call after interruption")
 			}
 			g, err := b.Publish()
@@ -83,7 +104,7 @@ func TestTraversalRejectsUnfinishedSibling(t *testing.T) {
 			if expanded {
 				expand(t, b, first, reference("action", "document"))
 			}
-			if _, err := b.Begin(b.RootID(), reference("entry", "sibling"), "./second", invocation.ConditionEnabled); err == nil {
+			if _, err := b.Begin(b.RootContext(), reference("entry", "sibling"), invocation.Facts{Uses: "./second", HasUses: true, Condition: invocation.ConditionEnabled}); err == nil {
 				t.Fatal("admitted sibling before finishing current call")
 			}
 		})
@@ -106,9 +127,9 @@ func TestInterruptionBetweenTopLevelCalls(t *testing.T) {
 					t.Fatal("budget was not exhausted")
 				}
 			}
-			id, err := b.Interrupt(invocation.ReasonCanceled, "canceled between calls")
-			if err != nil || id != b.RootID() {
-				t.Fatalf("entry-level interruption: %s, %v", id, err)
+			ctx, err := b.Interrupt(invocation.ReasonCanceled, "canceled between calls")
+			if err != nil || ctx.ID() != b.RootID() {
+				t.Fatalf("entry-level interruption: %s, %v", ctx.ID(), err)
 			}
 			g := publish(t, b)
 			interruption, exists := g.EntryInterruption()

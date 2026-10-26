@@ -1,7 +1,7 @@
 package yamlsource
 
 // TokenEndColumn returns the exclusive rune column of the whitespace-delimited
-// token at column. Invalid or empty positions retain a one-character span.
+// token at column, with a minimum span of one character.
 func TokenEndColumn(line string, column int) int {
 	if column < 1 {
 		return column + 1

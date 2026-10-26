@@ -4,13 +4,14 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // Invocation supplies the already-resolved caller and action scope.
 // Participants own analyzer-specific configuration and state adaptation.
 type Invocation struct {
-	Context    execution.ActionContext
+	Context    invocation.Context
 	ActionPath string
 	Actions    *actionlocal.Resolver
 }
@@ -23,7 +24,7 @@ type CompositeParticipant interface {
 type (
 	CheckoutParticipant interface{ CheckoutPaths() *execution.Paths }
 	CompositeJoiner     interface {
-		JoinCompositeResult(execution.ActionContext, workflowvisit.Rule)
+		JoinCompositeResult(invocation.Context, workflowvisit.Rule)
 	}
 )
 

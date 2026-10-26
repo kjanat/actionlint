@@ -15,8 +15,6 @@ func commandEscape(value string) string {
 	return strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A").Replace(value)
 }
 
-// These compatibility renderers consume the typed analysis directly. The shared
-// formatter retains source-aware caret widths and inclusive legacy columns.
 const actionHeader = `{{define "header"}}{{if eq (printf "%.2s" .Filepath) "::"}}./{{end}}{{.Filepath}}:{{.Line}}:{{.Column}}: {{.Message}} [{{.Kind}}]{{end}}`
 
 const actionDefault = actionHeader + `{{range .}}{{template "header" .}}

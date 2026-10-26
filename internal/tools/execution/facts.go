@@ -43,15 +43,12 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Scr
 	}
 	script.Comments = workflowfacts.SourceComments(source)
 	script.Reference = unit.Reference
-	if scope := unit.Scope; scope != nil {
-		if call, exists := graph.Call(scope.Occurrence); exists {
-			effects, _ := scope.Context.Effects()
-			projected := &analyzer.Invocation{Reference: call.Site, Step: effects.Step, Depth: call.Depth, Uses: call.Uses}
-			if call.Site.Document != graph.Entry().Reference.Document {
-				projected.Caller = call.Site.Document
-			}
-			script.Invocation = projected
-		}
+	record, _ := graph.Script(unit.Occurrence)
+	if call, exists := graph.Call(record.Owner); exists {
+		facts, _ := call.Facts()
+		projected := &analyzer.Invocation{Reference: call.Site(), Step: diagmodel.Position{Line: facts.Step.Line, Column: facts.Step.Column}, Depth: call.Depth(), Uses: facts.Uses}
+		if call.Site().Document != graph.Entry().Reference.Document { projected.Caller = call.Site().Document }
+		script.Invocation = projected
 	}
 	if includeExecution && unit.Input == nil {
 		script.Runtime = &analyzer.Runtime{

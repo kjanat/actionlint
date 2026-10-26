@@ -30,7 +30,7 @@ func startWorkflowEntry(t *testing.T, analysis *compositeAnalyzer, snapshot *doc
 		t.Fatal(err)
 	}
 	if analysis.scriptScope != nil {
-		analysis.scriptScope.Occurrence = analysis.occurrence
+		analysis.scriptScope.Context = analysis.context
 	}
 }
 
@@ -57,7 +57,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			startWorkflowEntry(t, analysis, workflowSnapshot(t, workflow))
 			analysis.beginWorkflow(workflow)
 			for i, target := range []*actionmeta.Metadata{first, second} {
-				context, err := execution.ActionCall(calls[i], analysis.actions.Platform())
+				facts, err := execution.CallFacts(calls[i], analysis.actions.Platform())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -65,10 +65,12 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 				if err != nil {
 					t.Fatal(err)
 				}
-				ticket, err := analysis.invocations.Begin(analysis.invocations.RootID(), site, "$/source", invocation.ConditionEnabled)
+				ticket, err := analysis.invocations.Begin(analysis.invocations.RootContext(), site, facts)
 				if err != nil {
 					t.Fatal(err)
 				}
+				context, admitted := ticket.Context()
+				if !admitted { t.Fatal("fixture call was not admitted") }
 				if analysis.sourceSnapshots == nil {
 					analysis.sourceSnapshots = &documentparse.SourceSnapshots{}
 				}
@@ -80,17 +82,17 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := analysis.invocations.Resolve(ticket.ID(), outcome); err != nil {
+				if _, err := analysis.invocations.Resolve(context, outcome); err != nil {
 					t.Fatal(err)
 				}
-				analysis.occurrence = ticket.ID()
+				analysis.context = context
 				if err := analysis.visitMetadataScripts(target, context, nil); err != nil {
 					t.Fatal(err)
 				}
-				if err := analysis.invocations.Close(ticket.ID()); err != nil {
+				if err := analysis.invocations.Close(context); err != nil {
 					t.Fatal(err)
 				}
-				analysis.occurrence = analysis.invocations.RootID()
+				analysis.context = analysis.invocations.RootContext()
 			}
 			if len(analysis.scripts) != 2 {
 				t.Fatalf("script occurrences = %d, want 2", len(analysis.scripts))

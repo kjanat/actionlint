@@ -9,8 +9,7 @@ import (
 )
 
 // captured is the only parser hook. Shadow structs replace owned-tree hooks with
-// captures, then decode them against the owned graph. Ordinary scalars and structs
-// retain the parser's conversion, duplicate-key and merge-key behavior.
+// captures, then decode them against the owned graph.
 type captured struct{ node *Node }
 
 func (c *captured) UnmarshalYAML(n *upstream.Node) error { c.node = fromParser(n); return nil }

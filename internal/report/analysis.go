@@ -11,8 +11,7 @@ import (
 
 // Analysis is the completed or partial result of an analysis session. It contains
 // values only: no live rules, parser nodes, process handles, or rendering policy.
-// Sources is aligned with Diagnostics and retains the exact analyzed text, including
-// dependencies. Consumers may change displayed diagnostic paths without losing it.
+// Sources aligns with Diagnostics and contains the analyzed text for each finding.
 type Analysis struct {
 	RunnerEvidence []runner.Report
 	FileCount      int

@@ -130,8 +130,7 @@ func scriptOptions(config json.RawMessage) (string, error) {
 	return string(config), nil
 }
 
-// Check analyzes a sanitized snippet. Findings and an incomplete-analysis error
-// remain independent; malformed findings are rejected before any are published.
+// Check analyzes a sanitized snippet and validates the returned findings.
 func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")

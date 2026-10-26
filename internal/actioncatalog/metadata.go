@@ -55,8 +55,7 @@ func materializeMetadata(catalog *Catalog) (map[string]*actionmeta.Metadata, map
 	return actions, retired
 }
 
-// Lookup reads PopularActions and OutdatedPopularActionSpecs directly so input
-// validation and output typing use caller overrides to those maps.
+// Lookup returns metadata and whether a missing reference is retired.
 func Lookup(ref string) (*actionmeta.Metadata, bool) {
 	meta := PopularActions[ref]
 	_, retired := OutdatedPopularActionSpecs[ref]

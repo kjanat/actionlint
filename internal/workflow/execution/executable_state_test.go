@@ -21,7 +21,7 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			parent.executableState = newExecutableState(true, false)
 			parent.changed["source/bad.sh"] = true
 			call := &workflowlang.Step{Exec: &workflowlang.ExecAction{}, If: &workflowlang.String{Value: tc.condition}, ContinueOnError: &workflowlang.Bool{Value: tc.continued}}
-			context, err := ActionCall(call, Paths{}.Platform)
+			context, err := testCallContext(t, call, Paths{}.Platform)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -65,7 +65,6 @@ func newResultRenderer(options renderOptions) (*render.Renderer, error) {
 	return render.New(options.Format, options.Template, options.Oneline, buildinfo.Version, nil)
 }
 
-// Root flag invocations retain their historical process-wide color behavior.
 func legacyColorOutput(out io.Writer, mode render.Color) io.Writer {
 	if mode == render.ColorNever {
 		color.NoColor = true

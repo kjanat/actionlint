@@ -49,7 +49,7 @@ type compositeAnalyzer struct {
 	sourceSnapshots                   *documentparse.SourceSnapshots
 	sourceSnapshot                    *documentparse.SourceSnapshot
 	invocations                       *invocation.Builder
-	occurrence                        invocation.ID
+	context                           invocation.Context
 	budget                            invocation.Budget
 	interrupted                       bool
 }
@@ -62,7 +62,7 @@ func (analysis *compositeAnalyzer) cancelled() error {
 }
 
 func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) {
-	analysis.scriptScope = &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: analysis.scriptConfig, Occurrence: analysis.occurrence}
+	analysis.scriptScope = &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: analysis.scriptConfig, Context: analysis.context}
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(workflow.Defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(workflow.Defaults)
@@ -77,7 +77,6 @@ func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
 	knowledge := analysis.runners.Job(job)
 	analysis.scriptRunnerShell = execution.ShellValue{Kind: execution.ShellUnknown}
 	if analysis.runners == nil {
-		// Without runner knowledge, standalone composition assumes Bash.
 		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: "bash"})
 	}
 	if knowledge.Shell != "" {

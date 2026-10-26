@@ -1,6 +1,5 @@
 // Package action owns action-manifest syntax, source positions, schema validation,
-// expression availability and runtime metadata. It does not load repository files
-// or track workflow callers.
+// expression availability and runtime metadata.
 package action
 
 import (
@@ -355,7 +354,6 @@ func Key(n *yaml.Node) string {
 }
 
 // Fields copies a mapping's keys and normalizes their spelling for struct decoding.
-// Nested mappings and the original tree are not modified.
 func Fields(node *yaml.Node) *yaml.Node {
 	n := Node(node)
 	if n.Kind != yaml.MappingNode {
@@ -500,7 +498,7 @@ func expectedMapping(where string, n *yaml.Node) error {
 	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowlang.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
-// Parse decodes a manifest and initializes source mappings on demand.
+// Parse decodes an action manifest.
 // Partially decoded declarations accompany errors for callers that inspect broken metadata.
 func Parse(path string, content []byte) (*Metadata, error) {
 	metadata := &Metadata{positions: &metadataPositionCache{}}

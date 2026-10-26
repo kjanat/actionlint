@@ -33,7 +33,7 @@ func batchFixture(t *testing.T, withInput bool) (invocation.Graph, []*Scope, []U
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope := &Scope{Occurrence: builder.RootID()}
+	scope := &Scope{Context: builder.RootContext()}
 	var units []Unit
 	for _, step := range parsed.Workflow.Jobs["test"].Steps {
 		ref, err := snapshot.StepReference(step)
@@ -51,7 +51,7 @@ func batchFixture(t *testing.T, withInput bool) (invocation.Graph, []*Scope, []U
 		default:
 			t.Fatal("unexpected fixture step")
 		}
-		unit.Occurrence, err = builder.AddScript(builder.RootID(), ref, kind, input)
+		unit.Occurrence, err = builder.AddScript(builder.RootContext(), ref, kind, input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +74,7 @@ func TestBatchRejectsForeignOrMalformedInputs(t *testing.T) {
 		"missing input key":      func(_ *invocation.Graph, _ *[]*Scope, u *[]Unit) { (*u)[1].Input.Value.Name.Pos = nil },
 		"unpublished graph":      func(g *invocation.Graph, _ *[]*Scope, _ *[]Unit) { *g = invocation.Graph{} },
 		"nil scope":              func(_ *invocation.Graph, s *[]*Scope, _ *[]Unit) { (*s)[0] = nil },
-		"unknown scope":          func(_ *invocation.Graph, s *[]*Scope, _ *[]Unit) { (*s)[0].Occurrence = "unknown" },
+		"unknown scope":          func(_ *invocation.Graph, s *[]*Scope, _ *[]Unit) { (*s)[0].Context = invocation.Context{} },
 		"foreign scope pointer":  func(_ *invocation.Graph, _ *[]*Scope, u *[]Unit) { (*u)[0].Scope = copyValue((*u)[0].Scope) },
 		"foreign occurrence":     func(_ *invocation.Graph, _ *[]*Scope, u *[]Unit) { (*u)[0].Occurrence = "unknown" },
 		"stale source":           func(_ *invocation.Graph, _ *[]*Scope, u *[]Unit) { (*u)[0].Reference.Revision = "stale" },
@@ -117,13 +117,13 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	units[1].Input.Value.Value.Value = "corrupt input"
 	units[0].Content[0] = 'X'
 	units[0].Owner.Step.Line = 999
-	scopes[0].Occurrence = "corrupt scope"
+	scopes[0].Context = invocation.Context{}
 	scopes[0].Paths.Placements.Directory.Path = "corrupt placement"
 	clonedScopes, clonedUnits := batch.Snapshot()
 	if clonedUnits[0].Scope != clonedScopes[0] || clonedUnits[1].Scope != clonedScopes[0] || &clonedUnits[0].Content[0] != &clonedUnits[1].Content[0] {
 		t.Fatal("snapshot lost shared scope/document ownership")
 	}
-	clonedScopes[0].Occurrence = "corrupt returned scope"
+	clonedScopes[0].Context = invocation.Context{}
 	clonedScopes[0].Paths.Placements.Directory.Path = "corrupt returned placement"
 	clonedUnits[0].Run.Run = nil
 	clonedUnits[0].Run.Source.Spans[0].YamlLine = 888
@@ -138,7 +138,7 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	if fresh[0].Scope.Paths.Placements.Directory.Path != "original" {
 		t.Fatal("snapshot mutation reached retained checkout placement")
 	}
-	if fresh[0].Content[0] != 'o' || fresh[0].Owner.Step.Line == 999 || fresh[0].Scope.Occurrence != graph.RootID() {
+	if fresh[0].Content[0] != 'o' || fresh[0].Owner.Step.Line == 999 || fresh[0].Scope.Context.ID() != graph.RootID() {
 		t.Fatal("snapshot mutation reached retained provenance")
 	}
 }
@@ -163,20 +163,23 @@ func TestScopesOnlyBatchCannotDropCompletedScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ticket, err := builder.Begin(builder.RootID(), graph.Scripts()[0].Declaration, "$/child", invocation.ConditionEnabled)
+	ticket, err := builder.Begin(builder.RootContext(), graph.Scripts()[0].Declaration, invocation.Facts{Uses: "$/child", HasUses: true, Condition: invocation.ConditionEnabled})
 	if err != nil {
 		t.Fatal(err)
 	}
+	callContext, admitted := ticket.Context()
+	if !admitted { t.Fatal("fixture call was not admitted") }
+	scopes[0].Context = builder.RootContext()
 	target := graph.Entry().Reference
 	target.Document = "child"
 	outcome, err := invocation.Expanded(target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := builder.Resolve(ticket.ID(), outcome); err != nil {
+	if _, err := builder.Resolve(callContext, outcome); err != nil {
 		t.Fatal(err)
 	}
-	if err := builder.Close(ticket.ID()); err != nil {
+	if err := builder.Close(callContext); err != nil {
 		t.Fatal(err)
 	}
 	graph, err = builder.Publish()

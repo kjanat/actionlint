@@ -13,8 +13,6 @@ import (
 
 type sourceCommentsKey struct{}
 
-// Snapshot only this call's script references. No filesystem lookup or retained
-// instance state can expose comments from another document or an earlier call.
 func suppliedComments(input analyzer.Input) map[source.Reference][]analyzer.SourceComment {
 	comments := make(map[source.Reference][]analyzer.SourceComment)
 	add := func(script analyzer.Script) {

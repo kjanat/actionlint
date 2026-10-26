@@ -6,7 +6,6 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -28,7 +27,7 @@ func visitStandaloneAction(meta *actionmeta.Metadata, rules []workflowvisit.Rule
 		}
 	}
 	if strings.EqualFold(meta.Runs.Using, "composite") {
-		if err := analysis.visitMetadataScripts(meta, execution.ActionEntry(), scripts); err != nil {
+		if err := analysis.visitMetadataScripts(meta, analysis.invocations.RootContext(), scripts); err != nil {
 			return err
 		}
 	}

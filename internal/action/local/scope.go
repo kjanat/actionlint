@@ -29,8 +29,8 @@ func (c *Resolver) BeginJob(workflowEnv *workflowlang.Env, workflowShell executi
 // EnterComposite saves invocation-local assumptions and returns their branch join.
 // An action entry has no caller to join with. Call the returned function when
 // the composite finishes, including on an error.
-func (c *Resolver) EnterComposite(context execution.ActionContext) func() {
-	effects, isCall := context.Effects()
+func (c *Resolver) EnterComposite(context invocation.Context) func() {
+	effects, isCall := context.Facts()
 	checkout := c.CheckoutState()
 	checkoutEnv := c.checkoutEnvUnknown
 	persistentEnv := c.persistentEnvUnknown

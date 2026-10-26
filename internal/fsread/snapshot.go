@@ -177,7 +177,7 @@ func (s *SnapshotFS) Content(name string) (string, []byte, bool) {
 	return name, bytes.Clone(data.content), true
 }
 
-// Resolve symlinks before parent components, retaining both as dependencies.
+// Resolve symlinks before processing '..' so dependency paths match filesystem traversal.
 // os.Root confines every metadata lookup and the subsequent file open.
 func (s *SnapshotFS) resolve(name string) (snapshotName, error) {
 	if path.IsAbs(name) || strings.ContainsAny(name, "\\\x00") {

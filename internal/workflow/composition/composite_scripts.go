@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/source"
+
 	checks "actionlint.kjanat.dev/v2/internal/checks"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
@@ -36,16 +38,9 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 	if !ok {
 		return nil
 	}
-	callContext, err := execution.ActionCall(call, analysis.actions.Platform())
-	if err != nil {
-		return err
-	}
-	site, err := analysis.sourceSnapshot.StepReference(call)
-	if err != nil {
-		return err
-	}
-	effects, _ := callContext.Effects()
-	ticket, err := analysis.invocations.Begin(analysis.occurrence, site, effects.Uses, effects.Condition)
+	site, facts, err := analysis.describeCall(call)
+	if err != nil { return err }
+	ticket, err := analysis.invocations.Begin(analysis.context, site, facts)
 	if err != nil {
 		return err
 	}
@@ -61,17 +56,19 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		}
 		return analysis.visitOpaqueAction(call, action, deferred)
 	}
-	parent := analysis.occurrence
-	analysis.occurrence = ticket.ID()
+	callContext, admitted := ticket.Context()
+	if !admitted { return invocation.ErrForeignContext }
+	parent := analysis.context
+	analysis.context = callContext
 	opened := false
 	defer func() {
 		err = analysis.interrupt(err)
 		if opened {
-			if closeErr := analysis.invocations.Close(ticket.ID()); closeErr != nil {
+			if closeErr := analysis.invocations.Close(callContext); closeErr != nil {
 				err = errors.Join(err, closeErr)
 			}
 		}
-		analysis.occurrence = parent
+		analysis.context = parent
 	}()
 	if validate != nil {
 		if err := validate(); err != nil {
@@ -82,7 +79,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 	if err != nil {
 		return err
 	}
-	outcome, err = analysis.invocations.Resolve(ticket.ID(), outcome)
+	outcome, err = analysis.invocations.Resolve(callContext, outcome)
 	if err != nil {
 		return err
 	}
@@ -104,7 +101,8 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, ac
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, callContext execution.ActionContext, parents []workflowvisit.Rule) error {
+func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, callContext invocation.Context, parents []workflowvisit.Rule) error {
+	if !analysis.invocations.Owns(callContext) { return invocation.ErrForeignContext }
 	if analysis.sourceSnapshots == nil {
 		analysis.sourceSnapshots = &documentparse.SourceSnapshots{}
 	}
@@ -133,7 +131,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	analysis.scriptConfig = scriptConfig
 	defer func() { analysis.scriptConfig = parentConfig }()
 	parentScope := analysis.scriptScope
-	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: scriptConfig, Composite: true, Occurrence: analysis.occurrence, Context: callContext}
+	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: scriptConfig, Composite: true, Context: callContext}
 	if parentScope != nil {
 		scope.Paths = parentScope.Paths
 	}
@@ -144,7 +142,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	scope.Paths.Placements = analysis.actions.CheckoutState()
 	execution.ActionOrigin(&scope.Paths, callContext, scope.ActionPath)
 	analysis.scriptScope = scope
-	if _, isCall := callContext.Effects(); !isCall && len(analysis.scriptScopes) != 0 {
+	if callContext.IsEntry() && len(analysis.scriptScopes) != 0 {
 		analysis.scriptScopes[len(analysis.scriptScopes)-1] = scope
 	} else {
 		analysis.scriptScopes = append(analysis.scriptScopes, scope)
@@ -224,4 +222,12 @@ func compositeCheckoutPaths(rule workflowvisit.Pass, actions *actionlocal.Resolv
 
 func compositeCheckoutScope(paths *execution.Paths, actions *actionlocal.Resolver) {
 	*paths = actions.ApplyCheckout(*paths)
+}
+
+func (analysis *compositeAnalyzer) describeCall(step *workflowlang.Step) (source.Reference, invocation.Facts, error) {
+	if analysis.sourceSnapshot == nil { return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable") }
+	site, err := analysis.sourceSnapshot.StepReference(step)
+	if err != nil { return source.Reference{}, invocation.Facts{}, err }
+	facts, err := execution.CallFacts(step, analysis.actions.Platform())
+	return site, facts, err
 }

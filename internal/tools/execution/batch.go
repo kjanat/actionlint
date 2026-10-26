@@ -15,8 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-// Unit snapshots invocation context before analyzers run. Adapters map sources;
-// backends receive text and explicit shell selection.
+// Unit snapshots invocation context before analyzers run.
 type Unit struct {
 	Occurrence invocation.ID
 	Reference  source.Reference
@@ -45,8 +44,7 @@ type Scope struct {
 	Config     *repoconfig.Config
 	ActionPath string
 	Composite  bool
-	Occurrence invocation.ID
-	Context    workflowexecution.ActionContext
+	Context    invocation.Context
 }
 
 type Execution struct {
@@ -57,7 +55,6 @@ type Execution struct {
 var ErrInvalidBatch = errors.New("execution: invalid prepared batch")
 
 // Batch binds execution inputs to a published graph. Its zero value is unprepared.
-// Snapshots copy scripts and scopes but share configuration and filesystem readers.
 type Batch struct{ data *batchData }
 
 type batchData struct {
@@ -78,13 +75,13 @@ func NewBatch(graph invocation.Graph, scopes []*Scope, scripts []Unit, collected
 	knownScopes := make(map[*Scope]bool, len(scopes))
 	owners := make(map[invocation.ID]bool, len(scopes))
 	for _, scope := range scopes {
-		if scope == nil || owners[scope.Occurrence] {
+		if scope == nil || owners[scope.Context.ID()] {
 			return Batch{}, fmt.Errorf("%w: missing or duplicate scope", ErrInvalidBatch)
 		}
 		if err := validateScope(scope, graph); err != nil {
 			return Batch{}, err
 		}
-		knownScopes[scope], owners[scope.Occurrence] = true, true
+		knownScopes[scope], owners[scope.Context.ID()] = true, true
 	}
 	_, interrupted := graph.EntryInterruption()
 	_, stopped := graph.Stop()
@@ -92,8 +89,8 @@ func NewBatch(graph invocation.Graph, scopes []*Scope, scripts []Unit, collected
 		return Batch{}, fmt.Errorf("%w: entry scope is missing", ErrInvalidBatch)
 	}
 	for _, call := range graph.Calls() {
-		if call.Outcome.Kind() == invocation.OutcomeExpanded && !owners[call.ID] {
-			return Batch{}, fmt.Errorf("%w: completed invocation scope %q is missing", ErrInvalidBatch, call.ID)
+		if call.Outcome.Kind() == invocation.OutcomeExpanded && !owners[call.ID()] {
+			return Batch{}, fmt.Errorf("%w: completed invocation scope %q is missing", ErrInvalidBatch, call.ID())
 		}
 	}
 	seen := make(map[invocation.ID]bool, len(scripts))
@@ -102,7 +99,7 @@ func NewBatch(graph invocation.Graph, scopes []*Scope, scripts []Unit, collected
 		if !exists || seen[unit.Occurrence] || record.Declaration != unit.Reference {
 			return Batch{}, fmt.Errorf("%w: unregistered, duplicated or mismatched script %q", ErrInvalidBatch, unit.Occurrence)
 		}
-		if !knownScopes[unit.Scope] || record.Owner != unit.Scope.Occurrence || unit.Config != unit.Scope.Config {
+		if !knownScopes[unit.Scope] || record.Owner != unit.Scope.Context.ID() || unit.Config != unit.Scope.Config {
 			return Batch{}, fmt.Errorf("%w: script %q has a foreign scope or configuration", ErrInvalidBatch, unit.Occurrence)
 		}
 		switch record.Kind {
@@ -128,19 +125,20 @@ func NewBatch(graph invocation.Graph, scopes []*Scope, scripts []Unit, collected
 }
 
 func validateScope(scope *Scope, graph invocation.Graph) error {
-	effects, isCall := scope.Context.Effects()
-	if scope.Occurrence == graph.RootID() {
-		if isCall || scope.Composite && graph.Entry().Kind != invocation.EntryAction {
-			return fmt.Errorf("%w: entry scope has a caller or the wrong kind", ErrInvalidBatch)
-		}
+	if !graph.Owns(scope.Context) { return fmt.Errorf("%w: foreign invocation context", ErrInvalidBatch) }
+	if scope.Context.IsEntry() {
+		if scope.Composite && graph.Entry().Kind != invocation.EntryAction { return fmt.Errorf("%w: workflow entry cannot be composite", ErrInvalidBatch) }
 		return nil
 	}
-	call, exists := graph.Call(scope.Occurrence)
+	call, exists := graph.Call(scope.Context.ID())
 	_, hasBody := call.Outcome.Target()
 	kind := call.Outcome.Kind()
-	if !exists || !hasBody || kind != invocation.OutcomeExpanded && kind != invocation.OutcomeInterrupted || !scope.Composite || !isCall || effects.Uses != call.Uses || effects.Condition != call.Condition {
+	if !exists || !hasBody || kind != invocation.OutcomeExpanded && kind != invocation.OutcomeInterrupted || !scope.Composite {
 		return fmt.Errorf("%w: scope does not describe an expanded invocation", ErrInvalidBatch)
 	}
+	paths := scope.Paths
+	workflowexecution.ActionOrigin(&paths, scope.Context, scope.ActionPath)
+	if paths.ActionPath != scope.Paths.ActionPath || paths.ActionRunnerPath != scope.Paths.ActionRunnerPath || paths.ActionIndependent != scope.Paths.ActionIndependent { return fmt.Errorf("%w: action paths disagree with invocation context", ErrInvalidBatch) }
 	return nil
 }
 

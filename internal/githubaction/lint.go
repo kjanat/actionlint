@@ -165,7 +165,6 @@ func runLinter(req *lintRequest) *lintResult {
 	} else {
 		analysis, err = localapp.CheckSources(ctx, opts, input, selected)
 	}
-	// Absolute reads must retain the caller's relative spelling in Action output.
 	if analysis != nil {
 		restorePath := func(path string) string {
 			if original, ok := inputNames[filepath.Clean(path)]; ok {
@@ -239,7 +238,6 @@ func workspaceReportAnalysis(analysis *application.Result, workingDir, workspace
 }
 
 // Rewrite every diagnostic path together, preserving revision-to-edit bindings.
-// References retain their original source identities.
 func diagnosticPaths(finding diagnostic.Diagnostic, rewrite func(string) string) diagnostic.Diagnostic {
 	finding.Path = rewrite(finding.Path)
 	finding.Related = slices.Clone(finding.Related)
@@ -264,8 +262,8 @@ func diagnosticPaths(finding diagnostic.Diagnostic, rewrite func(string) string)
 	return finding
 }
 
-// Reports use workspace-relative paths where possible. Files on another Windows
-// volume retain their absolute path, which SARIF renders as a file URI.
+// Reports use workspace-relative paths where possible and absolute paths for
+// files on another Windows volume.
 func reportPath(workingDir, workspace, path string) string {
 	absolute := inputPath(workingDir, path)
 	if relative, err := filepath.Rel(workspace, absolute); err == nil {

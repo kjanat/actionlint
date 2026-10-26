@@ -113,7 +113,6 @@ const (
 func (sema *Checker) CheckScriptInterpolation(expr Node, ty Type, position ScriptPosition, safeReference func(Node) bool) []*Error {
 	scalarArgument := position == ScriptShellArgument
 	if _, stringValue := ty.(StringType); stringValue && sema.IsScriptScalar(expr) {
-		// A primitive serialized by toJSON is safe only in a proven data-argument position.
 		if scalarArgument {
 			return nil
 		}
@@ -271,7 +270,6 @@ func safeFalsyScriptResult(expr Node, scalarArgument bool, safeReference func(No
 }
 
 // Step outcomes/conclusions and dependency results use fixed status enums.
-// Missing or dynamic selectors can yield empty text; action outputs have no such bound.
 func safeScriptStatusReference(node Node, scalarArgument bool, safeReference func(Node) bool) bool {
 	var receiver Node
 	var property string

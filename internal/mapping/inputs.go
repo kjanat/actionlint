@@ -1,4 +1,4 @@
-// Package mapping resolves workflow mapping insertions while retaining source provenance.
+// Package mapping resolves workflow mapping insertions and maps their keys to source.
 package mapping
 
 import (
@@ -36,7 +36,7 @@ const (
 	InvalidKey
 )
 
-// ResolvedKey retains source provenance independently of the canonical name.
+// ResolvedKey associates a canonical name with its source declaration.
 // Evaluated names are data and must never be passed back to expression parsing.
 type ResolvedKey[S comparable] struct {
 	Name      S

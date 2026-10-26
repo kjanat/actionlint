@@ -282,8 +282,8 @@ func (l Lock) CheckStatuses(ctx context.Context, options StatusOptions) error {
 	return nil
 }
 
-// RefreshStatuses is for explicit install/update/sync operations. Unavailable
-// registries produce warnings and retain cached policy, including revocations.
+// RefreshStatuses updates cached policy during explicit install/update/sync
+// operations. An unavailable registry produces a warning and uses cached policy.
 func (l Lock) RefreshStatuses(ctx context.Context, options StatusOptions) error {
 	if err := l.Validate(); err != nil {
 		return err
