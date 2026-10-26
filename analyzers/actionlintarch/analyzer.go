@@ -154,25 +154,55 @@ func run(pass *analysis.Pass, contract *architecture.Contract) (any, error) {
 }
 
 func checkMutation(pass *analysis.Pass, path string, expr ast.Expr) {
-	field, ok := ast.Unparen(expr).(*ast.SelectorExpr)
-	if !ok {
-		return
-	}
-	selection := pass.TypesInfo.Selections[field]
-	if selection == nil || selection.Kind() != types.FieldVal {
-		return
-	}
-	t := selection.Recv()
-	// Follow embedded fields to the struct whose field is being written.
-	for _, index := range selection.Index() {
-		if checkOwnership(pass, path, field, t) {
-			return
-		}
-		structure, ok := dereference(t).Underlying().(*types.Struct)
+	target := expr
+	for expr != nil {
+		field, ok := mutationStorage(expr).(*ast.SelectorExpr)
 		if !ok {
 			return
 		}
-		t = structure.Field(index).Type()
+		selection := pass.TypesInfo.Selections[field]
+		if selection == nil || selection.Kind() != types.FieldVal {
+			return
+		}
+		t := selection.Recv()
+		// Follow embedded fields to the struct whose field is being written.
+		for _, index := range selection.Index() {
+			if checkOwnership(pass, path, target, t) {
+				return
+			}
+			structure, ok := dereference(t).Underlying().(*types.Struct)
+			if !ok {
+				return
+			}
+			t = structure.Field(index).Type()
+		}
+		// A value field shares its containing struct's storage.
+		receiver := mutationStorage(field.X)
+		if _, pointer := pass.TypesInfo.TypeOf(receiver).Underlying().(*types.Pointer); pointer {
+			// An explicit address identifies the storage without alias analysis.
+			address, known := receiver.(*ast.UnaryExpr)
+			if !known || address.Op != token.AND {
+				return
+			}
+			receiver = address.X
+		}
+		expr = receiver
+	}
+}
+
+// Direct address/dereference pairs refer to the same storage.
+func mutationStorage(expr ast.Expr) ast.Expr {
+	for {
+		expr = ast.Unparen(expr)
+		pointer, ok := expr.(*ast.StarExpr)
+		if !ok {
+			return expr
+		}
+		address, ok := ast.Unparen(pointer.X).(*ast.UnaryExpr)
+		if !ok || address.Op != token.AND {
+			return expr
+		}
+		expr = address.X
 	}
 }
 

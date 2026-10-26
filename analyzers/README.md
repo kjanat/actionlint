@@ -62,7 +62,8 @@ code inside an allowed package implements the right responsibility. The
 remaining type ownership and retired-API checks are actionlint-specific.
 ALA103 uses resolved Go types, including aliases and inferred literal types.
 It checks field assignments, range assignments, increments and decrements,
-including promoted fields. Conversions from other types into a protected type
+including promoted fields and nested value fields such as `inv.Step.Line`.
+Conversions from other types into a protected type
 also require ownership. Same-type copies, nil pointers and empty literals are
 allowed.
 Pointer alias analysis and synchronization require separate verification.

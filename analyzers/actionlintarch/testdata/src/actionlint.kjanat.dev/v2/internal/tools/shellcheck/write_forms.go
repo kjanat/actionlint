@@ -1,6 +1,9 @@
 package shellcheck
 
-import "actionlint.kjanat.dev/v2/analyzer"
+import (
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+)
 
 type wrapper struct{ analyzer.Invocation }
 type outer struct{ *wrapper }
@@ -43,10 +46,13 @@ func pointerMutation(p invocationPointer) {
 func conversions(v local, p *local, canonical analyzer.Invocation, ptr *analyzer.Invocation) {
 	_ = invocationAlias(v) // want "ALA103"
 	_ = invocationAlias(canonical)
-	_ = analyzer.Invocation(struct{ Depth int }{Depth: 2}) // want "ALA103"
-	_ = analyzer.Invocation(v)                             // want "ALA103"
-	_ = analyzer.Invocation(local{Depth: 1})               // want "ALA103"
-	_ = (*analyzer.Invocation)(p)                          // want "ALA103"
+	_ = analyzer.Invocation(struct { // want "ALA103"
+		Depth int
+		Step  diagnostic.Position
+	}{Depth: 2})
+	_ = analyzer.Invocation(v)               // want "ALA103"
+	_ = analyzer.Invocation(local{Depth: 1}) // want "ALA103"
+	_ = (*analyzer.Invocation)(p)            // want "ALA103"
 	_ = analyzer.Invocation(canonical)
 	_ = (*analyzer.Invocation)(ptr)
 	_ = invocationPointer(ptr)

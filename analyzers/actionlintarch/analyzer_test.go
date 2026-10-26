@@ -24,6 +24,7 @@ func TestArchitecture(t *testing.T) {
 		"internal/tools/execution",
 		"internal/tools/shellcheck",
 		"internal/undecided",
+		"internal/workflow/composition",
 		"newdomain",
 	}
 	for i := range packages {
