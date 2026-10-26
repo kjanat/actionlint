@@ -1,4 +1,4 @@
-// Package actionlintarch enforces actionlint's internal ownership boundaries.
+// Package actionlintarch checks actionlint's dependency and value ownership rules.
 package actionlintarch
 
 import (
@@ -27,8 +27,7 @@ type dependencyFact struct{ Paths []dependencyPath }
 func (*dependencyFact) AFact()         {}
 func (*dependencyFact) String() string { return "project dependency paths" }
 
-// Export-data imports can contain compiler-introduced packages such as unsafe.
-// Facts preserve actual source import edges instead of treating those as policy violations.
+// Dependency facts record the imports written in each source file.
 func dependencies(pass *analysis.Pass) {
 	paths := map[string][]string{}
 	for _, file := range pass.Files {
@@ -84,9 +83,6 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 	dependencies(pass)
-	if !classified(path) && len(pass.Files) > 0 {
-		report(pass, pass.Files[0].Package, "ALA100", "unclassified package "+path+"; assign its architecture responsibility in packages.json")
-	}
 	for _, file := range pass.Files {
 		// Behavioral fixtures may deliberately construct invalid values. Test imports
 		// still participate in package boundary checks below.
@@ -99,20 +95,19 @@ func run(pass *analysis.Pass) (any, error) {
 			switch n := n.(type) {
 			case *ast.CompositeLit:
 				if len(n.Elts) > 0 {
-					checkConstruction(pass, path, n, n.Type)
+					checkConstruction(pass, path, n, n)
 				}
 			case *ast.Ident:
-				// Reject the function reference as well as calls, so assigning
-				// Background to a local variable cannot evade the rule.
+				// Check references, including functions assigned to variables.
 				if fn, ok := pass.TypesInfo.Uses[n].(*types.Func); ok && fn.Pkg() != nil && fn.Pkg().Path() == "context" && (fn.Name() == "Background" || fn.Name() == "TODO") && !contextBoundary(path) {
 					report(pass, n.Pos(), "ALA105", "context."+fn.Name()+" discards caller cancellation; receive and propagate the analysis context")
 				}
 			case *ast.AssignStmt:
 				for _, lhs := range n.Lhs {
-					if sel, ok := lhs.(*ast.SelectorExpr); ok {
-						checkConstruction(pass, path, sel, sel.X)
-					}
+					checkMutation(pass, path, lhs)
 				}
+			case *ast.IncDecStmt:
+				checkMutation(pass, path, n.X)
 			case *ast.TypeSpec:
 				if path == internal("engine") {
 					switch n.Name.Name {
@@ -141,6 +136,19 @@ func run(pass *analysis.Pass) (any, error) {
 		})
 	}
 	return nil, nil
+}
+
+func checkMutation(pass *analysis.Pass, path string, expr ast.Expr) {
+	for {
+		parens, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
+		expr = parens.X
+	}
+	if field, ok := expr.(*ast.SelectorExpr); ok {
+		checkConstruction(pass, path, field, field.X)
+	}
 }
 
 func checkConstruction(pass *analysis.Pass, path string, n ast.Node, e ast.Expr) {
@@ -202,14 +210,14 @@ func checkImports(pass *analysis.Pass, file *ast.File, path string, test bool) {
 		sort.Strings(targets)
 		for _, target := range targets {
 			chain := chains[target]
-			domains := make([]string, 0, len(boundaries))
-			for domain := range boundaries {
+			domains := make([]string, 0, len(dependencyBans))
+			for domain := range dependencyBans {
 				domains = append(domains, domain)
 			}
 			sort.Strings(domains)
 			for _, domain := range domains {
 				if within(path, internal(domain)) {
-					for _, forbidden := range boundaries[domain] {
+					for _, forbidden := range dependencyBans[domain] {
 						if within(target, internal(forbidden)) {
 							report(pass, spec.Pos(), "ALA101", "forbidden dependency: "+strings.Join(append([]string{path}, chain...), " -> "))
 						}

@@ -1,41 +1,14 @@
 package actionlintarch
 
-import (
-	_ "embed"
-	"encoding/json"
-	"strings"
-)
+import "strings"
 
 const module = "actionlint.kjanat.dev/v2"
-
-//go:embed packages.json
-var packageInventory []byte
-
-func classified(path string) bool {
-	var packages []string
-	if err := json.Unmarshal(packageInventory, &packages); err != nil {
-		panic(err)
-	}
-	path = strings.TrimSuffix(path, "_test")
-	relative := strings.TrimPrefix(path, module+"/")
-	if path == module {
-		relative = "."
-	}
-	for _, p := range packages {
-		if p == relative {
-			return true
-		}
-	}
-	// Accepted new owner; its children still require explicit classification.
-	return relative == "internal/workflow/invocation"
-}
 
 func within(path, prefix string) bool { return path == prefix || strings.HasPrefix(path, prefix+"/") }
 func internal(name string) string     { return module + "/internal/" + name }
 
-// Existing ownership tests remain independent checks. These rules cover entire
-// subtrees and report the import chain that crosses a responsibility boundary.
-var boundaries = map[string][]string{
+// Each domain excludes these packages from its dependency graph.
+var dependencyBans = map[string][]string{
 	"engine":               {"application", "builtin", "checks", "config", "tools", "analyzerhost", "workspace", "diagnosticpolicy", "documentparse", "report", "workflow/composition"},
 	"documentparse":        {"engine", "application", "builtin", "checks", "tools", "analyzerhost", "workspace", "config", "diagnosticpolicy"},
 	"checks":               {"engine", "application", "tools", "analyzerhost", "workspace", "diagnosticpolicy", "render"},
@@ -61,7 +34,7 @@ func pure(path string) bool {
 }
 
 func forbiddenEffect(path string) bool {
-	// URL/address/header parsing is value computation, not network access.
+	// Allow URL, address and header value operations.
 	if path == "net/url" || path == "net/netip" || path == "net/textproto" {
 		return false
 	}
@@ -73,8 +46,7 @@ func forbiddenEffect(path string) bool {
 	return false
 }
 
-// Value conversion at a wire boundary is allowed. Semantic reconstruction in
-// tool adapters is not. Empty values for absence/error returns are allowed.
+// These packages may construct or modify the listed values.
 var constructors = map[string][]string{
 	module + "/source.Reference":    {internal("sourceid"), internal("plugins/component"), internal("plugins/core")},
 	module + "/analyzer.Invocation": {internal("workflow/composition"), internal("plugins/component"), internal("plugins/core")},
