@@ -99,6 +99,8 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			if len(analysis.scripts) != 2 {
 				t.Fatalf("script occurrences = %d, want 2", len(analysis.scripts))
 			}
+			batch := prepareCollectedScripts(t, analysis)
+			units := batch.Scripts()
 			snapshot, err := analysis.sourceSnapshots.Action(fsread.PhysicalPath(metadata.Path()), metadata)
 			if err != nil {
 				t.Fatal(err)
@@ -110,25 +112,25 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			switch run := steps[0].Exec.(type) {
 			case *workflowlang.ExecRun:
 				for i, target := range []*actionmeta.Metadata{first, second} {
-					unit := analysis.scripts[i]
-					if unit.Run != run || unit.Origin.StepPosition != steps[0].Pos {
+					unit := units[i]
+					if unit.Run == nil || unit.Run.Run.Value != run.Run.Value || unit.Origin.StepPosition.Line != steps[0].Pos.Line {
 						t.Fatal("script occurrence was decoded outside its declaration snapshot")
 					}
 					want := filepath.Dir(metadata.Path())
 					if target.SourceMapped {
 						want = ""
 					}
-					if unit.Scope.ActionPath != want || unit.Scope.Paths.ActionPath != want {
+					if unit.Scope.Deployment.ActionPath() != want || unit.Scope.Paths.ActionPath != want {
 						t.Fatalf("occurrence %d inherited deployment state: %+v, want action path %q", i, unit.Scope, want)
 					}
 				}
 			default:
 				t.Fatalf("unexpected declaration %T", steps[0].Exec)
 			}
-			if analysis.scripts[0].Scope == analysis.scripts[1].Scope {
+			if units[0].Scope == units[1].Scope {
 				t.Fatal("distinct occurrences shared mutable execution scope")
 			}
-			if analysis.scripts[0].Occurrence == analysis.scripts[1].Occurrence {
+			if units[0].Occurrence == units[1].Occurrence {
 				t.Fatal("distinct invocations shared script occurrence identity")
 			}
 		})

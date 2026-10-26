@@ -96,7 +96,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if result.Batch.Scripts()[0].Reference == result.Batch.Scripts()[1].Reference {
 		t.Fatal("aliased action declarations collapsed")
 	}
-	if result.Batch.Scripts()[0].Scope.ActionPath != filepath.Dir(actionPath) || result.Batch.Scripts()[2].Scope.ActionPath != "" {
+	if result.Batch.Scripts()[0].Scope.Deployment.ActionPath() != filepath.Dir(actionPath) || result.Batch.Scripts()[2].Scope.Deployment.ActionPath() != "" {
 		t.Fatal("source reuse contaminated per-lookup deployment paths")
 	}
 }
@@ -106,14 +106,14 @@ func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
 	indexed := documentparse.Workflow("ci.yml", content)
 	foreign := documentparse.Workflow("ci.yml", content)
 	analysis := compositeAnalyzer{collectScripts: true, sourceSnapshot: workflowSnapshot(t, indexed.Workflow)}
-	if err := analysis.collectScript(foreign.Workflow.Jobs["test"].Steps[0], nil, "", nil, nil, nil); err == nil {
+	if err := analysis.collectScript(foreign.Workflow.Jobs["test"].Steps[0], nil, nil, nil); err == nil {
 		t.Fatal("accepted independently decoded declaration")
 	}
 	if len(analysis.scripts) != 0 {
 		t.Fatal("foreign declaration produced a script fact")
 	}
 	analysis.sourceSnapshot = nil
-	if err := analysis.collectScript(&workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo missing"}}}, nil, "", nil, nil, nil); err == nil {
+	if err := analysis.collectScript(&workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo missing"}}}, nil, nil, nil); err == nil {
 		t.Fatal("accepted a script without a source snapshot")
 	}
 }

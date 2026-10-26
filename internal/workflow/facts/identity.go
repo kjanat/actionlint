@@ -15,28 +15,30 @@ import (
 type References struct {
 	Document  source.Reference
 	Steps     map[*workflowlang.Step]source.Reference
+	StepJobs  map[*workflowlang.Step]string
 	Jobs      map[string]source.Reference
 	Positions map[[2]int]source.Reference
 }
 
 func Index(path string, content []byte, workflow *workflowlang.Workflow, action bool) References {
 	index := sourceid.New(path, content)
-	refs := References{Document: index.Ref("", "document", "", "$"), Steps: map[*workflowlang.Step]source.Reference{}, Jobs: map[string]source.Reference{}, Positions: map[[2]int]source.Reference{}}
+	refs := References{Document: index.Ref("", "document", "", "$"), Steps: map[*workflowlang.Step]source.Reference{}, StepJobs: map[*workflowlang.Step]string{}, Jobs: map[string]source.Reference{}, Positions: map[[2]int]source.Reference{}}
 	if workflow == nil {
 		return refs
 	}
-	var walk func(string, string, []*workflowlang.Step)
-	walk = func(owner, address string, steps []*workflowlang.Step) {
+	var walk func(string, string, string, []*workflowlang.Step)
+	walk = func(owner, address, job string, steps []*workflowlang.Step) {
 		for i, step := range steps {
 			place := fmt.Sprintf("%s[%d]", address, i)
 			key := stringValue(step.ID)
 			ref := index.Ref(owner, key, stepFingerprint(step), place)
 			refs.Steps[step] = ref
+			refs.StepJobs[step] = job
 			if step.Pos != nil {
 				refs.Positions[[2]int{step.Pos.Line, step.Pos.Col}] = ref
 			}
 			if parallel, ok := step.Exec.(*workflowlang.ExecParallel); ok {
-				walk(ref.Node, place+".parallel", parallel.Steps)
+				walk(ref.Node, place+".parallel", job, parallel.Steps)
 			}
 		}
 	}
@@ -53,7 +55,7 @@ func Index(path string, content []byte, workflow *workflowlang.Workflow, action 
 		if action {
 			address = "runs.steps"
 		}
-		walk("job:"+id, address, workflow.Jobs[id].Steps)
+		walk("job:"+id, address, stringValue(job.ID), job.Steps)
 	}
 	return refs
 }

@@ -28,7 +28,7 @@ type compositeAnalyzer struct {
 	scriptCatalogues                  map[*repoconfig.Config][]analyzer.ScriptInput
 	runners                           *runnerlang.Knowledge
 	resolveScriptExecution            bool
-	scripts                           []scriptexecution.Unit
+	scripts                           []scriptexecution.ScriptRequest
 	scriptScopes                      []*scriptexecution.Scope
 	scriptScope                       *scriptexecution.Scope
 	scriptPaths                       execution.Paths
@@ -103,7 +103,7 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	}
 	analysis.actions.ObserveExecution(step)
 	analysis.actions.ObserveCheckout(step)
-	if err := analysis.collectScript(step, analysis.scriptConfig, "", nil, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
+	if err := analysis.collectScript(step, analysis.scriptConfig, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
 		return err
 	}
 	if _, action := step.Exec.(*workflowlang.ExecAction); !action {

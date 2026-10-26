@@ -4,9 +4,12 @@ import (
 	"slices"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
 func TestPreparedScriptsRetainIndependentShells(t *testing.T) {
@@ -29,33 +32,63 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	collector := &compositeAnalyzer{collectScripts: true}
-	startWorkflowEntry(t, collector, workflowSnapshot(t, workflow))
+	snapshot := workflowSnapshot(t, workflow)
+	collector := &compositeAnalyzer{collectScripts: true, actions: actionlocal.NewResolver(nil, nil)}
+	startWorkflowEntry(t, collector, snapshot)
 	collector.beginWorkflow(workflow)
-	var shells []string
 	for _, id := range []string{"first", "second"} {
 		job := workflow.Jobs[id]
+		collector.beginJob(job)
 		for _, step := range job.Steps {
-			if err := collector.collectScript(step, nil, "", nil, scriptDefaultShell(job.Defaults), collector.workflowScriptShell); err != nil {
+			if err := collector.collectScript(step, nil, collector.jobScriptShell, collector.workflowScriptShell); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
-	// Composite scripts have their own declared shell and never inherit callers.
-	pos := &workflowlang.Pos{Line: 1, Col: 1}
-	step := &workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo composite", Pos: pos}, RunPos: pos}}
-	startWorkflowEntry(t, collector, workflowSnapshot(t, &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": {Steps: []*workflowlang.Step{step}}}}))
-	if err := collector.collectScript(step, nil, "action.yml", nil, nil, nil); err != nil {
+	batch := prepareCollectedScripts(t, collector)
+	var shells []string
+	for _, script := range batch.Scripts() {
+		if script.Shell != nil {
+			shells = append(shells, *script.Shell)
+		} else {
+			shells = append(shells, "")
+		}
+	}
+	if !slices.Equal(shells, []string{"bash", "python3", "python"}) {
+		t.Fatal(shells)
+	}
+	// Composite declarations receive explicit shells from the indexed AST.
+	meta, err := actionmeta.Parse("action.yml", []byte("name: action\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo composite\n"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	for _, script := range collector.scripts {
-		shell := ""
-		if script.Shell != nil {
-			shell = *script.Shell
-		}
-		shells = append(shells, shell)
+	var snapshots documentparse.SourceSnapshots
+	actionSnapshot, err := snapshots.Action("action.yml", meta)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !slices.Equal(shells, []string{"bash", "python3", "python", ""}) {
-		t.Fatal(shells)
+	workflowGraph, err := invocation.NewBuilder(invocation.EntryAction, actionSnapshot.Reference(), invocation.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	deployment, err := scriptexecution.NewDeployment(actionSnapshot, meta.Path(), meta.SourceMapped)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actionCollector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: &snapshots, sourceSnapshot: actionSnapshot, invocations: workflowGraph, context: workflowGraph.RootContext()}
+	paths := execution.Paths{}
+	execution.ActionOrigin(&paths, workflowGraph.RootContext(), deployment.ActionPath())
+	actionCollector.scriptScope = &scriptexecution.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}
+	actionCollector.scriptScopes = []*scriptexecution.Scope{actionCollector.scriptScope}
+	actionSteps, ok := actionSnapshot.ActionSteps()
+	if !ok || len(actionSteps) != 1 {
+		t.Fatal("composite declarations unavailable")
+	}
+	if err := actionCollector.collectScript(actionSteps[0], nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	actionBatch := prepareCollectedScripts(t, actionCollector)
+	if got := actionBatch.Scripts()[0].Shell; got == nil || *got != "bash" {
+		t.Fatalf("composite explicit shell was not bound: %v", got)
 	}
 }

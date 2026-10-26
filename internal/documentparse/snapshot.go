@@ -17,15 +17,25 @@ import (
 
 // SourceSnapshot binds declaration references to the exact AST that produced them.
 type SourceSnapshot struct {
-	reference source.Reference
-	content   []byte
-	facts     *workflowlang.Workflow
-	steps     map[*workflowlang.Step]source.Reference
-	action    bool
+	registry     *SourceSnapshots
+	reference    source.Reference
+	content      []byte
+	facts        *workflowlang.Workflow
+	steps        map[*workflowlang.Step]source.Reference
+	declarations map[source.Reference]StepDeclaration
+	action       bool
+}
+
+// StepDeclaration is a read-only view of an indexed declaration and its source.
+type StepDeclaration struct {
+	Source *SourceSnapshot
+	Step   *workflowlang.Step
+	Job    string
 }
 
 func (s *SourceSnapshot) Reference() source.Reference { return s.reference }
 func (s *SourceSnapshot) Content() []byte             { return bytes.Clone(s.content) }
+func (s *SourceSnapshot) Registry() *SourceSnapshots  { return s.registry }
 
 // Workflow supplies the indexed AST for read-only workflow traversal.
 func (s *SourceSnapshot) Workflow() (*workflowlang.Workflow, bool) {
@@ -55,6 +65,48 @@ func (s *SourceSnapshot) StepReference(step *workflowlang.Step) (source.Referenc
 type SourceSnapshots struct {
 	mu        sync.Mutex
 	documents map[string]*SourceSnapshot
+}
+
+// Lookup requires the complete document reference, including revision and node.
+func (s *SourceSnapshots) Lookup(reference source.Reference) (*SourceSnapshot, bool) {
+	if s == nil {
+		return nil, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	snapshot := s.documents[reference.Document]
+	if snapshot == nil || snapshot.reference != reference {
+		return nil, false
+	}
+	return snapshot, true
+}
+
+func (s *SourceSnapshots) Step(reference source.Reference) (StepDeclaration, bool) {
+	if s == nil {
+		return StepDeclaration{}, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	snapshot := s.documents[reference.Document]
+	if snapshot == nil {
+		return StepDeclaration{}, false
+	}
+	declaration, exists := snapshot.declarations[reference]
+	return declaration, exists
+}
+
+func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (*SourceSnapshot, error) {
+	previous := s.documents[document]
+	if previous == nil {
+		return nil, nil
+	}
+	if previous.reference.Revision != revision {
+		return nil, fmt.Errorf("source document %q has conflicting revisions in one analysis", document)
+	}
+	if previous.action != action {
+		return nil, fmt.Errorf("source document %q has conflicting declaration kinds", document)
+	}
+	return previous, nil
 }
 
 // Document returns the canonical indexed AST for this source revision.
@@ -104,21 +156,24 @@ func (s *SourceSnapshots) bind(identity string, content []byte, action bool, dec
 	revision := sourceid.Digest(content)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if previous, exists := s.documents[document]; exists {
-		if previous.reference.Revision != revision {
-			return nil, fmt.Errorf("source document %q has conflicting revisions in one analysis", document)
-		}
-		if previous.action != action {
-			return nil, fmt.Errorf("source document %q has conflicting declaration kinds", document)
-		}
-		return previous, nil
+	previous, err := s.storedLocked(document, revision, action)
+	if err != nil || previous != nil {
+		return previous, err
 	}
 	owned := bytes.Clone(content)
 	facts := declarations()
 	references := workflowfacts.Index(document, owned, facts, action)
 	snapshot := &SourceSnapshot{
+		registry:  s,
 		reference: references.Document, content: owned, facts: facts,
 		steps: references.Steps, action: action,
+		declarations: make(map[source.Reference]StepDeclaration, len(references.Steps)),
+	}
+	for step, reference := range references.Steps {
+		if _, duplicate := snapshot.declarations[reference]; duplicate {
+			return nil, fmt.Errorf("source document %q has duplicate step references", document)
+		}
+		snapshot.declarations[reference] = StepDeclaration{Source: snapshot, Step: step, Job: references.StepJobs[step]}
 	}
 	if s.documents == nil {
 		s.documents = make(map[string]*SourceSnapshot)

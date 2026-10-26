@@ -3,7 +3,6 @@ package composition
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/source"
 
@@ -136,17 +135,17 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	parentConfig := analysis.scriptConfig
 	analysis.scriptConfig = scriptConfig
 	defer func() { analysis.scriptConfig = parentConfig }()
+	deployment, err := scriptexecution.NewDeployment(snapshot, meta.Path(), meta.SourceMapped)
+	if err != nil {
+		return err
+	}
 	parentScope := analysis.scriptScope
-	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: scriptConfig, Composite: true, Context: callContext}
+	scope := &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: scriptConfig, Deployment: deployment, Composite: true, Context: callContext}
 	if parentScope != nil {
 		scope.Paths = parentScope.Paths
 	}
-	scope.ActionPath = filepath.Dir(meta.Path())
-	if meta.SourceMapped {
-		scope.ActionPath = ""
-	}
 	scope.Paths.Placements = analysis.actions.CheckoutState()
-	execution.ActionOrigin(&scope.Paths, callContext, scope.ActionPath)
+	execution.ActionOrigin(&scope.Paths, callContext, deployment.ActionPath())
 	analysis.scriptScope = scope
 	if callContext.IsEntry() && len(analysis.scriptScopes) != 0 {
 		analysis.scriptScopes[len(analysis.scriptScopes)-1] = scope
@@ -157,16 +156,11 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	children := make([]workflowvisit.Rule, 0, len(parents))
 	var participants []workflowvisit.Rule
 	for _, parent := range parents {
-		actionPath := filepath.Dir(meta.Path())
-		if meta.SourceMapped {
-			// Source metadata does not establish the generated action's runtime directory.
-			actionPath = ""
-		}
 		participant, ok := parent.(builtin.CompositeParticipant)
 		if !ok {
 			continue
 		}
-		child, err := participant.ForComposite(builtin.Invocation{Context: callContext, ActionPath: actionPath, Actions: analysis.actions})
+		child, err := participant.ForComposite(builtin.Invocation{Context: callContext, ActionPath: deployment.ActionPath(), Actions: analysis.actions})
 		if err != nil {
 			return err
 		}
@@ -180,7 +174,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		}
 		analysis.actions.ObserveExecution(step)
 		analysis.actions.ObserveCheckout(step)
-		if err := analysis.collectScript(step, scriptConfig, meta.Path(), meta.Source, nil, nil); err != nil {
+		if err := analysis.collectScript(step, scriptConfig, nil, nil); err != nil {
 			return err
 		}
 		if _, action := step.Exec.(*workflowlang.ExecAction); action {

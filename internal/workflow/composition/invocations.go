@@ -17,6 +17,17 @@ import (
 )
 
 func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot *documentparse.SourceSnapshot) error {
+	if snapshot == nil {
+		return errors.New("entry source snapshot is unavailable")
+	}
+	registry := snapshot.Registry()
+	if registry == nil {
+		return errors.New("entry source registry is unavailable")
+	}
+	if analysis.sourceSnapshots != nil && analysis.sourceSnapshots != registry {
+		return errors.New("entry source snapshot belongs to a different registry")
+	}
+	analysis.sourceSnapshots = registry
 	graph, err := invocation.NewBuilder(kind, snapshot.Reference(), analysis.budget)
 	if err != nil {
 		return err

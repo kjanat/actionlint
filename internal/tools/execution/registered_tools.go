@@ -20,7 +20,7 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 	prepared := tools.Batch{}
 	scopes := map[*Scope]*tools.Scope{}
 	for _, scope := range batchScopes {
-		item := &tools.Scope{Config: scope.Config, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.ActionPath, Reader: scope.Paths.Reader, Composite: scope.Composite}
+		item := &tools.Scope{Config: scope.Config, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.Deployment.ActionPath(), Reader: scope.Paths.Reader, Composite: scope.Composite}
 		scopes[scope] = item
 		prepared.Scopes = append(prepared.Scopes, item)
 	}

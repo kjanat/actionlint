@@ -34,6 +34,28 @@ func copySource(source *workflowlang.ScriptSource) *workflowlang.ScriptSource {
 	return cloned
 }
 
+func copyRun(run *workflowlang.ExecRun) *workflowlang.ExecRun {
+	cloned := copyValue(run)
+	if cloned != nil {
+		cloned.Run = copyString(run.Run)
+		cloned.Shell = copyString(run.Shell)
+		cloned.WorkingDirectory = copyString(run.WorkingDirectory)
+		cloned.RunPos = copyValue(run.RunPos)
+		cloned.Source = copySource(run.Source)
+	}
+	return cloned
+}
+
+func copyInput(input *workflowlang.Input) *workflowlang.Input {
+	cloned := copyValue(input)
+	if cloned != nil {
+		cloned.Name = copyString(input.Name)
+		cloned.Value = copyString(input.Value)
+		cloned.Source = copySource(input.Source)
+	}
+	return cloned
+}
+
 func cloneInputs(scopes []*Scope, units []Unit) ([]*Scope, []Unit) {
 	clonedScopes := make([]*Scope, len(scopes))
 	byScope := make(map[*Scope]*Scope, len(scopes))
@@ -52,6 +74,8 @@ func cloneInputs(scopes []*Scope, units []Unit) ([]*Scope, []Unit) {
 	clonedUnits := slices.Clone(units)
 	// Repeated invocations share one copy of each supplied document buffer.
 	contents := make(map[*byte][]byte)
+	runs := make(map[*workflowlang.ExecRun]*workflowlang.ExecRun)
+	inputs := make(map[*workflowlang.Input]*workflowlang.Input)
 	for i := range clonedUnits {
 		unit := &clonedUnits[i]
 		unit.Scope = byScope[unit.Scope]
@@ -74,19 +98,19 @@ func cloneInputs(scopes []*Scope, units []Unit) ([]*Scope, []Unit) {
 			}
 		}
 		if unit.Run != nil {
-			unit.Run = copyValue(unit.Run)
-			unit.Run.Run = copyString(unit.Run.Run)
-			unit.Run.Shell = copyString(unit.Run.Shell)
-			unit.Run.WorkingDirectory = copyString(unit.Run.WorkingDirectory)
-			unit.Run.RunPos = copyValue(unit.Run.RunPos)
-			unit.Run.Source = copySource(unit.Run.Source)
+			original := unit.Run
+			if runs[original] == nil {
+				runs[original] = copyRun(original)
+			}
+			unit.Run = runs[original]
 		}
 		if unit.Input != nil {
 			unit.Input = copyValue(unit.Input)
-			unit.Input.Value = copyValue(unit.Input.Value)
-			unit.Input.Value.Name = copyString(unit.Input.Value.Name)
-			unit.Input.Value.Value = copyString(unit.Input.Value.Value)
-			unit.Input.Value.Source = copySource(unit.Input.Value.Source)
+			original := unit.Input.Value
+			if inputs[original] == nil {
+				inputs[original] = copyInput(original)
+			}
+			unit.Input.Value = inputs[original]
 		}
 	}
 	return clonedScopes, clonedUnits

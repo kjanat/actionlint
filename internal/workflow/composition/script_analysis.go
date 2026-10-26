@@ -4,13 +4,11 @@ import (
 	"errors"
 	"maps"
 	"slices"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -23,9 +21,9 @@ func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
 	return &defaults.Run.Shell.Value
 }
 
-func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, path string, content []byte, jobShell, workflowShell *string) error {
+func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, jobShell, workflowShell *string) error {
 	if action, ok := step.Exec.(*workflowlang.ExecAction); ok {
-		return analysis.collectActionInputs(step, action, cfg, path, content)
+		return analysis.collectActionInputs(step, action, cfg)
 	}
 	run, ok := step.Exec.(*workflowlang.ExecRun)
 	if !ok || run.Run == nil {
@@ -49,45 +47,33 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 	if shell == nil {
 		shell = workflowShell
 	}
-	if run.Shell != nil {
-		shell = &run.Shell.Value
-	}
-	unit := scriptexecution.Unit{Occurrence: occurrence, Reference: reference, Run: run, Shell: shell, Config: cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step), Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope}
-	if unit.Scope != nil && analysis.resolveScriptExecution {
-		paths := unit.Scope.Paths
+	request := scriptexecution.ScriptRequest{Occurrence: occurrence, DefaultShell: shell}
+	if analysis.scriptScope != nil && analysis.resolveScriptExecution {
+		paths := analysis.scriptScope.Paths
 		if analysis.actions != nil {
 			paths = analysis.actions.ApplyCheckout(paths)
 			paths.Platform = analysis.actions.Platform()
 		}
 		jobShell, workflowShell, runnerShell := analysis.scriptJobShell, analysis.workflowShell, analysis.scriptRunnerShell
 		jobDir, workflowDir := analysis.scriptJobDir, analysis.scriptWorkflowDir
-		if unit.Scope.Composite {
+		if analysis.scriptScope.Composite {
 			jobShell, workflowShell, runnerShell = execution.ShellValue{}, execution.ShellValue{}, execution.ShellValue{}
 			jobDir, workflowDir = execution.Directory{}, execution.Directory{}
 		}
-		unit.Execution = scriptexecution.Execution{
+		request.Execution = scriptexecution.Execution{
 			Shell:     execution.ResolveShell(run, jobShell, workflowShell, runnerShell),
 			Directory: paths.Resolve(paths.EffectiveDirectory(run, jobDir, workflowDir)),
 		}
 	}
-	analysis.scripts = append(analysis.scripts, unit)
+	analysis.scripts = append(analysis.scripts, request)
 	return nil
 }
 
-func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, action *workflowlang.ExecAction, cfg *repoconfig.Config, path string, content []byte) error {
-	if action.Uses == nil || action.Uses.ContainsExpression() {
+func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, action *workflowlang.ExecAction, cfg *repoconfig.Config) error {
+	name, valid := scriptexecution.ScriptInputAction(action)
+	if !valid {
 		return nil
 	}
-	name, _, pinned := strings.Cut(action.Uses.Value, "@")
-	if !pinned {
-		return nil
-	}
-	parts := strings.SplitN(name, "/", 3)
-	if len(parts) < 2 {
-		return nil
-	}
-	parts[0], parts[1] = strings.ToLower(parts[0]), strings.ToLower(parts[1])
-	name = strings.Join(parts, "/")
 	inputs, _ := workflowlang.ActionInputNames(action)
 	var catalogue []analyzer.ScriptInput
 	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
@@ -126,13 +112,7 @@ func (analysis *compositeAnalyzer) collectActionInputs(step *workflowlang.Step, 
 		if !analysis.collectScripts {
 			continue
 		}
-		analysis.scripts = append(analysis.scripts, scriptexecution.Unit{
-			Occurrence: occurrence,
-			Reference:  reference,
-			Input:      &scriptexecution.ActionInput{Site: site, Value: input},
-			Config:     cfg, Path: path, Content: content, Origin: findingmodel.StepOrigin(analysis.jobID, step),
-			Owner: &findingmodel.Owner{Job: analysis.jobID, Step: step.Pos}, Scope: analysis.scriptScope,
-		})
+		analysis.scripts = append(analysis.scripts, scriptexecution.ScriptRequest{Occurrence: occurrence, Input: &site})
 	}
 	return nil
 }

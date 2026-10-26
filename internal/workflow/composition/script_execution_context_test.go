@@ -129,7 +129,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			j.Steps = []*workflowlang.Step{step}
 			w.Jobs = map[string]*workflowlang.Job{"test": j}
 			startWorkflowEntry(t, collector, workflowSnapshot(t, w))
-			if err := collector.collectScript(step, nil, "", nil, nil, nil); err != nil {
+			if err := collector.collectScript(step, nil, nil, nil); err != nil {
 				t.Fatal(err)
 			}
 			if s := collector.scripts[0].Execution.Shell.Name; s != tc.want {

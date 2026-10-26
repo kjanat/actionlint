@@ -27,7 +27,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 				}}
 				step := &workflow.Step{Exec: action}
 				startWorkflowEntry(t, &analysis, workflowSnapshot(t, &workflow.Workflow{Jobs: map[string]*workflow.Job{"test": {Steps: []*workflow.Step{step}}}}))
-				if err := analysis.collectActionInputs(step, action, nil, "workflow.yml", nil); err != nil {
+				if err := analysis.collectActionInputs(step, action, nil); err != nil {
 					t.Fatal(err)
 				}
 				graph, err := analysis.invocations.Publish()

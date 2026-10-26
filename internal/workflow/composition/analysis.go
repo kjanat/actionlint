@@ -89,6 +89,9 @@ func (s *Service) Action(metadata *actionmeta.Metadata) (Result, error) {
 		if metadata == nil {
 			return errors.New("action metadata is unavailable")
 		}
+		if c.sourceSnapshots == nil {
+			c.sourceSnapshots = &documentparse.SourceSnapshots{}
+		}
 		snapshot, err := c.sourceSnapshots.Action(fsread.PhysicalPath(metadata.Path()), metadata)
 		if err != nil {
 			return err
@@ -135,9 +138,6 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		scriptCatalogues:      map[*repoconfig.Config][]analyzer.ScriptInput{},
 		sourceSnapshots:       options.SourceSnapshots,
 	}
-	if c.sourceSnapshots == nil {
-		c.sourceSnapshots = &documentparse.SourceSnapshots{}
-	}
 	if options.Budget != nil {
 		c.budget = *options.Budget
 	}
@@ -169,7 +169,9 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 	var findings []*findingmodel.Finding
 	if graph.Has(graph.RootID()) {
 		var prepareErr error
-		batch, prepareErr = scriptexecution.NewBatch(graph, c.scriptScopes, c.scripts, c.collectScripts)
+		batch, prepareErr = scriptexecution.NewBatch(graph, scriptexecution.Collection{
+			Declarations: c.sourceSnapshots, Scopes: c.scriptScopes, Scripts: c.scripts, Collected: c.collectScripts,
+		})
 		err = errors.Join(err, prepareErr)
 		if prepareErr == nil {
 			var scriptErr error
