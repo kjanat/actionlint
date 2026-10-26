@@ -31,8 +31,8 @@ flowchart TD
 `localapp` supplies the local WASM loaders and owns component-plugin lifetime.
 `application` accepts injected analyzer registrations and backend loaders. Neither
 the engine nor the public analysis API acquires a dependency on a WASM runtime.
-Explicitly supplied backends remain caller-owned; engines created by the loader
-are session-owned.
+Callers manage explicitly supplied backends; the session closes engines created
+by its loader.
 
 ## Responsibilities
 
@@ -86,8 +86,7 @@ analyzers finish. See [Analysis ownership](analysis-ownership.md) for the decisi
 and dependency constraints.
 
 Five declaration checks use a shared visitor adapter over stateless workflow
-projections. Remaining expression, composite and policy adapters still retain
-traversal state; public analyzers and backends never implement that visitor.
+projections. Expression, composite and policy adapters use traversal state.
 
 ## Enforcement
 

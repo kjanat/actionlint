@@ -124,15 +124,15 @@ tool option preserves its neighbors; lists and scalars replace so removals are
 unambiguous. These examples start with expression-reference `options.variables: [DEPLOY_ENV]` and
 `tools.shellcheck.config: {disable: [SC2086], enable: [all]}`:
 
-| Overlay                                                  | Effect                                                          |
-| -------------------------------------------------------- | --------------------------------------------------------------- |
-| Omitted or blank input                                   | Inherit the file.                                               |
-| `config: '{}'`                                           | Keep inherited settings.                                        |
-| `config: 'null'`                                         | Reset the complete config to defaults.                          |
-| `config: 'tools: {shellcheck: false}'`                   | Disable ShellCheck, retaining its settings for a later overlay. |
-| `config: 'tools: {shellcheck: {config: {disable: []}}}'` | Clear disabled codes; retain `enable: [all]`.                   |
-| `config: 'tools: {shellcheck: {config: .shellcheckrc}}'` | Replace the inline directive map with an rc path.               |
-| `config: 'tools: {shellcheck: {config: null}}'`          | Clear rc/inline configuration.                                  |
+| Overlay                                                  | Effect                                            |
+| -------------------------------------------------------- | ------------------------------------------------- |
+| Omitted or blank input                                   | Inherit the file.                                 |
+| `config: '{}'`                                           | Keep inherited settings.                          |
+| `config: 'null'`                                         | Reset the complete config to defaults.            |
+| `config: 'tools: {shellcheck: false}'`                   | Set only ShellCheck's enabled flag to false.      |
+| `config: 'tools: {shellcheck: {config: {disable: []}}}'` | Clear the disabled-code list.                     |
+| `config: 'tools: {shellcheck: {config: .shellcheckrc}}'` | Replace the inline directive map with an rc path. |
+| `config: 'tools: {shellcheck: {config: null}}'`          | Clear rc/inline configuration.                    |
 
 An empty map inherits **a map**. Switching between an rc string and an inline
 mapping replaces the old form; `{}` after an rc string selects an empty mapping.
@@ -195,13 +195,11 @@ excerpts, caret ranges and two surrounding lines on either side when the source 
 Documentation URLs appear on their own line. Source locations link to the
 run's commit only when the checkout matches its repository and revision and the file
 matches the committed content, allowing LF/CRLF line-ending conversion. Other content changes,
-generated, external and nested-checkout files remain plain text. Repository-defined Git filters are not run.
+generated, external and nested-checkout files have plain-text locations. Repository-defined Git filters are not run.
 Locations respect `working-directory`.
-Findings remain visible without expanding a details section. Incomplete analysis
-is identified separately from lint findings. For multiple invocations in one job,
+The summary displays findings and identifies incomplete analysis. For multiple invocations in one job,
 set `summary-title: Production workflows` to add a small report label. Summaries have no title by default.
 Clean runs, empty selections and failures include a short status message in the summary and text log.
-JSON, JSON Lines and SARIF console output remain machine-readable.
 
 Save reports even when findings fail the lint step:
 
@@ -236,13 +234,12 @@ Save reports even when findings fail the lint step:
 CLI `check --json`, Action `format: json`, and `result-file` share this contract.
 JSON Lines uses the same diagnostic objects with `schema_version` on each record.
 See [the result contract](results.md) for TypeScript types, schema evolution, and
-migration from the previous Action diagnostic array. Full workflow/job/step
-inventories remain separate work (kjanat/actionlint#189).
+migration from the previous Action diagnostic array.
 
 Files use unique absolute paths and survive for later steps in the **same job**.
 Upload them for use elsewhere. A result is attempted for setup/input failures too;
 failure to create/write files can prevent that output. Missing output is never
-evidence of a clean run. Incomplete results retain known diagnostics; `file_count`
+evidence of a clean run. Incomplete results include collected diagnostics; `file_count`
 may be null. SARIF is exposed only for completed analysis. `fail-on-error: false`
 allows a step with findings to pass while preserving the recorded analysis outcome.
 Match findings by path, location and rule; array indexes can change between runs.
@@ -265,8 +262,7 @@ jobs:
 
 Reviews group findings on changed lines and add applicable suggestions. Reruns
 deduplicate existing comments. Missing PR context, unchanged lines, mismatched
-source, limits and permission errors produce concise feedback; analysis files
-remain available. Use the ordinary `pull_request` event; fork PR tokens may lack
+source, limits and permission errors produce feedback. Use the ordinary `pull_request` event; fork PR tokens may lack
 write permission. Review failure is advisory and leaves the analysis outcome intact.
 
 ## Plugins and binary installation
@@ -325,7 +321,7 @@ All inputs are optional. Booleans accept `true`/`false`.
 | `version`        | Installed binary version, without the `v` prefix.                                                                       |
 | `exit-code`      | Exit status: 0 successful setup/clean analysis, 1 findings, 2 invalid input, 3 failure.                                 |
 | `result`         | `success`, `problems-found`, `invalid-options`, `failure`.                                                              |
-| `problems-found` | Whether analysis completed with findings. Partial findings remain in `result-file`.                                     |
+| `problems-found` | Whether analysis completed with findings. See `result-file` for partial results.                                        |
 | `problem-count`  | Count, or empty when analysis did not complete.                                                                         |
 | `output`         | Selected serialization; JSON uses the same result as `result-file`, including failures. Prefer files for large reports. |
 | `output-file`    | Workspace-relative requested path, or empty.                                                                            |
@@ -343,8 +339,7 @@ the default; there is no separate legacy JSON mode. Coordinate affected consumer
 before promoting moving Action tags.
 
 New defaults add a compact summary and actionlint PATH export; turn either off when
-unwanted. JavaScript removes Docker's Linux/daemon requirement. Existing immutable
-Docker releases and digest pins remain untouched. Compatibility images continue
+unwanted. JavaScript removes Docker's Linux/daemon requirement. Compatibility images are published
 as `action-X.Y.Z`, `action-vX.Y`, `action-vX`, and `action-latest`, using a thin
 wrapper around the ordinary binary. [Release maintainers](../tools/release/bump-version/README.md)
 prepare, inspect and promote the same tested candidate.

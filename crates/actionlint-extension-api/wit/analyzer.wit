@@ -218,7 +218,6 @@ interface analyzer {
 
     describe: func() -> descriptor;
 
-    /// Findings remain valid even when analysis could not complete.
     record outcome {
         diagnostics: list<diagnostic>,
         error: option<string>,

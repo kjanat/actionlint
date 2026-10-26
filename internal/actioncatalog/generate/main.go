@@ -287,7 +287,6 @@ func (g *gen) writeJSONL(out io.Writer, actions map[string]*actionmeta.Metadata)
 }
 
 func (g *gen) writeGo(out io.Writer, actions map[string]*actionmeta.Metadata) error {
-	// Bound each initializer so large catalogues remain compilable for WASM.
 	const chunkSize = 50
 	active := 0
 	for spec, meta := range actions {

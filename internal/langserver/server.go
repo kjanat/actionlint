@@ -20,7 +20,7 @@ type Document struct {
 	Text    string `json:"text"`
 }
 
-// Analysis retains source snapshots for findings in files that are not open.
+// Analysis supplies diagnostic source text for files outside the editor's open buffers.
 // Sources and Diagnostics must belong to the same analysis generation.
 type Analysis struct {
 	Diagnostics []diagnostic.Diagnostic

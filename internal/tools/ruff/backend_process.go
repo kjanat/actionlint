@@ -103,7 +103,6 @@ func (p *ProcessBackend) Check(ctx context.Context, request analyzer.ScriptReque
 			return nil, fmt.Errorf("invalid Ruff engine config: %w", err)
 		}
 	}
-	// Ruff combines repeated selector flags in order.
 	if target, ok := config.Native["target-version"].(string); ok {
 		config.TargetVersion = target
 		delete(config.Native, "target-version")

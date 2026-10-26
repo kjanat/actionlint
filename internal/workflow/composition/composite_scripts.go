@@ -39,7 +39,9 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		return nil
 	}
 	site, facts, err := analysis.describeCall(call)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	ticket, err := analysis.invocations.Begin(analysis.context, site, facts)
 	if err != nil {
 		return err
@@ -57,7 +59,9 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		return analysis.visitOpaqueAction(call, action, deferred)
 	}
 	callContext, admitted := ticket.Context()
-	if !admitted { return invocation.ErrForeignContext }
+	if !admitted {
+		return invocation.ErrForeignContext
+	}
 	parent := analysis.context
 	analysis.context = callContext
 	opened := false
@@ -102,7 +106,9 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, ac
 }
 
 func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, callContext invocation.Context, parents []workflowvisit.Rule) error {
-	if !analysis.invocations.Owns(callContext) { return invocation.ErrForeignContext }
+	if !analysis.invocations.Owns(callContext) {
+		return invocation.ErrForeignContext
+	}
 	if analysis.sourceSnapshots == nil {
 		analysis.sourceSnapshots = &documentparse.SourceSnapshots{}
 	}
@@ -225,9 +231,13 @@ func compositeCheckoutScope(paths *execution.Paths, actions *actionlocal.Resolve
 }
 
 func (analysis *compositeAnalyzer) describeCall(step *workflowlang.Step) (source.Reference, invocation.Facts, error) {
-	if analysis.sourceSnapshot == nil { return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable") }
+	if analysis.sourceSnapshot == nil {
+		return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
+	}
 	site, err := analysis.sourceSnapshot.StepReference(step)
-	if err != nil { return source.Reference{}, invocation.Facts{}, err }
+	if err != nil {
+		return source.Reference{}, invocation.Facts{}, err
+	}
 	facts, err := execution.CallFacts(step, analysis.actions.Platform())
 	return site, facts, err
 }

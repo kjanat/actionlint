@@ -168,7 +168,7 @@ func (o Outcome) Valid() bool { return o.kind != OutcomeInvalid }
 // Reason returns the stable reason; empty for expanded outcomes.
 func (o Outcome) Reason() Reason { return o.reason }
 
-// Detail returns the retained message, such as a lookup failure.
+// Detail returns the outcome's explanatory message.
 func (o Outcome) Detail() string { return o.detail }
 
 // Target returns the resolved target declaration for expanded and cycle
@@ -204,7 +204,7 @@ func Unavailable(reason Reason, detail string) (Outcome, error) {
 	return reasoned(OutcomeUnavailable, reason, detail)
 }
 
-// Unresolved reports metadata that could not be resolved, retaining the failure.
+// Unresolved constructs a metadata lookup failure with its reason and detail.
 func Unresolved(reason Reason, detail string) (Outcome, error) {
 	return reasoned(OutcomeUnresolved, reason, detail)
 }

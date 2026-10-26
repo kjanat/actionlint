@@ -2,7 +2,7 @@
   "metadata_version": 1,
   "transport": "wasm-component",
   "interface": "kjanat:actionlint/script-engine@0.1.0",
-  "contract_sha256": "cb0d4c86f1c4e9e8029368b8686f5da542d8e6e542483aa6dbce2510a35eba86",
+  "contract_sha256": "fc83d48085f27a1249d9a8d9259968da4484b8ebabd1137f13bdf6895d0039e0",
   "id": "echo-component",
   "name": "Echo component",
   "plugin_version": "1.0.0",

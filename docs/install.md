@@ -410,7 +410,7 @@ installation for later steps in the same job:
 provide native `shellcheck` and `ruff` executables. The `shellcheck` and `ruff` inputs control Wasm checks during
 analysis; they do not install those tools on `PATH`. Provision native executables separately if later steps need them.
 For later actionlint checks, install and pin the project's plugins using the commands above.
-Existing immutable releases retain their original implementation. Pin a published release commit SHA or a specific
+Pin a published release commit SHA or a specific
 release tag for reproducible setup. See the [Action installation guide](action.md#install-without-running-analysis)
 for version selection and prerequisites.
 

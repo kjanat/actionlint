@@ -13,8 +13,8 @@ effective options and derives resource requests after applying those overrides.
 The host validates explicit options against the analyzer's advertised schema
 before negotiation; malformed caller options must not trigger native fallback.
 
-`shell`, `disable`, `enable` and `extended-analysis` retain ShellCheck directive
-semantics. `rc-file` selects a native configuration file; plugins without rc-file
+`shell`, `disable`, `enable` and `extended-analysis` follow ShellCheck's directive
+syntax. `rc-file` selects a native configuration file; plugins without rc-file
 support decline it. Code ranges and `all` are valid profile inputs, but engines
 supporting only individual diagnostic codes decline those selections.
 
@@ -33,12 +33,11 @@ the workspace boundary. Configured paths and requested subdirectories must stay
 within it after symlink resolution. Child grants open through the workspace's
 existing directory handle, preserving containment against concurrent changes.
 Source paths that resolve outside the workspace, including configured symlink
-escapes, fail analysis. Missing paths receive no filesystem grant. Native
-ShellCheck retains its separately selected process behavior.
+escapes, fail analysis. Missing paths receive no filesystem grant.
 
 Negotiated options belong to the plugin. Host filesystem metadata never enters
 those options. The `source-files` WIT import supplies typed host/guest mount
 translations for the granted invocation; WASI enforces actual read access.
-Search paths remain unchanged in options and the guest resolves them through
-the granted translations. Diagnostic paths inside grants are translated back
+The guest resolves option search paths through the granted translations.
+Diagnostic paths inside grants are translated back
 to their original source by the host.

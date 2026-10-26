@@ -3,6 +3,7 @@ package execution
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -12,7 +13,94 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
+	"actionlint.kjanat.dev/v2/source"
 )
+
+func TestBatchValidatesScopeOutcome(t *testing.T) {
+	for _, state := range []string{"depth", "cycle", "interrupted", "noncomposite"} {
+		t.Run(state, func(t *testing.T) {
+			entry := source.Reference{Document: "entry", Node: "document"}
+			builder, err := invocation.NewBuilder(invocation.EntryAction, entry, invocation.Budget{MaxDepth: 1, MaxCalls: 5, MaxScripts: 5})
+			if err != nil {
+				t.Fatal(err)
+			}
+			scopes := []*Scope{{Context: builder.RootContext(), Composite: true}}
+			ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "entry", Node: "call"}, invocation.Facts{Condition: invocation.ConditionEnabled})
+			if err != nil {
+				t.Fatal(err)
+			}
+			call, admitted := ticket.Context()
+			if !admitted {
+				t.Fatal("call was not admitted")
+			}
+			target := source.Reference{Document: "child", Node: "document"}
+			if state == "cycle" {
+				target = entry
+			}
+			outcome, err := invocation.Expanded(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := builder.Resolve(call, outcome); err != nil {
+				t.Fatal(err)
+			}
+			scopes = append(scopes, &Scope{Context: call, Composite: state != "noncomposite"})
+			if state == "depth" {
+				frontier, err := builder.Begin(call, source.Reference{Document: "child", Node: "nested"}, invocation.Facts{Condition: invocation.ConditionEnabled})
+				if err != nil || frontier.Status() != invocation.DepthLimited {
+					t.Fatalf("depth fixture: %v", err)
+				}
+				context, exists := builder.Context(frontier.ID())
+				if !exists {
+					t.Fatal("frontier context absent")
+				}
+				scopes = append(scopes, &Scope{Context: context, Composite: true})
+			}
+			if state == "interrupted" {
+				if _, err := builder.Interrupt(invocation.ReasonCanceled, "cancelled"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if state != "cycle" {
+				if err := builder.Close(call); err != nil {
+					t.Fatal(err)
+				}
+			}
+			graph, err := builder.Publish()
+			if err != nil {
+				t.Fatal(err)
+			}
+			batch, err := NewBatch(graph, scopes, nil, false)
+			if state == "interrupted" {
+				if err != nil || !batch.Valid() {
+					t.Fatalf("interrupted body rejected: %v", err)
+				}
+			} else if !errors.Is(err, ErrInvalidBatch) || !strings.Contains(err.Error(), "scope does not describe an expanded invocation") {
+				t.Fatalf("invalid %s scope: %v", state, err)
+			}
+		})
+	}
+}
+
+func TestBatchRejectsForgedEntryPaths(t *testing.T) {
+	for _, field := range []string{"analysis path", "runner path", "independent"} {
+		t.Run(field, func(t *testing.T) {
+			graph, scopes, units := batchFixture(t, false)
+			switch field {
+			case "analysis path":
+				scopes[0].Paths.ActionPath = "foreign"
+			case "runner path":
+				scopes[0].Paths.ActionRunnerPath = "foreign"
+			case "independent":
+				scopes[0].Paths.ActionIndependent = true
+			}
+			_, err := NewBatch(graph, scopes, units, true)
+			if !errors.Is(err, ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
+				t.Fatalf("forged entry %s: %v", field, err)
+			}
+		})
+	}
+}
 
 func batchFixture(t *testing.T, withInput bool) (invocation.Graph, []*Scope, []Unit) {
 	t.Helper()
@@ -168,7 +256,9 @@ func TestScopesOnlyBatchCannotDropCompletedScopes(t *testing.T) {
 		t.Fatal(err)
 	}
 	callContext, admitted := ticket.Context()
-	if !admitted { t.Fatal("fixture call was not admitted") }
+	if !admitted {
+		t.Fatal("fixture call was not admitted")
+	}
 	scopes[0].Context = builder.RootContext()
 	target := graph.Entry().Reference
 	target.Document = "child"

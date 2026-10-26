@@ -162,7 +162,9 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 				}
 				var admitted bool
 				owner, admitted = ticket.Context()
-				if !admitted { t.Fatal("fixture call was not admitted") }
+				if !admitted {
+					t.Fatal("fixture call was not admitted")
+				}
 				ref := source.Reference{Document: "child", Revision: "revision", Node: "root"}
 				expanded, err := invocation.Expanded(ref)
 				if err != nil {

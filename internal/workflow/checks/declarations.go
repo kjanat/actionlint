@@ -15,8 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow"
 )
 
-// Finding retains the declaration owner when a check covers an entire job.
-// The host may attach source identity and invocation policy without rerunning it.
+// Finding associates a diagnostic with its owning step.
 type Finding struct {
 	diagnostic.Diagnostic
 	Step *workflow.Step

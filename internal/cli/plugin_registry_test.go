@@ -188,8 +188,6 @@ func TestRegistryManifestInstallAndMigration(t *testing.T) {
 	r.Offline = true
 	requests := len(r.Requests)
 	pluginCommandTest(t, 0, "plugin", "install", "--config", "custom.yaml")
-	// The lock remains usable for explicit low-level loading; normal management
-	// requires a declaration and provides one explicit migration operation.
 	if err := os.Remove("custom.yaml"); err != nil {
 		t.Fatal(err)
 	}

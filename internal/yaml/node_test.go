@@ -25,7 +25,6 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 	if err := root.Decode(&value); err != nil {
 		t.Fatal(err)
 	}
-	// The explicit null remains a null regardless of the display value.
 	if value.Base.Value.Value != "" {
 		t.Fatal(value)
 	}

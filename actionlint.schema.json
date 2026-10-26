@@ -1072,8 +1072,8 @@
                                               "properties": {
                                                 "secrets": {
                                                   "title": "secrets",
-                                                  "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
-                                                  "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                  "description": "Adds configured secret names to built-in and workflow_call names.",
+                                                  "markdownDescription": "Adds configured secret names to built-in and workflow_call names.",
                                                   "oneOf": [
                                                     {
                                                       "type": "array",
@@ -3072,8 +3072,8 @@
                                                   "properties": {
                                                     "report": {
                                                       "title": "report",
-                                                      "description": "Report the prohibited directive or retain original violations or both.",
-                                                      "markdownDescription": "Report the prohibited directive or retain original violations or both.",
+                                                      "description": "Select suppression comments",
+                                                      "markdownDescription": "Select suppression comments",
                                                       "default": "all",
                                                       "type": "string",
                                                       "enum": [
@@ -5246,8 +5246,8 @@
                                                         "properties": {
                                                           "secrets": {
                                                             "title": "secrets",
-                                                            "description": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
-                                                            "markdownDescription": "Lists configured secret names; built-ins and workflow_call secrets remain available.",
+                                                            "description": "Adds configured secret names to built-in and workflow_call names.",
+                                                            "markdownDescription": "Adds configured secret names to built-in and workflow_call names.",
                                                             "oneOf": [
                                                               {
                                                                 "type": "array",
@@ -7246,8 +7246,8 @@
                                                             "properties": {
                                                               "report": {
                                                                 "title": "report",
-                                                                "description": "Report the prohibited directive or retain original violations or both.",
-                                                                "markdownDescription": "Report the prohibited directive or retain original violations or both.",
+                                                                "description": "Select suppression comments",
+                                                                "markdownDescription": "Select suppression comments",
                                                                 "default": "all",
                                                                 "type": "string",
                                                                 "enum": [

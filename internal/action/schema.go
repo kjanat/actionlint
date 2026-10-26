@@ -22,9 +22,6 @@ const (
 	actionSchemaUnion
 )
 
-// These definitions retain the runner's structural constraints independently of
-// the metadata fields needed for checking workflow callers. Required execution
-// fields and runtime-specific diagnostics belong to action/validation.
 type actionSchemaDefinition struct {
 	kind       actionSchemaKind
 	properties map[string]string

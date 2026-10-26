@@ -23,8 +23,7 @@ func matrixValueContainsExpression(value workflowlang.RawYAMLValue) bool {
 	return false
 }
 
-// RowElements retains expression provenance after inserting one array
-// level. Unknown elements leave the row open to additional runtime values.
+// RowElements expands one array level and reports whether all row values are known.
 func RowElements(row *workflowlang.MatrixRow, expressions bool) ([]Element, bool) {
 	expressions = expressions && !row.Evaluated
 	values := row.Values
@@ -70,13 +69,13 @@ func RowElements(row *workflowlang.MatrixRow, expressions bool) ([]Element, bool
 	return elements, complete
 }
 
-// Combination retains expression provenance while expanding filter entries.
+// Combination pairs an include/exclude entry with its expression-evaluation mode.
 type Combination struct {
 	Combination *workflowlang.MatrixCombination
 	Expressions bool
 }
 
-// Combinations expands known entries and omits entries whose values remain dynamic.
+// Combinations expands statically known include/exclude entries.
 func Combinations(filters *workflowlang.MatrixCombinations, expressions bool) []Combination {
 	if filters == nil {
 		return nil

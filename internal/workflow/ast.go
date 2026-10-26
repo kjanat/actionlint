@@ -933,7 +933,7 @@ type MatrixCombination struct {
 // sections.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixCombinations struct {
-	// Name retains the original include/exclude key for expression validation.
+	// Name is the include/exclude key as written in source.
 	Name         *String
 	Evaluated    bool
 	Combinations []*MatrixCombination
@@ -1020,7 +1020,7 @@ type Step struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsname
 	Name *String
 	Exec Exec
-	// declaredUses retains a reference rejected by a conflicting execution key.
+	// DeclaredUses records uses even when a conflicting execution key invalidates it.
 	DeclaredUses *String
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsenv
 	Env *Env
@@ -1234,7 +1234,7 @@ type Job struct {
 	// WorkflowCall is a Workflow call by 'uses:'.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_iduses
 	WorkflowCall *WorkflowCall
-	// declaredUses retains a call rejected because it also declares Step-only keys.
+	// DeclaredUses records uses even when step-only keys invalidate the call.
 	DeclaredUses *String
 	// Snapshot is a custom image Snapshot.
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/Workflow-syntax#jobsjob_idsnapshot

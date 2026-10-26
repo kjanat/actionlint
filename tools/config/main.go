@@ -280,7 +280,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	case reflect.TypeFor[actionlint.SuppressionsPolicy]():
 		mapping := reflectMapping(struct {
 			Rules  []string `yaml:"rules" jsonschema:"minItems=1,description=Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules."`
-			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Report the prohibited directive or retain original violations or both."`
+			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Select suppression comments, original violations, or both for reporting."`
 		}{})
 		rules, _ := mapping.Properties.Get("rules")
 		rules.Items.Description = "Built-in rule ID or registered analyzer name."

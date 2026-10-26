@@ -213,7 +213,6 @@ type Stop struct {
 	Max    int
 }
 
-// budgetError retains the first exhausted resource and rejected declaration.
 type budgetError struct{ stop Stop }
 
 func (e budgetError) Error() string {
@@ -438,7 +437,9 @@ type Ticket struct {
 func (t Ticket) ID() ID { return t.context.ID() }
 
 func (t Ticket) Context() (Context, bool) {
-	if t.status != Admitted { return Context{}, false }
+	if t.status != Admitted {
+		return Context{}, false
+	}
 	return t.context, true
 }
 
@@ -448,7 +449,7 @@ func (t Ticket) Status() Admission { return t.status }
 // Err returns the original budget error for a stopped admission, otherwise nil.
 func (t Ticket) Err() error { return t.err }
 
-// Begin admits a call under parent (the entry ID or an open expanded call).
+// Begin admits a call under the entry or an open expanded call context.
 // It checks parent and site validity and duplicate traversal, then the total
 // budget, then depth, all before metadata acquisition.
 func (b *Builder) Begin(parentContext Context, site source.Reference, facts Facts) (Ticket, error) {
@@ -606,7 +607,7 @@ func (b *Builder) Close(context Context) error {
 	return nil
 }
 
-// Interrupt marks the deepest unfinished call interrupted and returns its ID.
+// Interrupt marks the deepest unfinished call interrupted and returns its context.
 // A pending call becomes interrupted; an open expanded call keeps its target
 // on the interrupted outcome and is closed. Ancestors stay expanded and must
 // still be closed.

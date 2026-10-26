@@ -47,7 +47,9 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Scr
 	if call, exists := graph.Call(record.Owner); exists {
 		facts, _ := call.Facts()
 		projected := &analyzer.Invocation{Reference: call.Site(), Step: diagmodel.Position{Line: facts.Step.Line, Column: facts.Step.Column}, Depth: call.Depth(), Uses: facts.Uses}
-		if call.Site().Document != graph.Entry().Reference.Document { projected.Caller = call.Site().Document }
+		if call.Site().Document != graph.Entry().Reference.Document {
+			projected.Caller = call.Site().Document
+		}
 		script.Invocation = projected
 	}
 	if includeExecution && unit.Input == nil {

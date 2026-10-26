@@ -131,7 +131,7 @@ outputs:
       Repository-relative output file path,
       or an empty string when output-file was not set.
   result-file:
-    description: Absolute path to the versioned analysis result, retained for later steps even when analysis fails.
+    description: Absolute path to the versioned analysis result, including partial findings when analysis fails.
   report-sarif:
     description: Absolute path to the SARIF report when requested and analysis completed.
 runs: { using: node24, main: action.mjs } # actionlint:ignore action -- action.mjs is generated when building the release bundle.

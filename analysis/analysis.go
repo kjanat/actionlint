@@ -51,7 +51,7 @@ type Options struct {
 	// LoadScriptEngine authorizes configuration-selected Wasm engines. Nil disables
 	// them. Calls receive resolved paths and may be concurrent. Each analysis loads
 	// each path once and closes returned backends implementing Close(context.Context) error.
-	// Explicit Tool selections take precedence. Native processes remain disabled.
+	// Explicit Tool selections take precedence.
 	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 	// WorkingDir roots source paths, config selection and local references.
 	// Empty uses the process working directory; Analyze does not discover config.

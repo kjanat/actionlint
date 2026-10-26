@@ -44,7 +44,7 @@ flowchart LR
 
 Workflow and standalone-action analysis have distinct entrypoints. They share
 invocation machinery and value projections without routing action metadata through
-workflow traversal. Configuration failures retain the already-parsed outline.
+workflow traversal.
 
 Composite analysis returns findings, script facts, loaded sources and resolved
 composite configurations together. It executes prepared script services and joins
@@ -54,7 +54,7 @@ Cleanup failures accompany partial findings and are reported once.
 
 Script producers snapshot ownership before execution, independently of suppression
 selectors. Reference inference consumes explicit owners and source indexes; it does
-not reconstruct owners from ignore state. Explicit provider references remain intact.
+not reconstruct owners from ignore state.
 
 ## Consequences and alternatives
 
@@ -63,7 +63,7 @@ That cost makes resource lifetime and source provenance visible and testable.
 Builtin adapters still use visitor state and explicit composite capabilities;
 rewriting their semantic implementations is a separate concern.
 
-Moving files while retaining `engine.Run` as the composition root was rejected:
+Moving files without replacing `engine.Run` as the composition root was rejected:
 it would preserve the dependency graph and lifetime ambiguity. Creating separate
 workflow/action runtimes was also unnecessary; their distinct entrypoints can share
 the invocation lifecycle without sharing document dispatch.

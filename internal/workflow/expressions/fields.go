@@ -177,8 +177,7 @@ func (rule *Checker) checkConcurrency(c *workflowlang.Concurrency, workflowKey s
 	if c.Queue == nil || c.CancelInProgress == nil {
 		return
 	}
-	// Literal YAML conflicts are diagnosed by the parser. Resolve known
-	// expression values here, retaining unknown values for runtime validation.
+	// The parser diagnoses literal YAML conflicts; check evaluated expressions here.
 	if !c.Queue.ContainsExpression() && c.CancelInProgress.Expression == nil {
 		return
 	}
@@ -375,8 +374,7 @@ func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) [
 	if !ok {
 		return nil
 	}
-	// Contextless schema definitions reject expressions. The runner folds a sole
-	// string literal expression into a string, but interpolation remains an expression.
+	// Static fields accept a single string literal expression after template folding.
 	if workflowKey == "" && len(ts) > 0 && (len(ts) != 1 || !str.IsExpressionAssigned()) {
 		rule.Error(str.Pos, "expressions are not allowed in this static workflow field")
 		return nil
@@ -518,7 +516,7 @@ func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key s
 		return nil
 	}
 	errors := shape.ValidateType(ty, what)
-	// Inferred array elements can merge to AnyType. Retain known JSON values for
+	// Inferred arrays can lose element types to AnyType; known JSON values allow
 	// per-element and literal constraint checks.
 	if len(errors) == 0 {
 		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {

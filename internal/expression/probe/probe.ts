@@ -334,7 +334,7 @@ function digest(value: unknown, length: number): string {
 	return text;
 }
 
-/** Rebuild outcomes from retained dispatches, never from untrusted saved verdicts. */
+/** Derive outcomes from captured dispatch evidence. */
 export function sessionForCollection(value: unknown, currentCorpusSha256: string): Session {
 	const saved = object(value);
 	const source = object(saved.source);

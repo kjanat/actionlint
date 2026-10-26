@@ -125,9 +125,18 @@ func NewBatch(graph invocation.Graph, scopes []*Scope, scripts []Unit, collected
 }
 
 func validateScope(scope *Scope, graph invocation.Graph) error {
-	if !graph.Owns(scope.Context) { return fmt.Errorf("%w: foreign invocation context", ErrInvalidBatch) }
+	if !graph.Owns(scope.Context) {
+		return fmt.Errorf("%w: foreign invocation context", ErrInvalidBatch)
+	}
+	paths := scope.Paths
+	workflowexecution.ActionOrigin(&paths, scope.Context, scope.ActionPath)
+	if paths.ActionPath != scope.Paths.ActionPath || paths.ActionRunnerPath != scope.Paths.ActionRunnerPath || paths.ActionIndependent != scope.Paths.ActionIndependent {
+		return fmt.Errorf("%w: action paths disagree with invocation context", ErrInvalidBatch)
+	}
 	if scope.Context.IsEntry() {
-		if scope.Composite && graph.Entry().Kind != invocation.EntryAction { return fmt.Errorf("%w: workflow entry cannot be composite", ErrInvalidBatch) }
+		if scope.Composite && graph.Entry().Kind != invocation.EntryAction {
+			return fmt.Errorf("%w: workflow entry cannot be composite", ErrInvalidBatch)
+		}
 		return nil
 	}
 	call, exists := graph.Call(scope.Context.ID())
@@ -136,9 +145,6 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 	if !exists || !hasBody || kind != invocation.OutcomeExpanded && kind != invocation.OutcomeInterrupted || !scope.Composite {
 		return fmt.Errorf("%w: scope does not describe an expanded invocation", ErrInvalidBatch)
 	}
-	paths := scope.Paths
-	workflowexecution.ActionOrigin(&paths, scope.Context, scope.ActionPath)
-	if paths.ActionPath != scope.Paths.ActionPath || paths.ActionRunnerPath != scope.Paths.ActionRunnerPath || paths.ActionIndependent != scope.Paths.ActionIndependent { return fmt.Errorf("%w: action paths disagree with invocation context", ErrInvalidBatch) }
 	return nil
 }
 

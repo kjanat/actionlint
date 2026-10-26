@@ -57,7 +57,7 @@ export async function sourceContexts(
 			) continue;
 			if (lines[diagnostic.start.line - 1] !== undefined) contexts.set(diagnostic, lines);
 		} catch {
-			// Missing, unreadable and external sources retain the diagnostic's snippet.
+			// Source reads are optional; diagnostics already include snippets.
 		}
 	}
 	return contexts;

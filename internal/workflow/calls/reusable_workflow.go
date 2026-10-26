@@ -302,8 +302,7 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 }
 
 // FindMetadataForCall owns the source-reference boundary for diagnostic rules.
-// Cache keys and cached errors retain the normalized ./ spelling; each lookup
-// renders a separate error using the source spelling without changing the cache.
+// Lookups normalize cache keys to ./ paths and format errors with the call's source spelling.
 // Invalid, remote, and expression references are handled by syntax validation.
 func (c *Cache) FindMetadataForCall(sourceSpec string) (*Metadata, error) {
 	localSpec, ok := references.LocalWorkflow(sourceSpec)
@@ -474,7 +473,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 				if key.Kind != yaml.ScalarNode || key.Value == "" || key.Value == "<<" || workflowlang.RawYAMLTagError(key) != "" {
 					continue
 				}
-				// The workflow parser reports duplicate keys and retains the first value.
+				// Match the workflow parser's first-value handling of duplicate keys.
 				if seen[key.Value] {
 					continue
 				}

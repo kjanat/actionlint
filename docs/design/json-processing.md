@@ -3,10 +3,10 @@
 The module requires Go 1.27 and prefers the Go 1.27.2 toolchain. Core WebAssembly
 engine metadata and response decoding use `encoding/json/v2`: duplicate object
 keys and invalid UTF-8 are rejected, and protocol fields match case-sensitively.
-Unknown fields remain accepted so engines can extend their metadata and responses.
+Unknown fields are accepted to support extensions to engine metadata and responses.
 
-Request encoding, public JSON output, and expression evaluation retain the existing
-`encoding/json` behavior. The [Go 1.27 release notes](https://go.dev/doc/go1.27#jsonv2)
+Request encoding, public JSON output, and expression evaluation use
+`encoding/json`. The [Go 1.27 release notes](https://go.dev/doc/go1.27#jsonv2)
 document that this API now uses the v2 implementation with compatibility options.
 
 ## Migration candidates

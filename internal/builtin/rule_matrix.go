@@ -8,7 +8,7 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// RuleMatrix adapts matrix diagnostics to the remaining visitor pipeline.
+// RuleMatrix runs matrix checks during workflow traversal.
 type RuleMatrix struct {
 	workflowvisit.Base
 	Configuration

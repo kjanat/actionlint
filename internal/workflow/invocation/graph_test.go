@@ -105,8 +105,9 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 		t.Fatalf("repeated scripts lost their distinct owners or shared declaration: %+v %+v", leftScript, rightScript)
 	}
 	mutated := g.Calls()
-	mutatedContextSite := mutated[0].Context.Site()
+	mutatedContextSite := mutated[0].Site()
 	mutatedContextSite.Document = "corrupted"
+	mutated[0].Context = invocation.Context{}
 	stored, _ := g.Call(branches[0][1])
 	if stored.Site().Document != "entry" {
 		t.Fatal("caller mutated graph snapshot")

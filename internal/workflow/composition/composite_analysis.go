@@ -63,6 +63,7 @@ func (analysis *compositeAnalyzer) cancelled() error {
 
 func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) {
 	analysis.scriptScope = &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: analysis.scriptConfig, Context: analysis.context}
+	execution.ActionOrigin(&analysis.scriptScope.Paths, analysis.context, "")
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(workflow.Defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(workflow.Defaults)

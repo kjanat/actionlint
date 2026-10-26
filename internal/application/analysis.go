@@ -84,7 +84,6 @@ func (f *inputFiles) addConfig(cfg *repoconfig.Config, project *workspace.Projec
 }
 
 // runAnalysis checks resolved workflows and action manifests without rendering diagnostics.
-// On analysis failure, a non-nil result retains findings collected before the failure.
 func runAnalysis(ctx context.Context, request analysisRequest) (*analysisResult, error) {
 	log := request.LogWriter
 	if log == nil {

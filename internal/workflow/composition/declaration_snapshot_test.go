@@ -70,7 +70,9 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 					t.Fatal(err)
 				}
 				context, admitted := ticket.Context()
-				if !admitted { t.Fatal("fixture call was not admitted") }
+				if !admitted {
+					t.Fatal("fixture call was not admitted")
+				}
 				if analysis.sourceSnapshots == nil {
 					analysis.sourceSnapshots = &documentparse.SourceSnapshots{}
 				}

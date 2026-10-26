@@ -402,11 +402,11 @@ jobs:
 ```
 
 actionlint validates the inserted value in the surrounding `env:` context.
-Known arrays and scalars are rejected as insertion sources; literal mappings
-retain environment-name and expression checks. Unknown object expressions are
+Known arrays and scalars are rejected as insertion sources. Literal mappings
+undergo environment-name and expression checks. Unknown object expressions are
 accepted and keep checkout and executable-bit analysis conservative. The
 directive applies to workflow, job, step, container and service environment
-mappings. `${{ insert }}` in an ordinary value remains an undefined variable.
+mappings. `${{ insert }}` in an ordinary value is an undefined variable.
 
 Mapping insertion also works in action `with:` inputs and at the matrix mapping:
 
@@ -432,8 +432,8 @@ are deferred. Known inserted axes and filters participate in matrix and
 runner-label checks; unknown insertions keep the matrix open.
 
 An expression-produced array inside a matrix axis or `include`/`exclude` sequence
-splices one level into that sequence. Literal nested arrays remain individual
-values. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
+splices one level into that sequence. A literal nested array counts as one
+value. For example, `[before, "${{ fromJSON('[1,2]') }}", after]` has four
 values, while `[before, [1,2], after]` has three.
 
 `case(predicate, result, ..., default)` requires Boolean predicates, preserves
@@ -1860,7 +1860,7 @@ actionlint also checks the `timezone` configuration [is a valid IANA timezone st
 `macos-latest-xlarge` maps to macOS 26.
 
 GitHub will [retire `macos-14`, `macos-14-large`, and `macos-14-xlarge` on November 2, 2026](https://github.blog/changelog/2026-10-01-github-actions-macos-14-runner-image-retirement/).
-These labels remain accepted before retirement. Move hosted jobs to `macos-15`, `macos-26`, or the corresponding
+Move hosted jobs to `macos-15`, `macos-26`, or the corresponding
 `-xlarge` label; check architecture requirements when replacing the Intel `macos-14-large` image.
 
 Example input:
@@ -2163,11 +2163,11 @@ test.yaml:8:15: the runtime or service used by "actions/checkout@v3" action is r
 
 In addition to the checks for inputs of actions described in [the previous section](#check-popular-action-inputs), actionlint
 reports an error when a popular action declares a deprecated or removed runtime, or uses a known retired service.
-Node 20 deprecation is reported while its metadata remains available for input and output checks. Local JavaScript
+Input and output checks also run for Node 20 actions. Local JavaScript
 actions receive the same runtime lifecycle checks. Runtime metadata is generated from GitHub's runner source.
 
-This check does not require the newest release of an action. An older release remains accepted if it uses a current
-runtime and service. SHA references whose metadata is absent from the popular-action data set are not resolved online.
+This check evaluates the declared runtime and service, not the age of an action release.
+SHA references whose metadata is absent from the popular-action data set are not resolved online.
 If you want to keep actions used by your workflows up-to-date, consider to use [Dependabot][dependabot-doc].
 
 <a id="check-shell-names"></a>
@@ -2407,7 +2407,7 @@ or jobs that call reusable workflows. It checks that the value is one of these s
 | `write-only` | No             | Yes         |
 | `none`       | No             | No          |
 
-A job's declaration overrides its workflow's declaration. Omitted settings retain GitHub's trigger-dependent
+A job's declaration overrides its workflow's declaration. Omitted settings use GitHub's trigger-dependent
 defaults. Explicit `write` and `write-only` declarations are valid even on low-trust events; GitHub warns about
 their security implications. Cache operations skipped by the selected mode do not fail the workflow.
 
@@ -2466,8 +2466,8 @@ test.yaml:14:15: "actions/cache/restore" cannot restore caches with effective ca
 These three policies are enabled by default. `cache-write-untrusted` reports write grants on low-trust events that
 can use default-branch caches. `cache-call-unrestricted` requires an explicit cap on reusable calls from those events,
 because the callee can otherwise request write access. `cache-operation` reports official cache steps that an
-explicit mode makes ineffective. An ordinary job without `cache-mode` retains GitHub's trigger default and is not
-reported for omission. Ordinary pull request caching is not treated as the default-branch cache risk.
+explicit mode makes ineffective. Omitting `cache-mode` on an ordinary job uses GitHub's trigger default and
+produces no finding. Ordinary pull request caching is not treated as the default-branch cache risk.
 
 See [policy configuration and inline exceptions](config.md#policy-checks)
 for the event list, exact action/mode combinations, limitations, and ways to document reviewed exceptions.
@@ -3294,8 +3294,8 @@ actionlint reports conditions whose outcome is provably constant. Removing `if: 
 preserves the default success gate. An always-false condition skips the guarded work;
 removing it would enable that work. The diagnostic therefore does not suggest removal
 for false conditions. Blank and YAML-null conditions use `success()`. A sole string
-literal expression is folded and parsed as condition source; computed strings remain
-values. See [expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string).
+literal expression is folded and parsed as condition source. See
+[expression behavior](expression-behavior.md#condition-source-is-different-from-a-computed-string) for computed strings.
 
 In addition, evaluation of `${{ }}` at `if:` condition is tricky. When the expression in `${{ }}` is evaluated to boolean value
 and there is no extra characters around the `${{ }}`, the condition is evaluated to the boolean value. Otherwise the condition is

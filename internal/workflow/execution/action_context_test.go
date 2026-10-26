@@ -1,14 +1,74 @@
 package execution
 
 import (
+	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
-	"actionlint.kjanat.dev/v2/source"
+	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/source"
 )
+
+func TestCallPositionAdmission(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		pos     *workflowlang.Pos
+		want    invocation.Position
+		invalid bool
+	}{
+		{name: "absent"},
+		{name: "unknown", pos: &workflowlang.Pos{}},
+		{name: "known", pos: &workflowlang.Pos{Line: 2, Col: 3}, want: invocation.Position{Line: 2, Column: 3}},
+		{name: "partial line", pos: &workflowlang.Pos{Line: 2}, invalid: true},
+		{name: "partial column", pos: &workflowlang.Pos{Col: 3}, invalid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			context, err := testCallContext(t, &workflowlang.Step{Pos: tc.pos, Exec: &workflowlang.ExecAction{}}, runnerlang.MacOrLinux)
+			if tc.invalid {
+				if !errors.Is(err, invocation.ErrInvalidFacts) {
+					t.Fatalf("malformed position admitted: %v", err)
+				}
+				return
+			}
+			facts, exists := context.Facts()
+			if err != nil || !exists || facts.Step != tc.want {
+				t.Fatalf("position round trip: %+v error=%v", facts.Step, err)
+			}
+		})
+	}
+}
+
+func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
+	for _, body := range []string{
+		"    - uses: ./child\n",
+		"    - &call {uses: ./child}\n    - *call\n",
+		"    - not-a-mapping\n",
+		"    - uses: ./child\n      run: echo invalid\n",
+	} {
+		t.Run(body, func(t *testing.T) {
+			parsed := documentparse.Action("action.yml", "action.yml", []byte("name: parent\ndescription: parent\nruns:\n  using: composite\n  steps:\n"+body))
+			if len(parsed.Findings) != 0 || parsed.Facts() == nil {
+				t.Fatalf("action parse failed: %v", parsed.Findings)
+			}
+			steps := parsed.Facts().Jobs[""].Steps
+			if len(steps) == 0 {
+				t.Fatal("fixture produced no steps")
+			}
+			for _, step := range steps {
+				context, err := testCallContext(t, step, runnerlang.MacOrLinux)
+				facts, exists := context.Facts()
+				if err != nil || !exists || facts.Step.Line < 1 || facts.Step.Column < 1 || facts.Step.Line != step.Pos.Line || facts.Step.Column != step.Pos.Col {
+					t.Fatalf("metadata call position: %+v error=%v", facts.Step, err)
+				}
+			}
+		})
+	}
+}
 
 func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 	for _, tc := range []struct {
@@ -75,21 +135,48 @@ func TestEmptyUsesAndAbsentUsesRetainDistinctOriginSemantics(t *testing.T) {
 	}
 }
 
+func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
+	line := "jobs: {é: {runs-on: ubuntu-latest, steps: [{uses: ./child}]}}"
+	parsed := documentparse.Workflow("ci.yml", []byte("on: push\n"+line+"\n"))
+	if len(parsed.Findings) != 0 {
+		t.Fatal(parsed.Findings)
+	}
+	facts, err := CallFacts(parsed.Workflow.Jobs["é"].Steps[0], runnerlang.MacOrLinux)
+	prefix, _, found := strings.Cut(line, "{uses")
+	if !found {
+		t.Fatal("fixture has no call mapping")
+	}
+	wantColumn := utf8.RuneCountInString(prefix) + 1
+	if err != nil || facts.Step.Line != 2 || facts.Step.Column != wantColumn {
+		t.Fatalf("call coordinate=%+v want 2:%d error=%v", facts.Step, wantColumn, err)
+	}
+}
+
 func testEntryContext(t *testing.T) invocation.Context {
 	t.Helper()
 	builder, err := invocation.NewBuilder(invocation.EntryAction, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	return builder.RootContext()
 }
 func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.Platform) (invocation.Context, error) {
 	t.Helper()
 	facts, err := CallFacts(step, platform)
-	if err != nil { return invocation.Context{}, err }
+	if err != nil {
+		return invocation.Context{}, err
+	}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
-	if err != nil { return invocation.Context{}, err }
+	if err != nil {
+		return invocation.Context{}, err
+	}
 	ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
-	if err != nil { return invocation.Context{}, err }
+	if err != nil {
+		return invocation.Context{}, err
+	}
 	context, admitted := ticket.Context()
-	if !admitted { t.Fatal("fixture call was not admitted") }
+	if !admitted {
+		t.Fatal("fixture call was not admitted")
+	}
 	return context, nil
 }

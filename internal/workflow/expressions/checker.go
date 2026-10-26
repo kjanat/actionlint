@@ -50,8 +50,7 @@ type Options struct {
 	ScriptInjectionDisabled bool
 }
 
-// Dependencies provides metadata to workflow expression inference. Missing
-// lookups leave output types open; dependency loading remains the caller's job.
+// Dependencies supplies metadata for workflow expression inference.
 type Dependencies struct {
 	Runners       *runner.Knowledge
 	LocalAction   func(string) (*actionmeta.Metadata, error)

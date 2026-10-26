@@ -285,7 +285,6 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 			})
 		}
 	}
-	// Ordinary section keys retain their duplicate-key checks.
 	_, errs := workflowlang.ParseDocument([]byte("on: push\njobs: {}\n'${{ insert }}': {}\n'${{ insert }}': {}\n"))
 	found := false
 	for _, err := range errs {

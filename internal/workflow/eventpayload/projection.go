@@ -16,9 +16,7 @@ type Trigger struct {
 	Actions []string
 }
 
-// FromTriggers returns a fresh projection owned by its caller. Optional and nullable
-// members retain their known shape: Actions permits reading missing properties.
-// Dynamic mappings remain open; only known object members are checked strictly.
+// FromTriggers builds a payload type from the selected events and activities.
 func FromTriggers(triggers []Trigger) *expr.ObjectType {
 	b := builder{cache: map[int]expr.Type{}, active: map[int]bool{}}
 	var selected []expr.EventVariant

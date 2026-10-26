@@ -1,6 +1,6 @@
 # Unified rule system
 
-Status: shared contracts and host workflows implemented; legacy semantic migration remains in progress.
+Status: shared contracts and host workflows implemented; legacy semantic migration in progress.
 
 ## Required outcomes
 
@@ -16,11 +16,11 @@ Status: shared contracts and host workflows implemented; legacy semantic migrati
 - [x] Opt-in remote resolution contract and commitish integration.
 - [x] Review 5539656825: dynamic matrix insertions and action-metadata duplicate keys.
 
-- [ ] Complete the migration of remaining visitor-based semantic checks.
+- [ ] Complete the migration of visitor-based semantic checks.
 
 ## Decisions
 
-Input preparation, analysis and presentation remain separate. Public analyzers consume explicit
+Public analyzers consume explicit
 facts and return findings; the host owns scheduling, configuration selection,
 resource lifetime, suppression and severity. Native built-ins and component plugins
 share rule metadata and result semantics. Rule identity, provider identity and a
@@ -28,13 +28,12 @@ provider's execution backend are separate concepts.
 
 A source reference identifies a document, a content revision, a node and its
 structural address. Offsets are locations, not identity. Explicit job/step IDs are
-preferred. Anonymous nodes are matched by structural content and occurrence; named nodes retain identity across editor revisions. Anonymous content edits
-produce new identities; their structural address remains available for client reconciliation. Indistinguishable duplicate
+preferred. Anonymous nodes are matched by structural content and occurrence; named-node identities are stable across editor revisions. Anonymous content edits
+produce new identities; clients can reconcile them by structural address. Indistinguishable duplicate
 nodes require an ordering tie-breaker.
 
 The internal YAML package owns the tree consumed by workflow, mapping and engine semantics. Parser-specific types
-are confined to decoding/encoding. Retaining the existing parser behind this
-boundary avoids changing YAML acceptance at the same time as rule execution.
+are confined to decoding/encoding.
 
 Fixes declare applicability and carry complete edit groups. Application checks
 source revisions, ranges and overlaps before writing. Preview and LSP code actions
@@ -43,11 +42,10 @@ consume the same edit representation. Analysis runs again after a CLI applicatio
 Remote resolution is an injected capability with explicit requests, immutable
 resolved identities, cancellation and provenance. commitish supplies GitHub ref
 semantics; the engine must not recreate those semantics or obtain credentials
-implicitly. Network access remains opt-in.
+implicitly. Hosts must opt into network access.
 
 Generated reference material belongs to the rule catalogue. Generator logic lives
-with its owning subsystem; executable entry points remain thin. Release and
-conformance tools retain their own tests and domain directories.
+with its owning subsystem.
 
 ## Script-tool boundary
 
@@ -74,13 +72,13 @@ provider failures, and existing CLI/conformance behavior. Keep architecture test
 for dependency direction. Update this checklist only with implemented and tested
 outcomes.
 
-The Ruff plugin retains the sanitized-script engine ABI and is selectable through
+The Ruff plugin uses the sanitized-script engine ABI and is selected through
 `--plugin`. Reimplementing workflow expression masking inside a second Rust
 component would create competing sanitizer and source-mapping implementations.
 The host chooses the ABI from the binary header, and each host validates its own
 contract. Both plugin types carry the shared rule descriptor.
 
-## Implemented boundaries and remaining work
+## Implementation status
 
 `source.Reference` accompanies document facts, scripts, mappings, invocation sites and
 findings. Nested composite callers have identities even when they contain no scripts.
@@ -90,7 +88,7 @@ plugins in one collision-checked namespace. Registered document analyzers use
 `lint.rules.plugins` for severity, options and presets; their option schemas are
 validated without implicit file or network access. The catalogue generates `docs/rules.md`.
 
-`RuleBase` remains an internal visitor adapter and finding accumulator. It no longer
+`RuleBase` is an internal visitor adapter and finding accumulator. It no longer
 owns configuration or logging. Adapters opt into those capabilities explicitly.
 Environment names, conditions, permission declarations, identifiers and job dependency
 checks have stateless implementations in `internal/semantics`; identifiers and dependencies
@@ -112,7 +110,7 @@ published until those sources are available to the editor adapter.
 
 The component contract is `kjanat:actionlint/analyzer@0.1.0`. The Ruff repository advertises the shared rule
 metadata through its existing core-engine ABI 1, and its rebuilt artifact works through
-the CLI's sanitizer and source mapper. Both loaders retain metadata and source provenance.
+the CLI's sanitizer and source mapper.
 The Go component host uses the original `partite-ai/wacogo` dependency.
 
 The commitish provider is an optional process plugin with a versioned JSON contract.
@@ -149,7 +147,7 @@ These rules have separate severity, preset and suppression settings. Disabling
 `expression` no longer disables the independently named checks. `script-injection`
 belongs to the security group; the other rules above belong to correctness.
 JSON carries rule and code separately. LSP qualifies diagnostic codes with their
-rule; SARIF retains `ruleId` and places the code in `properties.diagnosticCode`.
+rule; SARIF uses `ruleId` for the rule and `properties.diagnosticCode` for the code.
 The latter replaces the old external-only `externalCode` property.
 
 Webhook observations are independent of this taxonomy. `internal/webhook/payload`
@@ -160,7 +158,7 @@ projection into expression types and Actions-specific overlays. Both checking an
 editor completion consume that projection. The expression checker does not load
 Octokit data, read configuration or perform network requests.
 
-Unknown event variants remain open and branch guards do not yet refine payload
+Unknown event variants allow arbitrary properties and branch guards do not yet refine payload
 variants. Splitting diagnostic identities does not change those analysis limits.
 The workflow visitor still supplies context and source mapping; migrating that
-remaining stateful traversal is separate from the identity and observation boundaries.
+stateful traversal is separate from the identity and observation boundaries.

@@ -3,13 +3,13 @@ package local
 import (
 	"path/filepath"
 	"testing"
-	"actionlint.kjanat.dev/v2/source"
-	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestCompositeActionPathCasing(t *testing.T) {
@@ -33,11 +33,17 @@ func TestCompositeActionPathCasing(t *testing.T) {
 				t.Fatal(err)
 			}
 			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			context, admitted := ticket.Context()
-			if !admitted { t.Fatal("fixture call was not admitted") }
+			if !admitted {
+				t.Fatal("fixture call was not admitted")
+			}
 			execution.ActionOrigin(&paths, context, filepath.Join(root, "local", "Nested"))
 			if paths.ActionRunnerPath != tc.want {
 				t.Fatalf("runner action path=%q, want %q", paths.ActionRunnerPath, tc.want)

@@ -38,7 +38,7 @@ interface template-effects {
     }
 
     enum effect {
-        /// Independent of template substitution; retain the finding.
+        /// The finding is independent of template substitution.
         none,
         /// Line width is uncertain when that line contains a substitution.
         line-length,

@@ -20,19 +20,18 @@ component exposed a failure that the host's example plugins did not exercise.
 The configuration package validates the host wrapper and preserves engine options.
 The Ruff adapter projects flat compatibility settings into the engine's JSON
 configuration. The selected engine owns selectors, Python targets, preview
-behavior, option validation and defaults. Missing options remain missing.
+behavior, option validation and defaults.
 
 Native TOML encoding, process restrictions and provisioning policy belong to
 `internal/tools/ruff`. The WebAssembly route receives JSON without passing through
-those process restrictions. Both routes retain the shared script scheduling,
+those process restrictions. Both routes use the shared script scheduling,
 source mapping and diagnostic pipeline. Native registrations expose a configured
 backend loader; `internal/tools/adapters` and `internal/localapp` bind its advertised
 routes to the native runner. The application consumes the resulting registrations.
 Native adapters do not import the generic script-engine implementation.
 
 The editor schema describes the wrapper without a release-specific Ruff catalog.
-Engine metadata supplies engine-specific schemas. Published schema snapshots
-remain available for existing consumers.
+Engine metadata supplies engine-specific schemas.
 
 Component plugins use the canonical [`crates/actionlint-extension-api/wit/analyzer.wit`](../../crates/actionlint-extension-api/wit/analyzer.wit) contract. A matching
 interface name alone does not establish compatibility when record definitions

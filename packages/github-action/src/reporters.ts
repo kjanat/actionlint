@@ -170,7 +170,7 @@ export async function withReporting(
 		try {
 			result = parseResult(JSON.parse(await readFile(path, 'utf8')));
 		} catch {
-			// The initialized failure result remains the fallback for missing/corrupt data.
+			// A missing or corrupt result file is an analysis failure.
 		}
 		result = {
 			...result,

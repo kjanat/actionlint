@@ -108,7 +108,7 @@ func CacheAction(uses string) string {
 	if !strings.EqualFold(repo, "cache") || hasPath && path == "" {
 		return ""
 	}
-	// Repository names are case-insensitive; action subpaths address files in the downloaded repository and retain their case.
+	// Repository names are case-insensitive; subpaths use the repository filesystem's spelling.
 	if path == "" || path == "save" || path == "restore" {
 		return name
 	}

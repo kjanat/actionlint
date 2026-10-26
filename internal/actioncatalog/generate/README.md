@@ -32,8 +32,8 @@ repository lookup for actions in subdirectories. Failure leaves the output
 registry untouched. Review the resolved commits before regenerating. Each pinned
 entry fetches metadata at that commit and emits exact tag and SHA references from
 the same bytes. Unknown SHAs stay unknown; actionlint never substitutes a moving
-tag's metadata for an arbitrary commit. Unpinned custom registry entries remain
-supported and contribute only their exact requested reference.
+tag's metadata for an arbitrary commit. Unpinned custom registry entries
+contribute only their exact requested reference.
 
 Detect new releases on GitHub:
 
@@ -84,7 +84,7 @@ for editor completion and validation. It is separate from this directory's fetch
 
 The loader also checks relationships that JSON Schema cannot express here: definition references,
 input exceptions, case-insensitive name collisions, and active/retired overlap.
-Unknown action references remain unchecked; no tag or commit equivalence is guessed.
+References absent from the catalogue cannot be checked against action metadata.
 
 The catalogue is embedded in ordinary CLI/library builds. The playground uses the `actionlint_external_catalog`
 build tag, fetches the JSON as a separate hashed asset, and verifies its SHA-256 against the WASM build before
@@ -92,7 +92,7 @@ enabling linting. Missing or mismatched metadata stops initialization. Each expo
 metadata, preserving existing Go API behavior. The file shares definitions; the compatibility map does not
 share mutable input/output objects between versions. Both built-in consumers use one lookup function.
 
-`-f go` remains available for Go source consumers and `-f jsonl` for metadata interchange.
+Select `-f go` for Go source or `-f jsonl` for metadata interchange.
 
 Extraction preserves supported input fields when metadata also contains unknown
 input keys, such as `type` or the misspelled `deprecation-message`. Extraction ignores

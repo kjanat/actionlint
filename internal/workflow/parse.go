@@ -1106,7 +1106,7 @@ func (p *Parser) checkRawYAMLTag(n *yaml.Node) bool {
 	return true
 }
 
-// Retain tag diagnostics in values whose invalid mapping key prevents decoding.
+// Check tags in values skipped by decoding because their mapping key is invalid.
 func (p *Parser) checkRawYAMLTags(n *yaml.Node) {
 	p.checkRawYAMLTag(n)
 	for _, child := range n.Content {

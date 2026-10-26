@@ -147,7 +147,6 @@ fn analyze(input: Input) -> Result<Vec<Diagnostic>, String> {
             use std::io::Write;
             let chunk = vec![b'x'; 65536];
             for _ in 0..32 {
-                // The host must retain the limit failure even if the guest ignores it.
                 let _ = std::io::stdout().write_all(&chunk);
             }
             Ok(Vec::new())

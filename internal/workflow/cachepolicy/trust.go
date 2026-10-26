@@ -116,7 +116,7 @@ func (r *Trust) CheckWrites(job *workflowlang.Job) []diagnostic.Diagnostic {
 		return nil
 	}
 	// Include every reachable event sharing this declaration, even when another
-	// job is visited later. Emit at the first reachable job to retain its origin.
+	// job is visited later.
 	events = append(events, r.reachable[mode]...)
 	slices.Sort(events)
 	events = slices.Compact(events)

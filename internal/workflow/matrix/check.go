@@ -151,8 +151,7 @@ func Subset(value, filter workflowlang.RawYAMLValue, expressions bool) bool {
 }
 
 func isYAMLValueSubsetWithExpressions(value, filter workflowlang.RawYAMLValue, valueExpressions, filterExpressions bool) bool {
-	// Dynamic values or filter leaves cannot establish a mismatch. Evaluated
-	// expression results use expressions=false so embedded syntax remains data.
+	// Dynamic values or filter leaves cannot establish a mismatch.
 	for _, item := range []Element{{value, valueExpressions}, {filter, filterExpressions}} {
 		if scalar, ok := item.Value.(*workflowlang.RawYAMLString); item.Expressions && ok && exprlang.ContainsExpression(scalar.Value) {
 			return true

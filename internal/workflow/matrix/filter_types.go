@@ -182,7 +182,7 @@ func matrixFilterTypeMismatchKnown(value, filter workflowlang.RawYAMLValue, valu
 	return false
 }
 
-// Element retains whether a matrix value still contains unevaluated expressions.
+// Element pairs a matrix value with its expression-evaluation mode.
 type Element struct {
 	Value       workflowlang.RawYAMLValue
 	Expressions bool
@@ -218,8 +218,8 @@ func (lookup matrixFilterLookup) at(key string) (workflowlang.RawYAMLValue, bool
 	return nil, false, !lookup.complete
 }
 
-// Expression-valued sequence elements insert one array level. A dynamic element
-// leaves the remaining indices unknown; retain only the preceding known prefix.
+// matrixFilterElements expands one array level, stopping at the first dynamic
+// insertion because its length determines the indexes of subsequent elements.
 func matrixFilterElements(array *workflowlang.RawYAMLArray, expressions bool) ([]Element, bool) {
 	var elements []Element
 	for _, value := range array.Elems {

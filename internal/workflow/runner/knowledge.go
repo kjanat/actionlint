@@ -26,8 +26,7 @@ type JobKnowledge struct {
 	Answers                              []runnerapi.Answer
 }
 
-// Knowledge owns document-local results. A nil lookup retains compatibility for
-// direct visitor users; application analysis always supplies a prepared lookup.
+// Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
 	jobs   map[*workflowlang.Job]JobKnowledge
 	Report runnerapi.Report

@@ -24,7 +24,7 @@ func Selectors(job *workflowlang.Job) []runnerapi.Selector {
 	for _, combination := range combinations {
 		selectors = append(selectors, selectorForRunner(job.RunsOn, combination))
 	}
-	// Retain known values from incomplete matrices without inventing correlations.
+	// An incomplete matrix can still supply alternatives for individual labels.
 	if !known && job.Strategy != nil {
 		for _, label := range append(append([]*workflowlang.String{}, job.RunsOn.Labels...), job.RunsOn.Expression, job.RunsOn.LabelsExpr) {
 			if label == nil || runnerMatrixProperty(label) == "" {

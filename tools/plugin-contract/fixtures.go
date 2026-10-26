@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// Fixtures retain the same interface identity and change only one nested shape.
+// Each fixture changes one nested type without changing the interface identity.
 // Dummy functions trap, so successful rejection cannot depend on describe's data.
 func generateFixtures() error {
 	data, err := os.ReadFile(contractPath)

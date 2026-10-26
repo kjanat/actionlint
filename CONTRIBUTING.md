@@ -16,7 +16,7 @@ This is where the fork differs from [the upstream project], which accepts neithe
 
 ## AI usage and policy
 
-I use AI/LLMs to assist with investigation, implementation, documentation, review (mixed use of coderabbit and codex/codex security reviews), and testing, including building fuzzing and compatibility-testing tools. I remain responsible for the changes I accept and the releases I publish.
+I use AI/LLMs to assist with investigation, implementation, documentation, review (mixed use of coderabbit and codex/codex security reviews), and testing, including building fuzzing and compatibility-testing tools. I am responsible for the changes I accept and the releases I publish.
 
 AI-generated contributions are welcome. Mentioning the tools you used can help explain your approach, but disclosure is optional and is not a review requirement. I do not consistently record tool usage either; keeping that inventory should not become an administrative burden.
 
@@ -36,7 +36,7 @@ This commitment covers documented command invocations, flags, templates, output 
 
 ## Lint behavior and configuration
 
-GitHub Actions evolves, and investigation of its behavior can uncover mistakes or gaps in existing checks. New and corrected correctness rules may flag workflows that previously passed, causing CI to fail. Correctness takes priority over preserving a clean result for a workflow with a newly detected problem. Opt-in policy checks remain opt-in.
+GitHub Actions evolves, and investigation of its behavior can uncover mistakes or gaps in existing checks. New and corrected correctness rules may flag workflows that previously passed, causing CI to fail. Correctness takes priority over preserving a clean result for a workflow with a newly detected problem.
 
 The [GitHub Changelog monitor] checks for new Actions announcements daily and opens issues for review, using the [monitor action] and [changelog-feed package]. These announcements inform follow-up work; a tracked announcement does not mean its behavior is already supported.
 
@@ -50,7 +50,7 @@ Backward-compatible features, including new lint rules, belong in minor releases
 
 ## Go library API
 
-The Go library API remains unstable. It is not covered by the CLI and configuration compatibility commitments above; library consumers should expect API changes between releases.
+The Go library API is unstable. It is not covered by the CLI and configuration compatibility commitments above; library consumers should expect API changes between releases.
 
 ## Reporting an issue
 
@@ -210,7 +210,7 @@ open coverage.html
 
 Automated tests are as follows.
 
-- [Upstream conformance tests] compare actionlint with fixtures from GitHub's language services and runner, SchemaStore, and YAML Test Suite. Run `make conformance` when changing parsing or validation. Known differences remain visible and are checked for changes; a green job does not mean full runtime compatibility.
+- [Upstream conformance tests] compare actionlint with fixtures from GitHub's language services and runner, SchemaStore, and YAML Test Suite. Run `make conformance` when changing parsing or validation. Baselines record known differences and detect changes; a green job does not mean full runtime compatibility.
 - Unit tests are implemented in `*_test.go` files for testing the corresponding APIs. Test data for unit tests are put in `testdata/` directory.
 - UI tests based on matching to error messages are implemented in `linter_test.go` and all test data are stored in `testdata/` directory.
   - `testdata/examples/` contains tests for all examples in ['Checks' document]. `*.yaml` files are an input workflow and `*.out` files are expected error messages.
@@ -284,11 +284,11 @@ To move the defaults to newer base images:
 
 For v2, [Beepboop](https://github.com/kjanat/beepboop) dispatches the release workflows in [kjanat/homebrew-tap], `kjanat/scoop-bucket` and `kjanat/actionlint-pre-commit`. Its GitHub App credentials live centrally; source CI holds no Homebrew or Scoop token. Each destination independently verifies the signed source tag, the attested `release-candidate.json`, and the prepared asset digests before publishing with its own `GITHUB_TOKEN`. Repeated deliveries preserve identical content; downgrades and changed bytes for an existing version fail. The former `kjanat/homebrew-actionlint` tap contains migration metadata and is not updated by releases.
 
-The publication workflow retains `AUR_SSH_PRIVATE_KEY` for AUR updates. Preparation receives no distribution credentials. After validating the published candidate, the release workflow calls the npm workflow, which publishes the platform packages before the launcher package. Its `pypi` job calls the PyPI workflow, which publishes the release's wheels to PyPI as `actionlint-kjanat` through trusted publishing. Preparation builds those wheels with [`distribution/pypi`](distribution/pypi/README.md) and attaches them to the draft. For a release without wheels, the PyPI workflow builds them from the release archives. Dispatching `pypi-release.yml` with a published `tag` publishes only that release's wheels.
+The publication workflow uses `AUR_SSH_PRIVATE_KEY` for AUR updates. Preparation receives no distribution credentials. After validating the published candidate, the release workflow calls the npm workflow, which publishes the platform packages before the launcher package. Its `pypi` job calls the PyPI workflow, which publishes the release's wheels to PyPI as `actionlint-kjanat` through trusted publishing. Preparation builds those wheels with [`distribution/pypi`](distribution/pypi/README.md) and attaches them to the draft. For a release without wheels, the PyPI workflow builds them from the release archives. Dispatching `pypi-release.yml` with a published `tag` publishes only that release's wheels.
 
-Beepboop waits for `Verify published candidate` before dispatching package manifests, and also waits for PyPI and container publication before publishing hook tags. Dispatch is not publication success: inspect the destination workflow and Beepboop's `/operations` status. The pre-commit repository remains unreleased until the first verified v2 release; old actionlint tags retain their original hooks. See [the v2 migration guide](docs/migration-v2.md).
+Beepboop waits for `Verify published candidate` before dispatching package manifests, and also waits for PyPI and container publication before publishing hook tags. Dispatch is not publication success: inspect the destination workflow and Beepboop's `/operations` status. See [the v2 migration guide](docs/migration-v2.md) for hook publication.
 
-Release preparation runs GoReleaser with `--skip=publish`: draft mode alone would still push package-manager updates. The tested binary archives, JavaScript bundle, container image and generated package manifests become draft assets. Promotion publishes those bytes without rebuilding them. Local snapshots remain available for development; they are not candidates for promotion.
+Release preparation runs GoReleaser with `--skip=publish`: draft mode alone would still push package-manager updates. The tested binary archives, JavaScript bundle, container image and generated package manifests become draft assets. Promotion publishes those bytes without rebuilding them. Use local snapshots for development; promotion requires a prepared release candidate.
 
 WinGet offers this fork as `kjanat.actionlint` (microsoft/winget-pkgs#430563). After the latest stable release is published, the release workflow's `winget` job generates the three package files with [`distribution/winget`](distribution/winget/README.md) from the verified release checksums and the published release body, validates them against the WinGet manifest schemas, and opens a PR in `microsoft/winget-pkgs` with them. The draft holds no WinGet files. Microsoft must validate and merge that PR before WinGet offers the new version. Prereleases are not submitted.
 
@@ -298,7 +298,7 @@ You do not need to manually sync the WinGet fork before releasing; the script ha
 
 Submission runs are serialized. The fork also keeps a shared submission lock and a permanent `actionlint-winget-attempt-<version>` tag. Once an attempt is recorded, reruns cannot create another PR for that version, including after a timeout or branch deletion. A final check withdraws our PR if another submission appeared during creation. If creation or withdrawal cannot be confirmed, the shared lock stays in place and blocks later submissions until a maintainer checks the outcome. GoReleaser's own WinGet upload is disabled; only the verified-manifest job submits.
 
-A blocked or failed submission opens an issue in `kjanat/actionlint`, with the reason and workflow link. Reruns reuse the issue, reopening it if needed. A separate reporting job also covers failures before the submission script starts, job timeouts and cancelled submission jobs. Issue reporting itself needs GitHub to be available; a reporting failure remains visible in the workflow log.
+A blocked or failed submission opens an issue in `kjanat/actionlint`, with the reason and workflow link. Reruns reuse the issue, reopening it if needed. A separate reporting job also covers failures before the submission script starts, job timeouts and cancelled submission jobs. Issue reporting itself needs GitHub to be available.
 
 When releasing v1.2.3 as example:
 
@@ -365,7 +365,7 @@ To refresh only these tables, run `go run ./internal/actioncatalog/metadata`. No
 
 The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that revision. The generated header links that revision; `runtimeSourcePaths` in the generator lists the files. Parser disagreement, missing packaging data, or an unrecognized migration declaration fails generation before replacing the output. Review upstream source changes when that happens. No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
 
-`go generate` refreshes runtime data before popular-action metadata; weekly `Upkeep` includes both in its PR. Popular actions retain their JavaScript runtime alongside input/output metadata. Input/output checks continue when the runtime is deprecated. The generator identifies removed runtimes from the runner's packaging sources and includes scheduled removal dates in diagnostics. This data describes the upstream runner. Individual installations can use different migration dates and runtimes through GitHub's server-side flags.
+`go generate` refreshes runtime data before popular-action metadata; weekly `Upkeep` includes both in its PR. Popular-action metadata includes the JavaScript runtime alongside inputs and outputs. Input/output checks also run when the runtime is deprecated. The generator identifies removed runtimes from the runner's packaging sources and includes scheduled removal dates in diagnostics. This data describes the upstream runner. Individual installations can use different migration dates and runtimes through GitHub's server-side flags.
 
 ### Maintain `popular_actions.json`
 

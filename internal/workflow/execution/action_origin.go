@@ -1,10 +1,10 @@
 package execution
 
 import (
-	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"path/filepath"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 

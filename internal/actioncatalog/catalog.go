@@ -20,7 +20,7 @@ type Catalog struct {
 }
 
 // Definition contains only metadata used by remote-action validation.
-// Names retain their original spelling; lookup identifiers are lowercase.
+// Display names use source spelling; lookup identifiers are lowercase.
 type Definition struct {
 	Name        string            `json:"name"`
 	Runtime     string            `json:"runtime,omitempty"`

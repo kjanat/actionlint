@@ -1,12 +1,12 @@
 package builtin
 
 import (
-	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"context"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 

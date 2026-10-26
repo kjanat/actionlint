@@ -441,7 +441,6 @@ func (rule *checker) checkCorrelatedMatrixLabels(job *workflowlang.Job) bool {
 			}
 		}
 	} else {
-		// Unknown combinations retain checks against fixed labels and within each value.
 		for i, label := range job.RunsOn.Labels {
 			if properties[i] == "" {
 				continue

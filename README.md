@@ -15,7 +15,7 @@ This is an actively maintained fork of [rhysd/actionlint][upstream]. It carries 
 
 This fork builds on upstream [v1.7.12](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) ([`rhysd/actionlint@914e7df`]). Its independent release series starts at v1.8.0. Tags published by `kjanat/actionlint` identify this fork's releases; a matching tag need not exist in `rhysd/actionlint`.
 
-The [changelog] separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts], with [CLI compatibility] maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API remains unstable].
+The [changelog] separates fork releases from inherited upstream history. Releases follow [Semantic Versioning for the supported CLI and configuration contracts], with [CLI compatibility] maintained for existing integrations. New or corrected lint findings can affect CI results; the [Go library API is unstable].
 
 ## Features
 
@@ -171,8 +171,7 @@ Project settings belong in [`.github/actionlint.yaml`](docs/config.md).
 Use the `config` input for a one-run override. No `with:` block is required.
 
 The upcoming JavaScript Action runs on Linux, macOS and Windows without Docker.
-Existing immutable releases retain their Docker implementation. Pin a published
-release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
+Pin a published release commit SHA or normal `vX.Y.Z` tag; `v1` and `v1.X` are moving pointers.
 
 See the [Action guide](docs/action.md) for configuration, saved reports,
 optional PR reviews, tool prerequisites, migration and the input/output reference.
@@ -202,7 +201,7 @@ See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 - [Usage][usage]: How to use `actionlint` command locally or on GitHub Actions, the online playground, an official Docker image, and integrations with reviewdog, Problem Matchers, super-linter, pre-commit, VS Code.
 - [Configuration][config]: Runner labels, variables, secrets, default permissions, error filters, and opt-in policy checks, with YAML Language Server schema support.
 - [Go API][api]: How to use actionlint as Go library.
-- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and retained differences.
+- [Schema audit]: Pinned upstream definitions, compatibility fixes, validation evidence, and intentional differences.
 - [Expression behavior]: Reproduce GitHub's runtime behavior, understand parser differences, and avoid surprising workflow decisions.
 - [References][refs]: Links to resources.
 - [GitHub Actions changelog][github-changelog]: Browse and search the latest entries from GitHub's Actions changelog feed.
@@ -222,7 +221,7 @@ Its [branding artwork](docs/assets/brand/README.md) is separately licensed under
 [AUR]: docs/install.md#arch-linux
 [CLI compatibility]: CONTRIBUTING.md#cli-compatibility
 [Expression behavior]: docs/expression-behavior.md
-[Go library API remains unstable]: CONTRIBUTING.md#go-library-api
+[Go library API is unstable]: CONTRIBUTING.md#go-library-api
 [Homebrew]: docs/install.md#homebrew
 [Schema audit]: docs/schema-audit.md
 [Scoop]: docs/install.md#scoop

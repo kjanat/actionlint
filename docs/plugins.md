@@ -45,7 +45,7 @@ actionlint check
 The repository names above are placeholders; `search` shows what is actually published. The catalogue may be empty.
 Use `--registry https://example.org/catalogue/` on search, versions or install to select another compatible registry.
 Registry metadata requests stay within that HTTPS origin and catalogue directory. Artifact URLs must match the
-registered GitHub release or GitLab generic package. Registry publication remains a separate publisher workflow.
+registered GitHub release or GitLab generic package.
 
 Installation updates the root `plugins` list in your existing `.github/actionlint.yaml` (also `.yml`, `.json`
 or `.toml`), creating `.github/actionlint.yaml` when no config exists:
@@ -58,7 +58,7 @@ plugins:
 
 The registry explicitly assigns short names such as `shellcheck` and `ruff` to published plugins.
 Names are never inferred from a repository prefix or claimed through plugin metadata.
-The config retains the shorthand; the lock records that alias and the full resolved repository identity.
+The lock records both the configured alias and its resolved repository identity.
 Aliases belong to their selected registry. Checking uses the recorded identity offline;
 an update refuses an alias reassigned to a different repository.
 Plugins without an assigned alias use `owner/plugin`, `github.com/owner/plugin` or `gitlab.com/group/plugin`.
@@ -83,7 +83,7 @@ run when the plugin loads. Registry admission and reports for another host revis
 
 For new dependencies, omitting `--version`, or using `--version latest`, selects the highest stable full semantic version. Prereleases
 and non-semantic tags require exact selection. Equal-precedence tags are ambiguous and require an exact tag too.
-Exact tags remain exact during updates. To change an installed selector:
+Updates do not advance exact tag selectors. To change an installed selector:
 
 ```sh
 actionlint plugin update github.com/owner/plugin --version latest
@@ -102,9 +102,9 @@ lock. Updates acquire every selected artifact before saving config and lock. A f
 the previous lock unless another writer changed it. Removal updates both files and leaves shared cache entries intact.
 
 A new release may change its artifact filename or migrate from a core module to a component.
-An explicit update records that release's format, filename, interface and digest. Publisher, repository
-and plugin identity must remain unchanged, and an existing release cannot be replaced with different bytes,
-format or filename. Checking, synchronization and installation with an already matching pin keep the old artifact.
+An explicit update records that release's format, filename, interface and digest. Updates reject changes to the
+publisher, repository or plugin identity, and reject altered bytes, format or filenames for an existing release.
+Checking, synchronization and installation with an already matching pin use the pinned artifact.
 
 Edit `plugins` directly, then run `actionlint plugin install` without arguments to resolve missing or changed
 dependencies. Existing matching pins stay pinned. This command also migrates older lock-only installations
@@ -139,8 +139,7 @@ to keep local paths out of a project's production configuration.
 
 ### Deprecated, withdrawn and revoked releases
 
-Registry status is separate from immutable release records. Deprecated versions remain installable
-with a warning. Withdrawn versions are excluded from new resolution; an existing lock can continue
+Deprecated versions can be installed with a warning. Withdrawn versions are excluded from new resolution; an existing lock can continue
 using them with a warning. Revoked artifact digests are refused, including already cached bytes.
 
 Install/update obtain current status when resolving versions. `plugin sync` refreshes each registry's
@@ -186,7 +185,7 @@ Any component declaring the ShellCheck integration profile uses `tools.shellchec
 the ordinary `shellcheck` rule controls. The component negotiates rc-file support and source
 grants. Direct URLs, `--plugin`, and registry declarations select identical integration behavior.
 Opaque plugin options use `lint.rules.plugins.shellcheck.options`; explicit library registration
-options take precedence. Components without a tool-integration export remain standalone analyzers.
+options take precedence. Components without a tool-integration export run as standalone analyzers.
 
 Check, fix, rules and LSP load declared plugins from their matching locked artifacts. Selection precedence:
 
@@ -200,7 +199,7 @@ Check, fix, rules and LSP load declared plugins from their matching locked artif
 Checks spanning repositories with a lock require separate invocations or an explicit invocation-wide selection.
 LSP snapshots the startup selection; restart after installing, updating or removing plugins. Automatic project
 plugins cannot apply to documents from another repository. Use a separate server or an explicit lock for that scope.
-Installing a runner provider does not select its execution target; `--runner-target` remains explicit.
+Select a runner provider's execution target with `--runner-target`.
 Management commands accept `--config FILE` too. Outside a Git repository, select a config with `--config FILE`,
 or use `--plugin-lock FILE` to place a config beside that lock. Management commands reject `--no-config`.
 
@@ -215,13 +214,12 @@ suppressions and configured ignores apply to them like built-in rules. `--log-le
 when it loads and forwards its log lines, stdout and stderr.
 
 Pass the same `--plugin` arguments to `config show`, `config validate` or `doctor` when the configuration names plugin
-rules. These commands load the descriptors to validate rule IDs without running document analysis; unknown rules
-remain errors.
+rules. These commands validate rule IDs against loaded descriptors without running document analysis.
 
-The language server retains loaded plugins until shutdown. Explicit `--plugin` selections and remote engine URLs
+The language server closes loaded plugins at shutdown. Explicit `--plugin` selections and remote engine URLs
 use a fixed snapshot for that session; restart to refresh them. Configured local engine files reload when their
-content changes, and selecting a different engine URI loads that identity separately. Earlier engines remain
-available to active analyses until shutdown. Every analysis still receives fresh document buffers and invocation state.
+content changes, and selecting a different engine URI loads that identity separately. Active analyses can finish
+using the engine they started with.
 
 The host refuses a component at load when it exports an unsupported version of a recognized interface, imports an interface
 the host does not grant, or exports no supported role. Before guest startup it checks each implemented interface's complete
@@ -271,7 +269,7 @@ The public Go package `actionlint.kjanat.dev/v2/plugin` provides `plugin.Load`, 
 ## Runner providers
 
 [`crates/actionlint-extension-api/wit/runner.wit`](../crates/actionlint-extension-api/wit/runner.wit) defines the separate `runner-plugin` world. A provider-only
-component exports `describe` and `resolve`; it needs no dummy analyzer. Existing analyzer components remain compatible.
+component exports `describe` and `resolve`.
 The host resolves a batch of whole selectors before running checks. Labels within a selector are conjunctive; groups,
 correlated matrix alternatives, source positions and unresolved expressions survive normalization. Incomplete matrix
 alternatives cannot establish a resolved execution environment.
@@ -281,12 +279,12 @@ the same prepared knowledge. The built-in GitHub catalogue implements this bound
 changes authority: `--runner-target` defaults to `github`; choose another target explicitly. Multiple applicable
 providers require `--runner-provider`. Configuration labels stay configuration, without plugin mutation.
 
-Results distinguish resolved candidates, no match, unknown and not applicable. Operational errors remain separate;
+Results distinguish resolved candidates, no match, unknown and not applicable. An operational error fails analysis;
 independent checks still run, while runner-dependent inference stays unknown. No match produces a `runner-label`
 finding only with fresh, complete evidence. Stale, missing or incomplete evidence cannot prove an invalid label or a default shell.
-Explicit shells and container defaults retain precedence. Providers contribute knowledge; the host controls diagnostic policy.
+Explicit shells and container defaults take precedence over provider defaults.
 
-Configured self-hosted labels remain an allowlist. A literal label matching that list with `windows` as a complete,
+Configured self-hosted labels form an allowlist. A literal label matching that list with `windows` as a complete,
 case-insensitive hyphen-separated segment supplies Windows and the `pwsh` default, including vendor-prefixed names.
 This convention does not accept an unconfigured label or infer an OS from arbitrary substrings. Contradictory OS
 labels produce a runner conflict and leave execution facts unknown.
@@ -336,7 +334,7 @@ Matrix alternatives resolve separately; ambiguous candidates contribute only fac
 
 Optional facts are `os` (`linux`, `macos`, `windows`, `unknown`), `architecture`, `default_shell`,
 `case_sensitivity` (`sensitive`, `insensitive`, `unknown`), `sh_is_dash` and `ephemeral`.
-Omitted facts remain unknown; declaring Windows alone does not assert that PowerShell is installed.
+Declare each fact explicitly; Windows alone does not establish that PowerShell is installed.
 Unknown JSON fields and invalid enum values are errors. An empty `runners` array asserts no eligible runners
 only when the snapshot is fresh and complete. Missing, stale or incomplete evidence cannot establish a default shell
 or reject a selector. Freshness and completeness are assertions supplied by whoever maintains the inventory.
@@ -420,11 +418,11 @@ On Windows, set `ACTIONLINT_RUNNER_HOST` to the absolute `.exe` path before runn
 The world is `plugin`: it imports `host` and exports `analyzer`. `describe` returns the plugin name and the facts it
 needs. `analyze` receives the document path and content, declared scripts, scripts invoked through composite actions,
 mapping names and the JSON options the host registered, and returns an `outcome` containing diagnostics and an optional
-error message. Diagnostics remain available when the error marks analysis incomplete. A trap cannot return findings.
+error message. An incomplete outcome can include diagnostics; a trap cannot return findings.
 
 Script text comes with spans that map each line and column back to the declaring document. The WIT comment on `span`
 gives the lookup. A diagnostic `rule` must be empty or equal the plugin name; use `code` for check identifiers.
-Findings with other rule names are rejected as incomplete analysis while valid findings remain available.
+Invalid rule names cause incomplete analysis; the result includes valid findings.
 An empty `rule` takes the plugin name, and an empty `path` means the analyzed document, so findings in a composite
 action copy `script.path`.
 
@@ -432,7 +430,7 @@ Plugins can opt into the [`source-annotations`](../crates/actionlint-extension-a
 `annotated-plugin` world. The existing `analyzer@0.1.0` interface and its contract digest are unchanged. The optional
 host function `comments` accepts a complete script source reference and returns physical YAML comments attached
 immediately before its declaration or after its scalar/header, with placement and Unicode source positions.
-Comments inside a scalar remain part of `script.text`; attached YAML comments never change that text or its spans.
+`script.text` includes comments inside the scalar. The source-annotations interface supplies attached YAML comments separately.
 Queries are limited to the scripts supplied in the current analysis, including invoked composite actions. Unknown
 references and calls outside analysis return no comments. Alias-use comments belong to that declaration; fixes still
 target the anchored scalar containing the script.
@@ -450,7 +448,7 @@ ShellCheck directives:
 ```
 
 Native directives inside `run: |` keep ShellCheck's normal scope. A trailing directive inside a quoted scalar or
-block body is shell text and retains ShellCheck's placement error. Errors in attached directives point to the YAML
+block body is shell text, so ShellCheck reports invalid directive placement. Errors in attached directives point to the YAML
 comment; script diagnostics and fixes keep their original scalar spans and document revisions.
 
 ### Rust
@@ -549,7 +547,7 @@ Python and shell snippets use `analyzer.ScriptBackend`: actionlint selects the s
 masks workflow expressions and maps positions back, and the engine checks one sanitized snippet at a time.
 The preferred component interface is [`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit), world
 `script-engine-plugin`. It has typed `describe`, `validate-config` and `check` operations. Plugin-specific
-configuration remains a JSON object checked by the engine; shared descriptors, diagnostics and outcomes use WIT
+configuration is an engine-validated JSON object; shared descriptors, diagnostics and outcomes use WIT
 records. Coordinates count one-based Unicode scalar values, with exclusive range ends. An outcome can contain
 both findings and an incomplete-analysis error. This interface does not provide fix edits.
 
@@ -570,7 +568,7 @@ From Go, load a component with `plugin.Load`, require `HasScriptEngine()`, and s
 typed interface, runtime descriptor and static declaration before registering the engine. Component engines use
 the same component execution limits and lifecycle as the other component roles.
 
-Legacy core modules retain their version 1 JSON ABI: `check`, `validate_config` and `metadata` exports, no imports,
+Core modules use the version 1 JSON ABI: `check`, `validate_config` and `metadata` exports, no imports,
 and UTF-8 JSON in linear memory. The host checks the ABI version, export signatures and advertised operation versions,
 refuses modules with imports, and runs each call in a pooled instance under a 256 MiB memory limit and a 10 second time
 limit. Defined tables require finite maxima; conservative reservations for their maximum size and growth buffers share
@@ -627,8 +625,8 @@ the plugin's code or ABI is valid. The selected runtime still checks the module.
 For core script engines, an incompatible ABI or transport in the custom section
 is rejected before compilation, and the runtime `metadata()` response must agree
 with the section, allowing differences in whitespace and object key order.
-Older engines without the section retain runtime metadata discovery. Component
-analyzers retain their WIT `describe` contract; their custom section is exposed
+Engines without the section use runtime metadata discovery. Component analyzers
+use WIT `describe`; their custom section is exposed
 for inspection but does not replace that contract.
 
 ## Contribute a rule
@@ -638,9 +636,9 @@ documentation.
 
 Built-in rule metadata lives in `internal/rulecatalog`; configuration projections live in
 `internal/config`. Stateless checks in `internal/semantics` accept explicit inputs and return diagnostics.
-The remaining visitor implementations in `internal/engine` are migration adapters. New document analyzers implement
+Visitor implementations in `internal/engine` are migration adapters. New document analyzers implement
 `analyzer.Analyzer` as described in the [Go API](api.md#add-an-analyzer). The catalogue generates
-[`docs/rules.md`](rules.md); behavior examples remain in [`docs/checks.md`](checks.md). Changes to the WIT contract keep `kjanat:actionlint/analyzer@0.1.0`
+[`docs/rules.md`](rules.md); [`docs/checks.md`](checks.md) provides behavior examples. Changes to the WIT contract keep `kjanat:actionlint/analyzer@0.1.0`
 usable and add a new version for incompatible changes.
 
 ## Rule and source contracts
@@ -649,8 +647,7 @@ Documents, scripts, invocations and mappings carry source references. Diagnostic
 carry structured help, related locations and revision-bound fixes. Descriptors are
 shared rule metadata with independent category, subcategory, maturity and provider.
 Plugins requiring `dependencies` receive literal action and reusable-workflow
-references, including source ranges and owning node identities. Dynamic references
-remain unknown and are not sent as literal dependencies.
+references, including source ranges and owning node identities. Dynamic references are omitted.
 
 Script engines analyze sanitized snippets through either the typed component interface or the version 1 JSON ABI.
 `--plugin` accepts either binary kind and selects the appropriate host from its
@@ -668,7 +665,7 @@ rule names are rejected before analysis.
 
 Loading a document analyzer explicitly enables it by default. Configure it under
 `lint.rules.plugins`. Third-party rules share this configuration namespace. Their
-semantic categories, such as security, remain plugin metadata:
+semantic categories, such as security, are recorded in plugin metadata:
 
 ```yaml
 lint:
@@ -715,32 +712,30 @@ Selectors use lowercase owner/repository names and case-sensitive subpaths witho
 matching; wildcard selectors are rejected. Duplicate targets, conflicting languages and malformed selectors are
 rejected. Up to 256 selectors are allowed per engine. These declarations route snippets; they do not prove the
 guest understands a language. Input-only components may return an empty `shells` list from `describe`, but must
-provide valid input selectors in their root `actionlint.plugin` section. The existing script-engine WIT and core
-ABI remain unchanged. [`action-input.metadata.json`](../examples/plugins/action-input.metadata.json) and its
+provide valid input selectors in their root `actionlint.plugin` section. [`action-input.metadata.json`](../examples/plugins/action-input.metadata.json) and its
 Makefile target demonstrate packaging metadata at the component root. Metadata inside embedded core modules is
 ignored.
 
 The host recognizes `actions/github-script`'s `script` input as JavaScript. Other sites come from registered engine
 declarations. Input requests use the virtual filename
 `actionlint-input/<language>/<owner>/<repository>[/<subpath>]/<input>.<extension>`.
-Language and action/input segments retain the validated selector; Python, JavaScript
+Language and action/input segments come from the validated selector; Python, JavaScript
 and TypeScript use `py`, `js` and `ts` extensions; other languages use their own name.
 Guests can distinguish sites and select a parser without filesystem access or a new
-wire interface. Ordinary run requests retain their existing adapter filenames.
+wire interface.
 Configured Wasm backends use the same selectors as explicitly loaded plugins, and
 disabled engines do not contribute selector conflicts for that effective configuration.
-Workflow and local composite inputs retain their declaring source maps and invocation identity;
+Workflow and local composite inputs carry source maps and invocation identity;
 workflow expressions are masked before checking. Whole inputs created by object expressions have no physical
-script scalar and remain unavailable for this analysis. Ordinary action inputs and `run` scripts are not sent to
+script scalar and cannot be analyzed through this interface. Ordinary action inputs and `run` scripts are not sent to
 an input-only engine. Action inputs have a language, never an inferred runner shell, and cannot opt into ShellCheck
 through a shell directive.
 
 Engines replacing Ruff or ShellCheck receive the corresponding `tools.ruff` or `tools.shellcheck` settings for both
-run scripts and declared inputs, including file overrides. ShellCheck's inline directives retain the input scalar's
-source mapping; they do not add runner startup commands.
+run scripts and declared inputs, including file overrides. ShellCheck's inline directive positions map to the input scalar.
 
 Go document analyzers requesting `analyzer.Scripts` receive these sites separately in `Input.ActionInputs`, with
-`Site`, spans and optional composite `Invocation`. Their shell and runtime fields remain empty. `Input.Scripts`
+`Site`, spans and optional composite `Invocation`. Shell and runtime fields are empty for action inputs. `Input.Scripts`
 and `Input.Invoked`, including the existing portable analyzer WIT, continue to contain only `run` scripts.
 
 The internal tool contract supplies prepared snippets, source maps and execution
@@ -752,6 +747,5 @@ Native CLIs with their own protocols require an adapter; their argument construc
 configuration and diagnostic decoding belong to that adapter.
 
 The engine and application accept tool registrations and do not import the bundled
-Ruff/ShellCheck adapters or dispatch on their names. Process scheduling and WASM
-loading remain separate from provider-specific preparation. The bundled adapters
+Ruff/ShellCheck adapters or dispatch on their names. The bundled adapters
 preserve language-specific expression handling and source mapping.

@@ -72,8 +72,7 @@ type Input struct {
 // Rendering and application-specific exit policies consume the same findings.
 type Result = report.Analysis
 
-// Check owns the complete runtime lifetime, including failed input selection and
-// cancellation. A non-nil result with an error retains partial analysis findings.
+// Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input Input) (result *Result, err error) {
 	options, err = ConfigureToolIntegrations(options)
 	if err != nil {

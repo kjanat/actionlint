@@ -17,8 +17,7 @@ func TestCustomMetadataMustMatchRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Fixture engines predate custom sections; their runtime export remains a
-	// supported discovery fallback. Serialize the full response from the fixture.
+	// Fixtures use the runtime export for metadata discovery.
 	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
 	metadata := engine.Metadata()
 	metadata.Engine.Name = "spoofed"

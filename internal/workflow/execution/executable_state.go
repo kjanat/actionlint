@@ -6,8 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
-// executableState tracks when indexed modes still describe execution. Workspace
-// and independently downloaded action copies retain separate mutation histories.
+// executableState tracks mutations that invalidate indexed executable modes.
 type executableState struct {
 	sequential, pristine, actionPristine bool
 	repositoryUnknown                    bool
@@ -83,8 +82,7 @@ func (rule *ExecutableChecker) JoinComposite(context invocation.Context, child *
 	}
 	conditionKnown := effects.Condition == invocation.ConditionEnabled
 	if !conditionKnown {
-		// Either branch can retain changed modes; a child checkout only resets
-		// them when that branch actually runs.
+		// A conditional checkout cannot prove that changed modes were reset.
 		maps.Copy(rule.changed, child.changed)
 		maps.Copy(rule.actionChanged, child.actionChanged)
 	}

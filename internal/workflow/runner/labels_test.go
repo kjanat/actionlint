@@ -265,11 +265,10 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			},
 		},
 		{
-			what:   "GH-hosted labels conflict with matrix at first label",
-			labels: []string{"${{matrix.os}}", "ubuntu-latest"},
-			matrix: []string{"windows-latest", "macos-latest"},
-			errs:   []string{`label "ubuntu-latest" conflicts with label`},
-			// Complete selectors retain both incompatible alternatives.
+			what:         "GH-hosted labels conflict with matrix at first label",
+			labels:       []string{"${{matrix.os}}", "ubuntu-latest"},
+			matrix:       []string{"windows-latest", "macos-latest"},
+			errs:         []string{`label "ubuntu-latest" conflicts with label`},
 			providerErrs: []string{`label "ubuntu-latest" conflicts with label "windows-latest"`, `label "ubuntu-latest" conflicts with label "macos-latest"`},
 		},
 		{

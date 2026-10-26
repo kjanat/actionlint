@@ -83,8 +83,8 @@ type Analyzer interface {
 
 A descriptor names the analyzer and declares required facts: source content, declared run scripts, resolved mapping
 names, scripts invoked through composite action calls, or runtime execution facts. Each registration can supply JSON options. The host rejects unsupported or unavailable facts before invocation.
-Scripts expose their declared shell; omitted declarations remain unknown. Mapping entries distinguish known, unknown and
-invalid keys and retain source text and evaluated-data provenance. `Complete` indicates whether all mapping names are
+Scripts expose the declared shell, or an empty value when omitted. Mapping entries classify keys as known, unknown or
+invalid and associate them with source text and evaluation status. `Complete` indicates whether all mapping names are
 statically known. A partial parse can supply partial facts; check `Input.ParseStatus` when completeness matters.
 
 `Input.Invoked` lists the scripts of composite actions the document calls. Each names its own `Path` and carries an
@@ -100,7 +100,7 @@ analyzer name and input path. Findings and errors from one analyzer do not disca
 
 An analyzer must finish its own work before returning and honor cancellation. The same instance may be called
 concurrently for different documents. The contract does not expose traversal callbacks, mutable built-in rules,
-process schedulers or caches. Built-in visitor adapters remain an internal implementation detail.
+process schedulers or caches.
 
 The same contract is available to other languages as the WebAssembly component interface described in
 [Plugins](plugins.md). The CLI loads such components with `--plugin`.
@@ -129,7 +129,7 @@ public names are the supported import surface. Treat unexported state as opaque 
 | `Linter`, `AnalysisRenderer`, CLI output selection         | Run the CLI for its presentation contract; consume library diagnostics directly |
 | Expression checker internals, process and cache types      | Internal implementation; no compatibility re-export                             |
 
-The architecture decision and remaining implementation boundaries are recorded in
+The architecture and migration status are documented in
 [the analysis contracts ADR](design/analysis-contracts.md).
 
 ### Script engine backends
@@ -166,13 +166,13 @@ options.LoadScriptEngine = func(ctx context.Context, path string) (analyzer.Scri
 Each analysis loads a path once, shares it between documents, and closes loaded engines before returning.
 Cleanup errors accompany the result. The loader owns artifact access and runtime limits; `ReadFile` does
 not constrain its filesystem access. Supplying a loader does not enable repository-selected processes.
-Explicit `Tool.Backend` instances remain caller-owned.
+Callers manage the lifetime of explicitly supplied `Tool.Backend` instances.
 
 Ruff receives its native options (`target-version`, `lint`, etc.). The native process adapter implements
 this same contract. ShellCheck backends receive `shell`, `exclude`, and `external-sources: false`; the
 source includes resolved inline directives and runner startup options. That backend route has no external
-source or rc-file capability: requests for those features fail explicitly. Native ShellCheck retains its
-filesystem-aware integration, including sourced-file diagnostics and fixes.
+source or rc-file capability: requests for those features fail explicitly. Use native ShellCheck for
+sourced-file diagnostics and fixes.
 
 These Go types are the host API. Component script engines use the typed
 [`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit) interface; legacy core engines keep their existing JSON ABI.

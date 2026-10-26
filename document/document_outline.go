@@ -116,7 +116,7 @@ type PluginRuns struct {
 	Plugin string `json:"plugin"`
 }
 
-// UnknownRuns retains an absent or unrecognized runtime declaration.
+// UnknownRuns represents an absent or unrecognized runs.using value.
 type UnknownRuns struct {
 	Using string `json:"using,omitempty"`
 }

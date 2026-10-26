@@ -21,7 +21,6 @@ type ShellValue struct {
 	Value *workflowlang.String
 }
 
-// ShellValueOf retains the source position and evaluation status of a shell declaration.
 func ShellValueOf(value *workflowlang.String) ShellValue {
 	if value == nil {
 		return ShellValue{}

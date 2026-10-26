@@ -114,7 +114,7 @@ func (rule *Checker) VisitWorkflowPre(n *workflowlang.Workflow) error {
 			// When no secret is passed, secrets may be inherited from a caller of the workflow.
 			// So `secrets` context must be typed as { string => string }. `e.Secrets` is nil when `secrets:` does not
 			// exist. When `e.Secrets` is an empty map, `secrets:` exists but it has no child. A workflow with another
-			// trigger can also access repository secrets on that trigger path, so its secrets type must remain open.
+			// trigger can also access repository secrets on that trigger path.
 			if e.Secrets != nil {
 				sty := exprlang.NewEmptyStrictObjectType()
 				for id, secret := range e.Secrets {

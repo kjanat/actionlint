@@ -128,7 +128,6 @@ runs:
 				}
 				wantMetadata := metadata
 				if destination == "source" && tc.name == "dynamic ref" {
-					// Unknown refs intentionally retain literal, untranslated fallback.
 					wantMetadata = decoy
 				}
 				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {

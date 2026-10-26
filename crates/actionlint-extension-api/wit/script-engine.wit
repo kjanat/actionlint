@@ -35,7 +35,6 @@ interface script-engine {
         config: string,
     }
 
-    /// Findings remain valid when analysis is incomplete.
     record outcome {
         diagnostics: list<diagnostic>,
         error: option<string>,

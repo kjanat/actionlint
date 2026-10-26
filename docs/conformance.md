@@ -60,8 +60,7 @@ score. The summary keeps reference comparison counts and reviewed assessments in
 The summary also includes a collapsible assessment inventory: group counts per category, then each group's index in
 `assessments.json`, case count, review status, finding scope, and rationale. Mixed groups list each finding separately.
 Pass `-v` to `go test` to print the same inventory after all test results, followed by the final comparison totals.
-Stale and resolved reviews remain visible with their status; only current reviews contribute to the scored case and
-finding counts.
+Only current reviews contribute to scored case and finding counts.
 
 ## What the assertions mean
 
@@ -71,15 +70,15 @@ finding counts.
 - **Workflow reader:** lint the original caller text with external tools disabled and an empty configuration. Extra
   lint findings count as differences. Remote reusable workflow bodies supplied to GitHub's mock file provider are
   not resolved by actionlint; the resulting differences are recorded explicitly. Expanded workflow objects and
-  repository-specific limits are not compared. Fixture `skip` metadata is retained as `reference_skips` in the JSON
-  report. A shared fixture skipped by TypeScript does not establish TypeScript support; actionlint still runs it.
+  repository-specific limits are not compared. The JSON report records fixture skips as `reference_skips`.
+  A shared fixture skipped by TypeScript does not establish TypeScript support; actionlint still runs it.
 - **Language service:** preserve the selected upstream assertions. The container tests check diagnostics mentioning
   `command` or `entrypoint`; the circular-alias case checks completion without a panic or hang. Other selected cases
   compare acceptance. Test blocks and assertions are read from the pinned TypeScript sources; unsupported changes to
   their shape fail the adapter.
 - **Action manifests:** parse and validate metadata. Empty companion files satisfy the file-existence checks which
   the runner's manifest-parser fixtures do not exercise. Scripts and containers are never executed. Runtime
-  deprecation diagnostics remain visible as additional lint findings.
+  deprecation produces additional lint findings.
 - **YAML:** decode every document in each stream and compare success with the upstream `error` marker. The assertion
   covers stream acceptance. Event sequences, scalar resolution, and GitHub's more restrictive YAML rules are outside
   its scope.
@@ -124,15 +123,15 @@ unknown case IDs, and invalid diagnostic indices are rejected.
 
 Each review is bound to a SHA-256 fingerprint of the pinned source metadata and the observation, including the input
 hash, reference expectations, diagnostics, comparison contract, and skip metadata. Changed evidence makes the review
-`stale`. Stale and missing reviews remain visible but contribute no category counts. A reviewed case that now agrees
+`stale`. Stale and missing reviews contribute no category counts. A reviewed case that now agrees
 is marked `resolved` and also contributes no category counts. These statuses are separate from `unassessed`, which is
 an explicit unresolved judgment on a current observation. Staleness alone does not fail the test; baseline changes
 still fail independently and must be reviewed.
 
 The assessment report counts **distinct cases per category** and **findings per category** separately. A case with two
 findings in one category counts once in that category's case column and twice in its findings column. A case spanning
-two categories appears in both rows, so category totals are not additive fixture counts. The observation table remains
-an exclusive count of agreements and differences. Reclassifying a review cannot change observations or weaken the
+two categories appears in both rows, so category totals are not additive fixture counts. The observation table counts
+agreements and differences exclusively. Reclassifying a review cannot change observations or weaken the
 regression assertions. Strict mode still fails on every acceptance difference.
 
 For example, the shared `actions/languageservices` reader fixture `insert.yml` uses a working mapping insertion and
@@ -144,8 +143,8 @@ its recorded expectation.
 For the whitespace fixture, the lexer compatibility issue and retired-action diagnostic are separate findings.
 The checked-in [service and runner probe results](expression-results/2026-09-14.md) establish support for the nonfinite
 expression literals and several numeric spellings. Reference-only limits and nonfinite timeout validity are not
-treated as proven GitHub runtime defects. Negative hexadecimal expressions and nonfinite workflow timeouts retain
-explicit unresolved assessments. See the generated reports for current counts.
+treated as proven GitHub runtime defects. Assessments record unresolved validity questions for negative hexadecimal
+expressions and nonfinite workflow timeouts. See the generated reports for current counts.
 
 For composite outputs, the pinned runner schema permits an omitted `value`, and
 [`CompositeActionHandler.ProcessOutputs()`](https://github.com/actions/runner/blob/602c0085328df8cb595fc2641d69f640a11377a4/src/Runner.Worker/Handlers/CompositeActionHandler.cs#L183)
@@ -165,7 +164,7 @@ When fixing a difference, add a focused actionlint regression test and review th
 baseline entry and its assessment; for an intentional diagnostic change, update the baseline text and review each
 finding against the new observation before copying its fingerprint into the assessment file. Fingerprints are never
 refreshed automatically. Changing only a judgment or its rationale requires no baseline or observation edit. Use strict
-mode to inspect the remaining acceptance disagreements.
+mode to inspect acceptance disagreements.
 
 ## Updating the sources
 
@@ -181,5 +180,5 @@ requires the recorded fixture counts to match the imported corpus. Review count 
 and update this document when the selected contracts change. Source revision changes make the affected assessments
 stale, even when diagnostics happen to stay the same. Review their evidence before updating their fingerprints.
 
-The upstream projects retain authorship of their fixtures. The cache keeps their archives unmodified, including any
+The cache stores upstream archives unmodified, including their
 license notices they contain; fixture source text is not copied into this repository or release packages.

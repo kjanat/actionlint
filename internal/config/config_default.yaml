@@ -54,7 +54,6 @@ lint:
 #   shellcheck:
 #     enabled: true
 #     # config also accepts an rc path, auto for discovery, or false to skip rc files.
-#     # Inline directives remain active with config: false.
 #     config: {disable: [SC2086], enable: [check-unassigned-uppercase], shell: bash,
 #       extended-analysis: true, external-sources: true, source-path: ["${{ workspace }}"]}
 
@@ -92,6 +91,6 @@ lint:
 #   ./generated-action: ./src/action
 
 # Null variables/secrets disables name checking; [] permits no configured names.
-# Built-in secrets and workflow_call declarations remain available.
+# Built-in and workflow_call secrets are added to this list.
 
 # Run `actionlint config migrate` to preview conversion of older configuration.

@@ -36,7 +36,6 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 
 		ty, offsetAfter, ok := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
 		// Parsed expressions have a complete boundary even when semantic checks fail.
-		// Scan later interpolations for independent rules, but retain aggregate invalidity.
 		if !ok && ty == nil {
 			return nil, false
 		}

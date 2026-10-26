@@ -22,7 +22,7 @@ const (
 	MetadataMappingFailed
 )
 
-// MetadataResult retains acquisition facts independently of diagnostic emission.
+// MetadataResult describes an attempt to acquire an action manifest.
 type MetadataResult struct {
 	status    MetadataStatus
 	metadata  *actionmeta.Metadata

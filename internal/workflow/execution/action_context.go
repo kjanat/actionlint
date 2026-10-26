@@ -13,7 +13,6 @@ import (
 var ErrInvalidActionCall = errors.New("execution: invalid action call")
 
 // CallFacts computes the effects of an action call step on its caller.
-// An unresolved call may have nil Uses, which is retained as empty.
 func CallFacts(call *workflowlang.Step, platform runnerlang.Platform) (invocation.Facts, error) {
 	if call == nil {
 		return invocation.Facts{}, ErrInvalidActionCall

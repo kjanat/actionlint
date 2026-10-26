@@ -9,8 +9,6 @@ import (
 )
 
 // declarationRule is the traversal adapter for stateless declaration checks.
-// Check implementations own their inputs and results; only this adapter collects
-// findings for the remaining visitor pipeline.
 type declarationRule struct {
 	workflowvisit.Base
 	check         checks.Declaration
