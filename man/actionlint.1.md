@@ -31,13 +31,14 @@ are enabled by default; ordinary workflow checks do not require configuration.
 
 # USAGE
 
-With no paths, **actionlint** and **actionlint check** find the current repository
-containing both `.git` and `.github/workflows`, then recursively check workflow
-YAML files in that directory. Pass explicit filenames or **-** for stdin.
+With no arguments, **actionlint** prints help to stdout and exits 0.
+With no paths, **actionlint check** discovers workflow and action files in the
+current repository and exits 3 if no inputs are found.
+Pass explicit filenames or **-** for stdin.
 Passing a directory does not enable recursive input expansion;
 action manifests are also discovered and can be passed as explicit inputs.
 
-    $ actionlint
+    $ actionlint check
     $ actionlint file1.yaml file2.yaml
     $ actionlint check file1.yaml --output-format=json
     $ actionlint check --stdin-filename .github/workflows/ci.yml -

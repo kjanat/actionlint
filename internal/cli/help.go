@@ -180,7 +180,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	name := terminalLink(links, "actionlint", projectURL)
 	_, _ = fmt.Fprintln(out, command.Sprintf("actionlint %s — Check workflows, actions and embedded scripts", buildinfo.Version()))
 	_, _ = fmt.Fprintf(out, "\n%s\n  %s [flags] [files...]\n  %s [flags] -\n  %s <command>\n", heading.Sprint("Usage:"), command.Sprint(name), command.Sprint(name), command.Sprint(name))
-	_, _ = fmt.Fprintln(out, "\nNo files: discover workflows and actions. Use - for stdin.\nUse -- before filenames beginning with a dash.")
+	_, _ = fmt.Fprintln(out, "\nNo arguments: show help. Run actionlint check to discover workflows and actions.\nUse - for stdin. Use -- before filenames beginning with a dash.")
 	_, _ = fmt.Fprintln(out, "\n"+heading.Sprint("Commands:"))
 	for _, sub := range a.root.Commands() {
 		if !sub.Hidden && sub.Name() != "help" {
@@ -201,7 +201,7 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 			{"config", "Read configuration from `PATH`"},
 			{"ignore-regex", "Ignore findings matching `RE` (repeatable)"},
 			{"json", "Write JSON results"},
-			{"output-format", "Output `FMT`: text, oneline, json, jsonl, sarif, github"},
+			{"output-format", "Output `FMT`: text, pretty, oneline, json, jsonl, sarif, github"},
 			{"output-file", "Write results to `PATH`"},
 			{"quiet", "Suppress progress and summaries"},
 			{"help", "Show help"},
@@ -247,7 +247,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -shellcheck[=COMMAND]   false or an empty value disables ShellCheck
   -ruff[=COMMAND]         false or an empty value disables Ruff
   -pyflakes COMMAND       Select Pyflakes rules through Ruff unless Ruff is selected
-  -stdin-filename PATH    unchanged
+  -stdin-filename PATH
 
 Options may appear before or after filenames. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win

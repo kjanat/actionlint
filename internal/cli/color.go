@@ -60,7 +60,7 @@ func (r *renderOptions) resolveGitHubActionsColor(out io.Writer) {
 		return
 	}
 	switch r.Format {
-	case "", render.FormatText, render.FormatOneline:
+	case "", render.FormatText, render.FormatPretty, render.FormatOneline:
 		r.Color = render.ColorAlways
 	}
 }

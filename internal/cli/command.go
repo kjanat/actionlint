@@ -32,8 +32,11 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) int {
 	if len(args) > 0 {
 		args = args[1:]
 	}
-	if args == nil {
-		args = []string{}
+	if len(args) == 0 {
+		app.root.SetContext(ctx)
+		app.streams.Stderr = app.streams.Stdout
+		app.help(app.root, nil)
+		return app.status
 	}
 	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)

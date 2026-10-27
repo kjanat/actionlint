@@ -66,6 +66,7 @@ type renderOptions struct {
 	TemplateFile       string
 	OutputFile         string
 	Color              render.Color
+	Width              int
 	Oneline            bool
 	Quiet              bool
 	Summary            bool
@@ -74,7 +75,7 @@ type renderOptions struct {
 func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
-		Render:    renderOptions{PrettyJSON: true, Summary: true},
+		Render:    renderOptions{PrettyJSON: true, Summary: true, Width: 100},
 		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Ruff: "ruff"},
 	}
 }
@@ -148,14 +149,20 @@ func (a *commandApp) prepareInvocation() error {
 	if (i.Render.Template != "" || i.Render.TemplateFile != "") && (i.JSON || explicitOutput) {
 		return commandUsageError{errors.New("--template/--format cannot be combined with --json or --output-format")}
 	}
+	if a.set["diagnostic-width"] && o.output != "pretty" {
+		return commandUsageError{errors.New("--diagnostic-width requires --output-format=pretty")}
+	}
+	if i.Render.Width < 40 || i.Render.Width > 400 {
+		return commandUsageError{errors.New("--diagnostic-width must be between 40 and 400")}
+	}
 	switch o.output {
-	case "text", "oneline", "json", "jsonl", "sarif", "github":
+	case "text", "pretty", "oneline", "json", "jsonl", "sarif", "github":
 		if explicitOutput || i.JSON {
 			i.Render.Oneline = false
 			i.Render.Format = render.Format(o.output)
 		}
 	default:
-		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, oneline, json, jsonl, sarif or github", o.output)}
+		return commandUsageError{fmt.Errorf("invalid output mode %q: choose text, pretty, oneline, json, jsonl, sarif or github", o.output)}
 	}
 	if a.set["log-level"] {
 		switch o.logLevel {

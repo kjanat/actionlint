@@ -6,12 +6,14 @@ This document describes how to use [actionlint](../README.md).
 
 ## `actionlint` command
 
-With no argument, actionlint checks workflows and `action.yml`/`action.yaml`
+With no arguments, `actionlint` prints help to stdout and exits successfully.
+Run `actionlint check` to check workflows and `action.yml`/`action.yaml`
 manifests in the current repository, including actions that no workflow references.
-Repositories containing only actions are supported too.
+Repositories containing only actions are supported too. If discovery finds no
+inputs, `actionlint check` exits 3.
 
 ```sh
-actionlint
+actionlint check
 ```
 
 When paths to YAML workflow files are given as arguments, actionlint checks them.
@@ -168,11 +170,35 @@ actionlint check --help --json
 actionlint version --json
 ```
 
-`--output-format` accepts `text`, `oneline`, `json`, `jsonl`, `sarif` and `github`.
+`--output-format` accepts `text`, `pretty`, `oneline`, `json`, `jsonl`, `sarif` and `github`.
 `--json` selects JSON. `--template` and its supported `--format` alias render the
 existing Go-template fields and functions. `--template-file` reads the same syntax
 from a file. A template cannot be combined with a built-in output selector.
 The legacy `-oneline` option still yields to a nonempty template.
+
+For compact terminal diagnostics with severity colours, separate locations and
+wrapped messages:
+
+```sh
+actionlint check --output-format=pretty --diagnostic-width=80 --color=auto
+```
+
+`pretty` includes captured source, range indicators, explanation, help, related
+locations and fix descriptions when supplied by the analyzer. Messages and paths
+wrap; long source lines show a window around the diagnostic. Tabs use four-column
+stops. Width defaults to 100 columns; `--diagnostic-width` accepts 40–400 and
+requires `pretty`. Use `--color=always` to force ANSI colours or `--color=never`
+to disable them. Automatic colour respects `NO_COLOR`.
+
+```text
+warning[expression-reference]
+  unknown variable
+  --> ci.yml:1:3
+  |
+1 |   bad
+  |   ^^^
+  = help: Use a declared value.
+```
 
 JSON returns a versioned document. Each diagnostic has `rule`, `message`, `path`,
 `start`, `end` and an optional `snippet`. Positions use one-based Unicode character
