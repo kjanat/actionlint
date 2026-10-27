@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/semantics/permission"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -84,8 +85,15 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if event == nil {
 		t.Fatal("callee has no workflow_call event")
 	}
-	astCache := newCapturedWorkflowCache(t, root, root, nil)
-	astCache.WriteWorkflowCallEventFromWorkflow("permissions.yaml", event, w)
+	astCache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, root, nil)
+	path := filepath.Join(root, "permissions.yaml")
+	snapshot, err := snapshots.Document(path, src, documentparse.Workflow(path, src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := astCache.Seed(snapshot); err != nil {
+		t.Fatal(err)
+	}
 	fromNode := run(t, astCache)
 
 	if len(fromFile) == 0 {

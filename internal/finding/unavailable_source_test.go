@@ -35,15 +35,15 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 			return err
 		}
 		ast.Inspect(file, func(node ast.Node) bool {
-			selector, ok := node.(*ast.SelectorExpr)
-			if !ok {
-				return true
+			name, literal := unavailableSourceUse(node)
+			if literal && filepath.Clean(path) != filepath.Clean(filepath.Join(root, "internal", "finding", "unavailable_source.go")) {
+				t.Errorf("E7/M07 source marker literal escaped its owner: %s", path)
 			}
-			expected, tracked := want[selector.Sel.Name]
+			expected, tracked := want[name]
 			if tracked {
-				counts[selector.Sel.Name]++
+				counts[name]++
 				if filepath.Clean(path) != filepath.Clean(expected) {
-					t.Errorf("E7/M07 temporary source marker escaped producer: %s in %s", selector.Sel.Name, path)
+					t.Errorf("E7/M07 temporary source marker escaped producer: %s in %s", name, path)
 				}
 			}
 			return true
@@ -56,6 +56,56 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 	for factory := range want {
 		if counts[factory] != 1 {
 			t.Errorf("E7/M07 producer %s has %d sites, want exactly one until deletion", factory, counts[factory])
+		}
+	}
+}
+
+func unavailableSourceUse(node ast.Node) (string, bool) {
+	switch expression := node.(type) {
+	case *ast.SelectorExpr:
+		return expression.Sel.Name, false
+	case *ast.CallExpr:
+		if name, ok := expression.Fun.(*ast.Ident); ok {
+			return name.Name, false
+		}
+	case *ast.CompositeLit:
+		switch name := expression.Type.(type) {
+		case *ast.Ident:
+			return "", name.Name == "UnavailableSource"
+		case *ast.SelectorExpr:
+			return "", name.Sel.Name == "UnavailableSource"
+		}
+	}
+	return "", false
+}
+
+func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T) {
+	for _, expression := range []struct {
+		source, factory string
+		literal         bool
+	}{
+		{source: `NativeShellcheckUnavailable("reported.sh", false)`, factory: "NativeShellcheckUnavailable"},
+		{source: `finding.PluginShellcheckUnavailable("reported.sh")`, factory: "PluginShellcheckUnavailable"},
+		{source: `UnavailableSource{state: sourceNotCaptured}`, literal: true},
+		{source: `finding.UnavailableSource{}`, literal: true},
+	} {
+		node, err := parser.ParseExpr(expression.source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		factories, literals := 0, 0
+		ast.Inspect(node, func(node ast.Node) bool {
+			name, literal := unavailableSourceUse(node)
+			if name == expression.factory && name != "" {
+				factories++
+			}
+			if literal {
+				literals++
+			}
+			return true
+		})
+		if expression.factory != "" && factories != 1 || expression.literal && literals != 1 {
+			t.Fatalf("producer gate missed %s: factories=%d literals=%d", expression.source, factories, literals)
 		}
 	}
 }

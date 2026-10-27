@@ -72,12 +72,12 @@ jobs:
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "is duplicated") {
 				t.Fatalf("expected one duplicate key diagnostic, got %v", errs)
 			}
-			event, ok := workflow.FindWorkflowCallEvent()
+			_, ok := workflow.FindWorkflowCallEvent()
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
 			astCache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
-			astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+			seedCapturedWorkflow(t, astCache, "callee.yaml", callee)
 			fromAST, _, _ := astCache.Lookup("./callee.yaml")
 			fromFile, err := calls.ParseMetadata(callee)
 			if err != nil {

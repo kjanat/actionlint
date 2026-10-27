@@ -107,10 +107,8 @@ jobs:
 					}
 					check(diagnostics, true)
 				}
-				workflow, _ := documentparse.Parse(callee)
-				event, _ := workflow.FindWorkflowCallEvent()
 				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
-				cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+				seedCapturedWorkflow(t, cache, "callee.yaml", callee)
 				fromAST, _, _ := cache.Lookup("./callee.yaml")
 				fromFile, err := calls.ParseMetadata(callee)
 				if err != nil {

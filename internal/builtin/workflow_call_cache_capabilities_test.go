@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
@@ -15,7 +16,7 @@ import (
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*findingmodel.Finding {
 	t.Helper()
 	root := t.TempDir()
-	cache := newCapturedWorkflowCache(t, root, root, nil)
+	cache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, root, nil)
 	for name, src := range callees {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {
 			t.Fatal(err)
@@ -25,11 +26,18 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			if len(errs) != 0 {
 				t.Fatalf("%s: %v", name, errs)
 			}
-			event, ok := w.FindWorkflowCallEvent()
+			_, ok := w.FindWorkflowCallEvent()
 			if !ok {
 				t.Fatalf("%s has no workflow_call event", name)
 			}
-			cache.WriteWorkflowCallEventFromWorkflow(name, event, w)
+			path := filepath.Join(root, name)
+			snapshot, err := snapshots.Document(path, []byte(src), documentparse.Workflow(path, []byte(src)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := cache.Seed(snapshot); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	w, errs := workflowlang.ParseDocument([]byte(caller))

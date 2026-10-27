@@ -377,11 +377,11 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 				if w == nil || len(errs) != 0 {
 					continue
 				}
-				event, found := w.FindWorkflowCallEvent()
+				_, found := w.FindWorkflowCallEvent()
 				if !found {
 					continue
 				}
-				cache.WriteWorkflowCallEventFromWorkflow(name, event, w)
+				seedCapturedWorkflow(t, cache, name, []byte(source))
 				fromAST, _, _ := cache.Lookup("./" + name)
 				fromFile, err := calls.ParseMetadata([]byte(source))
 				if err != nil {
