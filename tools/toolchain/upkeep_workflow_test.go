@@ -30,7 +30,16 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			}
 		}
 	}
-	if err := codec.Unmarshal(data, &workflow); err != nil {
+	root, err := codec.Parse(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, cursor, err := codec.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	if err := cursor.Decode(&workflow); err != nil {
 		t.Fatal(err)
 	}
 	var script string

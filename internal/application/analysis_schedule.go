@@ -17,7 +17,7 @@ func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registra
 		findings, err := analyzerhost.Run(ctx, input, registrations)
 		analysisErr = err
 		for _, registration := range registrations {
-			if registration.Analyzer != nil {
+			if !analyzerhost.IsNilAnalyzer(registration.Analyzer) {
 				*usedRules = append(*usedRules, registration.Analyzer.Descriptor().Clone())
 			}
 		}

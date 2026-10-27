@@ -13,10 +13,10 @@ import (
 
 // CheckShell validates builtin names and accepts custom shell templates.
 func CheckShell(shell value.Value, platform runnerlang.Platform) []diagnostic.Diagnostic {
-	if !shell.Known() || shell.Kind() != value.String {
+	node, known := shell.ScalarString()
+	if !known {
 		return nil
 	}
-	node, _ := shell.Text()
 
 	// Ignore custom shell
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#custom-shell

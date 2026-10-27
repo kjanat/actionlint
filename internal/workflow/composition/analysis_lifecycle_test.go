@@ -134,7 +134,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 					return nil
 				},
 			})
-			var snapshots documentparse.SourceSnapshots
+			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := snapshots.Document("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"), parsed)
 			if err != nil {
 				t.Fatal(err)

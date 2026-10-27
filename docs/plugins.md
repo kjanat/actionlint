@@ -735,7 +735,9 @@ Engines replacing Ruff or ShellCheck receive the corresponding `tools.ruff` or `
 run scripts and declared inputs, including file overrides. ShellCheck's inline directive positions map to the input scalar.
 
 Go document analyzers requesting `analyzer.Scripts` receive these sites separately in `Input.ActionInputs`, with
-`Site`, spans and optional composite `Invocation`. Shell and runtime fields are empty for action inputs. `Input.Scripts`
+`Site` and spans. Request `analyzer.Invocations` for `Occurrence` and its ancestry in `Input.CallGraph`.
+Resolve the occurrence owner through `CallGraph.Call`, or `CallGraph.Entry` for entry-owned inputs.
+Shell and runtime fields are empty for action inputs. `Input.Scripts`
 and `Input.Invoked`, including the existing portable analyzer WIT, continue to contain only `run` scripts.
 
 The internal tool contract supplies prepared snippets, source maps and execution

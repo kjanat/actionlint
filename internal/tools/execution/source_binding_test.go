@@ -22,7 +22,7 @@ func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "source", "action.yml")
 	content := []byte("name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo first\n    - shell: sh\n      run: echo second\n")
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document(fsread.PhysicalPath(path), content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection
 	}
 	scope := &Scope{Context: builder.RootContext(), Deployment: deployment, Composite: true, Config: &repoconfig.Config{}}
 	workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
-	collection := Collection{Declarations: &snapshots, Scopes: []*Scope{scope}, Collected: true}
+	collection := Collection{Declarations: snapshots.SourceSnapshots, Scopes: []*Scope{scope}, Collected: true}
 	steps, available := snapshot.ActionSteps()
 	if !available || len(steps) != 2 {
 		t.Fatal("fixture action has no declarations")
@@ -81,7 +81,7 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 					t.Fatal("inherited shell replaced the declaration shell")
 				}
 				fact, exists := batch.Fact(i, false)
-				if !exists || fact.Path != "" || fact.JobID != "" || fact.Invocation != nil {
+				if !exists || fact.Path != "" || fact.JobID != "" || invocation.ID(fact.Occurrence.Owner) != batch.Invocations().RootID() || fact.Occurrence.Depth != 0 {
 					t.Fatalf("standalone fact changed entry semantics: %+v", fact)
 				}
 			}
@@ -216,7 +216,7 @@ func TestBatchRetainsPartialScriptsAfterCancellation(t *testing.T) {
 func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "action.yml")
 	content := []byte("name: node\ndescription: node\nruns: {using: node24, main: index.js}\n")
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document(fsread.PhysicalPath(path), content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)

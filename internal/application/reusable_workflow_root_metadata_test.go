@@ -88,7 +88,7 @@ jobs:
 				}
 				previousMetadata = metadata
 				for pass := range 2 {
-					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -109,7 +109,7 @@ jobs:
 					}
 					previousDiagnostics = errs
 				}
-				errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
+				errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -196,7 +196,7 @@ jobs:
 						cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 					}
 					for pass := range 2 {
-						errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
+						errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -227,7 +227,7 @@ jobs:
 						}
 					}
 					previousMetadata = metadata
-					errs, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}

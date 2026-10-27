@@ -180,7 +180,7 @@ jobs:
 		cache := calls.NewCache(project.RootDir(), root, nil)
 		for range 2 {
 			for _, name := range order {
-				diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
+				diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -285,7 +285,7 @@ jobs:
 					cache := calls.NewCache(project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
-							diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
+							diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -393,7 +393,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 			}
 		}
 		for range 2 {
-			diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: "caller.yaml", Content: []byte(sources["caller.yaml"]), Project: project, Config: lConfig}, nil, nil, cache)
+			diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: []byte(sources["caller.yaml"]), Project: project, Config: lConfig}, nil, nil, cache)
 			if err != nil {
 				t.Fatal(err)
 			}

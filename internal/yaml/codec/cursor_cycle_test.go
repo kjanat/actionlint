@@ -19,11 +19,11 @@ type cursorCycleRoot struct {
 
 func parseCycleSource(t *testing.T, source string) *syntax.Node {
 	t.Helper()
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(source), &root); err != nil {
+	root, err := codec.Parse([]byte(source))
+	if err != nil {
 		t.Fatalf("parse YAML: %v", err)
 	}
-	return &root
+	return root
 }
 
 func cursorValue(t *testing.T, entered codec.Entered, name string) (codec.Cursor, error) {
@@ -95,9 +95,9 @@ func compareCycleFailure(t *testing.T, got, want error) {
 	if got == nil || want == nil {
 		t.Fatalf("cursor error = %v, upstream error = %v; want both to fail", got, want)
 	}
-	var gotLoad *codec.LoadError
-	var wantLoad *upstream.LoadError
-	if !errors.As(got, &gotLoad) || !errors.As(want, &wantLoad) {
+	gotLoad, gotOK := errors.AsType[*codec.LoadError](got)
+	wantLoad, wantOK := errors.AsType[*upstream.LoadError](want)
+	if !gotOK || !wantOK {
 		t.Fatalf("cursor error = %T %v, upstream error = %T %v", got, got, want, want)
 	}
 	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || got.Error() != want.Error() {

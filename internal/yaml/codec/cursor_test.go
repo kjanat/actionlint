@@ -17,14 +17,6 @@ type cursorPlainStrings struct {
 	Items [][]string `yaml:"items"`
 }
 
-func parseCursorSource(data []byte) (*syntax.Node, error) {
-	var root syntax.Node
-	if err := codec.Unmarshal(data, &root); err != nil {
-		return nil, err
-	}
-	return &root, nil
-}
-
 func walkCursorItems(root *syntax.Node, visit func(codec.Cursor) error) error {
 	session, rootCursor, err := codec.Open(root)
 	if err != nil {
@@ -116,9 +108,9 @@ func cursorDecodeMaps(root *syntax.Node, enterItem bool) ([]map[string]any, erro
 
 func assertCursorAliasErrorMatchesUpstream(t *testing.T, got, want error) {
 	t.Helper()
-	var gotLoad *codec.LoadError
-	var wantLoad *upstream.LoadError
-	if !errors.As(got, &gotLoad) || !errors.As(want, &wantLoad) {
+	gotLoad, gotOK := errors.AsType[*codec.LoadError](got)
+	wantLoad, wantOK := errors.AsType[*upstream.LoadError](want)
+	if !gotOK || !wantOK {
 		t.Fatalf("codec error = %T %v; upstream error = %T %v", got, got, want, want)
 	}
 	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column {
@@ -150,7 +142,7 @@ func TestCursorAliasBudgetMatchesUpstreamAndEnteredDecode(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want document-wide alias limit", wantErr)
 	}
-	root, err := parseCursorSource(data)
+	root, err := codec.Parse(data)
 	if err != nil {
 		t.Fatalf("parse original alias graph: %v", err)
 	}
@@ -180,7 +172,7 @@ func TestCursorStopsAtAliasLimitBeforeTrailingKeys(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want alias limit before trailing fields", wantErr)
 	}
-	root, err := parseCursorSource(data)
+	root, err := codec.Parse(data)
 	if err != nil {
 		t.Fatalf("parse source graph: %v", err)
 	}
@@ -200,7 +192,7 @@ func TestCursorSplitAliasBudgetMatchesUpstream(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want document-wide alias limit", wantErr)
 	}
-	root, err := parseCursorSource(data)
+	root, err := codec.Parse(data)
 	if err != nil {
 		t.Fatalf("parse original split-alias graph: %v", err)
 	}
@@ -226,7 +218,7 @@ func TestCursorParentAliasSequenceCarriesExpansionContext(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream parent-alias baseline error = %v, want alias limit", wantErr)
 	}
-	root, err := parseCursorSource([]byte(parentAlias))
+	root, err := codec.Parse([]byte(parentAlias))
 	if err != nil {
 		t.Fatalf("parse parent alias graph: %v", err)
 	}
@@ -272,7 +264,7 @@ func TestCursorValidAliasAndUnselectedControlsMatchUpstream(t *testing.T) {
 			if err := upstream.Unmarshal([]byte(tc.source), &baseline); err != nil {
 				t.Fatalf("upstream.Unmarshal: %v", err)
 			}
-			root, err := parseCursorSource([]byte(tc.source))
+			root, err := codec.Parse([]byte(tc.source))
 			if err != nil {
 				t.Fatalf("parse original graph: %v", err)
 			}
@@ -322,29 +314,37 @@ func openFirstEnteredItem(root *syntax.Node) (*codec.Session, codec.Cursor, code
 }
 
 func TestCursorZeroAndClosedSessionRejectOperations(t *testing.T) {
+	assertInactive := func(err error) {
+		t.Helper()
+		if _, ok := errors.AsType[*codec.GraphError](err); !ok {
+			t.Fatalf("inactive cursor error=%T %v, want GraphError", err, err)
+		}
+	}
 	var zero codec.Cursor
-	if _, err := zero.Enter(); err == nil {
-		t.Fatal("zero cursor Enter succeeded")
-	}
+	_, err := zero.Enter()
+	assertInactive(err)
 	var value []string
-	if err := zero.Decode(&value); err == nil {
-		t.Fatal("zero cursor Decode succeeded")
-	}
-	root, err := parseCursorSource(inheritedAliasSource())
+	assertInactive(zero.Decode(&value))
+	var zeroEntered codec.Entered
+	assertInactive(zeroEntered.Decode(&value))
+	root, err := codec.Parse(inheritedAliasSource())
 	if err != nil {
-		t.Fatalf("parse cursor graph: %v", err)
+		t.Fatal(err)
 	}
-	session, item, _, err := openFirstEnteredItem(root)
+	session, item, entered, err := openFirstEnteredItem(root)
 	if err != nil {
-		t.Fatalf("open first item: %v", err)
+		t.Fatal(err)
 	}
 	session.Close()
-	if _, err := item.Enter(); err == nil {
-		t.Fatal("closed session cursor Enter succeeded")
+	_, err = item.Enter()
+	assertInactive(err)
+	assertInactive(item.Decode(&value))
+	assertInactive(entered.Decode(&value))
+	var target struct {
+		Value codec.Selected `yaml:"value"`
 	}
-	if err := item.Decode(&value); err == nil {
-		t.Fatal("closed session cursor Decode succeeded")
-	}
+	assertInactive(item.Select(&target, func(*codec.Selected, codec.Cursor) error { return nil }))
+	assertInactive(entered.Select(&target, func(*codec.Selected, codec.Cursor) error { return nil }))
 }
 
 func TestCursorEnteredDecodeRepeatedCallCountsRootAgain(t *testing.T) {
@@ -363,7 +363,7 @@ func TestCursorEnteredDecodeRepeatedCallCountsRootAgain(t *testing.T) {
 	if err := upstream.Unmarshal(data, &baseline); err != nil {
 		t.Fatalf("upstream one-alias baseline: %v", err)
 	}
-	root, err := parseCursorSource(data)
+	root, err := codec.Parse(data)
 	if err != nil {
 		t.Fatalf("parse source graph: %v", err)
 	}
@@ -403,7 +403,7 @@ func TestCursorInvalidTargetDoesNotConsumeEnteredRoot(t *testing.T) {
 	if err := upstream.Unmarshal(data, &baseline); err != nil {
 		t.Fatalf("upstream one-alias baseline: %v", err)
 	}
-	root, err := parseCursorSource(data)
+	root, err := codec.Parse(data)
 	if err != nil {
 		t.Fatalf("parse source graph: %v", err)
 	}
@@ -432,7 +432,7 @@ func TestCursorFatalAliasBudgetIsSticky(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want alias limit", wantErr)
 	}
-	root, err := parseCursorSource(data)
+	root, err := codec.Parse(data)
 	if err != nil {
 		t.Fatalf("parse cursor graph: %v", err)
 	}

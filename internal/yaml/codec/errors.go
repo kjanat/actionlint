@@ -1,16 +1,12 @@
 package codec
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
-
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
-
-type Unmarshaler interface {
-	UnmarshalYAML(*Decoder, *syntax.Node) error
-}
 
 type Mark struct{ Index, Line, Column int }
 
@@ -31,6 +27,12 @@ type LoadError struct {
 
 // FatalLoadError distinguishes aborting loads from collected schema diagnostics.
 func FatalLoadError(err error) (*LoadError, bool) {
+	if admission, rejected := errors.AsType[*AdmissionError](err); rejected {
+		if loaded, ok := errors.AsType[*LoadError](admission); ok {
+			return loaded, true
+		}
+		return &LoadError{Message: admission.Error(), cause: admission}, true
+	}
 	if _, collected := errors.AsType[*DecodeError](err); collected {
 		return nil, false
 	}
@@ -74,6 +76,31 @@ func (e *DecodeError) Unwrap() []error {
 	return result
 }
 
+// LoadDiagnostics preserves wrapper context, source marks and joined-cause order.
+func LoadDiagnostics(err error) []*LoadError {
+	return locateDecodeErrors(err, Mark{}).Errors
+}
+
+// FormatLoadError preserves native load context and renders collected diagnostics.
+func FormatLoadError(err error) string {
+	if err == nil {
+		return ""
+	}
+	_, joined := err.(interface{ Unwrap() []error })
+	if _, collected := errors.AsType[*DecodeError](err); !joined && !collected {
+		return err.Error()
+	}
+	diagnostics := LoadDiagnostics(err)
+	if len(diagnostics) == 1 {
+		item := diagnostics[0]
+		if item.Mark.Line > 0 {
+			return fmt.Sprintf("line %d: %s", item.Mark.Line, item.Message)
+		}
+		return item.Message
+	}
+	return strings.ReplaceAll((&DecodeError{Errors: diagnostics}).Error(), "\n", "")
+}
+
 func locateDecodeErrors(err error, fallback Mark) *DecodeError {
 	result := &DecodeError{}
 	if err == nil {
@@ -109,4 +136,56 @@ func locateDecodeErrors(err error, fallback Mark) *DecodeError {
 		}
 	}
 	return result
+}
+
+func joinDecodeErrors(errs ...error) error {
+	var result DecodeError
+	var collect func(error)
+	collect = func(err error) {
+		if err == nil {
+			return
+		}
+		if local, ok := err.(interface{ diagnostics() []*LoadError }); ok {
+			result.Errors = append(result.Errors, local.diagnostics()...)
+		} else if list, ok := err.(interface{ Unwrap() []error }); ok {
+			for _, child := range list.Unwrap() {
+				collect(child)
+			}
+		} else {
+			if inner := errors.Unwrap(err); inner != nil {
+				_, decode := errors.AsType[*DecodeError](inner)
+				_, load := errors.AsType[*LoadError](inner)
+				if decode || load {
+					collect(inner)
+					return
+				}
+			}
+			result.Errors = append(result.Errors, &LoadError{Message: err.Error(), cause: err})
+		}
+	}
+	for _, err := range errs {
+		collect(err)
+	}
+	if len(result.Errors) == 0 {
+		return nil
+	}
+	slices.SortStableFunc(result.Errors, func(a, b *LoadError) int {
+		if order := cmp.Compare(a.Mark.Line, b.Mark.Line); order != 0 {
+			return order
+		}
+		if order := cmp.Compare(a.Mark.Column, b.Mark.Column); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.Message, b.Message)
+	})
+	return &result
+}
+
+type GraphError struct {
+	Mark   Mark
+	Reason string
+}
+
+func (e *GraphError) Error() string {
+	return fmt.Sprintf("YAML graph at %d:%d: %s", e.Mark.Line, e.Mark.Column, e.Reason)
 }

@@ -71,16 +71,6 @@ func (input Input) ValidateInvocations() error {
 		if actual.Kind != kind || kind == RunScript && (actual.Owner == input.CallGraph.Entry().ID) != entry {
 			return invalidGraph("script %q is in the wrong input collection", actual.ID)
 		}
-		if legacy := script.Invocation; legacy != nil {
-			call, found := input.CallGraph.Call(actual.Owner)
-			caller := ""
-			if call.Site.Document != input.CallGraph.Entry().Reference.Document {
-				caller = call.Site.Document
-			}
-			if !found || legacy.Reference != call.Site || legacy.Depth != call.Depth || legacy.Step != call.Step || legacy.Uses != call.Uses || legacy.Caller != caller {
-				return invalidGraph("script %q has conflicting legacy invocation", actual.ID)
-			}
-		}
 		seen[actual.ID] = true
 		return nil
 	}

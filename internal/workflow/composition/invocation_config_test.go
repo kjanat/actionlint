@@ -3,11 +3,13 @@ package composition
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -15,10 +17,87 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
+func TestManifestConfigCacheKeepsLogicalPaths(t *testing.T) {
+	directory := t.TempDir()
+	first := filepath.Join(directory, "action.yml")
+	second := directory + string(os.PathSeparator) + "." + string(os.PathSeparator) + "action.yml"
+	if err := os.WriteFile(first, []byte("name: shared\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	firstInfo, err := os.Stat(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondInfo, err := os.Stat(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(firstInfo, secondInfo) {
+		t.Fatal("logical aliases must address the same physical manifest")
+	}
+	for _, paths := range [][]string{{first, second, first}, {second, first, second}} {
+		configs := map[string]*repoconfig.Config{first: {}, second: {}}
+		loads := map[string]int{}
+		service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(path string) (*repoconfig.Config, error) {
+			loads[path]++
+			return configs[path], nil
+		}})
+		result, err := service.analyze(func(analysis *compositeAnalyzer) error {
+			for _, path := range paths {
+				got, err := analysis.configForFile(path)
+				if err != nil {
+					return err
+				}
+				if got != configs[path] {
+					t.Fatalf("logical path %q inherited another alias's config", path)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Configs) != 2 || loads[first] != 1 || loads[second] != 1 || result.Configs[first] != configs[first] || result.Configs[second] != configs[second] {
+			t.Fatalf("logical config cache: loads=%v configs=%v", loads, result.Configs)
+		}
+	}
+}
+
 type configVisitProbe struct {
 	workflowvisit.Base
 	steps    []string
 	finished bool
+}
+
+func TestManifestConfigCacheRetriesFailuresAndCachesNil(t *testing.T) {
+	failure := errors.New("configuration unavailable")
+	loads := 0
+	service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(string) (*repoconfig.Config, error) {
+		loads++
+		if loads == 1 {
+			return nil, failure
+		}
+		return nil, nil
+	}})
+	result, err := service.analyze(func(analysis *compositeAnalyzer) error {
+		if _, err := analysis.configForFile("action.yml"); !errors.Is(err, failure) {
+			t.Fatalf("configuration failure lost its cause: %v", err)
+		}
+		for range 2 {
+			config, err := analysis.configForFile("action.yml")
+			if config != nil || err != nil {
+				t.Fatalf("absent configuration: config=%v error=%v", config, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, exists := result.Configs["action.yml"]
+	if loads != 2 || !exists || config != nil {
+		t.Fatalf("nil configuration cache: loads=%d config=%v exists=%v", loads, config, exists)
+	}
 }
 
 func (probe *configVisitProbe) VisitStep(step *workflowlang.Step) error {

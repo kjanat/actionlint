@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -35,10 +36,14 @@ func (a sourceFactAnalyzer) Descriptor() analyzer.Descriptor {
 
 func (a sourceFactAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.t.Helper()
-	if len(input.Scripts) != 1 || input.Scripts[0].Path != a.path {
-		a.t.Fatalf("fact adapter changed source path: %+v", input.Scripts)
+	if err := input.ValidateInvocations(); err != nil {
+		a.t.Fatal(err)
 	}
-	return []diagnostic.Diagnostic{{Rule: "shellcheck", Message: "source finding", Start: input.Scripts[0].Start}}, nil
+	scripts := slices.Concat(input.Scripts, input.Invoked)
+	if len(scripts) != 1 || scripts[0].Path != a.path {
+		a.t.Fatalf("fact adapter changed source path: %+v", scripts)
+	}
+	return []diagnostic.Diagnostic{{Rule: "shellcheck", Message: "source finding", Start: scripts[0].Start}}, nil
 }
 
 type sourceTool struct {
@@ -70,7 +75,16 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot *documentpa
 	path := filepath.Join(filepath.Dir(snapshot.Reference().Document), "workflow.yml")
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n" + strings.Repeat("      - uses: $/source\n", len(deployments)))
 	document := documentparse.Workflow(path, content)
-	root, err := collection.Declarations.Document(path, content, document)
+	declarations := newCapturedSnapshots(t, filepath.Dir(path))
+	actionPath := snapshot.Capture().Aliases()[0]
+	actionContent := snapshot.Content()
+	var err error
+	snapshot, err = declarations.Document(actionPath, actionContent, documentparse.Action(actionPath, actionPath, actionContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	collection.Declarations = declarations.SourceSnapshots
+	root, err := declarations.Document(path, content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +204,11 @@ func (a partialFactAnalyzer) Descriptor() analyzer.Descriptor {
 
 func (a partialFactAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.t.Helper()
-	if len(input.Scripts) != 1 || input.Scripts[0].Text != "echo ok" {
+	if err := input.ValidateInvocations(); err != nil {
+		a.t.Fatal(err)
+	}
+	scripts := slices.Concat(input.Scripts, input.Invoked)
+	if len(scripts) != 1 || scripts[0].Text != "echo ok" {
 		a.t.Fatalf("changed script facts: %+v", input)
 	}
 	return []diagnostic.Diagnostic{{Rule: "test", Message: "partial finding", Start: diagnostic.Position{Line: 1, Column: 1}}}, a.failure

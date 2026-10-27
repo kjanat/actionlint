@@ -12,10 +12,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func expectedMapping(where string, n *syntax.Node) error {
@@ -129,17 +132,21 @@ func collectCacheOperations(operations []string, steps []*workflowlang.Step) []s
 // indicated by 'root' field. One Cache instance needs to be created per one
 // project.
 type Cache struct {
-	reader *fsread.Reader
-	mu     sync.RWMutex
-	root   string // empty when no repository is available
-	cache  map[string]reusableWorkflowMetadataResult
-	cwd    string
-	dbg    io.Writer
+	captures   *capture.Store
+	ctx        context.Context
+	sourceBase string
+	reader     *fsread.Reader
+	mu         sync.RWMutex
+	root       string // empty when no repository is available
+	cache      map[string]reusableWorkflowMetadataResult
+	cwd        string
+	dbg        io.Writer
 }
 
 type reusableWorkflowMetadataResult struct {
 	metadata *Metadata
 	err      error
+	captured capture.Snapshot
 }
 
 func (c *Cache) debug(format string, args ...any) {
@@ -164,8 +171,40 @@ func (c *Cache) Store(key string, val *Metadata, err error) {
 		return
 	}
 	c.mu.Lock()
-	c.cache[key] = reusableWorkflowMetadataResult{val, err}
+	c.cache[key] = reusableWorkflowMetadataResult{metadata: val, err: err}
 	c.mu.Unlock()
+}
+
+// Seed indexes reusable metadata only from this result's admitted workflow.
+// Mutable visitor ASTs never supply independent source bytes or declarations.
+func (c *Cache) Seed(snapshot *documentparse.SourceSnapshot) error {
+	if c == nil || c.root == "" {
+		return nil
+	}
+	if c.captures == nil || snapshot == nil || snapshot.Kind() != documentparse.KindWorkflow {
+		return errors.New("reusable workflow metadata requires a captured workflow")
+	}
+	captured := snapshot.Capture()
+	if err := c.captures.Verify(captured, snapshot.Content()); err != nil {
+		return err
+	}
+	spec, local := c.convWorkflowPathToSpec(captured.Revision().Document())
+	if !local {
+		return nil
+	}
+	if _, _, exists := c.Lookup(spec); exists {
+		return nil
+	}
+	metadata, err := ParseMetadata(captured.Bytes())
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	if _, exists := c.cache[spec]; !exists {
+		c.cache[spec] = reusableWorkflowMetadataResult{metadata: metadata, captured: captured}
+	}
+	c.mu.Unlock()
+	return nil
 }
 
 // FindMetadata finds/parses a reusable workflow metadata located by the 'spec' argument. When project
@@ -186,14 +225,21 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 	}
 
 	file := filepath.Join(c.root, filepath.FromSlash(spec))
-	src, err := c.reader.ReadFile(file)
+	if c.captures == nil || c.ctx == nil {
+		return nil, errors.New("reusable workflow cache requires a capture store")
+	}
+	address := file
+	if !filepath.IsAbs(address) && c.sourceBase != "" {
+		address = filepath.Join(c.sourceBase, address)
+	}
+	captured, err := c.captures.Read(c.ctx, address, source.YAML)
 	if err != nil {
 		err = fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
 		c.Store(spec, nil, err)
 		return nil, err
 	}
 
-	m, err := ParseMetadata(src)
+	m, err := ParseMetadata(captured.Bytes())
 	if err != nil {
 		msg := strings.ReplaceAll(err.Error(), "\n", " ")
 		err = fmt.Errorf("error while parsing reusable workflow %q: %s", spec, msg)
@@ -202,8 +248,14 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 	}
 
 	c.debug("New reusable workflow metadata at %s: %v", file, m)
-	c.Store(spec, m, nil)
-	return m, nil
+	c.mu.Lock()
+	if previous, exists := c.cache[spec]; exists {
+		m, err = previous.metadata, previous.err
+	} else {
+		c.cache[spec] = reusableWorkflowMetadataResult{metadata: m, captured: captured}
+	}
+	c.mu.Unlock()
+	return m, err
 }
 
 // FindMetadataForCall owns the source-reference boundary for diagnostic rules.

@@ -123,7 +123,7 @@ func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("matrix-proof.yml", content, document)
 	if err != nil {
 		t.Fatal(err)

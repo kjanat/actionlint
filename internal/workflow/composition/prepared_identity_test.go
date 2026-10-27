@@ -12,7 +12,6 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
@@ -88,7 +87,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 	if got.ActionPath != "" || got.ActionRunnerPath != "" || got.ActionIndependent || got.Workspace != paths.Workspace || got.Analysis != paths.Analysis || got.Placements == nil || got.Placements.Directory.Path != "checkout" {
 		t.Fatalf("entry origin or shared paths incorrect: %+v", got)
 	}
-	if fact, exists := result.Batch.Fact(0, false); !exists || fact.Invocation != nil {
+	if fact, exists := result.Batch.Fact(0, false); !exists || invocation.ID(fact.Occurrence.Owner) != result.Batch.Invocations().RootID() || fact.Occurrence.Depth != 0 {
 		t.Fatal("entry script fabricated a caller")
 	}
 }
@@ -103,9 +102,9 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	}
 	metadata := *lookup.Metadata()
 	metadata.SourceMapped = false
-	var declarations documentparse.SourceSnapshots
-	f.service.options.SourceSnapshots = &declarations
-	result, err := standaloneActionForTest(t, f.service, &metadata)
+	declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+	f.service.options.SourceSnapshots = declarations.SourceSnapshots
+	result, err := standaloneActionForTest(t, f.service, &metadata, declarations)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +113,7 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 		t.Fatal("fixture did not create standalone composite entry")
 	}
 	scopes[0].Paths.ActionPath = "foreign"
-	_, err = scriptexecution.NewBatch(result.Batch.Invocations(), scriptexecution.Collection{Declarations: &declarations, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
+	_, err = scriptexecution.NewBatch(result.Batch.Invocations(), scriptexecution.Collection{Declarations: declarations.SourceSnapshots, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
 	if !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
 		t.Fatalf("forged action entry accepted: %v", err)
 	}
@@ -129,8 +128,13 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 		t.Fatal(err)
 	}
 	fact, exists := result.Batch.Fact(0, false)
-	if !exists || fact.Invocation == nil {
+	if !exists {
 		t.Fatal("top-level call projection absent")
+	}
+	graph := result.Batch.CallGraph()
+	call, exists := graph.Call(fact.Occurrence.Owner)
+	if !exists {
+		t.Fatal("top-level owning call absent")
 	}
 	w, exists := f.root.Workflow()
 	if !exists {
@@ -141,9 +145,8 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := fact.Invocation
-	if got.Caller != "" || got.Depth != 1 || got.Uses != "$/child" || got.Reference != site || got.Step.Line != step.Pos.Line || got.Step.Column != step.Pos.Col {
-		t.Fatalf("top-level call projection: %+v", got)
+	if call.Parent != graph.Entry().ID || call.Site.Document != graph.Entry().Reference.Document || call.Depth != 1 || call.Uses != "$/child" || call.Site != site || call.Step.Line != step.Pos.Line || call.Step.Column != step.Pos.Col {
+		t.Fatalf("top-level public call facts: %+v", call)
 	}
 }
 
@@ -218,9 +221,9 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var declarations documentparse.SourceSnapshots
-				service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: &declarations, CollectScripts: collect})
-				result, err := standaloneActionForTest(t, service, meta)
+				declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
+				service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: declarations.SourceSnapshots, CollectScripts: collect})
+				result, err := standaloneActionForTest(t, service, meta, declarations)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -247,14 +250,14 @@ func TestStandalonePreHookFailureKeepsValidDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var declarations documentparse.SourceSnapshots
+	declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
 	failure := errors.New("pre-hook failure")
 	rule := &standalonePreHookFailure{Base: workflowvisit.NewBase("pre-hook", ""), failure: failure}
 	service := New(Options{
-		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: &declarations,
+		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: declarations.SourceSnapshots,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 	})
-	result, err := standaloneActionForTest(t, service, meta)
+	result, err := standaloneActionForTest(t, service, meta, declarations)
 	if !errors.Is(err, failure) || !result.Batch.Valid() || len(result.Batch.Scripts()) != 0 {
 		t.Fatalf("pre-hook failure or prepared action batch lost: error=%v result=%+v", err, result)
 	}
@@ -314,22 +317,25 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 	if len(graph.Scripts()) != 1 {
 		t.Fatal("fixture must produce one nested script")
 	}
-	call, exists := graph.Call(graph.Scripts()[0].Owner)
-	if !exists || call.Uses() != "$/inner" || call.Depth() != 2 {
+	owner, exists := graph.Call(graph.Scripts()[0].Owner)
+	if !exists || owner.Uses() != "$/inner" || owner.Depth() != 2 {
 		t.Fatal("nested script lost its owning call")
 	}
 	projection, exists := result.Batch.Fact(0, false)
-	if !exists || projection.Invocation == nil {
+	if !exists {
 		t.Fatal("missing invocation projection")
+	}
+	call, exists := result.Batch.CallGraph().Call(projection.Occurrence.Owner)
+	if !exists || invocation.ID(projection.Occurrence.Owner) != owner.ID() {
+		t.Fatal("missing occurrence owner call")
 	}
 	prefix, _, found := strings.Cut(line, "{uses")
 	if !found {
 		t.Fatal("fixture has no call mapping")
 	}
 	wantColumn := utf8.RuneCountInString(prefix) + 1
-	got := projection.Invocation
-	if got.Reference != call.Site() || got.Step.Line != 1 || got.Step.Column != wantColumn || got.Depth != 2 || got.Uses != "$/inner" || got.Caller != call.Site().Document || got.Caller == "" {
-		t.Fatalf("projection lost canonical call facts: %+v", got)
+	if call.Site != owner.Site() || !strings.HasSuffix(filepath.ToSlash(call.Site.Document), "/outer/action.yml") || call.Step.Line != 1 || call.Step.Column != wantColumn || call.Depth != 2 || call.Uses != "$/inner" || invocation.ID(call.Parent) != owner.Parent() {
+		t.Fatalf("public projection lost canonical call facts: %+v", call)
 	}
 }
 

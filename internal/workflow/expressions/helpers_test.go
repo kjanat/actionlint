@@ -19,7 +19,8 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, *workflowla
 	if !document.CanAnalyze() {
 		t.Fatalf("workflow parse failed: %v", document.Findings)
 	}
-	snapshot, err := (&documentparse.SourceSnapshots{}).Document("test.yml", content, document)
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := snapshots.Document("test.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}

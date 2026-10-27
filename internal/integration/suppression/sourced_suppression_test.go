@@ -70,6 +70,12 @@ runs:
 						steps = "- uses: ./local"
 					}
 					result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+					manifest := map[string]diagmodel.Position{}
+					if composite && tc.name == "split-anchor" {
+						manifest[`YAML anchors are not supported in action metadata; remove anchor "script"`] = diagmodel.Position{Line: 9, Column: 9}
+						manifest[`YAML aliases are not supported in action metadata; replace alias "script"`] = diagmodel.Position{Line: 13, Column: 13}
+					}
+					manifestCount := len(manifest)
 					counts := map[string]int{}
 					for _, diagnostic := range result.Diagnostics {
 						counts[diagnostic.Rule]++
@@ -77,11 +83,19 @@ runs:
 							if filepath.ToSlash(diagnostic.Path) != "scripts/check.sh" || diagnostic.Code != "SC2086" || diagnostic.Severity != "info" || diagnostic.Start != (diagmodel.Position{Line: 1, Column: 6}) || diagnostic.End != (diagmodel.Position{Line: 1, Column: 12}) || diagnostic.Snippet != "echo $VALUE" {
 								t.Fatalf("source diagnostic was changed: %+v", diagnostic)
 							}
+						} else if expected, ok := manifest[diagnostic.Message]; ok {
+							if diagnostic.Rule != "action" || filepath.ToSlash(diagnostic.Path) != origin || diagnostic.Start != expected {
+								t.Fatal("manifest diagnostic lost origin", diagnostic)
+							}
+							delete(manifest, diagnostic.Message)
 						} else if diagnostic.Rule != tc.directive || filepath.ToSlash(diagnostic.Path) != origin {
 							t.Fatalf("directive diagnostic lost origin: %+v", diagnostic)
 						}
 					}
-					want := 0
+					want := manifestCount
+					if len(manifest) != 0 {
+						t.Fatal("manifest validation findings missing", manifest)
+					}
 					if tc.keep {
 						want++
 						if counts["shellcheck"] != 1 {

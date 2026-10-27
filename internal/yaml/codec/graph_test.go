@@ -50,6 +50,8 @@ func TestEncoderRejectsInvalidGraphBeforeWriting(t *testing.T) {
 func TestGraphRejectsInvalidStructure(t *testing.T) {
 	cycle := &syntax.Node{Kind: syntax.SequenceNode}
 	cycle.Content = []*syntax.Node{cycle}
+	aliasCycle := &syntax.Node{Kind: syntax.AliasNode, Line: 5, Column: 3}
+	aliasCycle.Alias = aliasCycle
 	for _, node := range []*syntax.Node{
 		{Value: "untyped"},
 		{Kind: syntax.SequenceNode, Content: []*syntax.Node{{}}},
@@ -58,9 +60,14 @@ func TestGraphRejectsInvalidStructure(t *testing.T) {
 		{Kind: syntax.ScalarNode, Alias: &syntax.Node{Kind: syntax.ScalarNode}},
 		{Kind: syntax.MappingNode, Content: []*syntax.Node{{Kind: syntax.ScalarNode}}},
 		cycle,
+		aliasCycle,
 	} {
 		if _, err := Marshal(node); err == nil {
 			t.Errorf("accepted invalid graph with root kind %v", node.Kind)
+		}
+		if session, _, err := Open(node); err == nil {
+			session.Close()
+			t.Errorf("opened invalid graph with root kind %v", node.Kind)
 		}
 	}
 	if _, err := Marshal(&syntax.Node{}); err != nil {
@@ -69,11 +76,11 @@ func TestGraphRejectsInvalidStructure(t *testing.T) {
 }
 
 func TestRecursiveAliasGraphEncodesWithoutExpanding(t *testing.T) {
-	var node syntax.Node
-	if err := Unmarshal([]byte("&a [*a]\n"), &node); err != nil {
+	node, err := Parse([]byte("&a [*a]\n"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	encoded, err := Marshal(&node)
+	encoded, err := Marshal(node)
 	if err != nil || string(encoded) != "&a [*a]\n" {
 		t.Fatalf("recursive graph encoded as %q, %v", encoded, err)
 	}

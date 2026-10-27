@@ -18,12 +18,12 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New(Options{Context: t.Context(), SourceSnapshots: &snapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
+	service := New(Options{Context: t.Context(), SourceSnapshots: snapshots.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
 	result, err := service.Workflow(snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -61,15 +61,19 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cache := actionlocal.NewCache(root, nil)
-	cache.Configure(actionlocal.Options{Sources: map[string][]byte{fsread.PhysicalPath(actionPath): actionContent}})
+	actionCapture, err := snapshots.Sources.Capture(actionPath, actionContent, source.YAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache.Configure(actionlocal.Options{Captures: snapshots.Sources.Store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
 	resolver := actionlocal.NewResolver(cache, map[string]string{"./generated": "./source"})
-	service := New(Options{Context: t.Context(), SourceSnapshots: &snapshots, Actions: resolver, CollectScripts: true})
+	service := New(Options{Context: t.Context(), SourceSnapshots: snapshots.SourceSnapshots, Actions: resolver, CollectScripts: true})
 	result, err := service.Workflow(snapshot)
 	if err != nil {
 		t.Fatal(err)

@@ -8,7 +8,7 @@ import (
 
 	checks "actionlint.kjanat.dev/v2/internal/checks"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
@@ -119,9 +119,19 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		return invocation.ErrForeignContext
 	}
 	if analysis.sourceSnapshots == nil {
-		analysis.sourceSnapshots = &documentparse.SourceSnapshots{}
+		return errors.New("action source registry is unavailable")
 	}
-	snapshot, err := analysis.sourceSnapshots.Action(fsread.PhysicalPath(meta.Path()), meta)
+	var captured capture.Snapshot
+	if callContext.IsEntry() && analysis.sourceSnapshot != nil && analysis.sourceSnapshot.Kind() == documentparse.KindAction {
+		captured = analysis.sourceSnapshot.Capture()
+	} else {
+		var err error
+		captured, err = analysis.sourceSnapshots.Capture(meta.Path())
+		if err != nil {
+			return err
+		}
+	}
+	snapshot, err := analysis.sourceSnapshots.Action(captured, meta)
 	if err != nil {
 		return err
 	}

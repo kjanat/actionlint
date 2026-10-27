@@ -14,6 +14,9 @@ func Selectors(job documentparse.JobView) []runnerapi.Selector {
 		return nil
 	}
 	selection := job.RunsOn().Selection()
+	if !hasMatrixReference(selection) {
+		return []runnerapi.Selector{selectorFor(selection, matrix.Combination{}, false)}
+	}
 	strategy := job.Strategy().MatrixResolution()
 	combinations, complete := strategy.Combinations(256)
 	if complete {
@@ -32,7 +35,7 @@ func Selectors(job documentparse.JobView) []runnerapi.Selector {
 		if property == "" {
 			continue
 		}
-		reachable := strategy.Reachable(property)
+		reachable := strategy.ReachableAfterExcludes(property)
 		for _, item := range reachable.Values {
 			result = append(result, selectorFor(selection, (matrix.Combination{}).With(property, item), true))
 		}
@@ -47,15 +50,20 @@ func selectorFor(selection value.Value, combination matrix.Combination, incomple
 		if group, ok := selection.Prop("group"); ok {
 			constraint := groupConstraint(group, combination)
 			result.Group = &constraint
+			if _, unresolved := constraint.Value.(runnerapi.Expression); unresolved {
+				result.Incomplete = true
+			}
 		}
 		labels, ok := selection.Prop("labels")
 		if !ok {
+			result.Incomplete = result.Incomplete || result.Group == nil
 			return result
 		}
 		candidate = labels
 	}
 	resolved, ok := resolveMatrixValue(candidate, combination)
 	if !ok {
+		result.Incomplete = true
 		if selection.Kind() == value.Object {
 			result.Labels = []runnerapi.Constraint{selectorConstraint(candidate, combination)}
 		} else {
@@ -68,11 +76,15 @@ func selectorFor(selection value.Value, combination matrix.Combination, incomple
 			if group, ok := resolved.Prop("group"); ok {
 				constraint := groupConstraint(group, combination)
 				result.Group = &constraint
+				if _, unresolved := constraint.Value.(runnerapi.Expression); unresolved {
+					result.Incomplete = true
+				}
 			}
 		}
 	}
 	constraints, valid := constraintsFor(resolved, hasMatrixReference(candidate), combination)
 	if !valid {
+		result.Incomplete = true
 		if selection.Kind() == value.Object {
 			result.Labels = []runnerapi.Constraint{selectorConstraint(candidate, combination)}
 		} else {
@@ -81,6 +93,14 @@ func selectorFor(selection value.Value, combination matrix.Combination, incomple
 		return result
 	}
 	result.Labels = constraints
+	if len(constraints) == 0 && result.Group == nil {
+		result.Incomplete = true
+	}
+	for _, constraint := range constraints {
+		if _, unresolved := constraint.Value.(runnerapi.Expression); unresolved {
+			result.Incomplete = true
+		}
+	}
 	return result
 }
 
@@ -135,11 +155,13 @@ func constraintsFor(candidate value.Value, nullIsLabel bool, combination matrix.
 		}
 		resolved, ok := resolveMatrixValue(item, combination)
 		if !ok {
-			return nil, false
+			result = append(result, selectorConstraint(item, combination))
+			continue
 		}
 		text, ok := resolved.ScalarString()
 		if !ok {
-			return nil, false
+			result = append(result, selectorConstraint(item, combination))
+			continue
 		}
 		result = append(result, runnerapi.Constraint{Value: runnerapi.Literal(text), Position: resolved.Origin().Span.Start})
 	}

@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
 	matrixmodel "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
@@ -111,17 +112,17 @@ func Check(job documentparse.JobView, customLabels []string) []diagnostic.Diagno
 	selection := job.RunsOn().Selection()
 	strategy := job.Strategy().MatrixResolution()
 	check := checker{labels: customLabels}
-	combinations, complete := strategy.Combinations(256)
+	combinations, complete := strategy.DeclarationCombinations(256)
 	if !complete {
 		combinations = []matrixmodel.Combination{{}}
-	}
-	for _, item := range selectionValues(selection) {
-		property := runnerMatrixProperty(item.Source())
-		if property == "" {
-			continue
-		}
-		for _, candidate := range strategy.Reachable(property).Values {
-			combinations = append(combinations, (matrixmodel.Combination{}).With(property, candidate))
+		for _, item := range selectionValues(selection) {
+			property := runnerMatrixProperty(item.Source())
+			if property == "" {
+				continue
+			}
+			for _, candidate := range strategy.DeclarationReachable(property).Values {
+				combinations = append(combinations, (matrixmodel.Combination{}).With(property, candidate))
+			}
 		}
 	}
 	for _, combination := range combinations {
@@ -294,14 +295,22 @@ func knownLabel(candidate value.Value) (labelFact, bool) {
 }
 
 func runnerMatrixProperty(expression string) string {
-	assigned := strings.TrimSpace(expression)
-	assigned = strings.TrimPrefix(assigned, "${{")
-	assigned = strings.TrimSuffix(assigned, "}}")
-	assigned = strings.TrimSpace(assigned)
-	if !strings.HasPrefix(assigned, "matrix.") {
-		return ""
+	var receiver exprlang.Node
+	var property string
+	switch reference := exprlang.ParseAssignedExpression(strings.TrimSpace(expression)).(type) {
+	case *exprlang.ObjectDerefNode:
+		receiver, property = reference.Receiver, reference.Property
+	case *exprlang.IndexAccessNode:
+		key, literal := reference.Index.(*exprlang.StringNode)
+		if !literal {
+			return ""
+		}
+		receiver, property = reference.Operand, key.Value
 	}
-	return strings.ToLower(strings.TrimSpace(strings.TrimPrefix(assigned, "matrix.")))
+	if context, variable := receiver.(*exprlang.VariableNode); variable && strings.EqualFold(context.Name, "matrix") {
+		return strings.ToLower(property)
+	}
+	return ""
 }
 
 func PlatformOf(selection value.Value) Platform {

@@ -45,7 +45,7 @@ func runnerSource(t *testing.T, source string) *runnerFixture {
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document("runner.yml", content, document)
 	if err != nil {
 		t.Fatal(err)

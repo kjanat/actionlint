@@ -3,8 +3,36 @@ package documentparse
 import (
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
+
+func TestRejectedCompositeRunsKeepSurroundingDeclarations(t *testing.T) {
+	for _, invalid := range []string{"*runs", "[echo, bad]", "{command: bad}", "!unsupported bad"} {
+		t.Run(invalid, func(t *testing.T) {
+			content := []byte("name: test\ndescription: test\nruns: &runs\n  using: composite\n  steps:\n    - shell: bash\n      run: echo before\n    - shell: bash\n      run: " + invalid + "\n    - shell: bash\n      run: echo after\n")
+			document := Action("action.yml", "action.yml", content)
+			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+			snapshot, err := registry.Document("action.yml", content, document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			steps, ok := snapshot.ActionSteps()
+			if !ok || len(steps) != 3 {
+				t.Fatalf("recovered steps = %d, available=%v", len(steps), ok)
+			}
+			for index, want := range map[int]string{0: "echo before", 2: "echo after"} {
+				run, ok := steps[index].Exec.(*workflowlang.ExecRun)
+				if !ok || run.Run == nil || run.Run.Value != want || run.Source == nil {
+					t.Fatalf("surrounding run %d lost its source: %+v", index, steps[index])
+				}
+			}
+			if _, executable := steps[1].Exec.(*workflowlang.ExecRun); executable {
+				t.Fatal("rejected composite run remained executable")
+			}
+		})
+	}
+}
 
 func TestCompositeScriptNodeSharing(t *testing.T) {
 	leaf := &syntax.Node{Kind: syntax.ScalarNode, Value: "hello", Line: 3, Column: 5}

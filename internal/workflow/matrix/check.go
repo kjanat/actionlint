@@ -2,6 +2,7 @@ package matrix
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -34,22 +35,27 @@ func checkResolution(resolution Resolution, mixedTypes bool) []diagnostic.Diagno
 			}
 		}
 	}
+	for issue := range resolution.exclusionIssues() {
+		switch issue := issue.(type) {
+		case exclusionWithoutAxes:
+			appendFinding(issue.origin.Span.Start, "matrix", `"exclude" section exists but no matrix variation exists`)
+		case emptyExclusion:
+			appendFinding(issue.origin.Span.Start, "matrix", `matrix filter in "exclude" must not be empty`)
+		case unknownExclusionAxis:
+			names := make([]string, len(resolution.axes))
+			for i, axis := range resolution.axes {
+				names[i] = fmt.Sprintf("%q", axis.Name)
+			}
+			appendFinding(issue.origin.Span.Start, "matrix", "%q in \"exclude\" section does not exist in matrix. available matrix configurations are %s", issue.name, strings.Join(names, ", "))
+		}
+	}
 	if resolution.state == value.Dynamic || resolution.state == value.Invalid {
 		return findings
 	}
-	if len(resolution.exclude) != 0 && len(resolution.axes) == 0 {
-		appendFinding(resolution.origin.Span.Start, "matrix", "\"exclude\" section exists but no matrix variation exists")
-		return findings
-	}
 	for _, filter := range resolution.exclude {
-		for name, expected := range filter.values {
+		for name, expected := range filter.Values() {
 			index := axisIndex(resolution.axes, name)
 			if index < 0 {
-				names := make([]string, len(resolution.axes))
-				for i, axis := range resolution.axes {
-					names[i] = axis.Name
-				}
-				appendFinding(expected.Origin().Span.Start, "matrix", "%q in \"exclude\" section does not exist in matrix. available matrix configurations are %s", name, strings.Join(names, ", "))
 				continue
 			}
 			axis := resolution.axes[index]
@@ -138,6 +144,21 @@ func semanticEqual(left, right value.Value) bool {
 }
 
 func display(v value.Value) string {
+	if v.Known() {
+		switch v.Kind() {
+		case value.Null:
+			return "null"
+		case value.Array:
+			return "[" + axisDisplay(slices.Collect(v.Items())) + "]"
+		case value.Object:
+			props := maps.Collect(v.Props())
+			fields := make([]string, 0, len(props))
+			for _, name := range slices.Sorted(maps.Keys(props)) {
+				fields = append(fields, fmt.Sprintf("%q: %s", name, display(props[name])))
+			}
+			return "{" + strings.Join(fields, ", ") + "}"
+		}
+	}
 	if text, ok := v.ScalarString(); ok {
 		if v.Kind() == value.String {
 			return fmt.Sprintf("%q", text)

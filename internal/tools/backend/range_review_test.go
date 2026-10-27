@@ -32,7 +32,7 @@ func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture is not a run step")
 	}
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document("fixture.yml", content, document)
 	if err != nil {
 		t.Fatal(err)

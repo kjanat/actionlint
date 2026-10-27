@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 	upstream "go.yaml.in/yaml/v4"
 	"go.yaml.in/yaml/v4/plugin/limit"
 )
@@ -33,11 +32,11 @@ func (p *cycleAccountingPlugin) CheckAlias(aliases, constructions int) error {
 
 func TestCursorCycleAccountingMatchesUpstream(t *testing.T) {
 	const source = "a: &a {c: *a}\nitems: *a\n"
-	var root syntax.Node
-	if err := Unmarshal([]byte(source), &root); err != nil {
+	root, err := Parse([]byte(source))
+	if err != nil {
 		t.Fatalf("parse source graph: %v", err)
 	}
-	graph, err := toParser(&root)
+	graph, err := toParser(root)
 	if err != nil {
 		t.Fatalf("convert graph for upstream baseline: %v", err)
 	}
@@ -48,7 +47,7 @@ func TestCursorCycleAccountingMatchesUpstream(t *testing.T) {
 		t.Fatalf("upstream recursive alias error = %v, want cycle error", baselineErr)
 	}
 
-	session, rootCursor, err := Open(&root)
+	session, rootCursor, err := Open(root)
 	if err != nil {
 		t.Fatalf("open cursor session: %v", err)
 	}

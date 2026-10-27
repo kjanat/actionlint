@@ -11,12 +11,12 @@ import (
 func TestSourceSnapshotsLookupAndStepRequireExactReference(t *testing.T) {
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n")
 	document := Workflow("ci.yml", content)
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Registry() != &snapshots {
+	if snapshot.Registry() != snapshots.SourceSnapshots {
 		t.Fatal("snapshot does not retain its owning registry")
 	}
 	if found, ok := snapshots.Lookup(snapshot.Reference()); !ok || found != snapshot {
@@ -76,7 +76,7 @@ func TestSourceSnapshotsLookupAndStepRequireExactReference(t *testing.T) {
 
 func TestSourceSnapshotsRejectRevisionAndKindConflicts(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	if _, err := snapshots.Document("ci.yml", content, Workflow("ci.yml", content)); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestSourceSnapshotsRejectRevisionAndKindConflicts(t *testing.T) {
 
 func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 	workflowContent := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo alias\n      - *shared\n      - id: outer\n        parallel:\n          - run: echo first\n          - uses: actions/checkout@v4\n  Deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo deploy\n")
-	var workflowSnapshots SourceSnapshots
+	workflowSnapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	workflowSnapshot, err := workflowSnapshots.Document("ci.yml", workflowContent, Workflow("ci.yml", workflowContent))
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +131,7 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 	}
 
 	actionContent := []byte("name: action\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo action\n")
-	var actionSnapshots SourceSnapshots
+	actionSnapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	actionSnapshot, err := actionSnapshots.Document("action.yml", actionContent, Action("action.yml", "action.yml", actionContent))
 	if err != nil {
 		t.Fatal(err)

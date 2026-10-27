@@ -1,9 +1,7 @@
 package application_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -16,7 +14,12 @@ import (
 
 type invocationCollector struct {
 	mu      sync.Mutex
-	scripts []analyzer.Script
+	scripts []invocationObservation
+}
+
+type invocationObservation struct {
+	analyzer.Script
+	graph analyzer.CallGraph
 }
 
 func (*invocationCollector) Descriptor() analyzer.Descriptor {
@@ -24,8 +27,13 @@ func (*invocationCollector) Descriptor() analyzer.Descriptor {
 }
 
 func (c *invocationCollector) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	if err := input.ValidateInvocations(); err != nil {
+		return nil, err
+	}
 	c.mu.Lock()
-	c.scripts = append(c.scripts, input.Invoked...)
+	for _, script := range input.Invoked {
+		c.scripts = append(c.scripts, invocationObservation{Script: script, graph: input.CallGraph})
+	}
 	c.mu.Unlock()
 	return nil, nil
 }
@@ -43,13 +51,18 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 		t.Fatal(err)
 	}
 	collector.mu.Lock()
-	scripts := append([]analyzer.Script(nil), collector.scripts...)
+	scripts := append([]invocationObservation(nil), collector.scripts...)
 	collector.mu.Unlock()
-	if len(scripts) != 1 || scripts[0].Invocation == nil {
+	if len(scripts) != 1 {
 		t.Fatalf("nested script invocation missing: %+v", scripts)
 	}
-	if invocation := scripts[0].Invocation; invocation.Depth != 1 {
-		t.Fatalf("standalone root has no incoming call: nested depth = %d, want 1", invocation.Depth)
+	script := scripts[0]
+	call, found := script.graph.Call(script.Occurrence.Owner)
+	if !found || call.Depth != 1 || call.Parent != script.graph.Entry().ID || call.Uses != "$/nested" {
+		t.Fatalf("standalone nested call lost its root: %+v", call)
+	}
+	if err := script.graph.ValidateOccurrence(script.Occurrence); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -99,7 +112,7 @@ jobs:
 				t.Fatal(err)
 			}
 			collector.mu.Lock()
-			scripts := append([]analyzer.Script(nil), collector.scripts...)
+			scripts := append([]invocationObservation(nil), collector.scripts...)
 			collector.mu.Unlock()
 			if len(scripts) != 2 {
 				t.Fatalf("invoked scripts = %d, want 2", len(scripts))
@@ -108,27 +121,42 @@ jobs:
 				if script.Text != "echo nested" || !strings.HasSuffix(filepath.ToSlash(script.Path), "nested/action.yml") || script.Reference.Document == "" {
 					t.Fatalf("missing script declaration: %+v", script)
 				}
-				invocation := script.Invocation
-				if invocation == nil || invocation.Reference.Document == "" || !strings.HasSuffix(filepath.ToSlash(invocation.Caller), caller) || invocation.Uses != "$/nested" || invocation.Depth != depth {
+				invocation, found := script.graph.Call(script.Occurrence.Owner)
+				if !found || invocation.Site.Document == "" || !strings.HasSuffix(filepath.ToSlash(invocation.Site.Document), caller) || invocation.Uses != "$/nested" || invocation.Depth != depth {
 					t.Fatalf("missing immediate call site: %+v", invocation)
 				}
 			}
 			if scripts[0].Reference != scripts[1].Reference {
 				t.Fatal("one declaration acquired different source identities")
 			}
-			if scripts[0].Invocation.Reference != scripts[1].Invocation.Reference {
+			left, right := scripts[0], scripts[1]
+			leftCall, _ := left.graph.Call(left.Occurrence.Owner)
+			rightCall, _ := right.graph.Call(right.Occurrence.Owner)
+			if leftCall.Site != rightCall.Site {
 				t.Fatal("one immediate call site acquired different source identities")
 			}
-			first, err := json.Marshal(scripts[0].Invocation)
-			if err != nil {
-				t.Fatal(err)
+			for _, script := range scripts {
+				occurrence := script.Occurrence
+				if err := script.graph.ValidateOccurrence(occurrence); err != nil {
+					t.Fatal(err)
+				}
+				if occurrence.Depth != depth || len(occurrence.Ancestry) != depth+1 || occurrence.Ancestry[0] != script.graph.Entry().ID || occurrence.Ancestry[depth] != occurrence.Owner {
+					t.Fatalf("incomplete ancestry: %+v", occurrence)
+				}
+				for level, id := range occurrence.Ancestry[1:] {
+					call, found := script.graph.Call(id)
+					if !found || call.Depth != level+1 || call.Parent != occurrence.Ancestry[level] {
+						t.Fatalf("broken ancestry link at level %d: %+v", level, call)
+					}
+				}
 			}
-			second, err := json.Marshal(scripts[1].Invocation)
-			if err != nil {
-				t.Fatal(err)
+			if left.Occurrence.ID == right.Occurrence.ID || left.Occurrence.Owner == right.Occurrence.Owner || left.Occurrence.Ancestry[1] == right.Occurrence.Ancestry[1] {
+				t.Fatal("distinct outer calls collapsed into one occurrence")
 			}
-			if bytes.Equal(first, second) {
-				t.Fatalf("distinct outer calls have identical portable invocation facts: %s", first)
+			leftOuter, _ := left.graph.Call(left.Occurrence.Ancestry[1])
+			rightOuter, _ := right.graph.Call(right.Occurrence.Ancestry[1])
+			if leftOuter.Site == rightOuter.Site {
+				t.Fatal("distinct workflow call sites lost their source identity")
 			}
 		})
 	}

@@ -75,6 +75,7 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	var checkSyntax func(*syntax.Node)
 	checkSyntax = func(n *syntax.Node) {
 		if n.Anchor != "" {
+			// Property diagnostics use the node start, including any preceding tag.
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "YAML anchors are not supported in action metadata; remove anchor %q", n.Anchor)
 		}
 		if n.Kind == syntax.AliasNode {
@@ -88,6 +89,9 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 		}
 	}
 	checkSyntax(meta.Root)
+	if err := workflowlang.AdmitYAMLAliases(meta.Root); err != nil {
+		return
+	}
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemapath.Path{}, 0, false)
 }
 
@@ -106,6 +110,15 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 	if n == nil || definition == "any" {
 		return
 	}
+	visit := actionSchemaVisit{node: n, definition: definition}
+	if rule.active[visit] {
+		return
+	}
+	if rule.active == nil {
+		rule.active = make(map[actionSchemaVisit]bool)
+	}
+	rule.active[visit] = true
+	defer delete(rule.active, visit)
 	// Match the runner's TemplateMemory maximum depth; insertion mappings may
 	// otherwise revisit the same YAML anchor indefinitely.
 	if depth > 100 {
@@ -328,7 +341,15 @@ func Validate(meta *Metadata) []diagnostic.Diagnostic {
 	return checker.findings
 }
 
-type schemaChecker struct{ findings []diagnostic.Diagnostic }
+type actionSchemaVisit struct {
+	node       *syntax.Node
+	definition string
+}
+
+type schemaChecker struct {
+	findings []diagnostic.Diagnostic
+	active   map[actionSchemaVisit]bool
+}
 
 func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, format string, args ...any) {
 	d := diagnostic.Diagnostic{Path: meta.Path(), Start: diagnostic.Position{Line: line, Column: column}, Rule: "action", Message: fmt.Sprintf(format, args...)}

@@ -14,7 +14,6 @@ import (
 type metadataPositionCache struct {
 	mu      sync.Mutex
 	scalars map[workflowlang.Pos]*syntax.Node
-	sources map[workflowlang.Pos]*workflowlang.ScriptSource
 	parser  *workflowlang.Parser
 }
 
@@ -23,7 +22,6 @@ func (cache *metadataPositionCache) source(meta *Metadata, value *ExprString) *w
 	defer cache.mu.Unlock()
 	if cache.scalars == nil {
 		cache.scalars = make(map[workflowlang.Pos]*syntax.Node)
-		cache.sources = make(map[workflowlang.Pos]*workflowlang.ScriptSource)
 		cache.parser = workflowlang.NewSourceParser(meta.Source)
 		cache.parser.IndexScalarSources(meta.Root)
 		var visit func(*syntax.Node)
@@ -49,12 +47,7 @@ func (cache *metadataPositionCache) source(meta *Metadata, value *ExprString) *w
 	if scalar == nil || scalar.Value != value.Value {
 		return nil
 	}
-	if source, exists := cache.sources[key]; exists {
-		return source
-	}
-	source := cache.parser.ScriptSource(scalar)
-	cache.sources[key] = source
-	return source
+	return cache.parser.ScriptSource(scalar)
 }
 
 // ExpressionPosition maps a decoded expression offset to its YAML source position.

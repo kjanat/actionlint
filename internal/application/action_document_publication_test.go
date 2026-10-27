@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func virtualActionPaths(t *testing.T) (string, string, string) {
@@ -37,12 +38,21 @@ func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
 					paths = []string{alias, physical}
 				}
 				documents := actionDocuments{byPath: map[string]documentmodel.Action{}}
+				captures := newCapturedSnapshots(t, filepath.Dir(physical))
+				add := func(path string) {
+					captured, err := captures.Sources.Capture(path, nil, source.YAML)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					documents.add(captured.Revision().Document(), documentmodel.Action{Path: path, Name: "virtual"})
+				}
 				var workers sync.WaitGroup
 				for _, path := range paths {
 					if concurrent {
-						workers.Go(func() { documents.add(documentmodel.Action{Path: path, Name: "virtual"}) })
+						workers.Go(func() { add(path) })
 					} else {
-						documents.add(documentmodel.Action{Path: path, Name: "virtual"})
+						add(path)
 					}
 				}
 				workers.Wait()

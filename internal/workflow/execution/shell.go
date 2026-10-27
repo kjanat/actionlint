@@ -85,12 +85,13 @@ func ContainerShell(container value.Value) value.Value {
 	if !container.Known() {
 		return value.DynamicValue(container.Source(), value.KindUnknown, container.Origin())
 	}
-	if container.Kind() != value.Object {
-		return value.DynamicValue(container.Source(), value.KindUnknown, container.Origin())
-	}
-	image, ok := container.Prop("image")
-	if !ok {
-		return value.DynamicValue("", value.KindUnknown, container.Origin())
+	image := container
+	if container.Kind() == value.Object {
+		var ok bool
+		image, ok = container.Prop("image")
+		if !ok {
+			return value.DynamicValue("", value.KindUnknown, container.Origin())
+		}
 	}
 	text, known := image.ScalarString()
 	if !known {

@@ -29,9 +29,18 @@ func TestUnknownNodeRepresentationRejected(t *testing.T) {
 	}
 }
 
-func TestUnmarshalRejectsNilSyntaxTarget(t *testing.T) {
+func TestCursorRejectsNilSyntaxTarget(t *testing.T) {
+	root, err := Parse([]byte("key: value\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, cursor, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
 	var node *syntax.Node
-	if err := Unmarshal([]byte("key: value\n"), node); err == nil {
+	if err := cursor.Decode(node); err == nil {
 		t.Fatal("accepted nil syntax target")
 	}
 }

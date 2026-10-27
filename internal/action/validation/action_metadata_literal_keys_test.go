@@ -8,7 +8,6 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestActionMetadataLiteralKeys(t *testing.T) {
@@ -64,8 +63,8 @@ runs:
       ${{ 'Env' }}:
         ${{ 'MixedEnv' }}: value
 `
-	var document syntax.Node
-	if err := codec.Unmarshal([]byte(source), &document); err != nil {
+	document, err := codec.Parse([]byte(source))
+	if err != nil {
 		t.Fatal(err)
 	}
 	root := document.Content[0]

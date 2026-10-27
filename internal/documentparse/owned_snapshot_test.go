@@ -13,7 +13,7 @@ import (
 func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo original}]}}\n")
 	document := Workflow("ci.yml", content)
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	if _, err := snapshots.Document("ci.yml", []byte("on: pull_request\n"), document); err == nil {
 		t.Fatal("accepted bytes unrelated to parsed document")
 	}
@@ -28,7 +28,7 @@ func TestOwnedDeclarationSurvivesEveryLegacyMutationPath(t *testing.T) {
 		t.Run(access, func(t *testing.T) {
 			document := Workflow("ci.yml", content)
 			cursor := document.Workflow.Jobs["build"].Steps[0]
-			var snapshots SourceSnapshots
+			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			mutate := func(step *workflowlang.Step) {
 				step.ID.Value, step.Name.Value, step.Pos.Line = "changed", "Changed", 999
 				switch run := step.Exec.(type) {
@@ -88,7 +88,7 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	metadata.Source[0] = '?'
 	metadata.Root.Content = nil
 	metadata.Runs.Steps = nil
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Action("action.yml", metadata)
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +115,7 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n")
 	document := Workflow("ci.yml", content)
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +145,8 @@ func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
 func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	first, second := Workflow("ci.yml", content), Workflow("ci.yml", content)
-	var snapshots, other SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	other := newCapturedSnapshots(t, sourceFixtureBase(t))
 	bound, err := snapshots.Document("ci.yml", content, first)
 	if err != nil {
 		t.Fatal(err)
@@ -181,7 +182,8 @@ func TestOwnedHandlesAreScopedToRegistryBinding(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo owned}]}}\n")
 	document := Workflow("ci.yml", content)
 	cursor := document.Workflow.Jobs["build"].Steps[0]
-	var firstRegistry, secondRegistry SourceSnapshots
+	firstRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	secondRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	first, err := firstRegistry.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +218,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 	document := Workflow("ci.yml", content)
 	cursor := document.Workflow.Jobs["build"].Steps[0]
 	const workers = 24
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	type result struct {
 		snapshot *SourceSnapshot
 		err      error
@@ -260,7 +262,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 func TestOwnedOpaqueCompositeStepRemainsInvalidActionCall(t *testing.T) {
 	content := []byte("name: broken\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo missing shell\n")
 	document := Action("action.yml", "action.yml", content)
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("action.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -289,7 +291,7 @@ func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
 					t.Fatal("action parser lost recovered metadata")
 				}
 			}
-			var snapshots SourceSnapshots
+			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := snapshots.Document("input.yml", []byte(content), document)
 			if err != nil {
 				t.Fatalf("admit action=%v source=%q: %v", action, content, err)
@@ -312,7 +314,7 @@ func TestOwnedActionAdmissionRetainsRecoveredDeclarations(t *testing.T) {
 		t.Fatal("fixture must recover a declaration alongside a metadata error")
 	}
 	metadata.Runs.Steps = nil
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Action("action.yml", metadata)
 	if err != nil {
 		t.Fatal(err)

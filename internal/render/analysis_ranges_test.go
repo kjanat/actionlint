@@ -107,3 +107,43 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 		t.Fatalf("oneline format included source snippet: %q", oneline.String())
 	}
 }
+
+func TestOnelineOmitsCapturedSnippet(t *testing.T) {
+	finding := diagmodel.Diagnostic{
+		Path: "input.yml", Rule: "expression", Message: "bad text",
+		Start: diagmodel.Position{Line: 1, Column: 1}, Snippet: "on: push",
+	}
+	result := Prepare(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
+	for _, format := range []Format{"", FormatOneline} {
+		t.Run(string(format), func(t *testing.T) {
+			renderer, err := New(format, "", true, testVersion, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, source := range [][]byte{nil, []byte("on: push\n")} {
+				result.Findings[0].Source = source
+				var out bytes.Buffer
+				if err := renderer.Render(&out, result); err != nil {
+					t.Fatal(err)
+				}
+				if bytes.Contains(out.Bytes(), []byte("on: push")) || bytes.Count(out.Bytes(), []byte("\n")) != 1 {
+					t.Fatalf("one-line output included captured source: %q", out.String())
+				}
+			}
+			if result.Findings[0].TemplateFields().Snippet == "" {
+				t.Fatal("rendering discarded the original finding's snippet")
+			}
+		})
+	}
+	template, err := New("", "{{range .}}{{.Snippet}}{{end}}", true, testVersion, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := template.Render(&out, result); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out.Bytes(), []byte("on: push\n^")) {
+		t.Fatalf("template lost captured snippet with one-line enabled: %q", out.String())
+	}
+}

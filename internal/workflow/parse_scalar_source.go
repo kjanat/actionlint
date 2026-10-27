@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -9,7 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
-// IndexScalarSources records structural context before alias resolution changes the physical tree.
+// IndexScalarSources binds physical node identity and context before projection.
+// Standalone ScriptSource calls without indexing use an independently parsed graph.
 // Decode lazily: most workflow scalars never need source-level diagnostics.
 func (p *Parser) IndexScalarSources(root *syntax.Node) {
 	p.scalarContexts = make(map[Pos]sourcemap.Context)
@@ -71,6 +73,7 @@ func scalarCollectionIndent(node *syntax.Node, lines []string) int {
 	return indent
 }
 
+// ScriptSource returns an owned mapping; callers cannot mutate the parser's cache.
 func (p *Parser) ScriptSource(n *syntax.Node) *ScriptSource {
 	if n == nil || n.Kind != 0 && n.Kind != syntax.ScalarNode {
 		return nil
@@ -92,7 +95,7 @@ func (p *Parser) ScriptSource(n *syntax.Node) *ScriptSource {
 		if source != nil && source.Value != n.Value {
 			return nil
 		}
-		return source
+		return cloneScriptSource(source)
 	}
 	p.scalarSources[key] = nil
 	context, exists := p.scalarContexts[key]
@@ -120,7 +123,18 @@ func (p *Parser) ScriptSource(n *syntax.Node) *ScriptSource {
 		source.Spans = append(source.Spans, ScriptSourceSpan{Start: span.Start, End: span.End, YamlLine: span.Line, YamlColumn: span.Column, YamlEndColumn: endColumn, YamlEndLine: endLine})
 	}
 	p.scalarSources[key] = source
-	return source
+	return cloneScriptSource(source)
+}
+
+func cloneScriptSource(source *ScriptSource) *ScriptSource {
+	if source == nil {
+		return nil
+	}
+	result := new(*source)
+	result.Lines = slices.Clone(source.Lines)
+	result.Spans = slices.Clone(source.Spans)
+	result.Comments = slices.Clone(source.Comments)
+	return result
 }
 
 func scalarDocumentSource(document *sourcemap.Document) string {

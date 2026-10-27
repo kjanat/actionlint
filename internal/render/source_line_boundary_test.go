@@ -40,3 +40,17 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 		})
 	}
 }
+
+func TestRawCRLFMarkerUsesDisplayEOF(t *testing.T) {
+	source := []byte("abc\r\n")
+	d := diagnostic.Diagnostic{Start: diagnostic.Position{Line: 1, Column: 4}, End: diagnostic.Position{Line: 1, Column: 5}}
+	canonical := (&findingmodel.Finding{Diagnostic: d, RawScriptSource: true}).Canonical(source)
+	view := render.FindingOf(canonical, source)
+	view.RawScript = true
+	if got := view.TemplateFields().Snippet; got != "abc\n   ^" {
+		t.Fatalf("CR marker lost at display EOF: %q", got)
+	}
+	if canonical.Start != d.Start || canonical.End != d.End {
+		t.Fatalf("display normalization changed physical coordinates: %+v", canonical)
+	}
+}

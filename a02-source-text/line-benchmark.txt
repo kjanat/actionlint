@@ -1,0 +1,9 @@
+ok  	actionlint.kjanat.dev/v2/internal/source/text	0.747s
+goos: windows
+goarch: amd64
+pkg: actionlint.kjanat.dev/v2/internal/source/text
+cpu: AMD Ryzen 7 5800HS with Radeon Graphics         
+BenchmarkLFLine/small-16         	      10	       100.0 ns/op	       6 B/op	       1 allocs/op
+BenchmarkLFLine/1MiB-16          	      10	      1930 ns/op	       6 B/op	       1 allocs/op
+PASS
+ok  	actionlint.kjanat.dev/v2/internal/source/text	0.757s

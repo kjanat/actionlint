@@ -1,11 +1,9 @@
 package application
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -21,6 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
@@ -51,6 +50,8 @@ type analysisSession struct {
 	ctx            context.Context
 	workingDir     string
 	reader         *fsread.Reader
+	captures       *capture.Store
+	snapshots      *documentparse.SourceSnapshots
 	gitModes       *gitModes
 	ignorePats     repoconfig.IgnorePatterns
 	onRulesCreated func([]workflowvisit.Rule) []workflowvisit.Rule
@@ -58,22 +59,25 @@ type analysisSession struct {
 }
 
 // check dispatches the two document languages at the application input boundary.
-func (s *analysisSession) check(path string, content []byte, project *workspace.Project, config *repoconfig.Config,
+func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *repoconfig.Config,
 	processes *analyzerhost.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, error) {
-	sourcePath := path
-	if !filepath.IsAbs(sourcePath) {
-		sourcePath = filepath.Join(s.workingDir, sourcePath)
+	if s.captures == nil || s.snapshots == nil {
+		return nil, nil, errors.New("analysis requires result-owned source captures")
+	}
+	content := captured.Bytes()
+	if err := s.captures.Verify(captured, content); err != nil {
+		return nil, nil, err
 	}
 	if isActionInput(sourcePath) {
 		document := documentparse.Action(path, sourcePath, content)
-		return s.analyzeDocument(path, sourcePath, content, document, true, project, config, processes, actions, workflows, usedRules)
+		return s.analyzeDocument(path, sourcePath, captured, content, document, true, project, config, processes, actions, workflows, usedRules)
 	}
 	document := documentparse.Workflow(path, content)
-	return s.analyzeDocument(path, sourcePath, content, document, false, project, config, processes, actions, workflows, usedRules)
+	return s.analyzeDocument(path, sourcePath, captured, content, document, false, project, config, processes, actions, workflows, usedRules)
 }
 
-func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byte, document documentparse.Document, action bool,
+func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.Snapshot, content []byte, document documentparse.Document, action bool,
 	project *workspace.Project, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, usedRules *[]rule.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, resultErr error) {
@@ -112,8 +116,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 
 	all := document.Findings
 	var analysisErr error
-	snapshots := &documentparse.SourceSnapshots{}
-	snapshot, err := snapshots.Document(fsread.PhysicalPath(sourcePath), content, document)
+	snapshot, err := s.snapshots.Document(captured, document)
 	if err != nil {
 		return all, outline, err
 	}
@@ -132,17 +135,13 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q has no admitted parse provenance", path))
 			continue
 		}
-		if !bytes.Equal(source, sourceDocument.Content()) {
-			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q disagrees with its admitted declaration revision", path))
+		if err := s.captures.Verify(sourceDocument.Capture(), source); err != nil {
+			analysisErr = errors.Join(analysisErr, err)
 			continue
 		}
-		nested, err := snapshots.Document(fsread.PhysicalPath(path), source, sourceDocument.Document())
+		nested, err := s.snapshots.Document(sourceDocument.Capture(), sourceDocument.Document())
 		if err != nil {
 			analysisErr = errors.Join(analysisErr, fmt.Errorf("admit source %q parse provenance: %w", path, err))
-			continue
-		}
-		if !bytes.Equal(source, nested.Content()) {
-			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q disagrees with its admitted declaration revision", path))
 			continue
 		}
 		references[path] = nested.CanonicalReferences()

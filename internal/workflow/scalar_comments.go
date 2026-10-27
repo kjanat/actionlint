@@ -16,7 +16,7 @@ type scalarCommentNodes struct {
 	scalar      *syntax.Node
 }
 
-// Preserve parser attachment before alias resolution changes the tree. Source
+// Index physical comment attachments before building the parser projection. Source
 // lines only recover positions of comments already classified by the YAML parser.
 func (p *Parser) indexScalarComments(root *syntax.Node) {
 	p.scalarComments = make(map[Pos]scalarCommentNodes)
@@ -84,9 +84,8 @@ func (p *Parser) ScriptSourceForDeclaration(node *syntax.Node, declaration *Pos)
 		ContentStart: Pos{alias.Line, alias.Column},
 		ScalarEnd:    Pos{alias.Line, alias.Column + utf8.RuneCountInString(alias.Value) + 1},
 	}
-	declared := *source
-	declared.Comments = attachment.comments(p.SourceLines, physical)
-	return &declared
+	source.Comments = attachment.comments(p.SourceLines, physical)
+	return source
 }
 
 func (nodes scalarCommentNodes) comments(lines []string, source *ScriptSource) []ScalarComment {

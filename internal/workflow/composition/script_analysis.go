@@ -39,6 +39,10 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 	if !ok || !run.Run().Present() {
 		return nil
 	}
+	// Rejected run values have recovery strings without a source scalar.
+	if !run.Run().SourceScalar().HasSource {
+		return nil
+	}
 	occurrence, err := analysis.invocations.AddScript(analysis.context, declaration.Reference(), invocation.ScriptRun, "")
 	if err != nil {
 		return err
@@ -82,7 +86,7 @@ func (analysis *compositeAnalyzer) collectActionInputs(step documentparse.StepVi
 	var catalogue []analyzer.ScriptInput
 	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
 		input := inputs[inputName]
-		if !input.Value().Present() || !input.Source().Present() {
+		if !input.Value().Present() || !input.Value().SourceScalar().HasSource || !input.Source().Present() {
 			continue // Expression-created values have no physical script scalar.
 		}
 		if catalogue == nil {

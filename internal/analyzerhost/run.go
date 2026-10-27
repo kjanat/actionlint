@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -19,68 +20,167 @@ func Run(ctx context.Context, input analyzer.Input, registrations []analyzer.Reg
 	tasks := make([]Task[diagnostic.Diagnostic], len(registrations))
 	for i, registration := range registrations {
 		tasks[i] = func(ctx context.Context) ([]diagnostic.Diagnostic, error) {
-			if registration.Analyzer == nil {
-				return nil, errors.New("nil analyzer registration")
+			if err := ctx.Err(); err != nil {
+				return nil, err
 			}
-			descriptor := registration.Analyzer.Descriptor()
-			if descriptor.Name == "" {
-				return nil, errors.New("analyzer name must not be empty")
-			}
-			if err := ValidateOptions(descriptor.OptionsSchema, registration.Options); err != nil {
-				return nil, fmt.Errorf("analyzer %q options: %w", descriptor.Name, err)
-			}
-			for _, requirement := range descriptor.Requires {
-				switch requirement {
-				case analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution, analyzer.Dependencies:
-					if !slices.Contains(input.Available, requirement) {
-						return nil, fmt.Errorf("analyzer %q requires unavailable fact %q", descriptor.Name, requirement)
-					}
-				default:
-					return nil, fmt.Errorf("analyzer %q requires unsupported fact %q", descriptor.Name, requirement)
-				}
-			}
-			supplied := input
-			supplied.Available = slices.Clone(input.Available)
-			supplied.SelectedScripts = slices.Clone(input.SelectedScripts)
-			supplied.Options = slices.Clone(registration.Options)
-			supplied.Scripts = cloneScripts(input.Scripts)
-			supplied.Invoked = cloneScripts(input.Invoked)
-			supplied.ActionInputs = slices.Clone(input.ActionInputs)
-			for i, input := range supplied.ActionInputs {
-				supplied.ActionInputs[i].Script = cloneScripts([]analyzer.Script{input.Script})[0]
-			}
-			supplied.Dependencies = slices.Clone(input.Dependencies)
-			supplied.Files = slices.Clone(input.Files)
-			supplied.SourceRoots = slices.Clone(input.SourceRoots)
-			supplied.Mappings = slices.Clone(input.Mappings)
-			for i := range supplied.Mappings {
-				supplied.Mappings[i].Entries = slices.Clone(supplied.Mappings[i].Entries)
-			}
-			findings, err := registration.Analyzer.Analyze(ctx, supplied)
-			for i := range findings {
-				if findings[i].Explanation == "" {
-					findings[i].Explanation = descriptor.Explanation
-				}
-				if findings[i].Help == "" {
-					findings[i].Help = descriptor.Help
-				}
-				if findings[i].DocumentationURL == "" {
-					findings[i].DocumentationURL = descriptor.DocumentationURL
-				}
-				if findings[i].Rule == "" {
-					findings[i].Rule = descriptor.Name
-				}
-				if findings[i].Path == "" {
-					findings[i].Path = input.Path
-				}
-			}
+			prepared, err := Prepare(registration, input.Available)
 			if err != nil {
-				return findings, fmt.Errorf("analyzer %q: %w", descriptor.Name, err)
+				return nil, err
 			}
-			return findings, nil
+			return RunOne(ctx, input, prepared)
 		}
 	}
 	return RunTasks(ctx, tasks)
+}
+
+// PreparedRegistration retains private copies of validated registration metadata.
+// Its zero value cannot execute. Analyzer implementations remain responsible for
+// their own panics and concurrent access to their internal state.
+type PreparedRegistration struct {
+	data *preparedRegistration
+}
+
+type preparedRegistration struct {
+	analyzer   analyzer.Analyzer
+	descriptor analyzer.Descriptor
+	options    []byte
+	available  []analyzer.Fact
+}
+
+// Prepare validates a registration once for an exact set of available facts.
+func Prepare(registration analyzer.Registration, available []analyzer.Fact) (PreparedRegistration, error) {
+	if IsNilAnalyzer(registration.Analyzer) {
+		return PreparedRegistration{}, errors.New("nil analyzer registration")
+	}
+	descriptor := registration.Analyzer.Descriptor()
+	descriptor.Requires = slices.Clone(descriptor.Requires)
+	descriptor.Descriptor = descriptor.Descriptor.Clone()
+	options := slices.Clone(registration.Options)
+	if descriptor.Name == "" {
+		return PreparedRegistration{}, errors.New("analyzer name must not be empty")
+	}
+	facts, err := availableFacts(available)
+	if err != nil {
+		return PreparedRegistration{}, err
+	}
+	if err := ValidateOptions(descriptor.OptionsSchema, options); err != nil {
+		return PreparedRegistration{}, fmt.Errorf("analyzer %q options: %w", descriptor.Name, err)
+	}
+	for _, requirement := range descriptor.Requires {
+		if !supportedFact(requirement) {
+			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unsupported fact %q", descriptor.Name, requirement)
+		}
+		if !slices.Contains(facts, requirement) {
+			return PreparedRegistration{}, fmt.Errorf("analyzer %q requires unavailable fact %q", descriptor.Name, requirement)
+		}
+	}
+	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Analyzer, descriptor: descriptor, options: options, available: facts}}, nil
+}
+
+// IsNilAnalyzer detects both nil interfaces and typed nil analyzer values before
+// metadata or execution methods are called.
+func IsNilAnalyzer(value analyzer.Analyzer) bool {
+	if value == nil {
+		return true
+	}
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return reflected.IsNil()
+	default:
+		return false
+	}
+}
+
+func supportedFact(fact analyzer.Fact) bool {
+	switch fact {
+	case analyzer.Source, analyzer.Scripts, analyzer.Mappings, analyzer.Invocations, analyzer.Execution, analyzer.Dependencies:
+		return true
+	default:
+		return false
+	}
+}
+
+func availableFacts(available []analyzer.Fact) ([]analyzer.Fact, error) {
+	facts := slices.Clone(available)
+	slices.Sort(facts)
+	for i, fact := range facts {
+		if !supportedFact(fact) {
+			return nil, fmt.Errorf("unsupported available fact %q", fact)
+		}
+		if i > 0 && facts[i-1] == fact {
+			return nil, fmt.Errorf("duplicate available fact %q", fact)
+		}
+	}
+	return facts, nil
+}
+
+// RunOne isolates one invocation of a prepared registration, retaining partial
+// findings and cancellation. Input facts must match the set validated by Prepare.
+func RunOne(ctx context.Context, input analyzer.Input, registration PreparedRegistration) ([]diagnostic.Diagnostic, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := input.ValidateInvocations(); err != nil {
+		return nil, err
+	}
+	if registration.data == nil {
+		return nil, errors.New("unprepared analyzer registration")
+	}
+	facts, err := availableFacts(input.Available)
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(facts, registration.data.available) {
+		return nil, errors.New("input available facts differ from prepared registration")
+	}
+	descriptor := registration.data.descriptor
+	supplied := input
+	supplied.Available = slices.Clone(input.Available)
+	supplied.SelectedScripts = slices.Clone(input.SelectedScripts)
+	supplied.Options = slices.Clone(registration.data.options)
+	supplied.Scripts = cloneScripts(input.Scripts)
+	supplied.Invoked = cloneScripts(input.Invoked)
+	supplied.ActionInputs = slices.Clone(input.ActionInputs)
+	for i, input := range supplied.ActionInputs {
+		supplied.ActionInputs[i].Script = cloneScripts([]analyzer.Script{input.Script})[0]
+	}
+	supplied.Dependencies = slices.Clone(input.Dependencies)
+	supplied.Files = slices.Clone(input.Files)
+	supplied.SourceRoots = slices.Clone(input.SourceRoots)
+	supplied.Mappings = slices.Clone(input.Mappings)
+	for i := range supplied.Mappings {
+		supplied.Mappings[i].Entries = slices.Clone(supplied.Mappings[i].Entries)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	findings, err := registration.data.analyzer.Analyze(ctx, supplied)
+	findings = slices.Clone(findings)
+	if canceled := ctx.Err(); canceled != nil && !errors.Is(err, canceled) {
+		err = errors.Join(err, canceled)
+	}
+	for i := range findings {
+		if findings[i].Explanation == "" {
+			findings[i].Explanation = descriptor.Explanation
+		}
+		if findings[i].Help == "" {
+			findings[i].Help = descriptor.Help
+		}
+		if findings[i].DocumentationURL == "" {
+			findings[i].DocumentationURL = descriptor.DocumentationURL
+		}
+		if findings[i].Rule == "" {
+			findings[i].Rule = descriptor.Name
+		}
+		if findings[i].Path == "" {
+			findings[i].Path = input.Path
+		}
+	}
+	if err != nil {
+		return findings, fmt.Errorf("analyzer %q: %w", descriptor.Name, err)
+	}
+	return findings, nil
 }
 
 func cloneScripts(scripts []analyzer.Script) []analyzer.Script {
@@ -92,10 +192,6 @@ func cloneScripts(scripts []analyzer.Script) []analyzer.Script {
 		script.Occurrence.Ancestry = slices.Clone(script.Occurrence.Ancestry)
 		script.Spans = slices.Clone(script.Spans)
 		script.Comments = slices.Clone(script.Comments)
-		if script.Invocation != nil {
-			invocation := *script.Invocation
-			script.Invocation = &invocation
-		}
 		if script.Runtime != nil {
 			runtime := *script.Runtime
 			script.Runtime = &runtime

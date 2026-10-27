@@ -2,6 +2,7 @@ package codec_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -10,80 +11,17 @@ import (
 	upstream "go.yaml.in/yaml/v4"
 )
 
-type codecNodeHook struct {
-	Called bool
-	Node   *syntax.Node
-	Value  string
-}
-
-func (h *codecNodeHook) UnmarshalYAML(_ *codec.Decoder, node *syntax.Node) error {
-	h.Called = true
-	h.Node = node
-	h.Value = node.Value
-	return nil
-}
-
-type upstreamNodeHook struct {
-	Called bool
-	Value  string
-}
-
-func (h *upstreamNodeHook) UnmarshalYAML(node *upstream.Node) error {
-	h.Called = true
-	h.Value = node.Value
-	return nil
-}
-
-type codecPrefilled struct {
-	Keep  string         `yaml:"keep"`
-	Items map[string]int `yaml:"items"`
-	Value *string        `yaml:"value"`
-	Hook  codecNodeHook  `yaml:"hook"`
-}
-
-type upstreamPrefilled struct {
-	Keep  string           `yaml:"keep"`
-	Items map[string]int   `yaml:"items"`
-	Value *string          `yaml:"value"`
-	Hook  upstreamNodeHook `yaml:"hook"`
-}
-
-func TestShadowDecodeMatchesUpstreamForPrefilledTargets(t *testing.T) {
-	const source = "hook: seen\nitems: {new: 2}\nvalue: null\n"
-	oldValue := "old"
-	wantItems := map[string]int{"old": 1, "new": 2}
-
-	got := codecPrefilled{Keep: "preserve", Items: map[string]int{"old": 1}, Value: &oldValue}
-	if err := codec.Unmarshal([]byte(source), &got); err != nil {
-		t.Fatalf("codec.Unmarshal: %v", err)
+func decodeCursorSource(data []byte, target any) error {
+	root, err := codec.Parse(data)
+	if err != nil {
+		return err
 	}
-
-	baselineValue := "old"
-	baseline := upstreamPrefilled{Keep: "preserve", Items: map[string]int{"old": 1}, Value: &baselineValue}
-	if err := upstream.Unmarshal([]byte(source), &baseline); err != nil {
-		t.Fatalf("upstream.Unmarshal baseline: %v", err)
+	session, cursor, err := codec.Open(root)
+	if err != nil {
+		return err
 	}
-	if got.Keep != baseline.Keep || got.Keep != "preserve" {
-		t.Errorf("absent field = %q, upstream baseline %q; want preserved value", got.Keep, baseline.Keep)
-	}
-	if !reflect.DeepEqual(got.Items, baseline.Items) || !reflect.DeepEqual(got.Items, wantItems) {
-		t.Errorf("merged map = %#v, upstream baseline %#v; want %#v", got.Items, baseline.Items, wantItems)
-	}
-	if got.Value != baseline.Value || got.Value != nil {
-		t.Errorf("null pointer = %#v, upstream baseline %#v; want nil", got.Value, baseline.Value)
-	}
-	if !got.Hook.Called || !baseline.Hook.Called || got.Hook.Value != baseline.Hook.Value {
-		t.Errorf("hook result = %#v, upstream baseline %#v", got.Hook, baseline.Hook)
-	}
-}
-
-type aliasReceivers struct {
-	Anchor codecNodeHook `yaml:"anchor"`
-	Item   codecNodeHook `yaml:"item"`
-}
-
-type aliasRoot struct {
-	Root aliasReceivers `yaml:"root"`
+	defer session.Close()
+	return session.Finish(cursor.Decode(target))
 }
 
 func mappingValue(node *syntax.Node, name string) *syntax.Node {
@@ -101,293 +39,248 @@ func mappingValue(node *syntax.Node, name string) *syntax.Node {
 	return nil
 }
 
-func TestHookReceivesNodeFromCallerGraphIncludingAliasTarget(t *testing.T) {
-	const source = "root:\n  anchor: &payload\n    value: ok\n  item: *payload\n"
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(source), &root); err != nil {
-		t.Fatalf("decode syntax graph: %v", err)
+type plainPrefilled struct {
+	Keep  string         `yaml:"keep"`
+	Items map[string]int `yaml:"items"`
+	Value *string        `yaml:"value"`
+	Hook  string         `yaml:"hook"`
+}
+
+func TestCursorDecodeMatchesUpstreamForPrefilledTargets(t *testing.T) {
+	for _, selected := range []bool{false, true} {
+		t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+			const source = "hook: seen\nitems: {new: 2}\nvalue: null\n"
+			oldValue, baselineValue := "old", "old"
+			got := plainPrefilled{Keep: "preserve", Items: map[string]int{"old": 1}, Value: &oldValue}
+			want := plainPrefilled{Keep: "preserve", Items: map[string]int{"old": 1}, Value: &baselineValue}
+			if err := decodePrefilledSource(t, []byte(source), &got, selected); err != nil {
+				t.Fatal(err)
+			}
+			if err := upstream.Unmarshal([]byte(source), &want); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, want) || got.Keep != "preserve" || got.Value != nil || !reflect.DeepEqual(got.Items, map[string]int{"old": 1, "new": 2}) || got.Hook != "seen" {
+				t.Fatalf("got %#v, upstream %#v", got, want)
+			}
+		})
 	}
-	rootNode := mappingValue(&root, "root")
+}
+
+func TestCursorEnterKeepsCallerAliasTargetIdentity(t *testing.T) {
+	const source = "root:\n  anchor: &payload\n    value: ok\n  item: *payload\n"
+	root, err := codec.Parse([]byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rootNode := mappingValue(root, "root")
 	anchor := mappingValue(rootNode, "anchor")
 	alias := mappingValue(rootNode, "item")
 	if anchor == nil || alias == nil || alias.Kind != syntax.AliasNode || alias.Alias != anchor {
-		t.Fatalf("syntax alias graph is not linked to anchor: anchor=%p alias=%#v", anchor, alias)
+		t.Fatalf("invalid alias graph: anchor=%p alias=%#v", anchor, alias)
 	}
-
-	var got aliasRoot
-	if err := codec.Decode(&root, &got); err != nil {
-		t.Fatalf("codec.Decode: %v", err)
+	session, cursor, err := codec.Open(root)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got.Root.Anchor.Node != anchor {
-		t.Errorf("anchor hook node = %p, source graph node = %p", got.Root.Anchor.Node, anchor)
+	defer session.Close()
+	var selected struct {
+		Root codec.Selected `yaml:"root"`
 	}
-	if got.Root.Item.Node != anchor {
-		t.Errorf("alias hook node = %p, alias target in source graph = %p", got.Root.Item.Node, anchor)
+	outerVisits := 0
+	innerVisits := map[string]int{}
+	err = cursor.Select(&selected, func(_ *codec.Selected, occurrence codec.Cursor) error {
+		outerVisits++
+		var inner struct {
+			Anchor codec.Selected `yaml:"anchor"`
+			Item   codec.Selected `yaml:"item"`
+		}
+		return occurrence.Select(&inner, func(field *codec.Selected, value codec.Cursor) error {
+			want := anchor
+			switch field {
+			case &inner.Anchor:
+				innerVisits["anchor"]++
+			case &inner.Item:
+				innerVisits["item"]++
+				want = alias
+			default:
+				t.Error("unknown selected field")
+			}
+			if value.Node() != want {
+				t.Errorf("occurrence node=%p want original %p", value.Node(), want)
+			}
+			entered, err := value.Enter()
+			if err != nil {
+				return err
+			}
+			if entered.Node() != anchor {
+				t.Errorf("entered node=%p want anchor %p", entered.Node(), anchor)
+			}
+			return nil
+		})
+	})
+	if err := session.Finish(err); err != nil {
+		t.Fatal(err)
 	}
-	if got.Root.Anchor.Node != got.Root.Item.Node {
-		t.Errorf("hooks on anchor and alias received distinct graph nodes: %p and %p", got.Root.Anchor.Node, got.Root.Item.Node)
-	}
-}
-
-type rejectingHook struct{ Value string }
-
-func (h *rejectingHook) UnmarshalYAML(_ *codec.Decoder, node *syntax.Node) error {
-	h.Value = node.Value
-	return errors.New("reject " + node.Value)
-}
-
-type rejectingSlice struct {
-	Items []rejectingHook `yaml:"items"`
-}
-
-type rejectingMap struct {
-	Items map[string]rejectingHook `yaml:"items"`
-}
-
-func errorMarks(err error) ([]codec.Mark, error) {
-	var decodeErr *codec.DecodeError
-	if !errors.As(err, &decodeErr) {
-		return nil, err
-	}
-	marks := make([]codec.Mark, 0, len(decodeErr.Errors))
-	for _, item := range decodeErr.Errors {
-		marks = append(marks, item.Mark)
-	}
-	return marks, nil
-}
-
-func TestSliceHookErrorsCollectMarksAndValues(t *testing.T) {
-	const source = "items:\n  - first\n  - second\n"
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(source), &root); err != nil {
-		t.Fatalf("decode syntax graph: %v", err)
-	}
-	values := mappingValue(&root, "items")
-	wantMarks := []codec.Mark{{Line: values.Content[0].Line, Column: values.Content[0].Column}, {Line: values.Content[1].Line, Column: values.Content[1].Column}}
-
-	var got rejectingSlice
-	err := codec.Decode(&root, &got)
-	marks, nonDecodeError := errorMarks(err)
-	if nonDecodeError != nil {
-		t.Fatalf("codec.Decode error = %v, want collected DecodeError", err)
-	}
-	if !reflect.DeepEqual(marks, wantMarks) {
-		t.Errorf("hook error marks = %#v, want %#v", marks, wantMarks)
-	}
-	if len(got.Items) != 2 || got.Items[0].Value != "first" || got.Items[1].Value != "second" {
-		t.Errorf("slice values = %#v, want both decoded values", got.Items)
+	if outerVisits != 1 || innerVisits["anchor"] != 1 || innerVisits["item"] != 1 {
+		t.Errorf("outer visits=%d inner=%v want exactly root/anchor/item", outerVisits, innerVisits)
 	}
 }
 
-func TestMapHookErrorsCollectMarksAndValues(t *testing.T) {
-	const source = "items:\n  first: one\n  second: two\n"
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(source), &root); err != nil {
-		t.Fatalf("decode syntax graph: %v", err)
-	}
-	values := mappingValue(&root, "items")
-	wantMarks := []codec.Mark{{Line: values.Content[1].Line, Column: values.Content[1].Column}, {Line: values.Content[3].Line, Column: values.Content[3].Column}}
-
-	var got rejectingMap
-	err := codec.Decode(&root, &got)
-	marks, nonDecodeError := errorMarks(err)
-	if nonDecodeError != nil {
-		t.Fatalf("codec.Decode error = %v, want collected DecodeError", err)
-	}
-	if !reflect.DeepEqual(marks, wantMarks) {
-		t.Errorf("hook error marks = %#v, want %#v", marks, wantMarks)
-	}
-	if len(got.Items) != 2 || got.Items["first"].Value != "one" || got.Items["second"].Value != "two" {
-		t.Errorf("map values = %#v, want both decoded values", got.Items)
-	}
-}
-
-type rootNullHook struct {
-	Called bool
-	Value  string
-}
-
-func (h *rootNullHook) UnmarshalYAML(_ *codec.Decoder, node *syntax.Node) error {
-	h.Called = true
-	h.Value = node.Value
-	return nil
-}
-
-type upstreamRootNullHook struct {
-	Called bool
-	Value  string
-}
-
-func (h *upstreamRootNullHook) UnmarshalYAML(node *upstream.Node) error {
-	h.Called = true
-	h.Value = node.Value
-	return nil
-}
-
-func TestRootNullDoesNotCallHookOrChangeTarget(t *testing.T) {
-	got := rootNullHook{Value: "preserve"}
-	if err := codec.Unmarshal([]byte("null\n"), &got); err != nil {
-		t.Fatalf("codec.Unmarshal: %v", err)
-	}
-	baseline := upstreamRootNullHook{Value: "preserve"}
-	if err := upstream.Unmarshal([]byte("null\n"), &baseline); err != nil {
-		t.Fatalf("upstream.Unmarshal baseline: %v", err)
-	}
-	if got.Called || got.Value != "preserve" {
-		t.Errorf("codec root null hook = %#v, want unchanged target with no call", got)
-	}
-	if got.Called != baseline.Called || got.Value != baseline.Value {
-		t.Errorf("codec root null result %#v differs from upstream baseline %#v", got, baseline)
-	}
-}
-
-func TestRecursiveAliasPreservesGraphAndDecodeReturns(t *testing.T) {
-	const source = "&recursive [*recursive]\n"
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(source), &root); err != nil {
-		t.Fatalf("decode recursive alias graph: %v", err)
-	}
-	if root.Kind != syntax.DocumentNode || len(root.Content) != 1 {
-		t.Fatalf("root = %#v, want one document node", root)
-	}
-	sequence := root.Content[0]
-	if sequence.Kind != syntax.SequenceNode || len(sequence.Content) != 1 {
-		t.Fatalf("sequence = %#v, want one alias", sequence)
-	}
-	alias := sequence.Content[0]
-	if alias.Kind != syntax.AliasNode || alias.Alias != sequence {
-		t.Fatalf("recursive alias = %#v, want reference to sequence %p", alias, sequence)
-	}
-	var decoded []any
-	if err := codec.Decode(&root, &decoded); err == nil {
-		t.Fatal("recursive value alias decoded successfully, want cycle error")
-	}
-}
-
-type codecNestedHook struct {
-	Name string        `yaml:"name"`
-	Hook codecNodeHook `yaml:"hook"`
-}
-
-type upstreamNestedHook struct {
-	Name string           `yaml:"name"`
-	Hook upstreamNodeHook `yaml:"hook"`
-}
-
-type codecPointerRoot struct {
-	Nested *codecNestedHook `yaml:"nested"`
-	Hook   codecNodeHook    `yaml:"hook"`
-}
-
-type upstreamPointerRoot struct {
-	Nested *upstreamNestedHook `yaml:"nested"`
-	Hook   upstreamNodeHook    `yaml:"hook"`
-}
-
-func TestShadowDecodePreservesAndClearsPointerToHookStruct(t *testing.T) {
+func TestCursorCollectionErrorsKeepMarksAndPartialValues(t *testing.T) {
 	for _, tc := range []struct {
 		name, source string
-		wantPresent  bool
+		target       func() any
 	}{
-		{name: "absent pointer preserves identity", source: "hook: outer\n", wantPresent: true},
-		{name: "explicit null clears pointer", source: "nested: null\nhook: outer\n"},
+		{"slice", "items:\n  - first\n  - 3\n  - second\n  - 4\n", func() any {
+			return &struct {
+				Items []int `yaml:"items"`
+			}{}
+		}},
+		{"map", "items:\n  first: one\n  good: 3\n  second: two\n  last: 4\n", func() any {
+			return &struct {
+				Items map[string]int `yaml:"items"`
+			}{}
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			oldNested := &codecNestedHook{Name: "keep", Hook: codecNodeHook{Value: "inner"}}
-			got := codecPointerRoot{Nested: oldNested}
-			if err := codec.Unmarshal([]byte(tc.source), &got); err != nil {
-				t.Fatalf("codec.Unmarshal: %v", err)
-			}
-
-			baselineNested := &upstreamNestedHook{Name: "keep", Hook: upstreamNodeHook{Value: "inner"}}
-			baseline := upstreamPointerRoot{Nested: baselineNested}
-			if err := upstream.Unmarshal([]byte(tc.source), &baseline); err != nil {
-				t.Fatalf("upstream.Unmarshal baseline: %v", err)
-			}
-			if tc.wantPresent {
-				if got.Nested != oldNested || got.Nested == nil || got.Nested.Name != "keep" {
-					t.Errorf("absent nested pointer = %#v, original %p; want same pointer and value", got.Nested, oldNested)
-				}
-				if baseline.Nested != baselineNested || baseline.Nested == nil || baseline.Nested.Name != "keep" {
-					t.Errorf("upstream absent nested pointer = %#v, original %p; baseline behavior changed", baseline.Nested, baselineNested)
-				}
-			} else if got.Nested != nil || baseline.Nested != nil {
-				t.Errorf("explicit null nested pointer = %#v, upstream baseline %#v; want nil", got.Nested, baseline.Nested)
-			}
-			if !got.Hook.Called || !baseline.Hook.Called || got.Hook.Value != baseline.Hook.Value {
-				t.Errorf("outer hook result = %#v, upstream baseline %#v", got.Hook, baseline.Hook)
+			got, want := tc.target(), tc.target()
+			gotErr := decodeCursorSource([]byte(tc.source), got)
+			wantErr := upstream.Unmarshal([]byte(tc.source), want)
+			assertConstructErrorsMatchUpstream(t, gotErr, wantErr)
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("partial values=%#v upstream=%#v", got, want)
 			}
 		})
 	}
 }
 
-func TestDecodeAliasDirectlyIntoHook(t *testing.T) {
-	const source = "anchor: &payload value\nitem: *payload\n"
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(source), &root); err != nil {
-		t.Fatalf("decode syntax graph: %v", err)
+func assertConstructErrorsMatchUpstream(t *testing.T, got, want error) {
+	t.Helper()
+	decoded, gotOK := errors.AsType[*codec.DecodeError](got)
+	baseline, wantOK := errors.AsType[*upstream.LoadErrors](want)
+	if !gotOK || !wantOK {
+		t.Fatalf("errors codec=%T %v upstream=%T %v", got, got, want, want)
 	}
-	anchor := mappingValue(&root, "anchor")
-	alias := mappingValue(&root, "item")
-	if anchor == nil || alias == nil || alias.Kind != syntax.AliasNode || alias.Alias != anchor {
-		t.Fatalf("syntax alias graph is not linked to anchor: anchor=%p alias=%#v", anchor, alias)
+	if got.Error() != want.Error() {
+		t.Errorf("error=%q upstream=%q", got.Error(), want.Error())
 	}
-	var got codecNodeHook
-	if err := codec.Decode(alias, &got); err != nil {
-		t.Fatalf("Decode(alias, hook): %v", err)
+	if len(decoded.Errors) != len(baseline.Errors) {
+		t.Fatalf("errors=%d upstream=%d", len(decoded.Errors), len(baseline.Errors))
 	}
-	if !got.Called || got.Node != anchor || got.Value != "value" {
-		t.Errorf("alias hook = %#v, source anchor = %p; want original anchor", got, anchor)
+	for i, item := range decoded.Errors {
+		other := baseline.Errors[i]
+		if item.Message != other.Message || item.Mark.Line != other.Mark.Line || item.Mark.Column != other.Mark.Column {
+			t.Errorf("diagnostic %d=%+v upstream=%+v", i, item, other)
+		}
 	}
+}
 
+func TestCursorRootNullKeepsPrefilledValue(t *testing.T) {
+	type value struct{ Value string }
+	got, want := value{"preserve"}, value{"preserve"}
+	if err := decodeCursorSource([]byte("null\n"), &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := upstream.Unmarshal([]byte("null\n"), &want); err != nil {
+		t.Fatal(err)
+	}
+	if got != want || got.Value != "preserve" {
+		t.Fatalf("got %#v upstream %#v", got, want)
+	}
+}
+
+func TestCursorDecodePreservesAndClearsPrefilledPointer(t *testing.T) {
+	type nested struct {
+		Name  string `yaml:"name"`
+		Value string `yaml:"hook"`
+	}
+	type target struct {
+		Nested *nested `yaml:"nested"`
+		Hook   string  `yaml:"hook"`
+	}
 	for _, tc := range []struct {
-		name string
-		node *syntax.Node
+		name, source string
+		present      bool
 	}{
-		{name: "missing target", node: &syntax.Node{Kind: syntax.AliasNode, Line: 4, Column: 2}},
+		{"absent pointer preserves identity", "hook: outer\n", true},
+		{"explicit null clears pointer", "nested: null\nhook: outer\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var hook codecNodeHook
-			if err := codec.Decode(tc.node, &hook); err == nil {
-				t.Fatal("Decode invalid alias succeeded, want error")
-			}
-			if hook.Called {
-				t.Fatal("invalid alias called hook")
+			for _, selected := range []bool{false, true} {
+				t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+					original, baseline := &nested{"keep", "inner"}, &nested{"keep", "inner"}
+					got, want := target{Nested: original}, target{Nested: baseline}
+					if err := decodePrefilledSource(t, []byte(tc.source), &got, selected); err != nil {
+						t.Fatal(err)
+					}
+					if err := upstream.Unmarshal([]byte(tc.source), &want); err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(got, want) {
+						t.Errorf("got=%#v upstream=%#v", got, want)
+					}
+					if tc.present {
+						if got.Nested != original || got.Nested == nil || got.Nested.Name != "keep" || got.Nested.Value != "inner" {
+							t.Errorf("absent pointer=%#v want original %p and state", got.Nested, original)
+						}
+						if want.Nested != baseline || want.Nested == nil || want.Nested.Name != "keep" {
+							t.Error("upstream absent pointer behavior changed")
+						}
+					} else if got.Nested != nil || want.Nested != nil {
+						t.Errorf("null pointers codec=%#v upstream=%#v want nil", got.Nested, want.Nested)
+					}
+					if got.Hook != "outer" {
+						t.Errorf("decoded hook field=%q", got.Hook)
+					}
+				})
 			}
 		})
 	}
-
-	t.Run("looping target", func(t *testing.T) {
-		loop := &syntax.Node{Kind: syntax.AliasNode, Line: 5, Column: 3}
-		loop.Alias = loop
-		var hook codecNodeHook
-		if err := codec.Decode(loop, &hook); err == nil {
-			t.Fatal("Decode looping alias succeeded, want error")
-		}
-		if hook.Called {
-			t.Fatal("looping alias called hook")
-		}
-	})
 }
 
-type codecHookMap struct {
-	Items map[string]codecNodeHook `yaml:"items"`
+func TestParseRecursiveAliasKeepsGraphAndCursorDecodeFails(t *testing.T) {
+	root, err := codec.Parse([]byte("&recursive [*recursive]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root.Kind != syntax.DocumentNode || len(root.Content) != 1 {
+		t.Fatalf("root=%#v", root)
+	}
+	sequence := root.Content[0]
+	if sequence.Kind != syntax.SequenceNode || len(sequence.Content) != 1 || sequence.Content[0].Alias != sequence {
+		t.Fatalf("recursive graph=%#v", sequence)
+	}
+	session, cursor, err := codec.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	var value, baseline []any
+	gotErr := cursor.Decode(&value)
+	wantErr := upstream.Unmarshal([]byte("&recursive [*recursive]\n"), &baseline)
+	compareCycleFailure(t, gotErr, wantErr)
+	if !reflect.DeepEqual(value, baseline) {
+		t.Errorf("partial value=%#v upstream=%#v", value, baseline)
+	}
+	if root.Content[0] != sequence || sequence.Content[0].Kind != syntax.AliasNode || sequence.Content[0].Alias != sequence {
+		t.Fatal("decode changed source graph")
+	}
 }
 
-func TestPrefilledMapOfHookValuesMergesAndCallsNewHook(t *testing.T) {
+func TestCursorPrefilledMapMergesNewValues(t *testing.T) {
+	type target struct {
+		Items map[string]string `yaml:"items"`
+	}
+	got, want := target{map[string]string{"old": "keep"}}, target{map[string]string{"old": "keep"}}
 	const source = "items: {new: fresh}\n"
-	got := codecHookMap{Items: map[string]codecNodeHook{"old": {Called: true, Value: "keep"}}}
-	if err := codec.Unmarshal([]byte(source), &got); err != nil {
-		t.Fatalf("codec.Unmarshal: %v", err)
+	if err := decodeCursorSource([]byte(source), &got); err != nil {
+		t.Fatal(err)
 	}
-	if len(got.Items) != 2 {
-		t.Fatalf("map entries = %#v, want old and new", got.Items)
+	if err := upstream.Unmarshal([]byte(source), &want); err != nil {
+		t.Fatal(err)
 	}
-	if old := got.Items["old"]; !old.Called || old.Value != "keep" {
-		t.Errorf("existing entry = %#v, want unchanged", old)
-	}
-	if fresh := got.Items["new"]; !fresh.Called || fresh.Value != "fresh" || fresh.Node == nil {
-		t.Errorf("new entry = %#v, want invoked hook with source node", fresh)
+	if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(got.Items, map[string]string{"old": "keep", "new": "fresh"}) {
+		t.Fatalf("got=%#v upstream=%#v", got, want)
 	}
 }
 
@@ -416,11 +309,11 @@ func TestExplicitVerbatimTagAndCoordinatesMatchUpstream(t *testing.T) {
 	if want == nil {
 		t.Fatal("upstream fixture has no value node")
 	}
-	var gotRoot syntax.Node
-	if err := codec.Unmarshal([]byte(source), &gotRoot); err != nil {
-		t.Fatalf("codec.Unmarshal fixture: %v", err)
+	gotRoot, err := codec.Parse([]byte(source))
+	if err != nil {
+		t.Fatalf("codec.Parse fixture: %v", err)
 	}
-	got := mappingValue(&gotRoot, "value")
+	got := mappingValue(gotRoot, "value")
 	if got == nil {
 		t.Fatal("codec fixture has no value node")
 	}
@@ -429,5 +322,108 @@ func TestExplicitVerbatimTagAndCoordinatesMatchUpstream(t *testing.T) {
 	}
 	if got.Style != syntax.TaggedStyle || want.Style != upstream.TaggedStyle {
 		t.Errorf("verbatim tag style = %b, upstream = %b; want explicit tag style preserved", got.Style, want.Style)
+	}
+}
+
+func TestCursorOpensAliasOccurrenceDirectly(t *testing.T) {
+	root, err := codec.Parse([]byte("anchor: &payload value\nitem: *payload\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	anchor, alias := mappingValue(root, "anchor"), mappingValue(root, "item")
+	if anchor == nil || alias == nil || alias.Alias != anchor {
+		t.Fatal("invalid fixture")
+	}
+	session, cursor, err := codec.Open(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	if cursor.Node() != alias {
+		t.Fatal("direct cursor lost alias occurrence")
+	}
+	entered, err := cursor.Enter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entered.Node() != anchor {
+		t.Errorf("entered=%p anchor=%p", entered.Node(), anchor)
+	}
+	var value string
+	if err := entered.Decode(&value); err != nil {
+		t.Fatal(err)
+	}
+	if value != "value" {
+		t.Errorf("decoded alias=%q", value)
+	}
+	if alias.Alias != anchor || alias.Kind != syntax.AliasNode {
+		t.Fatal("alias changed")
+	}
+}
+
+func TestParseCommentsMatchUpstreamThroughSelectedBoundary(t *testing.T) {
+	const source = "# document head\nroot:\n  # value head\n  value: text # value line\n  # value foot\n\n# root foot\n"
+	root, err := codec.Parse([]byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var baseline upstream.Node
+	if err := upstream.Unmarshal([]byte(source), &baseline); err != nil {
+		t.Fatal(err)
+	}
+	var compare func(*syntax.Node, *upstream.Node)
+	commentKinds := map[string]int{}
+	compare = func(got *syntax.Node, want *upstream.Node) {
+		if got.HeadComment != want.HeadComment || got.LineComment != want.LineComment || got.FootComment != want.FootComment || got.Tag != want.Tag || got.Line != want.Line || got.Column != want.Column {
+			t.Errorf("node=%#v upstream=%#v", got, want)
+		}
+		if want.HeadComment != "" {
+			commentKinds["head"]++
+		}
+		if want.LineComment != "" {
+			commentKinds["line"]++
+		}
+		if want.FootComment != "" {
+			commentKinds["foot"]++
+		}
+		if len(got.Content) != len(want.Content) {
+			t.Fatalf("content=%d upstream=%d", len(got.Content), len(want.Content))
+		}
+		for i, child := range got.Content {
+			compare(child, want.Content[i])
+		}
+	}
+	compare(root, &baseline)
+	for _, kind := range []string{"head", "line", "foot"} {
+		if commentKinds[kind] == 0 {
+			t.Fatalf("fixture has no %s comment", kind)
+		}
+	}
+	session, cursor, err := codec.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+	var target struct {
+		Root codec.Selected `yaml:"root"`
+	}
+	visits := 0
+	err = cursor.Select(&target, func(_ *codec.Selected, value codec.Cursor) error {
+		visits++
+		entered, err := value.Enter()
+		if err != nil {
+			return err
+		}
+		if entered.Node() != mappingValue(root, "root") {
+			t.Error("selected mapping lost identity")
+		}
+		compare(entered.Node(), upstreamMappingValue(&baseline, "root"))
+		return nil
+	})
+	if err := session.Finish(err); err != nil {
+		t.Fatal(err)
+	}
+	if visits != 1 {
+		t.Errorf("selected visits=%d want 1", visits)
 	}
 }

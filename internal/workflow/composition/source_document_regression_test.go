@@ -47,7 +47,7 @@ func TestParseFailedActionKeepsRecoveredCanonicalSourceReferences(t *testing.T) 
 	if document.Metadata == nil || len(document.Metadata.Runs.Steps) != 1 {
 		t.Fatalf("parser did not recover the expected partial declaration: %#v", document.Metadata)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
 		t.Fatal(err)

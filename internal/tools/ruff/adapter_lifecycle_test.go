@@ -111,7 +111,7 @@ func TestRuffAdapterMapsBothEndpoints(t *testing.T) {
 	}
 	step := parsed.Jobs["test"].Steps[0]
 	run := step.Exec.(*workflowlang.ExecRun)
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document("fixture.yml", source, document)
 	if err != nil {
 		t.Fatal(err)

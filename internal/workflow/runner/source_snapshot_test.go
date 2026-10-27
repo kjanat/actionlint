@@ -12,7 +12,7 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 	const identity = "ci.yml"
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 	document := documentparse.Workflow(identity, content)
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document(identity, content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 	}
 
 	foreignDocument := documentparse.Workflow(identity, content)
-	var foreignRegistry documentparse.SourceSnapshots
+	foreignRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	foreignSnapshot, err := foreignRegistry.Document(identity, content, foreignDocument)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestNilKnowledgeUsesCanonicalJobFallback(t *testing.T) {
 	const identity = "ci.yml"
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps: [{run: echo ok}]\n")
 	document := documentparse.Workflow(identity, content)
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document(identity, content, document)
 	if err != nil {
 		t.Fatal(err)

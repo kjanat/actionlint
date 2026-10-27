@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
-// Check the physical tree before alias resolution. YAML accepts compact empty
+// Check the physical tree before alias projection. YAML accepts compact empty
 // flow values, but GitHub's reader can absorb the colon into an unquoted key.
 // Quoted keys use a different token boundary and do not need this restriction.
 func (p *Parser) checkFlowMappingNulls(node *syntax.Node, flow bool) {

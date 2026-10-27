@@ -39,7 +39,8 @@ func NodeKindName(k syntax.Kind) string {
 	case syntax.ScalarNode:
 		return "scalar"
 	case syntax.AliasNode:
-		return "alias" // Should be unreachable because we resolve all aliases before parsing
+		// Rejected recursive or undeclared uses remain aliases in the projection.
+		return "alias"
 	default:
 		panic(fmt.Sprintf("unreachable: unknown YAML kind: %v", k))
 	}
@@ -150,100 +151,6 @@ func (p *Parser) typeErrorf(n *syntax.Node, format string, args ...any) {
 		n = alias
 	}
 	p.error(n, m)
-}
-
-func (p *Parser) resolveAliases(root *syntax.Node) {
-	p.aliases = ResolveYAMLAliases(root, func(n *syntax.Node, d YamlAliasDiagnostic, m string) {
-		p.error(n, m)
-	})
-}
-
-// YamlAliasDiagnostic is the kind of a problem ResolveYAMLAliases reports. A recursive alias leaves
-// an unresolved alias node in the tree, so decoding the tree afterwards is only safe when no such
-// diagnostic was reported. An unused anchor leaves the tree fully resolved.
-type YamlAliasDiagnostic int
-
-const (
-	yamlAliasDiagnosticRecursive YamlAliasDiagnostic = iota
-	YamlAliasDiagnosticUnusedAnchor
-	yamlAliasDiagnosticInvalidName
-)
-
-func ResolveYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) map[*syntax.Node]*syntax.Node {
-	var aliases map[*syntax.Node]*syntax.Node
-	for _, use := range inspectYAMLAliases(root, report) {
-		alias := use.parent.Content[use.index]
-		resolved := *alias.Alias
-		use.parent.Content[use.index] = &resolved
-		if aliases == nil {
-			aliases = map[*syntax.Node]*syntax.Node{}
-		}
-		aliases[&resolved] = alias
-	}
-	return aliases
-}
-
-// ValidateYAMLAliases reports GitHub Actions alias diagnostics without changing source nodes.
-func ValidateYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) {
-	inspectYAMLAliases(root, report)
-}
-
-type yamlAliasUse struct {
-	parent *syntax.Node
-	index  int
-}
-
-func inspectYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) []yamlAliasUse {
-	type usage struct {
-		used    bool
-		defined bool
-	}
-
-	anchors := map[*syntax.Node]*usage{}
-	var uses []yamlAliasUse
-
-	var resolve func(*syntax.Node) // For recursive call
-	resolve = func(n *syntax.Node) {
-		var u *usage
-		if len(n.Anchor) != 0 {
-			if strings.ContainsRune(n.Anchor, '+') {
-				report(n, yamlAliasDiagnosticInvalidName, fmt.Sprintf("anchor name %q contains '+' which is not allowed by GitHub Actions", n.Anchor))
-			}
-			u = &usage{}
-			anchors[n] = u
-		}
-		for i, c := range n.Content {
-			if c.Kind != syntax.AliasNode {
-				resolve(c)
-				continue
-			}
-			if strings.ContainsRune(c.Value, '+') {
-				report(c, yamlAliasDiagnosticInvalidName, fmt.Sprintf("alias name %q contains '+' which is not allowed by GitHub Actions", c.Value))
-			}
-			// Note: Unknown anchors are detected by go-yaml Parser so we don't need to detect them by ourselves.
-			if u, ok := anchors[c.Alias]; ok {
-				u.used = true
-				if u.defined {
-					uses = append(uses, yamlAliasUse{n, i})
-				} else {
-					// Don't resolve the recursive alias because it causes stack overflow on parsing the tree as
-					// `RawYAMLValue`. (#610)
-					report(c, yamlAliasDiagnosticRecursive, fmt.Sprintf("recursive alias %q is found. anchor was declared at line:%d, column:%d", c.Alias.Anchor, c.Alias.Line, c.Alias.Column))
-				}
-			}
-		}
-		if u != nil {
-			u.defined = true
-		}
-	}
-	resolve(root)
-
-	for n, u := range anchors {
-		if !u.used {
-			report(n, YamlAliasDiagnosticUnusedAnchor, fmt.Sprintf("anchor %q is defined but not used", n.Anchor))
-		}
-	}
-	return uses
 }
 
 func (p *Parser) unexpectedKey(s *String, sec string, expected []string) {
@@ -1652,7 +1559,7 @@ func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *ExecRun {
 	for _, e := range entries {
 		switch e.id {
 		case "run":
-			ret.Run = p.parseString(e.val, false)
+			ret.Run = p.parseString(e.val, true)
 			ret.RunPos = e.key.Pos
 			ret.Source = p.ScriptSourceForDeclaration(e.val, e.key.Pos)
 		case "shell":
@@ -2101,20 +2008,19 @@ func (p *Parser) parseJobs(n *syntax.Node) map[string]*Job {
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
+// parse consumes an alias-projected document without changing its nodes.
 func (p *Parser) parse(n *syntax.Node) *Workflow {
-	p.resolveAliases(n)
-
 	w := &Workflow{}
 
-	if n.Line == 0 {
-		n.Line = 1
-	}
-	if n.Column == 0 {
-		n.Column = 1
-	}
-
 	if len(n.Content) == 0 {
-		p.error(n, "workflow is empty")
+		position := PosAt(n)
+		if position.Line == 0 {
+			position.Line = 1
+		}
+		if position.Col == 0 {
+			position.Col = 1
+		}
+		p.errorAt(position, "workflow is empty")
 		return w
 	}
 	if root := n.Content[0]; root.Kind == syntax.MappingNode && len(root.Content) != 0 {
@@ -2178,53 +2084,44 @@ func (p *Parser) parse(n *syntax.Node) *Workflow {
 // }
 
 func HandleYAMLUnmarshalError(err error) []*SyntaxError {
-	es := &codec.DecodeError{}
-	if errors.As(err, &es) {
-		errs := make([]*SyntaxError, 0, len(es.Errors))
-		for _, e := range es.Errors {
-			errs = append(errs, &SyntaxError{
-				Message: "could not parse as YAML: " + e.Message,
-				Line:    e.Mark.Line,
-				Column:  e.Mark.Column,
-				Kind:    "syntax-check",
-			})
-		}
-		return errs
-	}
-
-	e := &codec.LoadError{}
-	if errors.As(err, &e) {
-		return []*SyntaxError{{
-			Message: "could not parse as YAML: " + e.Message,
+	diagnostics := codec.LoadDiagnostics(err)
+	findings := make([]*SyntaxError, 0, len(diagnostics))
+	for _, diagnostic := range diagnostics {
+		findings = append(findings, &SyntaxError{
+			Message: "could not parse as YAML: " + diagnostic.Message,
+			Line:    diagnostic.Mark.Line,
+			Column:  diagnostic.Mark.Column,
 			Kind:    "syntax-check",
-			Line:    e.Mark.Line,
-			Column:  e.Mark.Column,
-		}}
+		})
 	}
-
-	return []*SyntaxError{{
-		Message: "could not parse as YAML: " + err.Error(),
-		Kind:    "syntax-check",
-	}}
+	return findings
 }
 
-// Parse parses given source as byte sequence into workflow syntax tree. It returns all errors
-// detected while parsing the input. It means that detecting one error does not stop parsing. Even
-// if one or more errors are detected, Parser will try to continue parsing and finding more errors.
+// Parse recovers workflow syntax and diagnostics. YAML load or expansion-admission
+// failures return a nil workflow; recoverable syntax errors accompany the tree.
 func Parse(b []byte) (*Workflow, []*SyntaxError) {
 	n, err := codec.Parse(b)
 	if err != nil {
 		return nil, HandleYAMLUnmarshalError(err)
 	}
 
-	// Uncomment for checking YAML tree
-	// dumpYAML(&n, 0)
+	return parseDocument(b, n)
+}
 
-	p := NewSourceParser(b)
-	p.IndexScalarSources(n)
-	p.checkFlowMappingNulls(n, false)
-	w := p.parse(n)
-	w.ExpressionSources = p.workflowExpressionSources(n)
-
-	return w, p.Errors
+// parseDocument owns one parser and one projection for the complete physical source.
+func parseDocument(source []byte, root *syntax.Node) (*Workflow, []*SyntaxError) {
+	p := NewSourceParser(source)
+	p.IndexScalarSources(root)
+	p.checkFlowMappingNulls(root, false)
+	uses := inspectYAMLAliases(root, func(node *syntax.Node, _ YamlAliasDiagnostic, message string) {
+		p.error(node, message)
+	})
+	if err := admitYAMLAliasUses(root, uses); err != nil {
+		return nil, append(p.Errors, HandleYAMLUnmarshalError(err)...)
+	}
+	projected, aliases := projectYAMLAliases(root, uses)
+	p.aliases = aliases
+	workflow := p.parse(projected)
+	workflow.ExpressionSources = p.workflowExpressionSources(projected)
+	return workflow, p.Errors
 }

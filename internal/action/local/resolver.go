@@ -1,7 +1,6 @@
 package local
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"maps"
@@ -14,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/action/reference"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/mapping"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
@@ -32,7 +32,6 @@ type Resolver struct {
 	base                 *Cache
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string
-	usedSources          map[string][]byte
 	usedDocuments        map[string]SourceDocument
 	checkout             *execution.CheckoutPlacement
 	platform             runnerlang.Platform
@@ -47,19 +46,21 @@ type Resolver struct {
 // their canonical references, independently of metadata lookup success.
 type SourceDocument struct {
 	path     string
-	content  string
+	captured capture.Snapshot
 	document documentparse.Document
 }
 
 func (d SourceDocument) Path() string { return d.path }
 
-func (d SourceDocument) Content() []byte { return []byte(d.content) }
+func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
+
+func (d SourceDocument) Capture() capture.Snapshot { return d.captured }
 
 func (d SourceDocument) Document() documentparse.Document { return d.document }
 
 // NewResolver starts a document scope over shared repository metadata.
 func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
-	return &Resolver{base: cache, sourceMappings: mappings, usedSources: make(map[string][]byte), usedDocuments: make(map[string]SourceDocument)}
+	return &Resolver{base: cache, sourceMappings: mappings, usedDocuments: make(map[string]SourceDocument)}
 }
 
 // FindMetadata translates a reference using this invocation's checkout and source mappings.
@@ -102,9 +103,9 @@ func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 func (c *Resolver) Sources() map[string][]byte {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	cloned := make(map[string][]byte, len(c.usedSources))
-	for path, content := range c.usedSources {
-		cloned[path] = bytes.Clone(content)
+	cloned := make(map[string][]byte, len(c.usedDocuments))
+	for path, document := range c.usedDocuments {
+		cloned[path] = document.Content()
 	}
 	return cloned
 }
@@ -128,7 +129,7 @@ func (c *Resolver) SourceDocument(result MetadataResult) (SourceDocument, bool) 
 	if !exists {
 		return SourceDocument{}, false
 	}
-	return SourceDocument{path: source.path, content: string(source.content), document: source.document}, true
+	return SourceDocument{path: source.path, captured: source.captured, document: source.document}, true
 }
 
 // ApplyCheckout adapts shared script paths to this invocation's checkout placement.
@@ -182,7 +183,10 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 			}
 		}
 	}
-	explicit := c.base.hasExplicitAction(spec)
+	explicit, err := c.base.hasExplicitAction(spec)
+	if err != nil {
+		return MetadataResult{status: MetadataReadFailed, cause: err}, false
+	}
 	if c.caseInsensitive && c.base.root != "" && !c.base.customReader && !explicit {
 		local, err := execution.CaseInsensitiveRepositoryPath(c.base.root, spec, c.base.reader)
 		if err != nil {
@@ -229,14 +233,10 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 	c.base.mu.RUnlock()
 	if exists {
 		c.mu.Lock()
-		if c.usedSources == nil {
-			c.usedSources = make(map[string][]byte)
-		}
 		if c.usedDocuments == nil {
 			c.usedDocuments = make(map[string]SourceDocument)
 		}
-		c.usedSources[source.path] = bytes.Clone(source.content)
-		c.usedDocuments[source.path] = SourceDocument{path: source.path, content: string(source.content), document: source.document}
+		c.usedDocuments[source.path] = SourceDocument{path: source.path, captured: source.captured, document: source.document}
 		c.mu.Unlock()
 	}
 	return result, cached

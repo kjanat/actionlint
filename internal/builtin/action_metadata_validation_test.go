@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
@@ -16,10 +15,10 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 	for _, spec := range []string{"./inner", "$/inner"} {
 		for _, failure := range []error{context.Canceled, context.DeadlineExceeded} {
 			t.Run(spec+"/"+failure.Error(), func(t *testing.T) {
-				cache := actionlocal.NewCache(t.TempDir(), nil)
-				cache.Configure(actionlocal.Options{CustomReader: true, Reader: fsread.New(t.Context(), func(string) ([]byte, error) {
+				reader := fsread.New(t.Context(), func(string) ([]byte, error) {
 					return nil, failure
-				}, nil)})
+				}, nil)
+				cache := newCapturedLocalCache(t, t.TempDir(), nil, reader)
 				rule := NewRuleAction(cache)
 				err := rule.VisitStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &workflowlang.Pos{Line: 1, Col: 1}}}})
 				if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
@@ -35,7 +34,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(actionlocal.NewCache(root, &cacheLog))
+	rule := NewRuleAction(newCapturedLocalCache(t, root, &cacheLog))
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
 		if err := rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}); err != nil {
@@ -54,7 +53,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
-	cache := actionlocal.NewCache(root, nil)
+	cache := newCapturedLocalCache(t, root, nil)
 	rule := NewRuleAction(cache)
 	for i := 1; i <= 3; i++ {
 		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}

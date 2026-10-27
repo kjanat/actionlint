@@ -18,14 +18,8 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	var aliasErr error
-	workflowlang.ValidateYAMLAliases(doc, func(n *syntax.Node, kind workflowlang.YamlAliasDiagnostic, message string) {
-		if kind != workflowlang.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
-			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, message)
-		}
-	})
-	if aliasErr != nil {
-		return nil, aliasErr
+	if err := checkMetadataAliases(doc); err != nil {
+		return nil, err
 	}
 	if doc.Kind == 0 {
 		return nil, errors.New("\"on:\" is not found")
@@ -41,9 +35,22 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 		return nil, err
 	}
 	// The workflow parser owns permissions, cache modes and job-step interpretation.
+	if err := workflowlang.AdmitYAMLAliases(doc); err != nil {
+		return nil, err
+	}
 	parsed, _ := workflowlang.Parse(src)
 	metadata.recordWorkflowFacts(parsed)
 	return metadata, nil
+}
+
+func checkMetadataAliases(doc *syntax.Node) error {
+	var aliasErr error
+	workflowlang.ValidateYAMLAliases(doc, func(n *syntax.Node, kind workflowlang.YamlAliasDiagnostic, message string) {
+		if kind != workflowlang.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
+			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, message)
+		}
+	})
+	return aliasErr
 }
 
 type metadataDecoder struct{ session *codec.Session }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,7 +16,55 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
+
+func TestMetadataAdmissionFailureNeverPublishesUsableMetadata(t *testing.T) {
+	var source strings.Builder
+	source.WriteString("name: rejected\ninputs: invalid\nruns:\n  using: composite\n  steps:\n    - run: echo unsafe\n      shell: bash\n      a0: &a0 [value]\n")
+	for level := 1; level <= 8; level++ {
+		fmt.Fprintf(&source, "      a%d: &a%d [*a%d, *a%d, *a%d]\n", level, level, level-1, level-1, level-1)
+	}
+	cache := newCapturedActionCache(t, t.TempDir(), nil)
+	cache.Configure(Options{CustomReader: true, Reader: fsread.New(t.Context(), func(string) ([]byte, error) {
+		return []byte(source.String()), nil
+	}, nil)})
+	for _, wantCached := range []bool{false, true} {
+		result, cached := cache.LookupMetadata("./rejected")
+		if cached != wantCached || result.Status() != MetadataParseFailed || result.Metadata() != nil || result.Err() == nil {
+			t.Fatalf("rejected metadata became usable: status=%v metadata=%v cached=%v error=%v", result.Status(), result.Metadata(), cached, result.Err())
+		}
+		if !strings.Contains(result.Err().Error(), "inputs must be mapping") || !strings.Contains(result.Err().Error(), "excessive aliasing") {
+			t.Fatal("cache formatting discarded a joined diagnostic", result.Err())
+		}
+		if _, rejected := errors.AsType[*codec.AdmissionError](result.Err()); !rejected {
+			t.Fatal("cache discarded admission rejection cause")
+		}
+	}
+}
+
+func TestMetadataCachePreservesNativeLoadErrorText(t *testing.T) {
+	var fatal strings.Builder
+	fatal.WriteString("name: rejected\ndefinitions: &definitions\n")
+	for input := range 650 {
+		fmt.Fprintf(&fatal, "  input%d: {description: value}\n", input)
+	}
+	fatal.WriteString("inputs: *definitions\nruns: {using: composite, steps: []}\n")
+	for _, source := range []string{"name: [\n", fatal.String()} {
+		_, original := actionmeta.Parse("action.yml", []byte(source))
+		if _, native := errors.AsType[*codec.LoadError](original); !native {
+			t.Fatal("fixture needs a native load failure", original)
+		}
+		cache := newCapturedActionCache(t, t.TempDir(), nil)
+		cache.Configure(Options{CustomReader: true, Reader: fsread.New(t.Context(), func(string) ([]byte, error) {
+			return []byte(source), nil
+		}, nil)})
+		result, _ := cache.LookupMetadata("./rejected")
+		if result.Status() != MetadataParseFailed || result.Err() == nil || !strings.Contains(result.Err().Error(), original.Error()) {
+			t.Fatalf("cache discarded native stage/context: got %v, want %v", result.Err(), original)
+		}
+	}
+}
 
 func TestMetadataReadCancellationDoesNotPoisonCache(t *testing.T) {
 	for _, failure := range []error{context.Canceled, context.DeadlineExceeded} {
@@ -25,7 +74,7 @@ func TestMetadataReadCancellationDoesNotPoisonCache(t *testing.T) {
 				name = failure.Error() + "/dockerfile"
 			}
 			t.Run(name, func(t *testing.T) {
-				cache := NewCache(t.TempDir(), nil)
+				cache := newCapturedActionCache(t, t.TempDir(), nil)
 				failed := false
 				cache.Configure(Options{CustomReader: true, Reader: fsread.New(t.Context(), func(path string) ([]byte, error) {
 					if docker && filepath.Base(path) != "Dockerfile" {
@@ -45,6 +94,14 @@ func TestMetadataReadCancellationDoesNotPoisonCache(t *testing.T) {
 				}
 				if _, exists := cache.readCache("./retry"); exists {
 					t.Fatal("interrupted read published a permanent cache entry")
+				}
+				if !docker {
+					if _, _, err := cache.FindMetadata("./retry"); !errors.Is(err, failure) {
+						t.Fatalf("result capture silently retried its failed revision: %v", err)
+					}
+					// A new result gets a new capture owner; the metadata cache must
+					// still recover because it did not publish the interrupted entry.
+					bindCapturedActionSources(t, cache)
 				}
 				want := MetadataResolved
 				if docker {
@@ -73,7 +130,7 @@ func TestCaseInsensitiveResolutionPreservesInterruption(t *testing.T) {
 					ctx, cancel = context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
 				}
 				cancel()
-				cache := NewCache(root, nil)
+				cache := newCapturedActionCache(t, root, nil)
 				cache.Configure(Options{Reader: fsread.New(ctx, nil, nil)})
 				resolver := NewResolver(cache, nil)
 				resolver.caseInsensitive = true
@@ -97,7 +154,7 @@ func TestCaseInsensitiveResolutionPreservesInterruption(t *testing.T) {
 }
 
 func TestDockerfileReadFailureSurvivesReporting(t *testing.T) {
-	cache := NewCache(t.TempDir(), nil)
+	cache := newCapturedActionCache(t, t.TempDir(), nil)
 	reads := 0
 	cache.Configure(Options{CustomReader: true, Reader: fsread.New(t.Context(), func(path string) ([]byte, error) {
 		reads++
@@ -132,7 +189,7 @@ func TestEmptyParseErrorRetainsItsPath(t *testing.T) {
 func TestCachedMetadataIsVisibleDuringDocumentNotification(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "action/action.yml", "name: published\ndescription: identity\nruns: {using: composite, steps: []}\n")
-	cache := NewCache(root, nil)
+	cache := newCapturedActionCache(t, root, nil)
 	entered, release, notified := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	unblock := sync.OnceFunc(func() { close(release) })
 	t.Cleanup(unblock)
@@ -198,7 +255,7 @@ func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			writeFixture(t, root, "action/action.yml", content)
-			cache := NewCache(root, nil)
+			cache := newCapturedActionCache(t, root, nil)
 			var notifications atomic.Int32
 			cache.Configure(Options{OnDocument: func(path string, metadata *actionmeta.Metadata, parseErr error) {
 				notifications.Add(1)
@@ -206,7 +263,7 @@ func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
 				cache.mu.RLock()
 				raw := cache.sources["./action"]
 				cache.mu.RUnlock()
-				if !exists || raw.path != path || !bytes.Equal(raw.content, metadata.Source) {
+				if !exists || raw.path != path || !bytes.Equal(raw.captured.Bytes(), metadata.Source) {
 					t.Error("observer ran before matching metadata/source publication")
 				}
 				if !broken && published.Metadata() != metadata {
@@ -250,7 +307,7 @@ func TestMetadataLookupRetainsFailureIndependentlyOfReporting(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			writeFixture(t, root, "broken/action.yml", "runs: [\n")
-			cache := NewCache(root, nil)
+			cache := newCapturedActionCache(t, root, nil)
 			resolver := NewResolver(cache, nil)
 			if typedFirst {
 				result, cached := resolver.LookupMetadata("$/broken")
@@ -276,7 +333,7 @@ func TestMetadataLookupRetainsFailureIndependentlyOfReporting(t *testing.T) {
 }
 
 func TestMetadataReadFailureSurvivesReporting(t *testing.T) {
-	cache := NewCache(t.TempDir(), nil)
+	cache := newCapturedActionCache(t, t.TempDir(), nil)
 	cache.Configure(Options{CustomReader: true, Reader: fsread.New(t.Context(), func(string) ([]byte, error) {
 		return nil, os.ErrPermission
 	}, nil)})
@@ -292,7 +349,7 @@ func TestMetadataReadFailureSurvivesReporting(t *testing.T) {
 func TestMetadataOutcomesDistinguishMissingAndUnavailable(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "docker/Dockerfile", "FROM scratch\n")
-	cache := NewCache(root, nil)
+	cache := newCapturedActionCache(t, root, nil)
 	resolver := NewResolver(cache, map[string]string{"./generated": "./missing-source"})
 	for _, tc := range []struct {
 		name     string
@@ -330,7 +387,7 @@ func TestMetadataOutcomesDistinguishMissingAndUnavailable(t *testing.T) {
 func TestMetadataDiagnosticClaimIsConcurrentAndSeparateFromLookup(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "broken/action.yml", "runs: [\n")
-	cache := NewCache(root, nil)
+	cache := newCapturedActionCache(t, root, nil)
 	result, _ := cache.LookupMetadata("./broken")
 	if result.Status() != MetadataParseFailed {
 		t.Fatalf("unexpected lookup: %+v", result)

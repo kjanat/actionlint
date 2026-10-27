@@ -362,7 +362,7 @@ var testReusableWorkflowWantedMetadata *Metadata = &Metadata{
 
 func TestReusableWorkflowCacheFindMetadataOK(t *testing.T) {
 	proj := filepath.Join("..", "..", "..", "testdata", "reusable_workflow_metadata")
-	c := NewCache(proj, "", nil)
+	c := newCapturedWorkflowCache(t, proj, "", nil)
 
 	m, err := c.FindMetadata("./ok.yaml")
 	if err != nil {
@@ -427,7 +427,7 @@ func TestReusableWorkflowCacheFindMetadataError(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			proj := filepath.Join("..", "..", "..", "testdata", "reusable_workflow_metadata")
-			c := NewCache(proj, "", nil)
+			c := newCapturedWorkflowCache(t, proj, "", nil)
 			_, err := c.FindMetadata(tc.spec)
 			if err == nil {
 				t.Fatal("no error happened")
@@ -474,7 +474,7 @@ func TestReusableWorkflowCacheFindMetadataSkipParsing(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			c := NewCache(tc.proj, "", nil)
+			c := newCapturedWorkflowCache(t, tc.proj, "", nil)
 			m, err := c.FindMetadata(tc.spec)
 			if err != nil {
 				t.Fatal(err)
@@ -538,7 +538,7 @@ func TestReusableWorkflowConvertWorkflowPathToSpec(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			c := NewCache(tc.proj, cwd, nil)
+			c := newCapturedWorkflowCache(t, tc.proj, cwd, nil)
 			s, ok := c.convWorkflowPathToSpec(tc.path)
 			if ok != tc.ok {
 				t.Fatalf("should return %v but got %v (spec=%q)", tc.ok, ok, s)
@@ -625,7 +625,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := cwd
-			c := NewCache(proj, cwd, nil)
+			c := newCapturedWorkflowCache(t, proj, cwd, nil)
 			e := &workflowlang.WorkflowCallEvent{Inputs: []*workflowlang.WorkflowCallEventInput{}}
 			for n, i := range tc.inputs {
 				i.Name = &workflowlang.String{Value: n, Pos: &workflowlang.Pos{}}
@@ -664,7 +664,7 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 		t.Run(fmt.Sprintf("%s", outputs), func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := cwd
-			c := NewCache(proj, cwd, nil)
+			c := newCapturedWorkflowCache(t, proj, cwd, nil)
 			e := &workflowlang.WorkflowCallEvent{Outputs: map[string]*workflowlang.WorkflowCallEventOutput{}}
 			for _, o := range outputs {
 				e.Outputs[strings.ToLower(o)] = &workflowlang.WorkflowCallEventOutput{
@@ -719,7 +719,7 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 		t.Run(fmt.Sprintf("%s", secrets), func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := cwd
-			c := NewCache(proj, cwd, nil)
+			c := newCapturedWorkflowCache(t, proj, cwd, nil)
 			e := &workflowlang.WorkflowCallEvent{Secrets: map[string]*workflowlang.WorkflowCallEventSecret{}}
 			for n, r := range secrets {
 				e.Secrets[strings.ToLower(n)] = &workflowlang.WorkflowCallEventSecret{
@@ -758,7 +758,7 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 
 func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 	cwd := filepath.Join("path", "to", "project")
-	c := NewCache("", cwd, nil)
+	c := newCapturedWorkflowCache(t, "", cwd, nil)
 	c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
 	m, _, ok := c.Lookup("./workflow.yaml")
 	if ok {
@@ -766,7 +766,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 	}
 
 	proj := cwd
-	c = NewCache(proj, filepath.Join("path", "to", "another-project"), nil)
+	c = newCapturedWorkflowCache(t, proj, filepath.Join("path", "to", "another-project"), nil)
 	c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
 	m, _, ok = c.Lookup("./workflow.yaml")
 	if ok {
@@ -774,7 +774,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 	}
 
 	m1 := &Metadata{}
-	c = NewCache(proj, cwd, nil)
+	c = newCapturedWorkflowCache(t, proj, cwd, nil)
 	c.Store("./dir/workflow.yaml", m1, nil)
 	c.WriteWorkflowCallEvent(filepath.Join("dir", "workflow.yaml"), &workflowlang.WorkflowCallEvent{})
 	m2, _, ok := c.Lookup("./dir/workflow.yaml")
@@ -790,7 +790,7 @@ func TestReusableWorkflowMetadataCacheFindOneMetadataConcurrently(t *testing.T) 
 	n := 10
 	cwd := filepath.Join("..", "..", "..", "testdata", "reusable_workflow_metadata")
 	proj := cwd
-	c := NewCache(proj, cwd, nil)
+	c := newCapturedWorkflowCache(t, proj, cwd, nil)
 	ret := make(chan *Metadata)
 	err := make(chan error)
 
@@ -842,7 +842,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 	n := 10
 	cwd := filepath.Join("..", "..", "..", "testdata", "reusable_workflow_metadata")
 	proj := cwd
-	c := NewCache(proj, cwd, nil)
+	c := newCapturedWorkflowCache(t, proj, cwd, nil)
 	ret := make(chan struct{})
 	err := make(chan error)
 
@@ -949,7 +949,7 @@ func TestReusableWorkflowMetadataJobPermissions(t *testing.T) {
 	}
 
 	proj := filepath.Join("..", "..", "..", "testdata", "reusable_workflow_metadata")
-	c := NewCache(proj, "", nil)
+	c := newCapturedWorkflowCache(t, proj, "", nil)
 	m, err := c.FindMetadata("./permissions.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -976,7 +976,7 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 	}
 
 	cwd := filepath.Join("path", "to", "project")
-	c := NewCache(cwd, cwd, nil)
+	c := newCapturedWorkflowCache(t, cwd, cwd, nil)
 	c.WriteWorkflowCallEventFromWorkflow("test.yaml", &workflowlang.WorkflowCallEvent{}, w)
 	fromNode, _, ok := c.Lookup("./test.yaml")
 	if !ok {
@@ -1028,13 +1028,13 @@ jobs:
 					t.Fatal(err)
 				}
 				project := root
-				astCache := NewCache(project, root, nil)
+				astCache := newCapturedWorkflowCache(t, project, root, nil)
 				astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 				fromAST, _, ok := astCache.Lookup("./callee.yaml")
 				if !ok {
 					t.Fatal("AST metadata was not cached")
 				}
-				fileCache := NewCache(project, root, nil)
+				fileCache := newCapturedWorkflowCache(t, project, root, nil)
 				for _, cache := range []*Cache{fileCache, astCache} {
 					for pass := range 2 {
 						metadata, err := cache.FindMetadata("./callee.yaml")
@@ -1086,7 +1086,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 		t.Fatal("parser did not report the unused anchor:", errs)
 	}
 
-	c := NewCache(root, root, nil)
+	c := newCapturedWorkflowCache(t, root, root, nil)
 	fromFile, err := c.FindMetadata("./unused_anchor.yaml")
 	if err != nil {
 		t.Fatal("unused anchor made metadata extraction fail:", err)
@@ -1096,7 +1096,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 	}
 
 	cwd := filepath.Join("path", "to", "project")
-	c2 := NewCache(cwd, cwd, nil)
+	c2 := newCapturedWorkflowCache(t, cwd, cwd, nil)
 	c2.WriteWorkflowCallEventFromWorkflow("test.yaml", &workflowlang.WorkflowCallEvent{}, w)
 	fromNode, _, ok := c2.Lookup("./test.yaml")
 	if !ok {
@@ -1114,7 +1114,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 
 func TestCacheDoesNotRegisterSiblingRepository(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "repo")
-	cache := NewCache(root, root, nil)
+	cache := newCapturedWorkflowCache(t, root, root, nil)
 	for _, other := range []string{root + "-other", filepath.Join(root, "..", "elsewhere")} {
 		file := filepath.Join(other, "workflow.yaml")
 		if spec, ok := cache.convWorkflowPathToSpec(file); ok {

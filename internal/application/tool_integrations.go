@@ -15,6 +15,11 @@ import (
 // occupiedTools identifies already-selected script-engine providers. Integrated
 // analyzers are removed from standalone execution, making repeated calls safe.
 func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Options, error) {
+	for _, registration := range options.Analyzers {
+		if analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+			return options, errors.New("nil analyzer registration")
+		}
+	}
 	options.Tools = slices.Clone(options.Tools)
 	remaining := make([]analyzer.Registration, 0, len(options.Analyzers))
 	seen := make(map[string]bool, len(occupiedTools))

@@ -37,7 +37,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	lines := sourcemap.NewDocument(string(source)).Lines
 	documentEnd := len(lines)
 	if len(root.Content) != 0 {
-		// Unmarshal and Parse read the first document only. Block scalar content
+		// Parse reads the first document only. Block scalar content
 		// is indented, so only column-one markers delimit this source range.
 		for i := root.Content[0].Line; i < len(lines); i++ {
 			line := lines[i]

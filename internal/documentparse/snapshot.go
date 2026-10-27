@@ -1,7 +1,6 @@
 package documentparse
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"slices"
@@ -10,17 +9,18 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/documentparse/internal/frozen"
-	"actionlint.kjanat.dev/v2/internal/sourceid"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/source"
 )
 
 // SourceSnapshot binds declaration references to the exact AST that produced them.
 type SourceSnapshot struct {
 	registry     *SourceSnapshots
+	captured     capture.Snapshot
 	reference    source.Reference
-	content      []byte
 	facts        *workflowlang.Workflow
 	steps        map[*workflowlang.Step]source.Reference
 	declarations map[source.Reference]StepDeclaration
@@ -36,7 +36,8 @@ type StepDeclaration struct {
 }
 
 func (s *SourceSnapshot) Reference() source.Reference { return s.reference }
-func (s *SourceSnapshot) Content() []byte             { return bytes.Clone(s.content) }
+func (s *SourceSnapshot) Content() []byte             { return s.captured.Bytes() }
+func (s *SourceSnapshot) Capture() capture.Snapshot   { return s.captured }
 func (s *SourceSnapshot) Registry() *SourceSnapshots  { return s.registry }
 
 // Workflow supplies the indexed AST for read-only workflow traversal.
@@ -65,8 +66,33 @@ func (s *SourceSnapshot) StepReference(step *workflowlang.Step) (source.Referenc
 
 // SourceSnapshots owns one declaration revision per document in an analysis.
 type SourceSnapshots struct {
+	store     *capture.Store
 	mu        sync.Mutex
 	documents map[string]*SourceSnapshot
+}
+
+// NewSourceSnapshots binds the declaration registry to one result's byte owner.
+// The zero registry cannot admit documents.
+func NewSourceSnapshots(store *capture.Store) (*SourceSnapshots, error) {
+	if store == nil {
+		return nil, errors.New("source declarations require a capture store")
+	}
+	return &SourceSnapshots{store: store}, nil
+}
+
+// Capture looks up already-captured bytes without canonicalizing or reading.
+func (s *SourceSnapshots) Capture(path string) (capture.Snapshot, error) {
+	if s == nil || s.store == nil {
+		return capture.Snapshot{}, errors.New("source declarations require a capture store")
+	}
+	captured, state, err := s.store.Lookup(path)
+	if err != nil {
+		return capture.Snapshot{}, err
+	}
+	if state != capture.Captured {
+		return capture.Snapshot{}, fmt.Errorf("source %q has no captured revision", path)
+	}
+	return captured, nil
 }
 
 // Lookup requires the complete document reference, including revision and node.
@@ -90,7 +116,7 @@ func (s *SourceSnapshots) LookupDocument(identity string) (*SourceSnapshot, bool
 		return nil, false
 	}
 	s.mu.Lock()
-	snapshot, ok := s.documents[sourceid.Document(identity)]
+	snapshot, ok := s.documents[identity]
 	s.mu.Unlock()
 	return snapshot, ok
 }
@@ -125,17 +151,17 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 
 // Document returns the canonical indexed AST for this source revision.
 // Callers must traverse that snapshot, including when supplied a fresh decode.
-func (s *SourceSnapshots) Document(identity string, content []byte, document Document) (*SourceSnapshot, error) {
+func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document) (*SourceSnapshot, error) {
 	if document.record == nil {
 		return nil, errors.New("source document has no parse provenance")
 	}
-	if !bytes.Equal(content, []byte(document.record.Text())) {
-		return nil, errors.New("source content disagrees with parsed revision")
+	if err := s.verify(captured, []byte(document.record.Text())); err != nil {
+		return nil, err
 	}
-	return s.bind(identity, document.record, document.traversal)
+	return s.bind(captured, document.record, document.traversal)
 }
 
-func (s *SourceSnapshots) Action(identity string, metadata *actionmeta.Metadata) (*SourceSnapshot, error) {
+func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta.Metadata) (*SourceSnapshot, error) {
 	if metadata == nil {
 		return nil, errors.New("action metadata is unavailable")
 	}
@@ -143,32 +169,46 @@ func (s *SourceSnapshots) Action(identity string, metadata *actionmeta.Metadata)
 	if !parsed {
 		return nil, errors.New("action source has no parse provenance")
 	}
-	if identity == "" {
-		return nil, errors.New("source document identity is empty")
+	if err := s.verify(captured, []byte(text)); err != nil {
+		return nil, err
 	}
+	revision := captured.Revision()
 	s.mu.Lock()
-	previous, err := s.storedLocked(sourceid.Document(identity), sourceid.Digest([]byte(text)), true)
+	previous, err := s.storedLocked(revision.Document(), revision.Digest(), true)
 	s.mu.Unlock()
 	if err != nil || previous != nil {
 		return previous, err
 	}
 	// Reparse only the private original text. Mutable metadata is a lookup view,
 	// never declaration provenance. Parsing and publication happen outside mu.
-	// Metadata admission historically includes recovered declarations even when
-	// decoding reports an error; document analysis separately controls eligibility.
-	recovered, _ := actionmeta.Parse(metadata.Path(), []byte(text))
-	traversal := actionFacts(recovered)
+	// Schema errors preserve recovered declarations; resource rejection prevents expansion.
+	recovered, parseErr := actionmeta.Parse(metadata.Path(), []byte(text))
+	var traversal *workflowlang.Workflow
+	if _, rejected := errors.AsType[*codec.AdmissionError](parseErr); !rejected {
+		traversal = actionFacts(recovered)
+	}
 	record := frozen.Publish(text, traversal, true, recovered.Runs.Using)
-	return s.bind(identity, record, traversal)
+	return s.bind(captured, record, traversal)
 }
 
-func (s *SourceSnapshots) bind(identity string, record *frozen.Record, legacy *workflowlang.Workflow) (*SourceSnapshot, error) {
-	if identity == "" {
-		return nil, errors.New("source document identity is empty")
+func (s *SourceSnapshots) verify(captured capture.Snapshot, content []byte) error {
+	if s == nil || s.store == nil {
+		return errors.New("source declarations require a capture store")
 	}
-	document := sourceid.Document(identity)
-	content := []byte(record.Text())
-	revision := sourceid.Digest(content)
+	if err := s.store.Verify(captured, content); err != nil {
+		return err
+	}
+	if captured.Coordinates() != source.YAML {
+		return errors.New("source declarations require YAML coordinates")
+	}
+	return nil
+}
+
+func (s *SourceSnapshots) bind(captured capture.Snapshot, record *frozen.Record, legacy *workflowlang.Workflow) (*SourceSnapshot, error) {
+	if err := s.verify(captured, []byte(record.Text())); err != nil {
+		return nil, err
+	}
+	document, revision := captured.Revision().Document(), captured.Revision().Digest()
 	action := record.Action()
 	s.mu.Lock()
 	previous, err := s.storedLocked(document, revision, action)
@@ -180,7 +220,7 @@ func (s *SourceSnapshots) bind(identity string, record *frozen.Record, legacy *w
 	references := bound.CursorReferences()
 	snapshot := &SourceSnapshot{
 		registry:  s,
-		reference: references.Document, content: content, facts: legacy, bound: bound,
+		reference: references.Document, captured: captured, facts: legacy, bound: bound,
 		steps: references.Steps, action: action,
 		declarations: make(map[source.Reference]StepDeclaration, len(references.Steps)),
 	}

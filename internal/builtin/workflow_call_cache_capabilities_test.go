@@ -10,13 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 )
 
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*findingmodel.Finding {
 	t.Helper()
 	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
+	cache := newCapturedWorkflowCache(t, root, root, nil)
 	for name, src := range callees {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(src), 0o600); err != nil {
 			t.Fatal(err)
@@ -37,7 +36,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := builtin.NewRuleWorkflowCall("caller.yaml", cache)
+	rule := builtin.NewRuleWorkflowCall(nil, cache)
 	if err := rule.VisitWorkflowPre(w); err != nil {
 		t.Fatal(err)
 	}

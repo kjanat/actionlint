@@ -30,7 +30,7 @@ type selectionCycleNode struct {
 
 type selectionHookField struct{ Value string }
 
-func (*selectionHookField) UnmarshalYAML(*Decoder, *syntax.Node) error { return nil }
+func (*selectionHookField) UnmarshalYAML(*syntax.Node) error { return nil }
 
 type selectionInput struct {
 	Name    string `yaml:"name"`
@@ -100,9 +100,9 @@ func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
 			return selectedSelf.Decode(&recursive)
 		})
 	})
-	var gotLoad *LoadError
-	var wantLoad *upstream.LoadError
-	if !errors.As(gotErr, &gotLoad) || !errors.As(wantErr, &wantLoad) {
+	gotLoad, gotOK := errors.AsType[*LoadError](gotErr)
+	wantLoad, wantOK := errors.AsType[*upstream.LoadError](wantErr)
+	if !gotOK || !wantOK {
 		t.Fatalf("selection cycle error = %T %v; upstream = %T %v", gotErr, gotErr, wantErr, wantErr)
 	}
 	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || gotLoad.Error() != wantLoad.Error() {
@@ -263,10 +263,13 @@ func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
 		}
 		return nil
 	})
-	var gotLoad *LoadError
-	var wantLoad *upstream.LoadError
-	if !errors.As(gotErr, &gotLoad) || !errors.As(wantErr, &wantLoad) {
+	gotLoad, gotOK := errors.AsType[*LoadError](gotErr)
+	wantLoad, wantOK := errors.AsType[*upstream.LoadError](wantErr)
+	if !gotOK || !wantOK {
 		t.Fatalf("selection error = %T %v; upstream = %T %v", gotErr, gotErr, wantErr, wantErr)
+	}
+	if gotLoad.Message != wantLoad.Message || gotLoad.Mark.Index != wantLoad.Mark.Index || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || gotLoad.Error() != wantLoad.Error() {
+		t.Fatalf("selection limit=%v, upstream=%v", gotLoad, wantLoad)
 	}
 	if !strings.Contains(gotErr.Error(), "document contains excessive aliasing") {
 		t.Errorf("selection error = %q, want alias-budget failure", gotLoad.Error())

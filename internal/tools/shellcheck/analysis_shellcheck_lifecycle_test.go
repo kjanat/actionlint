@@ -35,7 +35,7 @@ func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {
 		t.Fatal(document.Findings)
 	}
 	run := document.Workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecRun)
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)

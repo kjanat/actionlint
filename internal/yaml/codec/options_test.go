@@ -15,36 +15,71 @@ type optionDirect struct {
 	Value any `yaml:"value"`
 }
 
-type optionShadow struct {
-	Value any           `yaml:"value"`
-	Hook  codecNodeHook `yaml:"hook"`
+type optionAdditionalField struct {
+	Value any            `yaml:"value"`
+	Hook  codec.Selected `yaml:"hook"`
 }
 
 func duplicateKeyResult(decode func([]byte, any) error, target any) error {
 	return decode([]byte("value: first\nvalue: second\n"), target)
 }
 
-func TestDuplicateKeysUseUpstreamDefaultsDirectAndShadow(t *testing.T) {
-	var direct optionDirect
-	gotDirect := duplicateKeyResult(codec.Unmarshal, &direct)
-	var wantDirect optionDirect
-	wantDirectErr := duplicateKeyResult(upstream.Unmarshal, &wantDirect)
-	if gotDirect == nil || wantDirectErr == nil {
-		t.Fatalf("duplicate key errors: codec=%v upstream=%v", gotDirect, wantDirectErr)
-	}
-	if gotDirect.Error() != wantDirectErr.Error() {
-		t.Errorf("direct duplicate key error = %q, upstream %q", gotDirect, wantDirectErr)
-	}
-
-	var shadow optionShadow
-	gotShadow := duplicateKeyResult(codec.Unmarshal, &shadow)
-	var wantShadow optionShadow
-	wantShadowErr := duplicateKeyResult(upstream.Unmarshal, &wantShadow)
-	if gotShadow == nil || wantShadowErr == nil {
-		t.Fatalf("shadow duplicate key errors: codec=%v upstream=%v", gotShadow, wantShadowErr)
-	}
-	if gotShadow.Error() != wantShadowErr.Error() {
-		t.Errorf("shadow duplicate key error = %q, upstream %q", gotShadow, wantShadowErr)
+func TestDuplicateKeysUseUpstreamDefaultsDirectAndSelect(t *testing.T) {
+	var direct, wantDirect optionDirect
+	gotErr := duplicateKeyResult(decodeCursorSource, &direct)
+	wantErr := duplicateKeyResult(upstream.Unmarshal, &wantDirect)
+	assertConstructErrorsMatchUpstream(t, gotErr, wantErr)
+	for _, tc := range []struct {
+		name, source string
+		visits       int
+	}{
+		{"duplicate before selected field", "value: first\nvalue: second\nhook: seen\n", 0},
+		{"valid selected control", "value: first\nhook: seen\n", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, err := codec.Parse([]byte(tc.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, cursor, err := codec.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer session.Close()
+			var got optionAdditionalField
+			visits := 0
+			err = cursor.Select(&got, func(field *codec.Selected, value codec.Cursor) error {
+				visits++
+				if field != &got.Hook {
+					t.Error("wrong selected field")
+				}
+				var text string
+				if err := value.Decode(&text); err != nil {
+					return err
+				}
+				if text != "seen" {
+					t.Errorf("selected hook=%q", text)
+				}
+				return nil
+			})
+			err = session.Finish(err)
+			var want struct {
+				Value any    `yaml:"value"`
+				Hook  string `yaml:"hook"`
+			}
+			wantErr := upstream.Unmarshal([]byte(tc.source), &want)
+			if tc.visits == 0 {
+				assertConstructErrorsMatchUpstream(t, err, wantErr)
+			} else if err != nil || wantErr != nil {
+				t.Fatalf("codec=%v upstream=%v", err, wantErr)
+			}
+			if visits != tc.visits {
+				t.Errorf("visitor calls=%d want %d", visits, tc.visits)
+			}
+			if !reflect.DeepEqual(got.Value, want.Value) {
+				t.Errorf("partial value=%#v upstream=%#v", got.Value, want.Value)
+			}
+		})
 	}
 }
 
@@ -65,42 +100,78 @@ func aliasExpansionSource(depth, width int) []byte {
 	return []byte(source.String())
 }
 
-func TestAliasExpansionUsesUpstreamDefaultsDirectAndShadow(t *testing.T) {
+func TestAliasExpansionUsesUpstreamDefaultsDirectAndSelect(t *testing.T) {
 	data := aliasExpansionSource(5, 8)
-	var direct optionDirect
-	gotDirect := codec.Unmarshal(data, &direct)
-	var wantDirect optionDirect
-	wantDirectErr := upstream.Unmarshal(data, &wantDirect)
-	if (gotDirect == nil) != (wantDirectErr == nil) {
-		t.Errorf("direct alias expansion success mismatch: codec=%v upstream=%v", gotDirect, wantDirectErr)
+	var direct, wantDirect optionDirect
+	gotErr := decodeCursorSource(data, &direct)
+	wantErr := upstream.Unmarshal(data, &wantDirect)
+	if gotErr == nil || wantErr == nil {
+		t.Fatalf("excessive aliases codec=%v upstream=%v", gotErr, wantErr)
 	}
-	if gotDirect != nil && gotDirect.Error() != wantDirectErr.Error() {
-		t.Errorf("direct alias expansion error = %q, upstream %q", gotDirect, wantDirectErr)
-	}
-	if gotDirect == nil && !reflect.DeepEqual(direct, wantDirect) {
-		t.Errorf("direct alias expansion result differs from upstream")
-	}
-
-	shadowData := append(append([]byte(nil), data...), []byte("hook: seen\n")...)
-	var shadow optionShadow
-	gotShadow := codec.Unmarshal(shadowData, &shadow)
-	var wantShadow optionShadow
-	wantShadowErr := upstream.Unmarshal(shadowData, &wantShadow)
-	if (gotShadow == nil) != (wantShadowErr == nil) {
-		t.Fatalf("shadow alias expansion success mismatch: codec=%v upstream=%v", gotShadow, wantShadowErr)
-	}
-	if gotShadow != nil && (!strings.Contains(gotShadow.Error(), "document contains excessive aliasing") || !strings.Contains(wantShadowErr.Error(), "document contains excessive aliasing")) {
-		t.Errorf("shadow alias expansion errors do not report upstream's alias limit: codec=%q upstream=%q", gotShadow, wantShadowErr)
-	}
-	if gotShadow == nil && (!reflect.DeepEqual(shadow.Value, wantShadow.Value) || !shadow.Hook.Called) {
-		t.Errorf("shadow alias expansion result differs from upstream or hook was not called")
+	assertCursorAliasErrorMatchesUpstream(t, gotErr, wantErr)
+	for _, tc := range []struct {
+		name                 string
+		depth, width, visits int
+	}{
+		{"fatal before selected field", 5, 8, 0}, {"valid selected control", 1, 2, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := append(aliasExpansionSource(tc.depth, tc.width), []byte("hook: seen\n")...)
+			root, err := codec.Parse(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, cursor, err := codec.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer session.Close()
+			var got optionAdditionalField
+			visits := 0
+			err = cursor.Select(&got, func(field *codec.Selected, value codec.Cursor) error {
+				visits++
+				if field != &got.Hook {
+					t.Error("wrong selected field")
+				}
+				var text string
+				if err := value.Decode(&text); err != nil {
+					return err
+				}
+				if text != "seen" {
+					t.Errorf("selected hook=%q", text)
+				}
+				return nil
+			})
+			err = session.Finish(err)
+			var want struct {
+				Value any    `yaml:"value"`
+				Hook  string `yaml:"hook"`
+			}
+			wantErr := upstream.Unmarshal(data, &want)
+			if tc.visits == 0 {
+				if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
+					t.Fatalf("upstream=%v want alias limit", wantErr)
+				}
+				assertCursorAliasErrorMatchesUpstream(t, err, wantErr)
+			} else {
+				if err != nil || wantErr != nil {
+					t.Fatalf("codec=%v upstream=%v", err, wantErr)
+				}
+				if !reflect.DeepEqual(got.Value, want.Value) {
+					t.Error("successful Select values differ")
+				}
+			}
+			if visits != tc.visits {
+				t.Errorf("visitor calls=%d want %d", visits, tc.visits)
+			}
+		})
 	}
 }
 
 func TestSyntaxNodeCaptureKeepsAliasGraphUnexpanded(t *testing.T) {
 	data := aliasExpansionSource(5, 8)
-	var got syntax.Node
-	if err := codec.Unmarshal(data, &got); err != nil {
+	got, err := codec.Parse(data)
+	if err != nil {
 		t.Fatalf("capture syntax graph: %v", err)
 	}
 	if got.Kind != syntax.DocumentNode || len(got.Content) != 1 {

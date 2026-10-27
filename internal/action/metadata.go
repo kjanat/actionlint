@@ -4,6 +4,7 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -242,12 +243,22 @@ func expectedMapping(where string, n *syntax.Node) error {
 
 // Parse decodes an action manifest.
 // Partially decoded declarations accompany errors for callers that inspect broken metadata.
+// A fatal decode takes diagnostic precedence when expansion admission also fails.
 func Parse(path string, content []byte) (*Metadata, error) {
 	metadata := &Metadata{positions: &metadataPositionCache{}}
 	owned := bytes.Clone(content)
 	root, err := codec.Parse(owned)
 	if err == nil && root.Kind != 0 {
 		err = Decode(root, metadata)
+		// Schema errors can leave useful declarations and unvisited step fields.
+		// Admission must still gate semantic recovery of those fields.
+		if admissionErr := workflowlang.AdmitYAMLAliases(root); admissionErr != nil {
+			if _, fatal := codec.FatalLoadError(err); fatal {
+				err = codec.NewAdmissionError(err)
+			} else {
+				err = errors.Join(err, admissionErr)
+			}
+		}
 	}
 	text := string(owned)
 	metadata.parsedSource = &text

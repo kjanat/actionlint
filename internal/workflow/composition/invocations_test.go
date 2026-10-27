@@ -22,7 +22,7 @@ import (
 type invocationFixture struct {
 	service    *Service
 	root       *documentparse.SourceSnapshot
-	snapshots  *documentparse.SourceSnapshots
+	snapshots  *capturedSnapshots
 	cache      *actionlocal.Cache
 	parsed     []string
 	afterParse func(string)
@@ -38,17 +38,21 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	f := &invocationFixture{snapshots: &documentparse.SourceSnapshots{}, cache: actionlocal.NewCache(directory, nil)}
+	f := &invocationFixture{snapshots: newCapturedSnapshots(t, directory), cache: actionlocal.NewCache(directory, nil)}
 	var err error
 	f.root, err = f.snapshots.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sources := map[string][]byte{}
+	explicit := map[string]struct{}{}
 	for path, content := range actions {
-		sources[fsread.PhysicalPath(filepath.Join(directory, filepath.FromSlash(path)))] = []byte(content)
+		captured, err := f.snapshots.Sources.Capture(filepath.Join(directory, filepath.FromSlash(path)), []byte(content), source.YAML)
+		if err != nil {
+			t.Fatal(err)
+		}
+		explicit[captured.Revision().Document()] = struct{}{}
 	}
-	f.cache.Configure(actionlocal.Options{Sources: sources, OnDocument: func(path string, metadata *actionmeta.Metadata, _ error) {
+	f.cache.Configure(actionlocal.Options{Captures: f.snapshots.Sources.Store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(path string, metadata *actionmeta.Metadata, _ error) {
 		f.parsed = append(f.parsed, path)
 		if f.mutateMeta != nil {
 			f.mutateMeta(metadata)
@@ -58,7 +62,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		}
 	}})
 	resolver := actionlocal.NewResolver(f.cache, nil)
-	f.service = New(Options{Context: ctx, SourceSnapshots: f.snapshots, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}})
+	f.service = New(Options{Context: ctx, SourceSnapshots: f.snapshots.SourceSnapshots, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}})
 	return f
 }
 

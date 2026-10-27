@@ -14,7 +14,7 @@ func shellcheckFixSource(t *testing.T, input string) documentparse.ScriptSourceV
 	t.Helper()
 	text := strings.Replace(input, "run:", "run: &script", 1) + "\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n"
 	document := documentparse.Workflow("fix.yml", []byte(text))
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document("fix.yml", []byte(text), document)
 	if err != nil {
 		t.Fatal(err)

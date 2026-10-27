@@ -36,11 +36,38 @@ func TestWorkflowUsesSnapshotRegistryWhenOptionIsNil(t *testing.T) {
 	}
 }
 
+func TestRejectedRunValuesDoNotBecomeScriptOccurrences(t *testing.T) {
+	for _, invalid := range []string{"*job", "[echo, bad]", "{command: bad}", "!unsupported bad"} {
+		t.Run(invalid, func(t *testing.T) {
+			content := []byte("on: push\njobs:\n  test: &job\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo before\n      - run: " + invalid + "\n      - run: echo after\n")
+			document := documentparse.Workflow("ci.yml", content)
+			if len(document.Findings) == 0 {
+				t.Fatal("invalid run value produced no syntax diagnostic")
+			}
+			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+			snapshot, err := registry.Document("ci.yml", content, document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
+			result, err := service.Workflow(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scripts := result.Batch.Scripts()
+			if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
+				t.Fatalf("recovered scripts = %+v, want only surrounding valid runs", scripts)
+			}
+		})
+	}
+}
+
 func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	firstDocument := documentparse.Workflow("ci.yml", content)
 	secondDocument := documentparse.Workflow("ci.yml", content)
-	var firstRegistry, secondRegistry documentparse.SourceSnapshots
+	firstRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	secondRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	if _, err := firstRegistry.Document("ci.yml", content, firstDocument); err != nil {
 		t.Fatal(err)
 	}
@@ -48,9 +75,54 @@ func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New(Options{Context: t.Context(), SourceSnapshots: &firstRegistry, Actions: actionlocal.NewResolver(nil, nil)})
+	service := New(Options{Context: t.Context(), SourceSnapshots: firstRegistry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil)})
 	if _, err := service.Workflow(secondSnapshot); err == nil || !strings.Contains(err.Error(), "different registry") {
 		t.Fatalf("different source registry was accepted: %v", err)
+	}
+}
+
+func TestRejectedScriptInputsDoNotBecomeOccurrences(t *testing.T) {
+	for _, invalid := range []string{"[bad]", "{command: bad}", "!unsupported bad"} {
+		t.Run(invalid, func(t *testing.T) {
+			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo before\n      - uses: actions/github-script@v7\n        with:\n          script: " + invalid + "\n      - run: echo after\n")
+			document := documentparse.Workflow("ci.yml", content)
+			if len(document.Findings) == 0 {
+				t.Fatal("invalid script input produced no syntax diagnostic")
+			}
+			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+			snapshot, err := registry.Document("ci.yml", content, document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
+			result, err := service.Workflow(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scripts := result.Batch.Scripts()
+			if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
+				t.Fatalf("rejected action input contaminated script occurrences: %+v", scripts)
+			}
+		})
+	}
+}
+
+func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
+	for name, steps := range map[string]string{
+		"ordinary": "      - run: ''\n",
+		"parallel": "      - parallel:\n          - run: ''\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newInvocationFixture(t, t.Context(), "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n"+steps, nil, nil)
+			result, err := f.service.Workflow(f.root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scripts := result.Batch.Scripts()
+			if len(scripts) != 1 || !scripts[0].Run.Run().SourceScalar().HasSource || !scripts[0].Run.Source().Present() || scripts[0].Run.Run().Value() != "" {
+				t.Fatalf("empty workflow script lost its occurrence or physical source: %+v", scripts)
+			}
+		})
 	}
 }
 
@@ -134,7 +206,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	}
 	job := workflow.Jobs["build"]
 	analysis := &compositeAnalyzer{
-		ctx: t.Context(), actions: f.service.options.Actions, sourceSnapshots: f.snapshots,
+		ctx: t.Context(), actions: f.service.options.Actions, sourceSnapshots: f.snapshots.SourceSnapshots,
 		collectScripts: true,
 	}
 	analysis.budget = invocation.DefaultBudget()
@@ -173,7 +245,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	if meta == nil {
 		t.Fatal("outer action metadata unavailable")
 	}
-	snapshot, err := analysis.sourceSnapshots.Action(fsread.PhysicalPath(meta.Path()), meta)
+	snapshot, err := f.snapshots.Action(fsread.PhysicalPath(meta.Path()), meta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,12 +278,12 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Action(fsread.PhysicalPath(meta.Path()), meta)
 	if err != nil {
 		t.Fatal(err)
 	}
-	analysis := &compositeAnalyzer{sourceSnapshots: &registry}
+	analysis := &compositeAnalyzer{sourceSnapshots: registry.SourceSnapshots}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryAction, snapshot); err != nil {
 		t.Fatal(err)
@@ -231,7 +303,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, batchErr := scriptexecution.NewBatch(graph, scriptexecution.Collection{Declarations: &registry, Scopes: analysis.scriptScopes})
+	batch, batchErr := scriptexecution.NewBatch(graph, scriptexecution.Collection{Declarations: registry.SourceSnapshots, Scopes: analysis.scriptScopes})
 	if !errors.Is(returnedErr, scriptexecution.ErrInvalidBatch) || batchErr != nil || !batch.Valid() || len(batch.Scopes()) != 0 {
 		t.Fatalf("deployment failure was lost or produced an invalid interrupted batch: original=%v returned=%v batch=%v scopes=%+v", originalErr, returnedErr, batchErr, batch.Scopes())
 	}
@@ -240,7 +312,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 	document := documentparse.Workflow("ci.yml", content)
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document("ci.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +321,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	if !ok {
 		t.Fatal("workflow snapshot unavailable")
 	}
-	analysis := &compositeAnalyzer{collectScripts: true, sourceSnapshot: snapshot, sourceSnapshots: &registry}
+	analysis := &compositeAnalyzer{collectScripts: true, sourceSnapshot: snapshot, sourceSnapshots: registry.SourceSnapshots}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 		t.Fatal(err)

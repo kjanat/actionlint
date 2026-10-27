@@ -71,7 +71,7 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 			if len(steps) == 0 {
 				t.Fatal("fixture produced no steps")
 			}
-			var snapshots documentparse.SourceSnapshots
+			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := snapshots.Action("action.yml", parsed.Metadata)
 			if err != nil {
 				t.Fatal(err)
@@ -162,7 +162,7 @@ func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
 	if len(parsed.Findings) != 0 {
 		t.Fatal(parsed.Findings)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", []byte("on: push\n"+line+"\n"), parsed)
 	if err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 	if len(parsed.Findings) != 0 {
 		t.Fatal(parsed.Findings)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("workflow.yml", content, parsed)
 	if err != nil {
 		t.Fatal(err)
@@ -246,7 +246,7 @@ func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.
 	if len(parsed.Findings) != 0 {
 		return invocation.Context{}, errors.New("call context fixture did not parse")
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("workflow.yml", bytes, parsed)
 	if err != nil {
 		return invocation.Context{}, err

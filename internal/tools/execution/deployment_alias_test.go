@@ -25,11 +25,18 @@ func (a invocationSourceAnalyzer) Descriptor() analyzer.Descriptor {
 
 func (a invocationSourceAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.t.Helper()
-	if len(input.Scripts) != 1 || input.Scripts[0].Invocation == nil {
+	if err := input.ValidateInvocations(); err != nil {
+		a.t.Fatal(err)
+	}
+	if len(input.Invoked) != 1 {
 		a.t.Fatal("nested invocation missing")
 	}
-	script := input.Scripts[0]
-	path, exists := a.paths[script.Invocation.Reference]
+	script := input.Invoked[0]
+	call, exists := input.CallGraph.Call(script.Occurrence.Owner)
+	if !exists {
+		a.t.Fatal("nested invocation call missing")
+	}
+	path, exists := a.paths[call.Site]
 	if !exists || script.Path != path {
 		a.t.Fatalf("source path crossed invocation boundary: %+v", script)
 	}

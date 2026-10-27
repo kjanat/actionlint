@@ -17,7 +17,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -39,7 +38,7 @@ type Options struct {
 	Scripts               scriptexecution.Service
 	Paths                 execution.Paths
 	Config                *repoconfig.Config
-	// ConfigForFile resolves each physical manifest once, including no-script scopes.
+	// ConfigForFile resolves each logical manifest path once, including no-script scopes.
 	ConfigForFile func(string) (*repoconfig.Config, error)
 	// CollectScripts supplies execution units. Registration, selector errors and
 	// script budgets apply even when no script analyzer consumes the occurrences.
@@ -55,7 +54,7 @@ type Result struct {
 	ResolveExecution bool
 	Sources          map[string][]byte
 	SourceDocuments  map[string]actionlocal.SourceDocument
-	// Configs is keyed by expanded source path.
+	// Configs is keyed by logical manifest path.
 	Configs map[string]*repoconfig.Config
 }
 
@@ -140,18 +139,15 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		c.budget = *options.Budget
 	}
 	if options.ConfigForFile != nil {
-		physicalConfigs := map[string]*repoconfig.Config{}
 		c.configForFile = func(path string) (*repoconfig.Config, error) {
-			physical := fsread.PhysicalPath(path)
-			if config, exists := physicalConfigs[physical]; exists {
-				configs[path] = config
+			if config, exists := configs[path]; exists {
 				return config, nil
 			}
 			config, err := options.ConfigForFile(path)
 			if err != nil {
 				return nil, fmt.Errorf("load configuration for action %q: %w", path, err)
 			}
-			physicalConfigs[physical], configs[path] = config, config
+			configs[path] = config
 			return config, nil
 		}
 	}

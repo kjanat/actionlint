@@ -80,8 +80,8 @@ func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
 				baseline, partial := cyclePartialTarget(mode, initial())
 				counts := newCycleAccountingPlugin()
 				wantErr := graph.root.Load(baseline, upstream.WithV3Defaults(), upstream.WithPlugin(counts))
-				var wantLoad *upstream.LoadError
-				if !errors.As(wantErr, &wantLoad) || wantLoad.Stage != upstream.ComposerStage {
+				wantLoad, wantOK := errors.AsType[*upstream.LoadError](wantErr)
+				if !wantOK || wantLoad.Stage != upstream.ComposerStage {
 					t.Fatalf("baseline = %v, want cycle error", wantErr)
 				}
 				session, cursor, err := Open(root)
@@ -116,8 +116,8 @@ func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
 				} else {
 					err = entered.Decode(&got)
 				}
-				var gotLoad *LoadError
-				if !errors.As(err, &gotLoad) || gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || err.Error() != wantErr.Error() {
+				gotLoad, gotOK := errors.AsType[*LoadError](err)
+				if !gotOK || gotLoad.Message != wantLoad.Message || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column || err.Error() != wantErr.Error() {
 					t.Errorf("cursor error = %v, want %v", err, wantErr)
 				}
 				if !reflect.DeepEqual(got, partial()) {

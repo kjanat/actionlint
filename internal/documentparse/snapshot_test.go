@@ -10,7 +10,7 @@ func TestSourceSnapshotReusesIndexedWorkflow(t *testing.T) {
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n")
 	first := Workflow("ci.yml", content)
 	second := Workflow("ci.yml", content)
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, first)
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 			if mappedFirst {
 				first, second = second, first
 			}
-			var snapshots SourceSnapshots
+			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := snapshots.Action("outer/action.yml", first)
 			if err != nil {
 				t.Fatal(err)
@@ -87,7 +87,7 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 
 func TestSourceSnapshotRejectsRevisionAndKindConflicts(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
-	var snapshots SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, Workflow("ci.yml", content))
 	if err != nil {
 		t.Fatal(err)

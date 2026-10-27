@@ -8,13 +8,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
-type custom struct{ Value string }
-
-func (c *custom) UnmarshalYAML(_ *Decoder, n *syntax.Node) error { c.Value = n.Value; return nil }
-
 func TestOwnedGraphAndNestedDecode(t *testing.T) {
-	var root syntax.Node
-	if err := Unmarshal([]byte("base: &a {value: null}\ncopy: *a\n"), &root); err != nil {
+	root, err := Parse([]byte("base: &a {value: null}\ncopy: *a\n"))
+	if err != nil {
 		t.Fatal(err)
 	}
 	mapping := root.Content[0]
@@ -22,27 +18,46 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 		t.Fatal("alias identity lost")
 	}
 	mapping.Content[1].Content[1].HeadComment = "changed"
-	var value struct {
-		Base struct{ Value custom } `yaml:"base"`
-		Copy struct{ Value custom } `yaml:"copy"`
-	}
-	if err := Decode(&root, &value); err != nil {
+	session, cursor, err := Open(root)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if value.Base.Value.Value != "" {
-		t.Fatal(value)
+	defer session.Close()
+	var target struct {
+		Base Selected `yaml:"base"`
+		Copy Selected `yaml:"copy"`
 	}
-	var nodes struct {
-		Base syntax.Node `yaml:"base"`
-	}
-	if err := Decode(&root, &nodes); err != nil {
+	visits, children := 0, 0
+	err = cursor.Select(&target, func(_ *Selected, occurrence Cursor) error {
+		visits++
+		entered, err := occurrence.Enter()
+		if err != nil {
+			return err
+		}
+		if entered.Node() != mapping.Content[1] {
+			t.Errorf("entered=%p anchor=%p", entered.Node(), mapping.Content[1])
+		}
+		var fields struct {
+			Value Selected `yaml:"value"`
+		}
+		return entered.Select(&fields, func(_ *Selected, child Cursor) error {
+			children++
+			value, err := child.Enter()
+			if err != nil {
+				return err
+			}
+			node := value.Node()
+			if node != mapping.Content[1].Content[1] || node.Tag != "!!null" || node.Line != 1 || node.HeadComment != "changed" {
+				t.Errorf("entered null child=%#v", node)
+			}
+			return nil
+		})
+	})
+	if err := session.Finish(err); err != nil {
 		t.Fatal(err)
 	}
-	if nodes.Base.Content[1].Tag != "!!null" || nodes.Base.Content[1].Line != 1 {
-		t.Fatal(nodes)
-	}
-	if nodes.Base.Content[1].HeadComment != "changed" {
-		t.Fatal("source comment lost during node decoding")
+	if visits != 2 || children != 2 {
+		t.Errorf("base/copy visits=%d child visits=%d want 2 each", visits, children)
 	}
 	if reflect.TypeFor[syntax.Node]().PkgPath() != "actionlint.kjanat.dev/v2/internal/yaml/syntax" {
 		t.Fatal("tree is not owned by syntax")
@@ -51,11 +66,12 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 
 func TestPartialDecodeAndErrors(t *testing.T) {
 	var result struct {
-		A custom `yaml:"a"`
+		A string `yaml:"a"`
 		B bool   `yaml:"b"`
 	}
-	err := Unmarshal([]byte("a: stored\nb: []\n"), &result)
-	if err == nil || result.A.Value != "stored" {
+	cursor := errorCursor(t, []byte("a: stored\nb: []\n"))
+	err := cursor.Decode(&result)
+	if err == nil || result.A != "stored" {
 		t.Fatalf("%+v %v", result, err)
 	}
 	decoded, ok := errors.AsType[*DecodeError](err)

@@ -1,8 +1,11 @@
 package execution
 
 import (
+	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/diagnostic"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
@@ -57,5 +60,38 @@ func TestDirectoryValueDoesNotRetemplateEvaluatedText(t *testing.T) {
 	got = paths.WorkingDirectory(value.DynamicValue("${{ github.workspace }}/src", value.String, value.Origin{}))
 	if got.Kind != DirectoryKnown || got.Path != "./src" {
 		t.Fatalf("dynamic workspace directory = %+v", got)
+	}
+}
+
+func TestContainerScalarImages(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		state        value.State
+	}{
+		{"scalar image", "${{ 'node:22' }}", value.Literal},
+		{"empty scalar", "${{ '' }}", value.Missing},
+		{"unknown scalar", "${{ inputs.image }}", value.Dynamic},
+		{"invalid shape", "${{ fromJSON('[]') }}", value.Dynamic},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ContainerShell(value.Template(tc.source, value.Origin{}))
+			if got.State() != tc.state {
+				t.Fatalf("state=%v, want %v", got.State(), tc.state)
+			}
+			if got.Known() {
+				if text, _ := got.Text(); text != "sh" {
+					t.Fatalf("container shell=%q", text)
+				}
+			}
+		})
+	}
+}
+
+func TestCheckShellConvertsKnownScalar(t *testing.T) {
+	origin := value.Origin{Span: value.Span{Start: diagnostic.Position{Line: 6, Column: 12}}}
+	shell := DefaultShell(value.Template(`${{ fromJSON('{"shell":42}') }}`, origin))
+	findings := CheckShell(shell, runnerlang.MacOrLinux)
+	if shell.Kind() != value.Number || len(findings) != 1 || !strings.Contains(findings[0].Message, `shell name "42" is invalid`) || findings[0].Start != origin.Span.Start {
+		t.Fatalf("converted scalar validation lost type or location: shell=%v, findings=%v", shell.Kind(), findings)
 	}
 }

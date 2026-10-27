@@ -21,7 +21,11 @@ type Axis struct {
 	Origin   value.Origin
 }
 
-type Combination struct{ values map[string]value.Value }
+type Combination struct {
+	values     map[string]value.Value
+	keyOrigins map[string]value.Origin
+	origin     value.Origin
+}
 
 func (c Combination) Get(name string) (value.Value, bool) {
 	v, ok := c.values[strings.ToLower(name)]
@@ -42,12 +46,28 @@ func (c Combination) Values() iter.Seq2[string, value.Value] {
 }
 
 func (c Combination) With(name string, item value.Value) Combination {
+	name = strings.ToLower(name)
 	values := maps.Clone(c.values)
 	if values == nil {
 		values = map[string]value.Value{}
 	}
-	values[strings.ToLower(name)] = item
-	return Combination{values: values}
+	keyOrigins := maps.Clone(c.keyOrigins)
+	if keyOrigins == nil {
+		keyOrigins = map[string]value.Origin{}
+	}
+	if _, declared := keyOrigins[name]; !declared {
+		keyOrigins[name] = item.Origin()
+	}
+	values[name] = item
+	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
+}
+
+func (c Combination) keyOrigin(name string) value.Origin {
+	if origin, declared := c.keyOrigins[strings.ToLower(name)]; declared {
+		return origin
+	}
+	item, _ := c.Get(name)
+	return item.Origin()
 }
 
 type Reach struct {
@@ -56,20 +76,79 @@ type Reach struct {
 	Complete     bool
 }
 
+type exclusionIssue interface{ exclusionIssue() }
+
+type exclusionWithoutAxes struct{ origin value.Origin }
+
+func (exclusionWithoutAxes) exclusionIssue() {}
+
+type emptyExclusion struct{ origin value.Origin }
+
+func (emptyExclusion) exclusionIssue() {}
+
+type unknownExclusionAxis struct {
+	name   string
+	origin value.Origin
+}
+
+func (unknownExclusionAxis) exclusionIssue() {}
+
 type Resolution struct {
-	state       value.State
-	axes        []Axis
-	include     []Combination
-	exclude     []Combination
-	filterKnown bool
-	unknownKeys bool
-	origin      value.Origin
+	state        value.State
+	axes         []Axis
+	include      []Combination
+	exclude      []Combination
+	filterKnown  bool
+	includeKnown bool
+	excludeKnown bool
+	hasInclude   bool
+	hasExclude   bool
+	unknownKeys  bool
+	origin       value.Origin
 }
 
 func (r Resolution) State() value.State { return r.state }
 
+// IncludesComplete reports whether all added combinations and their keys are known.
+// Their values may still be dynamic; Reachable retains those values explicitly.
+func (r Resolution) IncludesComplete() bool { return r.includeKnown }
+
 func (r Resolution) Open() bool {
 	return r.unknownKeys || r.state == value.Dynamic || r.state == value.Invalid
+}
+
+func (r Resolution) exclusionIssues() iter.Seq[exclusionIssue] {
+	return func(yield func(exclusionIssue) bool) {
+		if len(r.exclude) == 0 {
+			return
+		}
+		for _, filter := range r.exclude {
+			if len(filter.values) == 0 && !yield(emptyExclusion{origin: filter.origin}) {
+				return
+			}
+		}
+		if r.unknownKeys || r.state == value.Dynamic {
+			return
+		}
+		if len(r.axes) == 0 {
+			yield(exclusionWithoutAxes{origin: r.origin})
+			return
+		}
+		for _, filter := range r.exclude {
+			for name := range filter.Values() {
+				if axisIndex(r.axes, name) < 0 && !yield(unknownExclusionAxis{name: name, origin: filter.keyOrigin(name)}) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (r Resolution) hasExclusionIssues() bool {
+	for range r.exclusionIssues() {
+		return true
+	}
+	return false
 }
 
 func (r Resolution) Axes() iter.Seq[Axis] {
@@ -107,7 +186,7 @@ func (r Resolution) ReachableNames() iter.Seq[string] {
 
 func Resolve(strategy *workflowlang.Strategy) Resolution {
 	if strategy == nil {
-		return Resolution{state: value.Missing, filterKnown: true}
+		return Resolution{state: value.Missing, filterKnown: true, includeKnown: true, excludeKnown: true}
 	}
 	if strategy.Expression != nil {
 		semantic := expression(strategy.Expression)
@@ -118,7 +197,7 @@ func Resolve(strategy *workflowlang.Strategy) Resolution {
 		return resolveSemanticMatrix(matrix)
 	}
 	if strategy.Matrix == nil {
-		return Resolution{state: value.Missing, filterKnown: true}
+		return Resolution{state: value.Missing, filterKnown: true, includeKnown: true, excludeKnown: true}
 	}
 	return resolveDeclaration(strategy.Matrix)
 }
@@ -127,7 +206,7 @@ func resolveDeclaration(matrix *workflowlang.Matrix) Resolution {
 	if matrix.Expression != nil {
 		return resolveSemanticMatrix(expression(matrix.Expression))
 	}
-	r := Resolution{state: value.Literal, filterKnown: true, origin: origin(matrix.Pos, false)}
+	r := Resolution{state: value.Literal, filterKnown: true, includeKnown: true, excludeKnown: true, origin: origin(matrix.Pos, false)}
 	for _, name := range slices.Sorted(maps.Keys(matrix.Rows)) {
 		row := matrix.Rows[name]
 		key := value.YAMLScalar(name, workflowlang.YamlTagStr, value.Origin{})
@@ -185,38 +264,76 @@ func resolveDeclaration(matrix *workflowlang.Matrix) Resolution {
 			}
 			r.axes = append(r.axes, axis)
 		}
+		if r.hasInclude && part.hasInclude || r.hasExclude && part.hasExclude {
+			r.state, r.filterKnown, r.includeKnown = value.Invalid, false, false
+		}
+		if r.hasExclude && part.hasExclude {
+			r.excludeKnown = false
+		}
+		r.hasInclude = r.hasInclude || part.hasInclude
+		r.hasExclude = r.hasExclude || part.hasExclude
 		r.include = append(r.include, part.include...)
 		r.exclude = append(r.exclude, part.exclude...)
 		r.filterKnown = r.filterKnown && part.filterKnown
+		r.includeKnown = r.includeKnown && part.includeKnown
+		r.excludeKnown = r.excludeKnown && part.excludeKnown
 		r.unknownKeys = r.unknownKeys || part.unknownKeys
 	}
 	if matrix.Include != nil {
-		r.include, r.filterKnown = declarationCombinations(matrix.Include, r.filterKnown)
+		if r.hasInclude {
+			r.state, r.filterKnown, r.includeKnown = value.Invalid, false, false
+		}
+		r.hasInclude = true
+		included, complete := declarationCombinations(matrix.Include, true)
+		r.include = append(r.include, included...)
+		r.includeKnown = r.includeKnown && complete
+		r.filterKnown = r.filterKnown && complete
 	}
 	if matrix.Exclude != nil {
-		var complete bool
-		r.exclude, complete = declarationCombinations(matrix.Exclude, true)
+		if r.hasExclude {
+			r.state, r.filterKnown, r.includeKnown = value.Invalid, false, false
+			r.excludeKnown = false
+		}
+		r.hasExclude = true
+		excluded, complete := declarationCombinations(matrix.Exclude, true)
+		r.exclude = append(r.exclude, excluded...)
 		r.filterKnown = r.filterKnown && complete
+		r.excludeKnown = r.excludeKnown && complete
 	}
 	return r
 }
 
 func resolveSemanticMatrix(matrix value.Value) Resolution {
-	r := Resolution{state: matrix.State(), filterKnown: matrix.Known(), origin: matrix.Origin()}
-	if !matrix.Known() || matrix.Kind() != value.Object {
+	r := Resolution{state: matrix.State(), filterKnown: matrix.Known(), includeKnown: matrix.Known(), excludeKnown: matrix.Known(), origin: matrix.Origin()}
+	if !matrix.Known() {
+		r.unknownKeys = true
+		return r
+	}
+	if matrix.Kind() != value.Object {
 		r.state, r.filterKnown = value.Invalid, false
 		return r
 	}
 	for name, row := range matrix.Props() {
 		if strings.EqualFold(name, "include") || strings.EqualFold(name, "exclude") {
 			filters, ok := semanticCombinations(row, false)
-			switch {
-			case !ok:
+			if !ok {
 				r.filterKnown = false
-			case strings.EqualFold(name, "include"):
-				r.include = filters
-			default:
-				r.exclude = filters
+			}
+			if strings.EqualFold(name, "include") {
+				if r.hasInclude {
+					r.state, r.filterKnown, r.includeKnown = value.Invalid, false, false
+				}
+				r.hasInclude = true
+				r.includeKnown = r.includeKnown && ok
+				r.include = append(r.include, filters...)
+			} else {
+				if r.hasExclude {
+					r.state, r.filterKnown, r.includeKnown = value.Invalid, false, false
+					r.excludeKnown = false
+				}
+				r.hasExclude = true
+				r.excludeKnown = r.excludeKnown && ok
+				r.exclude = append(r.exclude, filters...)
 			}
 			continue
 		}
@@ -235,11 +352,36 @@ func resolveSemanticMatrix(matrix value.Value) Resolution {
 }
 
 func (r Resolution) Combinations(limit int) ([]Combination, bool) {
+	return r.combinations(limit, false)
+}
+
+// DeclarationCombinations retains excluded original declarations alongside the
+// execution combinations. Includes still merge only into surviving originals;
+// validation cannot turn a standalone include into a phantom merged job.
+func (r Resolution) DeclarationCombinations(limit int) ([]Combination, bool) {
+	return r.combinations(limit, true)
+}
+
+func (r Resolution) combinations(limit int, declarations bool) ([]Combination, bool) {
 	if r.state == value.Missing {
 		return []Combination{{values: map[string]value.Value{}}}, true
 	}
-	if r.state == value.Dynamic || r.state == value.Invalid || r.unknownKeys || !r.filterKnown || limit < 0 {
+	if r.state == value.Dynamic || r.state == value.Invalid || r.unknownKeys || !r.filterKnown || r.hasExclusionIssues() || limit < 0 {
 		return nil, false
+	}
+	for _, exclusion := range r.exclude {
+		for _, expected := range exclusion.values {
+			if dynamic(expected) {
+				return nil, false
+			}
+		}
+	}
+	for _, inclusion := range r.include {
+		for name, expected := range inclusion.values {
+			if axisIndex(r.axes, name) >= 0 && dynamic(expected) {
+				return nil, false
+			}
+		}
 	}
 	combinations := []Combination{{values: map[string]value.Value{}}}
 	if len(r.axes) == 0 {
@@ -252,33 +394,41 @@ func (r Resolution) Combinations(limit int) ([]Combination, bool) {
 		var next []Combination
 		for _, combination := range combinations {
 			for _, item := range axis.Values {
-				values := maps.Clone(combination.values)
-				values[axis.Name] = item
-				next = append(next, Combination{values: values})
+				if dynamic(item) {
+					return nil, false
+				}
+				next = append(next, combination.With(axis.Name, item))
 			}
 		}
 		combinations = next
 	}
-	if r.state != value.Missing && len(r.axes) == 0 && len(r.include) != 0 {
-		combinations = []Combination{{values: map[string]value.Value{}}}
-	}
+	var excludedDeclarations []Combination
 	combinations = slices.DeleteFunc(combinations, func(candidate Combination) bool {
 		for _, excluded := range r.exclude {
-			if subsetCombination(candidate, excluded) {
+			if exclusionMatches(candidate.exclusionValues, excluded) {
+				if declarations {
+					excludedDeclarations = append(excludedDeclarations, candidate)
+				}
 				return true
 			}
 		}
 		return false
 	})
+	originalCount := len(combinations)
 	for _, inclusion := range r.include {
 		added := false
-		for _, candidate := range combinations {
-			if !compatibleCombination(candidate, inclusion) {
+		for _, candidate := range combinations[:originalCount] {
+			match := includeMatch(candidate, inclusion, r.axes)
+			if match == matchUncertain {
+				return nil, false
+			}
+			if match != matchAlways {
 				continue
 			}
 			for name, item := range inclusion.values {
 				if axisIndex(r.axes, name) < 0 {
 					candidate.values[name] = item
+					candidate.keyOrigins[name] = inclusion.keyOrigin(name)
 				}
 			}
 			added = true
@@ -290,13 +440,17 @@ func (r Resolution) Combinations(limit int) ([]Combination, bool) {
 			combinations = append(combinations, inclusion)
 		}
 	}
+	if len(combinations)+len(excludedDeclarations) > limit {
+		return nil, false
+	}
+	combinations = append(combinations, excludedDeclarations...)
 	return combinations, true
 }
 
 func (r Resolution) Reachable(axisName string) Reach {
 	axisName = strings.ToLower(axisName)
 	axis := axisIndex(r.axes, axisName)
-	known := r.filterKnown && r.state != value.Dynamic && r.state != value.Invalid
+	known := r.filterKnown && r.state != value.Dynamic && r.state != value.Invalid && !r.hasExclusionIssues()
 	result := Reach{Complete: known}
 	if axis >= 0 {
 		declaration := r.axes[axis]
@@ -344,44 +498,146 @@ func (r Resolution) Reachable(axisName string) Reach {
 	return result
 }
 
-func (r Resolution) includeIsStandalone(inclusion Combination) bool {
-	if len(r.axes) == 0 || !r.filterKnown {
-		return true
+// ReachableAfterExcludes narrows base-axis alternatives by definite exclusions,
+// retaining all include assignments. Large or dynamic axes use partial proofs.
+func (r Resolution) ReachableAfterExcludes(axisName string) Reach {
+	return r.reachableAlternatives(axisName, true)
+}
+
+// DeclarationReachable preserves original axis declarations while retaining the
+// same proof of whether an include supplies a separate alternative as execution.
+func (r Resolution) DeclarationReachable(axisName string) Reach {
+	return r.reachableAlternatives(axisName, false)
+}
+
+func (r Resolution) reachableAlternatives(axisName string, excludeOriginals bool) Reach {
+	axisName = strings.ToLower(axisName)
+	result := r.Reachable(axisName)
+	if r.state == value.Invalid || r.state == value.Dynamic || r.hasExclusionIssues() {
+		return result
 	}
-	witness := Combination{values: map[string]value.Value{}}
-	for _, axis := range r.axes {
-		if len(axis.Values) == 0 {
-			return true
+	axis := axisIndex(r.axes, axisName)
+	if axis < 0 {
+		return result
+	}
+	result.Values = nil
+	var surviving []Combination
+	var enumerable bool
+	if excludeOriginals {
+		surviving, enumerable = r.survivingBaseCombinations(256)
+	}
+	for _, candidate := range r.axes[axis].Values {
+		excluded := excludeOriginals && r.definitelyExcludedAxisValue(axisName, candidate)
+		if enumerable {
+			excluded = !slices.ContainsFunc(surviving, func(combination Combination) bool {
+				item, exists := combination.Get(axisName)
+				return exists && item.Equal(candidate)
+			})
 		}
-		witness.values[axis.Name] = axis.Values[0]
-		if assigned, exists := inclusion.Get(axis.Name); exists {
-			matched := false
-			for _, candidate := range axis.Values {
-				if candidate.Equal(assigned) {
-					witness.values[axis.Name] = candidate
-					matched = true
-					break
-				}
-			}
-			if !matched {
+		if !excluded {
+			result.Values = append(result.Values, candidate)
+		}
+	}
+	for _, inclusion := range r.include {
+		if item, exists := inclusion.Get(axisName); exists && r.includeApplicability(inclusion) != matchAlways {
+			appendUnique(&result.Values, item)
+		}
+	}
+	return result
+}
+
+func (r Resolution) survivingBaseCombinations(limit int) ([]Combination, bool) {
+	base := r
+	base.include = nil
+	base.filterKnown = true
+	base.exclude = slices.DeleteFunc(slices.Clone(r.exclude), func(exclusion Combination) bool {
+		for _, expected := range exclusion.values {
+			if dynamic(expected) {
 				return true
 			}
 		}
-	}
-	return !r.witnessSurvives(witness)
+		return false
+	})
+	return base.Combinations(limit)
 }
 
-func (r Resolution) witnessSurvives(witness Combination) bool {
+// A fallback axis value is unreachable when one known exclusion covers it
+// regardless of the other axes. Conditional or dynamic exclusions prove less.
+func (r Resolution) definitelyExcludedAxisValue(axisName string, candidate value.Value) bool {
 	for _, exclusion := range r.exclude {
-		matches := true
-		for name, expected := range exclusion.values {
-			actual, ok := witness.Get(name)
-			if !ok || !Subset(actual, expected) {
-				matches = false
+		lookup := func(name string) ([]value.Value, bool) {
+			if name == axisName {
+				return []value.Value{candidate}, true
+			}
+			index := axisIndex(r.axes, name)
+			if index < 0 || !r.axes[index].Complete {
+				return nil, false
+			}
+			return r.axes[index].Values, true
+		}
+		if exclusionMatches(lookup, exclusion) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r Resolution) includeIsStandalone(inclusion Combination) bool {
+	return r.includeApplicability(inclusion) != matchAlways
+}
+
+// includeApplicability proves whether an include merges into a surviving
+// original. Other include entries never change original axis values.
+func (r Resolution) includeApplicability(inclusion Combination) matchProof {
+	if r.Open() || !r.excludeKnown || r.hasExclusionIssues() {
+		return matchUncertain
+	}
+	base := r
+	base.include = nil
+	base.filterKnown = r.excludeKnown
+	if combinations, complete := base.Combinations(256); complete {
+		result := matchNever
+		for _, candidate := range combinations {
+			switch includeMatch(candidate, inclusion, r.axes) {
+			case matchAlways:
+				return matchAlways
+			case matchUncertain:
+				result = matchUncertain
+			case matchNever:
+			}
+		}
+		return result
+	}
+	witness := Combination{values: map[string]value.Value{}}
+	for _, axis := range r.axes {
+		matched := false
+		for _, candidate := range axis.Values {
+			if !candidate.Known() || dynamic(candidate) {
+				continue
+			}
+			part := (Combination{}).With(axis.Name, candidate)
+			if includeMatch(part, inclusion, []Axis{axis}) == matchAlways {
+				witness.values[axis.Name] = candidate
+				matched = true
 				break
 			}
 		}
-		if matches {
+		if !matched {
+			return matchUncertain
+		}
+	}
+	if r.witnessSurvives(witness) {
+		return matchAlways
+	}
+	return matchUncertain
+}
+
+func (r Resolution) witnessSurvives(witness Combination) bool {
+	if !r.excludeKnown {
+		return false
+	}
+	for _, exclusion := range r.exclude {
+		if exclusionMatch(witness.exclusionValues, exclusion) != matchNever {
 			return false
 		}
 	}
@@ -522,7 +778,10 @@ func declarationCombinations(filters *workflowlang.MatrixCombinations, complete 
 			combinations = append(combinations, inserted...)
 			continue
 		}
-		combination := Combination{values: map[string]value.Value{}}
+		combination := Combination{values: map[string]value.Value{}, keyOrigins: map[string]value.Origin{}}
+		if filters.Name != nil {
+			combination.origin = origin(filters.Name.Pos, false)
+		}
 		for key, assign := range filter.Assigns {
 			if assign != nil {
 				name := value.YAMLScalar(key, workflowlang.YamlTagStr, value.Origin{})
@@ -537,7 +796,9 @@ func declarationCombinations(filters *workflowlang.MatrixCombinations, complete 
 					complete = false
 					continue
 				}
-				combination.values[strings.ToLower(resolved)] = rawValue(assign.Value, !filter.Evaluated)
+				resolved = strings.ToLower(resolved)
+				combination.values[resolved] = rawValue(assign.Value, !filter.Evaluated)
+				combination.keyOrigins[resolved] = name.Origin()
 			}
 		}
 		combinations = append(combinations, combination)
@@ -560,9 +821,11 @@ func semanticCombinations(v value.Value, allowObject bool) ([]Combination, bool)
 		if !item.Known() || item.Kind() != value.Object {
 			return nil, false
 		}
-		combination := Combination{values: map[string]value.Value{}}
+		combination := Combination{values: map[string]value.Value{}, keyOrigins: map[string]value.Origin{}, origin: item.Origin()}
 		for name, field := range item.Props() {
-			combination.values[strings.ToLower(name)] = field
+			name = strings.ToLower(name)
+			combination.values[name] = field
+			combination.keyOrigins[name] = item.Origin()
 		}
 		result = append(result, combination)
 	}
@@ -582,7 +845,7 @@ func rawValue(raw workflowlang.RawYAMLValue, expressions bool) value.Value {
 		for _, child := range node.Elems {
 			scalar, isScalar := child.(*workflowlang.RawYAMLString)
 			isExpression := expressions && isScalar && strings.Contains(scalar.Value, "${{")
-			item := rawValue(child, isExpression)
+			item := rawValue(child, expressions)
 			if isExpression && item.Known() && item.Kind() == value.Array {
 				for inserted := range item.Items() {
 					items = append(items, inserted)
@@ -649,21 +912,66 @@ func appendUnique(values *[]value.Value, candidate value.Value) {
 	*values = append(*values, candidate)
 }
 
-func subsetCombination(actual, expected Combination) bool {
-	for name, filter := range expected.values {
-		got, ok := actual.values[name]
-		if ok && !Subset(got, filter) {
-			return false
-		}
-	}
-	return true
+func (c Combination) exclusionValues(name string) ([]value.Value, bool) {
+	item, exists := c.Get(name)
+	return []value.Value{item}, exists
 }
 
-func compatibleCombination(actual, expected Combination) bool {
+type matchProof uint8
+
+const (
+	matchNever matchProof = iota
+	matchUncertain
+	matchAlways
+)
+
+func exclusionMatches(actual func(string) ([]value.Value, bool), expected Combination) bool {
+	return exclusionMatch(actual, expected) == matchAlways
+}
+
+// exclusionMatch checks every supplied candidate for each key. A known
+// mismatch disproves coverage; dynamic values cannot prove a witness survives.
+func exclusionMatch(actual func(string) ([]value.Value, bool), expected Combination) matchProof {
+	if len(expected.values) == 0 {
+		return matchNever
+	}
+	result := matchAlways
 	for name, filter := range expected.values {
-		if got, ok := actual.values[name]; ok && !Subset(got, filter) {
-			return false
+		candidates, complete := actual(name)
+		if !complete || len(candidates) == 0 {
+			return matchNever
+		}
+		if dynamic(filter) {
+			result = matchUncertain
+			continue
+		}
+		for _, got := range candidates {
+			if !got.Known() || dynamic(got) {
+				result = matchUncertain
+				continue
+			}
+			if !Subset(got, filter) {
+				return matchNever
+			}
 		}
 	}
-	return true
+	return result
+}
+
+func includeMatch(actual, expected Combination, axes []Axis) matchProof {
+	result := matchAlways
+	for name, filter := range expected.values {
+		if axisIndex(axes, name) < 0 {
+			continue
+		}
+		got, exists := actual.Get(name)
+		if !exists || !got.Known() || dynamic(got) || dynamic(filter) {
+			result = matchUncertain
+			continue
+		}
+		if !Subset(got, filter) {
+			return matchNever
+		}
+	}
+	return result
 }

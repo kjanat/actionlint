@@ -30,7 +30,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState(), Reader: fsread.New(t.Context(), nil, nil)}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.spec + "\n")
 			parsed := documentparse.Workflow("fixture.yml", content)
-			var snapshots documentparse.SourceSnapshots
+			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := snapshots.Document("fixture.yml", content, parsed)
 			if err != nil {
 				t.Fatal(err)
@@ -73,7 +73,7 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 	if len(parsed.Findings) != 0 {
 		t.Fatal(parsed.Findings)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("fixture.yml", content, parsed)
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 	if !present {
 		t.Fatal("job view unavailable")
 	}
-	resolver := NewResolver(NewCache(t.TempDir(), nil), nil)
+	resolver := NewResolver(newCapturedActionCache(t, t.TempDir(), nil), nil)
 	resolver.BeginJob(workflow.Env().Mapping(), workflow.Defaults().Run().Semantic(), job)
 	steps := parsed.Workflow.Jobs["test"].Steps
 	checkout, err := snapshot.StepView(steps[0])

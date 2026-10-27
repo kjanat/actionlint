@@ -4,12 +4,14 @@ package documentparse
 
 import (
 	"bytes"
+	"errors"
 
 	documentmodel "actionlint.kjanat.dev/v2/document"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/documentparse/internal/frozen"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 type Document struct {
@@ -34,7 +36,8 @@ func Action(path, sourcePath string, content []byte) Document {
 	metadata, err := actionmeta.Parse(sourcePath, owned)
 	document := Document{Metadata: metadata, Outline: ActionOutline(path, metadata, err), parseErr: err}
 	var provenance *workflowlang.Workflow
-	if metadata != nil {
+	_, rejected := errors.AsType[*codec.AdmissionError](err)
+	if metadata != nil && !rejected {
 		provenance = actionFacts(metadata)
 	}
 	if err != nil {
@@ -48,12 +51,11 @@ func Action(path, sourcePath string, content []byte) Document {
 	if metadata != nil {
 		document.record = frozen.Publish(string(owned), provenance, true, metadata.Runs.Using)
 	}
-	document.traversal = document.facts
+	document.traversal = provenance
 	return document
 }
 
-// ActionParseError returns the original metadata decode error, including when
-// the recovered syntax supplies source provenance only.
+// ActionParseError returns decode and admission failures, preserving their causes.
 func (d Document) ActionParseError() error { return d.parseErr }
 
 // CanAnalyze reports whether decoding recovered a semantic input for either language.
@@ -72,7 +74,7 @@ func actionFacts(metadata *actionmeta.Metadata) *workflowlang.Workflow {
 	parser.IndexScalarSources(metadata.Root)
 	job := &workflowlang.Job{}
 	for _, step := range metadata.Runs.Steps {
-		job.Steps = append(job.Steps, ActionStep(step, parser))
+		job.Steps = append(job.Steps, actionStep(step, parser))
 	}
 	return &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}}
 }

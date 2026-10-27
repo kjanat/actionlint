@@ -325,8 +325,15 @@ func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
 		t.Fatalf("pre-traversal mutation redirected collected scripts: %+v", result.Batch.Scripts())
 	}
 	projected, ok := result.Batch.Fact(0, false)
-	if !ok || projected.Invocation == nil || projected.Invocation.Uses != wantFacts.Uses || projected.Invocation.Step.Line != wantFacts.Step.Line || projected.Invocation.Step.Column != wantFacts.Step.Column {
-		t.Fatalf("batch invocation projection differs from graph facts: %+v", projected.Invocation)
+	if !ok {
+		t.Fatal("batch script projection missing")
+	}
+	call, exists := result.Batch.CallGraph().Call(projected.Occurrence.Owner)
+	if !exists {
+		t.Fatal("batch script owner call missing")
+	}
+	if call.Uses != wantFacts.Uses || call.Step.Line != wantFacts.Step.Line || call.Step.Column != wantFacts.Step.Column {
+		t.Fatalf("batch public call facts differ from canonical graph: %+v", call)
 	}
 }
 

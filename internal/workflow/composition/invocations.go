@@ -11,7 +11,6 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
@@ -110,7 +109,7 @@ func (analysis *compositeAnalyzer) resolveAction(action documentparse.ExecAction
 	sourceDocument, hasSource := analysis.actions.SourceDocument(lookup)
 	var snapshot *documentparse.SourceSnapshot
 	if hasSource {
-		admitted, err := analysis.sourceSnapshots.Document(fsread.PhysicalPath(sourceDocument.Path()), sourceDocument.Content(), sourceDocument.Document())
+		admitted, err := analysis.sourceSnapshots.Document(sourceDocument.Capture(), sourceDocument.Document())
 		if err != nil {
 			return nil, invocation.Outcome{}, err
 		}

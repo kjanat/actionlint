@@ -115,7 +115,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
-		if registration.Analyzer != nil {
+		if !analyzerhost.IsNilAnalyzer(registration.Analyzer) {
 			names = append(names, registration.Analyzer.Descriptor().Name)
 		}
 	}

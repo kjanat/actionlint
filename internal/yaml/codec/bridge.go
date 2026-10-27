@@ -4,7 +4,6 @@ package codec
 import (
 	"errors"
 	"io"
-	"reflect"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 
@@ -114,44 +113,17 @@ func translate(err error) error {
 	return err
 }
 
-func parseGraph(data []byte) (parserGraph, *syntax.Node, error) {
-	var n upstream.Node
-	if err := upstream.Unmarshal(data, &n); err != nil {
-		return parserGraph{}, nil, translate(err)
-	}
-	if n.Kind == 0 {
-		return parserGraph{}, &syntax.Node{}, nil
-	}
-	originals := map[*upstream.Node]*syntax.Node{}
-	owned, err := fromParser(&n, originals)
-	if err != nil {
-		return parserGraph{}, nil, err
-	}
-	return parserGraph{root: &n, originals: originals}, owned, nil
-}
-
-// Parse reads the first YAML document into an owned syntax graph without decoding it into a Go value.
+// Parse reads the first YAML document into an owned syntax graph.
 // Empty input returns a non-nil zero-kind node; malformed YAML returns nil and its parse error.
 func Parse(data []byte) (*syntax.Node, error) {
-	_, root, err := parseGraph(data)
-	return root, err
-}
-
-func Unmarshal(data []byte, target any) error {
-	v := reflect.ValueOf(target)
-	if v.Kind() != reflect.Pointer || v.IsNil() {
-		return errors.New("YAML target must be a non-nil pointer")
+	var node upstream.Node
+	if err := upstream.Unmarshal(data, &node); err != nil {
+		return nil, translate(err)
 	}
-	graph, owned, err := parseGraph(data)
-	if err != nil {
-		return err
+	if node.Kind == 0 {
+		return &syntax.Node{}, nil
 	}
-	if owned.Kind == 0 {
-		return nil
-	}
-	d := newDecoder(graph)
-	defer func() { d.closed = true }()
-	return d.Decode(owned, target)
+	return fromParser(&node, nil)
 }
 
 func encodeError(err error) error {

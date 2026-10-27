@@ -15,7 +15,7 @@ import (
 
 func workflowSnapshot(t *testing.T, content []byte, document documentparse.Document) *documentparse.SourceSnapshot {
 	t.Helper()
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("fixture.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +36,7 @@ func startWorkflowEntry(t *testing.T, analysis *compositeAnalyzer, snapshot *doc
 
 func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.T) {
 	source := []byte("name: source\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
-	metadata, err := actionmeta.Parse("source/action.yml", source)
+	metadata, err := actionmeta.Parse(filepath.Join(sourceFixtureBase(t), "source", "action.yml"), source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,12 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			}
 			workflow := document.Workflow
 			calls := workflow.Jobs["test"].Steps
-			startWorkflowEntry(t, analysis, workflowSnapshot(t, content, document))
+			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+			rootSnapshot, err := snapshots.Document("fixture.yml", content, document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			startWorkflowEntry(t, analysis, rootSnapshot)
 			if err := analysis.beginWorkflow(workflow); err != nil {
 				t.Fatal(err)
 			}
@@ -81,10 +86,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 				if !admitted {
 					t.Fatal("fixture call was not admitted")
 				}
-				if analysis.sourceSnapshots == nil {
-					analysis.sourceSnapshots = &documentparse.SourceSnapshots{}
-				}
-				snapshot, err := analysis.sourceSnapshots.Action(fsread.PhysicalPath(target.Path()), target)
+				snapshot, err := snapshots.Action(fsread.PhysicalPath(target.Path()), target)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -109,7 +111,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			}
 			batch := prepareCollectedScripts(t, analysis)
 			units := batch.Scripts()
-			snapshot, err := analysis.sourceSnapshots.Action(fsread.PhysicalPath(metadata.Path()), metadata)
+			snapshot, err := snapshots.Action(fsread.PhysicalPath(metadata.Path()), metadata)
 			if err != nil {
 				t.Fatal(err)
 			}

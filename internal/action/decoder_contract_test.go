@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	upstream "go.yaml.in/yaml/v4"
 )
 
 func TestAliasKeysDecodeOriginalMetadataValues(t *testing.T) {
@@ -59,7 +60,7 @@ func TestAliasedRunsKeepsExpansionBudget(t *testing.T) {
 					Env   map[string]string `yaml:"env"`
 				} `yaml:"runs"`
 			}
-			baseline := codec.Unmarshal([]byte(tc.source), &plain)
+			baseline := upstream.Unmarshal([]byte(tc.source), &plain)
 			if tc.limit {
 				if baseline == nil || !strings.Contains(baseline.Error(), "excessive aliasing") {
 					t.Fatalf("plain decode = %v, want alias limit", baseline)

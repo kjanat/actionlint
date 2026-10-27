@@ -90,7 +90,7 @@ jobs:
 							if name == "callee.yaml" {
 								source = callee
 							}
-							diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
+							diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
 							if err != nil {
 								t.Fatal(err)
 							}

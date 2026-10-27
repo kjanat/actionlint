@@ -32,6 +32,24 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 	workers.Wait()
 }
 
+func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
+	w, errs := workflow.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	findings := Declaration("env-var").Job(w.Jobs["test"])
+	if len(findings) != 2 {
+		t.Fatalf("want two invalid names: %v", findings)
+	}
+	seen := map[int]bool{}
+	for _, finding := range findings {
+		if finding.Start.Line < 6 || finding.Start.Line > 7 || finding.Start.Column != 7 || seen[finding.Start.Line] {
+			t.Fatalf("name diagnostic points at value: %+v", finding)
+		}
+		seen[finding.Start.Line] = true
+	}
+}
+
 func TestParallelJobsDoNotShareBackgroundSteps(t *testing.T) {
 	w, errs := workflow.Parse([]byte(`on: push
 jobs:

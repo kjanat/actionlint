@@ -6,10 +6,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
-// ActionStep decodes a composite step with its own declared shell.
+// actionStep decodes an admitted composite step with its own declared shell.
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
-func ActionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflowlang.Step {
+func actionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflowlang.Step {
 	pos := &workflowlang.Pos{Line: metadata.Line, Col: metadata.Column}
 	opaque := &workflowlang.Step{Pos: pos, Exec: &workflowlang.ExecAction{}}
 	if metadata.Node == nil || !metadata.IsMapping {

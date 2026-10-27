@@ -127,11 +127,13 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 		if input.Site.Language != "javascript" || input.Shell != "" || input.Runtime != nil || len(input.Spans) == 0 {
 			t.Fatalf("action input invented shell facts or lost mapping: %+v", input)
 		}
-		if input.Invocation != nil {
+		if call, exists := observer.input.CallGraph.Call(input.Occurrence.Owner); exists {
 			invoked++
-			if input.Invocation.Uses != "./nested" || !strings.HasSuffix(input.Path, "action.yml") {
-				t.Fatalf("input lost composite invocation: %+v", input)
+			if call.Uses != "./nested" || !strings.HasSuffix(input.Path, "action.yml") {
+				t.Fatalf("input lost composite invocation: input=%+v call=%+v", input, call)
 			}
+		} else if input.Occurrence.Owner != observer.input.CallGraph.Entry().ID {
+			t.Fatalf("input occurrence owner missing from call graph: %+v", input.Occurrence)
 		}
 	}
 	if invoked != 1 {

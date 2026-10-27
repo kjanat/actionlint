@@ -46,8 +46,10 @@ func environment(env *workflow.Env) []Finding {
 	}
 	var entries []analyzer.Entry
 	resolved := mapping.Resolve(workflow.EnvMappingView(env))
-	for name, item := range resolved.Entries() {
-		entries = append(entries, analyzer.Entry{Name: name, State: analyzer.KnownKey, Start: item.Origin().Span.Start})
+	for key := range resolved.KeyedEntries() {
+		if name, known := key.ScalarString(); known {
+			entries = append(entries, analyzer.Entry{Name: name, State: analyzer.KnownKey, Start: key.Origin().Span.Start})
+		}
 	}
 	return findings(envname.Check(entries))
 }

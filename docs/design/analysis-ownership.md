@@ -46,6 +46,26 @@ Workflow and standalone-action analysis have distinct entrypoints. They share
 invocation machinery and value projections without routing action metadata through
 workflow traversal.
 
+Workflow parsing indexes scalar context and comments and checks flow-mapping-null
+syntax on the physical YAML graph, then builds a detached parser projection.
+Alias targets share declarations within that projection; alias-use provenance
+points to the original source nodes. AST parsing and expression-source collection
+consume the projection. Action metadata consumes its original graph through Cursor.
+Reusable-call metadata validates and decodes its original graph through Cursor;
+its recovered workflow facts come from a separate `workflow.Parse` projection.
+
+Before semantic construction, the codec admits expansion on the physical graph
+using its shared session counters and resource policy. Workflow alias inspection
+selects the permitted source slots; rejected recursive uses remain recoverable.
+Workflow, action and reusable-call entrypoints enforce this boundary. An action
+rejected by admission retains its outline but cannot construct semantic provenance,
+including after a schema error. This resource policy does not define GitHub's YAML
+dialect.
+
+Source snapshots retain recovered declarations after schema failures. Analysis
+eligibility belongs to `Document.CanAnalyze` and local metadata status; composition
+checks those before collecting executable scripts.
+
 Composite analysis returns findings, script facts, loaded sources and resolved
 composite configurations together. It executes prepared script services and joins
 resources before reading rule collectors, including after traversal failure.

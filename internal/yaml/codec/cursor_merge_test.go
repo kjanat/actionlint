@@ -3,7 +3,6 @@ package codec
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 	upstream "go.yaml.in/yaml/v4"
 )
 
@@ -22,11 +21,11 @@ items: *template
 	var baseline struct {
 		Items selected `yaml:"items"`
 	}
-	var root syntax.Node
-	if err := Unmarshal([]byte(source), &root); err != nil {
+	root, err := Parse([]byte(source))
+	if err != nil {
 		t.Fatal(err)
 	}
-	graph, err := toParser(&root)
+	graph, err := toParser(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +37,7 @@ items: *template
 		t.Fatalf("merge baseline = %+v", baseline.Items)
 	}
 	for _, enter := range []bool{false, true} {
-		session, cursor, err := Open(&root)
+		session, cursor, err := Open(root)
 		if err != nil {
 			t.Fatal(err)
 		}

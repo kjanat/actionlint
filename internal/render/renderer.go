@@ -65,6 +65,7 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 		}
 		if r.oneline {
 			finding.Source = nil
+			finding.canonicalSnippet = ""
 		}
 		finding.PrettyPrint(out)
 	}

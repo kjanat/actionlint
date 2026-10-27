@@ -1,6 +1,7 @@
 package expressions
 
 import (
+	"actionlint.kjanat.dev/v2/diagnostic"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
@@ -23,6 +24,7 @@ func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.
 	if m == nil {
 		return exprlang.NewEmptyStrictObjectType()
 	}
+	inferred := map[diagnostic.Position]exprlang.Type{}
 	if m.Expression != nil {
 		rule.checkMatrixExpression(m.Expression)
 	} else {
@@ -40,7 +42,18 @@ func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.
 		}
 		for _, row := range m.Rows {
 			rule.checkMatrixSourceKey(row.Name, row.Evaluated)
-			rule.checkMatrixRow(row)
+			ty := rule.checkMatrixRow(row)
+			if row.Expression != nil {
+				if pos := row.Expression.Pos; pos != nil {
+					inferred[diagnostic.Position{Line: pos.Line, Column: pos.Col}] = ty
+				}
+			} else {
+				for _, item := range row.Values {
+					if pos := item.Pos(); pos != nil {
+						inferred[diagnostic.Position{Line: pos.Line, Column: pos.Col}] = ty
+					}
+				}
+			}
 		}
 		for _, insertion := range m.Insertions {
 			if insertion.Expression != nil {
@@ -61,23 +74,32 @@ func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.
 		}
 	}
 
-	return matrixTypeFromResolution(resolution)
+	return matrixTypeFromResolutionWithInferredRows(resolution, inferred)
 }
 
 func matrixTypeFromResolution(resolution matrixcheck.Resolution) *exprlang.ObjectType {
+	return matrixTypeFromResolutionWithInferredRows(resolution, nil)
+}
+
+func matrixTypeFromResolutionWithInferredRows(resolution matrixcheck.Resolution, inferred map[diagnostic.Position]exprlang.Type) *exprlang.ObjectType {
+	if !resolution.IncludesComplete() || resolution.Open() {
+		inferred = nil
+	}
 	object := exprlang.NewEmptyStrictObjectType()
 	for name := range resolution.ReachableNames() {
 		reach := resolution.Reachable(name)
 		var ty exprlang.Type
 		for _, candidate := range reach.Values {
-			candidateType := matrixValueType(candidate)
+			// Only row declarations supply this inference. An unknown include
+			// assignment must not inherit an axis's more specific element type.
+			candidateType := matrixValueType(candidate, inferred[candidate.Origin().Span.Start])
 			if ty == nil {
 				ty = candidateType
 			} else {
 				ty = ty.Merge(candidateType)
 			}
 		}
-		if ty == nil {
+		if ty == nil || !resolution.IncludesComplete() {
 			ty = exprlang.AnyType{}
 		}
 		object.Props[name] = ty
@@ -105,8 +127,11 @@ func (rule *Checker) checkMatrixCombination(combination *workflowlang.MatrixComb
 	}
 }
 
-func matrixValueType(item value.Value) exprlang.Type {
+func matrixValueType(item value.Value, inferred exprlang.Type) exprlang.Type {
 	if !item.Known() {
+		if inferred != nil {
+			return inferred
+		}
 		return exprlang.AnyType{}
 	}
 	switch item.Kind() {
@@ -121,13 +146,21 @@ func matrixValueType(item value.Value) exprlang.Type {
 	case value.Object:
 		properties := map[string]exprlang.Type{}
 		for name, property := range item.Props() {
-			properties[name] = matrixValueType(property)
+			var propertyType exprlang.Type
+			if object, ok := inferred.(*exprlang.ObjectType); ok {
+				propertyType = object.Props[name]
+			}
+			properties[name] = matrixValueType(property, propertyType)
 		}
 		return exprlang.NewStrictObjectType(properties)
 	case value.Array:
 		var element exprlang.Type
 		for child := range item.Items() {
-			t := matrixValueType(child)
+			var elementType exprlang.Type
+			if array, ok := inferred.(*exprlang.ArrayType); ok {
+				elementType = array.Elem
+			}
+			t := matrixValueType(child, elementType)
 			if element == nil {
 				element = t
 			} else {
@@ -143,16 +176,26 @@ func matrixValueType(item value.Value) exprlang.Type {
 	}
 }
 
-func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) {
+func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) exprlang.Type {
 	rule.checkMatrixSourceKey(r.Name, r.Evaluated)
 	if r.Expression != nil {
-		rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy")
-		return
+		if array, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
+			return array.Elem
+		}
+		return exprlang.AnyType{}
 	}
 
+	var element exprlang.Type
 	for _, v := range r.Values {
-		rule.checkMatrixSequenceItem(v)
+		if ty := rule.checkMatrixSequenceItem(v); ty != nil {
+			if element == nil {
+				element = ty
+			} else {
+				element = element.Merge(ty)
+			}
+		}
 	}
+	return element
 }
 
 func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, section string) {

@@ -76,7 +76,7 @@ func ruleBehaviours() map[string]behaviour {
 		"id":            {Build: func(c Context) workflowvisit.Rule { return NewRuleID() }},
 		"glob":          {Build: func(c Context) workflowvisit.Rule { return NewRuleGlob() }},
 		"permissions":   {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
-		"workflow-call": {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.Path, c.Workflows) }},
+		"workflow-call": {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.SourceSnapshot, c.Workflows) }},
 		"expression": {Build: func(c Context) workflowvisit.Rule {
 			return newRuleExpression(c.Actions, c.Workflows, c.Runners, c.SourceSnapshot)
 		}},

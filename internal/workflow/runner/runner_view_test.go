@@ -13,7 +13,7 @@ func runnerJobView(t *testing.T, source string) documentparse.JobView {
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	var registry documentparse.SourceSnapshots
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := registry.Document("runner.yml", content, document)
 	if err != nil {
 		t.Fatal(err)

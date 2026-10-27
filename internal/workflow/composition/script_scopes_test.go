@@ -68,7 +68,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	var snapshots documentparse.SourceSnapshots
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	actionSnapshot, err := snapshots.Action("action.yml", meta)
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +81,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	actionCollector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: &snapshots, sourceSnapshot: actionSnapshot, invocations: workflowGraph, context: workflowGraph.RootContext()}
+	actionCollector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: snapshots.SourceSnapshots, sourceSnapshot: actionSnapshot, invocations: workflowGraph, context: workflowGraph.RootContext()}
 	paths := execution.Paths{}
 	execution.ActionOrigin(&paths, workflowGraph.RootContext(), deployment.ActionPath())
 	actionCollector.scriptScope = &scriptexecution.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}

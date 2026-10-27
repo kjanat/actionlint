@@ -87,9 +87,13 @@ Scripts expose the declared shell, or an empty value when omitted. Mapping entri
 invalid and associate them with source text and evaluation status. `Complete` indicates whether all mapping names are
 statically known. A partial parse can supply partial facts; check `Input.ParseStatus` when completeness matters.
 
-`Input.Invoked` lists the scripts of composite actions the document calls. Each names its own `Path` and carries an
-`Invocation` with the calling step, the `uses` reference and the nesting depth; findings for such a script name that
-path. `Script.Spans` map script text back to the declaring document and `Script.Position` resolves a line and column,
+`Input.Invoked` lists the scripts of composite actions the document calls. Each names its own `Path`;
+findings for such a script name that path. With the `invocations` fact, `Script.Occurrence` identifies the execution
+and its complete ancestry in `Input.CallGraph`. Declare `invocations` when requesting call-site data. Resolve the
+occurrence's `Owner` through `CallGraph.Call` for the calling step, `uses` reference and depth. Entry-owned scripts
+and action inputs have `Owner == CallGraph.Entry().ID`; `Call` reports not-found for that entry ID. Repeated calls
+share a declaration reference while retaining distinct occurrence IDs.
+`Script.Spans` map script text back to the declaring document and `Script.Position` resolves a line and column,
 reporting false for text without a source. With the `execution` fact, `Script.Runtime` carries the effective shell and
 working directory, each with an explicit known flag. The host collects these facts only when a registered analyzer
 requires them.
@@ -101,6 +105,7 @@ analyzer name and input path. Findings and errors from one analyzer do not disca
 An analyzer must finish its own work before returning and honor cancellation. The same instance may be called
 concurrently for different documents. The contract does not expose traversal callbacks, mutable built-in rules,
 process schedulers or caches.
+`Descriptor` and `Analyze` must not panic; the host does not recover analyzer panics.
 
 The same contract is available to other languages as the WebAssembly component interface described in
 [Plugins](plugins.md). The CLI loads such components with `--plugin`.

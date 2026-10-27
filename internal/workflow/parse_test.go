@@ -149,8 +149,11 @@ second: *value
 				t.Fatal(err)
 			}
 			p := &Parser{}
-			p.resolveAliases(doc)
-			for _, n := range []*syntax.Node{doc.Content[0].Content[3], doc.Content[0].Content[5]} {
+			projected := projectAliasTestInput(p, doc)
+			for i, n := range []*syntax.Node{projected.Content[0].Content[3], projected.Content[0].Content[5]} {
+				if p.aliases[n] != doc.Content[0].Content[3+2*i] || doc.Content[0].Content[3+2*i].Kind != syntax.AliasNode {
+					t.Fatal("type diagnostic lost original alias provenance")
+				}
 				tt.check(p, n)
 			}
 			if len(p.Errors) != 2 {
@@ -363,11 +366,16 @@ run: *script
 			t.Fatal(err)
 		}
 		p := NewSourceParser([]byte(input))
-		p.resolveAliases(root)
+		p.IndexScalarSources(root)
+		projected := projectAliasTestInput(p, root)
 		if len(p.Errors) != 0 {
 			t.Fatal(p.Errors)
 		}
-		for _, n := range []*syntax.Node{root.Content[0].Content[1], root.Content[0].Content[3]} {
+		originalAlias := root.Content[0].Content[3]
+		if p.aliases[projected.Content[0].Content[3]] != originalAlias || originalAlias.Kind != syntax.AliasNode {
+			t.Fatal("script source lost original alias provenance")
+		}
+		for _, n := range []*syntax.Node{projected.Content[0].Content[1], projected.Content[0].Content[3]} {
 			source := p.ScriptSource(n)
 			if source == nil {
 				t.Fatal("literal script lost its source mapping")
@@ -461,6 +469,79 @@ func BenchmarkParseTestData(b *testing.B) {
 				for _, in := range bc.inputs {
 					// Note: Some workflows may cause parse error
 					Parse(in)
+				}
+			}
+		})
+	}
+}
+
+func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
+	for _, tc := range []struct {
+		name, scalar, value                   string
+		tokenLine, decodedLine, decodedColumn int
+	}{
+		{"literal", "|-\n    echo first\n    $foo\n", "echo first\n$foo", 5, 2, 1},
+		{"folded", ">-\n    echo first\n    $foo\n", "echo first $foo", 5, 1, 12},
+		{"multiline plain", "echo first\n    $foo\n", "echo first $foo", 4, 1, 12},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := "on: push\nenv:\n  SCRIPT: &script " + tc.scalar + "jobs:\n  block:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n  flow:\n    runs-on: ubuntu-latest\n    steps: [{run: *script}]\n"
+			workflow, diagnostics := Parse([]byte(input))
+			if len(diagnostics) != 0 || workflow == nil {
+				t.Fatalf("Parse diagnostics=%v", diagnostics)
+			}
+			wantStart, wantEnd := Pos{Line: tc.tokenLine, Col: 5}, Pos{Line: tc.tokenLine, Col: 9}
+			for _, name := range []string{"block", "flow"} {
+				job := workflow.Jobs[name]
+				if job == nil || len(job.Steps) != 1 {
+					t.Fatalf("job %q missing run step", name)
+				}
+				switch run := job.Steps[0].Exec.(type) {
+				case *ExecRun:
+					if run.Run == nil || run.Run.Value != tc.value || run.Source == nil || run.Source.Value != tc.value {
+						t.Fatalf("job %q run/source=%+v", name, run)
+					}
+					if got, ok := run.Source.Position(tc.decodedLine, tc.decodedColumn); !ok || *got != wantStart {
+						t.Errorf("job %q token=%v mapped=%t want %v", name, got, ok, wantStart)
+					}
+					if got, ok := run.Source.EndPos(tc.decodedLine, tc.decodedColumn+4); !ok || *got != wantEnd {
+						t.Errorf("job %q token end=%v mapped=%t want %v", name, got, ok, wantEnd)
+					}
+					if got, ok := run.Source.EndPos(tc.decodedLine, len(strings.Split(tc.value, "\n")[tc.decodedLine-1])+1); !ok || *got != wantEnd {
+						t.Errorf("job %q script end=%v mapped=%t want %v", name, got, ok, wantEnd)
+					}
+				default:
+					t.Fatalf("job %q exec=%T want run", name, run)
+				}
+			}
+			// Prove the fixture detects indexing projected aliases: the final flow use overwrites the anchor context.
+			root, err := codec.Parse([]byte(input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			wrong := NewSourceParser([]byte(input))
+			projected := projectAliasTestInput(wrong, root)
+			wrong.IndexScalarSources(projected)
+			var projectedScript *syntax.Node
+			var find func(*syntax.Node)
+			find = func(node *syntax.Node) {
+				if node.Kind == syntax.ScalarNode && node.Anchor == "script" {
+					projectedScript = node
+				}
+				for _, child := range node.Content {
+					find(child)
+				}
+			}
+			find(projected)
+			if projectedScript == nil || !wrong.scalarContexts[*PosAt(projectedScript)].Flow {
+				t.Fatal("fixture did not overwrite anchor context with final flow alias")
+			}
+			wrongSource := wrong.ScriptSource(projectedScript)
+			if wrongSource != nil {
+				start, startOK := wrongSource.Position(tc.decodedLine, tc.decodedColumn)
+				end, endOK := wrongSource.EndPos(tc.decodedLine, tc.decodedColumn+4)
+				if startOK && endOK && *start == wantStart && *end == wantEnd {
+					t.Fatal("fixture does not distinguish projected source indexing")
 				}
 			}
 		})

@@ -1,9 +1,11 @@
 package builtin
 
 import (
+	"errors"
 	"strings"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/cachepolicy"
@@ -17,19 +19,18 @@ type RuleWorkflowCall struct {
 	workflowvisit.Base
 	ruleLogger
 	Configuration
-	workflowPath        string
 	workflowPermissions *workflowlang.Permissions
 	workflowCacheMode   *workflowlang.CacheMode
 	cache               *calls.Cache
+	source              *documentparse.SourceSnapshot
 }
 
-// NewRuleWorkflowCall creates a new RuleWorkflowCall instance. 'workflowPath' is a file path to
-// the workflow which is relative to a project root directory or an absolute path.
-func NewRuleWorkflowCall(workflowPath string, cache *calls.Cache) *RuleWorkflowCall {
+// NewRuleWorkflowCall checks calls using captured reusable-workflow metadata.
+func NewRuleWorkflowCall(source *documentparse.SourceSnapshot, cache *calls.Cache) *RuleWorkflowCall {
 	return &RuleWorkflowCall{
 		Base: builtinRuleBase("workflow-call"), tag: "workflow-call",
-		workflowPath: workflowPath,
-		cache:        cache,
+		cache:  cache,
+		source: source,
 	}
 }
 
@@ -37,13 +38,15 @@ func NewRuleWorkflowCall(workflowPath string, cache *calls.Cache) *RuleWorkflowC
 func (rule *RuleWorkflowCall) VisitWorkflowPre(n *workflowlang.Workflow) error {
 	rule.workflowPermissions = n.Permissions
 	rule.workflowCacheMode = n.CacheMode
-	for _, e := range n.On {
-		if e, ok := e.(*workflowlang.WorkflowCallEvent); ok {
-			// Register this reusable workflow in cache so that it does not need to parse this workflow
-			// file again when this workflow is called by other workflows.
-			rule.cache.WriteWorkflowCallEventFromWorkflow(rule.workflowPath, e, n)
-			break
+	if _, reusable := n.FindWorkflowCallEvent(); reusable {
+		if rule.source == nil {
+			return rule.cache.Seed(nil)
 		}
+		workflow, available := rule.source.Workflow()
+		if !available || workflow != n {
+			return errors.New("workflow-call traversal disagrees with its source snapshot")
+		}
+		return rule.cache.Seed(rule.source)
 	}
 	return nil
 }
