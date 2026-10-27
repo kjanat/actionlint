@@ -148,8 +148,17 @@ A provider is `fn(&dyn Db, Input) -> Output` where `Input` and `Output` are
 | `diagnostics`      | DocumentId                      | [Diagnostic]           |
 
 Rules and extensions are themselves providers producing `[Diagnostic]`. The
-`diagnostics` provider is a fold over the registered rule providers. Nothing
-in `engine` knows this list. `rules` and `extensions` register into it.
+`diagnostics` provider is a fold over a rule registry. Nothing in `engine`
+knows this list.
+
+The registry is a hand-written `&'static [RuleEntry]` in `rules/src/lib.rs`,
+the way rust-analyzer lists its 79 diagnostic handlers. A test asserts every
+`rules/src/**/*.rs` module appears in it. No `inventory`, no proc-macro
+enum, no generated `registry.rs` — all three exist in peers (ruff, oxc,
+biome respectively) and each buys indirection we don't need at this size.
+`extensions` contributes entries at load time through the same `RuleEntry`
+type. [rust-analyzer `ide-diagnostics/src/lib.rs`, ruff `codes.rs`, biome
+`xtask/codegen`]
 
 ## Extensions
 
@@ -176,8 +185,9 @@ serialization.
 - **lsp** — overlays map to `(DocumentId, Revision)`. Diagnostics push on
   change. Code actions are `Fix`es. Hover/completion read `type_env`.
 - **action** — thin wrapper around cli. Problem-matcher output.
-- **playground** — wasm32 build of `syntax`+`semantics`+`rules` with a
-  synthetic `workspace`. No extensions.
+- **playground** — wasm32 build of `syntax`+`semantics`+`rules` plus
+  `workspace` with its `os` feature off (same pattern as ruff's
+  `ruff_db`/`ruff_wasm` and taplo's `WasmEnvironment`). No extensions.
 
 ## Testing
 
@@ -201,12 +211,30 @@ One `actionlint.toml` (project) plus editor-provided overrides. `serde` +
 Config is read by `workspace`. Nothing below `workspace` sees it. Rule
 settings reach rules as typed provider inputs, not as a global.
 
+## Prior art
+
+Surveyed 2026-10-27 on main/master: ruff (54 crates), biome (108), oxc
+(44), rust-analyzer (36), taplo (6).
+
+| aspect            | peers                                                                                               | here                                         | why differ                                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| syntax            | rowan (biome, r-a, taplo), custom AST + trivia (ruff, oxc), nobody uses tree-sitter                 | tree-sitter                                  | grammar already exists and is incremental, cost is writing typed views by hand where rowan users codegen them (ADR-0002) |
+| query runtime     | salsa 0.28.5 (ruff/ty, biome, r-a), none (oxc, taplo)                                               | salsa 0.28.5                                 | —                                                                                                                        |
+| db input          | biome: parsed tree is the `#[salsa::input]`, ruff/r-a: text                                         | text                                         | reparse is a query so edits are cheap and the tree is evictable                                                          |
+| fix model         | ruff `Applicability` tri-state, r-a `SourceChange` by `FileId`                                      | ruff's tri-state + explicit revision         | ADR-0007                                                                                                                 |
+| rule layout       | one file per rule, everywhere                                                                       | same                                         | —                                                                                                                        |
+| rule registry     | ruff proc-macro enum, biome/r-a xtask codegen, oxc `lintgen`                                        | hand-listed + test                           | smallest thing that works                                                                                                |
+| layer enforcement | none automated anywhere, prose only                                                                 | `xtask check-layers`                         | cheap, and the thing we most need to not lose                                                                            |
+| LSP               | r-a/ruff `lsp-server`, biome/oxc `tower-lsp-server`                                                 | `lsp-server`                                 | ADR-0013                                                                                                                 |
+| plugins           | ruff none, biome GritQL + JS (`AnalyzerPlugin::requires_semantic_model`), oxc JS via serialized AST | WIT components, typed per-provider imports   | ADR-0009                                                                                                                 |
+| wasm              | ruff/biome/taplo via `wasm-bindgen` with fs features off, oxc via napi-wasi                         | `wasm-bindgen`, `workspace` `os` feature off | —                                                                                                                        |
+
 ## Open questions
 
 See the end of each ADR. Collected here:
 
-- Query runtime: `salsa` or hand-rolled? → ADR-0004 picks salsa. Revisit if
-  wasm32 target blocks it.
+- wasm32 route for tree-sitter (vanilla crate, not arborium's fork) is
+  unproven until `syntax` builds for that target in CI (ADR-0002).
 - Remote `uses:` resolution: fetch at all, or only consult a local cache the
   user populates? → ADR-0006 says cache-only by default.
 - Formatter: in scope for v2.0 or v2.x? Layering already allows it.

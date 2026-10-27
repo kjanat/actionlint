@@ -22,15 +22,24 @@ struct Diagnostic {
 }
 struct Fix {
     title: String,
-    safe: bool,
+    applicability: Applicability, // Safe | Unsafe | DisplayOnly
     edits: Vec<(SourceRef, String)>,
 }
 ```
 
 - All `SourceRef`s in one `Fix` share one revision. The CLI/LSP verifies
   before applying. Mismatch rejects the fix.
-- `safe: true` means semantics-preserving by construction (formatting,
-  canonicalisation). Only safe fixes run under `--fix` without `--unsafe`.
+- `Applicability` is ruff's tri-state, adopted as-is: `Safe` =
+  semantics-preserving by construction, applied by `--fix`. `Unsafe` =
+  may change behaviour, needs `--unsafe-fixes`. `DisplayOnly` = shown as a
+  suggestion, never applied automatically. A bool was not enough — rules
+  that can only propose a plausible rewrite need the third state.
+  [ruff `crates/ruff_diagnostics/src/fix.rs`]
+- Revision pinning is stricter than peers: ruff/biome/oxc carry offsets
+  only. Rust-analyzer keys `SourceChange` by salsa `FileId`. We pin
+  explicitly because the LSP document version and the CLI `--fix`
+  pass both need to reject stale edits without reaching into the db.
+  [ruff `fix.rs`, rust-analyzer `ide-db/src/source_change.rs`]
 - Rule ids are `<area>/<name>`, kebab-case, documented in
   `rules/src/<area>/<name>.rs` doc comment. `xtask rules-doc` renders them.
 - Severity is the rule's default. Config may lower or raise it per rule

@@ -38,19 +38,19 @@ dependency boundary someone would otherwise violate.
 
 ## Crates
 
-| crate           | depends on                                      | contains                                                                                           | must not contain                    |
-| --------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `source`        | —                                               | `DocumentId`, `Revision`, `Text`, `Position`, `Range`, `Edit`, `SourceRef`                         | anything YAML                       |
-| `syntax`        | source, tree-sitter, tree-sitter-github-actions | `Tree`, incremental reparse, typed node views (`MappingNode`, `ExprNode`, …), `Expr` CST→AST       | semantic meaning, diagnostics       |
-| `model`         | source                                          | all semantic types, `Diagnostic`, `Fix`, `Type`, `Context`, `Occurrence`                           | construction logic, I/O             |
-| `semantics`     | syntax, model                                   | every provider that turns syntax into model or model into derived facts. `uses:` reference parsing | filesystem, network, config         |
-| `engine`        | — (generic)                                     | `Db` trait, query definition macros/traits, memo, cancellation, budgets                            | any domain type                     |
-| `rules`         | semantics, engine                               | built-in rules. Each rule = one module, one provider, one fixture dir                              | per-tool code, config parsing       |
-| `workspace`     | semantics, engine, source                       | file loading, overlays, project discovery, `actionlint.toml`, caches, `resolve_uses` backing store | rules, output formatting            |
-| `extensions`    | semantics, engine, wasmtime, wit                | component loading, capability negotiation, provider marshalling                                    | document-kind knowledge, tool names |
-| `extension-sdk` | wit                                             | guest-side bindings and helpers for Rust extensions                                                | host code                           |
-| `cli`           | workspace, rules, extensions                    | clap, output formats, exit codes, `--fix`                                                          | analysis logic                      |
-| `lsp`           | workspace, rules, extensions                    | tower-lsp server, overlay↔revision, code actions                                                   | analysis logic                      |
+| crate           | depends on                                      | contains                                                                                                                                                                                                       | must not contain                    |
+| --------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `source`        | —                                               | `DocumentId`, `Revision`, `Text`, `Position`, `Range`, `Edit`, `SourceRef`                                                                                                                                     | anything YAML                       |
+| `syntax`        | source, tree-sitter, tree-sitter-github-actions | `Tree`, incremental reparse, typed node views (`MappingNode`, `ExprNode`, …), `Expr` CST→AST                                                                                                                   | semantic meaning, diagnostics       |
+| `model`         | source                                          | all semantic types, `Diagnostic`, `Fix`, `Type`, `Context`, `Occurrence`                                                                                                                                       | construction logic, I/O             |
+| `semantics`     | syntax, model                                   | every provider that turns syntax into model or model into derived facts. `uses:` reference parsing                                                                                                             | filesystem, network, config         |
+| `engine`        | — (generic)                                     | `Db` trait, query definition macros/traits, memo, cancellation, budgets                                                                                                                                        | any domain type                     |
+| `rules`         | semantics, engine                               | built-in rules. Each rule = one module, one provider, one fixture dir                                                                                                                                          | per-tool code, config parsing       |
+| `workspace`     | semantics, engine, source                       | file loading, overlays, project discovery, `actionlint.toml`, caches, `resolve_uses` backing store. Feature `os` (default on) gates everything that touches the real filesystem, playground builds with it off | rules, output formatting            |
+| `extensions`    | semantics, engine, wasmtime, wit                | component loading, capability negotiation, provider marshalling                                                                                                                                                | document-kind knowledge, tool names |
+| `extension-sdk` | wit                                             | guest-side bindings and helpers for Rust extensions                                                                                                                                                            | host code                           |
+| `cli`           | workspace, rules, extensions                    | clap, output formats, exit codes, `--fix`                                                                                                                                                                      | analysis logic                      |
+| `lsp`           | workspace, rules, extensions                    | `lsp-server` + `gen-lsp-types` loop, overlay↔revision, code actions                                                                                                                                            | analysis logic, `tower-lsp`         |
 
 `engine` has no domain dependency on purpose. It must compile and test
 without `model` in the graph. If that stops being true, the engine has grown
@@ -59,13 +59,17 @@ a document kind and the change is wrong.
 ## Dependency check
 
 `xtask check-layers` reads `cargo metadata` and fails if any crate depends on
-a crate listed below it in the table. Runs in CI.
+a crate listed below it in the table. Runs in CI. None of the surveyed peers
+automate this (ruff/biome/oxc run `cargo deny` for licences/bans only,
+rust-analyzer documents its `syntax` invariant in prose) — which is exactly
+why it needs to be automated here.
 
 ## Naming
 
 - Crate dirs: short, no prefix. Package names: `actionlint-<dir>`. Binary: `actionlint`.
-- Modules: one rule per file under `rules/src/<rule_id>.rs`. Rule id ==
-  file name == fixture dir name.
+- Modules: one rule per file under `rules/src/<area>/<name>.rs`. Rule id
+  `<area>/<name>` == path == fixture dir. Registry is the hand-written
+  slice in `rules/src/lib.rs`. A test fails if a module is missing from it.
 - Generated code is not committed. WIT bindings come from `wit-bindgen`
   macros at build time. The one committed generated artifact is
   `actionlint.schema.json`, produced by `xtask schema`, diff-checked in CI.
