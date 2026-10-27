@@ -1,8 +1,0 @@
-on: push
-run-name: Deploy to ${{ hoge }}
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo hello

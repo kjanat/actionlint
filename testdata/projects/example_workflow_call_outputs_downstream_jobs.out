@@ -1,2 +1,0 @@
-workflows/test.yaml:11:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-workflows/test.yaml:13:24: property "tag" is not defined in needs.get_build_info.outputs [expression-reference]

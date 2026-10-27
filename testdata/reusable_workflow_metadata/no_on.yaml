@@ -1,6 +1,0 @@
-jobs:
-  test:
-    foo:
-      runs-on: ubuntu-latest
-      steps:
-        - run: echo ...

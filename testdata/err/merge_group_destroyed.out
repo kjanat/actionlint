@@ -1,1 +1,0 @@
-test.yaml:3:31: invalid activity type "destroyed" for "merge_group" Webhook event. available types are "checks_requested" [events]

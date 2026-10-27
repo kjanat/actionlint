@@ -1,3 +1,0 @@
-self-hosted-runner:
-  labels: ['label1', 'label2', 'glob-*-label']
-config-variables: null

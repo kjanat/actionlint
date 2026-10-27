@@ -1,6 +1,0 @@
-test.yaml:7:22: property "input2" is not defined in inputs [expression-reference]
-test.yaml:15:22: property "input3" is not defined in inputs [expression-reference]
-test.yaml:19:18: type of input "input4" must be bool but found type string [expression]
-test.yaml:23:18: type of input "input5" must be number but found type string [expression]
-test.yaml:37:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-test.yaml:38:24: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]

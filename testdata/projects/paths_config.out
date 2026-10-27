@@ -1,3 +1,0 @@
-/workflows/foo\.yaml:11:14: label "unknown" is unknown. available labels are .+ \[runner-label\]/
-/workflows/nested/piyo\.yaml:6:12: context "env" is not allowed here. available contexts are .+ \[context-availability\]/
-/workflows/nested/piyo\.yaml:11:14: label "unknown" is unknown. available labels are .+ \[runner-label\]/

@@ -1,2 +1,0 @@
-test.yaml:6:16: string should not be empty [syntax-check]
-test.yaml:8:5: unexpected key "entrypoint" for "image_version" section. expected one of "names", "types", "versions" [syntax-check]

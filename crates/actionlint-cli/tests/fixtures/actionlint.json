@@ -1,4 +1,0 @@
-{
-	"$schema": "../../../actionlint-app/config.schema.json",
-	"plugins": ["../../../../target/components/workflow-rules.wasm"]
-}

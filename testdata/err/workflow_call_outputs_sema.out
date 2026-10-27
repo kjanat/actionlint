@@ -1,2 +1,0 @@
-test.yaml:6:20: property "some_output" is not defined in jobs.job0.outputs [expression-reference]
-test.yaml:9:20: property "unknown_output" is not defined in jobs.job1.outputs [expression-reference]

@@ -1,6 +1,0 @@
-on: [push]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Checking commit '${{ github.event.head_commit.message }}'"

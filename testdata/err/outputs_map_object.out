@@ -1,2 +1,0 @@
-test.yaml:6:15: local action "./foo/bar" has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting [missing-local-action]
-/{string => string}/

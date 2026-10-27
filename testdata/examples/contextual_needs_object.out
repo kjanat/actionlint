@@ -1,6 +1,0 @@
-test.yaml:16:24: property "prepare" is not defined in needs [expression-reference]
-test.yaml:24:45: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-test.yaml:24:88: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]
-test.yaml:26:24: property "foo" is not defined in needs.install.outputs [expression-reference]
-test.yaml:28:24: property "some_job" is not defined in needs [expression-reference]
-test.yaml:33:24: property "build" is not defined in needs [expression-reference]

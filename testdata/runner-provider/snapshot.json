@@ -1,1 +1,0 @@
-{"queues":[{"name":"windows-build","labels":["buildkite-windows","x64"],"group":"build","os":"windows","architecture":"x64","shell":"pwsh"},{"name":"linux-build","labels":["buildkite-linux","x64"],"group":"build","os":"linux","architecture":"x64","shell":"bash"}]}

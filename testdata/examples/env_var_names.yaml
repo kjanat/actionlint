@@ -1,9 +1,0 @@
-on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    env:
-      FOO=BAR: foo
-      FOO BAR: foo
-    steps:
-      - run: echo 'hello'

@@ -1,9 +1,0 @@
-on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - &Step
-        name: ${{ missing.value }}
-        run: echo ok
-      - *Step

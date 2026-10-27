@@ -1,9 +1,0 @@
-on:
-  merge_group:
-    types: [checks_requested, destroyed]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ok
