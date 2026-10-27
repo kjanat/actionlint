@@ -104,7 +104,6 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 		}
 		mark(node)
 		merged := Merge(base, node, inputs)
-		// Retain the declaring leaf's extends list, never an inherited parent's list.
 		if len(bases) == 0 && merged.Kind == yaml.MappingNode {
 			leaf := *merged
 			leaf.Content = append([]*yaml.Node{}, merged.Content...)

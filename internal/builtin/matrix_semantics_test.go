@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
@@ -40,19 +38,16 @@ func TestSuspiciousMatrixFilterSelection(t *testing.T) {
 	} {
 		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"} {
 			t.Run(tc.matrix+"/"+config, func(t *testing.T) {
-				workflow, errs := workflowlang.Parse([]byte(`on: push
+				workflow, snapshot := matrixTestWorkflow(t, `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      matrix: {` + tc.matrix + `}
+      matrix: {`+tc.matrix+`}
     steps:
       - run: echo ok
-`))
-				if len(errs) != 0 {
-					t.Fatal(errs)
-				}
-				rule := builtin.NewRuleMatrix()
+`)
+				rule := builtin.NewRuleMatrix(snapshot)
 				if config != "" {
 					cfg, err := repoconfig.Parse([]byte(config))
 					if err != nil {

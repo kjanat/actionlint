@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 type scalarCommentNodes struct {
@@ -13,21 +13,21 @@ type scalarCommentNodes struct {
 	leading     []string
 	trailing    []string
 	block       bool
-	scalar      *yaml.Node
+	scalar      *syntax.Node
 }
 
-// Preserve parser attachment before alias resolution changes the tree. Source
+// Index physical comment attachments before building the parser projection. Source
 // lines only recover positions of comments already classified by the YAML parser.
-func (p *Parser) indexScalarComments(root *yaml.Node) {
+func (p *Parser) indexScalarComments(root *syntax.Node) {
 	p.scalarComments = make(map[Pos]scalarCommentNodes)
 	p.scalarDeclarations = make(map[Pos]scalarCommentNodes)
-	var visit func(*yaml.Node, []string)
-	visit = func(node *yaml.Node, inherited []string) {
+	var visit func(*syntax.Node, []string)
+	visit = func(node *syntax.Node, inherited []string) {
 		if node == nil {
 			return
 		}
 		switch node.Kind {
-		case yaml.MappingNode:
+		case syntax.MappingNode:
 			for i := 0; i+1 < len(node.Content); i += 2 {
 				key, value := node.Content[i], node.Content[i+1]
 				leading := []string{key.HeadComment, value.HeadComment}
@@ -37,22 +37,22 @@ func (p *Parser) indexScalarComments(root *yaml.Node) {
 				} else {
 					leading = append(leading, node.Content[i-2].FootComment, node.Content[i-1].FootComment)
 				}
-				if value.Kind == yaml.ScalarNode || value.Kind == yaml.AliasNode {
+				if value.Kind == syntax.ScalarNode || value.Kind == syntax.AliasNode {
 					attachment := scalarCommentNodes{
 						declaration: key.Line,
 						leading:     leading,
 						trailing:    []string{key.LineComment, value.LineComment},
-						block:       value.Style&(yaml.LiteralStyle|yaml.FoldedStyle) != 0,
+						block:       value.Style&(syntax.LiteralStyle|syntax.FoldedStyle) != 0,
 						scalar:      value,
 					}
 					p.scalarDeclarations[*PosAt(key)] = attachment
-					if value.Kind == yaml.ScalarNode {
+					if value.Kind == syntax.ScalarNode {
 						p.scalarComments[*PosAt(value)] = attachment
 					}
 				}
 				visit(value, leading)
 			}
-		case yaml.SequenceNode, yaml.DocumentNode:
+		case syntax.SequenceNode, syntax.DocumentNode:
 			for i, child := range node.Content {
 				leading := []string{child.HeadComment}
 				if i == 0 {
@@ -68,15 +68,15 @@ func (p *Parser) indexScalarComments(root *yaml.Node) {
 	visit(root, nil)
 }
 
-// ScriptSourceForDeclaration keeps alias-use comments with their owning scalar
-// declaration while text and fixes retain the anchored scalar's source spans.
-func (p *Parser) ScriptSourceForDeclaration(node *yaml.Node, declaration *Pos) *ScriptSource {
+// ScriptSourceForDeclaration attaches comments at the alias use to source spans
+// from the anchored scalar.
+func (p *Parser) ScriptSourceForDeclaration(node *syntax.Node, declaration *Pos) *ScriptSource {
 	source := p.ScriptSource(node)
 	if source == nil || declaration == nil {
 		return source
 	}
 	attachment, exists := p.scalarDeclarations[*declaration]
-	if !exists || attachment.scalar.Kind != yaml.AliasNode {
+	if !exists || attachment.scalar.Kind != syntax.AliasNode {
 		return source
 	}
 	alias := attachment.scalar
@@ -84,9 +84,8 @@ func (p *Parser) ScriptSourceForDeclaration(node *yaml.Node, declaration *Pos) *
 		ContentStart: Pos{alias.Line, alias.Column},
 		ScalarEnd:    Pos{alias.Line, alias.Column + utf8.RuneCountInString(alias.Value) + 1},
 	}
-	declared := *source
-	declared.Comments = attachment.comments(p.SourceLines, physical)
-	return &declared
+	source.Comments = attachment.comments(p.SourceLines, physical)
+	return source
 }
 
 func (nodes scalarCommentNodes) comments(lines []string, source *ScriptSource) []ScalarComment {

@@ -10,10 +10,10 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/source/text"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
 )
 
 func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
@@ -28,7 +28,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := yamlsource.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := text.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}

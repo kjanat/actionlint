@@ -58,7 +58,7 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 }
 
 func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte) error {
-	value, err := p.callInterface(ctx, analyzer.TemplateEffectsContract, "contract")
+	value, err := p.callInterface(ctx, TemplateEffectsInterface, "contract")
 	if err != nil {
 		return err
 	}
@@ -130,8 +130,7 @@ func scriptOptions(config json.RawMessage) (string, error) {
 	return string(config), nil
 }
 
-// Check analyzes a sanitized snippet. Findings and an incomplete-analysis error
-// remain independent; malformed findings are rejected before any are published.
+// Check analyzes a sanitized snippet and validates the returned findings.
 func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")
@@ -151,7 +150,7 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 		field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
 	contract := ScriptEngineInterface
 	if p.scriptDescriptor.TemplateContract != "" {
-		contract = analyzer.TemplateEffectsContract
+		contract = TemplateEffectsInterface
 	}
 	value, err := p.callInterface(ctx, contract, "check", input)
 	if err != nil {

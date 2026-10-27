@@ -3,10 +3,12 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"runtime"
 	"slices"
 
@@ -25,14 +27,17 @@ import (
 
 // Options selects configuration and analysis backends for one application session.
 type Options struct {
-	Runners                      runner.Options
-	Tools                        []tools.Registration
-	Resolver                     resolver.Resolver
-	WorkingDir, ConfigFile       string
-	ConfigOverlays               []repoconfig.Overlay
-	SkipProjectConfig            bool
-	Analyzers                    []analyzer.Registration
-	ReadFile                     func(string) ([]byte, error)
+	Runners                runner.Options
+	Tools                  []tools.Registration
+	Resolver               resolver.Resolver
+	WorkingDir, ConfigFile string
+	ConfigOverlays         []repoconfig.Overlay
+	SkipProjectConfig      bool
+	Analyzers              []analyzer.Registration
+	ReadFile               func(string) ([]byte, error)
+	// SourceOverlays supplies all editor buffers, independently of selected
+	// entries. They become explicit YAML captures before analysis begins.
+	SourceOverlays               []SourceOverlay
 	OnConfigLoaded               func(repoconfig.Report)
 	OnFilesSelected              func([]string)
 	LoadScriptEngine             func(context.Context, string) (analyzer.ScriptBackend, error)
@@ -43,6 +48,12 @@ type Options struct {
 	LegacyErrors                 bool
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
+}
+
+// SourceOverlay supplies bytes without selecting the document as an entry.
+type SourceOverlay struct {
+	Path    string
+	Content []byte
 }
 
 // InputKind distinguishes explicit empty file sets from repository discovery.
@@ -72,8 +83,7 @@ type Input struct {
 // Rendering and application-specific exit policies consume the same findings.
 type Result = report.Analysis
 
-// Check owns the complete runtime lifetime, including failed input selection and
-// cancellation. A non-nil result with an error retains partial analysis findings.
+// Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input Input) (result *Result, err error) {
 	options, err = ConfigureToolIntegrations(options)
 	if err != nil {
@@ -88,6 +98,45 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	selectionReader := options.ReadFile
+	overlays := make([]SourceOverlay, len(options.SourceOverlays))
+	if len(overlays) != 0 {
+		base, err := filepath.Abs(options.WorkingDir)
+		if err != nil {
+			return nil, err
+		}
+		byAlias := make(map[string]int, len(overlays))
+		for index, overlay := range options.SourceOverlays {
+			path := overlay.Path
+			if path != "<stdin>" && !filepath.IsAbs(path) {
+				path = filepath.Join(base, path)
+			}
+			if path != "<stdin>" {
+				path = filepath.Clean(path)
+			}
+			overlays[index] = SourceOverlay{Path: path, Content: bytes.Clone(overlay.Content)}
+			// Selection does not parse declarations. Keep its exact-alias view
+			// deterministic; Store preflight receives every variant and alone
+			// decides whether any selected or dependency use is admissible.
+			previous, exists := byAlias[path]
+			if !exists || bytes.Compare(overlays[index].Content, overlays[previous].Content) < 0 {
+				byAlias[path] = index
+			}
+		}
+		backing := fsread.New(ctx, options.ReadFile, nil)
+		selectionReader = func(path string) ([]byte, error) {
+			if path != "<stdin>" && !filepath.IsAbs(path) {
+				path = filepath.Join(base, path)
+			}
+			if path != "<stdin>" {
+				path = filepath.Clean(path)
+			}
+			if index, exists := byAlias[path]; exists {
+				return bytes.Clone(overlays[index].Content), nil
+			}
+			return backing.ReadFile(path)
+		}
+	}
 	log := options.LogWriter
 	if log == nil {
 		log = io.Discard
@@ -97,6 +146,8 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	engines := analyzerhost.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	request := analysisRequest{Processes: processes, Runners: options.Runners, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
+	request.SourceOverlays = overlays
+	request.DiskSources = input.Kind == Files || input.Kind == Repository
 
 	if options.LoadScriptEngine != nil {
 		request.LoadScriptEngine = engines.Load
@@ -116,7 +167,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
-		if registration.Analyzer != nil {
+		if !analyzerhost.IsNilAnalyzer(registration.Analyzer) {
 			names = append(names, registration.Analyzer.Descriptor().Name)
 		}
 	}
@@ -131,7 +182,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	session, err := workspace.New(workspace.Options{
 		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: input.Name,
 		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: options.ReadFile, RuleNames: names, Log: selectionLog, LogWriter: log,
+		ReadFile: selectionReader, RuleNames: names, Log: selectionLog, LogWriter: log,
 	})
 	if err != nil {
 		return nil, err

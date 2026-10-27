@@ -3,8 +3,6 @@ package builtin_test
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-
 	"actionlint.kjanat.dev/v2/internal/builtin"
 )
 
@@ -26,11 +24,8 @@ jobs:
     steps:
       - run: echo ok
 `
-			workflow, errs := workflowlang.ParseDocument([]byte(source))
-			if len(errs) != 0 {
-				t.Fatal(errs)
-			}
-			rule := builtin.NewRuleMatrix()
+			workflow, snapshot := matrixTestWorkflow(t, source)
+			rule := builtin.NewRuleMatrix(snapshot)
 			if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 				t.Fatal(err)
 			}

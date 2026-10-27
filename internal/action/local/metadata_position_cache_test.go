@@ -47,7 +47,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	checkSourceLess(decoded.Metadata)
 	root := t.TempDir()
 	writeFixture(t, root, "source/action.yml", "name: source\ndescription: source\nruns: {using: composite, steps: []}\n")
-	base := NewCache(root, nil)
+	base := newCapturedActionCache(t, root, nil)
 	meta, _, err := base.FindMetadata("./source")
 	if err != nil || meta == nil || meta.Root == nil {
 		t.Fatalf("local metadata cache: %+v, %v", meta, err)
@@ -64,4 +64,31 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	}
 
 	checkSourceLess(&actionmeta.Metadata{})
+}
+
+func TestMappedMetadataRetainsLookupState(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, "source/action.yml", "name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
+	base := newCapturedActionCache(t, root, nil)
+	resolver := NewResolver(base, map[string]string{"./generated": "./source"})
+	var first *actionmeta.Metadata
+	for _, spec := range []string{"./source", "./generated", "./source", "./generated"} {
+		meta, _, err := resolver.FindMetadata(spec)
+		if err != nil || meta == nil {
+			t.Fatalf("lookup %q: metadata=%+v error=%v", spec, meta, err)
+		}
+		if meta.SourceMapped != (spec == "./generated") {
+			t.Fatalf("lookup %q inherited another lookup's mapping state", spec)
+		}
+		if first == nil {
+			first = meta
+			continue
+		}
+		if meta.Root != first.Root || meta.Path() != first.Path() || string(meta.Source) != string(first.Source) {
+			t.Fatalf("lookup %q lost its shared declaration snapshot", spec)
+		}
+	}
+	if first.SourceMapped {
+		t.Fatal("mapped lookup mutated cached declaration metadata")
+	}
 }

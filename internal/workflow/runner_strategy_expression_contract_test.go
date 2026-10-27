@@ -1,15 +1,18 @@
 package workflow_test
 
 import (
+	"encoding/json"
+	"reflect"
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	matrixlang "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 func TestRunnerMatrixFilterExpansion(t *testing.T) {
 	// Matrix filters compare leaf values; include entries preserve original axes.
-	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/WorkflowParser/Conversion/MatrixBuilder.cs#L553-L620
+	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/WorkflowParser/Conversion/MatrixBuilder.cs#L509-L730
 	for _, tc := range []struct {
 		name, matrix string
 		want         []string
@@ -57,14 +60,21 @@ jobs:
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				combinations, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy)
+				combinations, known := matrixlang.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
 				if !known || len(combinations) != len(tc.want) {
 					t.Fatalf("known=%v, wanted %v, got %v", known, tc.want, combinations)
 				}
 				for i, combination := range combinations {
-					value := &workflowlang.RawYAMLObject{Props: combination}
-					if got := value.String(); got != tc.want[i] {
-						t.Fatalf("wanted %s, got %s", tc.want[i], got)
+					var expected map[string]any
+					if err := json.Unmarshal([]byte(tc.want[i]), &expected); err != nil {
+						t.Fatal(err)
+					}
+					actual := map[string]any{}
+					for name, item := range combination.Values() {
+						actual[name] = matrixValueForTest(item)
+					}
+					if !reflect.DeepEqual(actual, expected) {
+						t.Fatalf("wanted %v, got %v", expected, actual)
 					}
 				}
 			}
@@ -101,10 +111,41 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			combinations, known := runnerlang.MatrixCombinations(workflow.Jobs["test"].Strategy)
+			combinations, known := matrixlang.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
 			if !known || (len(combinations) == 0) != tc.matches {
 				t.Fatalf("known=%v, expected exclusion=%v, got %v", known, tc.matches, combinations)
 			}
 		})
+	}
+}
+
+func matrixValueForTest(item value.Value) any {
+	switch item.Kind() {
+	case value.Null:
+		return nil
+	case value.Bool:
+		result, _ := item.Bool()
+		return result
+	case value.Number:
+		result, _ := item.Number()
+		return result
+	case value.String:
+		result, _ := item.Text()
+		return result
+	case value.Array:
+		result := make([]any, item.Len())
+		for i := range item.Len() {
+			child, _ := item.Index(i)
+			result[i] = matrixValueForTest(child)
+		}
+		return result
+	case value.Object:
+		result := map[string]any{}
+		for name, child := range item.Props() {
+			result[name] = matrixValueForTest(child)
+		}
+		return result
+	default:
+		return nil
 	}
 }

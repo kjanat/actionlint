@@ -7,7 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // inlineSuppressionComment is a real YAML comment attached to a declaration.
@@ -26,16 +28,16 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	if !bytes.Contains(source, []byte("actionlint:")) {
 		return nil
 	}
-	var root yaml.Node
 	// Normalizing line endings keeps YAML comment attachment consistent while
 	// preserving every source line and column used by diagnostics.
-	if err := yaml.Unmarshal(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")), &root); err != nil {
+	root, err := codec.Parse(bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n")))
+	if err != nil {
 		return recoverInlineSuppressionComments(source)
 	}
-	lines := workflowlang.SplitSourceLines(source)
+	lines := sourcemap.NewDocument(string(source)).Lines
 	documentEnd := len(lines)
 	if len(root.Content) != 0 {
-		// Unmarshal and Parse read the first document only. Block scalar content
+		// Parse reads the first document only. Block scalar content
 		// is indented, so only column-one markers delimit this source range.
 		for i := root.Content[0].Line; i < len(lines); i++ {
 			line := lines[i]
@@ -48,7 +50,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	var comments []inlineSuppressionComment
 	blockEnds := map[int]int{}
 	scalarParser := workflowlang.NewSourceParser(source)
-	scalarParser.IndexScalarSources(&root)
+	scalarParser.IndexScalarSources(root)
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
 		text := strings.TrimSpace(strings.TrimPrefix(comment, "#"))
@@ -74,17 +76,17 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 		}
 	}
-	var visit func(*yaml.Node, int)
-	visit = func(node *yaml.Node, endLine int) {
+	var visit func(*syntax.Node, int)
+	visit = func(node *syntax.Node, endLine int) {
 		if node.Line > 0 && node.Line <= len(lines) {
-			if node.Kind == yaml.ScalarNode {
+			if node.Kind == syntax.ScalarNode {
 				if content, last := inlineSuppressionScalarEnd(scalarParser, node, endLine); last > node.Line {
 					for first := node.Line; first <= content; first++ {
 						blockEnds[first] = last
 					}
 				}
 			}
-			if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode {
+			if node.Style&syntax.FlowStyle != 0 || node.Kind == syntax.ScalarNode {
 				readYAMLNodePrefixComments(node, lines, endLine, readComment)
 			}
 			commentEnd := endLine
@@ -96,12 +98,12 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 					continue
 				}
 				line := node.Line
-				if node.Style&yaml.FlowStyle != 0 || node.Kind == yaml.ScalarNode && node.Style&(yaml.LiteralStyle|yaml.FoldedStyle) == 0 {
+				if node.Style&syntax.FlowStyle != 0 || node.Kind == syntax.ScalarNode && node.Style&(syntax.LiteralStyle|syntax.FoldedStyle) == 0 {
 					line = yamlClosingCommentLine(node, comment, lines, commentEnd)
 				}
 				if line > 0 && strings.HasSuffix(strings.TrimSpace(lines[line-1]), comment) {
 					readComment(line, comment, false)
-					if node.Style&yaml.FlowStyle != 0 && line > node.Line {
+					if node.Style&syntax.FlowStyle != 0 && line > node.Line {
 						endLine = min(endLine, line-1)
 					}
 				}
@@ -111,16 +113,16 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 		for i, child := range node.Content {
 			// The YAML parser can attach a standalone comment to the preceding
 			// entry, including when CRLF changes comment attachment.
-			if node.Kind == yaml.MappingNode && i >= 2 && i%2 == 0 {
+			if node.Kind == syntax.MappingNode && i >= 2 && i%2 == 0 {
 				readPreceding(child.Line, node.Content[i-2].FootComment)
 				readPreceding(child.Line, node.Content[i-1].FootComment)
-			} else if node.Kind == yaml.SequenceNode && i > 0 {
+			} else if node.Kind == syntax.SequenceNode && i > 0 {
 				readPreceding(child.Line, node.Content[i-1].FootComment)
 			}
 			childEnd := endLine
 			if i+1 < len(node.Content) {
 				nextLine := node.Content[i+1].Line
-				if node.Style&yaml.FlowStyle == 0 || child.Kind != yaml.ScalarNode {
+				if node.Style&syntax.FlowStyle == 0 || child.Kind != syntax.ScalarNode {
 					nextLine--
 				}
 				// Flow siblings can share the scalar's closing line. Scalar
@@ -128,7 +130,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 				childEnd = min(childEnd, nextLine)
 			}
 			visit(child, max(child.Line, childEnd))
-			if node.Kind == yaml.MappingNode && i%2 == 1 && child.Kind == yaml.ScalarNode {
+			if node.Kind == syntax.MappingNode && i%2 == 1 && child.Kind == syntax.ScalarNode {
 				if last, exists := blockEnds[child.Line]; exists {
 					for line := node.Content[i-1].Line; line < child.Line; line++ {
 						blockEnds[line] = last
@@ -137,7 +139,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			}
 		}
 	}
-	visit(&root, documentEnd)
+	visit(root, documentEnd)
 	blockStarts := map[int]int{}
 	for first, last := range blockEnds {
 		if start, exists := blockStarts[last]; !exists || first < start {
@@ -156,15 +158,15 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 }
 
 // Suppression extents use the same scalar scan that maps diagnostic positions.
-func inlineSuppressionScalarEnd(p *workflowlang.Parser, node *yaml.Node, endLine int) (int, int) {
+func inlineSuppressionScalarEnd(p *workflowlang.Parser, node *syntax.Node, endLine int) (int, int) {
 	if source := p.ScriptSource(node); source != nil {
 		return source.ContentStart.Line, min(source.ScalarEnd.Line, endLine)
 	}
 	return node.Line, node.Line
 }
 
-// position even when its flow collection or scalar spans multiple lines.
-func yamlClosingCommentLine(node *yaml.Node, comment string, lines []string, endLine int) int {
+// yamlClosingCommentLine finds the closing line even when a flow collection or scalar spans multiple lines.
+func yamlClosingCommentLine(node *syntax.Node, comment string, lines []string, endLine int) int {
 	last := node
 	for len(last.Content) > 0 {
 		last = last.Content[len(last.Content)-1]
@@ -176,7 +178,7 @@ func yamlClosingCommentLine(node *yaml.Node, comment string, lines []string, end
 		}
 		prefix := strings.TrimSpace(strings.TrimSuffix(text, comment))
 		prefix = strings.TrimSpace(strings.TrimSuffix(prefix, ","))
-		if node.Kind == yaml.ScalarNode || strings.HasSuffix(prefix, "}") || strings.HasSuffix(prefix, "]") {
+		if node.Kind == syntax.ScalarNode || strings.HasSuffix(prefix, "}") || strings.HasSuffix(prefix, "]") {
 			return line
 		}
 	}
@@ -186,7 +188,7 @@ func yamlClosingCommentLine(node *yaml.Node, comment string, lines []string, end
 // readYAMLNodePrefixComments reads comments on tags, anchors, flow openers and
 // block scalar headers. Stop at value content, which can contain comment-like text.
 // YAML may overwrite these prefix comments with the final value comment.
-func readYAMLNodePrefixComments(node *yaml.Node, lines []string, endLine int, read func(int, string, bool)) {
+func readYAMLNodePrefixComments(node *syntax.Node, lines []string, endLine int, read func(int, string, bool)) {
 	line := node.Line
 	text := string([]rune(lines[line-1])[node.Column-1:])
 	declaration := true

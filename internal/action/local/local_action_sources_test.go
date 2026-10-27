@@ -14,8 +14,8 @@ func TestLocalActionSourceMappings(t *testing.T) {
 	root := t.TempDir()
 	first := writeFixture(t, root, "source/action.yml", "name: Source\ndescription: Source\ninputs:\n  token:\n    description: Token\n    required: true\noutputs:\n  result:\n    description: Result\nruns:\n  using: composite\n  steps:\n    - run: echo test\n      shell: bash\n")
 	writeFixture(t, root, "other/action.yml", "name: Other\ndescription: Other\nruns: {using: composite, steps: []}\n")
-	base := NewCache(root, nil)
-	view := &Resolver{base: base, sourceMappings: map[string]string{"./generated": "./source"}, usedSources: map[string][]byte{}}
+	base := newCapturedActionCache(t, root, nil)
+	view := &Resolver{base: base, sourceMappings: map[string]string{"./generated": "./source"}}
 	for _, spec := range []string{"./generated", "$/generated", "./generated/../generated"} {
 		meta, _, err := view.FindMetadata(spec)
 		if err != nil || meta == nil {
@@ -24,9 +24,20 @@ func TestLocalActionSourceMappings(t *testing.T) {
 		if meta.Path() != first || !meta.SourceMapped || meta.Inputs["token"] == nil || meta.Outputs["result"] == nil {
 			t.Fatalf("wrong mapped metadata: %+v", meta)
 		}
-		if _, ok := view.usedSources[first]; !ok {
+		if _, ok := view.Sources()[first]; !ok {
 			t.Fatal("source manifest not recorded")
 		}
+		documents := view.SourceDocuments()
+		document, ok := documents[first]
+		if !ok || document.Path() != first || len(documents) != 1 {
+			t.Fatalf("mapped source provenance is missing or duplicated: %#v", documents)
+		}
+	}
+	sourceDocument := view.SourceDocuments()[first]
+	content := sourceDocument.Content()
+	content[0] = 'X'
+	if got := string(view.SourceDocuments()[first].Content()); !strings.HasPrefix(got, "name: Source\n") {
+		t.Fatalf("mutating returned source bytes changed cached revision: %q", got)
 	}
 	second := &Resolver{base: base, sourceMappings: map[string]string{"./generated": "./other"}}
 	meta, _, err := second.FindMetadata("./generated")
@@ -62,7 +73,7 @@ func TestLocalActionSourceSymlink(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "source")); err != nil {
 		t.Skip(err)
 	}
-	view := &Resolver{base: NewCache(root, nil), sourceMappings: map[string]string{"./generated": "./source"}}
+	view := &Resolver{base: newCapturedActionCache(t, root, nil), sourceMappings: map[string]string{"./generated": "./source"}}
 	if _, _, err := view.FindMetadata("./generated"); err == nil || !strings.Contains(err.Error(), "outside the repository") {
 		t.Fatalf("got %v", err)
 	}
@@ -81,7 +92,7 @@ func TestLocalActionSourceSymlink(t *testing.T) {
 func TestLocalActionSourceCaseInsensitive(t *testing.T) {
 	root := t.TempDir()
 	writeFixture(t, root, "Source/action.yml", "name: Source\ndescription: Source\nruns: {using: composite, steps: []}\n")
-	view := &Resolver{base: NewCache(root, nil), sourceMappings: map[string]string{"./generated": "./source"}, caseInsensitive: true}
+	view := &Resolver{base: newCapturedActionCache(t, root, nil), sourceMappings: map[string]string{"./generated": "./source"}, caseInsensitive: true}
 	if meta, _, err := view.FindMetadata("./GENERATED"); err != nil || meta == nil {
 		t.Fatalf("%+v %v", meta, err)
 	}
@@ -95,7 +106,7 @@ func TestLocalActionUnknownCheckoutMissingMetadata(t *testing.T) {
 	for _, folded := range []bool{false, true} {
 		root := t.TempDir()
 		writeFixture(t, root, "present/action.yml", "name: present\ndescription: present\nruns: {using: composite, steps: []}\n")
-		view := &Resolver{base: NewCache(root, nil), caseInsensitive: folded}
+		view := &Resolver{base: newCapturedActionCache(t, root, nil), caseInsensitive: folded}
 		view.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
 		for range 2 {
 			if meta, _, err := view.FindMetadata("./private/action"); err != nil || meta != nil {
@@ -123,7 +134,7 @@ func TestLocalActionUnknownCheckoutMissingMetadata(t *testing.T) {
 func TestMissingLocalActionMappedSourceDiagnostic(t *testing.T) {
 	for _, folded := range []bool{false, true} {
 		root := t.TempDir()
-		view := &Resolver{base: NewCache(root, nil), sourceMappings: map[string]string{"./generated": "./absent-source"}, caseInsensitive: folded}
+		view := &Resolver{base: newCapturedActionCache(t, root, nil), sourceMappings: map[string]string{"./generated": "./absent-source"}, caseInsensitive: folded}
 		_, _, err := view.FindMetadata("./generated")
 		if _, missing := errors.AsType[UnresolvedError](err); !missing {
 			t.Fatalf("folded=%v: expected missing-local-action: %v", folded, err)

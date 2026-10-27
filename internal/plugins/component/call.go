@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/preparedscripts"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 	"github.com/kjanat/wacogo/wasi"
 	"github.com/kjanat/wacogo/wasi/cli/stdin"
 	"github.com/kjanat/wacogo/wasi/filesystem/preopens"
-	"github.com/tetratelabs/wazero/experimental"
+	"github.com/kjanat/wazero/experimental"
 )
 
 func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) (wacogo.Val, error) {
@@ -58,6 +57,7 @@ type callScope struct {
 	annotations *host.ComponentInstance
 	files       *host.ComponentInstance
 	prepared    *host.ComponentInstance
+	invocations *host.ComponentInstance
 }
 
 func (c *callScope) invoke(ctx context.Context, iface, name string, args ...wacogo.Val) (value wacogo.Val, err error) {
@@ -135,6 +135,14 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 	c.stdin = input
 	imports := append([]wacogo.InstantiateOption{wacogo.WithInstanceImport(HostInterface, c.host.Core())}, c.world.Imports()...)
 	imports = append(imports, wacogo.WithInstanceImport(stdin.InterfaceName, input.Core()))
+	if p.invocationFactory != nil {
+		instance, err := p.invocationFactory.NewInstance(ctx, invocationContext{}, nil)
+		if err != nil {
+			return err
+		}
+		c.invocations = instance
+		imports = append(imports, wacogo.WithInstanceImport(InvocationContextInterface, instance.Core()))
+	}
 	if p.annotationsFactory != nil {
 		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, nil)
 		if err != nil {
@@ -152,7 +160,7 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 		imports = append(imports, wacogo.WithInstanceImport(SourceFilesInterface, files.Core()))
 	}
 	if p.preparedFactory != nil {
-		prepared, err := p.preparedFactory.NewInstance(ctx, preparedScripts{}, &preparedbind.Deps{SourceAnnotations: c.annotations.Core()})
+		prepared, err := p.preparedFactory.NewInstance(ctx, preparedScripts{}, nil)
 		if err != nil {
 			return err
 		}

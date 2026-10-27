@@ -54,8 +54,7 @@ func (l Lock) Validate() error {
 	return nil
 }
 
-// LockFile retains the read bytes for a compare-before-replace transaction.
-// Downloads finish before Save; failure leaves the previous lock untouched.
+// LockFile compares the bytes read at load time before replacing a lockfile.
 type LockFile struct {
 	Path     string
 	Lock     Lock
@@ -327,7 +326,6 @@ func (f *LockFile) Set(pin Pin) error {
 }
 
 // SetResolved accepts a registry change selected by the dependency declaration.
-// Publisher identity and accepted immutable artifacts remain protected.
 func (f *LockFile) SetResolved(pin Pin, ref pluginref.Reference) error {
 	if err := f.CheckResolved(pin, ref); err != nil {
 		return err

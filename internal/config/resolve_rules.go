@@ -122,7 +122,6 @@ func ResolveRules(p Presets, config *Config, registrations ...rule.Descriptor) *
 			if explicit, ok := config.Lint.Rules.Plugins.Rules[d.Name]; ok && explicit.Level != "" && explicit.Level != "default" {
 				setting.Level = explicit.Level
 			}
-			// Global disabling remains authoritative over either configuration group.
 			if slices.Contains(config.Lint.Rules.Disable, d.Name) || config.Lint.Enabled != nil && !*config.Lint.Enabled {
 				setting.Level = "off"
 			}

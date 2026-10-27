@@ -170,8 +170,7 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 	if asJSON {
 		return writeCommandJSON(out, map[string]string{"path": path})
 	}
-	// Plugin storage resolves checkout aliases; compare both paths in the same
-	// namespace, retaining the caller's relative spelling for display and links.
+	// Resolve checkout aliases before comparing with plugin storage paths.
 	physicalCwd, err := filepath.EvalSymlinks(cwd)
 	if err != nil {
 		return err

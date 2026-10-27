@@ -63,7 +63,7 @@ func (r *operationCheck) checkCallOperations(pos *workflowlang.Pos, sourceSpec s
 	checked[visit] = true
 	m, err := r.cache.FindMetadataForCall(sourceSpec)
 	if err != nil || m == nil {
-		// workflow-call owns lookup errors; they remain cached for that rule.
+		// The workflow-call rule reports lookup errors.
 		return
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {

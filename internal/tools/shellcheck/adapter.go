@@ -10,6 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/config/rules"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
@@ -33,6 +35,7 @@ type Error struct {
 	endColumn         int
 	source            []byte
 	rawScriptSource   bool
+	unavailableSource findingmodel.UnavailableSource
 	scriptIndex       int
 	suppressionOrigin *suppressionOrigin
 }
@@ -84,13 +87,15 @@ type scriptExecution struct {
 	directory runDirectory
 }
 type scriptUnit struct {
-	run       *workflowlang.ExecRun
-	shell     *string
-	config    *Config
-	path      string
-	content   []byte
-	scope     *scriptScope
-	execution scriptExecution
+	text       string
+	source     documentparse.ScriptSourceView
+	key, value *workflowlang.Pos
+	shell      *string
+	config     *Config
+	path       string
+	content    []byte
+	scope      *scriptScope
+	execution  scriptExecution
 }
 type scriptBatch struct {
 	scopes  []*scriptScope
@@ -137,7 +142,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if s.Execution.DirectoryKnown {
 			kind = directoryKnown
 		}
-		private.scripts = append(private.scripts, scriptUnit{run: &workflowlang.ExecRun{Run: &workflowlang.String{Value: s.Text, Pos: s.Value}, Source: s.Source, RunPos: s.Key}, shell: s.Shell, config: s.Config, path: s.Path, content: s.Content, scope: scopes[s.Scope], execution: scriptExecution{shell: shellcheckShell{name: s.Execution.Shell, implicit: s.Execution.ImplicitShell}, directory: runDirectory{kind: kind, path: s.Execution.Directory}}})
+		private.scripts = append(private.scripts, scriptUnit{text: s.Text, source: s.Source, key: s.Key, value: s.Value, shell: s.Shell, config: s.Config, path: s.Path, content: s.Content, scope: scopes[s.Scope], execution: scriptExecution{shell: shellcheckShell{name: s.Execution.Shell, implicit: s.Execution.ImplicitShell}, directory: runDirectory{kind: kind, path: s.Execution.Directory}}})
 	}
 	findings, err := r.check.AnalyzeScripts(ctx, private)
 	result := make([]tools.Finding, 0, len(findings))
@@ -146,7 +151,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if f.endPosition != nil {
 			d.End = diagnostic.Position{Line: f.endPosition.Line, Column: f.endPosition.Col}
 		}
-		out := tools.Finding{Diagnostic: d, Script: f.scriptIndex, Content: f.source, RawScript: f.rawScriptSource}
+		out := tools.Finding{Diagnostic: d, Script: f.scriptIndex, Content: f.source, RawScript: f.rawScriptSource, UnavailableSource: f.unavailableSource}
 		if out.Script >= 0 && out.Script < len(scriptIndexes) {
 			out.Script = scriptIndexes[out.Script]
 		}

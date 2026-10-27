@@ -1,4 +1,4 @@
-package kjanat:actionlint@0.1.0;
+package kjanat:actionlint@0.2.0;
 
 /// Optional provenance semantics for diagnostics on expression-masked snippets.
 /// Engines classify findings semantically; hosts must never infer an effect from
@@ -36,9 +36,8 @@ interface template-effects {
         filename: string,
         config: string,
     }
-
     enum effect {
-        /// Independent of template substitution; retain the finding.
+        /// The finding is valid regardless of template substitution.
         none,
         /// Line width is uncertain when that line contains a substitution.
         line-length,

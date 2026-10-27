@@ -732,7 +732,7 @@ runs:
 - uses: ./local
   if: false
 ` + run, 0},
-		{"retained root", `- uses: actions/checkout@v6
+		{"original root", `- uses: actions/checkout@v6
 - uses: ./local
 ` + run, 0},
 		{"parallel children and following step", `- uses: actions/checkout@v6

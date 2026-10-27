@@ -54,6 +54,7 @@
         "command": [
           "./custom-gcl",
           "run",
+          "--allow-parallel-runners",
           "--output.json.path",
           "stdout",
           "--show-stats=false",

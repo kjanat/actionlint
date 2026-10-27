@@ -99,8 +99,7 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 			// An invocation overlay explicitly selected plugins for this migration.
 			refs = slices.Clone(resolved.Config.Plugins)
 		} else {
-			// A lock-only project predates manifest declarations. Migrate its pins
-			// into the manifest while plugins remain unspecified.
+			// Import lockfile pins for projects without a plugin manifest.
 			refs, err = project.Dependencies(true)
 		}
 	default:
@@ -185,8 +184,7 @@ func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, op
 		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
-		// Reading a linked config remains supported; automatic writes never
-		// change its target outside the selected project.
+		// Skip symlinked configs to avoid writing outside the selected project.
 		return nil, nil
 	}
 	migration, err := config.PrepareMigration(path)
@@ -240,7 +238,6 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 }
 
 // Migrate upgrades selected local configs before runtime plugin selection.
-// Cache planning calls SelectForCache and remains read-only.
 func (s PluginSelection) Migrate(ctx context.Context, directory string, input application.Input, options DefaultPluginOptions) error {
 	if s.Disabled || len(s.Paths) != 0 || s.LockFile != "" {
 		return nil

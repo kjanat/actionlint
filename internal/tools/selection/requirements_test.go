@@ -46,7 +46,6 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 				if name == "ruff" {
 					backend = candidate.Tools.Ruff.Backend
 				}
-				// A host can supply plugins for defaults but retain explicit processes.
 				return backend != nil && backend.Process != nil
 			})
 			if err != nil || !needed {

@@ -8,7 +8,7 @@ import (
 )
 
 // inheritOwner keeps reports writable by the workspace owner when the Docker
-// compatibility entrypoint runs as root. Native non-root runs retain their owner.
+// compatibility entrypoint runs as root.
 func inheritOwner(root *os.Root, paths []string) error {
 	if os.Geteuid() != 0 {
 		return nil

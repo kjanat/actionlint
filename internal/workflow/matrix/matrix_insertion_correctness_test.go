@@ -15,7 +15,7 @@ func TestMatrixExpandedInsertionChecks(t *testing.T) {
 		{"whole axis duplicate", `os: "${{ fromJSON('[\"ubuntu\",\"ubuntu\"]') }}"`, "duplicate value"},
 		{"duplicate after unknown insertion", `os: ["${{ vars.AXIS }}", ubuntu, "${{ fromJSON('[\"ubuntu\"]') }}"]`, "duplicate value"},
 		{"repeated dynamic source", `os: ["${{ vars.OS }}", "${{ vars.OS }}"]`, "duplicate value"},
-		{"nested arrays retained", `os: [ubuntu, "${{ fromJSON('[[\"ubuntu\"]]') }}"]`, ""},
+		{"nested arrays stay distinct", `os: [ubuntu, "${{ fromJSON('[[\"ubuntu\"]]') }}"]`, ""},
 		{"inserted nested array duplicate", `os: [[ubuntu], "${{ fromJSON('[[\"ubuntu\"]]') }}"]`, "duplicate value"},
 		{"distinct scalar types", `os: [1, "${{ fromJSON('[\"1\"]') }}"]`, ""},
 		{"empty axis insertion", `os: [ubuntu, "${{ fromJSON('[]') }}"]`, ""},
@@ -49,7 +49,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			findings := matrixcheck.Check(workflow.Jobs["test"], false)
+			findings := matrixcheck.Resolve(workflow.Jobs["test"].Strategy).Check(false)
 			if tc.want == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected diagnostics: %v", findings)

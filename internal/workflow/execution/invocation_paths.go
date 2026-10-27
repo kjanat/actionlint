@@ -12,8 +12,7 @@ func (rule *ExecutableChecker) checkedRunnerPathFor(runnerPath string, paths Pat
 	}
 	checkout, known := paths.CheckoutFor(runnerPath)
 	if paths.Placements != nil {
-		// Select before collapsing '..': traversal through a replaced copy must
-		// remain unknown even if the final path leaves that copy again.
+		// Select before collapsing '..' to detect traversal through replaced copies.
 		checkout, known = rule.traversalCheckout(paths.Placements, runnerPath)
 	}
 	if !known {

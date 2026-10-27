@@ -10,11 +10,14 @@ import (
 	"sync"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/localaction"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/action/reference"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/mapping"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 // MetadataLookup supplies metadata to checks without exposing cache or resolver state.
@@ -29,7 +32,7 @@ type Resolver struct {
 	base                 *Cache
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string
-	usedSources          map[string][]byte
+	usedDocuments        map[string]SourceDocument
 	checkout             *execution.CheckoutPlacement
 	platform             runnerlang.Platform
 	caseInsensitive      bool
@@ -39,22 +42,64 @@ type Resolver struct {
 	checkoutShell        execution.Shell
 }
 
+// SourceDocument carries immutable source bytes and the parse record that owns
+// their canonical references, independently of metadata lookup success.
+type SourceDocument struct {
+	path     string
+	address  string
+	captured capture.Snapshot
+	document documentparse.Document
+}
+
+func (d SourceDocument) Path() string { return d.path }
+
+// Address is the absolute alias passed to the capture owner, separate from the
+// caller's metadata display spelling.
+func (d SourceDocument) Address() string { return d.address }
+
+func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
+
+func (d SourceDocument) Capture() capture.Snapshot { return d.captured }
+
+func (d SourceDocument) Document() documentparse.Document { return d.document }
+
 // NewResolver starts a document scope over shared repository metadata.
 func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
-	return &Resolver{base: cache, sourceMappings: mappings, usedSources: make(map[string][]byte)}
+	return &Resolver{base: cache, sourceMappings: mappings, usedDocuments: make(map[string]SourceDocument)}
 }
 
 // FindMetadata translates a reference using this invocation's checkout and source mappings.
 func (c *Resolver) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
+	metadata, cached, _, err := c.FindMetadataDocument(spec)
+	return metadata, cached, err
+}
+
+// FindMetadataDocument retains the capture belonging to this invocation's
+// translated lookup without resolving or reading the metadata a second time.
+func (c *Resolver) FindMetadataDocument(spec string) (*actionmeta.Metadata, bool, SourceDocument, error) {
+	result, cached := c.LookupMetadata(spec)
+	document, _ := c.SourceDocument(result)
+	if c == nil {
+		return result.Metadata(), cached, document, result.Err()
+	}
+	return result.Metadata(), cached, document, c.base.reportMetadataError(result)
+}
+
+// LookupMetadata looks up action metadata without emitting validation diagnostics.
+func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 	if c == nil || c.base == nil {
-		return nil, false, nil
+		return MetadataResult{status: MetadataLookupDisabled}, false
 	}
 	if local, ok := references.SelfRepositoryLocal(spec); ok {
 		return c.findRepositoryMetadata(local, true)
 	}
 	local, ok := c.localSpec(spec)
 	if !ok {
-		return nil, false, nil
+		status := MetadataNonLocal
+		if strings.HasPrefix(spec, "./") {
+			status = MetadataNotFetched
+		}
+		return MetadataResult{status: status}, false
 	}
 	certain := true
 	if state := c.CheckoutState(); state != nil {
@@ -71,7 +116,27 @@ func (c *Resolver) FindMetadata(spec string) (*actionmeta.Metadata, bool, error)
 func (c *Resolver) Sources() map[string][]byte {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return maps.Clone(c.usedSources)
+	cloned := make(map[string][]byte, len(c.usedDocuments))
+	for path, document := range c.usedDocuments {
+		cloned[path] = document.Content()
+	}
+	return cloned
+}
+
+// SourceDocuments returns provenance for every consulted local metadata file,
+// including manifests whose semantic metadata lookup failed.
+func (c *Resolver) SourceDocuments() map[string]SourceDocument {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return maps.Clone(c.usedDocuments)
+}
+
+// SourceDocument returns the cached parse record associated with a lookup.
+func (c *Resolver) SourceDocument(result MetadataResult) (SourceDocument, bool) {
+	if c == nil || c.base == nil {
+		return SourceDocument{}, false
+	}
+	return c.base.SourceDocument(result)
 }
 
 // ApplyCheckout adapts shared script paths to this invocation's checkout placement.
@@ -105,10 +170,10 @@ func missingLocalActionMetadata(spec string) error {
 	return UnresolvedError(fmt.Sprintf("local action %q has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting", spec))
 }
 
-func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (*actionmeta.Metadata, bool, error) {
+func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataResult, bool) {
 	original := spec
 	mapped := false
-	if normalized, err := localaction.Normalize(spec); err == nil {
+	if normalized, err := reference.NormalizeLocalDirectory(spec); err == nil {
 		if source, exists := c.sourceMappings[normalized]; exists {
 			spec, mapped = source, true
 		}
@@ -121,59 +186,67 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (*actionmet
 				}
 			}
 			if matches > 1 {
-				return nil, false, MappingError{fmt.Errorf("source mapping for local action %q is ambiguous under case-insensitive lookup", original)}
+				return MetadataResult{status: MetadataMappingFailed, cause: MappingError{fmt.Errorf("source mapping for local action %q is ambiguous under case-insensitive lookup", original)}}, false
 			}
 		}
 	}
-	explicit := c.base.hasExplicitAction(spec)
+	explicit, err := c.base.hasExplicitAction(spec)
+	if err != nil {
+		return MetadataResult{status: MetadataReadFailed, cause: err}, false
+	}
 	if c.caseInsensitive && c.base.root != "" && !c.base.customReader && !explicit {
-		local, err := execution.CaseInsensitiveRepositoryPath(c.base.root, spec, c.base.reader)
+		local, err := execution.CaseInsensitiveRepositoryPath(c.base.sourceRoot, spec, c.base.reader)
 		if err != nil {
+			_, ambiguous := errors.AsType[execution.AmbiguousPathError](err)
+			if !errors.Is(err, os.ErrNotExist) && !ambiguous {
+				return MetadataResult{status: MetadataReadFailed, cause: fmt.Errorf("resolve local action %q: %w", original, err)}, false
+			}
 			if mapped {
 				if errors.Is(err, os.ErrNotExist) {
-					return nil, false, missingMappedLocalAction(original, spec)
+					return MetadataResult{status: MetadataMappingFailed, cause: missingMappedLocalAction(original, spec)}, false
 				}
-				return nil, false, MappingError{fmt.Errorf("source mapping for local action %q: cannot resolve source %q under case-insensitive lookup", original, spec)}
+				return MetadataResult{status: MetadataMappingFailed, cause: MappingError{fmt.Errorf("source mapping for local action %q: cannot resolve source %q under case-insensitive lookup: %w", original, spec, err)}}, false
 			}
 			if !certain && errors.Is(err, os.ErrNotExist) {
-				return nil, false, nil
+				return MetadataResult{status: MetadataPlacementUncertain}, false
 			}
-			return nil, false, UnresolvedError(fmt.Sprintf("cannot resolve local action %q: its path is missing or ambiguous under case-insensitive lookup", spec))
+			return MetadataResult{status: MetadataMissingManifest, cause: UnresolvedError(fmt.Sprintf("cannot resolve local action %q: its path is missing or ambiguous under case-insensitive lookup", spec))}, false
 		}
 		spec = local
 	}
 	if mapped && c.base.root != "" && !c.base.customReader && !explicit {
-		if err := localaction.CheckSource(c.base.root, spec); err != nil {
+		if err := checkMappedSource(c.base.sourceRoot, spec); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return nil, false, missingMappedLocalAction(original, spec)
+				return MetadataResult{status: MetadataMappingFailed, cause: missingMappedLocalAction(original, spec)}, false
 			}
-			return nil, false, MappingError{fmt.Errorf("source mapping for local action %q: %w", original, err)}
+			return MetadataResult{status: MetadataMappingFailed, cause: MappingError{fmt.Errorf("source mapping for local action %q: %w", original, err)}}, false
 		}
 	}
-	metadata, cached, err := c.base.FindMetadata(spec)
-	if _, missing := errors.AsType[UnresolvedError](err); missing {
+	result, cached := c.base.LookupMetadata(spec)
+	if _, missing := errors.AsType[UnresolvedError](result.Err()); missing {
 		if mapped {
-			err = missingMappedLocalAction(original, spec)
+			result.status, result.cause = MetadataMappingFailed, missingMappedLocalAction(original, spec)
 		} else if !certain {
-			err = nil
+			result.status, result.cause = MetadataPlacementUncertain, nil
 		}
 	}
-	if mapped && metadata != nil {
-		mappedMetadata := *metadata
+	if mapped && result.metadata != nil {
+		mappedMetadata := *result.metadata
 		mappedMetadata.SourceMapped = true
-		metadata = &mappedMetadata
+		result.metadata = &mappedMetadata
 	}
-	if c.usedSources != nil {
-		c.base.mu.RLock()
-		source, exists := c.base.sources[spec]
-		c.base.mu.RUnlock()
-		if exists {
-			c.mu.Lock()
-			c.usedSources[source.path] = source.content
-			c.mu.Unlock()
+	c.base.mu.RLock()
+	source, exists := c.base.sources[spec]
+	c.base.mu.RUnlock()
+	if exists {
+		c.mu.Lock()
+		if c.usedDocuments == nil {
+			c.usedDocuments = make(map[string]SourceDocument)
 		}
+		c.usedDocuments[source.path] = SourceDocument(source)
+		c.mu.Unlock()
 	}
-	return metadata, cached, err
+	return result, cached
 }
 
 func missingMappedLocalAction(alias, source string) error {
@@ -227,8 +300,6 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 		return "", false
 	}
 	if checkout.Kind == execution.DirectoryUnknown {
-		// Retain best-effort validation of literal local metadata. Script rules
-		// still receive the unknown placement and cannot assume its runtime paths.
 		return spec, true
 	}
 	if checkout.Path == "" || checkout.Path == "." {
@@ -241,30 +312,30 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 }
 
 // ObserveCheckout updates action resolution after a checkout step.
-func (c *Resolver) ObserveCheckout(step *workflowlang.Step) {
-	enabled, known := execution.Condition(step.If)
+func (c *Resolver) ObserveCheckout(step documentparse.StepView) {
+	enabled, known := execution.Condition(step.Condition())
 	if known && !enabled {
 		return
 	}
-	if _, parallel := step.Exec.(*workflowlang.ExecParallel); parallel {
+	if _, parallel := step.Parallel(); parallel {
 		c.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
 		return
 	}
-	action, ok := step.Exec.(*workflowlang.ExecAction)
-	if !ok || action.Uses == nil {
+	action, ok := step.Action()
+	if !ok || !action.Uses().Present() {
 		return
 	}
-	name, _, versioned := strings.Cut(action.Uses.Value, "@")
+	name, _, versioned := strings.Cut(action.Uses().Value(), "@")
 	if !versioned || !strings.EqualFold(name, "actions/checkout") {
 		return
 	}
-	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(step.Env, c.platform) {
+	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(step.Env().Mapping(), c.platform) {
 		// Git may write outside the requested path or execute a wrapper. Literal
 		// metadata fallback is not evidence of the resulting repository contents.
 		c.restoreCheckout(&execution.CheckoutPlacement{Directory: execution.Directory{Kind: execution.DirectoryUnknown}, Redirected: true})
 		return
 	}
-	checkoutPath, pathKnown := execution.CheckoutInput(action, "path")
+	checkoutPath, pathKnown := checkoutInput(action.ResolvedInputs(), "path")
 	checkoutPath, representable := execution.RunnerRelativePath(checkoutPath, c.platform)
 	if !pathKnown || !representable {
 		c.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
@@ -278,25 +349,25 @@ func (c *Resolver) ObserveCheckout(step *workflowlang.Step) {
 			return
 		}
 	}
-	certain := known && !execution.BoolMayBeTrue(step.ContinueOnError) && !execution.BoolMayBeTrue(step.Background)
+	certain := known && !execution.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !execution.BoolMayBeTrue(step.Background().Semantic())
 	if !certain {
 		checkout.Kind = execution.DirectoryUnknown
 	}
 	foreign, self := false, true
 	for _, key := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
-		value, inputKnown := execution.CheckoutInput(action, key)
-		if !inputKnown || value != "" {
+		item, inputKnown := checkoutInput(action.ResolvedInputs(), key)
+		if !inputKnown || item != "" {
 			checkout.Kind = execution.DirectoryUnknown
 			self = false
 		}
-		if certain && (key == "repository" || key == "github-server-url" || key == "ref") && inputKnown && value != "" {
+		if certain && (key == "repository" || key == "github-server-url" || key == "ref") && inputKnown && item != "" {
 			// A specified revision need not contain the analyzed working-tree
 			// metadata. No revision identity is available to prove equivalence.
 			foreign = true
 		}
 	}
 	previous := c.CheckoutState()
-	if self && !known && !execution.BoolMayBeTrue(step.ContinueOnError) && !execution.BoolMayBeTrue(step.Background) && !execution.CanRunAfterFailure(step.If) {
+	if self && !known && !execution.BoolMayBeTrue(step.ContinueOnError().Semantic()) && !execution.BoolMayBeTrue(step.Background().Semantic()) && !execution.CanRunAfterFailure(step.Condition()) {
 		// Skipping or successfully refreshing the same self checkout both
 		// preserve its placement. A failed refresh cannot reach ordinary steps.
 		if previous.SameSelfCheckout(checkout.Path) {
@@ -304,4 +375,13 @@ func (c *Resolver) ObserveCheckout(step *workflowlang.Step) {
 		}
 	}
 	c.restoreCheckout(&execution.CheckoutPlacement{Directory: checkout, Previous: previous, CaseInsensitive: c.caseInsensitive, Foreign: foreign})
+}
+
+func checkoutInput(inputs mapping.Mapping, name string) (string, bool) {
+	item := inputs.Lookup(name)
+	if item.State() == value.Missing {
+		return "", true
+	}
+	text, known := item.ScalarString()
+	return strings.TrimSpace(text), known
 }

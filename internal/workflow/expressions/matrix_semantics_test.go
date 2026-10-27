@@ -1,11 +1,13 @@
 package expressions
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
 
 func TestMatrixCombinationInsertionValidation(t *testing.T) {
@@ -46,7 +48,7 @@ jobs:
 					t.Fatal(errs)
 				}
 				rule := newTestChecker()
-				rule.checkMatrix(workflow.Jobs["test"].Strategy.Matrix)
+				rule.checkMatrix(workflow.Jobs["test"].Strategy.Matrix, matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
 				if errs := rule.Findings(); len(errs) != tc.wantErrors {
 					t.Fatalf("want %d errors, got %v", tc.wantErrors, errs)
 				}
@@ -57,6 +59,33 @@ jobs:
 				}
 			})
 		}
+	}
+}
+
+func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
+	for _, section := range []string{"include", "exclude"} {
+		t.Run(section, func(t *testing.T) {
+			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        axis: [one]\n        \"${{ case(true, '%s', missing) }}\": [{axis: one}]\n    steps: [{run: echo ok}]\n", section)
+			workflow, errs := workflowlang.ParseDocument([]byte(source))
+			if len(errs) != 0 {
+				t.Fatal(errs)
+			}
+			matrix := workflow.Jobs["test"].Strategy.Matrix
+			var sourceKey *workflowlang.String
+			if section == "include" && matrix.Include != nil {
+				sourceKey = matrix.Include.Name
+			} else if section == "exclude" && matrix.Exclude != nil {
+				sourceKey = matrix.Exclude.Name
+			}
+			if sourceKey == nil || sourceKey.Value != fmt.Sprintf("${{ case(true, '%s', missing) }}", section) {
+				t.Fatalf("reserved key source lost: %#v", matrix)
+			}
+			rule := newTestChecker()
+			rule.checkMatrix(matrix, matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
+			if len(rule.Findings()) != 1 || !strings.Contains(rule.Findings()[0].Message, `undefined variable "missing"`) {
+				t.Fatalf("want source-key expression diagnostic, got %v", rule.Findings())
+			}
+		})
 	}
 }
 
@@ -86,7 +115,7 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
-			ty := rule.checkMatrix(workflow.Jobs["test"].Strategy.Matrix)
+			ty := rule.checkMatrix(workflow.Jobs["test"].Strategy.Matrix, matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
 			if len(rule.Findings()) != 0 {
 				t.Fatal(rule.Findings())
 			}

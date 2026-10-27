@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // Finding carries a canonical diagnostic and analysis-only provenance. All rule
@@ -22,8 +23,9 @@ type Finding struct {
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	Source []byte
-	// rawScriptSource retains the external checker's LF-based source coordinates.
-	RawScriptSource bool
+	// RawScriptSource selects LF-only line splitting for external checker positions.
+	RawScriptSource   bool
+	UnavailableSource UnavailableSource
 	// suppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
 	SuppressionOrigin *SuppressionOrigin
@@ -35,6 +37,9 @@ type Finding struct {
 	MetadataIdentity *MetadataIdentity
 	// metadataParsePath links caller parse failures to a selected manifest.
 	MetadataParsePath string
+	// MetadataParseSource is the captured revision whose parse failure was
+	// observed. MetadataParsePath remains the caller-facing spelling.
+	MetadataParseSource source.Revision
 }
 
 // String returns a diagnostic with its source location and rule name.
@@ -90,7 +95,6 @@ func Compare(lhs, rhs *Finding) int {
 func Equal(lhs, rhs *Finding) bool {
 	left, right := lhs.Diagnostic, rhs.Diagnostic
 	// Aliases can reach one declaration through different invocation owners.
-	// Explicit analyzer references remain part of diagnostic identity.
 	if lhs.InferredReference && rhs.InferredReference {
 		left.Reference, right.Reference = nil, nil
 	}

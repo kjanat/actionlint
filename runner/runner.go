@@ -50,7 +50,7 @@ type Selector struct {
 	Incomplete bool
 	Labels     []Constraint
 	Group      *Constraint
-	// Expression retains a whole selector that cannot be statically expanded.
+	// Expression is the source of a selector whose labels and group are unknown.
 	Expression string
 }
 

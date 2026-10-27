@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 type testAnalyzer struct {
@@ -95,23 +96,42 @@ func TestRunRequirementsAndCancellation(t *testing.T) {
 }
 
 func TestRunIsolatesActionInputFacts(t *testing.T) {
-	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Scripts}, ActionInputs: []analyzer.ActionInput{{
-		Site:       analyzer.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
-		Spans:      []analyzer.Span{{Line: 1, Start: 1, End: 8}},
-		Invocation: &analyzer.Invocation{Depth: 1},
+	root, callID, scriptID := analyzer.OccurrenceID(strings.Repeat("1", 64)), analyzer.OccurrenceID(strings.Repeat("2", 64)), analyzer.OccurrenceID(strings.Repeat("3", 64))
+	declaration := source.Reference{Document: "action.yml", Revision: "r", Node: "script"}
+	outcome, err := analyzer.NewCallOutcome(analyzer.ExpandedCall{Target: source.Reference{Document: "action.yml", Revision: "r", Node: "document"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := analyzer.NewCallGraph(analyzer.CallGraphData{
+		Entry:  analyzer.InvocationEntry{ID: root, Kind: analyzer.WorkflowEntry, Reference: source.Reference{Document: "workflow.yml", Revision: "r", Node: "document"}},
+		Budget: analyzer.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1}, Complete: true,
+		Calls:   []analyzer.Call{{ID: callID, Parent: root, Ancestry: []analyzer.OccurrenceID{root}, Depth: 1, Site: source.Reference{Document: "workflow.yml", Revision: "r", Node: "call"}, Uses: "owner/action", HasUses: true, Condition: analyzer.CallEnabled, Outcome: outcome}},
+		Scripts: []analyzer.ScriptOccurrence{{ID: scriptID, Owner: callID, Ancestry: []analyzer.OccurrenceID{root, callID}, Depth: 1, Declaration: declaration, Kind: analyzer.ActionInputScript, Input: "script"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	occurrence, exists := graph.Script(scriptID)
+	if !exists {
+		t.Fatal("action input occurrence missing")
+	}
+	input := analyzer.Input{Reference: graph.Entry().Reference, Available: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}, CallGraph: graph, ActionInputs: []analyzer.ActionInput{{
+		Reference: declaration, Occurrence: occurrence,
+		Spans: []analyzer.Span{{Line: 1, Start: 1, End: 8}},
+		Site:  analyzer.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"},
 	}}}
 	changed := make(chan struct{})
 	first := testAnalyzer{analyzer.Descriptor{Name: "first", Requires: []analyzer.Fact{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		in.ActionInputs[0].Site.Language = "python"
 		in.ActionInputs[0].Spans[0].End = 99
-		in.ActionInputs[0].Invocation.Depth = 99
+		in.ActionInputs[0].Occurrence.Ancestry[0] = "changed"
 		close(changed)
 		return nil, nil
 	}}
 	second := testAnalyzer{analyzer.Descriptor{Name: "second", Requires: []analyzer.Fact{analyzer.Scripts}}, func(_ context.Context, in analyzer.Input) ([]diagnostic.Diagnostic, error) {
 		<-changed
 		got := in.ActionInputs[0]
-		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Invocation.Depth != 1 {
+		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Occurrence.Ancestry[0] != root {
 			t.Errorf("action input facts shared between analyzers: %+v", got)
 		}
 		return nil, nil

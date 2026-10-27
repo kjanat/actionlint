@@ -32,7 +32,7 @@ type Override struct {
 	localActionsSet bool
 }
 
-// UnmarshalYAML validates paths and retains omitted/null fields for merging.
+// UnmarshalYAML validates paths and records which fields were omitted or reset.
 func (o *Override) UnmarshalYAML(n *yaml.Node) error {
 	var err error
 	n, err = configtree.Expand(n, make(map[*yaml.Node]bool))
@@ -277,7 +277,7 @@ func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error
 	return decoded.Tools, nil
 }
 
-// Programmatic nil fields omit settings; parsed nodes retain explicit resets.
+// Nil fields in Go values mean omission; explicit resets require parsed YAML nodes.
 func programmaticToolsNode(tools *ToolsConfig) (*yaml.Node, error) {
 	var node yaml.Node
 	if err := node.Encode(tools); err != nil {
@@ -305,8 +305,7 @@ func programmaticToolsNode(tools *ToolsConfig) (*yaml.Node, error) {
 	return &node, nil
 }
 
-// Expand shorthand before partial mappings overlay it, retaining inherited
-// group/rule levels and options. Scalar overlays still replace the whole value.
+// Expand scalar shorthands so a partial mapping can override individual options.
 func expandLintShorthands(node *yaml.Node) *yaml.Node {
 	for category := range (&LintRulesConfig{}).Groups() {
 		node = expandRuleLevel(node, "rules", category)

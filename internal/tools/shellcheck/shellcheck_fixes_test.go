@@ -4,18 +4,38 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
-func shellcheckFixSource(t *testing.T, input string) *workflowlang.ScriptSource {
+// Keep the scalar's original lines/columns by placing its anchor before an
+// appended workflow. The parser resolves the alias through its normal mapping path.
+func shellcheckFixSource(t *testing.T, input string) documentparse.ScriptSourceView {
 	t.Helper()
-	var root yaml.Node
-	if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+	text := strings.Replace(input, "run:", "run: &script", 1) + "\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n"
+	document := documentparse.Workflow("fix.yml", []byte(text))
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := registry.Document("fix.yml", []byte(text), document)
+	if err != nil {
 		t.Fatal(err)
 	}
-	p := workflowlang.NewSourceParser([]byte(input))
-	return p.ScriptSource(root.Content[0].Content[1])
+	workflow, ok := snapshot.WorkflowView()
+	if !ok {
+		t.Fatal("fixture has no workflow")
+	}
+	job, ok := workflow.Job("test")
+	if !ok {
+		t.Fatal("fixture has no job")
+	}
+	for step := range job.Steps() {
+		run, ok := step.Run()
+		if !ok {
+			t.Fatal("fixture has no run")
+		}
+		return run.Source()
+	}
+	t.Fatal("fixture has no step")
+	return documentparse.ScriptSourceView{}
 }
 
 func TestShellcheckFixLiteralMapping(t *testing.T) {
@@ -23,7 +43,7 @@ func TestShellcheckFixLiteralMapping(t *testing.T) {
 		t.Run("newline="+newline, func(t *testing.T) {
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			source := shellcheckFixSource(t, input)
-			script := prepareShellcheckScript(source.Value, "# shellcheck disable=SC2154\n", "set -e -o pipefail")
+			script := prepareShellcheckScript(source.Value(), "# shellcheck disable=SC2154\n", "set -e -o pipefail")
 			fix := &shellcheckFix{Replacements: []shellcheckReplacement{
 				{Line: 4, EndLine: 4, Column: 10, EndColumn: 10, Replacement: `"`},
 				{Line: 4, EndLine: 4, Column: 16, EndColumn: 16, Replacement: `"`},
@@ -43,7 +63,20 @@ func TestShellcheckFixLiteralMapping(t *testing.T) {
 				Run  string `yaml:"run"`
 				Next string `yaml:"next"`
 			}
-			if err := yaml.Unmarshal([]byte(changed), &decoded); err != nil {
+			root, err := codec.Parse([]byte(changed))
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, cursor, err := codec.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer session.Close()
+			entered, err := cursor.Enter()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := entered.Decode(&decoded); err != nil {
 				t.Fatal(err)
 			}
 			if decoded.Run != "#!/bin/bash\necho\té 🐚 \"$VALUE\"\necho \"$OTHER\"\n" || decoded.Next != "unchanged" {
@@ -91,8 +124,8 @@ func TestShellcheckFixRejectsAmbiguousChanges(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := shellcheckFixSource(t, tc.input)
 			value := "echo $VALUE\n"
-			if source != nil {
-				value = source.Value
+			if source.Present() {
+				value = source.Value()
 			}
 			script := prepareShellcheckScript(sanitizeExpressionsInScript(value), "# shellcheck disable=SC2154\n", "set -e")
 			if fixes := shellcheckDiagnosticFixes(source, script, &shellcheckFix{tc.replacements}, "Fix"); len(fixes) != 0 {

@@ -15,8 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow"
 )
 
-// Finding retains the declaration owner when a check covers an entire job.
-// The host may attach source identity and invocation policy without rerunning it.
+// Finding associates a diagnostic with its owning step.
 type Finding struct {
 	diagnostic.Diagnostic
 	Step *workflow.Step
@@ -46,11 +45,12 @@ func environment(env *workflow.Env) []Finding {
 		return nil
 	}
 	var entries []analyzer.Entry
-	workflow.InputResolver.Walk(workflow.EnvMappingView(env), nil, func(entry mapping.Entry[*workflow.String]) {
-		if entry.Name != nil {
-			entries = append(entries, analyzer.Entry{Name: entry.Name.Value, State: analyzer.KnownKey, Start: position(entry.Name.Pos)})
+	resolved := mapping.Resolve(workflow.EnvMappingView(env))
+	for key := range resolved.KeyedEntries() {
+		if name, known := key.ScalarString(); known {
+			entries = append(entries, analyzer.Entry{Name: name, State: analyzer.KnownKey, Start: key.Origin().Span.Start})
 		}
-	})
+	}
 	return findings(envname.Check(entries))
 }
 

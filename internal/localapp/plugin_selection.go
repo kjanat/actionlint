@@ -29,7 +29,7 @@ type PluginSelection struct {
 type PluginSources struct {
 	Paths    []string
 	LockFile string
-	// Inputs retains observed locks independently of plugin activation.
+	// Inputs lists observed lockfiles, including those for inactive plugins.
 	Inputs    []string
 	root      string
 	automatic bool
@@ -73,7 +73,7 @@ func (s PluginSelection) Resolve(ctx context.Context, directory string, input ap
 }
 
 // ResolveForRules selects declared plugins without validating unrelated lint
-// settings. Invalid declarations, inheritance and pins remain errors.
+// settings.
 func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) (PluginSources, error) {
 	selected, err := s.selectSources(ctx, directory, application.Input{Kind: application.Repository}, pluginRuleDiscovery)
 	if err != nil {

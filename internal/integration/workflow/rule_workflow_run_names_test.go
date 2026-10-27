@@ -246,7 +246,6 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 				t.Fatal(err)
 			}
 			project := workspace.Identity(root)
-			// The excluded source also contains a lint finding that must remain excluded.
 			producerContent := `name: New
 env: {VALUE: '${{ nonexistent }}'}
 ` + testutil.GoodWorkflow

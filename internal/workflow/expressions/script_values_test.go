@@ -5,8 +5,12 @@ import (
 	"maps"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 func TestInheritedScriptEnvironment(t *testing.T) {
@@ -29,11 +33,7 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := fmt.Sprintf("on: push\nenv: %s\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: %s\n    steps:\n      - env: %s\n        run: echo '${{ env.VALUE }}'\n", tc.workflowEnv, tc.jobEnv, tc.stepEnv)
-			workflow, errors := workflowlang.Parse([]byte(source))
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			rule := newTestChecker()
+			rule, workflow := newTestCheckerForSource(t, source)
 			job := workflow.Jobs["test"]
 			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
 				if err != nil {
@@ -106,13 +106,57 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 				want[path] = true
 			}
 			got := map[string]bool{}
-			for path, proof := range safeMatrixScriptReferences(workflow.Jobs["test"].Strategy.Matrix) {
+			for path, proof := range safeMatrixScriptReferences(matrixcheck.Resolve(workflow.Jobs["test"].Strategy)) {
 				got[path] = proof != scriptUnsafe
 			}
 			if !maps.Equal(got, want) {
 				t.Fatalf("safe references = %v, want %v", got, want)
 			}
 		})
+	}
+}
+
+func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
+	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy: ${{ fromJSON('{\"matrix\":{\"os\":[\"ubuntu-latest\"]}}') }}\n    steps:\n      - run: echo ${{ matrix.os }}\n"
+	content := []byte(source)
+	document := documentparse.Workflow("matrix-proof.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
+	}
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := snapshots.Document("matrix-proof.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runners, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, ok := snapshot.Workflow()
+	if !ok {
+		t.Fatal("source snapshot has no workflow")
+	}
+	rule := New(Dependencies{SourceSnapshot: snapshot, Runners: runners}, Options{})
+	if err := rule.VisitWorkflowPre(workflow); err != nil {
+		t.Fatal(err)
+	}
+	job := workflow.Jobs["test"]
+	if err := rule.VisitJobPre(job); err != nil {
+		t.Fatal(err)
+	}
+	if got := rule.matrixTy.Props["os"].String(); got != "string" {
+		t.Fatalf("matrix.os type = %s, want string", got)
+	}
+	if got := rule.matrixScriptSafe["matrix.os"]; got != scriptLiteralWord {
+		t.Fatalf("matrix.os script proof = %v, want literal word", got)
+	}
+	if err := rule.VisitStep(job.Steps[0]); err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range rule.Findings() {
+		if finding.Rule == "script-interpolation" {
+			t.Fatalf("known matrix word reported unsafe: %v", finding)
+		}
 	}
 }
 
@@ -178,7 +222,7 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			proofs := safeMatrixScriptReferences(workflow.Jobs["test"].Strategy.Matrix)
+			proofs := safeMatrixScriptReferences(matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
 			if got := proofs[tc.path]; got != tc.want {
 				t.Fatalf("proof for %s = %v, want %v (all proofs: %v)", tc.path, got, tc.want, proofs)
 			}
@@ -292,11 +336,7 @@ func TestNestedMatrixScriptInterpolation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo '${{ matrix.target.name }}'\n"
-			workflow, errors := workflowlang.Parse([]byte(source))
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			rule := newTestChecker()
+			rule, workflow := newTestCheckerForSource(t, source)
 			job := workflow.Jobs["test"]
 			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
 				if err != nil {

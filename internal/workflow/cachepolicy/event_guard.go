@@ -8,7 +8,6 @@ import (
 )
 
 // cacheReachableEvents removes only events for which the job condition is false.
-// Other context values and unsupported expressions remain unknown.
 func cacheReachableEvents(events []string, job *workflowlang.Job) []string {
 	if job.If == nil {
 		return events

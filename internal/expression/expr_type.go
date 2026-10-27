@@ -188,9 +188,9 @@ type ObjectType struct {
 	DisplayName string
 	// Props is map from properties name to their Type.
 	Props map[string]Type
-	// PropertyNames retains canonical spelling when it differs from the lookup key.
+	// PropertyNames maps normalized lookup keys to their display spelling.
 	PropertyNames map[string]string
-	// EventVariants retains trigger/action correlations behind a payload projection.
+	// EventVariants supplies the trigger-specific payloads used for guard narrowing.
 	EventVariants []EventVariant
 	// Mapped is an element Type of this object. This means all props have the Type. For example,
 	// The element Type of env context is String.
@@ -223,8 +223,7 @@ func NewStrictObjectType(props map[string]Type) *ObjectType {
 	return &ObjectType{Props: props}
 }
 
-// Named contexts use normalized keys; raw JSON objects retain their original
-// keys for structural validation, including case-collision diagnostics.
+// newNamedObjectType normalizes property names for case-insensitive context lookup.
 func newNamedObjectType(props map[string]Type) *ObjectType {
 	ty := NewEmptyStrictObjectType()
 	for name, t := range props {
@@ -359,9 +358,7 @@ func (ty *ObjectType) Assignable(other Type) bool {
 	}
 }
 
-// Merge merges two object types into one. When other object has unknown props, they are merged into
-// current object. When both have same property, when they are Assignable, it remains as-is.
-// Otherwise, the property falls back to any Type.
+// Merge unions object properties and recursively merges types for shared keys.
 func (ty *ObjectType) Merge(other Type) Type {
 	switch other := other.(type) {
 	case *ObjectType:
@@ -459,9 +456,7 @@ func (ty *ArrayType) Assignable(other Type) bool {
 	}
 }
 
-// Merge merges two object types into one. When other object has unknown props, they are merged into
-// current object. When both have same property, when they are Assignable, it remains as-is.
-// Otherwise, the property falls back to any Type.
+// Merge combines array element types, returning AnyType for non-array operands.
 func (ty *ArrayType) Merge(other Type) Type {
 	switch other := other.(type) {
 	case *ArrayType:

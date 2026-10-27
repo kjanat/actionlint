@@ -6,9 +6,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
-	"actionlint.kjanat.dev/v2/internal/workflow/schema"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 type DirectoryKind uint8
@@ -39,48 +38,39 @@ type Paths struct {
 	Reader            *fsread.Reader
 }
 
-func DirectoryValue(value *workflowlang.String) Directory {
-	if value == nil {
+func DirectoryValue(semantic value.Value) Directory {
+	if semantic.State() == value.Missing {
 		return Directory{}
 	}
-	if !value.ContainsExpression() {
-		return Directory{DirectoryKnown, value.Value}
+	if text, known := semantic.ScalarString(); known {
+		return Directory{DirectoryKnown, text}
 	}
-	if literal, known := workflowlang.WorkflowExpressionLiteral(value); known {
-		if text, ok := workflowlang.WorkflowScalarString(literal); ok {
-			return Directory{DirectoryKnown, text}
-		}
+	if semantic.State() != value.Dynamic {
+		return Directory{Kind: DirectoryUnknown}
 	}
 	return Directory{Kind: DirectoryUnknown}
 }
 
-func DefaultDirectory(defaults *workflowlang.Defaults) Directory {
-	if defaults == nil || defaults.Run == nil {
+func DefaultDirectory(defaults value.Value) Directory {
+	if defaults.State() == value.Missing {
 		return Directory{}
 	}
-	if defaults.Run.Expression == nil {
-		return DirectoryValue(defaults.Run.WorkingDirectory)
-	}
-	value, known := workflowlang.WorkflowExpressionLiteral(defaults.Run.Expression)
-	if !known || len(schema.LiteralErrors(schema.DefaultsRun, value, "defaults.run")) != 0 {
+	if !defaults.Known() {
 		return Directory{Kind: DirectoryUnknown}
 	}
-	if object, ok := value.(map[string]any); ok {
-		for key, field := range object {
-			if strings.EqualFold(key, "working-directory") {
-				if text, ok := workflowlang.WorkflowScalarString(field); ok {
-					return Directory{DirectoryKnown, text}
-				}
-				return Directory{Kind: DirectoryUnknown}
-			}
-		}
+	if defaults.Kind() != value.Object {
+		return Directory{Kind: DirectoryUnknown}
 	}
-	return Directory{}
+	field, present := defaults.Prop("working-directory")
+	if !present {
+		return Directory{}
+	}
+	return DirectoryValue(field)
 }
 
-func (paths Paths) EffectiveDirectory(run *workflowlang.ExecRun, jobDir, workflowDir Directory) Directory {
+func (paths Paths) EffectiveDirectory(runDirectory value.Value, jobDir, workflowDir Directory) Directory {
 	directory := Directory{DirectoryKnown, ""}
-	for _, candidate := range []Directory{paths.WorkingDirectory(run.WorkingDirectory), jobDir, workflowDir} {
+	for _, candidate := range []Directory{paths.WorkingDirectory(runDirectory), jobDir, workflowDir} {
 		if candidate.Kind != DirectoryUnspecified {
 			directory = candidate
 			break
@@ -94,12 +84,15 @@ func (paths Paths) EffectiveDirectory(run *workflowlang.ExecRun, jobDir, workflo
 	return directory
 }
 
-func (paths Paths) WorkingDirectory(value *workflowlang.String) Directory {
-	directory := DirectoryValue(value)
+func (paths Paths) WorkingDirectory(semantic value.Value) Directory {
+	directory := DirectoryValue(semantic)
 	if directory.Kind != DirectoryUnknown {
 		return directory
 	}
-	expression, ok := strings.CutPrefix(value.Value, "${{")
+	if semantic.State() != value.Dynamic {
+		return directory
+	}
+	expression, ok := strings.CutPrefix(semantic.Source(), "${{")
 	if !ok {
 		return directory
 	}

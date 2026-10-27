@@ -57,7 +57,6 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if _, err := project.SelectedLock(); err == nil || !strings.Contains(err.Error(), "plugin install") {
 		t.Fatalf("changed declaration accepted stale pin: %v", err)
 	}
-	// A remaining lock entry cannot activate a removed declaration, even offline.
 	if err := os.WriteFile(project.Manifest.Path, []byte("plugins: []\n"), 0600); err != nil {
 		t.Fatal(err)
 	}

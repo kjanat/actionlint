@@ -1,10 +1,6 @@
 package runner
 
-import (
-	"testing"
-
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-)
+import "testing"
 
 func TestRuleShellNameGetPlatformFromXcodeRunner(t *testing.T) {
 	testCases := []string{
@@ -15,8 +11,9 @@ func TestRuleShellNameGetPlatformFromXcodeRunner(t *testing.T) {
 
 	for _, label := range testCases {
 		t.Run(label, func(t *testing.T) {
-			runner := &workflowlang.Runner{Labels: []*workflowlang.String{{Value: label}}}
-			if got := PlatformOf(runner); got != MacOrLinux {
+			fixture := runnerWorkflow(t, label)
+			selection := fixture.Views["test"].RunsOn().Selection()
+			if got := PlatformOf(selection); got != MacOrLinux {
 				t.Fatalf("platform for runner label %q is %v, want %v", label, got, MacOrLinux)
 			}
 		})

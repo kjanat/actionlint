@@ -72,5 +72,5 @@ Formatting is handled from the repository root by [dprint](https://dprint.dev/).
 
 The [Pages workflow](../.github/workflows/pages.yml) builds the WASM and site from the same checkout and deploys `dist/`
 on pushes to `master` and after successful Release runs. Release-triggered builds use the current default branch with
-its tags. The source revision and latest published release remain separately labeled. See
+its tags. The UI labels the source revision and latest published release separately. See
 [CONTRIBUTING.md](../CONTRIBUTING.md) for more details.

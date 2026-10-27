@@ -8,7 +8,8 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // ParseActionOutline parses a standalone action manifest without reading files
@@ -46,10 +47,10 @@ func parsedActionOutline(path string, metadata *actionmeta.Metadata, parseErr er
 	return outline, parseErr
 }
 
-func actionOutlineFields(node *yaml.Node) map[string]*yaml.Node {
-	fields := map[string]*yaml.Node{}
+func actionOutlineFields(node *syntax.Node) map[string]*syntax.Node {
+	fields := map[string]*syntax.Node{}
 	node = actionmeta.Node(node)
-	if node != nil && node.Kind == yaml.MappingNode {
+	if node != nil && node.Kind == syntax.MappingNode {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			fields[strings.ToLower(actionmeta.Key(node.Content[i]))] = node.Content[i+1]
 		}
@@ -57,17 +58,17 @@ func actionOutlineFields(node *yaml.Node) map[string]*yaml.Node {
 	return fields
 }
 
-func actionOutlineString(node *yaml.Node) string {
+func actionOutlineString(node *syntax.Node) string {
 	if value := actionmeta.Scalar(node); value != nil {
 		return *value
 	}
 	return ""
 }
 
-func actionInputOutlines(node *yaml.Node) []documentmodel.Input {
+func actionInputOutlines(node *syntax.Node) []documentmodel.Input {
 	inputs := []documentmodel.Input{}
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind != yaml.MappingNode {
+	if node == nil || node.Kind != syntax.MappingNode {
 		return inputs
 	}
 	for i := 0; i+1 < len(node.Content); i += 2 {
@@ -78,9 +79,13 @@ func actionInputOutlines(node *yaml.Node) []documentmodel.Input {
 			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		}
 		if required := fields["required"]; required != nil {
-			var value *bool
-			if err := required.Decode(&value); err == nil {
-				input.Required = value
+			session, cursor, err := codec.Open(required)
+			if err == nil {
+				var value *bool
+				if err := cursor.Decode(&value); err == nil {
+					input.Required = value
+				}
+				session.Close()
 			}
 		}
 		inputs = append(inputs, input)
@@ -88,10 +93,10 @@ func actionInputOutlines(node *yaml.Node) []documentmodel.Input {
 	return inputs
 }
 
-func actionOutputOutlines(node *yaml.Node) []documentmodel.Output {
+func actionOutputOutlines(node *syntax.Node) []documentmodel.Output {
 	outputs := []documentmodel.Output{}
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind != yaml.MappingNode {
+	if node == nil || node.Kind != syntax.MappingNode {
 		return outputs
 	}
 	for i := 0; i+1 < len(node.Content); i += 2 {
@@ -105,7 +110,7 @@ func actionOutputOutlines(node *yaml.Node) []documentmodel.Output {
 	return outputs
 }
 
-func actionRunsOutline(node *yaml.Node) documentmodel.ActionRuns {
+func actionRunsOutline(node *syntax.Node) documentmodel.ActionRuns {
 	fields := actionOutlineFields(node)
 	using := actionOutlineString(fields["using"])
 	switch strings.ToLower(using) {
@@ -113,7 +118,7 @@ func actionRunsOutline(node *yaml.Node) documentmodel.ActionRuns {
 		return documentmodel.CompositeRuns{Steps: actionStepOutlines(fields["steps"])}
 	case "docker":
 		args := []string{}
-		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == yaml.SequenceNode {
+		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == syntax.SequenceNode {
 			for _, arg := range sequence.Content {
 				if value := actionmeta.Scalar(arg); value != nil {
 					args = append(args, *value)
@@ -138,10 +143,10 @@ func actionRunsOutline(node *yaml.Node) documentmodel.ActionRuns {
 	return documentmodel.UnknownRuns{Using: using}
 }
 
-func actionStepOutlines(node *yaml.Node) []documentmodel.Step {
+func actionStepOutlines(node *syntax.Node) []documentmodel.Step {
 	steps := []documentmodel.Step{}
 	node = actionmeta.Node(node)
-	if node == nil || node.Kind != yaml.SequenceNode {
+	if node == nil || node.Kind != syntax.SequenceNode {
 		return steps
 	}
 	for _, node := range node.Content {

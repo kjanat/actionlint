@@ -90,8 +90,8 @@ Linux amd64 and arm64 before uploading the draft assets. Container tests load th
 the manifest includes both archives and their image digests.
 
 Publication copies those archives with digest preservation; it never rebuilds the images. The CLI
-image retains its ordinary version tags. The compatibility image wraps the same ordinary binary with
-the shipped nine positional inputs and retains the GHCR tags `action-X.Y.Z`, `action-vX.Y`, `action-vX`,
+image uses version tags. The compatibility image wraps the same ordinary binary with
+the shipped nine positional inputs and uses the GHCR tags `action-X.Y.Z`, `action-vX.Y`, `action-vX`,
 and `action-latest`. Moving tags advance only when the release is latest for their scope.
 
 After publication, the runner resolves literal external `owner/repo@vX.Y.Z` and `owner/repo@COMMIT`

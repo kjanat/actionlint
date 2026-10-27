@@ -25,7 +25,7 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	defer cancel()
 	result, err := application.Analyze(ctx, application.Options{Tools: (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) {
 		cancel()
-		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`), nil
+		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`), nil
 	}}).Registrations()}, []workspace.Source{{Path: "cancelled.yml", Content: []byte(badWorkflow + `        shell: bash
       - run: print(1)
         shell: python
@@ -131,7 +131,7 @@ func TestAnalysisPartialAnalyzerHelper(t *testing.T) {
 	}
 	switch os.Args[separator+1] {
 	case "shellcheck":
-		fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`)
+		fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`)
 	default:
 		t.Fatalf("unexpected analyzer %q", os.Args[separator+1])
 	}

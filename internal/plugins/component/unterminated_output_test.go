@@ -25,7 +25,7 @@ func TestUnterminatedOutputRemainsBounded(t *testing.T) {
 					t.Fatalf("write=%d err=%v", n, err)
 				}
 				if len(writer.pending) > lineLimit || cap(writer.pending) > 2*lineLimit {
-					t.Fatalf("unterminated line retained len=%d cap=%d", len(writer.pending), cap(writer.pending))
+					t.Fatalf("unterminated line buffer len=%d cap=%d", len(writer.pending), cap(writer.pending))
 				}
 			}
 			if _, err := writer.Write([]byte("\n")); err != nil {

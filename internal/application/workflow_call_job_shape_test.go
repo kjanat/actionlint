@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
-
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
@@ -83,14 +81,14 @@ jobs:
 					}
 				}
 				for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-					cache := calls.NewCache(project.RootDir(), root, nil)
+					cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
 							source := caller
 							if name == "callee.yaml" {
 								source = callee
 							}
-							diagnostics, err := checkWithCaches(t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
+							diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -107,10 +105,8 @@ jobs:
 					}
 					check(diagnostics, true)
 				}
-				workflow, _ := documentparse.Parse(callee)
-				event, _ := workflow.FindWorkflowCallEvent()
-				cache := calls.NewCache(project.RootDir(), root, nil)
-				cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
+				seedCapturedWorkflow(t, cache, "callee.yaml", callee)
 				fromAST, _, _ := cache.Lookup("./callee.yaml")
 				fromFile, err := calls.ParseMetadata(callee)
 				if err != nil {

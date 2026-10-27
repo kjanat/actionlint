@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
@@ -47,15 +45,12 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, section, expression)
-					workflow, parseErrors := workflowlang.Parse([]byte(source))
-					if len(parseErrors) != 0 {
-						t.Fatal(parseErrors)
-					}
+					workflow, snapshot := matrixTestWorkflow(t, source)
 					cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: " + enabled + "}}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					rule := builtin.NewRuleMatrix()
+					rule := builtin.NewRuleMatrix(snapshot)
 					rule.SetConfig(cfg)
 					if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 						t.Fatal(err)
@@ -141,15 +136,12 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, section, tc.filter)
-				workflow, parseErrors := workflowlang.Parse([]byte(source))
-				if len(parseErrors) != 0 {
-					t.Fatal(parseErrors)
-				}
+				workflow, snapshot := matrixTestWorkflow(t, source)
 				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := builtin.NewRuleMatrix()
+				rule := builtin.NewRuleMatrix(snapshot)
 				rule.SetConfig(cfg)
 				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
@@ -213,15 +205,12 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, section, expression)
-				workflow, parseErrors := workflowlang.Parse([]byte(source))
-				if len(parseErrors) != 0 {
-					t.Fatal(parseErrors)
-				}
+				workflow, snapshot := matrixTestWorkflow(t, source)
 				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := builtin.NewRuleMatrix()
+				rule := builtin.NewRuleMatrix(snapshot)
 				rule.SetConfig(cfg)
 				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
@@ -294,17 +283,14 @@ jobs:
     steps:
       - run: echo ok
 `
-				workflow, parseErrors := workflowlang.Parse([]byte(source))
-				if len(parseErrors) != 0 {
-					t.Fatal(parseErrors)
-				}
+				workflow, snapshot := matrixTestWorkflow(t, source)
 				job := workflow.Jobs["test"]
 				originalMatrix := job.Strategy.Matrix
 				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := builtin.NewRuleMatrix()
+				rule := builtin.NewRuleMatrix(snapshot)
 				rule.SetConfig(cfg)
 				if err := rule.VisitJobPre(job); err != nil {
 					t.Fatal(err)

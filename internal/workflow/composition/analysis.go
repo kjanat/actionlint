@@ -14,37 +14,48 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/checks"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 type Options struct {
-	Runners                          *runnerlang.Knowledge
-	ScriptInputs                     []analyzer.ScriptInput
-	ScriptInputsForConfig            func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
-	Context                          context.Context
-	Actions                          *actionlocal.Resolver
-	Rules                            []workflowvisit.Rule
-	Scripts                          scriptexecution.Service
-	Paths                            execution.Paths
-	Config                           *repoconfig.Config
-	ConfigForFile                    func(string) (*repoconfig.Config, error)
+	Budget          *invocation.Budget
+	SourceSnapshots *documentparse.SourceSnapshots
+	Runners         *runnerlang.Knowledge
+	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
+	ScriptInputs []analyzer.ScriptInput
+	// ScriptInputsForConfig loads lazily once per immutable config, including nil.
+	ScriptInputsForConfig func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
+	Context               context.Context
+	Actions               *actionlocal.Resolver
+	Rules                 []workflowvisit.Rule
+	Scripts               scriptexecution.Service
+	Paths                 execution.Paths
+	Config                *repoconfig.Config
+	// ConfigForFile resolves each logical manifest path once, including no-script scopes.
+	ConfigForFile func(string) (*repoconfig.Config, error)
+	// CollectScripts supplies execution units. Registration, selector errors and
+	// script budgets apply even when no script analyzer consumes the occurrences.
 	CollectScripts, ResolveExecution bool
 	Join                             func() error
 	Debug                            io.Writer
 }
 
 type Result struct {
-	Findings                         []*findingmodel.Finding
-	Batch                            scriptexecution.Batch
-	CollectScripts, ResolveExecution bool
-	Sources                          map[string][]byte
-	Configs                          map[string]*repoconfig.Config
+	Findings         []*findingmodel.Finding
+	EntrySnapshot    *documentparse.SourceSnapshot
+	Batch            scriptexecution.Batch
+	ResolveExecution bool
+	Sources          map[string][]byte
+	SourceDocuments  map[string]actionlocal.SourceDocument
+	// Configs is keyed by logical manifest path.
+	Configs map[string]*repoconfig.Config
 }
 
 type Service struct{ options Options }
@@ -52,8 +63,18 @@ type Service struct{ options Options }
 func New(options Options) *Service { return &Service{options: options} }
 
 // Workflow enters the workflow pass lifecycle. Action never uses this path.
-func (s *Service) Workflow(w *workflowlang.Workflow) (Result, error) {
+func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, error) {
 	return s.analyze(func(c *compositeAnalyzer) error {
+		if snapshot == nil {
+			return errors.New("workflow source snapshot is unavailable")
+		}
+		w, available := snapshot.Workflow()
+		if !available {
+			return errors.New("workflow source snapshot has no workflow declarations")
+		}
+		if err := c.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
+			return err
+		}
 		v := engine.NewVisitor()
 		v.Hooks = engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout}
 		for _, pass := range s.options.Rules {
@@ -64,8 +85,19 @@ func (s *Service) Workflow(w *workflowlang.Workflow) (Result, error) {
 	})
 }
 
-func (s *Service) Action(metadata *actionmeta.Metadata) (Result, error) {
-	return s.analyze(func(c *compositeAnalyzer) error { return visitStandaloneAction(metadata, s.options.Rules, c) })
+func (s *Service) Action(snapshot *documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
+	return s.analyze(func(c *compositeAnalyzer) error {
+		if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+			return errors.New("action source snapshot is unavailable")
+		}
+		if metadata == nil {
+			return errors.New("action metadata is unavailable")
+		}
+		if err := c.startEntry(invocation.EntryAction, snapshot); err != nil {
+			return err
+		}
+		return visitStandaloneAction(metadata, deployment, s.options.Rules, c)
+	})
 }
 
 func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, err error) {
@@ -97,22 +129,51 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 		runners:      options.Runners,
 		scriptConfig: options.Config, scriptPaths: options.Paths,
 		collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
+		budget:                invocation.DefaultBudget(),
 		scriptInputs:          scriptInputs,
 		scriptInputsForConfig: options.ScriptInputsForConfig,
+		scriptCatalogues:      map[*repoconfig.Config][]analyzer.ScriptInput{},
+		sourceSnapshots:       options.SourceSnapshots,
+	}
+	if options.Budget != nil {
+		c.budget = *options.Budget
 	}
 	if options.ConfigForFile != nil {
 		c.configForFile = func(path string) (*repoconfig.Config, error) {
-			config, err := options.ConfigForFile(path)
-			if err == nil {
-				configs[path] = config
+			if config, exists := configs[path]; exists {
+				return config, nil
 			}
-			return config, err
+			config, err := options.ConfigForFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("load configuration for action %q: %w", path, err)
+			}
+			configs[path] = config
+			return config, nil
 		}
 	}
 	err = visit(c)
-	batch := scriptexecution.Batch{Scopes: c.scriptScopes, Scripts: c.scripts}
-	findings, scriptErr := options.Scripts.Run(options.Context, batch)
-	err = errors.Join(err, scriptErr, join())
+	err = c.interrupt(err)
+	var graph invocation.Graph
+	if c.invocations != nil {
+		var publishErr error
+		graph, publishErr = c.invocations.Publish()
+		err = errors.Join(err, publishErr)
+	}
+	var batch scriptexecution.Batch
+	var findings []*findingmodel.Finding
+	if graph.Has(graph.RootID()) {
+		var prepareErr error
+		batch, prepareErr = scriptexecution.NewBatch(graph, scriptexecution.Collection{
+			Declarations: c.sourceSnapshots, Scopes: c.scriptScopes, Scripts: c.scripts, Collected: c.collectScripts,
+		})
+		err = errors.Join(err, prepareErr)
+		if prepareErr == nil {
+			var scriptErr error
+			findings, scriptErr = options.Scripts.Run(options.Context, batch)
+			err = errors.Join(err, scriptErr)
+		}
+	}
+	err = errors.Join(err, join())
 	joined = true
 	for _, r := range options.Rules {
 		findings = append(findings, r.Errs()...)
@@ -130,7 +191,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 			}
 		}
 	}
-	return Result{Findings: findings, Batch: batch, CollectScripts: c.collectScripts, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), Configs: configs}, err
+	return Result{Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), SourceDocuments: options.Actions.SourceDocuments(), Configs: configs}, err
 }
 
 func scriptInputCatalogue(additional []analyzer.ScriptInput) ([]analyzer.ScriptInput, error) {

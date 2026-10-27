@@ -6,8 +6,8 @@ import (
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 func TestConstantPredicateNumericCoercion(t *testing.T) {
@@ -34,12 +34,12 @@ func TestConstantPredicateNumericCoercion(t *testing.T) {
 			if expr == nil {
 				t.Fatal("invalid expression fixture")
 			}
-			value, known := exprlang.ConditionConstantValue(expr)
-			if !known || value != tc.want {
-				t.Fatalf("value=%v known=%v, want %v", value, known, tc.want)
+			constant, known := exprlang.ConditionConstantValue(expr)
+			if !known || constant != tc.want {
+				t.Fatalf("value=%v known=%v, want %v", constant, known, tc.want)
 			}
 			for _, condition := range []string{tc.expression, "${{ " + tc.expression + " }}"} {
-				if enabled, known := execution.Condition(&workflowlang.String{Value: condition}); !known || enabled != tc.want {
+				if enabled, known := execution.Condition(value.Condition(condition, value.Origin{})); !known || enabled != tc.want {
 					t.Fatalf("invocation=%v known=%v, want %v", enabled, known, tc.want)
 				}
 			}

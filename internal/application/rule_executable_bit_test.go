@@ -734,6 +734,6 @@ jobs:
 		t.Fatal(err)
 	}
 	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }) {
-		t.Fatalf("session retained stale Git index: %+v", result.Diagnostics)
+		t.Fatalf("session reused stale Git index: %+v", result.Diagnostics)
 	}
 }

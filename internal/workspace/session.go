@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
 
-// Source retains both diagnostic spelling and the actual input path.
+// Source associates the displayed path with the file read for analysis.
 type Source struct {
 	Path      string
 	Content   []byte
@@ -45,7 +45,7 @@ type Options struct {
 	LogWriter                             io.Writer
 }
 
-// Session retains repository/configuration caches across input selections.
+// Session shares repository and configuration lookups across input selections.
 type Session struct {
 	projects *Projects
 	// DefaultConfig is an explicit in-memory configuration override for legacy callers.
@@ -171,8 +171,7 @@ func (a *Session) discoveredFiles(paths, metadata []string, project *Project) (*
 	a.selectionLog("Collected", len(paths), "YAML files")
 	result, err := a.Files(paths, project)
 	if result != nil {
-		// Discovery candidates remain protected from report replacement even
-		// when configuration excludes them from reading and analysis.
+		// Protect excluded discovery candidates from report replacement too.
 		inputs := &Inputs{}
 		for _, path := range result.Inputs {
 			inputs.Add(path)
@@ -289,9 +288,13 @@ func (a *Session) ReadStdin(stdin io.Reader, normalizePath bool) (*Selection, er
 
 func (a *Session) Content(path string, content []byte, project *Project, normalizePath bool) (*Selection, error) {
 	if project == nil && path != "<stdin>" {
-		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		discoveryPath := path
+		if !filepath.IsAbs(discoveryPath) {
+			discoveryPath = filepath.Join(a.cwd, discoveryPath)
+		}
+		if _, err := os.Stat(discoveryPath); !errors.Is(err, os.ErrNotExist) {
 			var err error
-			project, err = a.projects.At(path)
+			project, err = a.projects.At(discoveryPath)
 			if err != nil {
 				return nil, err
 			}
@@ -321,8 +324,7 @@ func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Select
 		}
 		sources[i].Config = cfg
 	}
-	// Include the projects used during selection, without retaining unrelated
-	// configurations cached by an earlier invocation of this session.
+	// Report only projects used by this input selection.
 	projects := make([]*Project, 0, len(sources)+len(configProjects))
 	projects = append(projects, configProjects...)
 	for _, source := range sources {

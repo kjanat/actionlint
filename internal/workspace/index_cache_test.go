@@ -143,7 +143,7 @@ func TestGitModesIntentToAdd(t *testing.T) {
 	}
 	for _, name := range []string{"intent.sh", "intent with spaces.sh", "deleted-intent.sh"} {
 		if mode := snapshot.Modes[name]; mode != "" {
-			t.Errorf("intent-to-add %q retained mode %s", name, mode)
+			t.Errorf("intent-to-add %q kept mode %s", name, mode)
 		}
 	}
 	for _, name := range []string{"bad.sh", "staged-empty.sh"} {
@@ -176,7 +176,7 @@ func TestGitModesIntentToAddAfterRemoval(t *testing.T) {
 	}
 	for _, name := range []string{"bad.sh", "empty.sh"} {
 		if mode := snapshot.Modes[name]; mode != "" {
-			t.Errorf("removed HEAD path %q re-added with intent retained mode %s", name, mode)
+			t.Errorf("removed HEAD path %q re-added with intent-to-add mode %s", name, mode)
 		}
 	}
 	if mode := snapshot.Modes["good.sh"]; mode != "100755" {

@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// Read only the selector; ShellCheck remains responsible for validating flags.
 // Options consuming a value must be skipped before looking for another selector.
 func shellcheckDialectOption(args []string) (string, bool) {
 	var dialect string

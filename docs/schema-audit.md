@@ -1,6 +1,6 @@
 # GitHub Actions schema audit
 
-Audit date: 2026-09-13. The work started from detached commit [`kjanat/actionlint@adeac5c`] in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and retained linter policy.
+Audit date: 2026-09-13. The work started from detached commit [`kjanat/actionlint@adeac5c`] in an isolated checkout. This report separates official schema coverage, additional runner conversion rules, and existing linter policy.
 
 ## Coverage and authorities
 
@@ -18,7 +18,7 @@ Workflow support now includes root description, cancellation timeouts, correct r
 
 Action metadata validation retains raw schema structure while checking Docker/JavaScript/composite/internal-plugin variants, required properties and field types. Generated manifest constraints have a pinned schema fixture. Docker lifecycle conditions and env contexts, composite scalar conversion, step IDs, insertion recursion and explicit tags are checked. Metadata input checks permit a dynamic workflow with mapping without inventing missing inputs.
 
-## Retained differences
+## Differences
 
 The detailed reports distinguish unsupported legacy/internal event names, intentional nonempty/no-op checks, numeric/boolean type strictness, source-version disagreements and opaque runtime expression values. Known conformance differences remain reviewable in [the exact diagnostic baseline]. Runtime expression evaluation, external action behavior and GitHub-hosted workflow execution were not tested by dispatching workflows.
 

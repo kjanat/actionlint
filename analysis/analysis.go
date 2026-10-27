@@ -44,6 +44,7 @@ type Tool struct {
 
 // Options controls configuration, external tools and filesystem access.
 // ReadFile must support concurrent calls. It does not sandbox external tools.
+// A nil read error promises complete content, including when cancellation races.
 type Options struct {
 	Runners   runner.Options
 	Resolver  resolver.Resolver
@@ -51,7 +52,7 @@ type Options struct {
 	// LoadScriptEngine authorizes configuration-selected Wasm engines. Nil disables
 	// them. Calls receive resolved paths and may be concurrent. Each analysis loads
 	// each path once and closes returned backends implementing Close(context.Context) error.
-	// Explicit Tool selections take precedence. Native processes remain disabled.
+	// Explicit Tool selections take precedence.
 	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 	// WorkingDir roots source paths, config selection and local references.
 	// Empty uses the process working directory; Analyze does not discover config.

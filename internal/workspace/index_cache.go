@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// IndexSnapshot retains a repository observation, including read failures.
+// IndexSnapshot is the result of reading a repository's Git index.
 type IndexSnapshot struct {
 	GitIndex
 	Err error

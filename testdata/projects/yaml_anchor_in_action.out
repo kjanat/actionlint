@@ -1,1 +1,7 @@
+/action/action\.yaml:3:14: YAML anchors are not supported in action metadata; remove anchor "description" \[action\]/
+/action/action\.yaml:6:8: YAML anchors are not supported in action metadata; remove anchor "input" \[action\]/
+/action/action\.yaml:7:18: YAML aliases are not supported in action metadata; replace alias "description" \[action\]/
+/action/action\.yaml:8:8: YAML aliases are not supported in action metadata; replace alias "input" \[action\]/
+/action/action\.yaml:12:18: YAML aliases are not supported in action metadata; replace alias "description" \[action\]/
+/action/action\.yaml:20:7: YAML aliases are not supported in action metadata; replace alias "description" \[action\]/
 workflows/test.yaml:9:23: interpolated value may contain characters that change script syntax; pass it through an environment variable and read that variable as data instead. surrounding quotes do not prevent template substitution [script-interpolation]

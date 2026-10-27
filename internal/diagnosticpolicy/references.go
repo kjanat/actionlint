@@ -1,6 +1,7 @@
 package diagnosticpolicy
 
 import (
+	"slices"
 	"strings"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -8,14 +9,17 @@ import (
 )
 
 // InferReferences enriches completed findings from source indexes supplied by the caller.
-// Explicit provider references and raw script positions retain their own identities.
-func InferReferences(all []*findingmodel.Finding, path string, references map[string]workflowfacts.References) {
+func InferReferences(all []*findingmodel.Finding, path string, references map[string]workflowfacts.References, entryAliases ...string) {
 	for _, finding := range all {
+		if finding.UnavailableSource.Present() {
+			finding.Reference, finding.Fixes = nil, nil
+			continue
+		}
 		if finding.Reference != nil {
 			continue
 		}
 		filename := path
-		if finding.Source != nil && finding.Path != "" {
+		if finding.Path != "" && finding.Path != path && !slices.Contains(entryAliases, finding.Path) {
 			filename = finding.Path
 		}
 		refs, ok := references[filename]

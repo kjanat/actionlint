@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 )
 
 func TestSourcedShellcheckPhysicalLines(t *testing.T) {
@@ -13,13 +14,13 @@ func TestSourcedShellcheckPhysicalLines(t *testing.T) {
 	const first = "echo first\u2028still-first\u0085same-line\u2029same-line"
 	const second = "echo $VALUE"
 	content := []byte(first + "\n" + second + "\n")
-	rule := &shellcheckRun{}
+	rule := newShellcheckRunForTest(&externalCommand{})
 	for line, want := range []string{first, second} {
-		finding := rule.sourcedDiagnostic(shellcheckError{File: path, Line: line + 1, Column: 1, Code: 2086, Message: "Quote expansion"}, "", map[string][]byte{path: content})
+		finding := rule.sourcedDiagnostic(shellcheckError{File: path, Line: line + 1, Column: 1, Code: 2086, Message: "Quote expansion"}, "", map[string]reportedSource{path: {content: content}})
 		if !finding.rawScriptSource {
 			t.Fatal("sourced checker did not select raw script coordinates")
 		}
-		if got, ok := render.SourceLine(content, finding.Start.Line, finding.rawScriptSource); !ok || got != want {
+		if got, ok := sourcemap.DiagnosticLine(content, finding.Start.Line, finding.rawScriptSource); !ok || got != want {
 			t.Fatalf("line %d = %q, %v; want %q", line+1, got, ok, want)
 		}
 		view := render.FindingOf(finding.Diagnostic, finding.source)

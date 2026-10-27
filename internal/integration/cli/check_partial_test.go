@@ -190,6 +190,6 @@ func TestCheckPartialAnalyzerHelper(t *testing.T) {
 	if strings.Contains(string(script), "FAIL_ANALYZER") {
 		os.Exit(2)
 	}
-	fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"retained ShellCheck finding"}]}`)
+	fmt.Fprintln(os.Stdout, `{"comments":[{"line":2,"endLine":2,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`)
 	os.Exit(0)
 }

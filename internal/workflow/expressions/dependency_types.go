@@ -22,7 +22,7 @@ func (rule *Checker) getActionOutputsType(spec *workflowlang.String) *exprlang.O
 	if strings.HasPrefix(localSpec, "./") {
 		meta, err := rule.actionMetadata(spec.Value)
 		if err != nil {
-			// The action rule owns metadata failures; outputs remain unknown.
+			// The action rule reports metadata failures.
 			rule.debug("Could not infer action outputs: %v", err)
 			return exprlang.NewMapObjectType(exprlang.StringType{})
 		}
@@ -55,7 +55,7 @@ func (rule *Checker) getWorkflowCallOutputsType(call *workflowlang.WorkflowCall)
 
 	m, err := rule.workflowMetadata(call.Uses.Value)
 	if err != nil {
-		// The workflow-call rule owns metadata failures; outputs remain unknown.
+		// The workflow-call rule reports metadata failures.
 		rule.debug("Could not infer workflow outputs: %v", err)
 		return exprlang.NewMapObjectType(exprlang.StringType{})
 	}

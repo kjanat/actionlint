@@ -199,10 +199,10 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 				continue
 			}
 			if !ok || !endOK {
-				start, end = script.Key, nil
+				start, endOK = *script.Key, false
 			}
 			finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: d.Message, Code: d.Code, Severity: d.Severity, DocumentationURL: d.URL, Start: diagnostic.Position{Line: start.Line, Column: start.Col}, Script: i, Content: script.Content}
-			if end != nil {
+			if endOK {
 				finding.End = diagnostic.Position{Line: end.Line, Column: end.Col}
 			}
 			out = append(out, finding)

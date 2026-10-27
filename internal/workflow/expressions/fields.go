@@ -1,6 +1,8 @@
 package expressions
 
 import (
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -8,7 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
-	"actionlint.kjanat.dev/v2/internal/yamlscalar"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
+	yamlSchema "actionlint.kjanat.dev/v2/internal/yaml/schema"
 )
 
 func (rule *Checker) checkOneExpression(s *workflowlang.String, what, workflowKey string) exprlang.Type {
@@ -97,19 +100,48 @@ func (rule *Checker) checkNumberExpression(s *workflowlang.String, what, workflo
 	rule.checkNumberTy(ty, s.Pos, what)
 }
 
-func (rule *Checker) checkActionInputs(inputs *mapping.Inputs[*workflowlang.String], uses *workflowlang.String) {
+func (rule *Checker) checkActionInputs(execAction *workflowlang.ExecAction, uses *workflowlang.String) {
 	const key = "jobs.<job_id>.steps.with"
-	var action string
+	var actionSpec string
 	if uses != nil {
-		action = uses.Value
+		actionSpec = uses.Value
 	}
-	workflowlang.InputResolver.Check(inputs, action, mapping.Checks[*workflowlang.String]{
-		Mapping: func(source *workflowlang.String) {
-			rule.checkWorkflowExpression(source, "with", key, schema.StringMap)
-		},
-		String: func(source *workflowlang.String) { rule.checkString(source, key) },
-		Script: func(source *workflowlang.String) { rule.checkScriptString(source, key) },
-	})
+	if execAction == nil {
+		return
+	}
+	var checkMapping func(*workflowlang.ActionInputMapping)
+	checkMapping = func(inputs *workflowlang.ActionInputMapping) {
+		if inputs == nil {
+			return
+		}
+		if inputs.Expression != nil {
+			rule.checkWorkflowExpression(inputs.Expression, "with", key, schema.StringMap)
+		}
+		for _, sourceName := range slices.Sorted(maps.Keys(inputs.Inputs)) {
+			input := inputs.Inputs[sourceName]
+			if input == nil {
+				continue
+			}
+			if input.Name != nil {
+				rule.checkString(input.Name, key)
+			}
+			name := workflowlang.SemanticValue(input.Name)
+			if input.Name == nil {
+				name = value.YAMLScalar(sourceName, workflowlang.YamlTagStr, value.Origin{})
+			}
+			canonical, state := mapping.ResolveKey(name)
+			isScriptAction := strings.HasPrefix(actionSpec, "actions/github-script@")
+			if isScriptAction && (state == mapping.UnknownKey || state == mapping.KnownKey && strings.EqualFold(canonical, "script")) {
+				rule.checkScriptString(input.Value, key)
+			} else {
+				rule.checkString(input.Value, key)
+			}
+		}
+		for _, insertion := range inputs.Insertions {
+			checkMapping(insertion)
+		}
+	}
+	checkMapping(&workflowlang.ActionInputMapping{Inputs: execAction.Inputs, Expression: execAction.InputsExpression, Insertions: execAction.InputInsertions})
 }
 
 func (rule *Checker) checkEnv(env *workflowlang.Env, workflowKey string) {
@@ -117,12 +149,25 @@ func (rule *Checker) checkEnv(env *workflowlang.Env, workflowKey string) {
 		return
 	}
 
-	workflowlang.InputResolver.Check(workflowlang.EnvMappingView(env), "", mapping.Checks[*workflowlang.String]{
-		Mapping: func(source *workflowlang.String) {
-			rule.checkWorkflowExpression(source, "env", workflowKey, schema.StringMap)
-		},
-		String: func(source *workflowlang.String) { rule.checkString(source, workflowKey) },
-	})
+	var checkValues func(*workflowlang.Env)
+	checkValues = func(current *workflowlang.Env) {
+		if current == nil {
+			return
+		}
+		if current.Expression != nil {
+			rule.checkWorkflowExpression(current.Expression, "env", workflowKey, schema.StringMap)
+		}
+		for _, variable := range current.Vars {
+			if variable != nil {
+				rule.checkString(variable.Name, workflowKey)
+				rule.checkString(variable.Value, workflowKey)
+			}
+		}
+		for _, insertion := range current.Insertions {
+			checkValues(insertion)
+		}
+	}
+	checkValues(env)
 }
 
 func (rule *Checker) checkContainer(c *workflowlang.Container, workflowKey, childWorkflowKeyPrefix string) {
@@ -177,8 +222,7 @@ func (rule *Checker) checkConcurrency(c *workflowlang.Concurrency, workflowKey s
 	if c.Queue == nil || c.CancelInProgress == nil {
 		return
 	}
-	// Literal YAML conflicts are diagnosed by the parser. Resolve known
-	// expression values here, retaining unknown values for runtime validation.
+	// The parser diagnoses literal YAML conflicts; check evaluated expressions here.
 	if !c.Queue.ContainsExpression() && c.CancelInProgress.Expression == nil {
 		return
 	}
@@ -375,8 +419,7 @@ func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) [
 	if !ok {
 		return nil
 	}
-	// Contextless schema definitions reject expressions. The runner folds a sole
-	// string literal expression into a string, but interpolation remains an expression.
+	// Static fields accept a single string literal expression after template folding.
 	if workflowKey == "" && len(ts) > 0 && (len(ts) != 1 || !str.IsExpressionAssigned()) {
 		rule.Error(str.Pos, "expressions are not allowed in this static workflow field")
 		return nil
@@ -494,42 +537,38 @@ func (rule *Checker) checkRawYAMLString(y *workflowlang.RawYAMLString) exprlang.
 
 	switch y.Tag {
 	case workflowlang.YamlTagBool:
-		if yamlscalar.IsCoreSchemaBool(y.Value) {
+		if yamlSchema.IsCoreSchemaBool(y.Value) {
 			return exprlang.BoolType{}
 		}
 	case workflowlang.YamlTagNull:
-		if yamlscalar.IsCoreSchemaNull(y.Value) {
+		if yamlSchema.IsCoreSchemaNull(y.Value) {
 			return exprlang.NullType{}
 		}
 	case workflowlang.YamlTagInt, workflowlang.YamlTagFloat:
-		if yamlscalar.IsCoreSchemaNumber(y.Value) {
+		if yamlSchema.IsCoreSchemaNumber(y.Value) {
 			return exprlang.NumberType{}
 		}
 	}
 	return exprlang.StringType{}
 }
 
-func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key string, shape schema.Shape) exprlang.Type {
+func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key string, shape schema.Shape) {
 	if s == nil {
-		return nil
+		return
 	}
 	ty := rule.checkOneExpression(s, what, key)
 	if ty == nil {
-		return nil
+		return
 	}
 	errors := shape.ValidateType(ty, what)
-	// Inferred array elements can merge to AnyType. Retain known JSON values for
+	// Inferred arrays can lose element types to AnyType; known JSON values allow
 	// per-element and literal constraint checks.
 	if len(errors) == 0 {
 		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
 			errors = schema.LiteralErrors(shape, value, what)
-			if len(errors) == 0 {
-				ty = exprlang.TypeOfJSONValue(value)
-			}
 		}
 	}
 	for _, message := range errors {
 		rule.Error(s.Pos, message)
 	}
-	return ty
 }

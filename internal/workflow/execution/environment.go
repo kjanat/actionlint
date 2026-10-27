@@ -1,14 +1,17 @@
 package execution
 
 import (
+	"slices"
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/mapping"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 // CheckoutEnvironmentUnknown reports settings that can make checkout differ from the local index.
-func CheckoutEnvironmentUnknown(env *workflowlang.Env, platform runnerlang.Platform) bool {
+func CheckoutEnvironmentUnknown(env mapping.Mapping, platform runnerlang.Platform) bool {
 	return EnvironmentContains(env, platform, func(name, value string, known bool) bool {
 		if LoaderEnvironmentUnknown(name, value, known) {
 			return true
@@ -32,53 +35,32 @@ func CheckoutEnvironmentUnknown(env *workflowlang.Env, platform runnerlang.Platf
 }
 
 // EnvironmentContains evaluates mapping expressions once and tests their literal names and values.
-func EnvironmentContains(env *workflowlang.Env, platform runnerlang.Platform, matches func(string, string, bool) bool) bool {
-	if env == nil {
-		return false
-	}
+func EnvironmentContains(env mapping.Mapping, platform runnerlang.Platform, matches func(string, string, bool) bool) bool {
 	check := func(name, value string, known bool) bool {
 		if platform != runnerlang.MacOrLinux {
 			name = strings.ToUpper(name)
 		}
 		return matches(name, value, known)
 	}
-	if env.Expression != nil {
-		literal, known := workflowlang.WorkflowExpressionLiteral(env.Expression)
-		object, isObject := literal.(map[string]any)
-		if !known || !isObject {
-			return true
-		}
-		for name, value := range object {
-			text, scalar := workflowlang.WorkflowScalarString(value)
-			if check(name, text, scalar) {
-				return true
-			}
-		}
+	if !env.Complete() {
+		return true
 	}
-	for _, variable := range env.Vars {
-		name, known := EnvironmentLiteral(variable.Name)
-		if !known {
-			return true
-		}
-		value, known := EnvironmentLiteral(variable.Value)
-		if check(name, value, known) {
-			return true
-		}
-	}
-	for _, insertion := range env.Insertions {
-		if EnvironmentContains(insertion, platform, matches) {
+	for name, item := range env.Entries() {
+		text, known := EnvironmentLiteral(item)
+		if check(name, text, known) {
 			return true
 		}
 	}
 	return false
 }
 
-func UbuntuRunner(runner *workflowlang.Runner) bool {
-	if !runnerlang.Hosted(runner) {
+func UbuntuRunner(selection value.Value) bool {
+	if !runnerlang.Hosted(selection) {
 		return false
 	}
-	for _, label := range runnerlang.Labels(runner) {
-		if !strings.HasPrefix(strings.ToLower(label.Value), "ubuntu-") {
+	for _, label := range runnerlang.Labels(selection) {
+		name, known := label.Text()
+		if !known || !strings.HasPrefix(strings.ToLower(name), "ubuntu-") {
 			return false
 		}
 	}
@@ -99,46 +81,42 @@ func LoaderEnvironmentUnknown(name, value string, known bool) bool {
 }
 
 // EnvironmentLiteral returns the value of an environment entry, preserving expression results as data.
-func EnvironmentLiteral(value *workflowlang.String) (string, bool) {
-	if value == nil {
-		return "", false
-	}
-	if !value.ContainsExpression() {
-		return value.Value, true
-	}
-	literal, known := workflowlang.WorkflowExpressionLiteral(value)
-	if !known {
-		return "", false
-	}
-	return workflowlang.WorkflowScalarString(literal)
+func EnvironmentLiteral(semantic value.Value) (string, bool) {
+	return semantic.ScalarString()
 }
 
 // ServicesMayChangeWorkspace reports service mounts or options that can expose
 // the workspace even when the job itself does not run in a container.
-func ServicesMayChangeWorkspace(services *workflowlang.Services) bool {
-	if services == nil {
+func ServicesMayChangeWorkspace(services documentparse.ServicesView) bool {
+	if !services.Present() {
 		return false
 	}
-	if services.Expression != nil {
+	if services.Expression().Present() {
 		return true
 	}
-	for _, service := range services.Value {
-		container := service.Container
-		if container == nil || container.Expression != nil || container.VolumesExpression != nil || len(container.Volumes) != 0 ||
-			container.Options != nil && container.Options.Value != "" {
+	for _, service := range services.Value() {
+		container := service.Container()
+		if !container.Present() || container.Expression().Present() || container.VolumesExpression().Present() || len(slices.Collect(container.Volumes())) != 0 {
+			return true
+		}
+		if options := container.Options(); options.Present() && options.Value() != "" {
 			return true
 		}
 	}
 	return false
 }
 
-func MacOSRunner(runner *workflowlang.Runner) bool {
-	labels := runnerlang.Labels(runner)
+func MacOSRunner(selection value.Value) bool {
+	labels := runnerlang.Labels(selection)
 	if len(labels) == 0 {
 		return false
 	}
 	for _, label := range labels {
-		name := strings.ToLower(label.Value)
+		text, known := label.Text()
+		if !known {
+			return false
+		}
+		name := strings.ToLower(text)
 		if !strings.HasPrefix(name, "macos-") && !strings.HasPrefix(name, "xcode-") {
 			return false
 		}
@@ -146,11 +124,11 @@ func MacOSRunner(runner *workflowlang.Runner) bool {
 	return true
 }
 
-func ShellEnvironmentUnknown(env *workflowlang.Env) bool {
+func ShellEnvironmentUnknown(env mapping.Mapping) bool {
 	return ShellEnvironmentUnknownForPlatform(env, runnerlang.MacOrLinux)
 }
 
-func ShellEnvironmentUnknownForPlatform(env *workflowlang.Env, platform runnerlang.Platform) bool {
+func ShellEnvironmentUnknownForPlatform(env mapping.Mapping, platform runnerlang.Platform) bool {
 	return EnvironmentContains(env, platform, func(name, value string, known bool) bool {
 		if LoaderEnvironmentUnknown(name, value, known) {
 			return true
@@ -168,11 +146,11 @@ func ShellEnvironmentUnknownForPlatform(env *workflowlang.Env, platform runnerla
 	})
 }
 
-func ShellPathUnknown(env *workflowlang.Env) bool {
+func ShellPathUnknown(env mapping.Mapping) bool {
 	return ShellPathUnknownForPlatform(env, runnerlang.MacOrLinux)
 }
 
-func ShellPathUnknownForPlatform(env *workflowlang.Env, platform runnerlang.Platform) bool {
+func ShellPathUnknownForPlatform(env mapping.Mapping, platform runnerlang.Platform) bool {
 	return EnvironmentContains(env, platform, func(name, _ string, _ bool) bool {
 		return name == "PATH"
 	})

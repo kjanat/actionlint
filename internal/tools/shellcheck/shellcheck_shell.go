@@ -86,8 +86,8 @@ func (shell shellcheckShell) analysis() (dialect, setup string) {
 	return dialect, ""
 }
 
-// ShellCheck's hasSetE/hasPipefail checks retain enabling commands even after
-// later +e/+o overrides. Emit only the final enabled state.
+// ShellCheck's hasSetE/hasPipefail checks ignore later +e/+o overrides,
+// so startup options must describe the final enabled state.
 func shellcheckStartupOptions(options []string) string {
 	aliases := map[string]string{
 		"allexport": "a", "errexit": "e", "errtrace": "E", "functrace": "T",

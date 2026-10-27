@@ -9,7 +9,6 @@ import (
 )
 
 // Runtime describes a JavaScript runtime accepted by the runner's action metadata parser.
-// Removed means the runner no longer bundles its executable; the metadata value remains accepted.
 type Runtime struct {
 	Removed        bool
 	Deprecated     bool

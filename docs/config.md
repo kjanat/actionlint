@@ -99,7 +99,7 @@ files:
 Each path resolves relative to the file declaring it. Bases are applied in order,
 then the declaring file wins. Maps merge recursively; arrays and scalar values
 replace earlier values. `null` resets the selected setting. Inherited ShellCheck
-rc paths retain the directory of their declaring configuration.
+rc paths resolve relative to the configuration that declares them.
 
 Only local files are supported: no remote downloads, package resolution, or
 commands. Missing bases, cycles, invalid base settings, and chains deeper than
@@ -113,8 +113,7 @@ Top-level `files` controls which input files are analyzed, independently of lint
 rule settings. Patterns are repository-relative doublestar globs using `/`; when
 there is no repository, they are relative to the working directory. They filter
 selected inputs and do not discover additional files. Inside a Git repository,
-discovery honours Git's ignore rules, and `files.excludes` remains the explicit
-override.
+discovery honours Git's ignore rules. Use `files.excludes` for explicit exclusions.
 
 Omitted or `null` `includes` selects every input; `includes: []` selects none.
 `excludes` and include patterns starting with `!` exclude matches regardless of
@@ -142,8 +141,8 @@ overrides:
 
 Matching overrides merge in order, with later settings winning. Each entry needs
 at least one positive include pattern; exclusions affect that entry only.
-Each entry can overlay `lint` and `tools`. Tool settings merge independently of
-rule settings, retaining inherited options that the override leaves unspecified.
+Each entry can overlay `lint` and `tools`. Tool and rule settings merge independently;
+omitted options inherit their values.
 External tool provisioning uses each selected file's effective settings.
 
 ## Lint rules
@@ -171,7 +170,7 @@ lint:
         options: { max-minutes: 30 }
 ```
 
-Every catalog rule accepts `off`, `on` (retain its native severity), `info`, `warn`,
+Every catalog rule accepts `off`, `on` (use its native severity), `info`, `warn`,
 or `error`. Use `default` to reset a rule or group override to the applicable
 preset/group baseline. `true` is an alias for `on`, and `false` for `off`; a group also accepts `all` as shorthand for `{preset: all}`. `options: null` resets a rule's options. Empty strings are invalid. The object form requires `level` and accepts typed `options` only where
 the rule supports them. Unknown groups, rules, levels and option keys are rejected.
@@ -185,7 +184,7 @@ Global and group `preset` values are `recommended`, `all` (all stable rules), an
 `{level: warn, if-cond: error}`. Stable non-recommended rules are included
 by `all` or their group level, but not by `recommended`. Nursery rules need
 an explicit nursery group/rule selection or `--experimental`. `lint.enabled: false`
-suppresses all lint diagnostics. Configuration, I/O and other operational errors remain fatal.
+suppresses all lint diagnostics. Operational errors fail the analysis independently of rule levels.
 
 Resolution order is: rule defaults, global preset,
 CLI presets, group preset/level, individual rule settings, then explicit exclusion
@@ -228,7 +227,7 @@ lint:
 | `mixed-type-matrix-filters`   | Different scalar kinds in literal matrix include/exclude filters, including nested values. Boolean, number, null and string are distinct; all YAML numeric forms share one kind. |
 
 Unknown dynamic axes with boolean/numeric filters are also examined. Dynamic
-filter entries and wholly dynamic matrices remain outside that check's scope.
+filter entries and wholly dynamic matrices cannot be checked statically.
 See [expression behavior](expression-behavior.md) for evidence and limitations.
 
 ### Nursery
@@ -264,8 +263,8 @@ An entry needs at least one positive pattern. Any matching `!` exclusion wins
 within that entry, independent of order. Absolute paths and parent traversal are rejected.
 All matching entries apply in order; later values win. Mappings merge, lists
 replace, omitted fields inherit, and `null` resets a section to its defaults.
-Group and rule level shorthands retain their level when overlaid by a partial
-mapping. Rule object settings require `level`; omitted option keys inherit.
+Partial mappings override individual options of group and rule shorthands.
+Rule object settings require `level`; omitted option keys inherit.
 Each file gets its own effective configuration, without changing other files.
 
 ## Ruff
@@ -275,10 +274,10 @@ custom command beginning with either interpreter, including workflow/job shell
 defaults and local composite actions. New configurations and eligible legacy
 migrations declare the `ruff` Wasm plugin; normal checking loads its exact pinned
 artifact. See [plugin installation](plugins.md#install-from-the-registry).
-`--no-ruff` disables Ruff. Native execution remains available: a bare `--ruff`
+`--no-ruff` disables Ruff. A bare `--ruff`
 explicitly selects `ruff` on `PATH`, `--ruff=/path/to/ruff` selects a binary, and
 `--ruff='python -m ruff'` uses a Python module launcher. Without a selected plugin
-or explicit backend, the CLI retains optional `PATH` discovery and skips Ruff
+or explicit backend, the CLI searches `PATH` and skips Ruff
 when unavailable. It never executes the Python scripts being checked.
 
 ```yaml
@@ -296,7 +295,7 @@ lint:
       ruff: error
 ```
 
-Ruff uses its own default rule selection. `config` accepts Ruff's native options, including nested `lint` settings and rule-specific options. The selected Ruff engine validates them. Omitted or null options retain engine defaults.
+Ruff validates `config` using its native options, including nested `lint` settings and rule-specific options. Omission or null selects the engine's default for an option.
 
 The legacy flat `select` and `ignore` accept Ruff codes or prefixes. The selected
 engine validates them, including preview selectors when `config.preview` is enabled.
@@ -311,7 +310,7 @@ Following [Astral's actionlint integration](https://github.com/astral-sh/actionl
 Ruff runs in isolated, read-only mode: no repository Ruff configuration, cache,
 automatic fixes, or `noqa` exemptions. Use actionlint rule levels, per-file
 overrides, and YAML suppressions for exceptions. Ruff codes such
-as `F821` are retained in structured output. Literal/plain scripts use the shared
+as `F821` appear in structured output. Literal/plain scripts use the shared
 YAML source map; unsupported scalar mappings fall back to the `run:` declaration.
 Inline YAML suppressions target the diagnostic's reported line. A directive on
 the YAML block header covers the script body.
@@ -370,7 +369,7 @@ file, including inherited files and file overrides; inline configs use the analy
 working directory. Bare names use `PATH`. Arguments are literal launcher arguments
 prepended to the engine invocation; they are never shell source. Environment entries
 affect the child only. Explicit CLI, environment or library invocation settings take
-precedence over repository process settings. An explicit disable remains disabled.
+precedence over repository process settings.
 
 Repository-selected native executables require `--allow-config-processes`. Enable
 this flag only for trusted configuration, including its inherited files and file
@@ -409,7 +408,7 @@ lint:
 
 Patterns without `@` match the repository or complete action path; repository
 matches also cover sub-actions and reusable workflows. Patterns containing `@`
-match the complete reference including its ref. Docker references retain `docker://`.
+match the complete reference including its ref. Include `docker://` when matching container references.
 
 ## Additional correctness checks
 
@@ -422,8 +421,8 @@ workflow values, including `if:` conditions.
 of workflows directly inside the repository's `.github/workflows` directory.
 It accepts GitHub's workflow-name filter patterns and escaped special characters.
 Negative patterns exclude names and do not require a matching producer.
-Unnamed workflows use their repository-relative file path. Producer workflows
-remain available for name resolution even when excluded from lint inputs. The
+Unnamed workflows use their repository-relative file path. Name resolution also
+reads workflows excluded from lint inputs. The
 check needs repository context and skips name matching if a workflow cannot be
 read or parsed reliably. It does not query GitHub or inspect other branches.
 
@@ -455,7 +454,7 @@ command or the Action's `shellcheck: false` input.
 
 The official registry plugin accepts individual disabled codes and optional check
 names through these settings. Explicit rc files, disabled-code ranges or `all`
-retain native execution; provide that executable yourself. Source access and
+require a native ShellCheck executable. Source access and
 search paths work through the component's read-only host grants described below.
 To select a native process explicitly, use `tools.shellcheck.backend.process` or
 `--shellcheck=/path/to/shellcheck`.
@@ -537,8 +536,8 @@ Dialect precedence, highest first:
 3. Application settings, then inline `config.shell`.
 4. The workflow's resolved shell, ahead of any shebang.
 
-Native [directives][shellcheck-directives] retain their scope, and diagnostics map
-back to YAML positions. Template options before `{0}` contribute startup settings;
+Diagnostics from native [directives][shellcheck-directives] map to YAML positions.
+Template options before `{0}` contribute startup settings;
 later options override earlier ones, while script arguments after `{0}` do not.
 Unknown options leave startup assumptions unset. Changing the inferred dialect
 discards those assumptions. Final option states are normalized because ShellCheck
@@ -555,8 +554,8 @@ literal, so use absolute paths for wrapper-owned files elsewhere.
 
 For a native process, available parent directories, symlink targets and absolute paths with compatible
 host/runner syntax can be analyzed, including outside the repository. Dynamic,
-missing or unrepresentable working directories disable source following while
-retaining analysis of the embedded script. `SCRIPTDIR` does not mean the YAML
+missing or unrepresentable working directories limit analysis to the embedded
+script. `SCRIPTDIR` does not mean the YAML
 directory: embedded scripts reach ShellCheck through stdin. Paths refer to
 actionlint's local filesystem; job containers and their mounts are not recreated.
 
@@ -651,7 +650,6 @@ metadata, inputs and outputs. Both paths are relative to the repository root;
 known checkout paths are accounted for when resolving `uses`. Each mapping resolves
 once to an actual source directory. Per-file overrides can provide different
 `local-actions` mappings for different workflows.
-Build tests remain responsible for checking the generation step and its output.
 Missing action sources and invalid source entrypoints are errors.
 
 Local action lookup checks `action.yml`, `action.yaml`, `Dockerfile`, then `dockerfile`, in that order.
@@ -719,13 +717,12 @@ sourced scripts do not create actionlint suppression directives.
 Malformed attached directives report `inline-suppression`. Only attached YAML
 comments create directives. Directives in local composite YAML are scoped to that
 file. CLI, rule-ID and path ignores apply afterwards. Suppression
-changes lint output. GitHub's cache permissions stay unchanged; remaining findings
-exit with 1.
+changes lint output. A check with unsuppressed findings exits with 1.
 
 Suppressions apply to errors and warnings alike. To suppress a rule for a whole
 file, use `lint.rules.disable` in an [override](#per-file-overrides). This also works
 for malformed YAML where parsing cannot attach inline comments. Configuration,
-I/O and tool-launch failures remain operational errors and cannot be suppressed.
+I/O and tool-launch failures cannot be suppressed.
 
 ### disallow-suppressions
 
@@ -745,9 +742,9 @@ lint:
 
 | `report`        | Prohibited directive | Original finding |
 | --------------- | -------------------- | ---------------- |
-| `all` (default) | Reported             | Retained         |
+| `all` (default) | Reported             | Reported         |
 | `suppression`   | Reported             | Suppressed       |
-| `violation`     | Not reported         | Retained         |
+| `violation`     | Not reported         | Reported         |
 
 `on` without options selects all supported diagnostic rules; explicit `options.rules` must be nonempty.
 Omission or `off` permits exceptions. The policy cannot exempt itself,

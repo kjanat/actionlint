@@ -84,12 +84,9 @@ func lowerScript(script analyzer.Script) *wacogo.ValRecord {
 	for _, span := range script.Spans {
 		spans = append(spans, lowerSpan(span))
 	}
-	invocation := wacogo.ValOptionNone()
-	if script.Invocation != nil {
-		invocation = wacogo.ValOptionSome(wacogo.NewValRecord(
-			field("reference", lowerReference(script.Invocation.Reference)), field("caller", wacogo.ValString(script.Invocation.Caller)), field("step", lowerPosition(script.Invocation.Step)),
-			field("uses", wacogo.ValString(script.Invocation.Uses)), field("depth", lowerU32(script.Invocation.Depth)),
-		))
+	occurrence := wacogo.ValOptionNone()
+	if script.Occurrence.ID != "" {
+		occurrence = wacogo.ValOptionSome(wacogo.ValString(script.Occurrence.ID))
 	}
 	runtime := wacogo.ValOptionNone()
 	if script.Runtime != nil {
@@ -103,7 +100,7 @@ func lowerScript(script analyzer.Script) *wacogo.ValRecord {
 		field("reference", lowerReference(script.Reference)), field("job-id", wacogo.ValString(script.JobID)), field("step-id", wacogo.ValString(script.StepID)),
 		field("text", wacogo.ValString(script.Text)), field("shell", wacogo.ValString(script.Shell)),
 		field("start", lowerPosition(script.Start)), field("path", wacogo.ValString(script.Path)),
-		field("spans", wacogo.NewValListOf(spans...)), field("invocation", invocation), field("runtime", runtime),
+		field("spans", wacogo.NewValListOf(spans...)), field("occurrence", occurrence), field("runtime", runtime),
 	)
 }
 
@@ -135,12 +132,26 @@ func lowerMappings(mappings []analyzer.Mapping) *wacogo.ValList {
 }
 
 func lowerInput(input analyzer.Input) *wacogo.ValRecord {
+	selected := wacogo.ValOptionNone()
+	if input.SelectedScripts != nil {
+		ids := make([]wacogo.Val, 0, len(input.SelectedScripts))
+		for _, id := range input.SelectedScripts {
+			ids = append(ids, wacogo.ValString(id))
+		}
+		selected = wacogo.ValOptionSome(wacogo.NewValListOf(ids...))
+	}
+	inputs := make([]wacogo.Val, 0, len(input.ActionInputs))
+	for _, value := range input.ActionInputs {
+		inputs = append(inputs, wacogo.NewValRecord(field("script", lowerScript(value.Script)),
+			field("action", wacogo.ValString(value.Site.Action)), field("input", wacogo.ValString(value.Site.Input)), field("language", wacogo.ValString(value.Site.Language))))
+	}
 	return wacogo.NewValRecord(
 		field("reference", lowerReference(input.Reference)), field("path", wacogo.ValString(input.Path)), field("content", wacogo.ValString(input.Content)),
 		field("kind", wacogo.ValString(input.Kind)), field("parse-status", wacogo.ValString(input.ParseStatus)),
 		field("available", lowerFacts(input.Available)), field("options", wacogo.ValString(string(input.Options))),
 		field("scripts", lowerScripts(input.Scripts)), field("invoked", lowerScripts(input.Invoked)),
 		field("mappings", lowerMappings(input.Mappings)), field("dependencies", lowerDependencies(input.Dependencies)),
+		field("selected-scripts", selected), field("action-inputs", wacogo.NewValListOf(inputs...)),
 	)
 }
 

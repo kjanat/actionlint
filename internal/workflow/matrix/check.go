@@ -2,292 +2,281 @@ package matrix
 
 import (
 	"fmt"
-	"math"
-	"strconv"
+	"maps"
+	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/stringutil"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/workflow/schema"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-// Check validates one job's matrix and optionally checks loose filter types.
-// It accepts workflow declarations and returns diagnostics without a visitor host.
-func Check(job *workflowlang.Job, mixedTypes bool) []diagnostic.Diagnostic {
-	checker := &checker{mixedTypes: mixedTypes}
-	checker.checkJob(job)
-	return checker.findings
-}
-
-type checker struct {
-	findings   []diagnostic.Diagnostic
-	mixedTypes bool
-}
-
-// VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *checker) checkJob(n *workflowlang.Job) {
-	if n.Strategy == nil {
-		return
+func checkResolution(resolution Resolution, mixedTypes bool) []diagnostic.Diagnostic {
+	var findings []diagnostic.Diagnostic
+	appendFinding := func(position diagnostic.Position, rule, format string, args ...any) {
+		findings = append(findings, diagnostic.Diagnostic{Start: position, Rule: rule, Message: fmt.Sprintf(format, args...)})
 	}
-
-	m := n.Strategy.Matrix
-	evaluated := n.Strategy.Expression != nil
-	if evaluated {
-		m = KnownStrategy(n.Strategy.Expression)
-	}
-	if m != nil && m.Expression != nil {
-		value, known := workflowlang.WorkflowExpressionLiteral(m.Expression)
-		if !known {
-			return
-		}
-		m = knownLiteral(value, m.Expression.Pos)
-		evaluated = true
-	}
-	if m == nil {
-		return
-	}
-
-	complete := true
-	if m.Expression == nil {
-		m, complete = Expand(m)
-		if m == nil {
-			return
+	for _, axis := range resolution.axes {
+		seen := []value.Value{}
+		for _, candidate := range axis.Values {
+			duplicate := false
+			for _, previous := range seen {
+				if dynamic(previous) != dynamic(candidate) {
+					continue
+				}
+				if semanticEqual(previous, candidate) {
+					pos := previous.Origin().Span.Start
+					appendFinding(candidate.Origin().Span.Start, "matrix", "duplicate value %s is found in matrix %q. the same value is at line:%d,col:%d", display(candidate), axis.Name, pos.Line, pos.Column)
+					duplicate = true
+					break
+				}
+			}
+			if !duplicate {
+				seen = append(seen, candidate)
+			}
 		}
 	}
-	for name, row := range m.Rows {
-		if row.Name != nil {
-			name = row.Name.Value
-		}
-		rule.checkDuplicateInRow(name, row, !evaluated)
-	}
-	if !complete {
-		return
-	}
-
-	// Note:
-	// Any new value can be set in the section as new combination. It can add new value to existing
-	// column also.
-	//
-	// matrix:
-	//   os: [ubuntu-latest, macos-latest]
-	//   include:
-	//     - os: windows-latest
-	//       sh: pwsh
-
-	rule.checkExclude(m, !evaluated)
-	if rule.mixedTypes {
-		rule.checkFilterTypes(m, !evaluated)
-	}
-}
-
-// KnownStrategy projects a constant strategy expression into matrix declarations.
-func KnownStrategy(expression *workflowlang.String) *workflowlang.Matrix {
-	value, known := workflowlang.WorkflowExpressionLiteral(expression)
-	if !known {
-		return nil
-	}
-	strategy, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-	return knownLiteral(schema.Property(strategy, "matrix"), expression.Pos)
-}
-
-func knownLiteral(value any, position *workflowlang.Pos) *workflowlang.Matrix {
-	matrix, ok := value.(map[string]any)
-	if !ok || len(schema.LiteralErrors(schema.Matrix, matrix, "matrix")) != 0 {
-		return nil
-	}
-	var node yaml.Node
-	if err := node.Encode(matrix); err != nil {
-		return nil
-	}
-	var setPosition func(*yaml.Node)
-	setPosition = func(n *yaml.Node) {
-		n.Line, n.Column = position.Line, position.Col
-		for _, child := range n.Content {
-			setPosition(child)
+	for issue := range resolution.exclusionIssues() {
+		switch issue := issue.(type) {
+		case exclusionWithoutAxes:
+			appendFinding(issue.origin.Span.Start, "matrix", `"exclude" section exists but no matrix variation exists`)
+		case emptyExclusion:
+			appendFinding(issue.origin.Span.Start, "matrix", `matrix filter in "exclude" must not be empty`)
+		case unknownExclusionAxis:
+			names := make([]string, len(resolution.axes))
+			for i, axis := range resolution.axes {
+				names[i] = fmt.Sprintf("%q", axis.Name)
+			}
+			appendFinding(issue.origin.Span.Start, "matrix", "%q in \"exclude\" section does not exist in matrix. available matrix configurations are %s", issue.name, strings.Join(names, ", "))
 		}
 	}
-	setPosition(&node)
-	return (&workflowlang.Parser{}).ParseMatrixMapping(position, &node, true, true)
-}
-
-func (rule *checker) checkDuplicateInRow(name string, row *workflowlang.MatrixRow, expressions bool) {
-	elements, _ := RowElements(row, expressions)
-	seen := make([]Element, 0, len(elements))
-	for _, element := range elements {
-		v := element.Value
-		dynamic := element.Expressions && matrixValueContainsExpression(v)
-		ok := true
-		for _, p := range seen {
-			if dynamic != (p.Expressions && matrixValueContainsExpression(p.Value)) {
+	if resolution.state == value.Dynamic || resolution.state == value.Invalid {
+		return findings
+	}
+	for _, filter := range resolution.exclude {
+		for name, expected := range filter.Values() {
+			index := axisIndex(resolution.axes, name)
+			if index < 0 {
 				continue
 			}
-			if p.Value.Equals(v) {
-				rule.Errorf(
-					v.Pos(),
-					"duplicate value %s is found in matrix %q. the same value is at %s",
-					v.String(),
-					name,
-					p.Value.Pos().String(),
-				)
-				ok = false
-				break
-			}
-		}
-		if ok {
-			seen = append(seen, element)
-		}
-	}
-}
-
-// Subset compares selected properties and indices with expression equality.
-func Subset(value, filter workflowlang.RawYAMLValue, expressions bool) bool {
-	return isYAMLValueSubsetWithExpressions(value, filter, expressions, expressions)
-}
-
-func isYAMLValueSubsetWithExpressions(value, filter workflowlang.RawYAMLValue, valueExpressions, filterExpressions bool) bool {
-	// Dynamic values or filter leaves cannot establish a mismatch. Evaluated
-	// expression results use expressions=false so embedded syntax remains data.
-	for _, item := range []Element{{value, valueExpressions}, {filter, filterExpressions}} {
-		if scalar, ok := item.Value.(*workflowlang.RawYAMLString); item.Expressions && ok && exprlang.ContainsExpression(scalar.Value) {
-			return true
-		}
-	}
-	switch filter := filter.(type) {
-	case *workflowlang.RawYAMLObject:
-		lookup := newMatrixFilterLookup(value, valueExpressions)
-		for key, item := range filter.Props {
-			actual, actualExpressions, uncertain := lookup.at(key)
-			if uncertain {
+			axis := resolution.axes[index]
+			if len(axis.Values) == 0 {
 				continue
 			}
-			if !isYAMLValueSubsetWithExpressions(actual, item, actualExpressions, filterExpressions) {
-				return false
+			matched := false
+			for _, candidate := range axis.Values {
+				if Subset(candidate, expected) {
+					matched = true
+				}
+			}
+			if !matched && expected.Known() {
+				appendFinding(expected.Origin().Span.Start, "matrix", "value %s in \"exclude\" does not match in matrix %q combinations. possible values are %s", display(expected), name, axisDisplay(axis.Values))
 			}
 		}
+	}
+	if mixedTypes {
+		for _, filter := range append(slices.Clone(resolution.include), resolution.exclude...) {
+			for name, expected := range filter.values {
+				if index := axisIndex(resolution.axes, name); index >= 0 {
+					for _, candidate := range resolution.axes[index].Values {
+						if typeMismatch(candidate, expected) {
+							appendFinding(expected.Origin().Span.Start, "mixed-type-matrix-filters", "matrix filter for %q compares different or unknown scalar types using Actions loose equality; validate axis types before filtering", name)
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+	return findings
+}
+
+func dynamic(v value.Value) bool {
+	if v.State() == value.Dynamic || v.State() == value.Invalid {
 		return true
-	case *workflowlang.RawYAMLArray:
-		filters, _ := matrixFilterElements(filter, filterExpressions)
-		lookup := newMatrixFilterLookup(value, valueExpressions)
-		for i, item := range filters {
-			actual, actualExpressions, uncertain := lookup.at(strconv.Itoa(i))
-			if uncertain {
+	}
+	if v.Kind() == value.Array {
+		for item := range v.Items() {
+			if dynamic(item) {
 				return true
 			}
-			if !isYAMLValueSubsetWithExpressions(actual, item.Value, actualExpressions, item.Expressions) {
+		}
+	}
+	if v.Kind() == value.Object {
+		for _, item := range v.Props() {
+			if dynamic(item) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func semanticEqual(left, right value.Value) bool {
+	if left.State() == value.Dynamic || right.State() == value.Dynamic {
+		return left.State() == value.Dynamic && right.State() == value.Dynamic && left.Source() == right.Source()
+	}
+	if left.Kind() == value.Array && right.Kind() == value.Array && left.Known() && right.Known() {
+		if left.Len() != right.Len() {
+			return false
+		}
+		for i := range left.Len() {
+			a, _ := left.Index(i)
+			b, _ := right.Index(i)
+			if !semanticEqual(a, b) {
 				return false
 			}
 		}
 		return true
-	case *workflowlang.RawYAMLString:
-		var actual any
-		if scalar, ok := value.(*workflowlang.RawYAMLString); ok {
-			actual = scalar.ScalarValue()
-		} else if value != nil {
+	}
+	if left.Kind() == value.Object && right.Kind() == value.Object && left.Known() && right.Known() {
+		if left.Len() != right.Len() {
 			return false
 		}
-		expected := filter.ScalarValue()
-		if a, ok := actual.(string); ok {
-			if b, ok := expected.(string); ok {
-				return strings.EqualFold(a, b)
+		for name, a := range left.Props() {
+			b, ok := right.Prop(name)
+			if !ok || !semanticEqual(a, b) {
+				return false
 			}
 		}
-		return exprlang.ToNumber(actual) == exprlang.ToNumber(expected)
-	default:
+		return true
+	}
+	return left.Equal(right)
+}
+
+func display(v value.Value) string {
+	if v.Known() {
+		switch v.Kind() {
+		case value.Null:
+			return "null"
+		case value.Array:
+			return "[" + axisDisplay(slices.Collect(v.Items())) + "]"
+		case value.Object:
+			props := maps.Collect(v.Props())
+			fields := make([]string, 0, len(props))
+			for _, name := range slices.Sorted(maps.Keys(props)) {
+				fields = append(fields, fmt.Sprintf("%q: %s", name, display(props[name])))
+			}
+			return "{" + strings.Join(fields, ", ") + "}"
+		}
+	}
+	if text, ok := v.ScalarString(); ok {
+		if v.Kind() == value.String {
+			return fmt.Sprintf("%q", text)
+		}
+		return text
+	}
+	return v.Source()
+}
+
+func axisDisplay(values []value.Value) string {
+	texts := make([]string, len(values))
+	for i, item := range values {
+		texts[i] = display(item)
+	}
+	return strings.Join(texts, ", ")
+}
+
+func typeMismatch(axis, filter value.Value) bool {
+	if !filter.Known() {
 		return false
 	}
-}
-
-func matrixFilterValueAt(value workflowlang.RawYAMLValue, key string) workflowlang.RawYAMLValue {
-	switch value := value.(type) {
-	case *workflowlang.RawYAMLObject:
-		return value.Props[key]
-	case *workflowlang.RawYAMLArray:
-		index := exprlang.ToNumber(key)
-		if index >= 0 && index < float64(len(value.Elems)) && index <= math.MaxInt32 {
-			return value.Elems[int(index)]
-		}
+	if axis.State() == value.Invalid {
+		return false
 	}
-	return nil
-}
-
-func (rule *checker) checkExclude(m *workflowlang.Matrix, expressions bool) {
-	combinations := Combinations(m.Exclude, expressions)
-	if len(combinations) == 0 {
-		return
+	if axis.State() == value.Dynamic {
+		return unknownTypeMismatch(filter)
 	}
-
-	if len(m.Rows) == 0 {
-		rule.Error(m.Pos, "\"exclude\" section exists but no matrix variation exists")
-		return
-	}
-
-	rows := make(map[string][]Element, len(m.Rows))
-	ignored := map[string]struct{}{}
-
-	for n, r := range m.Rows {
-		values, complete := RowElements(r, expressions)
-		if !complete {
-			ignored[n] = struct{}{}
-		}
-		rows[n] = values
-	}
-
-	for _, c := range combinations {
-	Exclude:
-		for k, a := range c.Combination.Assigns {
-			if _, ok := ignored[k]; ok {
-				continue
-			}
-			row, ok := rows[k]
-			if !ok {
-				ss := make([]string, 0, len(rows))
-				for k := range rows {
-					ss = append(ss, k)
-				}
-				rule.Errorf(
-					a.Key.Pos,
-					"%q in \"exclude\" section does not exist in matrix. available matrix configurations are %s",
-					k,
-					stringutil.SortedQuotes(ss),
-				)
-				continue
-			}
-
-			for _, v := range row {
-				if isYAMLValueSubsetWithExpressions(v.Value, a.Value, v.Expressions, c.Expressions) {
-					continue Exclude
+	if filter.Kind() == value.Object {
+		for name, expected := range filter.Props() {
+			if axis.Kind() == value.Array {
+				if index, err := matrixIndex(name); err == nil && dynamicIndex(axis, index) {
+					continue
 				}
 			}
-
-			ss := make([]string, 0, len(row))
-			for _, v := range row {
-				ss = append(ss, v.Value.String())
+			actual, ok := lookup(axis, name)
+			if ok && typeMismatch(actual, expected) || !ok && missingTypeMismatch(expected) {
+				return true
 			}
-			rule.Errorf(
-				a.Value.Pos(),
-				"value %s in \"exclude\" does not match in matrix %q combinations. possible values are %s",
-				a.Value.String(),
-				k,
-				strings.Join(ss, ", "), // Note: do not use quotesBuilder
-			)
 		}
+		return false
 	}
+	if filter.Kind() == value.Array {
+		for i := range filter.Len() {
+			expected, _ := filter.Index(i)
+			if expected.State() == value.Dynamic || expected.State() == value.Invalid {
+				return false
+			}
+			uncertain := axis.Kind() == value.Array && dynamicIndex(axis, i)
+			if uncertain {
+				return false
+			}
+			actual, aok := axis.Index(i)
+			if aok && typeMismatch(actual, expected) || !aok && missingTypeMismatch(expected) {
+				return true
+			}
+		}
+		return false
+	}
+	if !axis.Known() {
+		return false
+	}
+	if axis.Kind() == value.Array || axis.Kind() == value.Object {
+		return false
+	}
+	if axis.Kind() == filter.Kind() {
+		return false
+	}
+	if axis.Kind() == value.String && filter.Kind() == value.String {
+		return false
+	}
+	return true
 }
 
-func (rule *checker) Error(pos *workflowlang.Pos, message string) {
-	rule.findings = append(rule.findings, findingAt(pos, "matrix", "%s", message))
+func missingTypeMismatch(filter value.Value) bool {
+	if !filter.Known() || filter.Kind() == value.Null {
+		return false
+	}
+	if filter.Kind() == value.Object {
+		for _, nested := range filter.Props() {
+			if missingTypeMismatch(nested) {
+				return true
+			}
+		}
+		return false
+	}
+	if filter.Kind() == value.Array {
+		for nested := range filter.Items() {
+			if missingTypeMismatch(nested) {
+				return true
+			}
+		}
+		return false
+	}
+	return true
 }
 
-func (rule *checker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
-	rule.findings = append(rule.findings, findingAt(pos, "matrix", format, args...))
-}
-
-func findingAt(pos *workflowlang.Pos, rule, format string, args ...any) diagnostic.Diagnostic {
-	return diagnostic.Diagnostic{Start: diagnostic.Position{Line: pos.Line, Column: pos.Col}, Rule: rule, Message: fmt.Sprintf(format, args...)}
+func unknownTypeMismatch(filter value.Value) bool {
+	if !filter.Known() {
+		return false
+	}
+	if filter.Kind() == value.Object {
+		for _, nested := range filter.Props() {
+			if unknownTypeMismatch(nested) {
+				return true
+			}
+		}
+		return false
+	}
+	if filter.Kind() == value.Array {
+		for nested := range filter.Items() {
+			if nested.State() == value.Dynamic || nested.State() == value.Invalid {
+				return false
+			}
+			if unknownTypeMismatch(nested) {
+				return true
+			}
+		}
+		return false
+	}
+	return filter.Kind() == value.Bool || filter.Kind() == value.Number
 }

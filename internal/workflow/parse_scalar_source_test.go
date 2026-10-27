@@ -5,7 +5,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 )
 
 func TestQuotedFoldedScriptSource(t *testing.T) {
@@ -15,7 +16,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 		{"anchored-double", `run: &script "echo \"hello\" $foo"`, "$foo", "$foo"},
 		{"tag-anchor", `run: !!str &script 'echo $foo'`, "$foo", "$foo"},
 		{"anchor-tag", `run: &script !!str echo $foo`, "$foo", "$foo"},
-		{"verbatim-tag", `run: !<tag:yaml.org,2002:str> "echo $foo"`, "$foo", "$foo"},
+		{"verbatim-tag", `run: !<tag:syntax.org,2002:str> "echo $foo"`, "$foo", "$foo"},
 		{"multiline-properties", "run: &script # source anchor\n  !!str\n  \"echo $foo\"", "$foo", "$foo"},
 		{"unicode-escape", `run: "echo \u0024foo"`, "$foo", `\u0024foo`},
 		{"unicode-before", `run: "echo \u00e9 $foo"`, "$foo", "$foo"},
@@ -35,8 +36,8 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 		{"folded-leading", "run: >+\n\n  echo\n  $foo\n\n", "$foo", "$foo"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var root yaml.Node
-			if err := yaml.Unmarshal([]byte(tc.input), &root); err != nil {
+			root, err := codec.Parse([]byte(tc.input))
+			if err != nil {
 				t.Fatal(err)
 			}
 			node := root.Content[0].Content[1]
@@ -79,6 +80,26 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 	}
 }
 
+func TestStandaloneSourceReconstructionPreservesLineBreaks(t *testing.T) {
+	for _, ending := range []string{"\n", "\r", "\r\n", "\u0085", "\u2028", "\u2029"} {
+		t.Run(ending, func(t *testing.T) {
+			source := "run: >" + ending + "  echo $FOO" + ending + "next: value" + ending
+			document := sourcemap.NewDocument(source)
+			if got := scalarDocumentSource(document); got != source {
+				t.Fatalf("reconstructed source = %q, want original line breaks in %q", got, source)
+			}
+			root, err := codec.Parse([]byte(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			p := NewSourceParser([]byte(source))
+			if p.ScriptSource(root.Content[0].Content[1]) == nil {
+				t.Fatalf("standalone source mapping unavailable for line break %q", ending)
+			}
+		})
+	}
+}
+
 func TestQuotedScalarEOFPosition(t *testing.T) {
 	for _, quote := range []string{"\"", "'"} {
 		for _, suffix := range []string{"\n  ", "\n\n  ", "\n\n\n  ", "  "} {
@@ -86,8 +107,8 @@ func TestQuotedScalarEOFPosition(t *testing.T) {
 				t.Run(quote+suffix+newline, func(t *testing.T) {
 					content := "run: " + quote + "echo ${{ github.ref"
 					input := strings.ReplaceAll(content+suffix+quote+"\n", "\n", newline)
-					var root yaml.Node
-					if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+					root, err := codec.Parse([]byte(input))
+					if err != nil {
 						t.Fatal(err)
 					}
 					node := root.Content[0].Content[1]
@@ -121,8 +142,8 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 				if ending != "" {
 					input = strings.ReplaceAll(input+"\nnext: value\n", "\n", ending)
 				}
-				var root yaml.Node
-				if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+				root, err := codec.Parse([]byte(input))
+				if err != nil {
 					t.Fatal(err)
 				}
 				node := root.Content[0].Content[1]
@@ -145,8 +166,8 @@ func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
 			t.Run(escape+suffix, func(t *testing.T) {
 				content := `run: "echo ${{ github.ref` + escape
 				input := content + suffix + "\"\n"
-				var root yaml.Node
-				if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+				root, err := codec.Parse([]byte(input))
+				if err != nil {
 					t.Fatal(err)
 				}
 				node := root.Content[0].Content[1]

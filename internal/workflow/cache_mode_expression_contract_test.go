@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture/declarations"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
@@ -46,17 +48,27 @@ jobs:
 					t.Fatal(err)
 				}
 				project := workspace.Identity(root)
+				snapshots := declarations.NewCapturedSnapshots(t, root)
 				fileCache := calls.NewCache(project.RootDir(), root, nil)
+				fileCache.SetSources(t.Context(), snapshots.Sources.Store, root)
 				fromFile, err := fileCache.FindMetadata("./callee.yaml")
 				if err != nil {
 					t.Fatal(err)
 				}
-				event, ok := workflow.FindWorkflowCallEvent()
+				_, ok := workflow.FindWorkflowCallEvent()
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
 				astCache := calls.NewCache(project.RootDir(), root, nil)
-				astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
+				astCache.SetSources(t.Context(), snapshots.Sources.Store, root)
+				path := filepath.Join(root, "callee.yaml")
+				snapshot, err := snapshots.Document(path, []byte(source), documentparse.Workflow(path, []byte(source)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := astCache.Seed(snapshot); err != nil {
+					t.Fatal(err)
+				}
 				fromAST, _, ok := astCache.Lookup("./callee.yaml")
 				if !ok || fromAST == nil || fromFile == nil {
 					t.Fatal("missing reusable workflow metadata")

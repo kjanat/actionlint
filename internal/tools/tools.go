@@ -9,10 +9,11 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/rule"
-	"actionlint.kjanat.dev/v2/source"
 )
 
 // Context supplies invocation-owned resources to a registered adapter.
@@ -25,9 +26,7 @@ type Context struct {
 	Warn                    func(error)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
-	DocumentPath         string
-	DocumentContent      []byte
-	Reference            func(string, []byte, diagnostic.Position) source.Reference
+	Document             analyzer.Input
 }
 
 // Registration owns a tool's selection and construction policy. The host only
@@ -48,8 +47,7 @@ type Registration struct {
 	WithBackend       func(analyzer.ScriptBackend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(Script) (PreparedInput, error)
-	// WithAnalyzer replaces an engine with a document analyzer while retaining
-	// the tool's configuration and diagnostic policy.
+	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
 	WithAnalyzer func(analyzer.Analyzer) (Registration, error)
 }
 
@@ -84,31 +82,33 @@ type Execution struct {
 
 // Script is a prepared snippet and its source map, not a workflow AST visitor.
 type Script struct {
-	Input       *analyzer.ScriptInput
-	Declaration diagnostic.Position
-	Text        string
-	Source      *workflow.ScriptSource
-	Key, Value  *workflow.Pos
-	Shell       *string
-	Config      *config.Config
-	Path        string
-	Content     []byte
-	Scope       *Scope
-	Execution   Execution
+	Input      *analyzer.ScriptInput
+	Fact       analyzer.Script
+	Text       string
+	Source     documentparse.ScriptSourceView
+	Key, Value *workflow.Pos
+	Shell      *string
+	Config     *config.Config
+	Path       string
+	Content    []byte
+	Scope      *Scope
+	Execution  Execution
 }
 type Batch struct {
-	Scopes  []*Scope
-	Scripts []Script
+	CallGraph analyzer.CallGraph
+	Scopes    []*Scope
+	Scripts   []Script
 }
 
 // Finding binds a result to the invocation that produced it. Policy is applied
 // by the host after adapters finish, including for externally sourced findings.
 type Finding struct {
 	diagnostic.Diagnostic
-	Script      int
-	Content     []byte
-	RawScript   bool
-	Suppression *Suppression
+	Script            int
+	Content           []byte
+	RawScript         bool
+	UnavailableSource findingmodel.UnavailableSource
+	Suppression       *Suppression
 }
 type Suppression struct {
 	Path        string

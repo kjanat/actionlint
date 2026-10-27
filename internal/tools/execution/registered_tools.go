@@ -3,7 +3,6 @@ package execution
 import (
 	"context"
 
-	"actionlint.kjanat.dev/v2/diagnostic"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -13,25 +12,31 @@ import (
 type Tool struct{ Runner tools.Runner }
 
 func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmodel.Finding, error) {
-	prepared := tools.Batch{}
+	if !batch.Valid() {
+		return nil, ErrInvalidBatch
+	}
+	batchScopes, batchScripts := batch.Snapshot()
+	prepared := tools.Batch{CallGraph: batch.CallGraph()}
 	scopes := map[*Scope]*tools.Scope{}
-	for _, scope := range batch.Scopes {
-		item := &tools.Scope{Config: scope.Config, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.ActionPath, Reader: scope.Paths.Reader, Composite: scope.Composite}
+	for _, scope := range batchScopes {
+		item := &tools.Scope{Config: scope.Config, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.Deployment.ActionPath(), Reader: scope.Paths.Reader, Composite: scope.Composite}
 		scopes[scope] = item
 		prepared.Scopes = append(prepared.Scopes, item)
 	}
-	for _, s := range batch.Scripts {
+	for index, s := range batchScripts {
 		script := tools.Script{Shell: s.Shell, Config: s.Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}}
+		fact, exists := batch.Fact(index, true)
+		if !exists {
+			return nil, ErrInvalidBatch
+		}
+		script.Fact = fact
 		if input := s.Input; input != nil {
 			site := input.Site
-			script.Input, script.Text, script.Source = &site, input.Value.Value.Value, input.Value.Source
-			script.Key, script.Value = input.Value.Name.Pos, input.Value.Value.Pos
+			script.Input, script.Text, script.Source = &site, input.Value.Value().Value(), input.Value.Source()
+			script.Key, script.Value = positionPointer(input.Value.Name().Pos()), positionPointer(input.Value.Value().Pos())
 		} else {
-			script.Text, script.Source = s.Run.Run.Value, s.Run.Source
-			script.Key, script.Value = s.Run.RunPos, s.Run.Run.Pos
-		}
-		if s.Owner != nil && s.Owner.Step != nil {
-			script.Declaration = diagnostic.Position{Line: s.Owner.Step.Line, Column: s.Owner.Step.Col}
+			script.Text, script.Source = s.Run.Run().Value(), s.Run.Source()
+			script.Key, script.Value = positionPointer(s.Run.RunPos()), positionPointer(s.Run.Run().Pos())
 		}
 		prepared.Scripts = append(prepared.Scripts, script)
 	}
@@ -40,9 +45,10 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 	for _, result := range findings {
 		finding := findingmodel.FromDiagnostic(result.Diagnostic)
 		finding.Source, finding.RawScriptSource = result.Content, result.RawScript
-		if result.Script >= 0 && result.Script < len(batch.Scripts) {
-			finding.IgnoreOrigin = batch.Scripts[result.Script].Origin
-			finding.Owner = batch.Scripts[result.Script].Owner
+		finding.UnavailableSource = result.UnavailableSource
+		if result.Script >= 0 && result.Script < len(batchScripts) {
+			finding.IgnoreOrigin = batchScripts[result.Script].Origin
+			finding.Owner = batchScripts[result.Script].Owner
 		}
 		if at := result.Suppression; at != nil {
 			finding.SuppressionOrigin = &findingmodel.SuppressionOrigin{Path: at.Path, First: at.First, Last: at.Last}

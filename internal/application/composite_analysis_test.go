@@ -81,6 +81,9 @@ jobs:
 			if outerReads != 1 || innerReads != 0 {
 				t.Fatalf("analysis continued after cancellation: outer reads=%d, inner reads=%d", outerReads, innerReads)
 			}
+			if len(result.Documents) != 2 || result.Documents[1].DocumentPath() != filepath.Join("outer", "action.yml") {
+				t.Fatalf("cancelled batch lost its published action outline: %+v", result.Documents)
+			}
 		})
 	}
 }

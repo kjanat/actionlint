@@ -39,14 +39,14 @@ and the payload provenance, and run generation. Review each reported difference
 against Actions docs before changing exceptions. Do not mechanically accept all
 webhook activities. Normal tests and generation perform no network requests.
 
-The source files retain upstream text: the workflow schema is from the MIT-licensed
+The workflow schema is from the MIT-licensed
 [actions/languageservices](https://github.com/actions/languageservices); documentation
 is from [github/docs](https://github.com/github/docs), licensed CC BY 4.0 for content.
-Exact source URLs and revisions are retained in the manifest for attribution.
+The manifest records exact source URLs and revisions for attribution.
 
 ## Documentation audit
 
-The original HTML parser remains available as an independent documentation audit.
+The HTML parser provides an independent documentation audit.
 Its output is not the canonical registry and must not overwrite `webhooks.gen.go`.
 
 It does:

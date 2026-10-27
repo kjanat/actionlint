@@ -45,3 +45,35 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 		})
 	}
 }
+
+func TestParsedMixedCaseJobReference(t *testing.T) {
+	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
+	workflow, findings := workflowlang.Parse(content)
+	if len(findings) != 0 {
+		t.Fatal(findings)
+	}
+	job := workflow.Jobs["build"]
+	if job == nil || job.ID == nil || job.ID.Value != "Build" {
+		t.Fatalf("parsed job identity missing: %+v", workflow.Jobs)
+	}
+	refs := workflowfacts.Index("ci.yml", content, workflow, false)
+	finding := &findingmodel.Finding{
+		Start: diagnostic.Position{Line: 1, Column: 1},
+		Owner: &findingmodel.Owner{Job: job.ID.Value},
+	}
+	InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]workflowfacts.References{"ci.yml": refs})
+	want := refs.Jobs["build"]
+	if want.Node == "" || finding.Reference == nil || *finding.Reference != want {
+		t.Fatalf("mixed-case job reference = %+v, want %+v", finding.Reference, want)
+	}
+}
+
+func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
+	references := workflowfacts.References{Document: source.Reference{Document: "entry", Revision: "revision", Node: "document"}}
+	foreign := &findingmodel.Finding{Path: "unrelated.sh"}
+	alias := &findingmodel.Finding{Path: "entry-alias.yml"}
+	InferReferences([]*findingmodel.Finding{foreign, alias}, "entry.yml", map[string]workflowfacts.References{"entry.yml": references}, "entry-alias.yml")
+	if foreign.Reference != nil || alias.Reference == nil || *alias.Reference != references.Document {
+		t.Fatalf("path ownership inference changed: foreign=%+v alias=%+v", foreign.Reference, alias.Reference)
+	}
+}

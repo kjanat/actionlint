@@ -1,7 +1,7 @@
 # Migrating to v2
 
 The v2 release and its first pre-commit hook tag are pending. These instructions
-describe the upcoming cutover; existing immutable v1 releases remain available.
+describe the upcoming cutover.
 
 ## pre-commit repository
 
@@ -38,14 +38,13 @@ lockfile in version control.
 Use `actionlint config init` for a new configuration, or `actionlint config migrate`
 to inspect an existing configuration and `actionlint config migrate --write` to
 apply it. Both default plugins must have published registry versions before
-initialization or migration can install them. Explicit plugin declarations and
-an empty `plugins: []` selection remain under project control.
+initialization or migration can install them. Default declarations are inserted
+only when the project omits `plugins`.
 
 Then run `pre-commit install` and `pre-commit run actionlint --all-files`.
 Hooks still check every repository workflow, including commits that only delete
-an action, reusable workflow, or configuration. The native `actionlint pre-commit`
-command remains available.
+an action, reusable workflow, or configuration.
 
-Users remaining on v1 should keep their existing exact revision at the old URL.
+For v1, use an exact revision at the old URL.
 The host repository's v2 source no longer contains the hook manifest; updating
 that old URL to a v2 source revision will not install a hook.

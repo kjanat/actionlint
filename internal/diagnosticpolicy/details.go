@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 )
 
-func CompleteDiagnostic(d *diagmodel.Diagnostic, content []byte, path string) {
+func CompleteDiagnostic(d *diagmodel.Diagnostic, content []byte, path string, unavailable bool) {
 	if descriptor, ok := rulecatalog.Find(d.Rule); ok {
 		if d.Help == "" {
 			d.Help = descriptor.Help
@@ -20,6 +20,10 @@ func CompleteDiagnostic(d *diagmodel.Diagnostic, content []byte, path string) {
 		if d.DocumentationURL == "" {
 			d.DocumentationURL = descriptor.DocumentationURL
 		}
+	}
+	if unavailable {
+		d.Reference, d.Fixes = nil, nil
+		return
 	}
 	if d.Reference == nil {
 		ref := sourceid.New(path, content).Ref("", "document", "", "$")

@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestParseYAMLIntegerRadixBounds(t *testing.T) {
@@ -41,13 +42,13 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 }
 
 func TestParserRejectsInvalidMappingKeys(t *testing.T) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal([]byte(`!!int first: {nested: !!bool nope}
+	doc, err := codec.Parse([]byte(`!!int first: {nested: !!bool nope}
 !!bool second: value
 '': empty
 valid: kept
 VALID: duplicate
-`), &doc); err != nil {
+`))
+	if err != nil {
 		t.Fatal(err)
 	}
 	p := &Parser{}
@@ -75,13 +76,13 @@ VALID: duplicate
 	}
 	for _, source := range []string{"!!int invalid: value", "? [invalid]\n: value"} {
 		t.Run(source, func(t *testing.T) {
-			var doc yaml.Node
-			if err := yaml.Unmarshal([]byte(source), &doc); err != nil {
+			doc, err := codec.Parse([]byte(source))
+			if err != nil {
 				t.Fatal(err)
 			}
 			p := &Parser{}
 			for entry := range p.parseSectionMapping("test", doc.Content[0], false, false) {
-				t.Fatalf("invalid entry retained: %v", entry)
+				t.Fatalf("invalid entry was returned: %v", entry)
 			}
 			if len(p.Errors) != 1 || strings.Contains(p.Errors[0].Message, "should not be empty") {
 				t.Fatalf("want only the invalid key diagnostic: %v", p.Errors)
@@ -123,33 +124,36 @@ jobs:
 func TestParserAliasTypeLocations(t *testing.T) {
 	tests := []struct {
 		name, value, message string
-		check                func(*Parser, *yaml.Node)
+		check                func(*Parser, *syntax.Node)
 	}{
-		{"string", "{}", "expected scalar node for string value", func(p *Parser, n *yaml.Node) { p.parseString(n, false) }},
-		{"cache mode", "{}", "expected string for \"cache-mode\"", func(p *Parser, n *yaml.Node) { p.parseCacheMode(n) }},
-		{"sequence", "{}", "must be sequence node", func(p *Parser, n *yaml.Node) { p.checkSequence("steps", n, false) }},
-		{"mapping", "[]", "mapping node is expected", func(p *Parser, n *yaml.Node) {
+		{"string", "{}", "expected scalar node for string value", func(p *Parser, n *syntax.Node) { p.parseString(n, false) }},
+		{"cache mode", "{}", "expected string for \"cache-mode\"", func(p *Parser, n *syntax.Node) { p.parseCacheMode(n) }},
+		{"sequence", "{}", "must be sequence node", func(p *Parser, n *syntax.Node) { p.checkSequence("steps", n, false) }},
+		{"mapping", "[]", "mapping node is expected", func(p *Parser, n *syntax.Node) {
 			for range p.parseSectionMapping("env", n, false, false) {
 			}
 		}},
-		{"bool", "{}", "expected bool value", func(p *Parser, n *yaml.Node) { p.parseBool(n) }},
-		{"integer", "{}", "expected scalar node for integer value", func(p *Parser, n *yaml.Node) { p.parseInt(n) }},
-		{"float", "{}", "expected scalar node for float value", func(p *Parser, n *yaml.Node) { p.parseFloat(n) }},
-		{"expression", "plain", "expecting a single ${{...}} expression", func(p *Parser, n *yaml.Node) { p.parseBool(n) }},
+		{"bool", "{}", "expected bool value", func(p *Parser, n *syntax.Node) { p.parseBool(n) }},
+		{"integer", "{}", "expected scalar node for integer value", func(p *Parser, n *syntax.Node) { p.parseInt(n) }},
+		{"float", "{}", "expected scalar node for float value", func(p *Parser, n *syntax.Node) { p.parseFloat(n) }},
+		{"expression", "plain", "expecting a single ${{...}} expression", func(p *Parser, n *syntax.Node) { p.parseBool(n) }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var doc yaml.Node
 			src := "anchor: &value " + tt.value + `
 first: *value
 second: *value
 `
-			if err := yaml.Unmarshal([]byte(src), &doc); err != nil {
+			doc, err := codec.Parse([]byte(src))
+			if err != nil {
 				t.Fatal(err)
 			}
 			p := &Parser{}
-			p.resolveAliases(&doc)
-			for _, n := range []*yaml.Node{doc.Content[0].Content[3], doc.Content[0].Content[5]} {
+			projected := projectAliasTestInput(p, doc)
+			for i, n := range []*syntax.Node{projected.Content[0].Content[3], projected.Content[0].Content[5]} {
+				if p.aliases[n] != doc.Content[0].Content[3+2*i] || doc.Content[0].Content[3+2*i].Kind != syntax.AliasNode {
+					t.Fatal("type diagnostic lost original alias provenance")
+				}
 				tt.check(p, n)
 			}
 			if len(p.Errors) != 2 {
@@ -171,7 +175,7 @@ func TestParserScriptSource(t *testing.T) {
 	tests := []struct {
 		name       string
 		source     string
-		node       *yaml.Node
+		node       *syntax.Node
 		line       int
 		column     int
 		want       Pos
@@ -184,8 +188,8 @@ func TestParserScriptSource(t *testing.T) {
     nested
 next: value
 `,
-			node: &yaml.Node{
-				Style:  yaml.LiteralStyle,
+			node: &syntax.Node{
+				Style:  syntax.LiteralStyle,
 				Value:  "echo $foo\n  nested",
 				Line:   1,
 				Column: 6,
@@ -202,8 +206,8 @@ next: value
     nested
 next: value
 `,
-			node: &yaml.Node{
-				Style:  yaml.LiteralStyle,
+			node: &syntax.Node{
+				Style:  syntax.LiteralStyle,
 				Value:  "echo $foo\n  nested",
 				Line:   1,
 				Column: 6,
@@ -220,8 +224,8 @@ next: value
   echo hi
 next: value
 `,
-			node: &yaml.Node{
-				Style:  yaml.LiteralStyle,
+			node: &syntax.Node{
+				Style:  syntax.LiteralStyle,
 				Value:  "\necho hi\n",
 				Line:   1,
 				Column: 6,
@@ -234,7 +238,7 @@ next: value
 		{
 			name:       "single-line plain scalar",
 			source:     "run: echo $foo # YAML comment\n",
-			node:       &yaml.Node{Value: "echo $foo", Line: 1, Column: 6},
+			node:       &syntax.Node{Value: "echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
 			want:       Pos{Line: 1, Col: 11},
@@ -246,7 +250,7 @@ next: value
   echo $foo
 next: value
 `,
-			node:       &yaml.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
+			node:       &syntax.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     17,
 			want:       Pos{Line: 2, Col: 8},
@@ -258,7 +262,7 @@ next: value
   echo $foo
 next: value
 `,
-			node:       &yaml.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
+			node:       &syntax.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     11,
 			wantMapped: false,
@@ -269,7 +273,7 @@ next: value
   run: echo first
     x
 `,
-			node:       &yaml.Node{Value: "echo first x", Line: 2, Column: 8},
+			node:       &syntax.Node{Value: "echo first x", Line: 2, Column: 8},
 			line:       1,
 			column:     12,
 			want:       Pos{Line: 3, Col: 5},
@@ -278,7 +282,7 @@ next: value
 		{
 			name:       "plain scalar with unicode",
 			source:     "run: echo é $foo\n",
-			node:       &yaml.Node{Value: "echo é $foo", Line: 1, Column: 6},
+			node:       &syntax.Node{Value: "echo é $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     8,
 			want:       Pos{Line: 1, Col: 13},
@@ -289,7 +293,7 @@ next: value
 			source: `run: >
   echo $foo
 `,
-			node:       &yaml.Node{Style: yaml.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
+			node:       &syntax.Node{Style: syntax.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
 			want:       Pos{Line: 2, Col: 8},
@@ -300,7 +304,7 @@ next: value
 			source: `run: |
   echo source
 `,
-			node:       &yaml.Node{Style: yaml.LiteralStyle, Value: "echo decoded\n", Line: 1, Column: 6},
+			node:       &syntax.Node{Style: syntax.LiteralStyle, Value: "echo decoded\n", Line: 1, Column: 6},
 			line:       1,
 			column:     1,
 			wantMapped: false,
@@ -329,8 +333,8 @@ next: value
 		input := `run: |
   echo $foo
 `
-		var root yaml.Node
-		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+		root, err := codec.Parse([]byte(input))
+		if err != nil {
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]
@@ -357,16 +361,21 @@ next: value
   echo $foo
 run: *script
 `
-		var root yaml.Node
-		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+		root, err := codec.Parse([]byte(input))
+		if err != nil {
 			t.Fatal(err)
 		}
 		p := NewSourceParser([]byte(input))
-		p.resolveAliases(&root)
+		p.IndexScalarSources(root)
+		projected := projectAliasTestInput(p, root)
 		if len(p.Errors) != 0 {
 			t.Fatal(p.Errors)
 		}
-		for _, n := range []*yaml.Node{root.Content[0].Content[1], root.Content[0].Content[3]} {
+		originalAlias := root.Content[0].Content[3]
+		if p.aliases[projected.Content[0].Content[3]] != originalAlias || originalAlias.Kind != syntax.AliasNode {
+			t.Fatal("script source lost original alias provenance")
+		}
+		for _, n := range []*syntax.Node{projected.Content[0].Content[1], projected.Content[0].Content[3]} {
 			source := p.ScriptSource(n)
 			if source == nil {
 				t.Fatal("literal script lost its source mapping")
@@ -383,8 +392,8 @@ run: *script
 
   echo $foo
 `
-		var root yaml.Node
-		if err := yaml.Unmarshal([]byte(input), &root); err != nil {
+		root, err := codec.Parse([]byte(input))
+		if err != nil {
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]
@@ -460,6 +469,79 @@ func BenchmarkParseTestData(b *testing.B) {
 				for _, in := range bc.inputs {
 					// Note: Some workflows may cause parse error
 					Parse(in)
+				}
+			}
+		})
+	}
+}
+
+func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
+	for _, tc := range []struct {
+		name, scalar, value                   string
+		tokenLine, decodedLine, decodedColumn int
+	}{
+		{"literal", "|-\n    echo first\n    $foo\n", "echo first\n$foo", 5, 2, 1},
+		{"folded", ">-\n    echo first\n    $foo\n", "echo first $foo", 5, 1, 12},
+		{"multiline plain", "echo first\n    $foo\n", "echo first $foo", 4, 1, 12},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := "on: push\nenv:\n  SCRIPT: &script " + tc.scalar + "jobs:\n  block:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n  flow:\n    runs-on: ubuntu-latest\n    steps: [{run: *script}]\n"
+			workflow, diagnostics := Parse([]byte(input))
+			if len(diagnostics) != 0 || workflow == nil {
+				t.Fatalf("Parse diagnostics=%v", diagnostics)
+			}
+			wantStart, wantEnd := Pos{Line: tc.tokenLine, Col: 5}, Pos{Line: tc.tokenLine, Col: 9}
+			for _, name := range []string{"block", "flow"} {
+				job := workflow.Jobs[name]
+				if job == nil || len(job.Steps) != 1 {
+					t.Fatalf("job %q missing run step", name)
+				}
+				switch run := job.Steps[0].Exec.(type) {
+				case *ExecRun:
+					if run.Run == nil || run.Run.Value != tc.value || run.Source == nil || run.Source.Value != tc.value {
+						t.Fatalf("job %q run/source=%+v", name, run)
+					}
+					if got, ok := run.Source.Position(tc.decodedLine, tc.decodedColumn); !ok || *got != wantStart {
+						t.Errorf("job %q token=%v mapped=%t want %v", name, got, ok, wantStart)
+					}
+					if got, ok := run.Source.EndPos(tc.decodedLine, tc.decodedColumn+4); !ok || *got != wantEnd {
+						t.Errorf("job %q token end=%v mapped=%t want %v", name, got, ok, wantEnd)
+					}
+					if got, ok := run.Source.EndPos(tc.decodedLine, len(strings.Split(tc.value, "\n")[tc.decodedLine-1])+1); !ok || *got != wantEnd {
+						t.Errorf("job %q script end=%v mapped=%t want %v", name, got, ok, wantEnd)
+					}
+				default:
+					t.Fatalf("job %q exec=%T want run", name, run)
+				}
+			}
+			// Prove the fixture detects indexing projected aliases: the final flow use overwrites the anchor context.
+			root, err := codec.Parse([]byte(input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			wrong := NewSourceParser([]byte(input))
+			projected := projectAliasTestInput(wrong, root)
+			wrong.IndexScalarSources(projected)
+			var projectedScript *syntax.Node
+			var find func(*syntax.Node)
+			find = func(node *syntax.Node) {
+				if node.Kind == syntax.ScalarNode && node.Anchor == "script" {
+					projectedScript = node
+				}
+				for _, child := range node.Content {
+					find(child)
+				}
+			}
+			find(projected)
+			if projectedScript == nil || !wrong.scalarContexts[*PosAt(projectedScript)].Flow {
+				t.Fatal("fixture did not overwrite anchor context with final flow alias")
+			}
+			wrongSource := wrong.ScriptSource(projectedScript)
+			if wrongSource != nil {
+				start, startOK := wrongSource.Position(tc.decodedLine, tc.decodedColumn)
+				end, endOK := wrongSource.EndPos(tc.decodedLine, tc.decodedColumn+4)
+				if startOK && endOK && *start == wantStart && *end == wantEnd {
+					t.Fatal("fixture does not distinguish projected source indexing")
 				}
 			}
 		})

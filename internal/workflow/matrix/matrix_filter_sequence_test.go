@@ -55,7 +55,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			findings := matrixcheck.Check(workflow.Jobs["test"], false)
+			findings := matrixcheck.Resolve(workflow.Jobs["test"].Strategy).Check(false)
 			count := 0
 			for _, finding := range findings {
 				if strings.Contains(finding.Message, "does not match in matrix") {

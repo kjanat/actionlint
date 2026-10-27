@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
@@ -24,7 +25,7 @@ func TestShellcheckSourceInventoryWithoutDiagnostics(t *testing.T) {
 	run := newShellcheckRunForTest(cmd)
 	var inputs []string
 	run.paths.reader = fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-	if err := run.runShellcheck("echo ok", nil, shellcheckShell{name: "bash"}, runDirectory{directoryKnown, root}, &workflowlang.Pos{Line: 1, Col: 1}, nil); err != nil {
+	if err := run.runShellcheck("echo ok", documentparse.ScriptSourceView{}, shellcheckShell{name: "bash"}, runDirectory{directoryKnown, root}, &workflowlang.Pos{Line: 1, Col: 1}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := cmd.Wait(); err != nil {
@@ -76,5 +77,9 @@ func TestSourceInventoryResolvesSymlinksBeforeParents(t *testing.T) {
 	}
 	if !recorded(file) || !recorded(filepath.Join(root, "link")) || recorded(filepath.Join(root, "helper.sh")) {
 		t.Fatalf("wrong source identity: %v", inputs)
+	}
+	finding := run.sourcedDiagnostic(shellcheckError{File: "link/../helper.sh", Line: 1, Column: 1}, root, map[string]reportedSource{})
+	if string(finding.source) != "VALUE=correct\n" {
+		t.Fatalf("reported parent traversal reread the lexically cleaned wrong file: %q", finding.source)
 	}
 }

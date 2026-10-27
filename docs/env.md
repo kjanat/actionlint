@@ -36,9 +36,8 @@ Any explicit config-selection flag overrides both `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG=true` is an error. Relative paths use the current directory.
 Environment selection works for checks, `doctor`, and config inspection commands.
 
-There is still one configuration file, without a global search or merging between
-files. Policy settings, runner labels, allowed secrets and variables remain in
-that file; see [Configuration](config.md). `config show --origin` reports the
+Configure policy settings, runner labels, allowed secrets and variables in the
+selected file; see [Configuration](config.md). `config show --origin` reports the
 origins of values inside the selected file.
 
 Explicit `--ignore` or `--ignore-regex` options replace the environment's entire
@@ -63,7 +62,7 @@ actionlint config show --origin
 | `ACTIONLINT_TEMPLATE_FILE` | `--template-file`                | A file containing a Go template. Checks only.                                         |
 | `ACTIONLINT_OUTPUT_FILE`   | `--output-file`                  | Report destination. Empty or `-` writes to stdout. Checks only.                       |
 | `ACTIONLINT_LOG_LEVEL`     | `--log-level`                    | `none`, `info`, or `debug`. Checks only; default: none.                               |
-| `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries, retaining findings and errors. Default: false.       |
+| `ACTIONLINT_QUIET`         | `--quiet` / `-q`                 | Suppress progress and summaries. Default: false.                                      |
 | `ACTIONLINT_SUMMARY`       | `--summary`                      | Show analysis summary. Default: true.                                                 |
 | `ACTIONLINT_COLOR`         | Color controls                   | `auto`, `always`, or `never`. Default: auto.                                          |
 | `ACTIONLINT_HYPERLINKS`    | `--hyperlinks`                   | `auto`, `always`, or `never`. Default: auto.                                          |
@@ -92,9 +91,8 @@ overrides environment format defaults. Setting `ACTIONLINT_JSON_PRETTY=true`
 only controls formatting and does not select JSON output.
 
 Explicit `--json-pretty` also indents JSON written to pipes and regular files,
-using built-in formatting without color codes or a jq dependency. Otherwise,
-pipes and files retain their existing bytes. JSONL, legacy templates and stderr
-log/error records keep their existing format. If `jq` is absent, fails, or takes
+using built-in formatting without color codes or a jq dependency.
+If `jq` is absent, fails, or takes
 more than two seconds, actionlint uses its built-in output. Nothing is installed
 automatically. Cancellation still cancels the command.
 
@@ -149,13 +147,13 @@ actionlint check workflow.yml
 ```
 
 An explicit `--shellcheck` or `--ruff` replaces **all three** environment
-settings for that tool. The flags retain their existing command-line syntax;
+settings for that tool;
 `--shellcheck=` disables ShellCheck even when its environment settings are present.
 An empty `_BIN` also disables its tool without parsing its `_FLAGS` or `_ENV`.
 
 Extra arguments precede actionlint's required arguments. Do not supply input files
-or override the output protocol: ShellCheck must return JSON1 and Ruff must return JSON. Existing
-`SHELLCHECK_OPTS` behavior remains available; ShellCheck interprets that variable.
+or override the output protocol: ShellCheck must return JSON1 and Ruff must return JSON.
+ShellCheck also reads `SHELLCHECK_OPTS`.
 
 `_ENV` accepts a JSON object with string values, or a quoted list of `NAME=value`
 entries and variable names. JSON `null` means forward the current value. A bare

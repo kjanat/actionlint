@@ -14,7 +14,7 @@ import (
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 	cwd := filepath.Join("..", "..", "..", "testdata", "reusable_workflow_metadata")
-	cache := calls.NewCache(cwd, cwd, nil)
+	cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 
 	for i, md := range []*calls.Metadata{
 		// workflow0.yaml

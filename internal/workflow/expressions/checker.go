@@ -2,6 +2,7 @@ package expressions
 
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -50,14 +51,14 @@ type Options struct {
 	ScriptInjectionDisabled bool
 }
 
-// Dependencies provides metadata to workflow expression inference. Missing
-// lookups leave output types open; dependency loading remains the caller's job.
+// Dependencies supplies metadata for workflow expression inference.
 type Dependencies struct {
-	Runners       *runner.Knowledge
-	LocalAction   func(string) (*actionmeta.Metadata, error)
-	PopularAction func(string) *actionmeta.Metadata
-	Workflow      func(string) (*calls.Metadata, error)
-	Log           func(string, ...any)
+	SourceSnapshot *documentparse.SourceSnapshot
+	Runners        *runner.Knowledge
+	LocalAction    func(string) (*actionmeta.Metadata, error)
+	PopularAction  func(string) *actionmeta.Metadata
+	Workflow       func(string) (*calls.Metadata, error)
+	Log            func(string, ...any)
 }
 
 // New creates an expression checker with independent per-workflow context state.

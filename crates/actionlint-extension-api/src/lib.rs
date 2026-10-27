@@ -28,7 +28,7 @@ pub use bindings::{exports, kjanat};
 pub use exports::kjanat::actionlint::analyzer::*;
 
 /// Canonical analyzer interface implemented by this SDK.
-pub const ANALYZER_INTERFACE: &str = "kjanat:actionlint/analyzer@0.1.0";
+pub const ANALYZER_INTERFACE: &str = "kjanat:actionlint/analyzer@0.2.0";
 /// Versioned configuration profile accepted by shell analysis integrations.
 pub const SHELLCHECK_CONFIGURATION_SCHEMA: &str =
     include_str!("../schemas/shellcheck-config-0.1.0.json");

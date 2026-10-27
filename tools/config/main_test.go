@@ -600,8 +600,7 @@ policy: {required-actions: []}
 			if err := yaml.Unmarshal([]byte(tt.input), &value); err != nil {
 				t.Fatal(err)
 			}
-			// The current editor schema describes one syntax. Old documents
-			// remain parser inputs only through the migration boundary.
+			// Legacy syntax must be migrated before schema validation.
 			legacy := false
 			if root, ok := value.(map[string]any); ok {
 				for _, key := range []string{"policy", "self-hosted-runner", "config-variables", "config-secrets", "assume-default-permissions", "paths"} {

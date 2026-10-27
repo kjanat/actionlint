@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/source"
 )
 
 // ToolIntegration advertises an optional, versioned host tool profile.
@@ -77,4 +76,4 @@ type PreparedScript struct {
 	Lines     []PreparedLine
 	Excluded  []uint32
 }
-type ScriptPreparer func(context.Context, source.Reference, *string) (*PreparedScript, error)
+type ScriptPreparer func(context.Context, OccurrenceID, *string) (*PreparedScript, error)

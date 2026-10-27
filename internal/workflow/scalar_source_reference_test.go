@@ -10,7 +10,7 @@ import (
 	"time"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -66,8 +66,8 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 				t.Fatal("reference did not return the expected parsed YAML mapping")
 			}
 			want := response.Engines[0].YAML.Items[0].Value
-			var root yaml.Node
-			if err := yaml.Unmarshal([]byte(request.Input), &root); err != nil {
+			root, err := codec.Parse([]byte(request.Input))
+			if err != nil {
 				t.Fatal(err)
 			}
 			node := root.Content[0].Content[1]
@@ -84,55 +84,67 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 
 // Live verification is opt-in; ordinary tests use the checked-in reference results.
 func TestScalarSourceReferenceLive(t *testing.T) {
-	oracle, wasm := os.Getenv("ACTIONLINT_REFERENCE_ORACLE"), os.Getenv("ACTIONLINT_REFERENCE_WASM")
-	if oracle == "" && wasm == "" {
-		t.Skip("set ACTIONLINT_REFERENCE_ORACLE and ACTIONLINT_REFERENCE_WASM")
-	}
-	if oracle == "" || wasm == "" {
-		t.Fatal("both reference paths are required")
+	image := os.Getenv("ACTIONLINT_REFERENCE_IMAGE")
+	if image == "" {
+		t.Skip("set ACTIONLINT_REFERENCE_IMAGE to a locally available Runny Docker image")
 	}
 	cases := scalarReferenceCases(t)
-	var input bytes.Buffer
 	for _, fixture := range cases {
-		if err := json.Compact(&input, fixture.Request); err != nil {
+		var request struct {
+			ID, Operation, Engine, Input string
+			AllowAnchors                 bool
+		}
+		if err := json.Unmarshal(fixture.Request, &request); err != nil {
 			t.Fatal(err)
 		}
-		input.WriteByte('\n')
-	}
-	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
-	defer cancel()
-	command := exec.CommandContext(ctx, oracle, "--timeout", "55s", "--wasm", wasm)
-	command.Stdin = &input
-	var stderr bytes.Buffer
-	command.Stderr = &stderr
-	output, err := command.Output()
-	if err != nil {
-		t.Fatalf("reference failed: %v\n%s", err, stderr.String())
-	}
-	lines := bytes.Split(bytes.TrimSpace(output), []byte{'\n'})
-	if len(lines) != len(cases) {
-		t.Fatalf("expected %d responses, got %d", len(cases), len(lines))
-	}
-	for i, fixture := range cases {
-		normalize := func(data []byte) map[string]any {
-			t.Helper()
-			var result map[string]any
-			if err := json.Unmarshal(data, &result); err != nil {
+		t.Run(request.ID, func(t *testing.T) {
+			if request.Operation != "parse-yaml" || request.Engine != "next" || !request.AllowAnchors {
+				t.Fatal("reference case requires an unsupported Docker invocation")
+			}
+			var envelope struct {
+				ID              string
+				ProtocolVersion int
+			}
+			if err := json.Unmarshal(fixture.Response, &envelope); err != nil {
 				t.Fatal(err)
 			}
-			if engines, ok := result["engines"].([]any); ok {
-				for _, engine := range engines {
-					if fields, ok := engine.(map[string]any); ok {
-						delete(fields, "ns")
-						delete(fields, "alloc")
+			if envelope.ID != request.ID || envelope.ProtocolVersion != 1 {
+				t.Fatal("recorded response envelope does not match its request")
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+			command := exec.CommandContext(ctx, "docker", "run", "--rm", "-i", "--pull=never", image, request.Operation, "--engine", request.Engine, "--anchors")
+			command.Stdin = bytes.NewBufferString(request.Input)
+			var stderr bytes.Buffer
+			command.Stderr = &stderr
+			output, err := command.Output()
+			if err != nil {
+				t.Fatalf("reference failed: %v\n%s", err, stderr.String())
+			}
+			normalize := func(data []byte) map[string]any {
+				t.Helper()
+				var result map[string]any
+				if err := json.Unmarshal(data, &result); err != nil {
+					t.Fatal(err)
+				}
+				if engines, ok := result["engines"].([]any); ok {
+					for _, engine := range engines {
+						if fields, ok := engine.(map[string]any); ok {
+							delete(fields, "ns")
+							delete(fields, "alloc")
+						}
 					}
 				}
+				return result
 			}
-			return result
-		}
-		if diff := cmp.Diff(normalize(fixture.Response), normalize(lines[i])); diff != "" {
-			t.Errorf("reference response %d changed (-recorded +live):\n%s", i, diff)
-		}
+			recorded := normalize(fixture.Response)
+			// These two fields belong to the recorded transport envelope, not Runny's report.
+			delete(recorded, "id")
+			delete(recorded, "protocolVersion")
+			if diff := cmp.Diff(recorded, normalize(output)); diff != "" {
+				t.Errorf("reference response changed (-recorded +live):\n%s", diff)
+			}
+		})
 	}
 	t.Logf("verified %d live reference responses", len(cases))
 }

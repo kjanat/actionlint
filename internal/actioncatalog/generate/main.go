@@ -20,7 +20,7 @@ import (
 	"time"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 // List of known outdated actions which cannot be detected from 'runs' in action.yml
@@ -170,8 +170,8 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 			return &fetched{err: fmt.Errorf("could not read body for %s: %w", url, err)}
 		}
 		spec := req.action.spec(req.tag)
-		var meta actionmeta.Metadata
-		if err := yaml.Unmarshal(body, &meta); err != nil && !onlyUnknownInputFields(err) {
+		meta, err := actionmeta.Parse("action.yml", body)
+		if err != nil && !onlyUnknownInputFields(err) {
 			return &fetched{err: fmt.Errorf("could not parse metadata for %s: %w", url, err)}
 		}
 		if req.action.SkipInputs {
@@ -180,7 +180,7 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 		if req.action.SkipOutputs {
 			meta.SkipOutputs = true
 		}
-		return &fetched{spec: spec, pin: req.action.Pins[req.tag], meta: &meta}
+		return &fetched{spec: spec, pin: req.action.Pins[req.tag], meta: meta}
 	}
 
 	for range 5 {
@@ -262,7 +262,7 @@ func (g *gen) fetchRemote() (map[string]*actionmeta.Metadata, error) {
 // Input decoding preserves supported fields when it reports unknown input keys.
 // Registry extraction can use that metadata without relaxing local validation.
 func onlyUnknownInputFields(err error) bool {
-	issues, ok := errors.AsType[*yaml.DecodeError](err)
+	issues, ok := errors.AsType[*codec.DecodeError](err)
 	if !ok || len(issues.Errors) == 0 {
 		return false
 	}
@@ -287,7 +287,6 @@ func (g *gen) writeJSONL(out io.Writer, actions map[string]*actionmeta.Metadata)
 }
 
 func (g *gen) writeGo(out io.Writer, actions map[string]*actionmeta.Metadata) error {
-	// Bound each initializer so large catalogues remain compilable for WASM.
 	const chunkSize = 50
 	active := 0
 	for spec, meta := range actions {

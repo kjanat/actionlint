@@ -15,6 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/tools"
 )
@@ -294,7 +295,15 @@ func (f *pluginSourceFiles) configure(input *analyzer.Input) {
 	for _, mount := range f.mounts {
 		input.Files = append(input.Files, analyzer.FileSystem{Path: mount.guest, FS: mount.files})
 	}
-	input.Scripts[0].Runtime.Directory = f.directory
+	for _, scripts := range [][]analyzer.Script{input.Scripts, input.Invoked} {
+		for i := range scripts {
+			if scripts[i].Runtime != nil {
+				runtime := *scripts[i].Runtime
+				runtime.Directory = f.directory
+				scripts[i].Runtime = &runtime
+			}
+		}
+	}
 }
 
 func (f *pluginSourceFiles) close() error {
@@ -322,8 +331,9 @@ func (f *pluginSourceFiles) finding(finding diagnostic.Diagnostic, script tools.
 		result.Path = filepath.Join(mount.host, filepath.FromSlash(name))
 		result.Reference, result.Fixes = nil, nil
 		result.Content, result.RawScript = content, true
+		result.UnavailableSource = findingmodel.PluginShellcheckUnavailable(result.Path)
 		last := script.Value.Line
-		for _, span := range script.Source.LineSpans() {
+		for span := range script.Source.LineSpans() {
 			last = max(last, span.YamlLine)
 		}
 		result.Suppression = &tools.Suppression{Path: script.Path, First: script.Key.Line, Last: last}

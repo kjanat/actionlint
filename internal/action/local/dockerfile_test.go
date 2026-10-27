@@ -18,7 +18,7 @@ func TestDockerfileOnlyAction(t *testing.T) {
 			file := writeFixture(t, root, "action/"+name, `FROM scratch
 `)
 			var inputs []string
-			cache := NewCache(root, nil)
+			cache := newCapturedActionCache(t, root, nil)
 			cache.Configure(Options{Reader: fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })})
 			for _, wantCached := range []bool{false, true} {
 				meta, cached, err := cache.FindMetadata("./action")
@@ -44,7 +44,7 @@ func TestDockerfileFallbackPrecedence(t *testing.T) {
 		t.Run(strings.Join(names, "+"), func(t *testing.T) {
 			root := t.TempDir()
 			var inputs []string
-			cache := NewCache(root, nil)
+			cache := newCapturedActionCache(t, root, nil)
 			cache.Configure(Options{CustomReader: true, Reader: fsread.New(t.Context(), func(path string) ([]byte, error) {
 				name := filepath.Base(path)
 				if !slices.Contains(names, name) {
@@ -69,7 +69,7 @@ runs: {using: composite, steps: []}
 
 func TestDockerfileReadErrors(t *testing.T) {
 	for _, readError := range []error{os.ErrPermission, errors.New("broken reader")} {
-		cache := NewCache(t.TempDir(), nil)
+		cache := newCapturedActionCache(t, t.TempDir(), nil)
 		cache.Configure(Options{CustomReader: true, Reader: fsread.New(t.Context(), func(path string) ([]byte, error) {
 			if filepath.Base(path) == "Dockerfile" {
 				return nil, readError
@@ -87,7 +87,7 @@ func TestDockerfileDirectoryIsNotAction(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "action", "Dockerfile"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := NewCache(root, nil).FindMetadata("./action"); err == nil {
+	if _, _, err := newCapturedActionCache(t, root, nil).FindMetadata("./action"); err == nil {
 		t.Fatal("directory named Dockerfile accepted as an action")
 	}
 }
@@ -104,7 +104,7 @@ func TestMappedDockerfileCannotEscapeRepository(t *testing.T) {
 			if err := os.Symlink(file, filepath.Join(root, "action", name)); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			view := NewResolver(NewCache(root, nil), map[string]string{"./generated": "./action"})
+			view := NewResolver(newCapturedActionCache(t, root, nil), map[string]string{"./generated": "./action"})
 			if _, _, err := view.FindMetadata("./generated"); err == nil || !strings.Contains(err.Error(), "outside the repository") {
 				t.Fatalf("mapped Dockerfile symlink accepted: %v", err)
 			}
@@ -119,7 +119,7 @@ func TestMappedDockerfileInsideRepository(t *testing.T) {
 			file := writeFixture(t, root, "action/"+name, `FROM scratch
 `)
 			var inputs []string
-			cache := NewCache(root, nil)
+			cache := newCapturedActionCache(t, root, nil)
 			cache.Configure(Options{Reader: fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })})
 			view := NewResolver(cache, map[string]string{"./generated": "./action"})
 			meta, _, err := view.FindMetadata("./generated")

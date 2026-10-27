@@ -2,10 +2,6 @@ package langserver
 
 import (
 	"context"
-	"strings"
-	"unicode/utf8"
-
-	"actionlint.kjanat.dev/v2/diagnostic"
 )
 
 // Completion is a buffer-relative property edit; the transport owns UTF-16 conversion.
@@ -32,23 +28,5 @@ func completionItemFor(text string, c Completion) completionItem {
 
 func positionAtOffset(text string, offset int) position {
 	offset = max(0, min(offset, len(text)))
-	line, column := 1, 1
-	start := 0
-	if strings.HasPrefix(text, "\ufeff") {
-		start = len("\ufeff")
-	}
-	for at := start; at < offset; {
-		r, n := utf8.DecodeRuneInString(text[at:])
-		at += n
-		if r == '\r' && at < len(text) && text[at] == '\n' {
-			at++
-		}
-		if r == '\n' || r == '\r' {
-			line++
-			column = 1
-		} else {
-			column++
-		}
-	}
-	return editorPosition([]byte(text), diagnostic.Position{Line: line, Column: column})
+	return positionAtByteOffset([]byte(text), offset)
 }

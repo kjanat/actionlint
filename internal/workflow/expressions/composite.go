@@ -35,7 +35,13 @@ func (rule *Checker) CheckCompositeScript(step *workflowlang.Step) {
 			return
 		}
 		rule.workflow.ExpressionSources[*exec.Run.Pos] = exec.Source
-		rule.checkScriptString(exec.Run, "jobs.<job_id>.steps.run", rule.scriptShell(exec))
+		shell := ""
+		if rule.dependencies.SourceSnapshot != nil {
+			if declaration, err := rule.dependencies.SourceSnapshot.StepView(step); err == nil {
+				shell = rule.scriptShell(declaration)
+			}
+		}
+		rule.checkScriptString(exec.Run, "jobs.<job_id>.steps.run", shell)
 	case *workflowlang.ExecAction:
 		if exec == nil {
 			return
@@ -52,6 +58,6 @@ func (rule *Checker) CheckCompositeScript(step *workflowlang.Step) {
 			}
 		}
 		collect(&workflowlang.ActionInputMapping{Inputs: exec.Inputs, Insertions: exec.InputInsertions})
-		rule.checkActionInputs(workflowlang.InputMapping(exec), exec.Uses)
+		rule.checkActionInputs(exec, exec.Uses)
 	}
 }

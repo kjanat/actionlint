@@ -8,7 +8,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestShellcheckShorthandOverlay(t *testing.T) {
@@ -104,7 +104,7 @@ func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	var encoded strings.Builder
-	if err := yaml.NewEncoder(&encoded).Encode(values); err != nil {
+	if err := codec.NewEncoder(&encoded).Encode(values); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(encoded.String(), "enabled: true") {

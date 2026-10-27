@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// Renderer formats results and retains rule metadata across calls.
+// Renderer formats analysis results.
 type Renderer struct {
 	format    Format
 	oneline   bool
@@ -65,6 +65,7 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 		}
 		if r.oneline {
 			finding.Source = nil
+			finding.canonicalSnippet = ""
 		}
 		finding.PrettyPrint(out)
 	}

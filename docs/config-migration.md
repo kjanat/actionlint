@@ -9,10 +9,9 @@ select each inherited file explicitly to rewrite its syntax too.
 
 Local CLI and GitHub Action checking automatically migrate a selected legacy
 file before plugin selection. Explicit `config migrate` also supplies default
-ShellCheck and Ruff declarations when `plugins` was omitted. Existing plugin
-lists, including `[]` or `null`, remain explicit choices. Disabled tools and
-configured native backends retain their selection; ShellCheck settings needing
-native source or rc-file access retain the native backend.
+ShellCheck and Ruff declarations when `plugins` was omitted. An explicit `plugins`
+value, including `[]` or `null`, prevents default plugin insertion. Native backends
+are selected for explicit process configuration and ShellCheck source or rc-file settings.
 
 Applying this migration resolves and verifies plugin dependencies before saving
 the config and its lockfile. A failed download leaves both project files unchanged.
@@ -21,8 +20,8 @@ not automatically enrolled in default plugins.
 
 The parser accepts old documents through the same conversion, including
 inherited files and inline configuration. Parsing alone never writes files.
-YAML, JSON and TOML keep their format. TOML schema directives and comments are retained;
-comments within moved settings appear before the resulting `lint` section.
+Migration writes the input format: YAML, JSON or TOML. TOML schema directives are
+copied to the output; comments within moved settings appear before the resulting `lint` section.
 A prepared file migration checks its entire inherited input graph before writing;
 concurrent edits abort the write.
 TOML cannot express null resets. If encoding would change inherited settings,
@@ -37,10 +36,10 @@ migration refuses the rewrite; convert that selected document to YAML or JSON fi
 | `policy.<rule>`              | `lint.rules.<group>.<rule>`                                        |
 | `paths.<glob>.ignore`        | `lint.message-ignores.<glob>`                                      |
 
-Knowledge options use `level: default` and remain available to other checks
-even when their own diagnostic is disabled. Null variable/secret lists mean
-unknown names; empty lists permit no configured names. Built-in secrets and
-declared reusable-workflow secrets remain available.
+Knowledge options use `level: default` and supply information independently of
+their diagnostic level. Null variable/secret lists mean unknown names; empty lists
+permit no configured names. Built-in and declared reusable-workflow secrets are
+added separately.
 
 ```yaml
 lint:
@@ -67,10 +66,9 @@ out this change whenever a policy section is converted.
 
 Conflicting old and current settings in the same document produce an error
 naming both paths. Remove one or make them agree; migration never chooses
-silently. Inherited documents retain their order, mappings merge, and lists
-replace. Regex message filters retain their original final filtering semantics;
-typed `ignores` remains the preferred form for rule- and location-specific
-exceptions.
+silently. Inheritance applies documents in order, merges mappings and replaces
+lists. Regex message filters run after analysis. Prefer typed `ignores` for rule-
+and location-specific exceptions.
 
 ## Expression rule split
 
@@ -97,8 +95,8 @@ inline comments accept comma-separated IDs. To suppress only an undefined name,
 use `# actionlint:ignore expression-reference -- reviewed name`.
 
 Automatic syntax migration reports this change when a legacy document contains
-an `expression` control. It retains that selection and never expands it silently:
-the same setting can intentionally select field-value checks in a new config.
+an `expression` control. Review the migrated selection: the same setting can
+intentionally select field-value checks in a new config.
 Workflow comments are not rewritten. The separately introduced
 `script-interpolation` rule adds checks for unknown string values and should be
 configured independently; it is not an old rule renamed by migration.

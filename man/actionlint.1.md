@@ -33,8 +33,8 @@ are enabled by default; ordinary workflow checks do not require configuration.
 
 With no paths, **actionlint** and **actionlint check** find the current repository
 containing both `.git` and `.github/workflows`, then recursively check workflow
-YAML files in that directory. Explicit file arguments and a lone **-** for stdin
-remain supported. Passing a directory does not enable recursive input expansion;
+YAML files in that directory. Pass explicit filenames or **-** for stdin.
+Passing a directory does not enable recursive input expansion;
 action manifests are also discovered and can be passed as explicit inputs.
 
     $ actionlint
@@ -101,12 +101,10 @@ Refuse to overwrite either supported config filename.
 **config show** [**--origin**]
 : Show effective configuration as YAML. **--json** returns `path` and `config`.
 With `--origin`, include sources keyed by JSON Pointer: `default` or `config`,
-missing/null/value state, and positions for file settings. Explicit false and
-empty lists remain distinguishable from defaults and null.
+missing/null/value state, and positions for file settings.
 
 **config validate**
-: Validate with the same loader as analysis. This retains existing unknown-key
-handling; it does not substitute the stricter editor JSON Schema validator.
+: Validate with the analysis configuration loader.
 
 **rules** [*name*]
 : List checks under Correctness, Security, Suspicious, Policy, and External linters,
@@ -134,7 +132,7 @@ Missing optional tools are reported; malformed selected config returns status 3.
 : Pass a literal argument to the resolver. Repeat for multiple arguments.
 
 These options belong to the root and to **check**, unless noted otherwise.
-Root parsing retains the original single- and double-dash spellings; **check**
+The root accepts single- and double-dash spellings; **check**
 uses long options and short aliases. Run **--help-legacy** for old spellings.
 
 **--output-format**, **--output**, **-o** *MODE*
@@ -157,8 +155,7 @@ dependency. Without an explicit pretty flag, pipes and files keep their original
 output. JSONL, templates and stderr records keep their existing format.
 
 **--template**, **--format**, **-f** *TEMPLATE*
-: Render diagnostics with a Go template. Existing template fields and functions
-remain unchanged, including the JSON array returned by `{{json .}}`. Cannot be
+: Render diagnostics with a Go template. `{{json .}}` returns a JSON diagnostic array. Cannot be
 combined with a built-in output selector. A nonempty template takes precedence
 over the legacy **--oneline** option.
 
@@ -182,7 +179,7 @@ never consumes workflow input. Piping `yes` also works in an interactive termina
 
 **--color**[=*MODE*]
 : On **check**, select `auto`, `always`, or `never`; a bare flag means `always`.
-On the root, retain the boolean syntax: `-color=false` does not force color on.
+On the root, use boolean syntax such as `-color=false`.
 Help uses the same controls: automatic styling follows stderr's terminal status,
 **NO_COLOR**, and **TERM=dumb**. With **GITHUB_ACTIONS=true**, help and text
 diagnostics also use color in workflow logs without a terminal, even with
@@ -267,8 +264,7 @@ The snapshot and provider answers must match this scope. Also available on **lsp
 : Select `none`, `info`, or `debug`. The default is `none`.
 
 **--quiet**, **-q**
-: Suppress progress, debug logs and summaries. Requested results and operational
-errors remain visible. Also available on information and config commands.
+: Suppress progress, debug logs and summaries. Also available on information and config commands.
 
 **--strict**
 : Select all stable rules, preserving explicit group/rule exceptions, bounds, scopes
@@ -276,7 +272,7 @@ errors remain visible. Also available on information and config commands.
   required actions. Environment default: `ACTIONLINT_STRICT`.
 
 **--experimental**
-: Enable nursery rules, retaining individual exclusions. Explicit false
+: Enable nursery rules except those explicitly excluded. Explicit false
   clears nursery selections without affecting stable suspicious rules. Environment default:
   `ACTIONLINT_EXPERIMENTAL`. May be combined with **--strict**.
 
@@ -286,19 +282,19 @@ modes this is a JSON record with a `summary` field. Default: true.
 Use `--summary=false` or **--quiet** to suppress it.
 
 **--verbose**, **-v**
-: Retain legacy progress logging. Prefer **--log-level**=info on **check**.
+: Enable progress logging. Prefer **--log-level**=info on **check**.
 
 **--debug**
-: Retain legacy debug logging. On the legacy route, **--verbose** wins when both
+: Enable debug logging. On the legacy route, **--verbose** wins when both
 flags are true. An explicit **--log-level** selects the requested new log level.
 
 **--oneline**
-: Retain one-line diagnostic output. Prefer **--output-format**=oneline.
+: Print one diagnostic per line. Prefer **--output-format**=oneline.
 
 **--shellcheck**[=*COMMAND*]
 : Check shell scripts with ShellCheck. A bare flag uses `shellcheck` on PATH.
 Use `--shellcheck=COMMAND` for a custom executable or command line. Also available
-on **doctor**. Legacy `-shellcheck COMMAND` remains supported on the root.
+on **doctor**. The root also accepts `-shellcheck COMMAND`.
 
 **--no-shellcheck**
 : Disable ShellCheck, overriding any selected command or environment settings.
@@ -311,8 +307,8 @@ The command value is accepted for compatibility and is never executed.
 **--ruff**[=*COMMAND*]
 : Check Python scripts with Ruff. A bare flag uses `ruff` on PATH.
 Use `--ruff=COMMAND` for a custom executable or command line. Ruff must already be
-installed. Also available on **doctor**. Legacy `-ruff COMMAND` remains supported
-on the root. Uses isolated, read-only checks with Ruff's default rule selection.
+installed. Also available on **doctor**. The root also accepts `-ruff COMMAND`.
+Uses isolated, read-only checks with Ruff's default rule selection.
 `tools.ruff` configures rule selection and the Python target version.
 
 **--no-ruff**
@@ -324,8 +320,8 @@ including inherited files and file overrides. Without this flag, selecting
 `tools.<name>.backend.process` reports an error before the executable is launched.
 Explicit CLI and environment tool selections authorize their own executable.
 
-The older `--ruff=false`, `--shellcheck=false`, and empty command values remain
-supported. A disable flag takes precedence when both forms are supplied.
+`--ruff=false`, `--shellcheck=false`, and empty command values disable their tools.
+A disable flag takes precedence when both forms are supplied.
 
 **--init-config**, **--init**
 : Aliases for **config init**, supported on the root and **config** command.
@@ -338,7 +334,7 @@ all four completion scripts. Install bash-completion for Bash and run compinit
 for Zsh. Regenerate saved scripts after upgrading.
 
 **--version**, **-V**
-: Root-only version flag. Retains its original three-line output. Use the
+: Root-only version flag. Prints three lines of text. Use the
 **version** command for the new presentation or **version --json** for metadata.
 Lowercase **-v** continues to enable verbose logging.
 On **plugin install** and **plugin update**, **--version** instead takes an exact
@@ -371,7 +367,7 @@ allows no configuration variables.
 **config-secrets**
 : Allowed secret names, compared case-insensitively. Omitted or `null` disables this check.
 The built-in secrets `GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG`, and
-secrets declared in `on.workflow_call.secrets`, remain allowed even with an empty list.
+secrets declared in `on.workflow_call.secrets`, are allowed even with an empty list.
 
 **assume-default-permissions**
 : Permission assumption for a local reusable workflow call when neither the calling job nor
@@ -526,8 +522,8 @@ The result also includes `configurations` with selected settings and their origi
 See [Analysis results](https://github.com/kjanat/actionlint/blob/HEAD/docs/results.md)
 for the schema, types, and compatibility rules.
 JSON Lines writes one diagnostic per line with `schema_version: 1` on every record, or nothing
-for a clean check. The legacy `{{json .}}` template retains its array, field names, and inclusive
-`end_column` contract.
+for a clean check. The legacy `{{json .}}` template emits a diagnostic array with an inclusive
+`end_column`.
 
 In JSON modes, incomplete checks emit the result on standard error with `completed: false`,
 an `error`, and a nonzero `exit_code`. An empty `diagnostics` array alone does not indicate success.
@@ -545,7 +541,6 @@ Machine-readable metadata:
 JSON help describes flag names, shorthand, types, default spellings, groups, choices, repeatability,
 legacy aliases, and exit codes. JSON version includes `name`, `version`, `installed_from`,
 `go_version`, `os`, and `goarch`. JSON config creation returns `{"path":"..."}`.
-The default three-line version format remains unchanged.
 
 # SHELL COMPLETION
 
@@ -596,8 +591,7 @@ Templates and output files apply only to checks.
 : Whether terminal JSON may use installed **jq**. Default: true. The
 **--json-pretty=false** flag disables this. Explicit **--json-pretty** also
 indents JSON in pipes and files without color codes or a jq dependency.
-Otherwise, pipes and files retain their original output. JSONL, templates and
-stderr records keep their existing format. Missing or failing jq falls back
+Missing or failing jq falls back
 to built-in output.
 
 **ACTIONLINT_LOG_LEVEL**, **ACTIONLINT_QUIET**, **ACTIONLINT_SUMMARY**

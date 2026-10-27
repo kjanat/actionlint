@@ -4,11 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/engine"
-
-	"actionlint.kjanat.dev/v2/internal/documentparse"
-
 	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/engine"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/workflow/visit"
+	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
 func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
@@ -95,6 +97,10 @@ func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
 		{"unknown expression object", "container: ${{ fromJSON(vars.CONTAINER) }}\n    strategy: ${{ fromJSON(vars.STRATEGY) }}", "run: echo test\n        env: {OS: '${{ matrix.os }}'}", ""},
 		{"unsafe strategy interpolation", `strategy: ${{ fromJSON('{"matrix":{"os":["$(id)"]}}') }}`, "run: echo ${{ matrix.os }}", "interpolated value"},
 		{"dynamic strategy interpolation", `strategy: ${{ fromJSON(vars.STRATEGY) }}`, "run: echo ${{ matrix.os }}", "interpolated value"},
+		{"matrix reserved key expression", `strategy:
+      matrix:
+        axis: [one]
+        "${{ case(true, 'exclude', missing) }}": [{axis: one}]`, "run: echo ok", `undefined variable "missing"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := `on: push
@@ -104,17 +110,19 @@ jobs:
     ` + tc.job + `
     steps:
       - ` + tc.step + "\n"
-			workflow, errs := documentparse.Parse([]byte(source))
-			if len(errs) != 0 {
-				t.Fatal(errs)
+			workflow, rule := schemaAuditExpressionRule(t, source)
+			if tc.name == "matrix reserved key expression" {
+				matrix := workflow.Jobs["test"].Strategy.Matrix
+				if matrix == nil || matrix.Exclude == nil || matrix.Exclude.Name == nil || matrix.Exclude.Name.Value != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude.Evaluated {
+					t.Fatalf("matrix reserved key source lost: %#v", matrix)
+				}
 			}
-			rule := builtin.NewRuleExpression(nil, nil)
 			visitor := engine.NewVisitor()
 			visitor.AddPass(rule)
 			if err := visitor.Visit(workflow); err != nil {
 				t.Fatal(err)
 			}
-			errs = rule.Errs()
+			errs := rule.Errs()
 			if tc.want == "" {
 				if len(errs) != 0 {
 					t.Fatal(errs)
@@ -137,26 +145,51 @@ func TestSchemaAuditRunnerObjectExpressions(t *testing.T) {
 		{`fromJSON(vars.RUNNERS)`, ""},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
-			workflow, errs := documentparse.Parse([]byte(`on: push
+			workflow, rule := schemaAuditExpressionRule(t, `on: push
 jobs:
   test:
-    runs-on: ${{ ` + tc.value + ` }}
+    runs-on: ${{ `+tc.value+` }}
     steps:
       - run: echo test
-`))
-			if len(errs) != 0 {
-				t.Fatal(errs)
-			}
-			rule := builtin.NewRuleExpression(nil, nil)
+`)
 			visitor := engine.NewVisitor()
 			visitor.AddPass(rule)
 			if err := visitor.Visit(workflow); err != nil {
 				t.Fatal(err)
 			}
-			errs = rule.Errs()
+			errs := rule.Errs()
 			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want)) {
 				t.Fatalf("wanted %q, got %v", tc.want, errs)
 			}
 		})
 	}
+}
+
+func schemaAuditExpressionRule(t *testing.T, source string) (*workflowlang.Workflow, visit.Rule) {
+	t.Helper()
+	content := []byte(source)
+	document := documentparse.Workflow("schema-audit.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
+	}
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := snapshots.Document("schema-audit.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runners, err := runnerlang.Prepare(t.Context(), snapshot, nil, runnerapi.Options{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, ok := snapshot.Workflow()
+	if !ok {
+		t.Fatal("source snapshot has no workflow")
+	}
+	for _, descriptor := range builtin.Descriptors() {
+		if descriptor.Name == "expression" {
+			return workflow, descriptor.Build(builtin.Context{SourceSnapshot: snapshot, Runners: runners})
+		}
+	}
+	t.Fatal("expression rule is not registered")
+	return nil, nil
 }

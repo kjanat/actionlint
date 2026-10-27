@@ -4,22 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 )
 
-// withAnalyzer retains native execution where the caller explicitly selected
-// process behavior. Configured sources and rc files are selected per document,
-// including overrides and invoked composite actions.
+// withAnalyzer selects a document analyzer or native execution per document,
+// accounting for source and rc-file settings in overrides and composite actions.
 func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, error) {
 	integrator, ok := guest.(analyzer.ToolIntegrator)
 	if !ok || integrator.ToolIntegration() == nil || integrator.ToolIntegration().Contract != "kjanat:actionlint/shellcheck-config@0.1.0" || integrator.ToolIntegration().Tool != "shellcheck" {
@@ -128,41 +126,61 @@ type documentPluginRunner struct {
 }
 
 func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+	if err := r.validateDocumentBatch(batch); err != nil {
+		return nil, err
+	}
 	var findings []tools.Finding
 	var failure error
-	nativeBatch := tools.Batch{}
+	nativeBatch := tools.Batch{CallGraph: batch.CallGraph}
 	var nativeIndices []int
 	nativeScopes := map[*tools.Scope]bool{}
+	negotiatedScopes := map[*tools.Scope]bool{}
 	for i, script := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
 			return findings, errors.Join(failure, err)
+		}
+		if script.Input != nil {
+			continue
 		}
 		cfg := script.Config
 		if config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools.Shellcheck.Enabled != nil && !*cfg.Tools.Shellcheck.Enabled {
 			continue
 		}
+		prepared, err := preparePluginScript(script.Fact, nil)
+		if err != nil {
+			failure = errors.Join(failure, err)
+			continue
+		}
+		if prepared == nil {
+			continue
+		}
 		negotiated, negotiateErr := negotiateDocument(ctx, r.integrator, cfg, &script)
+		if script.Scope != nil && script.Scope.Config == cfg {
+			negotiatedScopes[script.Scope] = true
+		}
 		var unsupported *analyzer.UnsupportedToolConfigurationError
 		if negotiateErr != nil && !errors.As(negotiateErr, &unsupported) {
-			return findings, errors.Join(failure, negotiateErr)
+			failure = errors.Join(failure, negotiateErr)
+			continue
 		}
 		if unsupported != nil {
 			nativeBatch.Scripts = append(nativeBatch.Scripts, script)
 			nativeIndices = append(nativeIndices, i)
-			if !nativeScopes[script.Scope] {
+			if script.Scope != nil && !nativeScopes[script.Scope] {
 				nativeScopes[script.Scope] = true
 				nativeBatch.Scopes = append(nativeBatch.Scopes, script.Scope)
 			}
 			continue
 		}
 		if script.Path == "" {
-			script.Path, script.Content = r.context.DocumentPath, r.context.DocumentContent
+			script.Path, script.Content = r.context.Document.Path, []byte(r.context.Document.Content)
 		}
-		input := r.input(script)
+		input := r.input(script, batch.CallGraph)
 		input.Options = negotiated.Options
 		files, fileErr := r.sourceFiles(ctx, script, negotiated.Resources)
 		if fileErr != nil {
-			return findings, errors.Join(failure, fileErr)
+			failure = errors.Join(failure, fileErr)
+			continue
 		}
 		files.configure(&input)
 		result, err := analyzerhost.Run(ctx, input, []analyzer.Registration{{Analyzer: r.guest, Options: input.Options}})
@@ -176,7 +194,27 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		}
 		failure = errors.Join(failure, err, files.close())
 	}
-	if len(nativeIndices) != 0 {
+	// Scopes without analyzed runs still negotiate configuration. Source grants
+	// are materialized only for scripts that need them.
+	for _, scope := range batch.Scopes {
+		if err := ctx.Err(); err != nil {
+			return findings, errors.Join(failure, err)
+		}
+		if scope == nil || negotiatedScopes[scope] || config.DiagnosticLevel(scope.Config, "shellcheck") == "off" || scope.Config != nil && scope.Config.Tools.Shellcheck.Enabled != nil && !*scope.Config.Tools.Shellcheck.Enabled {
+			continue
+		}
+		negotiatedScopes[scope] = true
+		_, err := negotiateDocument(ctx, r.integrator, scope.Config, nil)
+		if _, unsupported := errors.AsType[*analyzer.UnsupportedToolConfigurationError](err); unsupported {
+			if !nativeScopes[scope] {
+				nativeScopes[scope] = true
+				nativeBatch.Scopes = append(nativeBatch.Scopes, scope)
+			}
+		} else {
+			failure = errors.Join(failure, err)
+		}
+	}
+	if len(nativeIndices) != 0 || len(nativeBatch.Scopes) != 0 {
 		native, err := r.native()
 		if err != nil {
 			return findings, errors.Join(failure, err)
@@ -193,34 +231,41 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 	return findings, failure
 }
 
-func (r documentPluginRunner) input(script tools.Script) analyzer.Input {
-	start := diagnostic.Position{Line: script.Value.Line, Column: script.Value.Col}
-	supplied := analyzer.Script{
-		Text: script.Text, Path: script.Path, Start: start,
-		Comments: workflowfacts.SourceComments(script.Source),
-		Runtime:  &analyzer.Runtime{Shell: script.Execution.Shell, ShellKnown: script.Execution.Shell != "", ShellImplicit: script.Execution.ImplicitShell, Directory: script.Execution.Directory, DirectoryKnown: script.Execution.DirectoryKnown},
+func (r documentPluginRunner) validateDocumentBatch(batch tools.Batch) error {
+	if len(batch.Scripts) == 0 {
+		return nil
 	}
-	if script.Shell != nil {
-		supplied.Shell = *script.Shell
+	if !batch.CallGraph.Valid() {
+		return fmt.Errorf("ShellCheck document batch: %w: missing call graph", analyzer.ErrInvalidCallGraph)
 	}
-	for _, span := range script.Source.LineSpans() {
-		supplied.Spans = append(supplied.Spans, analyzer.Span{
-			Line: span.Line, Start: span.Start, End: span.End,
-			Document: diagnostic.Position{Line: span.YamlLine, Column: span.YamlColumn}, DocumentEnd: diagnostic.Position{Line: span.YamlEndLine, Column: span.YamlEndColumn},
-		})
+	if r.context.Document.Reference != batch.CallGraph.Entry().Reference {
+		return fmt.Errorf("ShellCheck document batch: %w: document header disagrees with graph entry", analyzer.ErrInvalidCallGraph)
 	}
-	input := analyzer.Input{
-		Path: script.Path, Content: string(script.Content), Kind: "workflow", ParseStatus: "complete",
-		Available: []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution},
+	for index, script := range batch.Scripts {
+		if script.Input != nil {
+			continue
+		}
+		occurrence := script.Fact.Occurrence
+		if err := batch.CallGraph.ValidateOccurrence(occurrence); err != nil {
+			return fmt.Errorf("ShellCheck document batch script %d: %w", index, err)
+		}
+		if occurrence.Kind != analyzer.RunScript || script.Fact.Reference != occurrence.Declaration {
+			return fmt.Errorf("ShellCheck document batch script %d: %w: missing or foreign prepared occurrence", index, analyzer.ErrInvalidCallGraph)
+		}
 	}
-	if r.context.Reference != nil {
-		input.Reference = r.context.Reference(script.Path, script.Content, diagnostic.Position{})
-		supplied.Reference = r.context.Reference(script.Path, script.Content, script.Declaration)
+	return nil
+}
+
+func (r documentPluginRunner) input(script tools.Script, graph analyzer.CallGraph) analyzer.Input {
+	input := r.context.Document
+	input.Available = []analyzer.Fact{analyzer.Source, analyzer.Scripts, analyzer.Invocations, analyzer.Execution}
+	input.CallGraph = graph
+	input.SelectedScripts = []analyzer.OccurrenceID{script.Fact.Occurrence.ID}
+	if graph.Valid() && script.Fact.Occurrence.Owner == graph.Entry().ID {
+		input.Scripts = []analyzer.Script{script.Fact}
+	} else {
+		input.Invoked = []analyzer.Script{script.Fact}
 	}
-	if script.Scope != nil && script.Scope.Composite {
-		input.Kind = "action"
-	}
-	input.Scripts = []analyzer.Script{supplied}
-	input.PrepareScript = scriptPreparer(input.Scripts)
+	input.PrepareScript = scriptPreparer([]analyzer.Script{script.Fact})
 	return input
 }

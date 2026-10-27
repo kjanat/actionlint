@@ -7,6 +7,7 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -22,10 +23,11 @@ type RuleExpression struct {
 	ruleLogger
 	Configuration
 	compositeScripts bool
+	source           *documentparse.SourceSnapshot
 }
 
-func (r *RuleExpression) ForComposite(Invocation) (workflowvisit.Rule, error) {
-	child := &RuleExpression{Checker: workflowexpr.New(workflowexpr.Dependencies{}, workflowExpressionOptions(r.Config())), compositeScripts: true}
+func (r *RuleExpression) ForComposite(invocation Invocation) (workflowvisit.Rule, error) {
+	child := &RuleExpression{Checker: workflowexpr.New(workflowexpr.Dependencies{SourceSnapshot: invocation.Source}, workflowExpressionOptions(r.Config())), compositeScripts: true, source: invocation.Source}
 	child.SetConfig(r.Config())
 	return child, nil
 }
@@ -39,13 +41,14 @@ func (r *RuleExpression) VisitStep(step *workflowlang.Step) error {
 }
 
 func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *RuleExpression {
-	return newRuleExpression(actionsCache, workflowCache, nil)
+	return newRuleExpression(actionsCache, workflowCache, nil, nil)
 }
 
-func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge) *RuleExpression {
-	r := &RuleExpression{tag: "expression"}
+func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge, source *documentparse.SourceSnapshot) *RuleExpression {
+	r := &RuleExpression{tag: "expression", source: source}
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
-		Runners: runners,
+		SourceSnapshot: source,
+		Runners:        runners,
 		LocalAction: func(spec string) (*actionmeta.Metadata, error) {
 			if actionsCache == nil {
 				return nil, nil

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/rule"
+	sourcemodel "actionlint.kjanat.dev/v2/source"
 
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
@@ -37,13 +38,51 @@ jobs:
       - run: echo '${{ missing.value }}'
 `
 
+type capturedWorkflowCache struct {
+	*calls.Cache
+	snapshots *capturedSnapshots
+}
+
+func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *capturedWorkflowCache {
+	t.Helper()
+	if cwd == "" {
+		cwd = sourceFixtureBase(t)
+	}
+	snapshots := newCapturedSnapshots(t, cwd)
+	cache := calls.NewCache(root, cwd, debug)
+	cache.SetSources(t.Context(), snapshots.Sources.Store, cwd)
+	return &capturedWorkflowCache{Cache: cache, snapshots: snapshots}
+}
+
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(ctx context.Context, request analysisRequest, source sourceUnit, proc *analyzerhost.ProcessPool, actions *actionlocal.Cache, workflows *calls.Cache) ([]*findingmodel.Finding, error) {
+func checkWithCaches(t testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *analyzerhost.ProcessPool, actions *actionlocal.Cache, workflows *capturedWorkflowCache) ([]*findingmodel.Finding, error) {
+	t.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
 		log.logOut = io.Discard
 	}
 	session := analysisSession{analysisLogger: log, ctx: ctx, workingDir: request.WorkingDir, reader: fsread.New(ctx, request.ReadFile, nil), tools: request.Tools, analyzers: request.Analyzers, loadScriptEngine: request.LoadScriptEngine, ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated}
+	if session.workingDir == "" {
+		session.workingDir = sourceFixtureBase(t)
+	}
+	declarations := newCapturedSnapshots(t, session.workingDir)
+	var workflowCache *calls.Cache
+	if workflows != nil {
+		declarations, workflowCache = workflows.snapshots, workflows.Cache
+	}
+	session.captures, session.snapshots = declarations.Sources.Store, declarations.SourceSnapshots
+	address := source.InputPath
+	if address == "" {
+		address = source.Path
+	}
+	address = declarations.Sources.Path(address)
+	captured, err := declarations.Sources.Capture(address, source.Content, sourcemodel.YAML)
+	if err != nil {
+		return nil, err
+	}
+	if actions != nil {
+		actions.Configure(actionlocal.Options{Captures: session.captures, Context: ctx, WorkingDir: session.workingDir, Reader: session.reader, CustomReader: request.ReadFile != nil})
+	}
 	if proc == nil {
 		proc = analyzerhost.NewProcessPool(ctx, 1)
 		defer proc.Wait()
@@ -53,7 +92,7 @@ func checkWithCaches(ctx context.Context, request analysisRequest, source source
 		cfg = source.Project.Config()
 	}
 	var rules []rule.Descriptor
-	findings, _, err := session.check(source.Path, source.Content, source.Project, cfg, proc, actions, workflows, &rules)
+	findings, _, err := session.check(source.Path, address, captured, source.Project, cfg, proc, actions, workflowCache, &rules)
 	return findings, err
 }
 

@@ -12,11 +12,11 @@ type RunnerLabelOptions struct {
 type ExpressionReferenceOptions struct {
 	// Variables lists configured variable names; null disables checking and [] allows none.
 	Variables []string `yaml:"variables" jsonschema:"nullable"`
-	// Secrets lists configured secret names; built-ins and workflow_call secrets remain available.
+	// Secrets adds configured secret names to built-in and workflow_call names.
 	Secrets []string `yaml:"secrets" jsonschema:"nullable"`
 }
 
-// MarshalYAML retains the distinction between unknown and empty name sets.
+// MarshalYAML encodes nil name sets as null and empty name sets as [].
 func (o ExpressionReferenceOptions) MarshalYAML() (any, error) {
 	value := map[string]any{"variables": nil, "secrets": nil}
 	if o.Variables != nil {

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	yamlscalar "actionlint.kjanat.dev/v2/internal/yamlscalar"
+	"actionlint.kjanat.dev/v2/internal/yaml/schema"
 )
 
 func ToNumber(value any) float64 {
@@ -29,11 +29,11 @@ func ToNumber(value any) float64 {
 		case "-infinity":
 			return math.Inf(-1)
 		}
-		if yamlscalar.IsCoreSchemaDecimal(value) {
+		if schema.IsCoreSchemaDecimal(value) {
 			if number, err := strconv.ParseFloat(value, 64); err == nil || math.IsInf(number, 0) {
 				return number
 			}
-		} else if (strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0o")) && yamlscalar.IsCoreSchemaInt(value) {
+		} else if (strings.HasPrefix(value, "0x") || strings.HasPrefix(value, "0o")) && schema.IsCoreSchemaInt(value) {
 			// ExpressionUtility.ParseNumber uses signed 32-bit hexadecimal/octal conversion.
 			if number, err := strconv.ParseUint(value, 0, 32); err == nil {
 				if number > math.MaxInt32 {

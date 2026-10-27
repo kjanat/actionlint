@@ -22,7 +22,7 @@ export function capture(
 		});
 		const deadline = options.timeoutMS
 			? setTimeout(() => {
-				// Descendants can retain the pipes after the direct child exits, delaying 'close'.
+				// Descendants may hold inherited pipes open after the child exits.
 				reject(new Error(`${executable} timed out after ${options.timeoutMS}ms`));
 				child.kill('SIGKILL');
 				child.unref();
@@ -101,8 +101,6 @@ export async function temporary<T>(task: (directory: string) => Promise<T>): Pro
 	try {
 		return await task(directory);
 	} finally {
-		// Windows can retain a just-exited executable briefly (including during
-		// antivirus scanning). Retry transient locks, but still report failure.
 		await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 	}
 }

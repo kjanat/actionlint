@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	filesbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourcefiles"
+	filesbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/sourcefiles"
 )
 
 const SourceFilesInterface = filesbind.InterfaceName

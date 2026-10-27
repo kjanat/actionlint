@@ -55,9 +55,7 @@ func configOrigins(node *yaml.Node, prefix string, origins map[string]Origin, in
 		if _, ok := origins[pointer]; !ok {
 			continue
 		}
-		// Migration scaffolding has no spelling in the source. Its children
-		// retain their own locations, but the scaffold must not claim an input
-		// or file origin for an otherwise implicit default.
+		// Synthetic migration nodes have no source location.
 		if value.Line != 0 || value.Column != 0 {
 			origins[pointer] = configNodeOrigin(value, inputs)
 		}
@@ -96,8 +94,6 @@ func configDefaultOrigins(values map[string]any, prefix string, origins map[stri
 }
 
 // EffectiveValues serializes the configuration schema after resolving defaults.
-// Struct YAML tags remain the source of field names; policy marshalers own their
-// public representation, so new config fields are included automatically.
 func EffectiveValues(cfg *Config) (map[string]any, error) {
 	resolved := *cfg
 	if resolved.Tools.Ruff.Enabled == nil {

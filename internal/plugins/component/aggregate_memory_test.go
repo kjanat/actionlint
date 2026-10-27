@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
+	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/host"
 	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
 )
@@ -40,6 +40,6 @@ func TestPluginRejectsAggregateInitialMemory(t *testing.T) {
 		t.Fatalf("want aggregate memory failure, got %v", err)
 	}
 	if plugin.engine != nil || plugin.memory.used != 0 {
-		t.Fatal("failed initial allocation retained a live runtime or accounted memory")
+		t.Fatal("failed initial allocation left a live runtime or accounted memory")
 	}
 }

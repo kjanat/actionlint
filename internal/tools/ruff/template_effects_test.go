@@ -21,7 +21,7 @@ func TestTemplateEffectsIgnorePresentation(t *testing.T) {
 		TemplateEffect: analyzer.TemplateEffectExportedName,
 	}
 	if masks.accept(finding) {
-		t.Fatal("semantic export finding on mask was retained")
+		t.Fatal("semantic export finding was emitted for mask")
 	}
 	finding.TemplateEffect = analyzer.TemplateEffectNone
 	finding.Code = "F822"

@@ -136,10 +136,10 @@ func factNames(facts []analyzer.Fact) []string {
 
 func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 	for name, want := range map[string]string{
-		"wrong-version":    "plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports kjanat:actionlint/analyzer@0.1.0",
+		"wrong-version":    "plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports kjanat:actionlint/analyzer@0.2.0",
 		"forbidden-import": "plugin imports wasi:sockets/tcp-create-socket@0.2.9, which this host does not grant",
 		"unknown-import":   "plugin imports example:other/capability@1.0.0, which this host does not grant",
-		"no-analyzer":      "plugin does not export kjanat:actionlint/analyzer@0.1.0",
+		"no-analyzer":      "plugin does not export kjanat:actionlint/analyzer@0.2.0",
 	} {
 		path := filepath.Join("testdata", "wat", name+".wasm")
 		plugin, err := component.Load(t.Context(), path, component.Options{})

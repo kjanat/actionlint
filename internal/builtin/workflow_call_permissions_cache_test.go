@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/semantics/permission"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -42,7 +43,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 	run := func(t *testing.T, cache *calls.Cache) []string {
 		t.Helper()
-		r := builtin.NewRuleWorkflowCall("caller.yaml", cache)
+		r := builtin.NewRuleWorkflowCall(nil, cache)
 		if err := r.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
 			t.Fatal(err)
 		}
@@ -65,7 +66,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 		return msgs
 	}
 
-	fromFile := run(t, calls.NewCache(root, root, nil))
+	fromFile := run(t, newCapturedWorkflowCache(t, root, root, nil))
 
 	src, err := os.ReadFile(filepath.Join(root, "permissions.yaml"))
 	if err != nil {
@@ -84,8 +85,15 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if event == nil {
 		t.Fatal("callee has no workflow_call event")
 	}
-	astCache := calls.NewCache(root, root, nil)
-	astCache.WriteWorkflowCallEventFromWorkflow("permissions.yaml", event, w)
+	astCache, snapshots := newCapturedWorkflowCacheAndSnapshots(t, root, root, nil)
+	path := filepath.Join(root, "permissions.yaml")
+	snapshot, err := snapshots.Document(path, src, documentparse.Workflow(path, src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := astCache.Seed(snapshot); err != nil {
+		t.Fatal(err)
+	}
 	fromNode := run(t, astCache)
 
 	if len(fromFile) == 0 {
@@ -296,10 +304,10 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
-			cache := calls.NewCache(cwd, cwd, nil)
+			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee}, nil)
 
-			r := builtin.NewRuleWorkflowCall("caller.yaml", cache)
+			r := builtin.NewRuleWorkflowCall(nil, cache)
 			if tc.cfg != nil {
 				r.SetConfig(tc.cfg)
 			}

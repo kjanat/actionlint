@@ -326,7 +326,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.Completed || result.Status != "failure" || result.Error == "" {
-		t.Fatalf("failure not retained: %s", data)
+		t.Fatalf("failure data missing: %s", data)
 	}
 	if rendered := parseOutputs(read(t, outputPath))["output"]; rendered != strings.TrimSuffix(string(data), "\n") {
 		t.Fatalf("failure differs between JSON output and persisted result: %s", rendered)

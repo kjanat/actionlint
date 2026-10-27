@@ -27,9 +27,63 @@ func Docker(exec *workflowlang.ExecAction) []*findingmodel.Finding {
 	if exec == nil || exec.Uses == nil || !strings.HasPrefix(exec.Uses.Value, "docker://") {
 		return nil
 	}
+	return DockerReference(exec.Uses.Value, exec.Uses.Pos)
+}
+
+// DockerReference validates a Docker reference from its canonical source value.
+func DockerReference(spec string, pos *workflowlang.Pos) []*findingmodel.Finding {
+	return DockerReferenceValue(spec, positionValue(pos), pos != nil)
+}
+
+// DockerReferenceValue validates a Docker reference from an owned scalar value and position.
+func DockerReferenceValue(spec string, pos workflowlang.Pos, hasPosition bool) []*findingmodel.Finding {
+	if !strings.HasPrefix(spec, "docker://") {
+		return nil
+	}
 	rule := validator{}
-	rule.checkDockerAction(exec.Uses.Value, exec)
+	rule.checkDockerAction(spec, positionPointer(pos, hasPosition))
 	return rule.errs
+}
+
+// RepositoryReference validates repository reference syntax without consulting metadata.
+func RepositoryReference(spec string, pos *workflowlang.Pos) []*findingmodel.Finding {
+	return RepositoryReferenceValue(spec, positionValue(pos), pos != nil)
+}
+
+// RepositoryReferenceValue validates reference syntax from an owned scalar value and position.
+func RepositoryReferenceValue(spec string, pos workflowlang.Pos, hasPosition bool) []*findingmodel.Finding {
+	rule := validator{}
+	rule.checkRepositoryReference(spec, positionPointer(pos, hasPosition))
+	return rule.errs
+}
+
+// InvalidActionReference uses the same syntax checks as Repository and Docker validation.
+func InvalidActionReference(spec string, pos workflowlang.Pos, hasPosition bool) bool {
+	switch {
+	case strings.HasPrefix(spec, "./"):
+		return false
+	case strings.HasPrefix(spec, "$/"):
+		_, valid := references.SelfRepositoryLocal(spec)
+		return !valid
+	case strings.HasPrefix(spec, "docker://"):
+		return len(DockerReferenceValue(spec, pos, hasPosition)) != 0
+	default:
+		return len(RepositoryReferenceValue(spec, pos, hasPosition)) != 0
+	}
+}
+
+func positionValue(pos *workflowlang.Pos) workflowlang.Pos {
+	if pos == nil {
+		return workflowlang.Pos{}
+	}
+	return *pos
+}
+
+func positionPointer(pos workflowlang.Pos, present bool) *workflowlang.Pos {
+	if !present {
+		return nil
+	}
+	return &pos
 }
 
 // InvalidReference reports an invalid action reference at its original declaration.
@@ -40,21 +94,14 @@ func InvalidReference(pos *workflowlang.Pos, spec, why string) *findingmodel.Fin
 }
 
 func (rule *validator) checkRepoAction(spec string, exec *workflowlang.ExecAction, lookup func(string) (*actionmeta.Metadata, bool), log func(string, ...any)) {
+	if !rule.checkRepositoryReference(spec, exec.Uses.Pos) {
+		return
+	}
 	debug := func(format string, args ...any) {
 		if log != nil {
 			log(format, args...)
 		}
 	}
-	owner, repo, ref, problem := references.SplitAction(spec)
-	if problem != "" {
-		rule.invalidActionFormat(exec.Uses.Pos, spec, problem)
-		return
-	}
-
-	if owner == "" || repo == "" || ref == "" {
-		rule.invalidActionFormat(exec.Uses.Pos, spec, "owner and repo and ref should not be empty")
-	}
-
 	var meta *actionmeta.Metadata
 	retired := false
 	if lookup != nil {
@@ -81,13 +128,26 @@ func (rule *validator) checkRepoAction(spec string, exec *workflowlang.ExecActio
 	})...)
 }
 
+func (rule *validator) checkRepositoryReference(spec string, pos *workflowlang.Pos) bool {
+	owner, repo, ref, problem := references.SplitAction(spec)
+	if problem != "" {
+		rule.invalidActionFormat(pos, spec, problem)
+		return false
+	}
+	if owner == "" || repo == "" || ref == "" {
+		rule.invalidActionFormat(pos, spec, "owner and repo and ref should not be empty")
+		return false
+	}
+	return true
+}
+
 func (rule *validator) invalidActionFormat(pos *workflowlang.Pos, spec string, why string) {
 	rule.Errorf(pos, "specifying action %q in invalid format because %s. available formats are \"{owner}/{repo}@{ref}\", \"{owner}/{repo}/{path}@{ref}\", \"./{path}\", or \"$/{path}\"", spec, why)
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-the-github-packages-container-registry
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-func (rule *validator) checkDockerAction(uri string, exec *workflowlang.ExecAction) {
+func (rule *validator) checkDockerAction(uri string, pos *workflowlang.Pos) {
 	tag := ""
 	tagExists := false
 	if idx := strings.IndexRune(uri[len("docker://"):], ':'); idx != -1 {
@@ -101,7 +161,7 @@ func (rule *validator) checkDockerAction(uri string, exec *workflowlang.ExecActi
 
 	if _, err := url.Parse(uri); err != nil {
 		rule.Errorf(
-			exec.Uses.Pos,
+			pos,
 			"URI for Docker container %q is invalid: %s (tag=%s)",
 			uri,
 			err.Error(),
@@ -110,6 +170,6 @@ func (rule *validator) checkDockerAction(uri string, exec *workflowlang.ExecActi
 	}
 
 	if tagExists && tag == "" {
-		rule.Errorf(exec.Uses.Pos, "tag of Docker action should not be empty: %q", uri)
+		rule.Errorf(pos, "tag of Docker action should not be empty: %q", uri)
 	}
 }

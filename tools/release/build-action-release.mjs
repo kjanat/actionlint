@@ -140,7 +140,7 @@ export function recordRelease(root, tag, parent) {
 	if (execute('git', ['status', '--porcelain', '--untracked-files=all'], root)) {
 		throw new Error('Source checkout changed during release preparation');
 	}
-	// Retain the source tree while making the bundled tag visible to git describe.
+	// Make the bundled tag an ancestor for git describe.
 	execute('git', ['merge', '--no-ff', '--strategy=ours', '-m', `Record bundled release ${tag}`, tag], root);
 }
 

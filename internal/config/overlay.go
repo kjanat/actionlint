@@ -49,8 +49,7 @@ func (e *OverlayError) Error() string {
 func (e *OverlayError) Unwrap() error { return e.cause }
 
 // ParseOverlay parses a complete YAML/JSON document (input "config") or
-// the YAML/JSON value of one ConfigKeys entry. Unknown keys are rejected here;
-// existing config files retain their parsing behavior.
+// the YAML/JSON value of one ConfigKeys entry. It rejects unknown keys.
 func ParseOverlay(input string, content []byte, additional ...string) (Overlay, error) {
 	return parseOverlay(input, content, true, additional...)
 }

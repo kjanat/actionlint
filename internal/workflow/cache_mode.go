@@ -2,7 +2,7 @@ package workflow
 
 import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // CacheModeKind identifies the cache access granted to a workflow or job.
@@ -66,12 +66,12 @@ func EffectiveCacheMode(workflow, job *CacheMode) *CacheMode {
 	return workflow
 }
 
-func CacheModeFromYAML(n *yaml.Node) *CacheMode {
+func CacheModeFromYAML(n *syntax.Node) *CacheMode {
 	if n == nil || n.Kind == 0 {
 		return nil
 	}
 	m := &CacheMode{Pos: PosAt(n)}
-	if n.Kind == yaml.ScalarNode && n.Tag == YamlTagStr {
+	if n.Kind == syntax.ScalarNode && n.Tag == YamlTagStr {
 		value := n.Value
 		if literal := exprlang.LiteralExpressionValue(value); literal != nil {
 			value = *literal
@@ -90,9 +90,9 @@ func CacheModeFromYAML(n *yaml.Node) *CacheMode {
 	return m
 }
 
-func (p *Parser) parseCacheMode(n *yaml.Node) *CacheMode {
+func (p *Parser) parseCacheMode(n *syntax.Node) *CacheMode {
 	m := CacheModeFromYAML(n)
-	if n.Kind != yaml.ScalarNode || n.Tag != YamlTagStr {
+	if n.Kind != syntax.ScalarNode || n.Tag != YamlTagStr {
 		p.typeErrorf(n, "expected string for \"cache-mode\" but found %s node with %q tag", NodeKindName(n.Kind), n.Tag)
 	} else if m.Kind == CacheModeInvalid {
 		p.typeErrorf(n, "%q is invalid for \"cache-mode\". expected one of \"read\", \"write\", \"write-only\", \"none\"", n.Value)

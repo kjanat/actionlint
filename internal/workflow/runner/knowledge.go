@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
@@ -26,25 +28,41 @@ type JobKnowledge struct {
 	Answers                              []runnerapi.Answer
 }
 
-// Knowledge owns document-local results. A nil lookup retains compatibility for
-// direct visitor users; application analysis always supplies a prepared lookup.
+// Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
-	jobs   map[*workflowlang.Job]JobKnowledge
-	Report runnerapi.Report
+	jobs     map[documentparse.JobView]JobKnowledge
+	snapshot *documentparse.SourceSnapshot
+	Report   runnerapi.Report
 }
 
-func (k *Knowledge) Job(job *workflowlang.Job) JobKnowledge {
+func (k *Knowledge) Job(job documentparse.JobView) JobKnowledge {
 	if k == nil {
 		return builtinJob(job)
 	}
 	return k.jobs[job]
 }
 
+// JobCursor resolves an engine hook cursor through the snapshot used for preparation.
+func (k *Knowledge) JobCursor(cursor *workflowlang.Job) JobKnowledge {
+	if k == nil || k.snapshot == nil {
+		return JobKnowledge{}
+	}
+	job, err := k.snapshot.JobView(cursor)
+	if err != nil {
+		return JobKnowledge{}
+	}
+	return k.Job(job)
+}
+
 // Prepare resolves a document against the session's selected, immutable evidence.
 // Failed resolution leaves unknown facts while independent checks can continue.
-func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
-	k := &Knowledge{jobs: make(map[*workflowlang.Job]JobKnowledge)}
-	if workflow == nil {
+func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
+	k := &Knowledge{jobs: make(map[documentparse.JobView]JobKnowledge), snapshot: snapshot}
+	if snapshot == nil {
+		return k, nil
+	}
+	workflow, available := snapshot.WorkflowView()
+	if !available {
 		return k, nil
 	}
 	if options.Target == "" {
@@ -59,6 +77,7 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 		return k, errors.New("invalid runner snapshot freshness")
 	}
 	var selected runnerapi.Provider
+	builtinLabels := false
 	identity := ""
 	if options.Scope != "" {
 		scope = options.Scope
@@ -68,6 +87,7 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 	}
 	if options.Target == "github" && (options.Provider == "" || options.Provider == "github") {
 		selected = builtinProvider{custom: slices.Clone(custom)}
+		builtinLabels = true
 		identity = "builtin-github"
 	}
 	if options.Target == "github" && options.Provider == "snapshot" {
@@ -96,13 +116,14 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 	}
 	var selectors []runnerapi.Selector
 	type jobRange struct {
-		job        *workflowlang.Job
+		job        documentparse.JobView
 		start, end int
 	}
 	var ranges []jobRange
-	for _, id := range slices.Sorted(maps.Keys(workflow.Jobs)) {
-		job := workflow.Jobs[id]
-		if job.RunsOn == nil {
+	workflowJobs := maps.Collect(workflow.Jobs())
+	for _, id := range slices.Sorted(maps.Keys(workflowJobs)) {
+		job := workflowJobs[id]
+		if !job.RunsOn().Present() {
 			continue
 		}
 		start := len(selectors)
@@ -177,11 +198,18 @@ func Prepare(ctx context.Context, workflow *workflowlang.Workflow, custom []stri
 		return k, err
 	}
 	k.Report.Identity = fmt.Sprintf("%x", sha256.Sum256(append(dependency, evidence...)))
-	jobs := make(map[*workflowlang.Job]JobKnowledge, len(ranges))
+	jobs := make(map[documentparse.JobView]JobKnowledge, len(ranges))
 	for _, span := range ranges {
 		knowledge, err := joinAnswers(span.job, answers[span.start:span.end])
 		if err != nil {
 			return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
+		}
+		// Supplied snapshots gate diagnostics with the same freshness and
+		// completeness policy as their answers. No snapshot uses the fresh catalog.
+		if builtinLabels && (!hasSnapshot || options.Snapshot.Freshness == runnerapi.Fresh && options.Snapshot.Complete) {
+			// Provider answers describe execution alternatives. Built-in declaration
+			// spelling and execution compatibility share Check's diagnostic owner.
+			knowledge.Findings = Check(span.job, custom)
 		}
 		jobs[span.job] = knowledge
 	}
@@ -215,7 +243,7 @@ func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, err
 	return nil, errors.New("invalid runner resolution")
 }
 
-func joinAnswers(job *workflowlang.Job, answers []runnerapi.Answer) (JobKnowledge, error) {
+func joinAnswers(job documentparse.JobView, answers []runnerapi.Answer) (JobKnowledge, error) {
 	k := JobKnowledge{Answers: slices.Clone(answers)}
 	var candidates []runnerapi.Candidate
 	uncertain := false
@@ -244,8 +272,10 @@ func joinAnswers(job *workflowlang.Job, answers []runnerapi.Answer) (JobKnowledg
 			}
 			for _, rejection := range result.Rejections {
 				pos := rejection.Position
-				if pos.Line == 0 && job.Pos != nil {
-					pos = diagnostic.Position{Line: job.Pos.Line, Column: job.Pos.Col}
+				if pos.Line == 0 {
+					if declaration, present := job.Pos(); present {
+						pos = diagnostic.Position{Line: declaration.Line, Column: declaration.Col}
+					}
 				}
 				finding := diagnostic.Diagnostic{Rule: "runner-label", Message: rejection.Reason, Start: pos}
 				if !slices.ContainsFunc(k.Findings, func(d diagnostic.Diagnostic) bool { return d.Start == finding.Start && d.Message == finding.Message }) {
@@ -294,8 +324,16 @@ func candidatePlatform(c runnerapi.Candidate) Platform {
 	}
 }
 
-func builtinJob(job *workflowlang.Job) JobKnowledge {
-	k := JobKnowledge{Platform: PlatformOf(job.RunsOn), Ephemeral: Hosted(job.RunsOn)}
+func builtinJob(job documentparse.JobView) JobKnowledge {
+	if !job.Present() {
+		return JobKnowledge{}
+	}
+	selection := job.RunsOn().Selection()
+	return builtinKnowledge(selection, Labels(selection))
+}
+
+func builtinKnowledge(selection value.Value, labels []value.Value) JobKnowledge {
+	k := JobKnowledge{Platform: PlatformOf(selection), Ephemeral: Hosted(selection)}
 	// Preserve GitHub's established default-shell behavior. External unknown
 	// answers never reach these label-based assumptions.
 	if k.Platform == MacOrLinux {
@@ -305,10 +343,13 @@ func builtinJob(job *workflowlang.Job) JobKnowledge {
 		k.Shell = "pwsh"
 	}
 	k.CaseInsensitive = k.Platform == Windows
-	labels := Labels(job.RunsOn)
 	mac, ubuntu, macOS := k.Ephemeral, k.Ephemeral, false
 	for _, label := range labels {
-		name := strings.ToLower(label.Value)
+		name, known := label.ScalarString()
+		if !known {
+			continue
+		}
+		name = strings.ToLower(name)
 		mac = mac && (strings.HasPrefix(name, "macos-") || strings.HasPrefix(name, "xcode-"))
 		ubuntu = ubuntu && strings.HasPrefix(name, "ubuntu-")
 		macOS = macOS || defaultRunnerOSCompats[name]&defaultRunnerOSCompats["macos"] != 0

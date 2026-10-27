@@ -9,9 +9,9 @@ import (
 	"unicode/utf8"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/yaml"
-	yamlscalar "actionlint.kjanat.dev/v2/internal/yamlscalar"
-	"actionlint.kjanat.dev/v2/internal/yamlsource"
+	"actionlint.kjanat.dev/v2/internal/source/text"
+	"actionlint.kjanat.dev/v2/internal/yaml/schema"
+	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // Pos represents a position in the file.
@@ -86,7 +86,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		return nil, false
 	}
 	l := s.Lines[line-1]
-	rel, ok := yamlsource.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
+	rel, ok := text.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
 	if !ok {
 		return nil, false
 	}
@@ -153,7 +153,29 @@ func (p *Pos) IsBefore(other *Pos) bool {
 	return p.Col < other.Col
 }
 
-// String represents generic String value in YAML file with Position.
+// SourceScalarKind identifies the YAML node kind captured from source.
+type SourceScalarKind uint8
+
+const (
+	SourceScalarUnknown SourceScalarKind = iota
+	SourceScalarDocument
+	SourceScalarSequence
+	SourceScalarMapping
+	SourceScalarScalar
+	SourceScalarAlias
+)
+
+// SourceScalar is an immutable, pointer-free snapshot of a YAML node at parse time.
+type SourceScalar struct {
+	HasSource bool
+	Evaluated bool
+	Kind      SourceScalarKind
+	Tag       string
+	Value     string
+	Pos       Pos
+}
+
+// String represents a YAML string value and its source position.
 type String struct {
 	// Value is a raw value of the String.
 	Value string
@@ -161,6 +183,8 @@ type String struct {
 	Quoted bool
 	// Pos is a Position of the String in source.
 	Pos *Pos
+	// SourceScalar records the original YAML node before normalization or folding.
+	SourceScalar SourceScalar
 }
 
 // ContainsExpression returns whether the String contains at least one ${{ }} expression.
@@ -448,8 +472,8 @@ type WorkflowCallEvent struct {
 	// struct since its order is important when checking the default values of inputs.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinputs
 	Inputs []*WorkflowCallEventInput
-	// Secrets is a map from name of secret to secret configuration. When 'secrets' is omitted, nil is set to this
-	// field. Keys are in lower case since they are case-insensitive.
+	// Secrets is a map from name of secret to secret configuration. When 'secrets' is omitted, nil is set to this field.
+	// Keys are in lower case since they are case-insensitive.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callsecrets
 	Secrets map[string]*WorkflowCallEventSecret
 	// Outputs is a map from name of Output to Output configuration. Keys are in lower case since they are case-insensitive.
@@ -680,8 +704,8 @@ func (e *ExecCancel) Kind() ExecKind {
 	return ExecKindCancel
 }
 
-// ExecParallel is configuration of a Step that runs a group of steps in parallel. It corresponds to
-// the 'parallel' Step.
+// ExecParallel is configuration of a Step that runs a group of steps in parallel.
+// It corresponds to the 'parallel' Step.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 type ExecParallel struct {
 	// Steps is the group of steps to run in parallel, given by the 'parallel' field.
@@ -698,11 +722,11 @@ type RawYAMLValueKind int
 
 const (
 	// RawYAMLValueKindObject is Kind for an object value of raw YAML value.
-	RawYAMLValueKindObject = RawYAMLValueKind(yaml.MappingNode)
+	RawYAMLValueKindObject = RawYAMLValueKind(syntax.MappingNode)
 	// RawYAMLValueKindArray is Kind for an array value of raw YAML value.
-	RawYAMLValueKindArray = RawYAMLValueKind(yaml.SequenceNode)
+	RawYAMLValueKindArray = RawYAMLValueKind(syntax.SequenceNode)
 	// RawYAMLValueKindString is Kind for a String value of raw YAML value.
-	RawYAMLValueKindString = RawYAMLValueKind(yaml.ScalarNode)
+	RawYAMLValueKindString = RawYAMLValueKind(syntax.ScalarNode)
 )
 
 // RawYAMLValue is a value at Matrix variation. Any value can be put at Matrix variations
@@ -819,8 +843,8 @@ func (a *RawYAMLArray) String() string {
 type RawYAMLString struct {
 	// Value is String representation of the scalar node.
 	Value string
-	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int". A tag the parser rejects
-	// is recorded as "!!str".
+	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int".
+	// A tag rejected by the parser is recorded as "!!str".
 	Tag      string
 	Position *Pos
 }
@@ -849,15 +873,15 @@ func (s *RawYAMLString) Equals(other RawYAMLValue) bool {
 func (s *RawYAMLString) ScalarValue() any {
 	switch s.Tag {
 	case YamlTagBool:
-		if yamlscalar.IsCoreSchemaBool(s.Value) {
+		if schema.IsCoreSchemaBool(s.Value) {
 			return strings.EqualFold(s.Value, "true")
 		}
 	case YamlTagNull:
-		if yamlscalar.IsCoreSchemaNull(s.Value) {
+		if schema.IsCoreSchemaNull(s.Value) {
 			return nil
 		}
 	case YamlTagInt, YamlTagFloat:
-		if !yamlscalar.IsCoreSchemaNumber(s.Value) {
+		if !schema.IsCoreSchemaNumber(s.Value) {
 			break
 		}
 		switch strings.ToLower(s.Value) {
@@ -933,7 +957,7 @@ type MatrixCombination struct {
 // sections.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
 type MatrixCombinations struct {
-	// Name retains the original include/exclude key for expression validation.
+	// Name is the include/exclude key as written in source.
 	Name         *String
 	Evaluated    bool
 	Combinations []*MatrixCombination
@@ -1020,7 +1044,7 @@ type Step struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsname
 	Name *String
 	Exec Exec
-	// declaredUses retains a reference rejected by a conflicting execution key.
+	// DeclaredUses records uses even when a conflicting execution key invalidates it.
 	DeclaredUses *String
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstepsenv
 	Env *Env
@@ -1234,7 +1258,7 @@ type Job struct {
 	// WorkflowCall is a Workflow call by 'uses:'.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_iduses
 	WorkflowCall *WorkflowCall
-	// declaredUses retains a call rejected because it also declares Step-only keys.
+	// DeclaredUses records uses even when step-only keys invalidate the call.
 	DeclaredUses *String
 	// Snapshot is a custom image Snapshot.
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/Workflow-syntax#jobsjob_idsnapshot

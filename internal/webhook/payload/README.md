@@ -1,6 +1,6 @@
 # Webhook payload observations
 
-`catalogue.json` is generated directly from the webhook OpenAPI document in [octokit/openapi-webhooks](https://github.com/octokit/openapi-webhooks), which processes GitHub's official REST API description. `generate/source.json` pins the input commit, URL and SHA-256. The embedded catalogue records those same values. The upstream MIT notice is retained in `LICENSE.octokit`.
+`catalogue.json` is generated directly from the webhook OpenAPI document in [octokit/openapi-webhooks](https://github.com/octokit/openapi-webhooks), which processes GitHub's official REST API description. `generate/source.json` pins the input commit, URL and SHA-256. The embedded catalogue records those same values. The upstream MIT notice is included in `LICENSE.octokit`.
 
 Regenerate with Node and dprint installed:
 

@@ -20,15 +20,19 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			parent := NewExecutableChecker(ExecutableContext{})
 			parent.executableState = newExecutableState(true, false)
 			parent.changed["source/bad.sh"] = true
-			call := &workflowlang.Step{If: &workflowlang.String{Value: tc.condition}, ContinueOnError: &workflowlang.Bool{Value: tc.continued}}
-			child := parent.ForkComposite(call, "", Paths{})
+			call := &workflowlang.Step{Exec: &workflowlang.ExecAction{}, If: &workflowlang.String{Value: tc.condition}, ContinueOnError: &workflowlang.Bool{Value: tc.continued}}
+			context, err := testCallContext(t, call, Paths{}.Platform)
+			if err != nil {
+				t.Fatal(err)
+			}
+			child := parent.ForkComposite(context, "", Paths{}, nil)
 			if tc.condition != "false" {
 				// A successful child checkout replaces the old mode observations before
 				// a later chmod records a new mutation in that branch.
 				child.afterKnownCheckout("source", false)
 				child.changed["source/scripts/bad.sh"] = true
 			}
-			parent.JoinComposite(call, child)
+			parent.JoinComposite(context, child)
 			if parent.changed["source/bad.sh"] != (tc.condition != "true") || parent.changed["source/scripts/bad.sh"] != (tc.condition != "false") {
 				t.Fatalf("checkout branch modes not preserved: %v", parent.changed)
 			}

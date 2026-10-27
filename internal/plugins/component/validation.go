@@ -65,6 +65,7 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 }
 
 type importRequirements struct {
+	invocations       bool
 	sourceAnnotations bool
 	sourceFiles       bool
 	preparedScripts   bool
@@ -77,6 +78,13 @@ func validateImports(imports []wacogo.ImportDesc) (importRequirements, error) {
 	annotationsName := wasmparser.CanonicalizeImportName(SourceAnnotationsInterface)
 	for _, imported := range imports {
 		canonical := wasmparser.CanonicalizeImportName(imported.Name)
+		if canonical == wasmparser.CanonicalizeImportName(InvocationContextInterface) {
+			required.invocations = true
+			continue
+		}
+		if strings.HasPrefix(imported.Name, "kjanat:actionlint/invocation-context@") {
+			return required, fmt.Errorf("plugin imports %s; this host provides %s", imported.Name, InvocationContextInterface)
+		}
 		if canonical == wasmparser.CanonicalizeImportName(PreparedScriptsInterface) {
 			required.preparedScripts = true
 			continue

@@ -8,7 +8,6 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml"
 )
 
 func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
@@ -170,13 +169,11 @@ runs:
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var meta actionmeta.Metadata
-			err := yaml.Unmarshal([]byte(tc.source), &meta)
+			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
 			var findings []*findingmodel.Finding
 			if err == nil {
 				meta.Filename = "action.yml"
-				meta.Source = []byte(tc.source)
-				findings = actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})
+				findings = actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
 			}
 			valid := err == nil && len(findings) == 0
 			if valid != tc.valid {
@@ -190,11 +187,11 @@ func TestActionStepValueShapes(t *testing.T) {
 	for _, declaration := range []string{"run: [invalid]\n      shell: bash", "run: echo ok\n      shell: [invalid]", "uses: [invalid]"} {
 		t.Run(declaration, func(t *testing.T) {
 			source := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - " + declaration + "\n")
-			var meta actionmeta.Metadata
-			if err := yaml.Unmarshal(source, &meta); err != nil {
+			meta, err := actionmeta.Parse("action.yml", source)
+			if err != nil {
 				t.Fatal(err)
 			}
-			findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Col: 1})
+			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1})
 			if len(findings) == 0 {
 				t.Fatal("invalid step value was accepted")
 			}

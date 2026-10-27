@@ -26,7 +26,7 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/v2/internal/expression",
 		"actionlint.kjanat.dev/v2/internal/workflow",
 		"actionlint.kjanat.dev/v2/internal/expression/context",
-		"actionlint.kjanat.dev/v2/internal/yamlscalar",
+		"actionlint.kjanat.dev/v2/internal/yaml/schema",
 		"actionlint.kjanat.dev/v2/internal/stringutil",
 	}
 	output, err := exec.CommandContext(t.Context(), "go", append([]string{"list", "-json"}, packages...)...).Output()
@@ -70,6 +70,29 @@ func TestExpressionDependencyDirection(t *testing.T) {
 	}
 }
 
+func TestInvocationOwnerDependencyDirection(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/workflow/invocation").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg struct{ Imports, Deps []string }
+	if err := json.Unmarshal(output, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	for _, dependency := range pkg.Deps {
+		if strings.Contains(strings.Split(dependency, "/")[0], ".") && dependency != "actionlint.kjanat.dev/v2/source" {
+			t.Errorf("invocation owner imports implementation dependency %s", dependency)
+		}
+	}
+	for _, dependency := range pkg.Imports {
+		for _, capability := range []string{"os", "io", "net", "syscall", "unsafe", "crypto/rand", "math/rand"} {
+			if dependency == capability || strings.HasPrefix(dependency, capability+"/") {
+				t.Errorf("invocation owner imports host capability %s", dependency)
+			}
+		}
+	}
+}
+
 func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
 	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/v2/internal/engine", "actionlint.kjanat.dev/v2/internal/application", "actionlint.kjanat.dev/v2/analysis").Output()
 	if err != nil {
@@ -77,7 +100,7 @@ func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
 		switch {
-		case dependency == "actionlint.kjanat.dev/v2/internal/plugins/component", strings.HasPrefix(dependency, "github.com/partite-ai/wacogo"), strings.HasPrefix(dependency, "github.com/kjanat/wacogo"), strings.HasPrefix(dependency, "github.com/tetratelabs/wazero"):
+		case dependency == "actionlint.kjanat.dev/v2/internal/plugins/component", strings.HasPrefix(dependency, "github.com/partite-ai/wacogo"), strings.HasPrefix(dependency, "github.com/kjanat/wacogo"), strings.HasPrefix(dependency, "github.com/tetratelabs/wazero"), strings.HasPrefix(dependency, "github.com/kjanat/wazero"):
 			t.Errorf("engine imports plugin runtime %s", dependency)
 		}
 	}
@@ -168,6 +191,31 @@ func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
 						t.Errorf("semantic check %s depends on adapter or host %s", pkg.ImportPath, dependency)
 					}
 				}
+			}
+		}
+	}
+}
+
+func TestYAMLParserIsConfinedToCodec(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/yaml/...", "actionlint.kjanat.dev/v2/internal/source/text").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath string
+			Deps       []string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		if pkg.ImportPath == "actionlint.kjanat.dev/v2/internal/yaml/codec" {
+			continue
+		}
+		for _, dependency := range pkg.Deps {
+			if strings.HasPrefix(dependency, "go.yaml.in/") || strings.HasPrefix(dependency, "gopkg.in/yaml.") || dependency == "actionlint.kjanat.dev/v2/internal/yaml/codec" {
+				t.Errorf("YAML model or source mapping %s imports codec dependency %s", pkg.ImportPath, dependency)
 			}
 		}
 	}

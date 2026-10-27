@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	workflow "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/rule"
@@ -22,7 +23,8 @@ func (b rangeReviewBackend) Check(context.Context, analyzer.ScriptRequest) ([]an
 
 func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo first\n          echo second\n")
-	parsed, failures := workflow.Parse(content)
+	document := documentparse.Workflow("ci.yml", content)
+	parsed, failures := document.Workflow, document.Findings
 	if len(failures) != 0 {
 		t.Fatal(failures)
 	}
@@ -30,6 +32,16 @@ func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture is not a run step")
 	}
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := registry.Document("fixture.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stepView, err := snapshot.StepView(parsed.Jobs["test"].Steps[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownedRun, _ := stepView.Run()
 	for _, end := range []analyzer.ScriptPosition{{Row: 2, Column: 3}, {Row: 1, Column: 7}} {
 		registration, err := Register(rule.Descriptor{Name: "range-check"}, []string{"bash"}, rangeReviewBackend{end})
 		if err != nil {
@@ -39,7 +51,7 @@ func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := checker.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: run.Source, Key: run.RunPos, Path: "ci.yml", Content: content, Execution: tools.Execution{Shell: "bash"}}}})
+		findings, err := checker.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: ownedRun.Source(), Key: run.RunPos, Path: "ci.yml", Content: content, Execution: tools.Execution{Shell: "bash"}}}})
 		if err == nil || !strings.Contains(err.Error(), "reversed range") || len(findings) != 1 || findings[0].Message != "valid" {
 			t.Fatalf("invalid backend span escaped: findings=%+v err=%v", findings, err)
 		}

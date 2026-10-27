@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workspace"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
@@ -96,8 +96,8 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 				fmt.Fprintf(&source, "K%d: '${{ github.actor }}',", i)
 			}
 			source.WriteString("}\n")
-			var root yaml.Node
-			if err := yaml.Unmarshal([]byte(source.String()), &root); err != nil {
+			root, err := codec.Parse([]byte(source.String()))
+			if err != nil {
 				b.Fatal(err)
 			}
 			mapping := root.Content[0].Content[1]
@@ -106,7 +106,7 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 			b.ResetTimer()
 			for b.Loop() {
 				p := workflowlang.NewSourceParser(content)
-				p.IndexScalarSources(&root)
+				p.IndexScalarSources(root)
 				for i := 1; i < len(mapping.Content); i += 2 {
 					if p.ScriptSource(mapping.Content[i]) == nil {
 						b.Fatal("missing source")

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/rule"
+	sourcemodel "actionlint.kjanat.dev/v2/source"
 
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
@@ -41,13 +42,21 @@ jobs:
 	workflows := calls.NewCache(project.RootDir(), root, nil)
 	process := analyzerhost.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: fsread.New(t.Context(), nil, nil), gitModes: &gitModes{}}
+	declarations := newCapturedSnapshots(t, root)
+	session.captures, session.snapshots = declarations.Sources.Store, declarations.SourceSnapshots
+	actions.Configure(actionlocal.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
+	workflows.SetSources(t.Context(), session.captures, root)
 	for _, workflow := range []string{used, unused, used} {
 		source, err := os.ReadFile(workflow)
 		if err != nil {
 			t.Fatal(err)
 		}
 		var rules []rule.Descriptor
-		findings, _, err := session.check(workflow, source, project, nil, process, actions, workflows, &rules)
+		captured, err := declarations.Sources.Capture(workflow, source, sourcemodel.YAML)
+		if err != nil {
+			t.Fatal(err)
+		}
+		findings, _, err := session.check(workflow, workflow, captured, project, nil, process, actions, workflows, &rules)
 		if err != nil {
 			t.Fatal(err)
 		}

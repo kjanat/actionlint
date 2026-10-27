@@ -56,6 +56,60 @@ func TestRawYAMLScalarEquals(t *testing.T) {
 	}
 }
 
+func TestSourceScalarProvenance(t *testing.T) {
+	const source = `on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: null
+    env:
+      literal-null: null
+      blank:
+      empty: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          literal-null: null
+          blank:
+          empty: ""
+      - run: echo ok
+        continue-on-error: true
+        timeout-minutes: 7
+`
+	w, errors := Parse([]byte(source))
+	if len(errors) != 0 {
+		t.Fatalf("parse source: %v", errors)
+	}
+	job := w.Jobs["build"]
+	if job.If.Value != "success()" {
+		t.Fatalf("condition = %q; want existing null normalization", job.If.Value)
+	}
+	if got := job.If.SourceScalar; !got.HasSource || got.Kind != SourceScalarScalar || got.Tag != YamlTagNull || got.Value != "null" || got.Pos.Line != 5 {
+		t.Fatalf("condition source = %#v; want original YAML null", got)
+	}
+	if _, present := job.Env.Vars["missing"]; present {
+		t.Fatal("omitted environment key became present")
+	}
+	for name, wantTag := range map[string]string{"literal-null": YamlTagNull, "blank": YamlTagNull, "empty": YamlTagStr} {
+		got := job.Env.Vars[name].Value.SourceScalar
+		if !got.HasSource || got.Kind != SourceScalarScalar || got.Tag != wantTag || name == "blank" && got.Value != "" {
+			t.Errorf("environment %s source = %#v; want scalar tag %s", name, got, wantTag)
+		}
+	}
+	step := job.Steps[0]
+	action := step.Exec.(*ExecAction)
+	for name, wantTag := range map[string]string{"literal-null": YamlTagNull, "blank": YamlTagNull, "empty": YamlTagStr} {
+		got := action.Inputs[name].Value.SourceScalar
+		if !got.HasSource || got.Kind != SourceScalarScalar || got.Tag != wantTag || name == "blank" && got.Value != "" {
+			t.Errorf("action input %s source = %#v; want scalar tag %s", name, got, wantTag)
+		}
+	}
+	runStep := job.Steps[1]
+	if runStep.ContinueOnError == nil || !runStep.ContinueOnError.Value || runStep.TimeoutMinutes == nil || runStep.TimeoutMinutes.Value != 7 {
+		t.Fatalf("typed bool/number fields changed: continue=%#v timeout=%#v", runStep.ContinueOnError, runStep.TimeoutMinutes)
+	}
+}
+
 func TestStringIsExpressionAssigned(t *testing.T) {
 	tests := []struct {
 		input string

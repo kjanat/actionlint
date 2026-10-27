@@ -20,7 +20,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		t.Fatal(err)
 	}
-	original := []byte("# retained comment\nconfig-variables: []\n")
+	original := []byte("# source comment\nconfig-variables: []\n")
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}

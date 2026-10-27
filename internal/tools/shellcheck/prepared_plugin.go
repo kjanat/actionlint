@@ -7,22 +7,36 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/source"
 )
 
 // scriptPreparer exposes the same shell interpretation, expression masking and
 // source preparation used by the native adapter through the public WIT import.
 func scriptPreparer(scripts []analyzer.Script) analyzer.ScriptPreparer {
-	return func(ctx context.Context, reference source.Reference, override *string) (*analyzer.PreparedScript, error) {
+	byOccurrence := make(map[analyzer.OccurrenceID]analyzer.Script, len(scripts))
+	duplicates := make(map[analyzer.OccurrenceID]struct{})
+	for _, script := range scripts {
+		id := script.Occurrence.ID
+		if _, exists := byOccurrence[id]; exists {
+			duplicates[id] = struct{}{}
+			continue
+		}
+		byOccurrence[id] = script
+	}
+	return func(ctx context.Context, id analyzer.OccurrenceID, override *string) (*analyzer.PreparedScript, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		for _, script := range scripts {
-			if script.Reference == reference {
-				return preparePluginScript(script, override)
-			}
+		if id == "" {
+			return nil, errors.New("empty script occurrence")
 		}
-		return nil, errors.New("unknown script reference")
+		if _, duplicate := duplicates[id]; duplicate {
+			return nil, errors.New("ambiguous script occurrence")
+		}
+		script, exists := byOccurrence[id]
+		if !exists {
+			return nil, errors.New("unknown script occurrence")
+		}
+		return preparePluginScript(script, override)
 	}
 }
 

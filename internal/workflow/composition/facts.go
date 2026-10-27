@@ -2,60 +2,44 @@ package composition
 
 import (
 	"actionlint.kjanat.dev/v2/analyzer"
-	documentmodel "actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-	"actionlint.kjanat.dev/v2/internal/sourceid"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/source"
 )
 
-func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.References) analyzer.Input {
-	workflow, outline, units := document.Facts(), document.Outline, result.Batch.Scripts
+func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.References) (analyzer.Input, error) {
+	units := result.Batch.Scripts()
 	refs := references[pathAbs]
-	input := analyzer.Input{Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
-	switch outline := outline.(type) {
-	case documentmodel.Workflow:
-		input.ParseStatus = outline.ParseStatus
-	case documentmodel.Action:
-		input.Kind = "action"
-		input.ParseStatus = outline.ParseStatus
+	input := document.AnalyzerSource(path, content, refs.Document)
+	if !document.CanAnalyze() {
+		return input, nil
 	}
-	input.Reference = refs.Document
-	referencePath := func(p string) string {
-		if p == path || p == "" {
-			p = pathAbs
-		}
-		return sourceid.Document(p)
+	if !result.Batch.Valid() || result.EntrySnapshot == nil {
+		return input, scriptexecution.ErrInvalidBatch
 	}
-	byPath := map[string]workflowfacts.References{refs.Document.Document: refs}
-	for filename, refs := range references {
-		byPath[referencePath(filename)] = refs
+	input.CallGraph = result.Batch.CallGraph()
+	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
+		return document.AnalyzerSource(path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
-	if workflow == nil {
-		return input
+	if input.Reference == (source.Reference{}) {
+		input.Reference = input.CallGraph.Entry().Reference
+	} else if input.Reference != input.CallGraph.Entry().Reference {
+		return document.AnalyzerSource(path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
-	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies)
-	if result.CollectScripts {
-		input.Available = append(input.Available, analyzer.Scripts, analyzer.Invocations)
-		for _, unit := range units {
-			script := scriptexecution.Fact(unit, path, pathAbs, result.ResolveExecution)
-			if unit.Origin != nil && unit.Origin.StepPosition != nil {
-				// Aliased scripts share scalar positions, but retain distinct owners.
-				pos := unit.Origin.StepPosition
-				script.Reference = byPath[referencePath(unit.Path)].Positions[[2]int{pos.Line, pos.Col}]
-			}
-			if script.Invocation != nil {
-				caller := pathAbs
-				if unit.Scope != nil && unit.Scope.Caller != "" {
-					caller = unit.Scope.Caller
-				}
-				script.Invocation.Reference = byPath[referencePath(caller)].Positions[[2]int{script.Invocation.Step.Line, script.Invocation.Step.Column}]
+	input.Available = append(input.Available, analyzer.Mappings, analyzer.Dependencies, analyzer.Invocations)
+	if result.Batch.CollectedScripts() {
+		input.Available = append(input.Available, analyzer.Scripts)
+		for index, unit := range units {
+			script, exists := result.Batch.Fact(index, result.ResolveExecution)
+			if !exists {
+				return document.AnalyzerSource(path, content, refs.Document), scriptexecution.ErrInvalidBatch
 			}
 
 			switch {
-			case unit.Input != nil:
+			case script.Occurrence.Kind == analyzer.ActionInputScript:
 				input.ActionInputs = append(input.ActionInputs, analyzer.ActionInput{Script: script, Site: unit.Input.Site})
-			case script.Path == "":
+			case script.Occurrence.Owner == input.CallGraph.Entry().ID:
 				input.Scripts = append(input.Scripts, script)
 			default:
 				input.Invoked = append(input.Invoked, script)
@@ -65,6 +49,6 @@ func (result Result) AnalyzerInput(path, pathAbs string, content []byte, documen
 	if result.ResolveExecution {
 		input.Available = append(input.Available, analyzer.Execution)
 	}
-	input.Mappings, input.Dependencies = workflowfacts.Declarations(content, workflow, refs)
-	return input
+	input.Mappings, input.Dependencies = result.EntrySnapshot.Declarations()
+	return input, nil
 }

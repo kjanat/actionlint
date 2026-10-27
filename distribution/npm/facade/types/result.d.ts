@@ -94,7 +94,7 @@ export type ActionRunsOutline =
 	}
 	| { kind: 'plugin'; plugin: string }
 	| { kind: 'unknown'; using?: string };
-/** Syntactic classification; host resolution, dialect support and provider identity remain separate. */
+/** Declared source of an action or reusable workflow. */
 export type UsesReference =
 	| {
 		kind: 'repository';

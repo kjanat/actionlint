@@ -7,8 +7,7 @@ import (
 	"unicode"
 )
 
-// IndexSnapshot retains immutable Git modes and cached path indexes for one repository.
-// Callers supply the modes and index path; this package never runs Git.
+// IndexSnapshot indexes paths and executable modes supplied by the caller.
 type IndexSnapshot struct {
 	dirsOnce sync.Once
 	foldOnce sync.Once
@@ -57,8 +56,8 @@ func (snapshot *IndexSnapshot) prepareFoldedPaths() {
 	})
 }
 
-// CaseFoldedPath resolves components before collapsing '..', retaining ambiguous index names as
-// unknown. Only ASCII paths are resolved; APFS Unicode normalization stays unknown.
+// CaseFoldedPath resolves ASCII path components against the index before
+// collapsing '..'. Ambiguous case matches return false.
 func (snapshot *IndexSnapshot) CaseFoldedPath(runnerPath, checkout string) (string, bool) {
 	snapshot.prepareFoldedPaths()
 	parts := strings.Split(runnerPath, "/")

@@ -65,8 +65,8 @@ func RequiredTools(ctx context.Context, options application.Options, paths, plug
 	return RequiredToolsSources(ctx, options, paths, PluginSources{Paths: plugins})
 }
 
-// RequiredToolsSources retains declared replacement roles during native-tool
-// discovery, using the same configuration policy as CheckSources.
+// RequiredToolsSources applies the selected plugins before checking which
+// native tools are needed.
 func RequiredToolsSources(ctx context.Context, options application.Options, paths []string, sources PluginSources) (needed application.ToolRequirements, err error) {
 	loaded, err := loadPlugins(ctx, sources, io.Discard, false)
 	if err != nil {

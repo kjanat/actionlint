@@ -27,6 +27,6 @@ func TestLoadedPluginsCloseAfterCommandCancellation(t *testing.T) {
 		t.Fatalf("component remains usable after canceled command cleanup: %v", err)
 	}
 	if len(loaded.plugins) != 0 {
-		t.Fatal("closed components retained")
+		t.Fatal("closed components remain")
 	}
 }

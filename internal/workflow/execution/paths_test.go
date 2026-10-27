@@ -7,7 +7,7 @@ import (
 	execution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 
 	"actionlint.kjanat.dev/v2/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
 func TestRunDirectoryContexts(t *testing.T) {
@@ -32,7 +32,7 @@ func TestRunDirectoryContexts(t *testing.T) {
 			if tc.action != "" {
 				paths.ActionPath = filepath.Join(root, tc.action)
 			}
-			got := paths.WorkingDirectory(&workflowlang.String{Value: tc.value})
+			got := paths.WorkingDirectory(value.Template(tc.value, value.Origin{}))
 			if (got.Kind == execution.DirectoryKnown) != tc.known || tc.known && got.Path != tc.want {
 				t.Fatalf("directory = %+v, want known=%v path=%q", got, tc.known, tc.want)
 			}

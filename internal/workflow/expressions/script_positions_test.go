@@ -99,11 +99,7 @@ func TestScalarInterpolationUsesScriptPosition(t *testing.T) {
 				if tc.shell != "" {
 					source += "        shell: " + tc.shell + "\n"
 				}
-				workflow, errors := workflowlang.Parse([]byte(source))
-				if len(errors) != 0 {
-					t.Fatal(errors)
-				}
-				rule := newTestChecker()
+				rule, workflow := newTestCheckerForSource(t, source)
 				job := workflow.Jobs["test"]
 				for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0])} {
 					if err != nil {

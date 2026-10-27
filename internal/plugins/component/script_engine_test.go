@@ -365,7 +365,7 @@ func TestScriptEngineRejectsChangedInterface(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, change := range []struct{ old, replacement string }{
-		{ScriptEngineInterface, "kjanat:actionlint/script-engine@0.2.0"},
+		{ScriptEngineInterface, "kjanat:actionlint/script-engine@0.3.0"},
 		{"end-location", "bad-location"},
 	} {
 		t.Run(change.old, func(t *testing.T) {

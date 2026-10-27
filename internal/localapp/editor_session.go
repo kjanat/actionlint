@@ -16,8 +16,8 @@ import (
 // An editor session owns compiled plugins, never document or analysis state.
 // Explicit CLI plugins and remote URLs are snapshots until server restart.
 // Configured local artifacts are identified by content; changing their bytes or
-// selecting a different URI loads a new engine. Old engines remain owned until
-// shutdown so analyses already using them can finish safely.
+// selecting a different URI loads a new engine. Engines are closed at shutdown
+// because in-flight analyses may use an earlier version.
 type editorSession struct {
 	options application.Options
 	plugins *loadedPlugins
@@ -105,8 +105,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (analyzer.Scrip
 		return nil, err
 	}
 	identity := editorEngineIdentity{source: source}
-	// An injected loader owns source interpretation. Its source string is the
-	// session identity; remote artifacts likewise remain a stable snapshot.
+	// Cache injected and remote engines by their source string.
 	if backend, ok := s.loaded[identity]; ok {
 		return borrowEditorEngine(backend), nil
 	}
@@ -154,8 +153,7 @@ func (s *editorEngines) close(ctx context.Context) error {
 	return err
 }
 
-// application.Check owns per-analysis loaders. A borrowed backend deliberately
-// exposes no Close method while retaining validation and selector capabilities.
+// Hide Close so per-analysis cleanup cannot close a session-owned engine.
 type (
 	borrowedEditorEngine  struct{ analyzer.ScriptBackend }
 	describedEditorEngine struct {

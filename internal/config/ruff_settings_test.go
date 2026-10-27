@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/yaml"
+	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 func TestRuffConfiguration(t *testing.T) {
@@ -19,7 +19,7 @@ func TestRuffConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		data, err := yaml.Marshal(cfg)
+		data, err := codec.Marshal(cfg)
 		if err != nil {
 			t.Fatal(err)
 		}

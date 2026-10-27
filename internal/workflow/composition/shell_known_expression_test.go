@@ -9,7 +9,7 @@ import (
 )
 
 func TestKnownShellStateReset(t *testing.T) {
-	workflow, errors := documentparse.Parse([]byte(`on: push
+	content := []byte(`on: push
 jobs:
   python:
     runs-on: ${{ fromJSON('{"labels":"windows-latest"}') }}
@@ -21,16 +21,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo hello
-`))
-	if len(errors) != 0 {
-		t.Fatal(errors)
+`)
+	document := documentparse.Workflow("fixture.yml", content)
+	if len(document.Findings) != 0 {
+		t.Fatal(document.Findings)
 	}
+	workflow := document.Workflow
 	collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
-	collector.beginWorkflow(workflow)
+	startWorkflowEntry(t, collector, workflowSnapshot(t, content, document))
+	if err := collector.beginWorkflow(workflow); err != nil {
+		t.Fatal(err)
+	}
 	for _, id := range []string{"python", "bash"} {
 		job := workflow.Jobs[id]
-		collector.beginJob(job)
-		if err := collector.collectScript(job.Steps[0], nil, "", nil, nil, nil); err != nil {
+		if err := collector.beginJob(job); err != nil {
+			t.Fatal(err)
+		}
+		if err := collector.collectScript(job.Steps[0], nil, nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		if got := collector.scripts[len(collector.scripts)-1].Execution.Shell.Name; got != id {

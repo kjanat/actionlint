@@ -11,7 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools"
 )
 
-// WithScriptInputs retains native run preparation and adds the engine's input-only route.
+// WithScriptInputs routes run steps through the registration and action inputs
+// through the supplied engine.
 func WithScriptInputs(registration tools.Registration, descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend) (tools.Registration, error) {
 	// This registration already binds the selected backend and its complete catalogue.
 	registration.ConfiguredBackend = nil
@@ -75,7 +76,7 @@ func (r selectedRuns) Analyze(ctx context.Context, batch tools.Batch) ([]tools.F
 }
 
 func selectScripts(batch tools.Batch, accept func(tools.Script) bool) (tools.Batch, []int) {
-	selected := tools.Batch{Scopes: batch.Scopes}
+	selected := tools.Batch{Scopes: batch.Scopes, CallGraph: batch.CallGraph}
 	var indices []int
 	for i, script := range batch.Scripts {
 		if accept(script) {

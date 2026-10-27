@@ -14,7 +14,7 @@ func callFinding(pos *workflowlang.Pos, format string, args ...any) diagnostic.D
 }
 
 // CheckArguments validates required and supplied inputs and secrets against
-// reusable workflow metadata. Inherited secrets deliberately remain open.
+// reusable workflow metadata.
 func CheckArguments(call *workflowlang.WorkflowCall, m *Metadata) []diagnostic.Diagnostic {
 	var findings []diagnostic.Diagnostic
 	if call == nil || call.Uses == nil || m == nil {

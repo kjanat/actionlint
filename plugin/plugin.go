@@ -17,7 +17,7 @@ import (
 // to analysis.Tool.Backend. Components may implement several roles.
 type Component = component.Plugin
 
-// Analyzer is the original name for Component, retained for compatibility.
+// Analyzer is a compatibility alias for Component.
 type Analyzer = component.Plugin
 
 // Options configures a component.

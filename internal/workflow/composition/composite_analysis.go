@@ -2,6 +2,8 @@ package composition
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 
@@ -11,10 +13,14 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -23,13 +29,14 @@ import (
 type compositeAnalyzer struct {
 	scriptInputs                      []analyzer.ScriptInput
 	scriptInputsForConfig             func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
+	scriptCatalogues                  map[*repoconfig.Config][]analyzer.ScriptInput
 	runners                           *runnerlang.Knowledge
 	resolveScriptExecution            bool
-	scripts                           []scriptexecution.Unit
+	scripts                           []scriptexecution.ScriptRequest
 	scriptScopes                      []*scriptexecution.Scope
 	scriptScope                       *scriptexecution.Scope
 	scriptPaths                       execution.Paths
-	scriptJobShell, scriptRunnerShell execution.ShellValue
+	scriptJobShell, scriptRunnerShell value.Value
 	scriptWorkflowDir, scriptJobDir   execution.Directory
 	scriptConfig                      *repoconfig.Config
 	collectScripts                    bool
@@ -39,10 +46,16 @@ type compositeAnalyzer struct {
 	actions                           *actionlocal.Resolver
 	passes                            []workflowvisit.Pass
 	rules                             []compositeScriptRules
-	workflowEnv                       *workflowlang.Env
-	workflowShell                     execution.ShellValue
+	workflowEnv                       mapping.Mapping
+	workflowShell                     value.Value
 	configForFile                     func(string) (*repoconfig.Config, error)
 	jobID                             string
+	sourceSnapshots                   *documentparse.SourceSnapshots
+	sourceSnapshot                    *documentparse.SourceSnapshot
+	invocations                       *invocation.Builder
+	context                           invocation.Context
+	budget                            invocation.Budget
+	interrupted                       bool
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {
@@ -52,36 +65,70 @@ func (analysis *compositeAnalyzer) cancelled() error {
 	return analysis.ctx.Err()
 }
 
-func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) {
-	analysis.scriptScope = &scriptexecution.Scope{Paths: analysis.scriptPaths, Config: analysis.scriptConfig}
-	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
-	analysis.scriptWorkflowDir = execution.DefaultDirectory(workflow.Defaults)
-	analysis.workflowScriptShell = scriptDefaultShell(workflow.Defaults)
-	analysis.workflowEnv = workflow.Env
-	analysis.workflowShell = execution.DefaultShell(workflow.Defaults)
+func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) error {
+	if analysis.sourceSnapshot == nil {
+		return errors.New("workflow source snapshot is unavailable")
+	}
+	declaration, present := analysis.sourceSnapshot.WorkflowView()
+	if !present {
+		return errors.New("workflow declaration is unavailable")
+	}
+	analysis.beginEntryScope(scriptexecution.Deployment{})
+	defaults := declaration.Defaults().Run().Semantic()
+	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
+	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults())
+	analysis.workflowEnv = declaration.Env().Mapping()
+	analysis.workflowShell = execution.DefaultShell(defaults)
+	return nil
 }
 
-func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) {
-	analysis.jobScriptShell = scriptDefaultShell(job.Defaults)
-	analysis.scriptJobShell = execution.DefaultShell(job.Defaults)
-	analysis.scriptJobDir = execution.DefaultDirectory(job.Defaults)
-	knowledge := analysis.runners.Job(job)
-	analysis.scriptRunnerShell = execution.ShellValue{Kind: execution.ShellUnknown}
+func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deployment) error {
+	if analysis.sourceSnapshot == nil || analysis.sourceSnapshot.Kind() != documentparse.KindAction {
+		return errors.New("action source snapshot is unavailable")
+	}
+	validated, err := scriptexecution.NewDeployment(analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
+	if err != nil || validated != deployment {
+		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
+	}
+	analysis.beginEntryScope(deployment)
+	return nil
+}
+
+func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.Deployment) {
+	analysis.scriptScope = &scriptexecution.Scope{
+		Paths: analysis.scriptPaths, Config: analysis.scriptConfig,
+		Deployment: deployment, Context: analysis.context,
+	}
+	execution.ActionOrigin(&analysis.scriptScope.Paths, analysis.context, deployment.ActionPath())
+	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
+}
+
+func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) error {
+	declaration, err := analysis.sourceSnapshot.JobView(job)
+	if err != nil {
+		return err
+	}
+	analysis.jobScriptShell = scriptDefaultShell(declaration.Defaults())
+	defaults := declaration.Defaults().Run().Semantic()
+	analysis.scriptJobShell = execution.DefaultShell(defaults)
+	analysis.scriptJobDir = execution.DefaultDirectory(defaults)
+	knowledge := analysis.runners.Job(declaration)
+	analysis.scriptRunnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
 	if analysis.runners == nil {
-		// Standalone composition retains its historical unspecified-shell default.
-		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: "bash"})
+		analysis.scriptRunnerShell = value.YAMLScalar("bash", workflowlang.YamlTagStr, value.Origin{})
 	}
 	if knowledge.Shell != "" {
-		analysis.scriptRunnerShell = execution.ShellValueOf(&workflowlang.String{Value: knowledge.Shell})
+		analysis.scriptRunnerShell = value.YAMLScalar(knowledge.Shell, workflowlang.YamlTagStr, value.Origin{})
 	}
-	if container := execution.ContainerShell(job.Container); container.Kind != execution.ShellUnspecified {
+	if container := execution.ContainerShell(declaration.Container().Semantic()); container.State() != value.Missing {
 		analysis.scriptRunnerShell = container
 	}
 	analysis.jobID = ""
-	if job.ID != nil {
-		analysis.jobID = job.ID.Value
+	if id := declaration.ID(); id.Present() {
+		analysis.jobID = id.Value()
 	}
-	analysis.actions.BeginJob(analysis.workflowEnv, analysis.workflowShell, job)
+	analysis.actions.BeginJob(analysis.workflowEnv, analysis.workflowShell, declaration)
+	return nil
 }
 
 func (analysis *compositeAnalyzer) invalidateCheckout() {
@@ -92,24 +139,20 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	analysis.actions.ObserveExecution(step)
-	analysis.actions.ObserveCheckout(step)
-	if err := analysis.collectScript(step, analysis.scriptConfig, "", nil, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
+	if analysis.sourceSnapshot == nil {
+		return errors.New("step source snapshot is unavailable")
+	}
+	declaration, err := analysis.sourceSnapshot.StepView(step)
+	if err != nil {
 		return err
 	}
-	for _, pass := range analysis.passes {
-		compositeCheckoutPaths(pass, analysis.actions)
-		if participant, ok := pass.(builtin.InvocationParticipant); ok && participant.DeferActionInvocation() {
-			if _, action := step.Exec.(*workflowlang.ExecAction); action {
-				continue // Preserve checkout state while entering a local composite.
-			}
-		}
-		if err := checks.VisitWithOrigin(pass, findingmodel.StepOrigin(analysis.jobID, step), checks.HasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
-			return err
-		}
+	analysis.actions.ObserveExecution(declaration)
+	analysis.actions.ObserveCheckout(declaration)
+	if err := analysis.collectScript(step, analysis.scriptConfig, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
+		return err
 	}
-	if _, action := step.Exec.(*workflowlang.ExecAction); !action {
-		return nil
+	if _, action := declaration.Action(); !action {
+		return analysis.visitStepPasses(step)
 	}
 	var scripts []workflowvisit.Rule
 	for _, pass := range analysis.passes {
@@ -117,5 +160,39 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 			scripts = append(scripts, participant)
 		}
 	}
-	return analysis.visitActionScripts(step, scripts, make(map[string]bool))
+	return analysis.visitActionScripts(step, scripts, func() error { return analysis.visitStepPasses(step) })
+}
+
+func (analysis *compositeAnalyzer) visitStepPasses(step *workflowlang.Step) error {
+	if analysis.sourceSnapshot == nil {
+		return errors.New("step source snapshot is unavailable")
+	}
+	declaration, err := analysis.sourceSnapshot.StepView(step)
+	if err != nil {
+		return err
+	}
+	_, action := declaration.Action()
+	origin := canonicalStepOrigin(declaration, analysis.jobID)
+	for _, pass := range analysis.passes {
+		compositeCheckoutPaths(pass, analysis.actions)
+		if participant, ok := pass.(builtin.InvocationParticipant); ok && participant.DeferActionInvocation() {
+			if action {
+				continue // Preserve checkout state while entering a local composite.
+			}
+		}
+		if err := checks.VisitWithOrigin(pass, origin, checks.HasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func canonicalStepOrigin(step documentparse.StepView, job string) *findingmodel.IgnoreOrigin {
+	owned := step.Origin(job)
+	origin := &findingmodel.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
+	if owned.HasPosition {
+		position := owned.Position
+		origin.StepPosition = &position
+	}
+	return origin
 }

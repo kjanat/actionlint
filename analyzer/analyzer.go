@@ -33,6 +33,7 @@ type Descriptor struct {
 // Analyzer completes all work before returning. The host may call Analyze
 // concurrently for different documents. Implementations must honor cancellation.
 // Findings may accompany an error when an analysis is incomplete.
+// Descriptor and Analyze must not panic; the host does not recover analyzer panics.
 type Analyzer interface {
 	Descriptor() Descriptor
 	Analyze(context.Context, Input) ([]diagnostic.Diagnostic, error)
@@ -60,8 +61,12 @@ type Input struct {
 	Scripts      []Script
 	Invoked      []Script
 	ActionInputs []ActionInput
-	Mappings     []Mapping
-	Dependencies []Dependency
+	CallGraph    CallGraph
+	// SelectedScripts limits materialized text to these occurrences. Nil selects
+	// every graph script; an empty non-nil slice selects none.
+	SelectedScripts []OccurrenceID
+	Mappings        []Mapping
+	Dependencies    []Dependency
 	// Files grants read-only filesystems for this call. Nil grants no file access.
 	// Mount paths are absolute guest paths; filesystem directories must implement
 	// descriptor-relative read operations when used by a component host.
@@ -70,8 +75,8 @@ type Input struct {
 	PrepareScript ScriptPreparer
 }
 
-// FileSystem binds a caller-owned read-only filesystem to a guest path.
-// The caller retains ownership and keeps it open until Analyze returns.
+// FileSystem mounts a read-only filesystem at a guest path for one Analyze call.
+// The caller must keep FS open until Analyze returns.
 type FileSystem struct {
 	Path string
 	FS   fs.FS
@@ -79,7 +84,7 @@ type FileSystem struct {
 
 // ActionInput is mapped source supplied to an action rather than a run command.
 // Site declares its language and action input. Script supplies source identity,
-// spans and invocation only; its Shell stays empty and Runtime stays nil.
+// spans and optional occurrence identity; its Shell stays empty and Runtime stays nil.
 type ActionInput struct {
 	Script
 	Site ScriptInput
@@ -88,10 +93,11 @@ type ActionInput struct {
 // Script is a declared run script. Shell contains the declared shell, without
 // resolving runner defaults. Start points to the original run value in the
 // document at Path; an empty Path means Input.Path. Spans map text positions
-// back to that document. Invocation is set for scripts reached through a
-// composite action call. Runtime is set when the Execution fact was requested.
+// back to that document. With the Invocations fact, Occurrence identifies the
+// execution in Input.CallGraph. Runtime is set with the Execution fact.
 type Script struct {
 	Reference  source.Reference
+	Occurrence ScriptOccurrence
 	JobID      string
 	StepID     string
 	Text       string
@@ -99,10 +105,8 @@ type Script struct {
 	Start      diagnostic.Position
 	Path       string
 	Spans      []Span
-	Invocation *Invocation
 	Runtime    *Runtime
-	// Comments are supplied through the optional source-annotations interface;
-	// the original analyzer component contract and Text remain unchanged.
+	// Comments supplies YAML comments through the optional source-annotations interface.
 	Comments []SourceComment
 }
 
@@ -131,17 +135,6 @@ type Span struct {
 	End         int
 	Document    diagnostic.Position
 	DocumentEnd diagnostic.Position
-}
-
-// Invocation identifies the step whose uses: reference reached a composite
-// action's script. Caller names the document containing that step; an empty
-// Caller means Input.Path. Depth counts composite calls from Input.Path.
-type Invocation struct {
-	Reference source.Reference
-	Caller    string
-	Step      diagnostic.Position
-	Uses      string
-	Depth     int
 }
 
 // Runtime carries the shell and working directory the runner would use.

@@ -4,8 +4,8 @@ package component
 import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
-	ToolIntegrationInterface      = "kjanat:actionlint/tool-integration@0.1.0"
-	toolIntegrationContractDigest = "1b1d2378454a3d8e48a0519ca0d06172c61133f39f0774d76fd9a6c85cfc8b2b"
+	ToolIntegrationInterface      = "kjanat:actionlint/tool-integration@0.2.0"
+	toolIntegrationContractDigest = "08fd146bce1b1fcebccf01d2de1a785776bda122c8245befe21d0d901f8de9ea"
 )
 
 func expectedToolIntegrationContract() *wp.ComponentType {

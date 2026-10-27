@@ -4,24 +4,27 @@ import (
 	"strings"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-func Condition(condition *workflowlang.String) (enabled, known bool) {
+func Condition(condition value.Value) (enabled, known bool) {
 	return invocationConditionInStatuses(condition, []string{"success", "failure", "other"})
 }
 
-func JobCondition(job *workflowlang.Job) (enabled, known bool) {
-	if len(job.Needs) == 0 {
+func JobCondition(condition value.Value, hasNeeds bool) (enabled, known bool) {
+	if !hasNeeds {
 		// No ancestor can have failed. Cancellation still prevents assuming success.
-		return invocationConditionInStatuses(job.If, []string{"success", "other"})
+		return invocationConditionInStatuses(condition, []string{"success", "other"})
 	}
-	return Condition(job.If)
+	return Condition(condition)
 }
 
-func invocationConditionInStatuses(condition *workflowlang.String, statuses []string) (enabled, known bool) {
-	if condition != nil {
-		expr, _, _ := exprlang.ParseConditionExpression(condition.Value)
+func invocationConditionInStatuses(condition value.Value, statuses []string) (enabled, known bool) {
+	if condition.State() == value.Dynamic {
+		expr, parseErr, _ := exprlang.ParseConditionExpression(condition.Source())
+		if parseErr != nil {
+			return false, false
+		}
 		if conditionNeverRunsInStatuses(expr, statuses) {
 			return false, true
 		}
@@ -122,12 +125,21 @@ func knownConditionTruth(value bool) conditionTruth {
 	return conditionFalse
 }
 
-func StepCondition(condition *workflowlang.String) (enabled, known bool) {
-	if condition == nil {
+func StepCondition(condition value.Value) (enabled, known bool) {
+	if condition.State() == value.Missing {
 		return true, true
 	}
-	expression, _, _ := exprlang.ParseConditionExpression(condition.Value)
-	value, known := exprlang.ConditionConstantValue(expression)
+	if condition.Known() {
+		return SemanticTruth(condition)
+	}
+	if condition.State() != value.Dynamic {
+		return false, false
+	}
+	expression, parseErr, _ := exprlang.ParseConditionExpression(condition.Source())
+	if parseErr != nil {
+		return false, false
+	}
+	constant, known := exprlang.ConditionConstantValue(expression)
 	if !known {
 		// Explicit success() has the same gate as an ordinary step.
 		if call, ok := expression.(*exprlang.FuncCallNode); ok && strings.EqualFold(call.Callee, "success") && len(call.Args) == 0 {
@@ -135,7 +147,7 @@ func StepCondition(condition *workflowlang.String) (enabled, known bool) {
 		}
 		return false, false
 	}
-	switch value := value.(type) {
+	switch value := constant.(type) {
 	case nil:
 		return false, true
 	case bool:
@@ -150,11 +162,40 @@ func StepCondition(condition *workflowlang.String) (enabled, known bool) {
 	}
 }
 
-func CanRunAfterFailure(condition *workflowlang.String) bool {
-	if condition == nil {
+func SemanticTruth(semantic value.Value) (enabled, known bool) {
+	if !semantic.Known() {
+		return false, false
+	}
+	switch semantic.Kind() {
+	case value.Null:
+		return false, true
+	case value.Bool:
+		result, _ := semantic.Bool()
+		return result, true
+	case value.Number:
+		result, _ := semantic.Number()
+		return result != 0, true
+	case value.String:
+		result, _ := semantic.Text()
+		return result != "", true
+	case value.Array, value.Object:
+		return true, true
+	default:
+		return false, false
+	}
+}
+
+func CanRunAfterFailure(condition value.Value) bool {
+	if condition.State() == value.Missing {
 		return false
 	}
-	expression, err, _ := exprlang.ParseConditionExpression(condition.Value)
+	if condition.State() == value.Invalid {
+		return true
+	}
+	if condition.State() != value.Dynamic {
+		return false
+	}
+	expression, err, _ := exprlang.ParseConditionExpression(condition.Source())
 	if err != nil || expression == nil {
 		return true
 	}
@@ -190,16 +231,14 @@ func expressionRequiresSuccess(expression exprlang.Node) bool {
 	}
 }
 
-func BoolMayBeTrue(value *workflowlang.Bool) bool {
-	if value == nil {
+func BoolMayBeTrue(semantic value.Value) bool {
+	if semantic.State() == value.Missing {
 		return false
 	}
-	if value.Expression == nil {
-		return value.Value
+	if enabled, known := semantic.Bool(); known {
+		return enabled
 	}
-	literal, known := workflowlang.WorkflowExpressionLiteral(value.Expression)
-	enabled, boolean := literal.(bool)
-	return !known || !boolean || enabled
+	return true
 }
 
 // A known self checkout establishes which index is represented in the workspace.

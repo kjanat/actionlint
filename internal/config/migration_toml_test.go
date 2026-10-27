@@ -48,7 +48,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 			t.Errorf("migration dropped %q:\n%s", comment, migration.Content)
 		}
 		if count := bytes.Count(migration.Content, []byte(comment)); count != 1 {
-			t.Errorf("migration retained %q %d times, want once", comment, count)
+			t.Errorf("migration emitted %q %d times, want once", comment, count)
 		}
 	}
 	if !bytes.Contains(migration.Content, []byte("NAME#VALUE")) {
@@ -204,7 +204,7 @@ value = "kept"
 		"# second tools comment",
 	} {
 		if count := bytes.Count(migration.Content, []byte(comment)); count != 1 {
-			t.Errorf("comment %q retained %d times, want once:\n%s", comment, count, migration.Content)
+			t.Errorf("comment %q appeared %d times, want once:\n%s", comment, count, migration.Content)
 		}
 	}
 	for _, preserved := range []string{

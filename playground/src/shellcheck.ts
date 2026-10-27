@@ -115,8 +115,7 @@ export async function loadShellcheck(): Promise<ShellcheckClient> {
 			return shellcheckOutput(await send({ request }));
 		},
 		cancel() {
-			// Invalidate even calls between initialization and send. An idle worker
-			// can be retained, but queued/executing scripts belong to the old edit.
+			// Invalidate calls between worker initialization and send too.
 			if (pending.size > 0) stop(new Error('ShellCheck analysis was superseded'));
 			else generation++;
 		},

@@ -22,8 +22,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/wacogo"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
+	"github.com/kjanat/wazero"
+	"github.com/kjanat/wazero/api"
 )
 
 const (
@@ -208,7 +208,6 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 
 func (e *Engine) load(ctx context.Context, data, staticMetadata []byte) error {
 	// Native compilation can take longer than one guest call on a cold cache.
-	// Bound it independently, while retaining any earlier caller deadline.
 	compileCtx, compileCancel := context.WithTimeout(ctx, defaultCompileTimeout)
 	defer compileCancel()
 	if err := compileCtx.Err(); err != nil {

@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"mvdan.cc/sh/v3/syntax"
-
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestReservedMatrixWordChangesShellGrammar(t *testing.T) {
@@ -69,11 +67,7 @@ func TestScriptKeywordNeedsDataArgument(t *testing.T) {
 					source += "env: " + tc.env + "\n        "
 				}
 				source += "shell: " + shell + "\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
-				workflow, errors := workflowlang.Parse([]byte(source))
-				if len(errors) != 0 {
-					t.Fatal(errors)
-				}
-				rule := newTestChecker()
+				rule, workflow := newTestCheckerForSource(t, source)
 				job := workflow.Jobs["test"]
 				for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
 					if err != nil {

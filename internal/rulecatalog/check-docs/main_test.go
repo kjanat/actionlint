@@ -299,16 +299,16 @@ func TestPlaygroundLinkTrailingData(t *testing.T) {
 	}
 }
 
-func TestPlaygroundRetainedLinkLimit(t *testing.T) {
+func TestPlaygroundLinkLimits(t *testing.T) {
 	payload := bytes.Repeat([]byte("a"), playgroundMaxSourceBytes+1)
 	if err := playgroundLinkError(payload, "[Playground]("+playgroundURL+"eJw=)"); err == nil {
-		t.Fatal("a retained link with an oversized payload passed")
+		t.Fatal("a link with an oversized payload passed")
 	}
 	if err := playgroundLinkError([]byte("on: push"), "[Playground]("+playgroundURL+strings.Repeat("A", playgroundMaxURLLength)+")"); err == nil {
-		t.Fatal("a retained link past the URL limit passed")
+		t.Fatal("a link past the URL limit passed")
 	}
 	if err := playgroundLinkError([]byte("on: push"), "[Playground]("+playgroundURL+"eJw=)"); err != nil {
-		t.Fatalf("a small retained link failed: %v", err)
+		t.Fatalf("a small link failed: %v", err)
 	}
 }
 

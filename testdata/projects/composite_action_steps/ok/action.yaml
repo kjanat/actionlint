@@ -1,6 +1,6 @@
 name: 'Composite steps'
 author: 'rhysd <https://rhysd.github.io>'
-description: 'Steps the runner accepts'
+description: 'Step forms and unsupported YAML anchor reuse'
 
 runs:
   using: composite

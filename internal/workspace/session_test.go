@@ -38,7 +38,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 	}
 	for _, path := range []string{filepath.Join(root, "broken.yml"), filepath.Join(root, ".github/actionlint.yaml")} {
 		if !slices.Contains(selected.Inputs, path) {
-			t.Errorf("input %q not retained: %v", path, selected.Inputs)
+			t.Errorf("input %q missing from selected config: %v", path, selected.Inputs)
 		}
 	}
 	if !slices.Contains(reads, filepath.Join(root, "broken.yml")) {

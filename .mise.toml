@@ -9,19 +9,20 @@ args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
 [tools]
-npm                                      = "12.2.0"
-go                                       = { prefix = "1.27" }
-node                                     = { prefix = "26" }
-shellcheck                               = { prefix = "0.11" }
-rshellcheck                              = { version = "latest" }
-ruff                                     = "0.17.0"
-tinygo                                   = { prefix = "0.43" }
-"github:charmbracelet/markscribe".prefix = "0.8"
-"github:jgm/pandoc".prefix               = "3"
-"github:kjanat/runner".prefix            = "0.28"
-"github:microsoft/TypeScript".prefix     = "7"
-"github:tombi-toml/tombi".prefix         = "1.8"
-"github:biomejs/biome"                   = { prefix = "2", version_prefix = "@biomejs/biome@" }
+npm                               = "12.2.0"
+go                                = { prefix = "1.27" }
+node                              = { prefix = "26" }
+shellcheck                        = { prefix = "0.11" }
+rshellcheck                       = { version = "latest" }
+ruff                              = "0.17.0"
+tinygo                            = { prefix = "0.43" }
+wasm-tools                        = "latest"
+"github:charmbracelet/markscribe" = { prefix = "0.8" }
+"github:jgm/pandoc"               = { prefix = "3" }
+"github:kjanat/runner"            = { prefix = "0.28" }
+"github:microsoft/TypeScript"     = { prefix = "7" }
+"github:tombi-toml/tombi"         = { prefix = "1.8" }
+"github:biomejs/biome"            = { prefix = "2", version_prefix = "@biomejs/biome@" }
 
 [tools."golangci-lint"]
 prefix  = "2"

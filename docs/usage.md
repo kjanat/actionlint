@@ -32,8 +32,7 @@ When a selected workflow references a selected action, both use the supplied
 action content. Shared metadata defects are reported once at their declaration;
 caller-specific input errors still point to the workflow's `uses:` step.
 
-Files directly under `.github/workflows` remain workflows, even when named
-`action.yml` or `action.yaml`.
+Files directly under `.github/workflows` are parsed as workflows regardless of filename.
 
 Metadata findings point into the action file. Configuration overrides, rule levels
 and ignores apply to that file. Discovery skips `.git`, `node_modules`, `vendor`,
@@ -42,7 +41,7 @@ and symlinked action files or directories. Inside a Git repository, discovery
 asks `git` 2.8 or newer which paths its ignore rules exclude: `.gitignore`,
 `.git/info/exclude` and the global excludes file apply, and tracked manifests in
 ignored directories stay discovered. Discovery fails when `git` is missing or
-reports an incomplete listing. `files.excludes` remains the explicit override.
+reports an incomplete listing.
 Use [file exclusions](config.md) to
 omit fixtures or generated actions. Explicit paths can select actions in skipped
 directories; configured file exclusions still apply.
@@ -99,10 +98,9 @@ actionlint --command check workflow.yml --json
 ```
 
 Normal help and completion recommend the modern names. `--help-legacy` lists the
-supported old names without deprecation warnings. `--format` remains an alias for
-Go templates; it never interprets template text as a built-in format name.
+supported old names without deprecation warnings. `--format` selects a Go template.
 `-o`, `-f`, `-q` and `-h` mean output format, template, quiet and help.
-`-v` remains available for progress logging; new examples use `--log-level=info`.
+Use `--log-level=info` or legacy `-v` for progress logging.
 `-V` is the short form of `--version` and preserves its three-line output.
 Attached short-option values such as `-ojson` belong to `check`'s modern grammar.
 
@@ -137,8 +135,7 @@ stderr for help, stdout for doctor.
 Even `0` is a non-empty value. Explicit `always` or `never` overrides both variables.
 Unknown terminals and multiplexers use plain URLs in auto mode; `always` can
 enable links when the terminal and multiplexer are configured to pass them through.
-Both modes keep destination URLs visible. JSON, diagnostics, templates, version
-output and generated completion scripts remain free of added hyperlink sequences.
+Both modes show destination URLs.
 
 ```sh
 actionlint --hyperlinks=always --help
@@ -205,7 +202,7 @@ columns, and the end position is exclusive. Ranges may span multiple lines. For 
 CLI and Action share [one result contract](results.md), published as a JSON Schema
 and TypeScript types in the npm package. A clean JSON result has an empty `diagnostics` array. JSON Lines emits those
 individual diagnostic objects with `schema_version: 1` on every record, or nothing for a clean result. Legacy
-`-format '{{json .}}'` retains its original array and field names, including
+`-format '{{json .}}'` emits the legacy diagnostic array with fields including
 `kind`, `filepath` and `end_column`. SARIF uses the bundled renderer. `github`
 emits escaped workflow annotation commands; it is enabled only by that explicit
 format choice, including when running inside GitHub Actions.
@@ -231,14 +228,14 @@ actionlint check --strict --experimental
 ```
 
 `--strict` selects all stable catalog rules, including non-recommended suspicious checks
-and opt-in repository policies. Explicit group and individual rule exceptions remain in effect, as do
-configured timeout bounds, permission scopes, suppression report modes and
-rule-ID/path ignores. It does not invent a
+and opt-in repository policies. It respects explicit group and rule exceptions,
+timeout bounds, permission scopes, suppression report modes and rule-ID/path
+ignores. It does not invent a
 `required-actions` list or install missing external linters. `--experimental`
-enables nursery rules while retaining individual exclusions. Strict
+enables nursery rules except those explicitly excluded. Strict
 mode alone does not enable nursery rules. Both switches apply after file
 overrides; `--experimental=false` clears only nursery selections. No current rules are in nursery.
-`--strict=false` removes the strict preset. Policies enabled in configuration remain active.
+`--strict=false` removes the strict preset; configure policies separately to disable them.
 Use `ACTIONLINT_STRICT=true` and `ACTIONLINT_EXPERIMENTAL=true` for equivalent
 environment defaults; explicit flags, including `false`, take precedence.
 
@@ -259,21 +256,19 @@ Check the exit status before interpreting empty stdout as success.
 | `3`         | Could not initialize or complete, including invalid config, regex or template |
 
 `--help --json` describes commands, flags, choices, defaults and exit codes.
-`version --json` exposes build metadata. The old `-version` and `--version` flags
-retain their original three-line text output.
+`version --json` exposes build metadata. `-version` and `--version` print three lines of text.
 
 When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
 diagnostics are indented and colored according to the color controls. Use
-`--json-pretty=false` to disable this. Without an explicit pretty flag, pipes and
-files retain their existing output. Missing or failing `jq` falls back to the
+`--json-pretty=false` to disable this. Pipes and files require an explicit
+pretty flag. Missing or failing `jq` falls back to the
 original JSON. It is never installed automatically.
 
 Explicit `--json-pretty` also selects JSON when no other output format is set.
 For example, `actionlint rules --json-pretty` prints the rules as JSON. The default
 value and `--json-pretty=false` do not change the selected output format.
 Explicit `--json-pretty` also indents JSON written to pipes and files, using
-built-in formatting without color codes or a jq dependency. JSONL, templates and
-stderr records retain their existing output.
+built-in formatting without color codes or a jq dependency.
 
 CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
@@ -290,7 +285,7 @@ actionlint config show --origin
 actionlint config validate
 ```
 
-Configuration selection remains one explicit file or the repository's
+Select an explicit configuration file or use repository discovery in this order:
 `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, then
 `.github/actionlint.toml`. There is no new global
 configuration search or merge policy. `ACTIONLINT_CONFIG` and
@@ -310,13 +305,13 @@ value does not imply that the user explicitly set it.
 `config validate` uses the same parser and validation as analysis, including its
 current handling of unknown keys described in [Configuration](config.md). It does
 not silently introduce the stricter JSON Schema validation policy.
-`config init` retains the repository destination, refuses to overwrite either
+`config init` writes to the repository configuration directory, refuses to overwrite either
 config filename, and includes the YAML Language Server schema directive.
 It creates a commented configuration reference with lint rules and tools first.
 `init`, `init-config`, `--init` and `--init-config` are compatibility aliases;
 `config --init` and `config --init-config` also work. The success message displays
 a path relative to the working directory, linked to the file when terminal
-hyperlinks are enabled. JSON output retains the absolute path.
+hyperlinks are enabled. JSON output uses the absolute path.
 
 `rules` lists checks by name, description and category; `rules NAME` explains one
 check. `doctor` reports the selected config and resolves configured external-tool
@@ -416,10 +411,10 @@ Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. A bare
 `--ruff` selects `ruff` on `PATH`. Use `--ruff=COMMAND` for a custom executable or
 command line, and `--no-ruff` to disable it. ShellCheck follows the same pattern:
 `--shellcheck`, `--shellcheck=COMMAND`, and `--no-shellcheck`.
-Optional command values require `=` so the next argument remains a workflow path.
+Use `=` for optional command values; a separate argument is parsed as a workflow path.
 A disable flag wins if both forms are supplied and skips the tool's environment
 settings. Legacy single-dash spellings follow the same rules at the root and after
-subcommands. The older `=false` and empty values also remain supported.
+subcommands. `=false` and empty values also disable the tool.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 
 Repository configuration can select native executables through
@@ -653,8 +648,7 @@ optional PR reviews, tools and the complete input/output reference.
 
 ### Manual installation
 
-The download script remains useful when direct access to the executable is
-preferred. It sets an absolute file path of the downloaded
+Use the download script for direct access to the executable. It sets the absolute path of the downloaded
 executable to the `executable` output for following steps.
 
 Here is an example of simple workflow to run actionlint on GitHub Actions.
@@ -754,8 +748,8 @@ Available tags are:
 
 The CLI image is also published to Docker Hub as `kjanat/actionlint:latest` and
 `kjanat/actionlint:{version}`. Both registries carry the same manifest, so pick
-whichever your setup pulls from more easily. Previous `action-*` images remain
-available for older action refs; new releases use the JavaScript action.
+whichever your setup pulls from more easily. Older action refs use `action-*`
+images; new releases use the JavaScript action.
 The ordinary binary also supports `-github-action` to run the action adapter
 with `INPUT_*`, `GITHUB_WORKSPACE`, and `GITHUB_OUTPUT` environment variables.
 
@@ -973,8 +967,8 @@ metadata validation; missing actions report `missing-local-action`.
 #### Updating pre-commit hooks
 
 Change the `repo:` URL explicitly when migrating from v1: `pre-commit autoupdate`
-does not move a configuration to another repository. Old immutable v1 hook revisions
-remain available at the old URL. See [v2 migration](migration-v2.md).
+does not move a configuration to another repository. For v1 hooks, use the old
+repository URL. See [v2 migration](migration-v2.md).
 
 After the first v2 hook release, update within the dedicated repository:
 
@@ -983,7 +977,7 @@ pre-commit autoupdate --freeze --repo https://github.com/kjanat/actionlint-pre-c
 ```
 
 Only completed stable hook releases receive tags in that repository; unrelated
-source, Action-channel, and development tags remain in the host repository.
+source, Action-channel, and development tags belong to the host repository.
 Review the selected release and commit the updated revision. A frozen revision pins
 the hook installation; `actionlint.plugins.lock.json` separately pins the project's plugins.
 
@@ -1165,8 +1159,8 @@ See [plugin installation](plugins.md#install-from-the-registry)
 for version selection, overrides and offline behavior.
 
 `--plugin PATH` accepts document-analyzer components, runner providers or the Ruff core WebAssembly
-engine. The Ruff engine replaces the native Ruff process while retaining the
-host's workflow expression masking and YAML position mapping.
+engine. The host masks workflow expressions before calling Ruff and maps its
+diagnostics back to YAML positions.
 
 Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
 provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. The
@@ -1182,7 +1176,7 @@ The language server provides expression property completions, including
 filters. Dot access, quoted bracket access, array indices and wildcard access
 use the same types as expression diagnostics. Completions use the current editor
 buffer, including unsaved changes. Unknown events and caller-provided payloads
-remain open; conditions do not yet narrow the event type within a branch.
+allow arbitrary properties; conditions do not yet narrow the event type within a branch.
 
 Expression findings have independent rule settings. For example, allowing unknown
 payload properties does not disable script-injection checks:

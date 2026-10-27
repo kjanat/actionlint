@@ -38,7 +38,7 @@ func ValidVersion(version string) bool {
 }
 
 // ValidRepository validates forge-qualified repository paths for declarations
-// and catalogue identities. Callers retain their existing case normalization.
+// and catalogue identities.
 func ValidRepository(name string) bool {
 	if len(name) > 523 {
 		return false

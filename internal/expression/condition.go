@@ -5,9 +5,7 @@ import (
 	"unicode/utf8"
 )
 
-// ConditionSource models the template reader's single string literal fold,
-// followed by the workflow converter's empty-condition default. Computed
-// strings remain expressions; their values are never reparsed as source.
+// ConditionSource unwraps a single string literal and defaults blank conditions to success().
 func ConditionSource(source string) string {
 	if literal := LiteralExpressionValue(source); literal != nil {
 		source = *literal

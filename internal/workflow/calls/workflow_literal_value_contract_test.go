@@ -20,7 +20,7 @@ jobs:
 		t.Fatal(errs)
 	}
 	root := t.TempDir()
-	cache := calls.NewCache(root, root, nil)
+	cache := newCapturedWorkflowCache(t, root, root, nil)
 	event, _ := w.FindWorkflowCallEvent()
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, _ := cache.Lookup("./callee.yaml")

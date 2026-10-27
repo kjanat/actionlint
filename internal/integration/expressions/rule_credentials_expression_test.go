@@ -41,7 +41,6 @@ func TestCredentialsKnownMappingExpressions(t *testing.T) {
 			{"password without username", `{"password":"plain"}`, "credentials"},
 			{"literal secret expression", `{"username":"user","password":"${{ secrets.PASSWORD }}"}`, "credentials"},
 			{"literal computed expression", `{"username":"user","password":"${{ fromJSON('{}') }}"}`, "credentials"},
-			// The evaluated schema permits omitted credential fields; present values remain nonempty.
 			// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/WorkflowParser/workflow-v1.0.json#L2686-L2702
 			{"empty credentials", `{}`, ""},
 			{"username only", `{"username":"user"}`, ""},

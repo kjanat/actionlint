@@ -46,8 +46,7 @@ func (placement *CheckoutPlacement) Matching(local string) *CheckoutPlacement {
 	return nil
 }
 
-// MergeCheckoutBranches keeps a conditional child's shadowing ranges,
-// retaining the caller's unaffected checkouts when joining branches.
+// MergeCheckoutBranches merges checkout placements from conditional execution.
 func MergeCheckoutBranches(before, after *CheckoutPlacement, mayFail bool) *CheckoutPlacement {
 	if after == before || after == nil {
 		return before
