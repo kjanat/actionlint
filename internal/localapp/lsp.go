@@ -97,6 +97,13 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 	}
 	sources := make(map[string]langserver.Source, len(result.CapturedSources))
 	aliases := make(map[source.Revision][]string)
+	missing := make(map[string]struct{})
+	for _, input := range result.Inputs {
+		path := address(input)
+		if captured, consumed := result.CapturedSources[path]; consumed && (captured.Coordinates != source.YAML || !captured.CoordinatesAvailable) {
+			missing[path] = struct{}{}
+		}
+	}
 	for path, captured := range result.CapturedSources {
 		if captured.Coordinates == source.YAML && captured.CoordinatesAvailable && captured.Revision.Valid() {
 			sources[path] = langserver.Source{Text: string(captured.Content), Revision: captured.Revision, Coordinates: captured.Coordinates}
@@ -130,7 +137,6 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 		}
 		return candidates[0], true
 	}
-	missing := make(map[string]struct{})
 	diagnostics := make([]diagnostic.Diagnostic, 0, len(result.Diagnostics))
 	for i, original := range result.Diagnostics {
 		d := original

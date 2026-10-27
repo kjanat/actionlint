@@ -2,6 +2,7 @@ package localapp
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/langserver"
 	"actionlint.kjanat.dev/v2/internal/report"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -23,6 +25,59 @@ func capturedEditorSource(t testing.TB, path string, content []byte, model sourc
 		t.Fatal(err)
 	}
 	return report.CapturedSource{Revision: revision, Coordinates: model, CoordinatesAvailable: utf8.Valid(content), Content: content}
+}
+
+func TestEditorCaseVariantBuffersConflictOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows case-insensitive drive alias regression")
+	}
+	root := t.TempDir()
+	if len(filepath.VolumeName(root)) != 2 {
+		t.Skipf("host temporary path has no drive: %q", root)
+	}
+	path := filepath.Join(root, "action.yml")
+	if err := os.WriteFile(path, []byte("disk"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	alias := strings.ToLower(path[:1]) + path[1:]
+	if alias == path {
+		alias = strings.ToUpper(path[:1]) + path[1:]
+	}
+	left, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := os.Stat(alias)
+	if err != nil || !os.SameFile(left, right) {
+		t.Fatalf("fixture aliases are not the same host file: %v", err)
+	}
+	caller := filepath.Join(root, "workflow.yml")
+	callerText := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+	first, second := "name: first\ndescription: first\nruns: {using: composite, steps: []}\n", "name: second\ndescription: second\nruns: {using: composite, steps: []}\n"
+	for _, reverse := range []bool{false, true} {
+		a, b := first, second
+		if reverse {
+			a, b = b, a
+		}
+		analysis, err := analyzeDocuments(t.Context(), application.Options{WorkingDir: root, SkipProjectConfig: true}, map[string]langserver.Document{path: {Text: a}, alias: {Text: b}, caller: {Text: callerText}})
+		if _, conflicted := errors.AsType[*capture.ConflictError](err); !conflicted {
+			t.Fatalf("case-variant buffers were not quarantined: %v", err)
+		}
+		if _, exists := analysis.Sources[path]; exists {
+			t.Fatal("conflicted physical spelling supplied text")
+		}
+		if _, exists := analysis.Sources[alias]; exists {
+			t.Fatal("conflicted case alias supplied text")
+		}
+		if analysis.Sources[caller].Text != callerText {
+			t.Fatal("case conflict discarded healthy caller source")
+		}
+		for _, finding := range analysis.Diagnostics {
+			if finding.Path == path || finding.Path == alias {
+				t.Fatal("case conflict fabricated a range")
+			}
+		}
+	}
 }
 
 func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
