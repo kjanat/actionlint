@@ -16,6 +16,28 @@ const InvocationContextInterface = bind.InterfaceName
 type invocationGraphKey struct{}
 type invocationContext struct{}
 
+// Generated bindings reserve Go errors for transport traps. Query failures
+// belong to the WIT result, so these adapters never return a Go error.
+func (invocationContext) Describe(ctx context.Context) (bind.ResultSummaryString, error) {
+	return describeInvocation(ctx), nil
+}
+
+func (invocationContext) Calls(ctx context.Context, offset, limit uint32) (bind.ResultListCallString, error) {
+	return invocationCalls(ctx, offset, limit), nil
+}
+
+func (invocationContext) Scripts(ctx context.Context, offset, limit uint32) (bind.ResultListScriptOccurrenceString, error) {
+	return invocationScripts(ctx, offset, limit), nil
+}
+
+func (invocationContext) CallByID(ctx context.Context, id string) (bind.ResultOptionCallString, error) {
+	return invocationCallByID(ctx, id), nil
+}
+
+func (invocationContext) ScriptByID(ctx context.Context, id string) (bind.ResultOptionScriptOccurrenceString, error) {
+	return invocationScriptByID(ctx, id), nil
+}
+
 func invocationGraph(ctx context.Context) (analyzer.CallGraph, error) {
 	if err := ctx.Err(); err != nil {
 		return analyzer.CallGraph{}, err
@@ -33,10 +55,10 @@ func invocationGraph(ctx context.Context) (analyzer.CallGraph, error) {
 	return graph, nil
 }
 
-func (invocationContext) Describe(ctx context.Context) (bind.ResultSummaryString, error) {
+func describeInvocation(ctx context.Context) bind.ResultSummaryString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultSummaryStringErr{Value: err.Error()}, nil
+		return bind.ResultSummaryStringErr{Value: err.Error()}
 	}
 	entry, budget := graph.Entry(), graph.Budget()
 	kind := bind.EntryKindWorkflow
@@ -58,77 +80,77 @@ func (invocationContext) Describe(ctx context.Context) (bind.ResultSummaryString
 	if interrupted, present := graph.EntryInterruption().Get(); present {
 		value.EntryInterruption = bind.SomeInterruption(invocationInterruption(interrupted))
 	}
-	return bind.ResultSummaryStringOk{Value: value}, nil
+	return bind.ResultSummaryStringOk{Value: value}
 }
 
-func (invocationContext) Calls(ctx context.Context, offset, limit uint32) (bind.ResultListCallString, error) {
+func invocationCalls(ctx context.Context, offset, limit uint32) bind.ResultListCallString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultListCallStringErr{Value: err.Error()}, nil
+		return bind.ResultListCallStringErr{Value: err.Error()}
 	}
 	if uint64(offset) > uint64(graph.CallCount()) || limit == 0 || limit > analyzer.MaxCallGraphPageSize {
-		return bind.ResultListCallStringErr{Value: "invalid invocation page bounds"}, nil
+		return bind.ResultListCallStringErr{Value: "invalid invocation page bounds"}
 	}
 	calls, err := graph.CallsPage(int(offset), int(limit))
 	if err != nil {
-		return bind.ResultListCallStringErr{Value: err.Error()}, nil
+		return bind.ResultListCallStringErr{Value: err.Error()}
 	}
 	values := make([]bind.Call, 0, len(calls))
 	for _, call := range calls {
 		value, err := invocationCall(call)
 		if err != nil {
-			return bind.ResultListCallStringErr{Value: err.Error()}, nil
+			return bind.ResultListCallStringErr{Value: err.Error()}
 		}
 		values = append(values, value)
 	}
-	return bind.ResultListCallStringOk{Value: values}, nil
+	return bind.ResultListCallStringOk{Value: values}
 }
 
-func (invocationContext) Scripts(ctx context.Context, offset, limit uint32) (bind.ResultListScriptOccurrenceString, error) {
+func invocationScripts(ctx context.Context, offset, limit uint32) bind.ResultListScriptOccurrenceString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultListScriptOccurrenceStringErr{Value: err.Error()}, nil
+		return bind.ResultListScriptOccurrenceStringErr{Value: err.Error()}
 	}
 	if uint64(offset) > uint64(graph.ScriptCount()) || limit == 0 || limit > analyzer.MaxCallGraphPageSize {
-		return bind.ResultListScriptOccurrenceStringErr{Value: "invalid invocation page bounds"}, nil
+		return bind.ResultListScriptOccurrenceStringErr{Value: "invalid invocation page bounds"}
 	}
 	scripts, err := graph.ScriptsPage(int(offset), int(limit))
 	if err != nil {
-		return bind.ResultListScriptOccurrenceStringErr{Value: err.Error()}, nil
+		return bind.ResultListScriptOccurrenceStringErr{Value: err.Error()}
 	}
 	values := make([]bind.ScriptOccurrence, 0, len(scripts))
 	for _, script := range scripts {
 		values = append(values, invocationScript(script))
 	}
-	return bind.ResultListScriptOccurrenceStringOk{Value: values}, nil
+	return bind.ResultListScriptOccurrenceStringOk{Value: values}
 }
 
-func (invocationContext) CallByID(ctx context.Context, id string) (bind.ResultOptionCallString, error) {
+func invocationCallByID(ctx context.Context, id string) bind.ResultOptionCallString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultOptionCallStringErr{Value: err.Error()}, nil
+		return bind.ResultOptionCallStringErr{Value: err.Error()}
 	}
 	call, found := graph.Call(analyzer.OccurrenceID(id))
 	if !found {
-		return bind.ResultOptionCallStringOk{Value: bind.NoneCall()}, nil
+		return bind.ResultOptionCallStringOk{Value: bind.NoneCall()}
 	}
 	value, err := invocationCall(call)
 	if err != nil {
-		return bind.ResultOptionCallStringErr{Value: err.Error()}, nil
+		return bind.ResultOptionCallStringErr{Value: err.Error()}
 	}
-	return bind.ResultOptionCallStringOk{Value: bind.SomeCall(value)}, nil
+	return bind.ResultOptionCallStringOk{Value: bind.SomeCall(value)}
 }
 
-func (invocationContext) ScriptByID(ctx context.Context, id string) (bind.ResultOptionScriptOccurrenceString, error) {
+func invocationScriptByID(ctx context.Context, id string) bind.ResultOptionScriptOccurrenceString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultOptionScriptOccurrenceStringErr{Value: err.Error()}, nil
+		return bind.ResultOptionScriptOccurrenceStringErr{Value: err.Error()}
 	}
 	script, found := graph.Script(analyzer.OccurrenceID(id))
 	if !found {
-		return bind.ResultOptionScriptOccurrenceStringOk{Value: bind.NoneScriptOccurrence()}, nil
+		return bind.ResultOptionScriptOccurrenceStringOk{Value: bind.NoneScriptOccurrence()}
 	}
-	return bind.ResultOptionScriptOccurrenceStringOk{Value: bind.SomeScriptOccurrence(invocationScript(script))}, nil
+	return bind.ResultOptionScriptOccurrenceStringOk{Value: bind.SomeScriptOccurrence(invocationScript(script))}
 }
 
 func invocationReference(ref source.Reference) bind.SourceReference {

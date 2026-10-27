@@ -15,8 +15,8 @@ func TestOriginalSourceSurvivesInputAndMetadataMutation(t *testing.T) {
 	if !ok || got != want {
 		t.Fatal("original parse text followed caller mutations")
 	}
-	copy := *metadata
-	if copied, ok := copy.OriginalSource(); !ok || copied != want {
+	metadataCopy := *metadata
+	if copied, ok := metadataCopy.OriginalSource(); !ok || copied != want {
 		t.Fatal("lookup descriptor lost original source provenance")
 	}
 	unparsed := Metadata{Source: []byte(want)}

@@ -201,7 +201,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 				notice = fmt.Errorf("unexpected key %q for definition of input %q", fieldKey.Node().Value, name)
 			}
 			if err != nil {
-				if _, fatal := err.(*codec.LoadError); fatal {
+				if _, fatal := codec.FatalLoadError(err); fatal {
 					return nil, defaults, err
 				}
 				fieldErrors = append(fieldErrors, err)

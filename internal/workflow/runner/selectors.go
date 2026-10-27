@@ -3,7 +3,6 @@ package runner
 import (
 	"slices"
 
-	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
@@ -164,5 +163,3 @@ func selectionValues(selection value.Value) []value.Value {
 	}
 	return []value.Value{candidate}
 }
-
-func selectorPosition(source value.Value) diagnostic.Position { return source.Origin().Span.Start }

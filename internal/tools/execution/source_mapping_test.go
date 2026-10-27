@@ -61,7 +61,7 @@ func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, cano
 		}
 	}
 	for line := 0; line <= len(original.Lines)+1; line++ {
-		for column := 0; column <= 48; column++ {
+		for column := range 49 {
 			position, ok := original.Position(line, column)
 			actual, actualOK := canonical.Position(line, column)
 			if ok != actualOK || ok && *position != actual {

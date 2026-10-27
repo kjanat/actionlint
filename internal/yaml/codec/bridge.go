@@ -158,7 +158,7 @@ func encodeError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if _, ok := err.(*EncodeError); ok {
+	if _, ok := errors.AsType[*EncodeError](err); ok {
 		return err
 	}
 	return &EncodeError{Message: err.Error(), cause: err}

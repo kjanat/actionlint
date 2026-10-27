@@ -29,7 +29,17 @@ type LoadError struct {
 	cause   error
 }
 
+// FatalLoadError distinguishes aborting loads from collected schema diagnostics.
+func FatalLoadError(err error) (*LoadError, bool) {
+	if _, collected := errors.AsType[*DecodeError](err); collected {
+		return nil, false
+	}
+	return errors.AsType[*LoadError](err)
+}
+
 func (e *LoadError) Unwrap() error { return e.cause }
+
+func (e *LoadError) diagnostics() []*LoadError { return []*LoadError{e} }
 
 func (e *LoadError) Error() string {
 	if e.text != "" {
@@ -41,6 +51,8 @@ func (e *LoadError) Error() string {
 type DecodeError struct {
 	Errors []*LoadError
 }
+
+func (e *DecodeError) diagnostics() []*LoadError { return e.Errors }
 
 func (e *DecodeError) Error() string {
 	parts := make([]string, len(e.Errors))
@@ -67,24 +79,21 @@ func locateDecodeErrors(err error, fallback Mark) *DecodeError {
 	if err == nil {
 		return result
 	}
-	switch value := err.(type) {
-	case *DecodeError:
-		for _, item := range value.Errors {
-			result.Errors = append(result.Errors, locateDecodeErrors(item, fallback).Errors...)
+	if value, ok := err.(interface{ diagnostics() []*LoadError }); ok {
+		for _, original := range value.diagnostics() {
+			item := *original
+			if item.Mark.Line == 0 && item.Mark.Column == 0 {
+				item.Mark = fallback
+				item.text = ""
+			}
+			item.cause = original
+			result.Errors = append(result.Errors, &item)
 		}
-	case *LoadError:
-		item := *value
-		if item.Mark.Line == 0 && item.Mark.Column == 0 {
-			item.Mark = fallback
-			item.text = ""
-		}
-		item.cause = value
-		result.Errors = append(result.Errors, &item)
-	case interface{ Unwrap() []error }:
+	} else if value, ok := err.(interface{ Unwrap() []error }); ok {
 		for _, child := range value.Unwrap() {
 			result.Errors = append(result.Errors, locateDecodeErrors(child, fallback).Errors...)
 		}
-	default:
+	} else {
 		if child := errors.Unwrap(err); child != nil {
 			result = locateDecodeErrors(child, fallback)
 			for _, item := range result.Errors {

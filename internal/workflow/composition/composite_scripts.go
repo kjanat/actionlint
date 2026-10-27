@@ -43,7 +43,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 	if !ok {
 		return nil
 	}
-	action, ok := call.Exec.(*workflowlang.ExecAction)
+	_, ok = call.Exec.(*workflowlang.ExecAction)
 	if !ok {
 		return errors.New("canonical action step has no legacy callback cursor")
 	}
@@ -65,7 +65,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 				deferred = append(deferred, rule)
 			}
 		}
-		return analysis.visitOpaqueAction(call, action, declaration, actionView, deferred)
+		return analysis.visitOpaqueAction(call, declaration, actionView, deferred)
 	}
 	callContext, admitted := ticket.Context()
 	if !admitted {
@@ -97,13 +97,13 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		return err
 	}
 	if outcome.Kind() != invocation.OutcomeExpanded {
-		return analysis.visitOpaqueAction(call, action, declaration, actionView, parents)
+		return analysis.visitOpaqueAction(call, declaration, actionView, parents)
 	}
 	opened = true
 	return analysis.visitMetadataScripts(meta, callContext, parents)
 }
 
-func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, action *workflowlang.ExecAction, declaration documentparse.StepView, actionView documentparse.ExecActionView, parents []workflowvisit.Rule) error {
+func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, declaration documentparse.StepView, actionView documentparse.ExecActionView, parents []workflowvisit.Rule) error {
 	analysis.actions.ObserveOpaqueAction(declaration, actionView)
 	for _, rule := range parents {
 		compositeCheckoutPaths(rule, analysis.actions)

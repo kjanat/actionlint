@@ -1,10 +1,7 @@
 package expressions
 
 import (
-	"strings"
-
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
@@ -15,18 +12,6 @@ func (rule *Checker) checkMatrixSourceKey(source *workflowlang.String, evaluated
 	if source != nil && !evaluated {
 		rule.checkString(source, "jobs.<job_id>.strategy")
 	}
-}
-
-func matrixKeyName(fallback string, source *workflowlang.String, evaluated bool) (string, bool) {
-	if source == nil {
-		return strings.ToLower(fallback), fallback != ""
-	}
-	semantic := workflowlang.SemanticValue(source)
-	if evaluated {
-		semantic = value.YAMLScalar(source.Value, workflowlang.YamlTagStr, semantic.Origin())
-	}
-	name, state := mapping.ResolveKey(semantic)
-	return strings.ToLower(name), state == mapping.KnownKey
 }
 
 func (rule *Checker) checkMatrixExpression(expr *workflowlang.String) *exprlang.ObjectType {
@@ -158,36 +143,19 @@ func matrixValueType(item value.Value) exprlang.Type {
 	}
 }
 
-func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) exprlang.Type {
+func (rule *Checker) checkMatrixRow(r *workflowlang.MatrixRow) {
 	rule.checkMatrixSourceKey(r.Name, r.Evaluated)
 	if r.Expression != nil {
-		if a, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy").(*exprlang.ArrayType); ok {
-			return a.Elem
-		}
-		return exprlang.AnyType{}
+		rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy")
+		return
 	}
 
-	var ty exprlang.Type
 	for _, v := range r.Values {
-		t := rule.checkMatrixSequenceItem(v)
-		if t == nil {
-			continue
-		}
-		if ty == nil {
-			ty = t
-		} else {
-			ty = ty.Merge(t)
-		}
+		rule.checkMatrixSequenceItem(v)
 	}
-
-	if ty == nil {
-		return exprlang.AnyType{} // No element
-	}
-
-	return ty
 }
 
-func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, section string) exprlang.Type {
+func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, section string) {
 	ty := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
 	if array, ok := ty.(*exprlang.ArrayType); ok {
 		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
@@ -202,7 +170,7 @@ func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, se
 					}
 				}
 				if invalid || len(values) == 0 {
-					return nil
+					return
 				}
 			}
 		}
@@ -210,10 +178,9 @@ func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, se
 	}
 	switch ty.(type) {
 	case nil, exprlang.AnyType, *exprlang.ObjectType:
-		return ty
+		return
 	default:
 		rule.Errorf(s.Pos, "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
-		return nil
 	}
 }
 

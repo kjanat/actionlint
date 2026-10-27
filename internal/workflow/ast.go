@@ -153,8 +153,7 @@ func (p *Pos) IsBefore(other *Pos) bool {
 	return p.Col < other.Col
 }
 
-// String represents generic String value in YAML file with Position.
-// SourceScalarKind describes the YAML node kind captured when a String came from source.
+// SourceScalarKind identifies the YAML node kind captured from source.
 type SourceScalarKind uint8
 
 const (
@@ -176,6 +175,7 @@ type SourceScalar struct {
 	Pos       Pos
 }
 
+// String represents a YAML string value and its source position.
 type String struct {
 	// Value is a raw value of the String.
 	Value string

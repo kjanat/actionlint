@@ -210,11 +210,12 @@ func resolveSemanticMatrix(matrix value.Value) Resolution {
 	for name, row := range matrix.Props() {
 		if strings.EqualFold(name, "include") || strings.EqualFold(name, "exclude") {
 			filters, ok := semanticCombinations(row, false)
-			if !ok {
+			switch {
+			case !ok:
 				r.filterKnown = false
-			} else if strings.EqualFold(name, "include") {
+			case strings.EqualFold(name, "include"):
 				r.include = filters
-			} else {
+			default:
 				r.exclude = filters
 			}
 			continue
@@ -332,7 +333,7 @@ func (r Resolution) Reachable(axisName string) Reach {
 			}
 		}
 	} else {
-		result.MayBeMissing = !(includeCoverage && !includeSelectsBase)
+		result.MayBeMissing = !includeCoverage || includeSelectsBase
 	}
 	if r.state == value.Dynamic || r.state == value.Invalid || !r.filterKnown {
 		result.Complete = false

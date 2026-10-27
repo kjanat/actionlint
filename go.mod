@@ -27,6 +27,7 @@ require (
 	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
+	golang.org/x/tools v0.51.0
 	mvdan.cc/sh/v3 v3.14.1
 )
 
@@ -39,7 +40,6 @@ require (
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	go-modules.kjanat.dev v0.8.1-0.20261025190330-2e183b7fc3f2 // indirect
-	golang.org/x/tools v0.51.0 // indirect
 )
 
 tool github.com/kjanat/wacogo/cmd/wacogo-witgen
@@ -48,3 +48,5 @@ ignore (
 	node_modules
 	target
 )
+
+replace go.yaml.in/yaml/v4 => github.com/kjanat/go-yaml/v4 v4.0.0-rc.6.0.20261027003936-b29e171e3237

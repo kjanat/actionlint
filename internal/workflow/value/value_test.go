@@ -162,14 +162,13 @@ func TestYAMLCoreScalarCoercionAndScalarFormatting(t *testing.T) {
 	} {
 		t.Run(tc.text, func(t *testing.T) {
 			tag := "!!int"
-			if tc.text == "TRUE" {
+			switch tc.text {
+			case "TRUE", "yes":
 				tag = "!!bool"
-			} else if tc.text == "~" {
+			case "~":
 				tag = "!!null"
-			} else if tc.text == "3.10" {
+			case "3.10":
 				tag = "!!float"
-			} else if tc.text == "yes" {
-				tag = "!!bool"
 			}
 			value := YAMLScalar(tc.text, tag, Origin{})
 			got, ok := value.ScalarString()
@@ -232,8 +231,10 @@ func TestSourceContainersAreLiteralAndEvaluatedContainersAreEvaluated(t *testing
 	if sourceArray.State() != Literal || sourceObject.State() != Literal || !sourceArray.Known() || !sourceObject.Known() {
 		t.Fatalf("source container state: array=%v object=%v", sourceArray.State(), sourceObject.State())
 	}
-	if sourceArray.Equal(sourceArray) || sourceObject.Equal(sourceObject) {
-		t.Fatal("container with dynamic child compared equal as known runtime truth")
+	arrayCopy := Seq(Origin{}, YAMLScalar("source", "!!str", Origin{}), unknown)
+	objectCopy := Map(Origin{}, Prop{Name: "item", Value: unknown})
+	if sourceArray.Equal(arrayCopy) || sourceObject.Equal(objectCopy) {
+		t.Fatal("structurally equal containers with dynamic children compared equal")
 	}
 	evaluated := FromJSON([]any{map[string]any{"item": "value"}}, Origin{FromExpression: true})
 	child, _ := evaluated.Index(0)

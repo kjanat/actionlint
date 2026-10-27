@@ -119,7 +119,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 	}
 	composed := composition.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
-		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
+		composed, analysisErr = s.composeDocument(path, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
 			return nil, outline, analysisErr
 		}
@@ -164,7 +164,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, content []byt
 	return all, outline, analysisErr
 }
 
-func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot *documentparse.SourceSnapshot, action bool,
+func (s *analysisSession) composeDocument(path, root string, content []byte, document documentparse.Document, snapshot *documentparse.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {

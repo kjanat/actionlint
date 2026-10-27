@@ -126,11 +126,11 @@ func shadowType(t reflect.Type, active map[reflect.Type]bool, names map[string]s
 			return reflect.MapOf(t.Key(), e), nil
 		}
 	case reflect.Struct:
-		fields := make([]reflect.StructField, t.NumField())
+		fields := make([]reflect.StructField, 0, t.NumField()+1)
 		changed := false
-		for i := range fields {
+		for i := range t.NumField() {
 			f := t.Field(i)
-			fields[i] = f
+			fields = append(fields, f)
 			fields[i].Anonymous = false
 			if !f.IsExported() && !f.Anonymous || f.Tag.Get("yaml") == "-" {
 				continue
@@ -369,7 +369,7 @@ func (d *Decoder) Decode(n *syntax.Node, target any) error {
 	}
 	if shape == v.Elem().Type() {
 		err := translate(d.load(raw, target))
-		if fatal, ok := err.(*LoadError); ok {
+		if fatal, ok := FatalLoadError(err); ok {
 			d.fatal = fatal
 		}
 		return err
@@ -380,7 +380,7 @@ func (d *Decoder) Decode(n *syntax.Node, target any) error {
 	}
 	parseErr := translate(d.load(raw, shadow.Interface()))
 	restoreTypeNames(parseErr, names)
-	if fatal, ok := parseErr.(*LoadError); ok {
+	if fatal, ok := FatalLoadError(parseErr); ok {
 		d.fatal = fatal
 		return fatal
 	}
@@ -406,13 +406,12 @@ func restoreTypeNames(err error, names map[string]string) {
 		item.Message = replacer.Replace(item.Message)
 		item.text = replacer.Replace(item.text)
 	}
-	switch err := err.(type) {
-	case *DecodeError:
-		for _, item := range err.Errors {
+	if list, ok := errors.AsType[*DecodeError](err); ok {
+		for _, item := range list.Errors {
 			replace(item)
 		}
-	case *LoadError:
-		replace(err)
+	} else if item, ok := errors.AsType[*LoadError](err); ok {
+		replace(item)
 	}
 }
 
@@ -450,16 +449,13 @@ func joinDecodeErrors(errs ...error) error {
 		if err == nil {
 			return
 		}
-		switch err := err.(type) {
-		case *DecodeError:
-			result.Errors = append(result.Errors, err.Errors...)
-		case *LoadError:
-			result.Errors = append(result.Errors, err)
-		case interface{ Unwrap() []error }:
-			for _, child := range err.Unwrap() {
+		if local, ok := err.(interface{ diagnostics() []*LoadError }); ok {
+			result.Errors = append(result.Errors, local.diagnostics()...)
+		} else if list, ok := err.(interface{ Unwrap() []error }); ok {
+			for _, child := range list.Unwrap() {
 				collect(child)
 			}
-		default:
+		} else {
 			if inner := errors.Unwrap(err); inner != nil {
 				_, decode := errors.AsType[*DecodeError](inner)
 				_, load := errors.AsType[*LoadError](inner)

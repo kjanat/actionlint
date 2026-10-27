@@ -82,7 +82,7 @@ func TestGeneratorRejectsUnsupportedShapesBeforeEmitting(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		executable += ".exe"
 	}
-	build := exec.Command("go", "build", "-o", executable, ".")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", executable, ".")
 	build.Dir = generateDir
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build generator: %v\n%s", err, output)
@@ -141,7 +141,7 @@ func TestGeneratorRejectsUnsupportedShapesBeforeEmitting(t *testing.T) {
 			if err := os.MkdirAll(output, 0o755); err != nil {
 				t.Fatal(err)
 			}
-			command := exec.Command(executable, fixture, output)
+			command := exec.CommandContext(t.Context(), executable, fixture, output)
 			if result, err := command.CombinedOutput(); err == nil || !bytes.Contains(result, []byte(test.wantError)) {
 				t.Fatalf("generator output = %q, error = %v; want failure containing %q", result, err, test.wantError)
 			}
@@ -168,7 +168,7 @@ func TestGeneratedFilesAreCurrent(t *testing.T) {
 	if err := os.MkdirAll(target, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command("go", "run", ".", root, target)
+	command := exec.CommandContext(t.Context(), "go", "run", ".", root, target)
 	command.Dir = generateDir
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("go run generator: %v\n%s", err, output)

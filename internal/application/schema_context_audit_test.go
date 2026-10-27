@@ -151,7 +151,7 @@ jobs:
     runs-on: ${{ `+tc.value+` }}
     steps:
       - run: echo test
-	`)
+`)
 			visitor := engine.NewVisitor()
 			visitor.AddPass(rule)
 			if err := visitor.Visit(workflow); err != nil {

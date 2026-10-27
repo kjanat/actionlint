@@ -534,9 +534,9 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 			keyNode := n.Content[i]
 			if insertions && keyNode.Kind == syntax.ScalarNode {
 				if resolved, known := knownMappingKey(newString(keyNode)); known {
-					copy := *keyNode
-					copy.Value = resolved.Value
-					keyNode = &copy
+					resolvedNode := *keyNode
+					resolvedNode.Value = resolved.Value
+					keyNode = &resolvedNode
 				}
 			}
 			if !p.CheckString(keyNode, false) {

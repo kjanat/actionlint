@@ -552,13 +552,13 @@ func (rule *Checker) checkRawYAMLString(y *workflowlang.RawYAMLString) exprlang.
 	return exprlang.StringType{}
 }
 
-func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key string, shape schema.Shape) exprlang.Type {
+func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key string, shape schema.Shape) {
 	if s == nil {
-		return nil
+		return
 	}
 	ty := rule.checkOneExpression(s, what, key)
 	if ty == nil {
-		return nil
+		return
 	}
 	errors := shape.ValidateType(ty, what)
 	// Inferred arrays can lose element types to AnyType; known JSON values allow
@@ -566,13 +566,9 @@ func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key s
 	if len(errors) == 0 {
 		if value, known := workflowlang.WorkflowExpressionLiteral(s); known {
 			errors = schema.LiteralErrors(shape, value, what)
-			if len(errors) == 0 {
-				ty = exprlang.TypeOfJSONValue(value)
-			}
 		}
 	}
 	for _, message := range errors {
 		rule.Error(s.Pos, message)
 	}
-	return ty
 }

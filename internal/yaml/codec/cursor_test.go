@@ -17,10 +17,6 @@ type cursorPlainStrings struct {
 	Items [][]string `yaml:"items"`
 }
 
-type cursorPlainMaps struct {
-	Items []map[string]any `yaml:"items"`
-}
-
 func parseCursorSource(data []byte) (*syntax.Node, error) {
 	var root syntax.Node
 	if err := codec.Unmarshal(data, &root); err != nil {
@@ -67,7 +63,7 @@ func walkCursorItems(root *syntax.Node, visit func(codec.Cursor) error) error {
 		}
 	}
 	if !found && walkErr == nil {
-		walkErr = fmt.Errorf("items mapping key not found")
+		walkErr = errors.New("items mapping key not found")
 	}
 	return session.Finish(walkErr)
 }
@@ -322,7 +318,7 @@ func openFirstEnteredItem(root *syntax.Node) (*codec.Session, codec.Cursor, code
 			return session, item, entered, nil
 		}
 	}
-	return session, codec.Cursor{}, codec.Entered{}, session.Finish(fmt.Errorf("items mapping key or item not found"))
+	return session, codec.Cursor{}, codec.Entered{}, session.Finish(errors.New("items mapping key or item not found"))
 }
 
 func TestCursorZeroAndClosedSessionRejectOperations(t *testing.T) {

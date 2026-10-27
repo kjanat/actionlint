@@ -1,3 +1,4 @@
+// Package mapping resolves ordered, state-aware workflow mapping entries.
 package mapping
 
 import (

@@ -72,16 +72,22 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	}
 	// Inspect physical YAML nodes once. Alias targets already occur in this tree;
 	// following aliases here would recurse through self-referential anchors.
-	var checkTags func(*syntax.Node)
-	checkTags = func(n *syntax.Node) {
+	var checkSyntax func(*syntax.Node)
+	checkSyntax = func(n *syntax.Node) {
+		if n.Anchor != "" {
+			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "YAML anchors are not supported in action metadata; remove anchor %q", n.Anchor)
+		}
+		if n.Kind == syntax.AliasNode {
+			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "YAML aliases are not supported in action metadata; replace alias %q", n.Value)
+		}
 		if message := workflowlang.RawYAMLTagError(n); message != "" {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s in action metadata", message)
 		}
 		for _, child := range n.Content {
-			checkTags(child)
+			checkSyntax(child)
 		}
 	}
-	checkTags(meta.Root)
+	checkSyntax(meta.Root)
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemapath.Path{}, 0, false)
 }
 

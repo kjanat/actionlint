@@ -15,7 +15,6 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
-	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
@@ -39,63 +38,9 @@ type Input struct {
 	Type exprlang.Type
 }
 
-// UnmarshalYAML implements codec.Unmarshaler.
-func (input *Input) UnmarshalYAML(d *codec.Decoder, n *syntax.Node) error {
-	type metadata struct {
-		Required bool    `yaml:"required"`
-		Default  *string `yaml:"default"`
-		Type     string  `yaml:"type"`
-	}
-
-	var md metadata
-	if err := d.Decode(n, &md); err != nil {
-		return err
-	}
-
-	input.Required = md.Required && md.Default == nil
-	switch md.Type {
-	case "boolean":
-		input.Type = exprlang.BoolType{}
-	case "number":
-		input.Type = exprlang.NumberType{}
-	case "string":
-		input.Type = exprlang.StringType{}
-	default:
-		input.Type = exprlang.AnyType{}
-	}
-
-	return nil
-}
-
 // Inputs is a map from input name to reusable wokflow input metadata. The
 // keys are in lower case since input names of workflow calls are case insensitive.
 type Inputs map[string]*Input
-
-// UnmarshalYAML implements codec.Unmarshaler.
-func (inputs *Inputs) UnmarshalYAML(d *codec.Decoder, n *syntax.Node) error {
-	if n.Kind != syntax.MappingNode {
-		return expectedMapping("on.workflow_call.inputs", n)
-	}
-
-	md := make(Inputs, len(n.Content)/2)
-	for i := 0; i < len(n.Content); i += 2 {
-		k, v := n.Content[i], n.Content[i+1]
-
-		var m Input
-		if err := d.Decode(v, &m); err != nil {
-			return err
-		}
-		m.Name = k.Value
-		if m.Type == nil {
-			m.Type = exprlang.AnyType{} // Reach here when `v` is null node
-		}
-
-		md[strings.ToLower(k.Value)] = &m
-	}
-
-	*inputs = md
-	return nil
-}
 
 // Secret is a secret metadata for validating local reusable workflow file.
 type Secret struct {
@@ -110,29 +55,6 @@ type Secret struct {
 // The keys are in lower case since secret names of workflow calls are case insensitive.
 type Secrets map[string]*Secret
 
-// UnmarshalYAML implements codec.Unmarshaler.
-func (secrets *Secrets) UnmarshalYAML(d *codec.Decoder, n *syntax.Node) error {
-	if n.Kind != syntax.MappingNode {
-		return expectedMapping("on.workflow_call.secrets", n)
-	}
-
-	md := make(Secrets, len(n.Content)/2)
-	for i := 0; i < len(n.Content); i += 2 {
-		k, v := n.Content[i], n.Content[i+1]
-
-		var s Secret
-		if err := d.Decode(v, &s); err != nil {
-			return err
-		}
-		s.Name = k.Value
-
-		md[strings.ToLower(k.Value)] = &s
-	}
-
-	*secrets = md
-	return nil
-}
-
 // Output is an output metadata for validating local reusable workflow file.
 type Output struct {
 	// Name is a name of the output in the reusable workflow.
@@ -142,24 +64,6 @@ type Output struct {
 // Outputs is a map from output name to reusable wokflow output metadata.
 // The keys are in lower case since output names of workflow calls are case insensitive.
 type Outputs map[string]*Output
-
-// UnmarshalYAML implements codec.Unmarshaler.
-func (outputs *Outputs) UnmarshalYAML(_ *codec.Decoder, n *syntax.Node) error {
-	if n.Kind != syntax.MappingNode {
-		return expectedMapping("on.workflow_call.outputs", n)
-	}
-
-	md := make(Outputs, len(n.Content)/2)
-	for i := 0; i < len(n.Content); i += 2 {
-		k := n.Content[i]
-		md[strings.ToLower(k.Value)] = &Output{
-			Name: k.Value,
-		}
-	}
-
-	*outputs = md
-	return nil
-}
 
 // Metadata is metadata to validate local reusable workflows. This struct does not
 // contain all metadata from YAML file. It only contains metadata which is necessary to validate
@@ -405,27 +309,7 @@ func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflow
 		}
 	}
 
-	if w != nil {
-		wp := ResolvePermissionsAST(w.Permissions)
-		for _, j := range w.Jobs {
-			uses := ""
-			if j.WorkflowCall != nil && j.WorkflowCall.Uses != nil {
-				uses = j.WorkflowCall.Uses.Value
-			}
-			m.recordJobCacheAccess(j.ID.Value, workflowlang.EffectiveCacheMode(w.CacheMode, j.CacheMode), uses, j.Steps)
-			p := wp
-			if j.Permissions != nil {
-				p = ResolvePermissionsAST(j.Permissions)
-			}
-			if p.Kind != PermissionsDeclared || len(p.Levels) == 0 {
-				continue
-			}
-			if m.JobPermissions == nil {
-				m.JobPermissions = map[string]PermissionScopeLevels{}
-			}
-			m.JobPermissions[j.ID.Value] = p.Levels
-		}
-	}
+	m.recordWorkflowFacts(w)
 
 	c.mu.Lock()
 	if _, exists := c.cache[spec]; !exists {
@@ -434,161 +318,6 @@ func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflow
 	c.mu.Unlock()
 
 	c.debug("Workflow call metadata from workflow %s: %v", wpath, m)
-}
-
-func ParseMetadata(src []byte) (*Metadata, error) {
-	type workflow struct {
-		On          syntax.Node `yaml:"on"`
-		Permissions syntax.Node `yaml:"permissions"`
-		CacheMode   syntax.Node `yaml:"cache-mode"`
-		Jobs        syntax.Node `yaml:"jobs"`
-	}
-
-	doc, err := codec.Parse(src)
-	if err != nil {
-		return nil, err
-	}
-
-	var aliasErr error
-	workflowlang.ResolveYAMLAliases(doc, func(n *syntax.Node, d workflowlang.YamlAliasDiagnostic, m string) {
-		if d != workflowlang.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
-			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, m)
-		}
-	})
-	if aliasErr != nil {
-		return nil, aliasErr
-	}
-
-	var w workflow
-	if doc.Kind != 0 {
-		n := doc
-		if n.Kind == syntax.DocumentNode && len(n.Content) > 0 {
-			n = n.Content[0]
-		}
-		if n.Kind == syntax.MappingNode {
-			first := *n
-			first.Content = make([]*syntax.Node, 0, len(n.Content))
-			seen := map[string]bool{}
-			for i := 0; i+1 < len(n.Content); i += 2 {
-				key := n.Content[i]
-				if key.Kind != syntax.ScalarNode || key.Value == "" || key.Value == "<<" || workflowlang.RawYAMLTagError(key) != "" {
-					continue
-				}
-				// Match the workflow parser's first-value handling of duplicate keys.
-				if seen[key.Value] {
-					continue
-				}
-				seen[key.Value] = true
-				first.Content = append(first.Content, key, n.Content[i+1])
-			}
-			n = &first
-		}
-		if err := codec.Decode(n, &w); err != nil {
-			return nil, err
-		}
-	}
-
-	n := &w.On
-	if n.Line == 0 && n.Column == 0 {
-		return nil, errors.New("\"on:\" is not found")
-	}
-
-	var m *Metadata
-	switch n.Kind {
-	case syntax.MappingNode:
-		// on:
-		//   workflow_call:
-		for i := 0; i < len(n.Content); i += 2 {
-			k := strings.ToLower(n.Content[i].Value)
-			if k == "workflow_call" {
-				m = &Metadata{}
-				if err := codec.Decode(n.Content[i+1], m); err != nil {
-					return nil, err
-				}
-				break
-			}
-		}
-	case syntax.ScalarNode:
-		// on: workflow_call
-		if v := strings.ToLower(n.Value); v == "workflow_call" {
-			m = &Metadata{}
-		}
-	case syntax.SequenceNode:
-		// on: [workflow_call]
-		for _, c := range n.Content {
-			e := strings.ToLower(c.Value)
-			if e == "workflow_call" {
-				m = &Metadata{}
-				break
-			}
-		}
-	}
-
-	if m == nil {
-		return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", n.Line, n.Column)
-	}
-
-	wp := ResolvePermissionsYAML(&w.Permissions)
-	wc := workflowlang.CacheModeFromYAML(&w.CacheMode)
-	stepParser := workflowlang.NewSourceParser(src)
-	if w.Jobs.Kind == syntax.MappingNode {
-		seenJobs := map[string]bool{}
-		for i := 0; i+1 < len(w.Jobs.Content); i += 2 {
-			id, job := w.Jobs.Content[i], w.Jobs.Content[i+1]
-			key := strings.ToLower(id.Value)
-			if seenJobs[key] {
-				continue
-			}
-			seenJobs[key] = true
-			if job.Kind != syntax.MappingNode {
-				continue
-			}
-			p := wp
-			mode, uses := wc, ""
-			stepsOnly := false
-			seenKeys := map[string]bool{}
-			var steps []*workflowlang.Step
-			for k := 0; k+1 < len(job.Content); k += 2 {
-				key := job.Content[k].Value
-				// parseMapping keeps the first occurrence after reporting a duplicate.
-				if seenKeys[key] {
-					continue
-				}
-				seenKeys[key] = true
-				if workflowlang.JobKeyRequiresSteps(key) {
-					stepsOnly = true
-				}
-				switch key {
-				case "steps":
-					steps = stepParser.ParseSteps(job.Content[k+1])
-				case "permissions":
-					p = ResolvePermissionsYAML(job.Content[k+1])
-				case "cache-mode":
-					mode = workflowlang.CacheModeFromYAML(job.Content[k+1])
-				case "uses":
-					if n := job.Content[k+1]; n.Kind == syntax.ScalarNode {
-						uses = n.Value
-						if literal := exprlang.LiteralExpressionValue(uses); literal != nil {
-							uses = *literal
-						}
-					}
-				}
-			}
-			if stepsOnly {
-				uses = ""
-			}
-			m.recordJobCacheAccess(id.Value, mode, uses, steps)
-			if p.Kind != PermissionsDeclared || len(p.Levels) == 0 {
-				continue
-			}
-			if m.JobPermissions == nil {
-				m.JobPermissions = map[string]PermissionScopeLevels{}
-			}
-			m.JobPermissions[id.Value] = p.Levels
-		}
-	}
-
-	return m, nil
 }
 
 // NewCache creates a new Cache instance for the given

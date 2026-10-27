@@ -32,9 +32,9 @@ func TestValidateYAMLAliasesPreservesSource(t *testing.T) {
 			if _, seen := before[n]; seen {
 				return
 			}
-			copy := *n
-			copy.Content = slices.Clone(n.Content)
-			before[n] = copy
+			snapshot := *n
+			snapshot.Content = slices.Clone(n.Content)
+			before[n] = snapshot
 			for _, child := range n.Content {
 				record(child)
 			}

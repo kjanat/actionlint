@@ -307,7 +307,7 @@ func main() {
 			}
 		}
 	}
-	var ifNames []string
+	ifNames := make([]string, 0, len(interfaces))
 	for name := range interfaces {
 		ifNames = append(ifNames, name)
 	}

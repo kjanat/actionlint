@@ -280,7 +280,7 @@ func matrixMappingInputs(node *workflowlang.Matrix) *mapping.Inputs {
 		Values: make(map[string]mapping.Input, len(node.Rows)+2), Expression: mappingScalar(node.Expression),
 	}
 	for key, row := range node.Rows {
-		name := value.Value{}
+		var name value.Value
 		source := ""
 		if row.Name != nil {
 			source = row.Name.Value

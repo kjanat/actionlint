@@ -46,6 +46,12 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 					}
 					suggestion = 1
 				}
+				if strings.Contains(tc.declaration, "&script") {
+					if len(result.Diagnostics) != 2 || result.Diagnostics[0].Rule != "action" || result.Diagnostics[0].Start.Line != 10 || result.Diagnostics[0].Message != `YAML anchors are not supported in action metadata; remove anchor "script"` {
+						t.Fatalf("anchored source must report its unsupported syntax alongside the expression suggestion: %+v", result.Diagnostics)
+					}
+					suggestion = 1
+				}
 				if len(result.Diagnostics) != suggestion+1 || result.Diagnostics[suggestion].Rule != "action" || !strings.Contains(result.Diagnostics[suggestion].Message, "did you mean") {
 					t.Fatalf("expected one action suggestion: %+v", result.Diagnostics)
 				}

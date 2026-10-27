@@ -15,10 +15,16 @@ import (
 // Its source graph must not change before Close.
 type Session struct {
 	nodes                  map[*syntax.Node]*upstream.Node
-	limits                 *limit.Plugin
+	originals              map[*upstream.Node]*syntax.Node
+	limits                 constructionLimits
 	aliases, constructions int
 	fatal                  *LoadError
 	closed                 bool
+}
+
+type constructionLimits interface {
+	CheckDepth(int, *upstream.DepthContext) error
+	CheckAlias(int, int) error
 }
 
 // Cursor identifies a source occurrence together with its enclosing aliases.
@@ -26,6 +32,7 @@ type Cursor struct {
 	session *Session
 	node    *syntax.Node
 	via     *aliasCrossing
+	claim   *rootClaim
 }
 
 type aliasCrossing struct {
@@ -47,7 +54,7 @@ func Open(root *syntax.Node) (*Session, Cursor, error) {
 	if err != nil {
 		return nil, Cursor{}, err
 	}
-	s := &Session{nodes: make(map[*syntax.Node]*upstream.Node, len(graph.originals)), limits: limit.New()}
+	s := &Session{nodes: make(map[*syntax.Node]*upstream.Node, len(graph.originals)), originals: graph.originals, limits: limit.New()}
 	for raw, node := range graph.originals {
 		s.nodes[node] = raw
 	}
@@ -127,9 +134,14 @@ func (c Cursor) Enter() (Entered, error) {
 		if err := c.check(); err != nil {
 			return Entered{}, err
 		}
-		if err := c.count(); err != nil {
-			return Entered{}, err
+		if c.claim != nil && !c.claim.decoded {
+			c.claim.decoded = true
+		} else {
+			if err := c.count(); err != nil {
+				return Entered{}, err
+			}
 		}
+		c.claim = nil
 		switch c.node.Kind {
 		case syntax.DocumentNode:
 			if len(c.node.Content) == 0 {
@@ -183,7 +195,7 @@ func (e Entered) Items() iter.Seq[Cursor] {
 }
 
 // Decode constructs a hook-free Go value using this occurrence's alias context.
-func (c Cursor) Decode(target any) error { return c.decode(target, nil) }
+func (c Cursor) Decode(target any) error { return c.decode(target, c.claim) }
 
 // Decode uses the entered root's count once. Further decodes count it again.
 func (e Entered) Decode(target any) error {
@@ -198,26 +210,43 @@ func (c Cursor) decode(target any, claim *rootClaim) error {
 	if v.Kind() != reflect.Pointer || v.IsNil() {
 		return errors.New("YAML target must be a non-nil pointer")
 	}
-	if err := checkLeafType(v.Elem().Type(), map[reflect.Type]bool{}); err != nil {
+	if err := checkDecodeType(v.Elem().Type(), false, map[decodeShape]bool{}); err != nil {
 		return err
 	}
+	return c.load(target, claim)
+}
+
+func (c Cursor) load(target any, claim *rootClaim, extra ...upstream.Option) error {
 	var active []*upstream.Node
 	for ancestor := c.via; ancestor != nil; ancestor = ancestor.parent {
 		active = append(active, c.session.nodes[ancestor.node])
 	}
 	budget := &leafBudget{session: c.session, claim: claim}
-	err := translate(c.session.nodes[c.node].LoadWithAliasContext(target, active, upstream.WithV3Defaults(), upstream.WithPlugin(budget)))
-	if fatal, ok := err.(*LoadError); ok {
+	opts := append([]upstream.Option{upstream.WithV3Defaults(), upstream.WithPlugin(budget)}, extra...)
+	err := translate(c.session.nodes[c.node].LoadWithAliasContext(target, active, opts...))
+	if fatal, ok := FatalLoadError(err); ok && c.session.fatal == nil {
 		c.session.fatal = fatal
 	}
 	return err
 }
 
-func checkLeafType(t reflect.Type, seen map[reflect.Type]bool) error {
-	if seen[t] {
+type decodeShape struct {
+	typeOf   reflect.Type
+	selected bool
+}
+
+func checkDecodeType(t reflect.Type, selected bool, seen map[decodeShape]bool) error {
+	shape := decodeShape{t, selected}
+	if seen[shape] {
 		return nil
 	}
-	seen[t] = true
+	seen[shape] = true
+	if t == reflect.TypeFor[Selected]() {
+		if selected {
+			return nil
+		}
+		return errors.New("YAML selections require a Select struct field")
+	}
 	if t == reflect.TypeFor[syntax.Node]() || t == reflect.TypeFor[upstream.Node]() {
 		return fmt.Errorf("YAML node fields require an explicit schema traversal: %v", t)
 	}
@@ -231,16 +260,16 @@ func checkLeafType(t reflect.Type, seen map[reflect.Type]bool) error {
 	}
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Slice, reflect.Array:
-		return checkLeafType(t.Elem(), seen)
+		return checkDecodeType(t.Elem(), false, seen)
 	case reflect.Map:
-		if err := checkLeafType(t.Key(), seen); err != nil {
+		if err := checkDecodeType(t.Key(), false, seen); err != nil {
 			return err
 		}
-		return checkLeafType(t.Elem(), seen)
+		return checkDecodeType(t.Elem(), false, seen)
 	case reflect.Struct:
 		for field := range t.Fields() {
 			if (field.IsExported() || field.Anonymous) && field.Tag.Get("yaml") != "-" {
-				if err := checkLeafType(field.Type, seen); err != nil {
+				if err := checkDecodeType(field.Type, selected, seen); err != nil {
 					return err
 				}
 			}
@@ -272,5 +301,8 @@ func (b *leafBudget) CheckAlias(aliases, constructions int) error {
 	b.aliases, b.constructions = aliases, constructions
 	b.session.constructions += delta
 	b.session.aliases += aliasDelta
+	if delta == 0 && aliasDelta == 0 {
+		return nil
+	}
 	return b.session.limits.CheckAlias(b.session.aliases, b.session.constructions)
 }
