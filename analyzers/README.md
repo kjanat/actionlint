@@ -9,7 +9,7 @@ list. It also works in modules unrelated to Actionlint.
 | ARC001 | Public API signatures, aliases, fields and constraints cannot expose types from an `internal` package. Implementation imports and private representation fields are allowed. |
 | ARC002 | An exported struct with private representation or receiver-mutating methods cannot expose writable fields. Plain value records without either property are allowed.          |
 | ARC003 | Exported methods cannot return mutable storage reachable from their receiver. Return detached storage or an opaque value handle.                                             |
-| ARC004 | Calls without source summaries may mutate receiver storage or return aliases. Unresolved ownership and detachment fail explicitly.                                |
+| ARC004 | Calls without source summaries may mutate receiver storage or return aliases. Unresolved ownership and detachment fail explicitly.                                           |
 
 ARC003 follows assignments, branches, field/index access, pointer loads,
 interfaces, closures, containers and function results. Parameter/result and
