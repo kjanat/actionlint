@@ -53,7 +53,7 @@ func TestPublicationRejectsForeignPathWithoutSource(t *testing.T) {
 	entryReference := source.Reference{Document: entry.Revision().Document(), Revision: entry.Revision().Digest()}
 	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: path}, errors: []*findingmodel.Finding{
 		{Path: filepath.Join(root, "foreign.sh"), Message: "unmarked foreign"},
-		{Diagnostic: diagnostic.Diagnostic{Path: filepath.Join(root, "another.sh"), Message: "false entry claim", Reference: &entryReference}},
+		{Path: filepath.Join(root, "another.sh"), Message: "false entry claim", Reference: &entryReference},
 		retained,
 	}}}}
 	err = result.revalidateCaptures(fixture.Store, rows, root, nil)
