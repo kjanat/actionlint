@@ -2,9 +2,14 @@ package application_test
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
+	"syscall"
 	"testing"
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
@@ -14,6 +19,39 @@ import (
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 )
+
+func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	physical := writeFixture(t, root, "physical/lib.sh", "echo $VALUE\n")
+	alias := filepath.Join(root, "reported.sh")
+	if err := os.Symlink(physical, alias); err != nil {
+		if errors.Is(err, os.ErrPermission) || errors.Is(err, errors.ErrUnsupported) || runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(1314)) {
+			t.Skipf("symlink privilege unavailable: %v", err)
+		}
+		t.Fatal(err)
+	}
+	encodedPath, err := json.Marshal(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow := writeFixture(t, root, "ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: '. ./reported.sh'}]}}\n")
+	options := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) {
+		return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":1,"column":6,"level":"info","code":2086,"message":"reported source"}]}`, encodedPath), nil
+	}}).Registrations()}
+	result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(result.Inputs, alias) || slices.Contains(result.Inputs, physical) {
+		t.Fatalf("native display reread replaced reported alias with physical path: %v", result.Inputs)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || !render.Prepare(*result).Findings[0].Unavailable {
+		t.Fatalf("native unavailable report did not reach rendering: %+v", result)
+	}
+}
 
 func TestShellcheckSourcedDiagnostics(t *testing.T) {
 	command := shellcheckForTest(t)

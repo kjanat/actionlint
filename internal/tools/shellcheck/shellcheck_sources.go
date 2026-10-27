@@ -31,7 +31,7 @@ func (run *shellcheckRun) recordSources(paths []string, directory string) error 
 			}
 		}
 		// The checker already read it. Keep the dependency even if it disappeared.
-		run.paths.reader.Record(name)
+		run.paths.reader.Record(sourceInventoryPath(name, directory))
 	}
 	return nil
 }
@@ -52,6 +52,18 @@ func sourcePath(name, directory string) string {
 	return absPath(name)
 }
 
+func sourceInventoryPath(name, directory string) string {
+	for component := range strings.SplitSeq(filepath.ToSlash(name), "/") {
+		if component == ".." {
+			// Windows host APIs clean parents before following symlinks. Preserve
+			// the resolved host-read spelling for these paths so watchers track the
+			// file ShellCheck read, rather than the lexically cleaned wrong file.
+			return sourcePath(name, directory)
+		}
+	}
+	return name
+}
+
 type reportedSource struct {
 	content    []byte
 	readFailed bool
@@ -59,10 +71,12 @@ type reportedSource struct {
 
 func (run *shellcheckRun) sourcedDiagnostic(comment shellcheckError, directory string, sources map[string]reportedSource) *Error {
 	path := sourcePath(comment.File, directory)
+	reported := sourceInventoryPath(sourceName(comment.File, directory), directory)
 	source, found := sources[path]
 	if !found {
 		var err error
-		source.content, err = run.paths.reader.ReadFile(sourceName(comment.File, directory))
+		reader := run.paths.reader.Mapped(func(string) string { return reported })
+		source.content, err = reader.ReadFile(path)
 		if err != nil {
 			run.Debug("Cannot read ShellCheck diagnostic source %q: %v", path, err)
 			// Keep the diagnostic if the file disappeared, with an empty snippet.
@@ -70,6 +84,8 @@ func (run *shellcheckRun) sourcedDiagnostic(comment shellcheckError, directory s
 		}
 		sources[path] = source
 	}
+	// A cached or failed display reread does not erase the tool's reported alias.
+	run.paths.reader.Record(reported)
 	finding := &Error{
 		Path: path, Start: DiagnosticPosition{Line: comment.Line, Column: comment.Column}, Rule: "shellcheck",
 		Message: fmt.Sprintf("shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", comment.Code, comment.Level, comment.Line, comment.Column, strings.TrimSuffix(comment.Message, ".")),

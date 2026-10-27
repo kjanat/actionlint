@@ -36,6 +36,7 @@ type CapturedSource struct {
 
 // DiagnosticSource supplies source coordinates without imposing a display format.
 // RawScript distinguishes external tools' LF coordinates from YAML line breaks.
+// Unavailable forbids inferring ranges from unverified display text.
 type DiagnosticSource struct {
 	Content     []byte
 	RawScript   bool

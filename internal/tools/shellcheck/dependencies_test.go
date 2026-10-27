@@ -78,4 +78,8 @@ func TestSourceInventoryResolvesSymlinksBeforeParents(t *testing.T) {
 	if !recorded(file) || !recorded(filepath.Join(root, "link")) || recorded(filepath.Join(root, "helper.sh")) {
 		t.Fatalf("wrong source identity: %v", inputs)
 	}
+	finding := run.sourcedDiagnostic(shellcheckError{File: "link/../helper.sh", Line: 1, Column: 1}, root, map[string]reportedSource{})
+	if string(finding.source) != "VALUE=correct\n" {
+		t.Fatalf("reported parent traversal reread the lexically cleaned wrong file: %q", finding.source)
+	}
 }

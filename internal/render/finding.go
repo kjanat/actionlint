@@ -23,6 +23,7 @@ var (
 // Finding is one diagnostic together with the source its snippet is rendered from.
 // EndColumn is the inclusive column where the indicator ends; zero infers the
 // token end. RawScript selects LF line splitting for external checker sources.
+// Unavailable retains only a reported range or a single caret.
 type Finding struct {
 	Diagnostic       diagnostic.Diagnostic
 	Source           []byte

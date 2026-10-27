@@ -204,6 +204,8 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 		if err != nil {
 			return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
 		}
+		// Supplied snapshots gate diagnostics with the same freshness and
+		// completeness policy as their answers. No snapshot uses the fresh catalog.
 		if builtinLabels && (!hasSnapshot || options.Snapshot.Freshness == runnerapi.Fresh && options.Snapshot.Complete) {
 			// Provider answers describe execution alternatives. Built-in declaration
 			// spelling and execution compatibility share Check's diagnostic owner.

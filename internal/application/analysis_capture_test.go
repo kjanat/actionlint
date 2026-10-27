@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -200,9 +201,9 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 		t.Fatalf("script tools did not analyze both composite invocations: %d", toolCalls.Load())
 	}
 	if !slices.ContainsFunc(result.Diagnostics, func(finding diagnostic.Diagnostic) bool {
-		return finding.Rule == "expression-reference" && filepath.ToSlash(finding.Path) == "local/action.yml"
+		return finding.Rule == "action" && filepath.ToSlash(finding.Path) == "local/action.yml" && strings.Contains(finding.Message, `uses context "missing"`)
 	}) {
-		t.Fatalf("default expression check was bypassed: %+v", result.Diagnostics)
+		t.Fatalf("default metadata context check was bypassed: %+v", result.Diagnostics)
 	}
 }
 

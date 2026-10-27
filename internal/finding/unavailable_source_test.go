@@ -34,7 +34,16 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		declarations := map[*ast.Ident]bool{}
+		for _, declaration := range file.Decls {
+			if function, ok := declaration.(*ast.FuncDecl); ok {
+				declarations[function.Name] = true
+			}
+		}
 		ast.Inspect(file, func(node ast.Node) bool {
+			if name, ok := node.(*ast.Ident); ok && declarations[name] {
+				return true
+			}
 			name, literal := unavailableSourceUse(node)
 			if literal && filepath.Clean(path) != filepath.Clean(filepath.Join(root, "internal", "finding", "unavailable_source.go")) {
 				t.Errorf("E7/M07 source marker literal escaped its owner: %s", path)
@@ -73,11 +82,6 @@ func unavailableSourceUse(node ast.Node) (string, bool) {
 			return "", name.Sel.Name == "UnavailableSource"
 		}
 	case *ast.Ident:
-		if expression.Obj != nil {
-			if declaration, ok := expression.Obj.Decl.(*ast.FuncDecl); ok && declaration.Name == expression {
-				return "", false
-			}
-		}
 		return expression.Name, false
 	case *ast.TypeSpec:
 		switch name := expression.Type.(type) {
