@@ -130,6 +130,28 @@ Unknown keys, unparsed scalars, and YAML errors do not abort model
 construction. The model carries `Unknown`/`Invalid` leaves with their
 `SourceRef` so rules can report them and later layers still run.
 
+### Aliases, flow collections, folded scalars
+
+Real workflows (this repo's `ci.yml` has 30+ anchors) reuse steps,
+`with:` mappings, `env:` mappings, and `uses:` scalars via YAML
+anchors/aliases, and lean on flow syntax and multi-line plain scalars.
+The model therefore records, per node:
+
+- `at: SourceRef` — where the node is *used* (the alias site, e.g.
+  `- *ActCheckNocred` at line 185), so a diagnostic lands where the user
+  is looking.
+- `defined_at: Option<SourceRef>` — the anchor site (line 158) when the
+  node came through an alias, surfaced as `related`. One anchor used in
+  six jobs yields six model nodes with six `at` and one `defined_at`.
+- Alias expansion is a `semantics` provider over the CST. The CST itself
+  stays unexpanded (lossless). Alias budget (billion-laughs) is enforced
+  there (ADR-0002 open item).
+
+Scalars keep a **source map** from logical text to CST ranges: a folded
+plain scalar (`run: a\n  b\n  c` → `a b c`) or `>-` block maps every
+logical offset back to its line/column, so `script/*` and extensions
+report inside the original lines, not at the scalar's first character.
+
 ## Providers
 
 A provider is `fn(&dyn Db, Input) -> Output` where `Input` and `Output` are

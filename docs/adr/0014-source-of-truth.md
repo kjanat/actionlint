@@ -52,7 +52,28 @@ code, in GitHub's own parser.
 | `src/Runner.Worker/action_yaml.json`         | runner's action schema. `runs.using` is only `non-empty-string` here                                                                                                                                                                   |
 | `src/Runner.Worker/ActionManifestManager.cs` | where `using` is really decided: `docker`, `node12`, `node16`, `node20`, `node24`, `composite`, compared `OrdinalIgnoreCase`, `pre-if`/`post-if` default `always()`, `image`/`main`/`steps` requiredness and their exact error strings |
 
-### 3. docs.github.com
+### 3. `actions/runner-images` (hosted runner labels)
+
+`README.md` "Available Images" table: image, architecture, YAML labels,
+and a per-image gist JSON badge. The README is the only place the label
+set lives (19 images, 29 labels on 2026-10-28, incl. `ubuntu-slim`,
+`ubuntu-26.04-arm`, `windows-2025-vs2026`, `windows-11-vs2026-arm`,
+`macos-26-intel`, deprecated `macos-14*`, preview `xcode-27*`).
+`xtask vendor-github` parses that table into
+`semantics/vendor/runner-labels.json`; `runner/unknown-label` and
+`runner/deprecated-image` read it. Self-hosted labels come from config.
+
+### 4. `webhooks.json` payload trees
+
+`languageservice/src/context-providers/events/webhooks.json` (756 KB)
+keys events → activity types → `bodyParameters` with nested
+`childParamsGroups`: the payload property tree, by name, with
+descriptions. That is the source for typing `github.event.*` per
+`on:` event, so `github.event.pull_request.<unknown>` can be reported
+(`expression/unknown-event-property`, `suspicious`). Types are not
+listed, only names.
+
+### 5. docs.github.com
 
 Explanatory. Used for diagnostic help links, rule rationale text, and
 nothing normative.
