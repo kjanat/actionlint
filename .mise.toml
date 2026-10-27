@@ -8,6 +8,14 @@ command = "go"
 args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
+[wrappers.cargo]
+command = "mbx"
+env     = { MBX_CARGO_SHIM_MODE = "1" }
+
+[wrappers.python]
+command = "uv"
+args    = ["run", "python"]
+
 [tools]
 npm                           = "12.2.0"
 go                            = { prefix = "1.27" }
@@ -18,6 +26,7 @@ ruff                          = "0.17.0"
 tinygo                        = { prefix = "0.43" }
 wasm-tools                    = "latest"
 mr-boxington                  = "latest"
+uv                            = "latest"
 "github:jgm/pandoc"           = { prefix = "3" }
 "github:kjanat/runner"        = { prefix = "0.28" }
 "github:microsoft/TypeScript" = { prefix = "7" }
@@ -94,9 +103,4 @@ config_roots = [
   ".github/actions/setup-wasm-toolchain",
   ".github/ci",
   "distribution/docker",
-  "internal/expression/probe",
-  "tools/action",
-  "tools/matcher",
-  "tools/release",
-  "tools/toolchain",
 ]
