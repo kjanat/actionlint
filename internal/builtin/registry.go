@@ -52,16 +52,15 @@ func ruleBehaviours() map[string]behaviour {
 		"workflow-run-names": {Build: func(c Context) workflowvisit.Rule {
 			return &workflowRunNamesRule{Base: builtinRuleBase("workflow-run-names"), root: absolutePath(c.ProjectRoot), index: c.WorkflowNames}
 		}, Enabled: workflowRunNamesAvailable},
-		"matrix":      {Build: func(c Context) workflowvisit.Rule { return NewRuleMatrix(c.SourceSnapshot) }},
+		"matrix":      {Build: func(Context) workflowvisit.Rule { return NewRuleMatrix() }},
 		"credentials": {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
 		"shell-name": {Build: func(c Context) workflowvisit.Rule {
 			r := NewRuleShellName()
 			r.runners = c.Runners
-			r.source = c.SourceSnapshot
 			return r
 		}},
 		"runner-label": {Build: func(c Context) workflowvisit.Rule {
-			r := NewRuleRunnerLabel(c.SourceSnapshot)
+			r := NewRuleRunnerLabel()
 			r.runners = c.Runners
 			return r
 		}},
@@ -78,7 +77,7 @@ func ruleBehaviours() map[string]behaviour {
 		"permissions":   {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
 		"workflow-call": {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.SourceSnapshot, c.Workflows) }},
 		"expression": {Build: func(c Context) workflowvisit.Rule {
-			return newRuleExpression(c.Actions, c.Workflows, c.Runners, c.SourceSnapshot)
+			return newRuleExpression(c.Actions, c.Workflows, c.Runners)
 		}},
 		"deprecated-commands": {Script: workflowcommands.Analyzer{}},
 		"if-cond":             {Build: func(c Context) workflowvisit.Rule { return NewRuleIfCond() }},

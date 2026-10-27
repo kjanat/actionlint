@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -33,12 +35,12 @@ on: push`} {
 				source := strings.ReplaceAll(tc.prefix+declaration+`
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `, "\n", ending)
-				workflow, findings := workflowlang.ParseDocument([]byte(source))
+				workflow, findings := workflowparser.ParseDocument([]byte(source))
 				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (workflowlang.Pos{Line: tc.line, Col: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}
 				rule := builtin.NewRuleRequirePermissions(policy)
-				if err := rule.VisitWorkflowPre(workflow); err != nil {
+				if err := rule.VisitWorkflowPre(ownedWorkflowFixture(workflow)); err != nil {
 					t.Fatal(err)
 				}
 				if findings := rule.Errs(); len(findings) != 1 || findings[0].Start.Line != tc.line || findings[0].Start.Column != 1 {
@@ -48,7 +50,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 		}
 	}
 	rule := builtin.NewRuleRequirePermissions(policy)
-	if err := rule.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
+	if err := rule.VisitWorkflowPre(ownedWorkflowFixture(&workflowlang.Workflow{})); err != nil {
 		t.Fatal(err)
 	}
 	if findings := rule.Errs(); len(findings) != 1 || findings[0].Start.Line != 1 || findings[0].Start.Column != 1 {

@@ -6,17 +6,16 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-func scriptDefaultShell(defaults documentparse.DefaultsView) *string {
+func scriptDefaultShell(defaults workflowdecl.DefaultsView) *string {
 	shell, known := execution.DefaultShell(defaults.Run().Semantic()).ScalarString()
 	if !known {
 		return nil
@@ -24,13 +23,12 @@ func scriptDefaultShell(defaults documentparse.DefaultsView) *string {
 	return new(shell)
 }
 
-func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *repoconfig.Config, jobShell, workflowShell *string) error {
+func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepView, cfg *repoconfig.Config, jobShell, workflowShell *string) error {
+	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
+		return err
+	}
 	if analysis.sourceSnapshot == nil {
 		return errors.New("script source snapshot is unavailable")
-	}
-	declaration, err := analysis.sourceSnapshot.StepView(step)
-	if err != nil {
-		return err
 	}
 	if action, ok := declaration.Action(); ok {
 		return analysis.collectActionInputs(declaration, action, cfg)
@@ -76,7 +74,7 @@ func (analysis *compositeAnalyzer) collectScript(step *workflowlang.Step, cfg *r
 	return nil
 }
 
-func (analysis *compositeAnalyzer) collectActionInputs(step documentparse.StepView, action documentparse.ExecActionView, cfg *repoconfig.Config) error {
+func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepView, action workflowdecl.ExecActionView, cfg *repoconfig.Config) error {
 	name, valid := scriptexecution.ScriptInputAction(action)
 	if !valid {
 		return nil

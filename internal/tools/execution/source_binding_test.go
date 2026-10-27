@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -19,11 +20,17 @@ import (
 )
 
 func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, *documentparse.SourceSnapshot, string) {
+	graph, collection, snapshot, path, _ := actionBatchFixtureWithDocument(t, mapped)
+	return graph, collection, snapshot, path
+}
+
+func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph, Collection, *documentparse.SourceSnapshot, string, documentparse.Document) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "source", "action.yml")
 	content := []byte("name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo first\n    - shell: sh\n      run: echo second\n")
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := snapshots.Document(path, content, documentparse.Action(path, path, content))
+	document := documentparse.Action(path, path, content)
+	snapshot, err := snapshots.Document(path, content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,15 +45,13 @@ func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection
 	scope := &Scope{Context: builder.RootContext(), Deployment: deployment, Composite: true, Config: &repoconfig.Config{}}
 	workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
 	collection := Collection{Declarations: snapshots.SourceSnapshots, Scopes: []*Scope{scope}, Collected: true}
-	steps, available := snapshot.ActionSteps()
+	body, available := snapshot.ActionView()
+	steps := slices.Collect(body.Steps())
 	if !available || len(steps) != 2 {
 		t.Fatal("fixture action has no declarations")
 	}
 	for _, step := range steps {
-		reference, err := snapshot.StepReference(step)
-		if err != nil {
-			t.Fatal(err)
-		}
+		reference := step.Reference()
 		id, err := builder.AddScript(builder.RootContext(), reference, invocation.ScriptRun, "")
 		if err != nil {
 			t.Fatal(err)
@@ -57,13 +62,13 @@ func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection
 	if err != nil {
 		t.Fatal(err)
 	}
-	return graph, collection, snapshot, path
+	return graph, collection, snapshot, path, document
 }
 
 func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 	for _, mapped := range []bool{false, true} {
 		t.Run(map[bool]string{false: "plain", true: "mapped"}[mapped], func(t *testing.T) {
-			graph, collection, snapshot, path := actionBatchFixture(t, mapped)
+			graph, collection, snapshot, path, originalDocument := actionBatchFixtureWithDocument(t, mapped)
 			original := snapshot.Content()
 			collection.Scripts[0], collection.Scripts[1] = collection.Scripts[1], collection.Scripts[0]
 			batch, err := NewBatch(graph, collection)
@@ -102,12 +107,17 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			if string(snapshot.Content()) != string(original) {
 				t.Fatal("returned source bytes mutated the registry")
 			}
-			steps, _ := snapshot.ActionSteps()
-			run := steps[0].Exec.(*workflowlang.ExecRun)
-			if run.Run.Value != "echo first" || steps[0].Pos.Line == 999 || steps[0].Pos.Col == 999 || run.Source.Spans[0].YamlLine == 999 {
+			body, _ := snapshot.ActionView()
+			steps := slices.Collect(body.Steps())
+			run, isRun := steps[0].Run()
+			position, present := steps[0].Pos()
+			spans := slices.Collect(run.Source().Spans())
+			if !isRun || !present || run.Run().Value() != "echo first" || position.Line == 999 || position.Col == 999 || spans[0].YamlLine == 999 {
 				t.Fatal("returned declaration mutated the registry")
 			}
-			run.Run.Value = "changed original"
+			originalRun := originalDocument.Facts().Jobs[""].Steps[0].Exec.(*workflowlang.ExecRun)
+			originalRun.Run.Value = "changed original"
+
 			*collection.Scripts[0].DefaultShell = "changed default"
 			after, _ := batch.Fact(0, false)
 			fresh := batch.Scripts()

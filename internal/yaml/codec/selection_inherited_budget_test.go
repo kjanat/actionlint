@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	upstream "go.yaml.in/yaml/v4"
+	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 func TestSelectInheritedAliasBudgetPrefixesMatchUpstream(t *testing.T) {

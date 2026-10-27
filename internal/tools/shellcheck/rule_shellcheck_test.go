@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 func TestShellcheckInvocationDebugContext(t *testing.T) {
@@ -29,7 +29,7 @@ func TestShellcheckInvocationDebugContext(t *testing.T) {
 			rule.cmd.Env = []string{"SHELLCHECK_OPTS=--shell=bash"}
 			rule.inlineConfig = &ShellcheckConfig{Enable: []string{"quote-safe-variables"}}
 			directory := runDirectory{kind, t.TempDir()}
-			if err := rule.runShellcheck("echo hello", documentparse.ScriptSourceView{}, shellcheckShell{name: "sh"}, directory, &workflowlang.Pos{Line: 7, Col: 1}, nil); err != nil {
+			if err := rule.runShellcheck("echo hello", workflowdecl.ScriptSourceView{}, shellcheckShell{name: "sh"}, directory, &workflowlang.Pos{Line: 7, Col: 1}, nil); err != nil {
 				t.Fatal(err)
 			}
 			if err := rule.cmd.Wait(); err != nil {

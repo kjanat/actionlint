@@ -3,8 +3,8 @@ package calls_test
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -15,7 +15,7 @@ jobs:
   call:
     uses: ${{ '$/leaf.yaml' }}
 `)
-	w, errs := workflowlang.ParseDocument(source)
+	w, errs := workflowparser.ParseDocument(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

@@ -3,7 +3,7 @@ package rules
 import (
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestCommitHashExclusions(t *testing.T) {

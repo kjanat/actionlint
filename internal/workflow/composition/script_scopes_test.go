@@ -33,19 +33,19 @@ jobs:
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	workflow := document.Workflow
 	snapshot := workflowSnapshot(t, content, document)
+	workflow := workflowView(t, snapshot)
 	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, actions: actionlocal.NewResolver(nil, nil)}
 	startWorkflowEntry(t, collector, snapshot)
 	if err := collector.beginWorkflow(workflow); err != nil {
 		t.Fatal(err)
 	}
 	for _, id := range []string{"first", "second"} {
-		job := workflow.Jobs[id]
+		job := workflowJob(t, workflow, id)
 		if err := collector.beginJob(job); err != nil {
 			t.Fatal(err)
 		}
-		for _, step := range job.Steps {
+		for step := range job.Steps() {
 			if err := collector.collectScript(step, nil, collector.jobScriptShell, collector.workflowScriptShell); err != nil {
 				t.Fatal(err)
 			}
@@ -86,8 +86,8 @@ jobs:
 	execution.ActionOrigin(&paths, workflowGraph.RootContext(), deployment.ActionPath())
 	actionCollector.scriptScope = &scriptexecution.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}
 	actionCollector.scriptScopes = []*scriptexecution.Scope{actionCollector.scriptScope}
-	actionSteps, ok := actionSnapshot.ActionSteps()
-	if !ok || len(actionSteps) != 1 {
+	actionSteps := actionStepViews(t, actionSnapshot)
+	if len(actionSteps) != 1 {
 		t.Fatal("composite declarations unavailable")
 	}
 	if err := actionCollector.collectScript(actionSteps[0], nil, nil, nil); err != nil {

@@ -19,12 +19,12 @@ func TestSemanticAccessorsDoNotCopySourceBytes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			step := document.Workflow.Jobs["test"].Steps[0]
+			step := snapshotJobSteps(t, snapshot, "test")[0]
 			allocations := testing.AllocsPerRun(100, func() {
-				if _, ok := snapshot.Workflow(); !ok {
+				if _, ok := snapshot.WorkflowView(); !ok {
 					t.Fatal("workflow is unavailable")
 				}
-				if _, err := snapshot.StepReference(step); err != nil {
+				if err := snapshot.ValidateStep(step); err != nil {
 					t.Fatal(err)
 				}
 				snapshot.Kind()

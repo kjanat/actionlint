@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	upstream "go.yaml.in/yaml/v4"
+	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 func TestCursorEnterCycleMatchesUpstreamAndRemainsFatal(t *testing.T) {

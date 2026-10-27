@@ -5,6 +5,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
@@ -14,7 +16,7 @@ import (
 type metadataPositionCache struct {
 	mu      sync.Mutex
 	scalars map[workflowlang.Pos]*syntax.Node
-	parser  *workflowlang.Parser
+	parser  *workflowparser.Parser
 }
 
 func (cache *metadataPositionCache) source(meta *Metadata, value *ExprString) *workflowlang.ScriptSource {
@@ -22,7 +24,7 @@ func (cache *metadataPositionCache) source(meta *Metadata, value *ExprString) *w
 	defer cache.mu.Unlock()
 	if cache.scalars == nil {
 		cache.scalars = make(map[workflowlang.Pos]*syntax.Node)
-		cache.parser = workflowlang.NewSourceParser(meta.Source)
+		cache.parser = workflowparser.NewSourceParser(meta.Source)
 		cache.parser.IndexScalarSources(meta.Root)
 		var visit func(*syntax.Node)
 		visit = func(node *syntax.Node) {

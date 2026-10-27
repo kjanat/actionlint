@@ -30,10 +30,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 					t.Fatal(err)
 				}
 				startWorkflowEntry(t, &analysis, snapshot)
-				step, err := snapshot.StepView(parsed.Workflow.Jobs["test"].Steps[0])
-				if err != nil {
-					t.Fatal(err)
-				}
+				step := workflowStepViews(t, workflowView(t, snapshot), "test")[0]
 				action, present := step.Action()
 				if !present {
 					t.Fatal("fixture has no action")

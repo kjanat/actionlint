@@ -53,12 +53,12 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				workflow, present := snapshot.Workflow()
+				_, present := snapshot.WorkflowView()
 				if !present {
 					t.Fatal("workflow source snapshot unavailable")
 				}
-				rule := builtin.NewRuleRunnerLabel(snapshot)
-				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
+				rule := builtin.NewRuleRunnerLabel()
+				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
 				errs := rule.Errs()
@@ -67,10 +67,7 @@ jobs:
 					t.Fatal(err)
 				}
 				if tc.name == "excluded cross OS pairings" {
-					declaration, err := snapshot.JobView(workflow.Jobs["test"])
-					if err != nil {
-						t.Fatal(err)
-					}
+					declaration := matrixJob(t, snapshot, "test")
 					answers := knowledge.Job(declaration).Answers
 					operatingSystems := map[runnerapi.OS]int{}
 					for _, answer := range answers {
@@ -89,7 +86,7 @@ jobs:
 					}
 				}
 				production := productionRunnerRule(t, snapshot, knowledge)
-				if err := production.VisitJobPre(workflow.Jobs["test"]); err != nil {
+				if err := production.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
 				if !reflect.DeepEqual(production.Errs(), errs) {

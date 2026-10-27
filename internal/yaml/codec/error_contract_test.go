@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
-	upstream "go.yaml.in/yaml/v4"
+	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 type namedTargetRoot struct {

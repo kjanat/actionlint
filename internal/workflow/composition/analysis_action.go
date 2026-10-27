@@ -9,7 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -28,31 +27,22 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution
 	if !hasOriginal || original != string(snapshot.Content()) || meta.Path() != deployment.SourcePath() || meta.SourceMapped != (deployment.ActionPath() == "") {
 		return fmt.Errorf("%w: action metadata provenance disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
 	}
-	workflow := &workflowlang.Workflow{}
 	if err := analysis.beginAction(deployment); err != nil {
 		return err
 	}
-	var scripts []workflowvisit.Rule
+	var scripts []builtin.InvocationParticipant
 	for _, rule := range rules {
-		if err := rule.VisitWorkflowPre(workflow); err != nil {
-			return err
-		}
 		if participant, ok := rule.(builtin.MetadataParticipant); ok {
 			if err := participant.CheckStandaloneMetadata(meta, snapshot); err != nil {
 				return err
 			}
 		}
-		if participant, ok := rule.(builtin.CompositeParticipant); ok {
+		if participant, ok := rule.(builtin.InvocationParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}
 	if strings.EqualFold(view.Using(), "composite") {
 		if err := analysis.visitMetadataScripts(meta, snapshot, deployment.Address(), analysis.invocations.RootContext(), scripts); err != nil {
-			return err
-		}
-	}
-	for _, rule := range rules {
-		if err := rule.VisitWorkflowPost(workflow); err != nil {
 			return err
 		}
 	}

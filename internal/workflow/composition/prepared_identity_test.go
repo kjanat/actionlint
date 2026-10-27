@@ -11,9 +11,10 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
@@ -136,16 +137,13 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	if !exists {
 		t.Fatal("top-level owning call absent")
 	}
-	w, exists := f.root.Workflow()
+	w, exists := f.root.WorkflowView()
 	if !exists {
 		t.Fatal("fixture workflow absent")
 	}
-	step := w.Jobs["test"].Steps[0]
-	site, err := f.root.StepReference(step)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if call.Parent != graph.Entry().ID || call.Site.Document != graph.Entry().Reference.Document || call.Depth != 1 || call.Uses != "$/child" || call.Site != site || call.Step.Line != step.Pos.Line || call.Step.Column != step.Pos.Col {
+	step := workflowStepViews(t, w, "test")[0]
+	site := stepReference(t, f.root, step)
+	if call.Parent != graph.Entry().ID || call.Site.Document != graph.Entry().Reference.Document || call.Depth != 1 || call.Uses != "$/child" || call.Site != site || call.Step.Line != stepPosition(t, step).Line || call.Step.Column != stepPosition(t, step).Col {
 		t.Fatalf("top-level public call facts: %+v", call)
 	}
 }
@@ -236,34 +234,41 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 	}
 }
 
-type standalonePreHookFailure struct {
+type standaloneEntryFailure struct {
 	workflowvisit.Base
 	failure error
 }
 
-func (rule *standalonePreHookFailure) VisitWorkflowPre(*workflowlang.Workflow) error {
+func (rule *standaloneEntryFailure) EnterInvocation(builtin.Invocation) error {
 	return rule.failure
 }
 
-func TestStandalonePreHookFailureKeepsValidDeployment(t *testing.T) {
+func (*standaloneEntryFailure) VisitInvocationStep(workflowdecl.StepView) error { return nil }
+func (*standaloneEntryFailure) VisitOpaqueAction(workflowdecl.StepView) error   { return nil }
+func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error        { return nil }
+
+func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-	failure := errors.New("pre-hook failure")
-	rule := &standalonePreHookFailure{Base: workflowvisit.NewBase("pre-hook", ""), failure: failure}
+	failure := errors.New("invocation entry failure")
+	joinFailure := errors.New("join failure")
+	joined := false
+	rule := &standaloneEntryFailure{Base: workflowvisit.NewBase("entry", ""), failure: failure}
 	service := New(Options{
 		Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), SourceSnapshots: declarations.SourceSnapshots,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
+		Join: func() error { joined = true; return joinFailure },
 	})
 	result, err := standaloneActionForTest(t, service, meta, declarations)
-	if !errors.Is(err, failure) || !result.Batch.Valid() || len(result.Batch.Scripts()) != 0 {
-		t.Fatalf("pre-hook failure or prepared action batch lost: error=%v result=%+v", err, result)
+	if !errors.Is(err, failure) || !errors.Is(err, joinFailure) || !joined || !result.Batch.Valid() || len(result.Batch.Scripts()) != 0 {
+		t.Fatalf("entry failure, cleanup, or prepared action batch lost: error=%v joined=%v result=%+v", err, joined, result)
 	}
 	scopes := result.Batch.Scopes()
 	if len(scopes) != 1 || scopes[0].Composite || scopes[0].Deployment.SourcePath() != meta.Path() || scopes[0].Deployment.ActionPath() != filepath.Dir(meta.Path()) {
-		t.Fatalf("pre-hook error left an invalid action entry scope: %+v", scopes)
+		t.Fatalf("entry error left an invalid action scope: %+v", scopes)
 	}
 }
 
@@ -344,7 +349,7 @@ func TestSharedCallDeclarationRetainsPlatformSpecificFacts(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner, env: {Path: custom}}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
-	_, available := f.root.Workflow()
+	_, available := f.root.WorkflowView()
 	declaration, declared := f.root.WorkflowView()
 	linux, linuxPresent := declaration.Job("linux")
 	windows, windowsPresent := declaration.Job("windows")

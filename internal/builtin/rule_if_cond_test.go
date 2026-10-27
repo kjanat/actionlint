@@ -35,7 +35,7 @@ func TestRuleIfCond(t *testing.T) {
 			}
 
 			r := NewRuleIfCond()
-			if err := r.VisitStep(&s); err != nil {
+			if err := r.VisitStep(ownedStepFixture(&s)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -61,7 +61,7 @@ func TestRuleIfCond(t *testing.T) {
 			}
 
 			r := NewRuleIfCond()
-			if err := r.VisitJobPre(&j); err != nil {
+			if err := r.VisitJobPre(ownedJobFixture(&j)); err != nil {
 				t.Fatal(err)
 			}
 

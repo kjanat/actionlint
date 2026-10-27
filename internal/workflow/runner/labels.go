@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/stringutil"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	matrixmodel "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	"actionlint.kjanat.dev/v2/runner"
@@ -107,7 +107,7 @@ type checker struct {
 
 // Check owns built-in runner-label diagnostics. Spelling is checked on declared
 // alternatives; compatibility is checked only on execution selectors.
-func Check(job documentparse.JobView, customLabels []string) []diagnostic.Diagnostic {
+func Check(job workflowdecl.JobView, customLabels []string) []diagnostic.Diagnostic {
 	if !job.Present() {
 		return nil
 	}

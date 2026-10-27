@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"github.com/google/go-cmp/cmp"
@@ -965,7 +967,7 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowlang.Parse(src)
+	w, errs := workflowparser.Parse(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -1012,7 +1014,7 @@ jobs:
       - run: echo ok
 `)...)
 				}
-				workflow, diagnostics := workflowlang.Parse(source)
+				workflow, diagnostics := workflowparser.Parse(source)
 				if exact && len(diagnostics) != 0 {
 					t.Fatal(diagnostics)
 				}
@@ -1076,11 +1078,11 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	w, errs := workflowlang.Parse(src)
+	w, errs := workflowparser.Parse(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
-	if !slices.ContainsFunc(errs, func(e *workflowlang.SyntaxError) bool {
+	if !slices.ContainsFunc(errs, func(e *workflowparser.SyntaxError) bool {
 		return strings.Contains(e.Message, "defined but not used")
 	}) {
 		t.Fatal("parser did not report the unused anchor:", errs)

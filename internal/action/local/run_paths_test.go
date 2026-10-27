@@ -2,6 +2,7 @@ package local
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
@@ -35,10 +36,9 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			view, err := snapshot.StepView(parsed.Workflow.Jobs["test"].Steps[0])
-			if err != nil {
-				t.Fatal(err)
-			}
+			workflow, _ := snapshot.WorkflowView()
+			job, _ := workflow.Job("test")
+			view := slices.Collect(job.Steps())[0]
 			facts, err := execution.CallFacts(view, paths.Platform)
 			if err != nil {
 				t.Fatal(err)
@@ -88,11 +88,7 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 	}
 	resolver := NewResolver(newCapturedActionCache(t, t.TempDir(), nil), nil)
 	resolver.BeginJob(workflow.Env().Mapping(), workflow.Defaults().Run().Semantic(), job)
-	steps := parsed.Workflow.Jobs["test"].Steps
-	checkout, err := snapshot.StepView(steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	checkout := slices.Collect(job.Steps())[0]
 	resolver.ObserveCheckout(checkout)
 	placement := resolver.CheckoutState()
 	if !placement.Present() || placement.Details().Directory.Kind != execution.DirectoryKnown || placement.Details().Directory.Path != "repo" || !placement.Details().CaseInsensitive {

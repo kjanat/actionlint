@@ -4,9 +4,9 @@ import (
 	"regexp"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/workflow/references"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 // reCommitSHA matches a full-length Git object ID in both the SHA-1 and the SHA-256 object formats.
@@ -23,43 +23,43 @@ type commitHashCheck struct {
 	excluded func(string) bool
 }
 
-func CommitHashStep(step *workflowlang.Step, excluded func(string) bool) []Finding {
+func CommitHashStep(step declaration.StepView, excluded func(string) bool) []Finding {
 	rule := &commitHashCheck{name: "require-commit-hash", excluded: excluded}
 	rule.checkStep(step)
 	return rule.out
 }
 
-func CommitHashJob(job *workflowlang.Job, excluded func(string) bool) []Finding {
+func CommitHashJob(job declaration.JobView, excluded func(string) bool) []Finding {
 	rule := &commitHashCheck{name: "require-commit-hash", excluded: excluded}
 	rule.checkJob(job)
 	return rule.out
 }
 
-func (rule *commitHashCheck) checkStep(n *workflowlang.Step) {
-	e, ok := n.Exec.(*workflowlang.ExecAction)
-	if !ok || e.Uses == nil || e.Uses.ContainsExpression() || (rule.excluded != nil && rule.excluded(e.Uses.Value)) {
+func (rule *commitHashCheck) checkStep(n declaration.StepView) {
+	e, ok := n.Action()
+	if !ok || !e.Uses().Present() || e.Uses().ContainsExpression() || (rule.excluded != nil && rule.excluded(e.Uses().Value())) {
 		return
 	}
 
-	if image, ok := strings.CutPrefix(e.Uses.Value, "docker://"); ok {
-		rule.checkImageDigest(image, e.Uses)
+	if image, ok := strings.CutPrefix(e.Uses().Value(), "docker://"); ok {
+		rule.checkImageDigest(image, e.Uses())
 		return
 	}
 
-	ref, ok := actionUsesRepoRef(e.Uses.Value)
+	ref, ok := actionUsesRepoRef(e.Uses().Value())
 	if !ok || reCommitSHA.MatchString(ref) {
 		return
 	}
 
 	rule.Errorf(
-		e.Uses.Pos,
+		viewPosition(e.Uses().Pos()),
 		"the ref %q of action %q is not a commit SHA. actions must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because \"require-commit-hash\" is enabled in the \"policy\" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
 		ref,
-		e.Uses.Value,
+		e.Uses().Value(),
 	)
 }
 
-func (rule *commitHashCheck) checkImageDigest(image string, uses *workflowlang.String) {
+func (rule *commitHashCheck) checkImageDigest(image string, uses declaration.StringView) {
 	if strings.HasSuffix(image, ":") {
 		return
 	}
@@ -70,32 +70,32 @@ func (rule *commitHashCheck) checkImageDigest(image string, uses *workflowlang.S
 	}
 
 	rule.Errorf(
-		uses.Pos,
+		viewPosition(uses.Pos()),
 		"the Docker image %q is not pinned to an image digest. images must be specified in \"docker://{image}@{algorithm}:{hex}\" form because \"require-commit-hash\" is enabled in the \"policy\" configuration",
-		uses.Value,
+		uses.Value(),
 	)
 }
 
-func (rule *commitHashCheck) checkJob(n *workflowlang.Job) {
-	if n.WorkflowCall == nil {
+func (rule *commitHashCheck) checkJob(n declaration.JobView) {
+	if !n.WorkflowCall().Present() {
 		return
 	}
 
-	u := n.WorkflowCall.Uses
-	if u == nil || u.Value == "" || u.ContainsExpression() || (rule.excluded != nil && rule.excluded(u.Value)) {
+	u := n.WorkflowCall().Uses()
+	if !u.Present() || u.Value() == "" || u.ContainsExpression() || (rule.excluded != nil && rule.excluded(u.Value())) {
 		return
 	}
 
-	ref, ok := references.WorkflowRef(u.Value)
+	ref, ok := references.WorkflowRef(u.Value())
 	if !ok || reCommitSHA.MatchString(ref) {
 		return
 	}
 
 	rule.Errorf(
-		u.Pos,
+		viewPosition(u.Pos()),
 		"the ref %q of reusable workflow %q is not a commit SHA. reusable workflow calls must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits) because \"require-commit-hash\" is enabled in the \"policy\" configuration. see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
 		ref,
-		u.Value,
+		u.Value(),
 	)
 }
 

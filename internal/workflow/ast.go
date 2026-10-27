@@ -11,7 +11,6 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/source/text"
 	"actionlint.kjanat.dev/v2/internal/yaml/schema"
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // Pos represents a position in the file.
@@ -58,7 +57,8 @@ type ScalarComment struct {
 	Trailing bool
 }
 
-func newScriptSource(value string) *ScriptSource {
+// NewScriptSource creates source metadata for an already decoded scalar.
+func NewScriptSource(value string) *ScriptSource {
 	s := &ScriptSource{Value: value}
 	start := 0
 	for {
@@ -173,6 +173,8 @@ type SourceScalar struct {
 	Tag       string
 	Value     string
 	Pos       Pos
+	// End is the exclusive physical end of a dependency scalar, when available.
+	End Pos
 }
 
 // String represents a YAML string value and its source position.
@@ -722,11 +724,11 @@ type RawYAMLValueKind int
 
 const (
 	// RawYAMLValueKindObject is Kind for an object value of raw YAML value.
-	RawYAMLValueKindObject = RawYAMLValueKind(syntax.MappingNode)
+	RawYAMLValueKindObject = RawYAMLValueKind(4)
 	// RawYAMLValueKindArray is Kind for an array value of raw YAML value.
-	RawYAMLValueKindArray = RawYAMLValueKind(syntax.SequenceNode)
+	RawYAMLValueKindArray = RawYAMLValueKind(2)
 	// RawYAMLValueKindString is Kind for a String value of raw YAML value.
-	RawYAMLValueKindString = RawYAMLValueKind(syntax.ScalarNode)
+	RawYAMLValueKindString = RawYAMLValueKind(8)
 )
 
 // RawYAMLValue is a value at Matrix variation. Any value can be put at Matrix variations

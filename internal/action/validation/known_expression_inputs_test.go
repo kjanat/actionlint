@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -27,7 +29,7 @@ func TestKnownExpressionActionInputs(t *testing.T) {
 		{"invalid shape handled by expression rule", `fromJSON('[]')`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, parseErrors := workflowlang.Parse([]byte(`on: push
+			workflow, parseErrors := workflowparser.Parse([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -38,7 +40,7 @@ jobs:
 				t.Fatal(parseErrors)
 			}
 			exec := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-			errs := actioncheck.Inputs(meta, exec, func(*actionmeta.Metadata) string { return "example/action@v1" })
+			errs := actioncheck.Inputs(meta, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "example/action@v1" })
 			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want)) {
 				t.Fatalf("wanted %q, got %v", tc.want, errs)
 			}

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
@@ -24,8 +24,8 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 		for _, newline := range []string{"\n", "\r\n"} {
 			t.Run(fixture.name+"/"+map[string]string{"\n": "LF", "\r\n": "CRLF"}[newline], func(t *testing.T) {
 				text := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + fixture.run + "\n      - uses: actions/github-script@v7\n        with:\n          script: " + fixture.input + "\n"
-				graph, collection := batchSourceFixture(t, []byte(strings.ReplaceAll(text, "\n", newline)))
-				rawRun, rawInput := fixtureBodies(t, graph, collection)
+				graph, collection, workflow := batchSourceFixtureWithWorkflow(t, []byte(strings.ReplaceAll(text, "\n", newline)))
+				rawRun, rawInput := fixtureBodies(t, graph, collection, workflow)
 				batch, err := NewBatch(graph, collection)
 				if err != nil {
 					t.Fatal(err)
@@ -44,7 +44,7 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 	}
 }
 
-func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical documentparse.ScriptSourceView) {
+func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical workflowdecl.ScriptSourceView) {
 	t.Helper()
 	if original == nil || !canonical.Present() {
 		t.Fatal("scalar source absent")

@@ -13,7 +13,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
@@ -22,19 +24,24 @@ import (
 
 type sourceMutationRule struct {
 	workflowvisit.Base
-	mutate   func(*workflowlang.Step)
+	mutate   func(workflowdecl.StepView)
 	visits   int
 	metadata int
 }
 
-func (r *sourceMutationRule) VisitStep(step *workflowlang.Step) error {
+func (r *sourceMutationRule) VisitStep(step workflowdecl.StepView) error {
 	r.visits++
 	r.mutate(step)
 	return nil
 }
 
-func (r *sourceMutationRule) ForComposite(builtin.Invocation) (workflowvisit.Rule, error) {
-	return &sourceMutationRule{Base: workflowvisit.NewBase("mutate-source", ""), mutate: r.mutate}, nil
+func (r *sourceMutationRule) EnterInvocation(builtin.Invocation) error { return nil }
+func (r *sourceMutationRule) LeaveInvocation(invocation.Context) error { return nil }
+func (r *sourceMutationRule) VisitInvocationStep(step workflowdecl.StepView) error {
+	return r.VisitStep(step)
+}
+func (r *sourceMutationRule) VisitOpaqueAction(step workflowdecl.StepView) error {
+	return r.VisitStep(step)
 }
 
 func (r *sourceMutationRule) ForMetadata(*actionlocal.Resolver) workflowvisit.Rule {
@@ -46,11 +53,12 @@ func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, *docu
 }
 
 var _ builtin.MetadataParticipant = (*sourceMutationRule)(nil)
-var _ builtin.CompositeParticipant = (*sourceMutationRule)(nil)
+var _ builtin.InvocationParticipant = (*sourceMutationRule)(nil)
 
 type canonicalFactObserver struct {
 	workflowvisit.Base
 	source     *documentparse.SourceSnapshot
+	parents    []*documentparse.SourceSnapshot
 	uses       *[]string
 	runs       *[]string
 	conditions *[]string
@@ -67,17 +75,12 @@ func newCanonicalFactObserver(snapshot *documentparse.SourceSnapshot) *canonical
 	return &canonicalFactObserver{Base: workflowvisit.NewBase("observe-canonical-source", ""), source: snapshot, uses: &uses, runs: &runs, conditions: &conditions, reference: &references, valid: &valid}
 }
 
-func (observer *canonicalFactObserver) VisitStep(step *workflowlang.Step) error {
-	view, err := observer.source.StepView(step)
-	if err != nil {
+func (observer *canonicalFactObserver) VisitStep(view workflowdecl.StepView) error {
+	if err := observer.source.ValidateStep(view); err != nil {
 		*observer.valid = false
 		return err
 	}
-	reference, err := observer.source.StepReference(step)
-	if err != nil || reference != view.Reference() {
-		*observer.valid = false
-		return err
-	}
+	reference := view.Reference()
 	*observer.reference = append(*observer.reference, reference)
 	condition := view.Condition()
 	if condition.State() != value.Missing {
@@ -96,14 +99,24 @@ func (observer *canonicalFactObserver) VisitStep(step *workflowlang.Step) error 
 	return nil
 }
 
-func (observer *canonicalFactObserver) ForComposite(invocation builtin.Invocation) (workflowvisit.Rule, error) {
-	child := *observer
-	child.Base = workflowvisit.NewBase("observe-canonical-source", "")
-	child.source = invocation.Source
-	return &child, nil
+func (observer *canonicalFactObserver) EnterInvocation(call builtin.Invocation) error {
+	observer.parents = append(observer.parents, observer.source)
+	observer.source = call.Source
+	return nil
+}
+func (observer *canonicalFactObserver) LeaveInvocation(invocation.Context) error {
+	observer.source = observer.parents[len(observer.parents)-1]
+	observer.parents = observer.parents[:len(observer.parents)-1]
+	return nil
+}
+func (observer *canonicalFactObserver) VisitInvocationStep(step workflowdecl.StepView) error {
+	return observer.VisitStep(step)
+}
+func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.StepView) error {
+	return observer.VisitStep(step)
 }
 
-var _ builtin.CompositeParticipant = (*canonicalFactObserver)(nil)
+var _ builtin.InvocationParticipant = (*canonicalFactObserver)(nil)
 
 func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 	for _, composite := range []bool{false, true} {
@@ -117,10 +130,11 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
+			captureMutableMetadata(f)
 			mutations := 0
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-source", ""), mutate: func(step *workflowlang.Step) {
-				if run, ok := step.Exec.(*workflowlang.ExecRun); ok && run.Run != nil {
-					run.Run.Value = "echo mutated after collection"
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-source", ""), mutate: func(step workflowdecl.StepView) {
+				if run, ok := step.Run(); ok && run.Run().Present() {
+					mutateRunInput(t, f, step, "echo mutated after collection")
 					mutations++
 				}
 			}}
@@ -148,15 +162,12 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 				workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, defaults: {run: {shell: bash}}, steps: [{run: echo original}]}}\n"
 			}
 			f := newInvocationFixture(t, t.Context(), workflow, nil, nil)
-			parsed, ok := f.root.Workflow()
-			if !ok {
-				t.Fatal("workflow unavailable")
-			}
+			parsed := f.original
 			defaults := parsed.Defaults
 			if level == "job" {
 				defaults = parsed.Jobs["test"].Defaults
 			}
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(*workflowlang.Step) {
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflowdecl.StepView) {
 				defaults.Run.Shell.Value = "pwsh"
 			}}
 			f.service.options.Rules = append(f.service.options.Rules, probe)
@@ -190,10 +201,11 @@ func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.
 		}
 		t.Run(name, func(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
+			captureMutableMetadata(f)
 			mutations := 0
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-call", ""), mutate: func(step *workflowlang.Step) {
-				if action, ok := step.Exec.(*workflowlang.ExecAction); ok && action.Uses != nil && action.Uses.Value == "$/a" {
-					action.Uses.Value = "$/b"
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-call", ""), mutate: func(step workflowdecl.StepView) {
+				if action, ok := step.Action(); ok && action.Uses().Value() == "$/a" {
+					mutateCallInput(t, f, step, "$/b")
 					mutations++
 				}
 			}}
@@ -228,10 +240,11 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 		"b/action.yml":     "name: b\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo mutated-b}]}\n",
 	}
 	f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
+	captureMutableMetadata(f)
 	mutations := 0
-	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step *workflowlang.Step) {
-		if action, ok := step.Exec.(*workflowlang.ExecAction); ok && action.Uses != nil && action.Uses.Value == "$/a" {
-			action.Uses.Value = "$/b"
+	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step workflowdecl.StepView) {
+		if action, ok := step.Action(); ok && action.Uses().Value() == "$/a" {
+			mutateCallInput(t, f, step, "$/b")
 			mutations++
 		}
 	}}
@@ -262,23 +275,25 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 
 type workflowPreCallMutation struct {
 	workflowvisit.Base
+	original  *workflowlang.Workflow
 	mutations int
 }
 
 type workflowPreMutation struct {
 	workflowvisit.Base
-	mutate func(*workflowlang.Workflow)
-	runs   int
+	mutate   func(*workflowlang.Workflow)
+	original *workflowlang.Workflow
+	runs     int
 }
 
-func (rule *workflowPreMutation) VisitWorkflowPre(workflow *workflowlang.Workflow) error {
+func (rule *workflowPreMutation) VisitWorkflowPre(_ workflowdecl.WorkflowView) error {
 	rule.runs++
-	rule.mutate(workflow)
+	rule.mutate(rule.original)
 	return nil
 }
 
-func (rule *workflowPreCallMutation) VisitWorkflowPre(workflow *workflowlang.Workflow) error {
-	step := workflow.Jobs["test"].Steps[0]
+func (rule *workflowPreCallMutation) VisitWorkflowPre(_ workflowdecl.WorkflowView) error {
+	step := rule.original.Jobs["test"].Steps[0]
 	action := step.Exec.(*workflowlang.ExecAction)
 	action.Uses.Value = "$/b"
 	step.Pos.Line = 99
@@ -294,19 +309,12 @@ func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
 		"b/action.yml": "name: b\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo mutated-b}]}\n",
 	}
 	f := newInvocationFixture(t, t.Context(), string(content), actions, nil)
-	workflow, ok := f.root.Workflow()
-	if !ok {
-		t.Fatal("canonical workflow unavailable")
-	}
-	view, err := f.root.StepView(workflow.Jobs["test"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	view := workflowStepViews(t, workflowView(t, f.root), "test")[0]
 	wantFacts, err := workflowexecution.CallFacts(view, runnerlang.MacOrLinux)
 	if err != nil {
 		t.Fatal(err)
 	}
-	probe := &workflowPreCallMutation{Base: workflowvisit.NewBase("pre-mutate-call", "")}
+	probe := &workflowPreCallMutation{original: f.original, Base: workflowvisit.NewBase("pre-mutate-call", "")}
 	f.service.options.Rules = append(f.service.options.Rules, probe)
 	result, err := f.service.Workflow(f.root)
 	if err != nil {
@@ -347,7 +355,7 @@ func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T)
 		t.Fatal(err)
 	}
 	baselineFacts := executionSnapshot(baseline)
-	probe := &workflowPreMutation{Base: workflowvisit.NewBase("mutate-workflow", ""), mutate: func(workflow *workflowlang.Workflow) {
+	probe := &workflowPreMutation{original: f.original, Base: workflowvisit.NewBase("mutate-workflow", ""), mutate: func(workflow *workflowlang.Workflow) {
 		if workflow.Env == nil || workflow.Defaults == nil || workflow.Defaults.Run == nil || workflow.Jobs["test"] == nil || workflow.Jobs["test"].Env == nil || workflow.Jobs["test"].Container == nil {
 			t.Fatalf("workflow mutation fixture fields unavailable: env=%v defaults=%v job=%+v", workflow.Env != nil, workflow.Defaults != nil, workflow.Jobs["test"])
 		}
@@ -388,11 +396,8 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 		t.Fatal(err)
 	}
 	baselineScopes := checkoutSnapshot(baseline)
-	workflow, ok := f.root.Workflow()
-	if !ok {
-		t.Fatal("workflow unavailable")
-	}
-	probe := &workflowPreMutation{Base: workflowvisit.NewBase("mutate-checkout", ""), mutate: func(*workflowlang.Workflow) {
+	workflow := f.original
+	probe := &workflowPreMutation{original: f.original, Base: workflowvisit.NewBase("mutate-checkout", ""), mutate: func(*workflowlang.Workflow) {
 		checkout := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 		checkout.Uses.Value = "actions/checkout@v5"
 		checkout.Inputs["path"].Value.Value = "mutated-repo"
@@ -424,11 +429,8 @@ func TestParallelChildrenStayBoundToCanonicalVariantsBeforeTraversal(t *testing.
 	baselineFacts := executionSnapshot(baseline)
 	baselineObserved := canonicalObservation(baselineObserver)
 	observer := newCanonicalFactObserver(f.root)
-	workflow, ok := f.root.Workflow()
-	if !ok {
-		t.Fatal("workflow unavailable")
-	}
-	probe := &workflowPreMutation{Base: workflowvisit.NewBase("mutate-parallel", ""), mutate: func(*workflowlang.Workflow) {
+	workflow := f.original
+	probe := &workflowPreMutation{original: f.original, Base: workflowvisit.NewBase("mutate-parallel", ""), mutate: func(*workflowlang.Workflow) {
 		parallel := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecParallel)
 		run := parallel.Steps[0]
 		run.Exec.(*workflowlang.ExecRun).Run.Value = "echo mutated"
@@ -534,4 +536,62 @@ func checkoutSnapshot(result Result) []string {
 		}
 	}
 	return paths
+}
+
+func captureMutableMetadata(f *invocationFixture) {
+	f.mutableMetadata = map[string]*actionmeta.Metadata{}
+	f.mutateMeta = func(meta *actionmeta.Metadata) { f.mutableMetadata[filepath.Clean(meta.Path())] = meta }
+}
+func mutateRunInput(t *testing.T, f *invocationFixture, view workflowdecl.StepView, text string) {
+	t.Helper()
+	if view.SourceReference() == f.root.Reference() {
+		for key, job := range f.original.Jobs {
+			owned := workflowStepViews(t, workflowView(t, f.root), key)
+			for index, step := range job.Steps {
+				if owned[index].Reference() == view.Reference() {
+					step.Exec.(*workflowlang.ExecRun).Run.Value = text
+					return
+				}
+			}
+		}
+	} else if meta := f.mutableMetadata[filepath.Clean(view.SourceReference().Document)]; meta != nil {
+		for _, step := range meta.Runs.Steps {
+			if step.Run != nil {
+				step.Run.Value = text
+				mutateMetadataScalar(step, "run", text)
+				return
+			}
+		}
+	}
+	t.Fatal("mutable run input unavailable")
+}
+func mutateCallInput(t *testing.T, f *invocationFixture, view workflowdecl.StepView, text string) {
+	t.Helper()
+	if view.SourceReference() == f.root.Reference() {
+		for key, job := range f.original.Jobs {
+			owned := workflowStepViews(t, workflowView(t, f.root), key)
+			for index, step := range job.Steps {
+				if owned[index].Reference() == view.Reference() {
+					step.Exec.(*workflowlang.ExecAction).Uses.Value = text
+					return
+				}
+			}
+		}
+	} else if meta := f.mutableMetadata[filepath.Clean(view.SourceReference().Document)]; meta != nil {
+		for _, step := range meta.Runs.Steps {
+			if step.Uses != nil && *step.Uses == "$/a" {
+				*step.Uses = text
+				mutateMetadataScalar(step, "uses", text)
+				return
+			}
+		}
+	}
+	t.Fatal("mutable call input unavailable")
+}
+func mutateMetadataScalar(step *actionmeta.Step, key, value string) {
+	for i := 0; i+1 < len(step.Node.Content); i += 2 {
+		if step.Node.Content[i].Value == key {
+			step.Node.Content[i+1].Value = value
+		}
+	}
 }

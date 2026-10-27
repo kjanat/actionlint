@@ -8,7 +8,7 @@ import (
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Config controls isolated analysis of embedded Python scripts.

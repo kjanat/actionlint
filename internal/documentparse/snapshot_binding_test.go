@@ -1,10 +1,11 @@
 package documentparse
 
 import (
+	"slices"
 	"testing"
 
 	documentmodel "actionlint.kjanat.dev/v2/document"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -22,15 +23,11 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	if found, ok := snapshots.Lookup(snapshot.Reference()); !ok || found != snapshot {
 		t.Fatal("exact document lookup did not return its snapshot")
 	}
-	workflow, ok := snapshot.Workflow()
-	if !ok {
-		t.Fatal("workflow snapshot unavailable")
-	}
-	step := workflow.Jobs["build"].Steps[0]
-	ref, err := snapshot.StepReference(step)
-	if err != nil {
+	step := snapshotJobSteps(t, snapshot, "build")[0]
+	if err := snapshot.ValidateStep(step); err != nil {
 		t.Fatal(err)
 	}
+	ref := step.Reference()
 
 	if got, ok := snapshots.Lookup(source.Reference{}); ok || got != nil {
 		t.Fatal("lookup accepted a zero reference")
@@ -42,10 +39,10 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	if _, ok := snapshots.Lookup(source.Reference{Document: ref.Document}); ok {
 		t.Fatal("lookup accepted a missing reference")
 	}
-	if declaration, ok := snapshots.Declaration(source.Reference{}); ok || declaration != (StepView{}) {
+	if declaration, ok := snapshots.Declaration(source.Reference{}); ok || declaration != (workflowdecl.StepView{}) {
 		t.Fatal("step lookup accepted a zero reference")
 	}
-	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (StepView{}) {
+	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (workflowdecl.StepView{}) {
 		t.Fatal("step lookup accepted a nil snapshot set")
 	}
 	if _, ok := snapshots.Declaration(source.Reference{Document: ref.Document}); ok {
@@ -67,7 +64,7 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 			if got, ok := snapshots.Lookup(documentRef); ok || got != nil {
 				t.Fatalf("lookup accepted modified document reference: %+v", documentRef)
 			}
-			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (StepView{}) {
+			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflowdecl.StepView{}) {
 				t.Fatalf("step lookup accepted modified reference: %+v", modified)
 			}
 		})
@@ -96,25 +93,24 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, ok := workflowSnapshot.Workflow()
-	if !ok {
-		t.Fatal("workflow snapshot unavailable")
+	build := snapshotJobSteps(t, workflowSnapshot, "build")
+	deploy := snapshotJobSteps(t, workflowSnapshot, "deploy")
+	outer := build[2]
+	parallel, present := outer.Parallel()
+	if !present {
+		t.Fatal("parallel declaration unavailable")
 	}
-	build := workflow.Jobs["build"]
-	deploy := workflow.Jobs["deploy"]
-	outer := build.Steps[2]
-	parallel := outer.Exec.(*workflowlang.ExecParallel)
-	steps := []*workflowlang.Step{build.Steps[0], build.Steps[1], outer, parallel.Steps[0], parallel.Steps[1], deploy.Steps[0]}
+	nested := slices.Collect(parallel.Steps())
+	steps := []workflowdecl.StepView{build[0], build[1], outer, nested[0], nested[1], deploy[0]}
 	refs := make([]source.Reference, len(steps))
 	for i, step := range steps {
-		refs[i], err = workflowSnapshot.StepReference(step)
-		if err != nil {
+		refs[i] = step.Reference()
+		if err := workflowSnapshot.ValidateStep(step); err != nil {
 			t.Fatalf("step %d reference: %v", i, err)
 		}
 		declaration, ok := workflowSnapshots.Declaration(refs[i])
-		view, err := workflowSnapshot.StepView(step)
-		if err != nil || !ok || declaration != view || declaration.SourceReference() != workflowSnapshot.Reference() || declaration.Reference() != refs[i] {
-			t.Fatalf("step %d declaration does not match its canonical cursor view: %v", i, err)
+		if !ok || declaration != step || declaration.SourceReference() != workflowSnapshot.Reference() || declaration.Reference() != refs[i] {
+			t.Fatalf("step %d declaration does not match its canonical view", i)
 		}
 	}
 	for i, ref := range refs {
@@ -137,17 +133,16 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	actionSteps, ok := actionSnapshot.ActionSteps()
-	if !ok || len(actionSteps) != 1 {
+	actionSteps := snapshotActionSteps(t, actionSnapshot)
+	if len(actionSteps) != 1 {
 		t.Fatal("action snapshot declarations unavailable")
 	}
-	actionRef, err := actionSnapshot.StepReference(actionSteps[0])
-	if err != nil {
+	actionRef := actionSteps[0].Reference()
+	if err := actionSnapshot.ValidateStep(actionSteps[0]); err != nil {
 		t.Fatal(err)
 	}
 	actionDeclaration, ok := actionSnapshots.Declaration(actionRef)
-	actionView, err := actionSnapshot.StepView(actionSteps[0])
-	if err != nil || !ok || actionDeclaration != actionView || actionDeclaration.SourceReference() != actionSnapshot.Reference() || actionDeclaration.Reference() != actionRef || actionDeclaration.DeclaringJob() != "" {
-		t.Fatalf("action declaration has unexpected source, cursor view, or job: %+v error=%v", actionDeclaration, err)
+	if !ok || actionDeclaration != actionSteps[0] || actionDeclaration.SourceReference() != actionSnapshot.Reference() || actionDeclaration.Reference() != actionRef || actionDeclaration.DeclaringJob() != "" {
+		t.Fatalf("action declaration has unexpected source, view, or job: %+v", actionDeclaration)
 	}
 }

@@ -3,8 +3,8 @@ package local
 import (
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/mapping"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
@@ -45,7 +45,7 @@ func (c *Resolver) state() resolverState {
 }
 
 // BeginJob resets checkout and persistent environment assumptions for a new job.
-func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Value, job documentparse.JobView) {
+func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Value, job workflowdecl.JobView) {
 	c.setCheckout(execution.Directory{})
 	knowledge := c.Runners.Job(job)
 	c.platform = knowledge.Platform

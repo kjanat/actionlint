@@ -18,8 +18,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/invopop/jsonschema"
+	"github.com/kjanat/go-yaml/v4"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
-	"go.yaml.in/yaml/v4"
 )
 
 func generatedSchema(t *testing.T) []byte {

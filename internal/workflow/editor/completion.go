@@ -5,9 +5,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	expr "actionlint.kjanat.dev/v2/internal/expression"
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
 	workflow "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/eventpayload"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
@@ -44,15 +47,16 @@ func Complete(content string, offset int) []expr.Completion {
 	}
 	c := expr.NewChecker(false, nil)
 	c.SetWorkflowKeyAvailability(key)
-	w, _ := workflow.Parse([]byte(content))
+	parsed, _ := workflowparser.Parse([]byte(content))
+	w := declaration.Publish(content, parsed, false, "").Bind("editor-buffer").Workflow()
 	c.UpdateEvent(eventpayload.Type(w))
-	if w != nil {
-		for _, event := range w.On {
-			if dispatch, ok := event.(*workflow.WorkflowDispatchEvent); ok {
+	if w.Present() {
+		for event := range w.On() {
+			if dispatch, ok := event.WorkflowDispatchEvent(); ok {
 				inputs := expr.NewEmptyStrictObjectType()
-				for name, input := range dispatch.Inputs {
+				for name, input := range dispatch.Inputs() {
 					var ty expr.Type = expr.StringType{}
-					switch input.Type {
+					switch input.Type() {
 					case workflow.WorkflowDispatchEventInputTypeBoolean:
 						ty = expr.BoolType{}
 					case workflow.WorkflowDispatchEventInputTypeNumber:

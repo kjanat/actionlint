@@ -3,6 +3,7 @@ package visit
 import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 // Base accumulates findings and provides default callbacks for synchronous visitors.
@@ -22,19 +23,19 @@ func NewBase(name string, desc string) Base {
 }
 
 // VisitStep is callback when visiting Step node.
-func (r *Base) VisitStep(node *workflowlang.Step) error { return nil }
+func (r *Base) VisitStep(node declaration.StepView) error { return nil }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (r *Base) VisitJobPre(node *workflowlang.Job) error { return nil }
+func (r *Base) VisitJobPre(node declaration.JobView) error { return nil }
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
-func (r *Base) VisitJobPost(node *workflowlang.Job) error { return nil }
+func (r *Base) VisitJobPost(node declaration.JobView) error { return nil }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (r *Base) VisitWorkflowPre(node *workflowlang.Workflow) error { return nil }
+func (r *Base) VisitWorkflowPre(node declaration.WorkflowView) error { return nil }
 
 // VisitWorkflowPost is callback when visiting Workflow node after visiting its children.
-func (r *Base) VisitWorkflowPost(node *workflowlang.Workflow) error { return nil }
+func (r *Base) VisitWorkflowPost(node declaration.WorkflowView) error { return nil }
 
 // Error creates a new error from the source position and the error message and stores it in the
 // rule instance. The errors can be accessed by Errs method.

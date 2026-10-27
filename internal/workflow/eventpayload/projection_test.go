@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	expr "actionlint.kjanat.dev/v2/internal/expression"
-	workflow "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
 func TestPayloadExpressions(t *testing.T) {
@@ -91,7 +92,7 @@ func TestDefaultVariants(t *testing.T) {
 }
 
 func TestRepositoryDispatchTypesReachProjection(t *testing.T) {
-	w, errs := workflow.Parse([]byte(`on:
+	w, errs := workflowparser.Parse([]byte(`on:
   repository_dispatch:
     types: [custom]
   issues:
@@ -106,7 +107,7 @@ jobs:
 		t.Fatal(errs)
 	}
 	c := expr.NewChecker(false, nil)
-	c.UpdateEvent(Type(w))
+	c.UpdateEvent(Type(declaration.Publish("", w, false, "").Bind("unit-event-payload").Workflow()))
 	c.SetContextAvailability([]string{"github"})
 	n, err := expr.NewParser().Parse(expr.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))
 	if err != nil {

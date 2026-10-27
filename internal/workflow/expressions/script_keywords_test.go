@@ -68,8 +68,8 @@ func TestScriptKeywordNeedsDataArgument(t *testing.T) {
 				}
 				source += "shell: " + shell + "\n        run: |\n          " + strings.ReplaceAll(script, "\n", "\n          ") + "\n"
 				rule, workflow := newTestCheckerForSource(t, source)
-				job := workflow.Jobs["test"]
-				for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
+				job := testJob(t, workflow, "test")
+				for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0)), rule.VisitJobPost(job)} {
 					if err != nil {
 						t.Fatal(err)
 					}

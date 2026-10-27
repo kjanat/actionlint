@@ -3,7 +3,7 @@ package documentparse
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 func TestSourceSnapshotReusesIndexedWorkflow(t *testing.T) {
@@ -19,18 +19,25 @@ func TestSourceSnapshotReusesIndexedWorkflow(t *testing.T) {
 	if err != nil || again != snapshot {
 		t.Fatalf("declaration snapshot not reused: %v", err)
 	}
-	workflow, ok := again.Workflow()
-	if !ok || workflow != first.Workflow {
+	workflow, ok := again.WorkflowView()
+	if !ok || snapshot.ValidateWorkflow(workflow) != nil {
 		t.Fatal("traversal did not receive the indexed workflow")
 	}
-	ref, err := snapshot.StepReference(workflow.Jobs["build"].Steps[0])
+	step := snapshotJobSteps(t, snapshot, "build")[0]
+	ref := step.Reference()
+	err = snapshot.ValidateStep(step)
 	if err != nil || ref.Node == "" || ref.Address != `jobs["build"].steps[0]` {
 		t.Fatalf("structural call-site reference: %+v, %v", ref, err)
 	}
-	if _, err := snapshot.StepReference(second.Workflow.Jobs["build"].Steps[0]); err == nil {
-		t.Fatal("accepted a step from an independently decoded AST")
+	other := newCapturedSnapshots(t, sourceFixtureBase(t))
+	foreign, err := other.Document("ci.yml", content, second)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := snapshot.StepReference(nil); err == nil {
+	if err := snapshot.ValidateStep(snapshotJobSteps(t, foreign, "build")[0]); err == nil {
+		t.Fatal("accepted a step from an independently decoded source binding")
+	}
+	if err := snapshot.ValidateStep(workflowdecl.StepView{}); err == nil {
 		t.Fatal("accepted a missing call-site declaration")
 	}
 }
@@ -58,24 +65,26 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 			if err != nil || snapshot != again {
 				t.Fatalf("lookups did not share their declaration snapshot: %v", err)
 			}
-			steps, ok := snapshot.ActionSteps()
-			if !ok || len(steps) != 2 {
+			steps := snapshotActionSteps(t, snapshot)
+			if len(steps) != 2 {
 				t.Fatalf("indexed action declarations: %+v", steps)
 			}
-			if workflow, ok := snapshot.Workflow(); ok || workflow != nil {
+			if workflow, ok := snapshot.WorkflowView(); ok || workflow.Present() {
 				t.Fatal("action snapshot exposed a workflow traversal input")
 			}
-			left, err := snapshot.StepReference(steps[0])
+			left := steps[0].Reference()
+			err = snapshot.ValidateStep(steps[0])
 			if err != nil {
 				t.Fatal(err)
 			}
-			right, err := snapshot.StepReference(steps[1])
+			right := steps[1].Reference()
+			err = snapshot.ValidateStep(steps[1])
 			if err != nil || left.Node == right.Node {
 				t.Fatalf("alias ownership collapsed: first=%+v second=%+v error=%v", left, right, err)
 			}
-			steps[0] = &workflowlang.Step{}
-			copiedSteps, _ := again.ActionSteps()
-			if _, err := again.StepReference(copiedSteps[0]); err != nil {
+			steps[0] = workflowdecl.StepView{}
+			copiedSteps := snapshotActionSteps(t, again)
+			if err := again.ValidateStep(copiedSteps[0]); err != nil {
 				t.Fatal("consumer changed the snapshot's step sequence")
 			}
 			if plain.SourceMapped || !mapped.SourceMapped {

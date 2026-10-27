@@ -7,9 +7,9 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/kjanat/go-yaml/v4"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pelletier/go-toml/v2/unstable"
-	"go.yaml.in/yaml/v4"
 )
 
 type tomlMigrationSpan struct {

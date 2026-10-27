@@ -7,33 +7,29 @@ import (
 
 	"mvdan.cc/sh/v3/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-func (rule *Checker) scriptShell(step documentparse.StepView) string {
+func (rule *Checker) scriptShell(step workflowdecl.StepView) string {
 	run, ok := step.Run()
 	if !ok {
 		return ""
 	}
 	var jobShell, workflowShell, runnerShell value.Value
 	if !rule.compositeScript {
-		if snapshot := rule.dependencies.SourceSnapshot; snapshot != nil {
-			if workflow, present := snapshot.WorkflowView(); present {
-				workflowShell = execution.DefaultShell(workflow.Defaults().Run().Semantic())
-			}
-			if rule.scriptJob != nil {
-				if job, err := snapshot.JobView(rule.scriptJob); err == nil {
-					jobShell = execution.DefaultShell(job.Defaults().Run().Semantic())
-					runnerShell = execution.ContainerShell(job.Container().Semantic())
-					if runnerShell.State() == value.Missing {
-						runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
-						if rule.dependencies.Runners != nil {
-							if shell := rule.dependencies.Runners.Job(job).Shell; shell != "" {
-								runnerShell = value.YAMLScalar(shell, "!!str", value.Origin{})
-							}
+		if rule.workflow.Present() {
+			workflowShell = execution.DefaultShell(rule.workflow.Defaults().Run().Semantic())
+			if job := rule.scriptJob; job.Present() {
+				jobShell = execution.DefaultShell(job.Defaults().Run().Semantic())
+				runnerShell = execution.ContainerShell(job.Container().Semantic())
+				if runnerShell.State() == value.Missing {
+					runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
+					if rule.dependencies.Runners != nil {
+						if shell := rule.dependencies.Runners.Job(job).Shell; shell != "" {
+							runnerShell = value.YAMLScalar(shell, "!!str", value.Origin{})
 						}
 					}
 				}

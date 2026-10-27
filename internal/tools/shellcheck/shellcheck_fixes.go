@@ -5,9 +5,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/source/text"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 type shellcheckFix struct {
@@ -27,7 +27,7 @@ type shellcheckReplacement struct {
 // Each replacement must stay on one unchanged source line; a fix can edit several
 // lines, but generated lines, expressions, indentation changes, and overlapping
 // replacements make the entire fix unavailable.
-func shellcheckDiagnosticFixes(source documentparse.ScriptSourceView, script shellcheckScript, fix *shellcheckFix, description string) []DiagnosticFix {
+func shellcheckDiagnosticFixes(source workflowdecl.ScriptSourceView, script shellcheckScript, fix *shellcheckFix, description string) []DiagnosticFix {
 	if !source.Present() || !source.Literal() || fix == nil || len(fix.Replacements) == 0 {
 		return nil
 	}
@@ -91,7 +91,7 @@ func shellcheckDiagnosticFixes(source documentparse.ScriptSourceView, script she
 	return []DiagnosticFix{{Description: description, Applicability: "suggested", Edits: edits}}
 }
 
-func shellcheckFixPreservesIndent(source documentparse.ScriptSourceView, edits []DiagnosticEdit) bool {
+func shellcheckFixPreservesIndent(source workflowdecl.ScriptSourceView, edits []DiagnosticEdit) bool {
 	for span := range source.Spans() {
 		original := source.Value()[span.Start:span.End]
 		modified := original

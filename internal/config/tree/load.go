@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Loaded is an expanded local config graph and its dependency/provenance data.

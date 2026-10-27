@@ -63,7 +63,7 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 		{"stale revision", source.Reference{Document: reference.Document, Revision: "old", Node: reference.Node, Address: reference.Address}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			refs := map[string]workflowfacts.References{"ci.yml": {Document: test.reference}}
+			refs := map[string]workflowfacts.SourceIndex{"ci.yml": {Document: test.reference}}
 			input, err := result.AnalyzerInput("ci.yml", "ci.yml", content, document, refs)
 			if !test.valid {
 				if !errors.Is(err, scriptexecution.ErrInvalidBatch) {

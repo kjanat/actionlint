@@ -7,7 +7,7 @@ import (
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
@@ -76,7 +76,7 @@ func actionInputOutlines(node *syntax.Node) []documentmodel.Input {
 		fields := actionOutlineFields(node.Content[i+1])
 		input := documentmodel.Input{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
-			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowlang.PosAt(key)),
+			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowparser.PosAt(key)),
 		}
 		if required := fields["required"]; required != nil {
 			session, cursor, err := codec.Open(required)
@@ -104,7 +104,7 @@ func actionOutputOutlines(node *syntax.Node) []documentmodel.Output {
 		fields := actionOutlineFields(node.Content[i+1])
 		outputs = append(outputs, documentmodel.Output{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
-			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(workflowlang.PosAt(key)),
+			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(workflowparser.PosAt(key)),
 		})
 	}
 	return outputs
@@ -153,7 +153,7 @@ func actionStepOutlines(node *syntax.Node) []documentmodel.Step {
 		fields := actionOutlineFields(node)
 		step := documentmodel.Step{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
-			Start: outlinePosition(workflowlang.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
+			Start: outlinePosition(workflowparser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
 		}
 		_, hasRun := fields["run"]
 		_, hasUses := fields["uses"]

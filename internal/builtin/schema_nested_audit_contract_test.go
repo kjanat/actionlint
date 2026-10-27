@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
 )
@@ -23,12 +23,12 @@ jobs:
     steps:
       - run: echo test
 `
-	w, errs := workflowlang.ParseDocument([]byte(src))
+	w, errs := workflowparser.ParseDocument([]byte(src))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	rule := builtin.NewRuleEvents()
-	if err := rule.VisitWorkflowPre(w); err != nil {
+	if err := rule.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 		t.Fatal(err)
 	}
 	if errs := rule.Errs(); len(errs) != 0 {
@@ -52,12 +52,12 @@ jobs:
     steps:
       - run: echo test
 `
-		w, errs := workflowlang.ParseDocument([]byte(src))
+		w, errs := workflowparser.ParseDocument([]byte(src))
 		if len(errs) != 0 {
 			t.Fatalf("schema-supported image filters rejected: %v", errs)
 		}
 		rule := builtin.NewRuleEvents()
-		if err := rule.VisitWorkflowPre(w); err != nil {
+		if err := rule.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 			t.Fatal(err)
 		}
 		if errs := rule.Errs(); len(errs) != 0 {
@@ -81,12 +81,12 @@ jobs:
     steps:
       - run: echo test
 `
-			w, errs := workflowlang.ParseDocument([]byte(src))
+			w, errs := workflowparser.ParseDocument([]byte(src))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			rule := builtin.NewRuleEvents()
-			if err := rule.VisitWorkflowPre(w); err != nil {
+			if err := rule.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 				t.Fatal(err)
 			}
 			if errs := rule.Errs(); tc.valid {
@@ -106,7 +106,7 @@ func TestSchemaNestedStackedPullRequests(t *testing.T) {
 		valid    bool
 	}{{"stacked", true}, {"unsupported", false}} {
 		t.Run(tc.activity, func(t *testing.T) {
-			w, errs := workflowlang.ParseDocument([]byte(`on:
+			w, errs := workflowparser.ParseDocument([]byte(`on:
   pull_request:
     types: ` + tc.activity + `
   pull_request_target:
@@ -121,7 +121,7 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := builtin.NewRuleEvents()
-			if err := rule.VisitWorkflowPre(w); err != nil {
+			if err := rule.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 				t.Fatal(err)
 			}
 			if errs := rule.Errs(); tc.valid {
@@ -141,7 +141,7 @@ func TestSchemaNestedStepIDBoundaries(t *testing.T) {
 		valid bool
 	}{{"_user", true}, {"__reserved", false}, {strings.Repeat("a", 99), true}, {strings.Repeat("a", 100), false}} {
 		t.Run(tc.id, func(t *testing.T) {
-			w, errs := workflowlang.ParseDocument([]byte(`on: push
+			w, errs := workflowparser.ParseDocument([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -153,10 +153,10 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := builtin.NewRuleID()
-			if err := rule.VisitJobPre(w.Jobs["test"]); err != nil {
+			if err := rule.VisitJobPre(ownedJobFixture(w.Jobs["test"])); err != nil {
 				t.Fatal(err)
 			}
-			if err := rule.VisitStep(w.Jobs["test"].Steps[0]); err != nil {
+			if err := rule.VisitStep(ownedStepFixture(w.Jobs["test"].Steps[0])); err != nil {
 				t.Fatal(err)
 			}
 			if valid := len(rule.Errs()) == 0; valid != tc.valid {

@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
@@ -337,7 +338,7 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 }
 
 // ObserveCheckout updates action resolution after a checkout step.
-func (c *Resolver) ObserveCheckout(step documentparse.StepView) {
+func (c *Resolver) ObserveCheckout(step workflowdecl.StepView) {
 	enabled, known := execution.Condition(step.Condition())
 	if known && !enabled {
 		return

@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // IgnorePatterns is a list of regular expressions. These patterns are used for filtering errors by

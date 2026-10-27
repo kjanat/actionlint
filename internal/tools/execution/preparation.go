@@ -8,12 +8,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/source"
 )
 
 // ScriptInputAction normalizes repository ownership while preserving subpath case.
-func ScriptInputAction(action documentparse.ExecActionView) (string, bool) {
+func ScriptInputAction(action workflowdecl.ExecActionView) (string, bool) {
 	if !action.Uses().Present() || action.Uses().ContainsExpression() {
 		return "", false
 	}
@@ -42,7 +43,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 	if _, exists := collection.Declarations.Lookup(graph.Entry().Reference); !exists {
 		return nil, fmt.Errorf("%w: entry source is absent from declaration registry", ErrInvalidBatch)
 	}
-	declarations := make(map[source.Reference]documentparse.StepView)
+	declarations := make(map[source.Reference]workflowdecl.StepView)
 	contents := make(map[source.Reference][]byte)
 	units := make([]Unit, 0, len(requests))
 	for _, record := range graph.Scripts() {
@@ -112,7 +113,7 @@ func scriptJob(graph invocation.Graph, declarations *documentparse.SourceSnapsho
 	return outer.DeclaringJob(), nil
 }
 
-func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration documentparse.StepView) error {
+func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration workflowdecl.StepView) error {
 	switch record.Kind {
 	case invocation.ScriptRun:
 		run, hasRun := declaration.Run()
@@ -128,7 +129,7 @@ func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, dec
 	case invocation.ScriptActionInput:
 		site := request.Input
 		action, hasAction := declaration.Action()
-		var input documentparse.InputView
+		var input workflowdecl.InputView
 		inputs, _ := action.InputNames()
 		for name, candidate := range inputs {
 			if name == record.Input {

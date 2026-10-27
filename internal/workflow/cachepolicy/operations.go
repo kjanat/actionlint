@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
@@ -26,36 +27,36 @@ type operationCheck struct {
 	findings []diagnostic.Diagnostic
 }
 
-func (r *operationCheck) Errorf(pos *workflowlang.Pos, format string, args ...any) {
+func (r *operationCheck) Errorf(pos workflowlang.Pos, format string, args ...any) {
 	r.findings = append(r.findings, report(pos, "cache-operation", format, args...))
 }
 
 // CheckCallOperations applies the caller's ceiling to inherited callee operations.
 // Results belong to the call site; policy evaluation is never cached with metadata.
-func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, lookup MetadataLookup) []diagnostic.Diagnostic {
-	if call == nil || call.Uses == nil || lookup == nil {
+func CheckCallOperations(call declaration.WorkflowCallView, granted declaration.CacheModeView, lookup MetadataLookup) []diagnostic.Diagnostic {
+	if !call.Present() || !call.Uses().Present() || lookup == nil {
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(call.Uses.Pos, call.Uses.Value, granted, map[cacheModeVisit]bool{})
+	r.checkCallOperations(position(call.Uses()), call.Uses().Value(), grant(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *operationCheck) checkCallOperations(pos *workflowlang.Pos, sourceSpec string, granted *workflowlang.CacheMode, checked map[cacheModeVisit]bool) {
+func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec string, granted modeGrant, checked map[cacheModeVisit]bool) {
 	spec, local := references.LocalWorkflow(sourceSpec)
 	if !local {
 		return
 	}
-	have, known := granted.Capabilities()
-	if granted != nil && !known {
+	have, known := granted.capabilities()
+	if granted.present && !known {
 		return
 	}
 	visit := cacheModeVisit{spec: spec}
-	if granted != nil {
-		visit.mode = granted.Kind
+	if granted.present {
+		visit.mode = granted.kind
 	}
 	if checked[visit] {
 		return
@@ -68,16 +69,16 @@ func (r *operationCheck) checkCallOperations(pos *workflowlang.Pos, sourceSpec s
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		mode := workflowlang.EffectiveCacheMode(granted, job.Mode)
-		want, valid := mode.Capabilities()
-		if mode != nil && !valid || known && valid && want&^have != 0 {
+		mode := effectiveGrant(granted, metadataGrant(job.Mode))
+		want, valid := mode.capabilities()
+		if mode.present && !valid || known && valid && want&^have != 0 {
 			// Invalid declarations and ceiling mismatches have their own diagnostics.
 			continue
 		}
 		if job.Mode == nil && known {
 			for _, name := range job.Operations {
 				if operation := disabledCacheOperation(name, have); operation != "" {
-					r.Errorf(pos, "%q in job %q of %q cannot %s with caller-imposed cache-mode %q. GitHub skips the operation; select an action and mode that match the intended cache access, or document a reviewed exception at this call", name, id, sourceSpec, operation, granted.Kind.String())
+					r.Errorf(pos, "%q in job %q of %q cannot %s with caller-imposed cache-mode %q. GitHub skips the operation; select an action and mode that match the intended cache access, or document a reviewed exception at this call", name, id, sourceSpec, operation, granted.kind.String())
 				}
 			}
 		}
@@ -89,18 +90,18 @@ func (r *operationCheck) checkCallOperations(pos *workflowlang.Pos, sourceSpec s
 }
 
 // CheckStep reports cache action operations disabled by an explicit cache mode.
-func CheckStep(step *workflowlang.Step, mode *workflowlang.CacheMode) []diagnostic.Diagnostic {
-	action, ok := step.Exec.(*workflowlang.ExecAction)
-	if !ok || action.Uses == nil {
+func CheckStep(step declaration.StepView, mode declaration.CacheModeView) []diagnostic.Diagnostic {
+	action, ok := step.Action()
+	if !ok || !action.Uses().Present() {
 		return nil
 	}
-	access, valid := mode.Capabilities()
+	access, valid := grant(mode).capabilities()
 	if !valid {
 		return nil
 	}
-	name := references.CacheAction(action.Uses.Value)
+	name := references.CacheAction(action.Uses().Value())
 	if operation := disabledCacheOperation(name, access); operation != "" {
-		return []diagnostic.Diagnostic{report(action.Uses.Pos, "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
+		return []diagnostic.Diagnostic{report(position(action.Uses()), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind().String())}
 	}
 	return nil
 }

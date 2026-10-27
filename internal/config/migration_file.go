@@ -11,7 +11,7 @@ import (
 
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/fsread"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // FileMigration holds a preview and the exact input graph used to prepare it.

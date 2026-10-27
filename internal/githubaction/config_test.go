@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestMainConfigurationInputs(t *testing.T) {

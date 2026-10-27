@@ -3,7 +3,7 @@ package checks
 import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -18,18 +18,24 @@ type originPass struct {
 	ignores bool
 }
 
-func (p *originPass) VisitJobPre(job *workflowlang.Job) error {
-	p.job = ""
-	if job.ID != nil {
-		p.job = job.ID.Value
+func (p *originPass) VisitJobPre(job declaration.JobView) error {
+	origin := job.Origin()
+	p.job = origin.Job
+	return VisitWithOrigin(p.Pass, findingOrigin(origin), p.ignores, func() error { return p.Pass.VisitJobPre(job) })
+}
+
+func (p *originPass) VisitJobPost(job declaration.JobView) error {
+	return VisitWithOrigin(p.Pass, findingOrigin(job.Origin()), p.ignores, func() error { return p.Pass.VisitJobPost(job) })
+}
+
+func (p *originPass) VisitStep(step declaration.StepView) error {
+	return VisitWithOrigin(p.Pass, findingOrigin(step.Origin(p.job)), p.ignores, func() error { return p.Pass.VisitStep(step) })
+}
+
+func findingOrigin(owned declaration.Origin) *findingmodel.IgnoreOrigin {
+	origin := &findingmodel.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
+	if owned.HasPosition {
+		origin.StepPosition = new(owned.Position)
 	}
-	return VisitWithOrigin(p.Pass, findingmodel.JobOrigin(job), p.ignores, func() error { return p.Pass.VisitJobPre(job) })
-}
-
-func (p *originPass) VisitJobPost(job *workflowlang.Job) error {
-	return VisitWithOrigin(p.Pass, findingmodel.JobOrigin(job), p.ignores, func() error { return p.Pass.VisitJobPost(job) })
-}
-
-func (p *originPass) VisitStep(step *workflowlang.Step) error {
-	return VisitWithOrigin(p.Pass, findingmodel.StepOrigin(p.job, step), p.ignores, func() error { return p.Pass.VisitStep(step) })
+	return origin
 }

@@ -6,29 +6,30 @@ import (
 	"bytes"
 	"errors"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	documentmodel "actionlint.kjanat.dev/v2/document"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/documentparse/internal/frozen"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 type Document struct {
-	Workflow  *workflowlang.Workflow
-	Metadata  *actionmeta.Metadata
-	Outline   documentmodel.Outline
-	Findings  []*findingmodel.Finding
-	facts     *workflowlang.Workflow
-	record    *frozen.Record
-	traversal *workflowlang.Workflow
-	parseErr  error
+	Workflow *workflowlang.Workflow
+	Metadata *actionmeta.Metadata
+	Outline  documentmodel.Outline
+	Findings []*findingmodel.Finding
+	facts    *workflowlang.Workflow
+	record   *declaration.Record
+	parseErr error
 }
 
 func Workflow(path string, content []byte) Document {
 	owned := bytes.Clone(content)
 	w, findings := Parse(owned)
-	return Document{Workflow: w, Outline: WorkflowOutline(path, w, len(findings) != 0), Findings: findings, record: frozen.Publish(string(owned), w, false, ""), traversal: w}
+	return Document{Workflow: w, Outline: WorkflowOutline(path, w, len(findings) != 0), Findings: findings, record: declaration.Publish(string(owned), w, false, "")}
 }
 
 func Action(path, sourcePath string, content []byte) Document {
@@ -41,7 +42,7 @@ func Action(path, sourcePath string, content []byte) Document {
 		provenance = actionFacts(metadata)
 	}
 	if err != nil {
-		document.Findings = adaptSyntaxFindings(workflowlang.HandleYAMLUnmarshalError(err))
+		document.Findings = adaptSyntaxFindings(workflowparser.HandleYAMLUnmarshalError(err))
 		for _, finding := range document.Findings {
 			finding.Start.Line, finding.Start.Column = max(1, finding.Start.Line), max(1, finding.Start.Column)
 		}
@@ -49,9 +50,8 @@ func Action(path, sourcePath string, content []byte) Document {
 		document.facts = provenance
 	}
 	if metadata != nil {
-		document.record = frozen.Publish(string(owned), provenance, true, metadata.Runs.Using)
+		document.record = declaration.Publish(string(owned), provenance, true, metadata.Runs.Using)
 	}
-	document.traversal = provenance
 	return document
 }
 
@@ -70,11 +70,13 @@ func (d Document) Facts() *workflowlang.Workflow {
 }
 
 func actionFacts(metadata *actionmeta.Metadata) *workflowlang.Workflow {
-	parser := workflowlang.NewSourceParser(metadata.Source)
+	parser := workflowparser.NewSourceParser(metadata.Source)
 	parser.IndexScalarSources(metadata.Root)
 	job := &workflowlang.Job{}
 	for _, step := range metadata.Runs.Steps {
 		job.Steps = append(job.Steps, actionStep(step, parser))
 	}
-	return &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}}
+	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}}
+	parser.IndexDependencySpans(workflow)
+	return workflow
 }

@@ -25,7 +25,7 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			child := parent.ForkComposite(context, "", Paths{}, nil)
+			child := parent.ForkComposite(context, "", Paths{})
 			if tc.condition != "false" {
 				// A successful child checkout replaces the old mode observations before
 				// a later chmod records a new mutation in that branch.

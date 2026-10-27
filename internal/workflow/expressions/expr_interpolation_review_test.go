@@ -29,7 +29,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 			if ternaries != 1 {
 				t.Fatalf("later diagnostic missing: %+v", rule.Findings())
 			}
-			if ty := rule.checkOneExpression(&workflowlang.String{Value: source, Pos: &workflowlang.Pos{Line: 1, Col: 1}}, "value", "env"); ty != nil {
+			if ty := rule.checkOneExpression(ownedStringFixture(&workflowlang.String{Value: source, Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "value", "env"); ty != nil {
 				t.Fatalf("invalid interpolation types escaped into type checking: %v", ty)
 			}
 		}

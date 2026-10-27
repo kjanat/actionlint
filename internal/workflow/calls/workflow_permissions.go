@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
@@ -116,9 +117,27 @@ func resolvePermissions(src permissionsSource) ResolvedPermissions {
 	return ResolvedPermissions{PermissionsDeclared, ls}
 }
 
-// ResolvePermissionsAST resolves a parsed "permissions:" section. A nil node means the section is
+// ResolvePermissions resolves an immutable parsed permissions declaration.
+func ResolvePermissions(p declaration.PermissionsView) ResolvedPermissions {
+	if !p.Present() {
+		return ResolvedPermissions{Kind: PermissionsAbsent}
+	}
+	if p.ScopesPresent() {
+		scopes := map[string]string{}
+		for _, scope := range p.Scopes() {
+			scopes[scope.Name().Value()] = strings.ToLower(scope.Value().Value())
+		}
+		return resolvePermissions(permissionsSource{scopes: scopes})
+	}
+	if p.All().Present() {
+		return resolvePermissions(permissionsSource{all: strings.ToLower(p.All().Value())})
+	}
+	return ResolvedPermissions{Kind: PermissionsInvalid}
+}
+
+// resolvePermissionsModel resolves a parsed "permissions:" section. A nil node means the section is
 // absent.
-func ResolvePermissionsAST(p *workflowlang.Permissions) ResolvedPermissions {
+func resolvePermissionsModel(p *workflowlang.Permissions) ResolvedPermissions {
 	if p == nil {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
 	}

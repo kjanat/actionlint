@@ -3,7 +3,7 @@ package config
 import (
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // ForSuppressions resolves metadata diagnostic settings independently of workflow-only rule options.

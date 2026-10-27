@@ -118,14 +118,11 @@ func TestCallVisitPreservesExistingScriptStop(t *testing.T) {
 		if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 			return err
 		}
-		workflow, _ := f.root.Workflow()
-		steps := workflow.Jobs["test"].Steps
+		workflow, _ := f.root.WorkflowView()
+		steps := workflowStepViews(t, workflow, "test")
 		for i := range 2 {
-			ref, err := f.root.StepReference(steps[i])
-			if err != nil {
-				return err
-			}
-			_, err = c.invocations.AddScript(c.context, ref, invocation.ScriptRun, "")
+			ref := stepReference(t, f.root, steps[i])
+			_, err := c.invocations.AddScript(c.context, ref, invocation.ScriptRun, "")
 			if i == 0 && err != nil || i == 1 && !errors.Is(err, invocation.ErrScriptBudget) {
 				t.Fatalf("setup script %d: %v", i, err)
 			}

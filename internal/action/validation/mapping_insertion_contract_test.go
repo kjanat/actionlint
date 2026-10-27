@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -25,12 +27,12 @@ func TestInsertedActionInputMetadata(t *testing.T) {
 		{"known expression name", `${{ fromJSON('{"token":"value","typo":"value"}') }}`, `input "typo" is not defined`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errs := workflowlang.ParseDocument([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with:\n          ${{ insert }}: " + tc.value + "\n"))
+			workflow, errs := workflowparser.ParseDocument([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with:\n          ${{ insert }}: " + tc.value + "\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			exec := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-			got := actioncheck.Inputs(&actionmeta.Metadata{Inputs: map[string]*actionmeta.Input{"token": {Name: "token", Required: true}}}, exec, func(*actionmeta.Metadata) string { return "example/action@v1" })
+			got := actioncheck.Inputs(&actionmeta.Metadata{Inputs: map[string]*actionmeta.Input{"token": {Name: "token", Required: true}}}, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "example/action@v1" })
 			if tc.want == "" {
 				if len(got) != 0 {
 					t.Fatal(got)

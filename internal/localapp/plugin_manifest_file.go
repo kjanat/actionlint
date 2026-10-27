@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
+	"github.com/kjanat/go-yaml/v4"
 	"github.com/pelletier/go-toml/v2/unstable"
-	"go.yaml.in/yaml/v4"
 )
 
 const maxPluginManifestBytes = 4 << 20

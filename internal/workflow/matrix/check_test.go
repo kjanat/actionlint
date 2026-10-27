@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
@@ -59,7 +59,7 @@ jobs:
     steps:
       - run: echo test
 `
-			w, parseErrors := workflowlang.Parse([]byte(src))
+			w, parseErrors := workflowparser.Parse([]byte(src))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
@@ -104,7 +104,7 @@ func TestMatrixDiagnosticValueDisplay(t *testing.T) {
 
 func TestUnknownMatrixAxisDiagnosticUsesKeyOrigin(t *testing.T) {
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        arch: [arm]\n        exclude:\n          - missing:\n              nested: [null, {z: value}]\n    steps: [{run: echo ok}]\n"
-	workflow, errors := workflowlang.Parse([]byte(source))
+	workflow, errors := workflowparser.Parse([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
@@ -135,7 +135,7 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 		`exclude: "${{ fromJSON('[{\"missing\":{\"nested\":null}}]') }}"`,
 		`exclude: ["${{ fromJSON('{\"missing\":{\"nested\":null}}') }}"]`,
 	} {
-		workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        " + declaration + "\n    steps: [{run: echo ok}]\n"))
+		workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        " + declaration + "\n    steps: [{run: echo ok}]\n"))
 		if len(errors) != 0 {
 			t.Fatal(errors)
 		}
@@ -155,7 +155,7 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 }
 
 func TestNestedMatrixMismatchDiagnosticKeepsValues(t *testing.T) {
-	workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        item: [{z: [null, {b: old, a: true}], a: 1}]\n        exclude: [{item: {z: [null, {b: new, a: true}]}}]\n    steps: [{run: echo ok}]\n"))
+	workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        item: [{z: [null, {b: old, a: true}], a: 1}]\n        exclude: [{item: {z: [null, {b: new, a: true}]}}]\n    steps: [{run: echo ok}]\n"))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
 func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, fromAST bool) []*findingmodel.Finding {
@@ -22,7 +22,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			t.Fatal(err)
 		}
 		if fromAST {
-			w, errs := workflowlang.ParseDocument([]byte(src))
+			w, errs := workflowparser.ParseDocument([]byte(src))
 			if len(errs) != 0 {
 				t.Fatalf("%s: %v", name, errs)
 			}
@@ -40,16 +40,16 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			}
 		}
 	}
-	w, errs := workflowlang.ParseDocument([]byte(caller))
+	w, errs := workflowparser.ParseDocument([]byte(caller))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	rule := builtin.NewRuleWorkflowCall(nil, cache)
-	if err := rule.VisitWorkflowPre(w); err != nil {
+	if err := rule.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 		t.Fatal(err)
 	}
 	for _, j := range w.Jobs {
-		if err := rule.VisitJobPre(j); err != nil {
+		if err := rule.VisitJobPre(ownedJobFixture(j)); err != nil {
 			t.Fatal(err)
 		}
 	}

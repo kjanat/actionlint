@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 func TestShellcheckSourceInventoryWithoutDiagnostics(t *testing.T) {
@@ -25,7 +25,7 @@ func TestShellcheckSourceInventoryWithoutDiagnostics(t *testing.T) {
 	run := newShellcheckRunForTest(cmd)
 	var inputs []string
 	run.paths.reader = fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-	if err := run.runShellcheck("echo ok", documentparse.ScriptSourceView{}, shellcheckShell{name: "bash"}, runDirectory{directoryKnown, root}, &workflowlang.Pos{Line: 1, Col: 1}, nil); err != nil {
+	if err := run.runShellcheck("echo ok", workflowdecl.ScriptSourceView{}, shellcheckShell{name: "bash"}, runDirectory{directoryKnown, root}, &workflowlang.Pos{Line: 1, Col: 1}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := cmd.Wait(); err != nil {

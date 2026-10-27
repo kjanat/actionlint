@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestMetadataAdmissionRejectsExpansionOutsideSelectedDeclarations(t *testing.T) {

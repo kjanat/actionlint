@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
@@ -40,10 +41,9 @@ func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	step, err := snapshot.StepView(document.Workflow.Jobs["test"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("test")
+	step := slices.Collect(job.Steps())[0]
 	ownedRun, _ := step.Run()
 
 	for _, endpoints := range []struct {

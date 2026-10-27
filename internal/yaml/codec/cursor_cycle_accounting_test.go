@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	upstream "go.yaml.in/yaml/v4"
-	"go.yaml.in/yaml/v4/plugin/limit"
+	upstream "github.com/kjanat/go-yaml/v4"
+	"github.com/kjanat/go-yaml/v4/plugin/limit"
 )
 
 type cycleAccountingTarget struct {

@@ -10,6 +10,7 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
@@ -202,7 +203,9 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 				}
 				return
 			}
-			findings := calls.CheckArguments(c, metadata)
+			view := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {WorkflowCall: c}}}, false, "").Bind("call-fixture").Workflow()
+			job, _ := view.JobsAt("test")
+			findings := calls.CheckArguments(job.WorkflowCall(), metadata)
 
 			errs := []string{}
 			for _, err := range findings {

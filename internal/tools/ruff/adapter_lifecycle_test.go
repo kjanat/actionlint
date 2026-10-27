@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 
@@ -116,10 +117,9 @@ func TestRuffAdapterMapsBothEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stepView, err := snapshot.StepView(parsed.Jobs["test"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("test")
+	stepView := slices.Collect(job.Steps())[0]
 	ownedRun, _ := stepView.Run()
 	python := "python"
 	for _, endpoints := range []struct {

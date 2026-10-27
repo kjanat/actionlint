@@ -5,6 +5,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/checks"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -12,9 +13,9 @@ import (
 type declarationRule struct {
 	workflowvisit.Base
 	check         checks.Declaration
-	workflowCheck func(*workflow.Workflow) []checks.Finding
-	jobCheck      func(*workflow.Job) []checks.Finding
-	stepCheck     func(*workflow.Step) []checks.Finding
+	workflowCheck func(workflowdecl.WorkflowView) []checks.Finding
+	jobCheck      func(workflowdecl.JobView) []checks.Finding
+	stepCheck     func(workflowdecl.StepView) []checks.Finding
 }
 
 func newDeclarationRule(name string) *declarationRule {
@@ -24,15 +25,19 @@ func newDeclarationRule(name string) *declarationRule {
 func (r *declarationRule) collect(input []checks.Finding, job string) {
 	for _, d := range input {
 		finding := findingmodel.FromDiagnostic(d.Diagnostic)
-		if d.Step != nil {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: d.Step.Pos}
-			finding.IgnoreOrigin = findingmodel.StepOrigin(job, d.Step)
+		if d.Step.Present() {
+			finding.Owner = &findingmodel.Owner{Job: job, Step: declarationPosition(d.Step)}
+			origin := d.Step.Origin(job)
+			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
+			if origin.HasPosition {
+				finding.IgnoreOrigin.StepPosition = &origin.Position
+			}
 		}
 		r.Findings = append(r.Findings, finding)
 	}
 }
 
-func (r *declarationRule) VisitWorkflowPre(w *workflow.Workflow) error {
+func (r *declarationRule) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
 	if r.workflowCheck != nil {
 		r.collect(r.workflowCheck(w), "")
 	} else {
@@ -41,16 +46,16 @@ func (r *declarationRule) VisitWorkflowPre(w *workflow.Workflow) error {
 	return nil
 }
 
-func (r *declarationRule) VisitJobPre(j *workflow.Job) error {
+func (r *declarationRule) VisitJobPre(j workflowdecl.JobView) error {
 	if r.jobCheck != nil {
-		r.collect(r.jobCheck(j), declarationID(j.ID))
+		r.collect(r.jobCheck(j), declarationID(j.ID()))
 	} else {
-		r.collect(r.check.Job(j), declarationID(j.ID))
+		r.collect(r.check.Job(j), declarationID(j.ID()))
 	}
 	return nil
 }
 
-func (r *declarationRule) VisitStep(s *workflow.Step) error {
+func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 	if r.stepCheck != nil {
 		r.collect(r.stepCheck(s), "")
 	} else {
@@ -79,34 +84,41 @@ func NewRuleRequireJobTimeout(policy *repoconfig.JobTimeoutPolicy) *declarationR
 		options.Max = new(upper)
 	}
 	r := newDeclarationRule("require-job-timeout")
-	r.jobCheck = func(j *workflow.Job) []checks.Finding { return checks.JobTimeout(j, options) }
+	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.JobTimeout(j, options) }
 	return r
 }
 
 func NewRuleRequirePermissions(policy *repoconfig.PermissionsPolicy) *declarationRule {
 	scope := policy.Scope()
 	r := newDeclarationRule("require-permissions")
-	r.workflowCheck = func(w *workflow.Workflow) []checks.Finding { return checks.RequiredWorkflowPermissions(w, scope) }
-	r.jobCheck = func(j *workflow.Job) []checks.Finding { return checks.RequiredJobPermissions(j, scope) }
+	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding {
+		return checks.RequiredWorkflowPermissions(w, scope)
+	}
+	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.RequiredJobPermissions(j, scope) }
 	return r
 }
 
 func NewRuleRequiredActions(required []string) *declarationRule {
 	r := newDeclarationRule("required-actions")
-	r.workflowCheck = func(w *workflow.Workflow) []checks.Finding { return checks.RequiredActions(w, required) }
+	r.workflowCheck = func(w workflowdecl.WorkflowView) []checks.Finding { return checks.RequiredActions(w, required) }
 	return r
 }
 
 func NewRuleRequireCommitHash(excluded func(string) bool) *declarationRule {
 	r := newDeclarationRule("require-commit-hash")
-	r.jobCheck = func(j *workflow.Job) []checks.Finding { return checks.CommitHashJob(j, excluded) }
-	r.stepCheck = func(s *workflow.Step) []checks.Finding { return checks.CommitHashStep(s, excluded) }
+	r.jobCheck = func(j workflowdecl.JobView) []checks.Finding { return checks.CommitHashJob(j, excluded) }
+	r.stepCheck = func(s workflowdecl.StepView) []checks.Finding { return checks.CommitHashStep(s, excluded) }
 	return r
 }
 
-func declarationID(value *workflow.String) string {
-	if value == nil {
-		return ""
+func declarationID(value workflowdecl.StringView) string {
+	return value.Value()
+}
+
+func declarationPosition(view interface{ Pos() (workflow.Pos, bool) }) *workflow.Pos {
+	position, present := view.Pos()
+	if !present {
+		return nil
 	}
-	return value.Value
+	return &position
 }

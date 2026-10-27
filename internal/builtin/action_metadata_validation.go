@@ -10,7 +10,7 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 // Each workflow analysis owns its validation store.
@@ -38,13 +38,13 @@ func newActionMetadataValidation() *actionMetadataValidation {
 	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding)}
 }
 
-func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, source actionlocal.SourceDocument, action *workflowlang.ExecAction, displaySpec string) error {
+func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, source actionlocal.SourceDocument, action workflowdecl.ExecActionView, displaySpec string) error {
 	store := rule.validation
 	path := meta.Path()
 	templates, checked := store.templates[path]
 	if !checked {
 		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs.Using, meta.Name, displaySpec)
-		templates = actioncheck.Check(meta, action.Uses.Pos)
+		templates = actioncheck.Check(meta, declarationPosition(action.Uses()))
 		store.templates[path] = templates
 	}
 	if len(templates) != 0 {
@@ -59,7 +59,7 @@ func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 		finding := *template
 		key := metadataFindingKey(meta, document, &finding)
 		if finding.Source == nil {
-			finding.Start.Line, finding.Start.Column = action.Uses.Pos.Line, action.Uses.Pos.Col
+			finding.Start.Line, finding.Start.Column = declarationPosition(action.Uses()).Line, declarationPosition(action.Uses()).Col
 		}
 		if finding.IgnoreOrigin != nil {
 			origin := *finding.IgnoreOrigin

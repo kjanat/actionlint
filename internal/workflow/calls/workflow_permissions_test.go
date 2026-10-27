@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
+
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
@@ -144,7 +147,7 @@ func TestResolvePermissionsShapes(t *testing.T) {
 	}
 }
 
-func TestResolvePermissionsASTAndYAMLAgree(t *testing.T) {
+func TestResolvePermissionsModelViewAndYAMLAgree(t *testing.T) {
 	tests := []string{
 		"permissions:",
 		"permissions: ~",
@@ -171,11 +174,15 @@ jobs:
       - run: echo
 `
 
-			w, _ := workflowlang.Parse([]byte(src))
+			w, _ := workflowparser.Parse([]byte(src))
 			if w == nil {
 				t.Fatal("workflow was not parsed")
 			}
-			fromAST := ResolvePermissionsAST(w.Permissions)
+			fromAST := resolvePermissionsModel(w.Permissions)
+			fromView := ResolvePermissions(declaration.Publish(src, w, false, "").Bind("permissions-fixture").Workflow().Permissions())
+			if diff := cmp.Diff(fromAST, fromView); diff != "" {
+				t.Fatal("AST/view mismatch: " + diff)
+			}
 
 			fromYAML := ResolvePermissionsYAML(permissionSourceNode(t, []byte(src)))
 
@@ -195,7 +202,7 @@ permissions:
   Contents: read
   issues: Write
 `)
-	w, _ := workflowlang.Parse(src)
+	w, _ := workflowparser.Parse(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed")
 	}
@@ -204,7 +211,7 @@ permissions:
 
 	want := PermissionScopeLevels{"issues": PermissionLevelWrite}
 	for route, have := range map[string]ResolvedPermissions{
-		"AST":  ResolvePermissionsAST(w.Permissions),
+		"AST":  resolvePermissionsModel(w.Permissions),
 		"YAML": ResolvePermissionsYAML(node),
 	} {
 		if have.Kind != PermissionsDeclared {
@@ -217,7 +224,7 @@ permissions:
 }
 
 func TestResolvePermissionsAbsent(t *testing.T) {
-	if have := ResolvePermissionsAST(nil); have.Kind != PermissionsAbsent {
+	if have := resolvePermissionsModel(nil); have.Kind != PermissionsAbsent {
 		t.Errorf("nil AST node should be absent but got %v", have.Kind)
 	}
 	if have := ResolvePermissionsYAML(nil); have.Kind != PermissionsAbsent {
@@ -307,5 +314,15 @@ func TestResolvePermissionsYAMLDoesNotMutateSource(t *testing.T) {
 				t.Fatalf("resolver changed permission scalar: %s", diff)
 			}
 		}
+	}
+}
+
+func TestResolvePermissionsAbsentView(t *testing.T) {
+	if got := ResolvePermissions(declaration.PermissionsView{}); got.Kind != PermissionsAbsent {
+		t.Fatalf("absent permissions = %#v", got)
+	}
+	invalid := declaration.Publish("", &workflowlang.Workflow{Permissions: &workflowlang.Permissions{}}, false, "").Bind("permissions-fixture").Workflow().Permissions()
+	if got := ResolvePermissions(invalid); got.Kind != PermissionsInvalid {
+		t.Fatalf("invalid permissions = %#v", got)
 	}
 }

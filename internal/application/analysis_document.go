@@ -141,7 +141,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := map[string]workflowfacts.References{sourcePath: snapshot.CanonicalReferences()}
+	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.CanonicalReferences()}
 	rejected, sourceErr := s.admitSourceDocuments(composed, references)
 	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {

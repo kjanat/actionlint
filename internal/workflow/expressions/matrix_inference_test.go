@@ -23,7 +23,7 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: {workflow_run: {workflows: [Build]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps:\n      - run: " + tc.script + "\n"
 			rule, workflow := newTestCheckerForSource(t, source)
-			job := workflow.Jobs["test"]
+			job := testJob(t, workflow, "test")
 			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job)} {
 				if err != nil {
 					t.Fatal(err)
@@ -32,7 +32,7 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 			if ty := rule.matrixTy.Props["item"]; ty == nil || ty.String() != tc.wantType {
 				t.Fatalf("matrix item type=%v, want %s", ty, tc.wantType)
 			}
-			if err := rule.VisitStep(job.Steps[0]); err != nil {
+			if err := rule.VisitStep(testStep(t, job, 0)); err != nil {
 				t.Fatal(err)
 			}
 			unsafe := false

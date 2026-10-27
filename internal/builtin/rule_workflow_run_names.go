@@ -5,7 +5,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -28,7 +28,7 @@ type workflowRunNamesRule struct {
 	index *workflownames.Index
 }
 
-func (r *workflowRunNamesRule) VisitWorkflowPre(w *workflowlang.Workflow) error {
+func (r *workflowRunNamesRule) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
 	if repoconfig.DiagnosticLevel(r.config, r.Name()) == "off" {
 		return nil
 	}

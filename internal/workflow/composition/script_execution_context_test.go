@@ -113,13 +113,11 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			}
 			content := []byte(source.String())
 			document := documentparse.Workflow("fixture.yml", content)
-			w := document.Workflow
-			if w == nil {
-				t.Fatal(document.Findings)
-			}
-			j := w.Jobs["test"]
-			step := j.Steps[0]
-			startWorkflowEntry(t, collector, workflowSnapshot(t, content, document))
+			snapshot := workflowSnapshot(t, content, document)
+			w := workflowView(t, snapshot)
+			j := workflowJob(t, w, "test")
+			step := workflowStepViews(t, w, "test")[0]
+			startWorkflowEntry(t, collector, snapshot)
 			if err := collector.beginWorkflow(w); err != nil {
 				t.Fatal(err)
 			}

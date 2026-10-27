@@ -220,7 +220,7 @@ func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, dependency := range pkg.Imports {
-			if dependency == "go.yaml.in/yaml/v4" {
+			if dependency == "github.com/kjanat/go-yaml/v4" {
 				t.Errorf("semantic package %s imports parser types", pkg.ImportPath)
 			}
 		}

@@ -3,7 +3,7 @@ package tree
 import (
 	"slices"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // SelectLintRules projects a lint tree without altering reset or preset semantics.

@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	documentmodel "actionlint.kjanat.dev/v2/document"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
@@ -34,7 +35,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				t.Fatal("admission discarded decoded declarations")
 			}
 			document := Action("action.yml", "action.yml", content)
-			if document.CanAnalyze() || document.Facts() != nil || document.traversal != nil {
+			if document.CanAnalyze() || document.record != nil && document.record.Bind("rejected-action").ActionBody().Present() {
 				t.Fatal("rejected action supplied semantic input")
 			}
 			for _, documentFirst := range []bool{false, true} {
@@ -91,7 +92,7 @@ func TestActionAdmissionKeepsOriginalFatalDecodeFinding(t *testing.T) {
 	}
 	_, got := actionmeta.Parse("action.yml", content)
 	_, rejected := errors.AsType[*codec.AdmissionError](got)
-	if rejected != (workflowlang.AdmitYAMLAliases(root) != nil) || got.Error() != want.Error() {
+	if rejected != (workflowparser.AdmitYAMLAliases(root) != nil) || got.Error() != want.Error() {
 		t.Fatalf("admission changed the original fatal error: got %v, want %v", got, want)
 	}
 	document := Action("action.yml", "action.yml", content)
@@ -108,7 +109,7 @@ func TestActionAdmissionRejectsParallelExpansion(t *testing.T) {
 	}
 	source.WriteString("      parallel: *a8\n")
 	document := Action("action.yml", "action.yml", []byte(source.String()))
-	if _, rejected := errors.AsType[*codec.AdmissionError](document.ActionParseError()); !rejected || document.CanAnalyze() || document.Facts() != nil {
+	if _, rejected := errors.AsType[*codec.AdmissionError](document.ActionParseError()); !rejected || document.CanAnalyze() || document.record != nil && document.record.Bind("rejected-action").ActionBody().Present() {
 		t.Fatal("parallel expansion bypassed action admission", document.ActionParseError())
 	}
 	if findings := actionmeta.Validate(document.Metadata); len(findings) == 0 {
@@ -122,11 +123,16 @@ func TestActionAdmissionKeepsRecursiveStepsOpaque(t *testing.T) {
 	if document.ActionParseError() != nil || !document.CanAnalyze() {
 		t.Fatal("recursive recovery became an admission failure", document.ActionParseError())
 	}
-	steps := document.Facts().Jobs[""].Steps
+	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := snapshots.Document("action.yml", []byte(source), document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := snapshotActionSteps(t, snapshot)
 	if len(steps) != 1 {
 		t.Fatal("recursive step lost its opaque occurrence")
 	}
-	if _, opaque := steps[0].Exec.(*workflowlang.ExecAction); !opaque {
+	if _, opaque := steps[0].Action(); !opaque {
 		t.Fatal("recursive composite step became executable")
 	}
 }
@@ -167,8 +173,8 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 			if firstErr != nil || secondErr != nil || first == nil || first != second {
 				t.Fatal("recovered snapshot depends on entry order", firstErr, secondErr)
 			}
-			steps, available := first.ActionSteps()
-			if !available || len(steps) != 1 {
+			steps := snapshotActionSteps(t, first)
+			if len(steps) != 1 {
 				t.Fatal("recovered declarations lost canonical step eligibility")
 			}
 		}
@@ -198,8 +204,8 @@ func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
 		if firstErr != nil || secondErr != nil || first == nil || first != second {
 			t.Fatal("schema-error declaration binding depends on entry order", firstErr, secondErr)
 		}
-		steps, available := first.ActionSteps()
-		if !available || len(steps) != 1 {
+		steps := snapshotActionSteps(t, first)
+		if len(steps) != 1 {
 			t.Fatal("schema-error declarations disappeared from the source snapshot")
 		}
 	}

@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	"actionlint.kjanat.dev/v2/internal/workflow/visit"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
@@ -112,8 +112,9 @@ jobs:
       - ` + tc.step + "\n"
 			workflow, rule := schemaAuditExpressionRule(t, source)
 			if tc.name == "matrix reserved key expression" {
-				matrix := workflow.Jobs["test"].Strategy.Matrix
-				if matrix == nil || matrix.Exclude == nil || matrix.Exclude.Name == nil || matrix.Exclude.Name.Value != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude.Evaluated {
+				job, _ := workflow.Job("test")
+				matrix := job.Strategy().Matrix()
+				if !matrix.Present() || !matrix.Exclude().Present() || !matrix.Exclude().Name().Present() || matrix.Exclude().Name().Value() != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude().Evaluated() {
 					t.Fatalf("matrix reserved key source lost: %#v", matrix)
 				}
 			}
@@ -165,7 +166,7 @@ jobs:
 	}
 }
 
-func schemaAuditExpressionRule(t *testing.T, source string) (*workflowlang.Workflow, visit.Rule) {
+func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.WorkflowView, visit.Rule) {
 	t.Helper()
 	content := []byte(source)
 	document := documentparse.Workflow("schema-audit.yml", content)
@@ -181,7 +182,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (*workflowlang.Workf
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, ok := snapshot.Workflow()
+	workflow, ok := snapshot.WorkflowView()
 	if !ok {
 		t.Fatal("source snapshot has no workflow")
 	}
@@ -191,5 +192,5 @@ func schemaAuditExpressionRule(t *testing.T, source string) (*workflowlang.Workf
 		}
 	}
 	t.Fatal("expression rule is not registered")
-	return nil, nil
+	return workflowdecl.WorkflowView{}, nil
 }

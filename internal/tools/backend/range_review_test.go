@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -37,10 +38,9 @@ func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stepView, err := snapshot.StepView(parsed.Jobs["test"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("test")
+	stepView := slices.Collect(job.Steps())[0]
 	ownedRun, _ := stepView.Run()
 	for _, end := range []analyzer.ScriptPosition{{Row: 2, Column: 3}, {Row: 1, Column: 7}} {
 		registration, err := Register(rule.Descriptor{Name: "range-check"}, []string{"bash"}, rangeReviewBackend{end})

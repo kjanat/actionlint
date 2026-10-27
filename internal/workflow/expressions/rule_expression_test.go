@@ -105,7 +105,7 @@ func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			rule := newTestChecker()
-			have := rule.checkRawYAMLString(&workflowlang.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &workflowlang.Pos{}})
+			have := rule.checkRawYAMLString(ownedRawStringFixture(&workflowlang.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &workflowlang.Pos{}}))
 			if diff := cmp.Diff(tc.want, have); diff != "" {
 				t.Fatalf(`wanted %s but got %s
 diff:

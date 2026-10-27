@@ -15,12 +15,13 @@ inputs and returned results, while the host must own completion even when traver
 ## Decision
 
 Keep one module and separate the public packages by responsibility. Root contains the convenience entry point and
-generation directives. `internal/engine` traverses workflow syntax with supplied passes. `internal/checks`
+generation directives. `internal/engine` traverses immutable workflow declarations with supplied passes. `internal/checks`
 selects concrete adapters from `internal/builtin`; `internal/workflow/composition`
 owns nested invocation analysis and its complete script lifecycle.
 `internal/application` owns an invocation; `internal/workspace` prepares its inputs;
 `internal/analyzerhost` schedules its execution and drains outstanding callbacks.
-`internal/workflow` owns workflow syntax, parsing and scalar source maps. `internal/expression` owns expression
+`internal/workflow` owns decoded workflow values. `internal/workflow/parser` owns YAML decoding and scalar source maps;
+`internal/workflow/declaration` publishes immutable views of those values. `internal/expression` owns expression
 parsing, types, constant evaluation and semantic checks. Both implementations can run without the analysis host.
 `internal/config` owns the configuration document, its validation and the built-in rule catalog;
 `internal/builtin` attaches execution behaviour to catalog entries by name. `internal/render` presents results as text, Go templates,
@@ -47,7 +48,10 @@ flowchart TD
     Composition --> Scripts[internal/tools/execution]
     Scripts --> Host
     Workspace --> Config[internal/config]
-    Engine --> Workflow[internal/workflow]
+    Engine --> Declaration[internal/workflow/declaration]
+    Declaration --> Workflow[internal/workflow]
+    Decode --> Parser[internal/workflow/parser]
+    Parser --> Workflow
     Composition --> Facts[internal/workflow/facts]
     Registry --> Builtin[internal/builtin]
     Builtin --> Checks[internal/workflow/checks]
@@ -60,7 +64,7 @@ flowchart TD
     Action --> Render
     Render --> Models
     Models --> Diagnostic[diagnostic]
-    Syntax[syntax] --> Workflow
+    Syntax[syntax] --> Parser
 ```
 
 New analyzers declare required facts and return diagnostics and errors. They have no AST-visit, configuration mutation
@@ -118,9 +122,9 @@ stay separate from `tools/backend`, which adapts the script-engine protocol.
 - Composite expansion and script completion belong to `internal/workflow/composition`;
   workflow traversal belongs to `internal/engine`. `internal/action/local` owns local action resolution.
   [Analysis ownership](analysis-ownership.md) records the execution and policy boundaries.
-- Existing built-in checks still use a shared AST traversal internally. This change removes that traversal from the public
-  extension contract and separates its resource/configuration/debug capabilities; it does not claim that every built-in
-  rule has been rewritten as a fact consumer.
+- Built-in checks receive immutable declaration views through synchronous traversal callbacks. Invocation participants
+  enter and leave explicit scopes; composition closes every successfully entered scope after errors and cancellation.
+  Built-ins still own checker-specific state and are not all standalone fact consumers.
 - Script facts describe declarations. They do not promise complete effective runtime environments or resolved default
   shells. Mapping completeness describes static knowledge.
 - Removed library symbols have explicit migration guidance;

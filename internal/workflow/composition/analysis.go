@@ -68,7 +68,7 @@ func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, erro
 		if snapshot == nil {
 			return errors.New("workflow source snapshot is unavailable")
 		}
-		w, available := snapshot.Workflow()
+		w, available := snapshot.WorkflowView()
 		if !available {
 			return errors.New("workflow source snapshot has no workflow declarations")
 		}
@@ -182,19 +182,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 	for _, r := range options.Rules {
 		findings = append(findings, r.Errs()...)
 	}
-	for _, composite := range c.rules {
-		for _, r := range composite.rules {
-			for _, finding := range r.Errs() {
-				if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
-					origin.Path = composite.meta.Path()
-				}
-				if finding.Path == "" {
-					finding.Path, finding.Source = composite.meta.Path(), composite.meta.Source
-				}
-				findings = append(findings, finding)
-			}
-		}
-	}
+	findings = append(findings, c.metadataFindings...)
 	return Result{Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, ResolveExecution: c.resolveScriptExecution, Sources: options.Actions.Sources(), SourceDocuments: options.Actions.SourceDocuments(), Configs: configs}, err
 }
 

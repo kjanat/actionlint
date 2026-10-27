@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
@@ -35,18 +37,18 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 		return nil, err
 	}
 	// The workflow parser owns permissions, cache modes and job-step interpretation.
-	if err := workflowlang.AdmitYAMLAliases(doc); err != nil {
+	if err := workflowparser.AdmitYAMLAliases(doc); err != nil {
 		return nil, err
 	}
-	parsed, _ := workflowlang.Parse(src)
+	parsed, _ := workflowparser.Parse(src)
 	metadata.recordWorkflowFacts(parsed)
 	return metadata, nil
 }
 
 func checkMetadataAliases(doc *syntax.Node) error {
 	var aliasErr error
-	workflowlang.ValidateYAMLAliases(doc, func(n *syntax.Node, kind workflowlang.YamlAliasDiagnostic, message string) {
-		if kind != workflowlang.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
+	workflowparser.ValidateYAMLAliases(doc, func(n *syntax.Node, kind workflowparser.YamlAliasDiagnostic, message string) {
+		if kind != workflowparser.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
 			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, message)
 		}
 	})
@@ -76,7 +78,7 @@ func (d metadataDecoder) workflow(cursor codec.Cursor) (*Metadata, error) {
 			return nil, err
 		}
 		n := entered.Node()
-		if n.Kind != syntax.ScalarNode || n.Value == "" || n.Value == "<<" || workflowlang.RawYAMLTagError(n) != "" || seen[n.Value] {
+		if n.Kind != syntax.ScalarNode || n.Value == "" || n.Value == "<<" || workflowparser.RawYAMLTagError(n) != "" || seen[n.Value] {
 			continue
 		}
 		seen[n.Value] = true
@@ -232,7 +234,7 @@ func (m *Metadata) recordWorkflowFacts(w *workflowlang.Workflow) {
 	if w == nil {
 		return
 	}
-	permissions := ResolvePermissionsAST(w.Permissions)
+	permissions := resolvePermissionsModel(w.Permissions)
 	for _, job := range w.Jobs {
 		uses := ""
 		if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
@@ -241,7 +243,7 @@ func (m *Metadata) recordWorkflowFacts(w *workflowlang.Workflow) {
 		m.recordJobCacheAccess(job.ID.Value, workflowlang.EffectiveCacheMode(w.CacheMode, job.CacheMode), uses, job.Steps)
 		resolved := permissions
 		if job.Permissions != nil {
-			resolved = ResolvePermissionsAST(job.Permissions)
+			resolved = resolvePermissionsModel(job.Permissions)
 		}
 		if resolved.Kind != PermissionsDeclared || len(resolved.Levels) == 0 {
 			continue

@@ -11,7 +11,7 @@ import (
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Keys returns the supported top-level configuration keys in declaration order.

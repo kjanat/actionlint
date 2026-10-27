@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 type shellcheckError struct {
@@ -118,7 +118,7 @@ func sanitizeExpressionsInScript(src string) string {
 	}
 }
 
-func (run *shellcheckRun) runShellcheck(src string, source documentparse.ScriptSourceView, shell shellcheckShell, directory runDirectory, pos, valuePos *workflowlang.Pos) error {
+func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSourceView, shell shellcheckShell, directory runDirectory, pos, valuePos *workflowlang.Pos) error {
 	dialect, setup := shell.analysis()
 	header, _, directiveShell := shellcheckHeader(src)
 	if dialect == "" && !directiveShell {

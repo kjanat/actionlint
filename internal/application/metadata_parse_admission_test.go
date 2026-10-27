@@ -123,7 +123,7 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	cancel()
 	session := analysisSession{ctx: ctx, captures: fixture.Store, workingDir: root}
 	path := filepath.Join("broken", "action.yml")
-	rejected, err := session.admitSourceDocuments(composition.Result{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]workflowfacts.References{})
+	rejected, err := session.admitSourceDocuments(composition.Result{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]workflowfacts.SourceIndex{})
 	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "no admitted parse provenance") {
 		t.Fatalf("canonical resolution failure was hidden: rejected=%v error=%v", rejected, err)
 	}
@@ -154,7 +154,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal("metadata parse record absent")
 			}
 			producer := builtin.NewRuleAction(cache)
-			if err := producer.VisitStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}); err != nil || len(producer.Errs()) != 1 {
+			if err := producer.VisitStep(ownedApplicationStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}
 			parse := producer.Errs()[0]
@@ -170,7 +170,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal(err)
 			}
 			session := analysisSession{ctx: t.Context(), captures: fixture.Store, snapshots: registry, workingDir: root}
-			references := map[string]workflowfacts.References{}
+			references := map[string]workflowfacts.SourceIndex{}
 			rejected, sourceErr := session.admitSourceDocuments(composed, references)
 			if sourceErr == nil || !rejected[displayPath] || !rejected[metadata.Revision().Document()] || len(references) != 0 {
 				t.Fatalf("bad source retained canonical admission: rejected=%v references=%v error=%v", rejected, references, sourceErr)

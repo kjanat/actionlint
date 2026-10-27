@@ -3,12 +3,41 @@ package documentparse
 import (
 	"errors"
 	"os"
+	"slices"
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	testutil "actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/source"
 )
+
+func snapshotWorkflow(t testing.TB, snapshot *SourceSnapshot) workflowdecl.WorkflowView {
+	t.Helper()
+	workflow, present := snapshot.WorkflowView()
+	if !present {
+		t.Fatal("workflow declarations unavailable")
+	}
+	return workflow
+}
+
+func snapshotJobSteps(t testing.TB, snapshot *SourceSnapshot, key string) []workflowdecl.StepView {
+	t.Helper()
+	job, present := snapshotWorkflow(t, snapshot).JobsAt(key)
+	if !present {
+		t.Fatalf("workflow job %q unavailable", key)
+	}
+	return slices.Collect(job.Steps())
+}
+
+func snapshotActionSteps(t testing.TB, snapshot *SourceSnapshot) []workflowdecl.StepView {
+	t.Helper()
+	action, present := snapshot.ActionView()
+	if !present {
+		t.Fatal("action declarations unavailable")
+	}
+	return slices.Collect(action.Steps())
+}
 
 // sourceFixtureBase explicitly retains the working directory used by these
 // legacy relative-path fixtures; production receives its session base instead.

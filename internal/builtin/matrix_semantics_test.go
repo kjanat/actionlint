@@ -38,7 +38,7 @@ func TestSuspiciousMatrixFilterSelection(t *testing.T) {
 	} {
 		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"} {
 			t.Run(tc.matrix+"/"+config, func(t *testing.T) {
-				workflow, snapshot := matrixTestWorkflow(t, `on: push
+				_, snapshot := matrixTestWorkflow(t, `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -47,7 +47,7 @@ jobs:
     steps:
       - run: echo ok
 `)
-				rule := builtin.NewRuleMatrix(snapshot)
+				rule := builtin.NewRuleMatrix()
 				if config != "" {
 					cfg, err := repoconfig.Parse([]byte(config))
 					if err != nil {
@@ -55,7 +55,7 @@ jobs:
 					}
 					rule.SetConfig(cfg)
 				}
-				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
+				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
 				count := 0

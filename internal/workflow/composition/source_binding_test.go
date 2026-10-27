@@ -3,6 +3,7 @@ package composition
 import (
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -201,11 +202,11 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
-	workflow, available := f.root.Workflow()
+	workflow, available := f.root.WorkflowView()
 	if !available {
 		t.Fatal("fixture workflow unavailable")
 	}
-	job := workflow.Jobs["build"]
+	job := workflowJob(t, workflow, "build")
 	analysis := &compositeAnalyzer{compositionSession: &compositionSession{
 		ctx: t.Context(), sourceSnapshots: f.snapshots.SourceSnapshots,
 		collectScripts: true,
@@ -220,16 +221,9 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	if err := analysis.beginJob(job); err != nil {
 		t.Fatal(err)
 	}
-	call := job.Steps[0]
-	reference, err := f.root.StepReference(call)
-	if err != nil {
-		t.Fatal(err)
-	}
-	view, err := f.root.StepView(call)
-	if err != nil {
-		t.Fatal(err)
-	}
-	facts, err := execution.CallFacts(view, analysis.actions.Platform())
+	call := slices.Collect(job.Steps())[0]
+	reference := stepReference(t, f.root, call)
+	facts, err := execution.CallFacts(call, analysis.actions.Platform())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +312,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, ok := snapshot.Workflow()
+	workflow, ok := snapshot.WorkflowView()
 	if !ok {
 		t.Fatal("workflow snapshot unavailable")
 	}
@@ -331,7 +325,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 		t.Fatal(err)
 	}
 	analysis.jobID = "corrupted collector value"
-	if err := analysis.collectScript(workflow.Jobs["build"].Steps[0], nil, nil, nil); err != nil {
+	if err := analysis.collectScript(workflowStepViews(t, workflow, "build")[0], nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	batch := prepareCollectedScripts(t, analysis)

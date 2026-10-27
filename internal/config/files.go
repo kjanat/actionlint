@@ -7,7 +7,7 @@ import (
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/filefilter"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // FilesConfig is the shared include/exclude scope for input files.

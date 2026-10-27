@@ -8,7 +8,6 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -36,13 +35,13 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 	if len(input.Scripts) != 2 {
 		t.Fatalf("script count = %d, want 2", len(input.Scripts))
 	}
-	steps := document.Workflow.Jobs["test"].Steps
+	steps := workflowStepViews(t, workflowView(t, snapshot), "test")
 	for i, step := range steps {
-		want, err := snapshot.StepReference(step)
-		if err != nil || input.Scripts[i].Reference != want {
-			t.Fatalf("script %d lost its declaration owner: got %+v, want %+v: %v", i, input.Scripts[i].Reference, want, err)
+		want := stepReference(t, snapshot, step)
+		if input.Scripts[i].Reference != want {
+			t.Fatalf("script %d lost its declaration owner: got %+v, want %+v", i, input.Scripts[i].Reference, want)
 		}
-		if indexed := references["ci.yml"].Steps[step]; indexed != want {
+		if indexed := references["ci.yml"].Steps[i]; indexed != want {
 			t.Fatalf("source index drifted from snapshot: got %+v, want %+v", indexed, want)
 		}
 	}
@@ -110,14 +109,15 @@ func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
 	indexed := documentparse.Workflow("ci.yml", content)
 	foreign := documentparse.Workflow("ci.yml", content)
 	analysis := compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, sourceSnapshot: workflowSnapshot(t, content, indexed)}
-	if err := analysis.collectScript(foreign.Workflow.Jobs["test"].Steps[0], nil, nil, nil); err == nil {
+	foreignStep := workflowStepViews(t, workflowView(t, workflowSnapshot(t, content, foreign)), "test")[0]
+	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
 		t.Fatal("accepted independently decoded declaration")
 	}
 	if len(analysis.scripts) != 0 {
 		t.Fatal("foreign declaration produced a script fact")
 	}
 	analysis.sourceSnapshot = nil
-	if err := analysis.collectScript(&workflowlang.Step{Exec: &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo missing"}}}, nil, nil, nil); err == nil {
+	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
 		t.Fatal("accepted a script without a source snapshot")
 	}
 }

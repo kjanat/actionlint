@@ -9,10 +9,10 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -85,7 +85,7 @@ type Script struct {
 	Input      *analyzer.ScriptInput
 	Fact       analyzer.Script
 	Text       string
-	Source     documentparse.ScriptSourceView
+	Source     workflowdecl.ScriptSourceView
 	Key, Value *workflow.Pos
 	Shell      *string
 	Config     *config.Config

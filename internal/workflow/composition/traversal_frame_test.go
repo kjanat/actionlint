@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -17,14 +17,15 @@ type frameObserver struct {
 	step  func() error
 }
 
-func (p *frameObserver) ForComposite(call builtin.Invocation) (workflowvisit.Rule, error) {
-	if err := p.enter(call); err != nil {
-		return nil, err
-	}
-	return &frameObserver{Base: workflowvisit.NewBase("observe-frame", ""), enter: p.enter, step: p.step}, nil
+func (p *frameObserver) EnterInvocation(call builtin.Invocation) error { return p.enter(call) }
+func (p *frameObserver) LeaveInvocation(invocation.Context) error      { return nil }
+func (p *frameObserver) VisitStep(workflowdecl.StepView) error         { return p.step() }
+func (p *frameObserver) VisitInvocationStep(step workflowdecl.StepView) error {
+	return p.VisitStep(step)
 }
-
-func (p *frameObserver) VisitStep(*workflowlang.Step) error { return p.step() }
+func (p *frameObserver) VisitOpaqueAction(step workflowdecl.StepView) error {
+	return p.VisitStep(step)
+}
 
 func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 	failure := errors.New("child traversal failed")
@@ -46,11 +47,11 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 				if err := parent.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 					return err
 				}
-				workflow, _ := f.root.Workflow()
+				workflow := workflowView(t, f.root)
 				if err := parent.beginWorkflow(workflow); err != nil {
 					return err
 				}
-				job := workflow.Jobs["test"]
+				job := workflowJob(t, workflow, "test")
 				if err := parent.beginJob(job); err != nil {
 					return err
 				}
@@ -63,7 +64,7 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 				}
 				probe := &frameObserver{Base: workflowvisit.NewBase("observe-frame", ""), enter: func(call builtin.Invocation) error {
 					assertCaller()
-					if call.Context == rootContext || call.Source == f.root || call.Actions == parent.actions {
+					if call.Context == rootContext || call.Source == f.root {
 						t.Fatal("child did not receive its own invocation, source and resolver")
 					}
 					entered++
@@ -73,7 +74,7 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 					visited++
 					return childError
 				}}
-				err := parent.visitActionScripts(job.Steps[0], []workflowvisit.Rule{probe}, nil)
+				err := parent.visitActionScripts(workflowStepViews(t, workflow, "test")[0], []builtin.InvocationParticipant{probe}, nil)
 				assertCaller()
 				return err
 			})

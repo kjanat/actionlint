@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Level controls one diagnostic, independently of its category or maturity.

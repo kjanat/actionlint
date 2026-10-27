@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/pluginref"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // PluginDeclarations lists the plugin dependencies requested by the project.

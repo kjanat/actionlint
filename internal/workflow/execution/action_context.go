@@ -3,7 +3,7 @@ package execution
 import (
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
@@ -12,7 +12,7 @@ import (
 var ErrInvalidActionCall = errors.New("execution: invalid action call")
 
 // CallFacts projects caller effects from the owned syntax view.
-func CallFacts(view documentparse.StepView, platform runnerlang.Platform) (invocation.Facts, error) {
+func CallFacts(view workflowdecl.StepView, platform runnerlang.Platform) (invocation.Facts, error) {
 	if !view.Present() {
 		return invocation.Facts{}, ErrInvalidActionCall
 	}

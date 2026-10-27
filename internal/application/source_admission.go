@@ -23,7 +23,7 @@ func (e *admissionRejectedError) Error() string {
 func (*admissionRejectedError) Code() string { return "admission-rejected" }
 func (e *admissionRejectedError) Count() int { return e.count }
 
-func (s *analysisSession) admitSourceDocuments(composed composition.Result, references map[string]workflowfacts.References) (map[string]bool, error) {
+func (s *analysisSession) admitSourceDocuments(composed composition.Result, references map[string]workflowfacts.SourceIndex) (map[string]bool, error) {
 	rejected := map[string]bool{}
 	var failure error
 	for path, content := range composed.Sources {

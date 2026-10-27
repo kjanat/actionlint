@@ -1,10 +1,5 @@
 package workflow
 
-import (
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
-)
-
 // CacheModeKind identifies the cache access granted to a workflow or job.
 type CacheModeKind uint8
 
@@ -44,19 +39,26 @@ type CacheMode struct {
 }
 
 func (m *CacheMode) Capabilities() (uint8, bool) {
-	if m != nil {
-		switch m.Kind {
-		case CacheModeNone:
-			return 0, true
-		case CacheModeRead:
-			return 1, true
-		case CacheModeWriteOnly:
-			return 2, true
-		case CacheModeWrite:
-			return 3, true
-		}
+	if m == nil {
+		return 0, false
 	}
-	return 0, false
+	return m.Kind.Capabilities()
+}
+
+// Capabilities returns the restore and save access granted by a declared mode.
+func (k CacheModeKind) Capabilities() (uint8, bool) {
+	switch k {
+	case CacheModeNone:
+		return 0, true
+	case CacheModeRead:
+		return 1, true
+	case CacheModeWriteOnly:
+		return 2, true
+	case CacheModeWrite:
+		return 3, true
+	default:
+		return 0, false
+	}
 }
 
 func EffectiveCacheMode(workflow, job *CacheMode) *CacheMode {
@@ -64,38 +66,4 @@ func EffectiveCacheMode(workflow, job *CacheMode) *CacheMode {
 		return job
 	}
 	return workflow
-}
-
-func CacheModeFromYAML(n *syntax.Node) *CacheMode {
-	if n == nil || n.Kind == 0 {
-		return nil
-	}
-	m := &CacheMode{Pos: PosAt(n)}
-	if n.Kind == syntax.ScalarNode && n.Tag == YamlTagStr {
-		value := n.Value
-		if literal := exprlang.LiteralExpressionValue(value); literal != nil {
-			value = *literal
-		}
-		switch value {
-		case "none":
-			m.Kind = CacheModeNone
-		case "read":
-			m.Kind = CacheModeRead
-		case "write":
-			m.Kind = CacheModeWrite
-		case "write-only":
-			m.Kind = CacheModeWriteOnly
-		}
-	}
-	return m
-}
-
-func (p *Parser) parseCacheMode(n *syntax.Node) *CacheMode {
-	m := CacheModeFromYAML(n)
-	if n.Kind != syntax.ScalarNode || n.Tag != YamlTagStr {
-		p.typeErrorf(n, "expected string for \"cache-mode\" but found %s node with %q tag", NodeKindName(n.Kind), n.Tag)
-	} else if m.Kind == CacheModeInvalid {
-		p.typeErrorf(n, "%q is invalid for \"cache-mode\". expected one of \"read\", \"write\", \"write-only\", \"none\"", n.Value)
-	}
-	return m
 }

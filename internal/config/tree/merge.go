@@ -4,7 +4,7 @@ package tree
 import (
 	"fmt"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Input tracks explicit overlays and null resets during merging.

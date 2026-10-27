@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
@@ -31,7 +33,7 @@ jobs:
     steps:
       - run: echo
 `)
-	w, errs := workflowlang.ParseDocument(b)
+	w, errs := workflowparser.ParseDocument(b)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -44,7 +46,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	run := func(t *testing.T, cache *calls.Cache) []string {
 		t.Helper()
 		r := builtin.NewRuleWorkflowCall(nil, cache)
-		if err := r.VisitWorkflowPre(&workflowlang.Workflow{}); err != nil {
+		if err := r.VisitWorkflowPre(ownedWorkflowFixture(&workflowlang.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
 		j := &workflowlang.Job{
@@ -56,7 +58,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 				Secrets: map[string]*workflowlang.WorkflowCallSecret{},
 			},
 		}
-		if err := r.VisitJobPre(j); err != nil {
+		if err := r.VisitJobPre(ownedJobFixture(j)); err != nil {
 			t.Fatal(err)
 		}
 		msgs := []string{}
@@ -72,7 +74,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowlang.ParseDocument(src)
+	w, errs := workflowparser.ParseDocument(src)
 	if w == nil {
 		t.Fatal("callee was not parsed:", errs)
 	}
@@ -313,7 +315,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			}
 
 			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			if err := r.VisitWorkflowPre(w); err != nil {
+			if err := r.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -329,7 +331,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			if tc.jobIf {
 				j.If = &workflowlang.String{Value: "${{ github.event_name == 'push' }}", Pos: &workflowlang.Pos{}}
 			}
-			if err := r.VisitJobPre(j); err != nil {
+			if err := r.VisitJobPre(ownedJobFixture(j)); err != nil {
 				t.Fatal(err)
 			}
 

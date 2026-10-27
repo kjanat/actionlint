@@ -4,7 +4,7 @@ import (
 	"errors"
 	"reflect"
 
-	upstream "go.yaml.in/yaml/v4"
+	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 // Selected marks a struct field for source projection. Its value carries no data.

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/kjanat/go-yaml/v4"
 	"github.com/pelletier/go-toml/v2/unstable"
-	"go.yaml.in/yaml/v4"
 )
 
 type tableOrigin uint8

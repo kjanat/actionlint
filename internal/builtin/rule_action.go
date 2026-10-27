@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -40,18 +40,18 @@ func NewRuleAction(cache actionlocal.MetadataDocumentLookup) *RuleAction {
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
-	e, ok := n.Exec.(*workflowlang.ExecAction)
-	if !ok || e.Uses == nil {
+func (rule *RuleAction) VisitStep(n workflowdecl.StepView) error {
+	e, ok := n.Action()
+	if !ok || !e.Uses().Present() {
 		return nil
 	}
 
-	if e.Uses.ContainsExpression() {
+	if e.Uses().ContainsExpression() {
 		// Cannot parse specification made with interpolation. Give up
 		return nil
 	}
 
-	spec := e.Uses.Value
+	spec := e.Uses().Value()
 
 	if strings.HasPrefix(spec, "./") {
 		// Relative to repository root
@@ -63,7 +63,7 @@ func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
 		// Normalize it to the existing local path form so metadata and output validation still work.
 		local, ok := references.SelfRepositoryLocal(spec)
 		if !ok {
-			rule.Findings = append(rule.Findings, actioncheck.InvalidReference(e.Uses.Pos, spec, "self-repository references do not support an '@ref' suffix"))
+			rule.Findings = append(rule.Findings, actioncheck.InvalidReference(declarationPosition(e.Uses()), spec, "self-repository references do not support an '@ref' suffix"))
 			return nil
 		}
 		return rule.checkLocalAction(local, spec, e)
@@ -80,7 +80,7 @@ func (rule *RuleAction) VisitStep(n *workflowlang.Step) error {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *workflowlang.ExecAction) error {
+func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action workflowdecl.ExecActionView) error {
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
@@ -90,9 +90,9 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 	}
 	if err != nil {
 		if _, unresolved := errors.AsType[actionlocal.UnresolvedError](err); unresolved {
-			rule.Findings = append(rule.Findings, findingmodel.At(action.Uses.Pos, "missing-local-action", err.Error()))
+			rule.Findings = append(rule.Findings, findingmodel.At(declarationPosition(action.Uses()), "missing-local-action", err.Error()))
 		} else {
-			finding := findingmodel.At(action.Uses.Pos, rule.Name(), err.Error())
+			finding := findingmodel.At(declarationPosition(action.Uses()), rule.Name(), err.Error())
 			if parseError, ok := errors.AsType[*actionlocal.ParseError](err); ok {
 				finding.MetadataParseSource = source.Capture().Revision()
 				if !finding.MetadataParseSource.Valid() {

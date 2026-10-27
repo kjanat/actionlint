@@ -3,7 +3,7 @@ package execution
 import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -27,7 +27,7 @@ func (batch Batch) Fact(index int, includeExecution bool) (analyzer.Script, bool
 func fact(unit Unit, graph invocation.Graph, includeExecution bool) analyzer.Script {
 	run := unit.Run
 	var script analyzer.Script
-	var source documentparse.ScriptSourceView
+	var source workflowdecl.ScriptSourceView
 	if input := unit.Input; input != nil {
 		script = analyzer.Script{Text: input.Value.Value().Value(), Start: workflowfacts.Position(positionPointer(input.Value.Value().Pos()))}
 		source = input.Value.Source()

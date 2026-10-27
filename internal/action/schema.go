@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/diagnostic"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/schemapath"
@@ -81,7 +83,7 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 		if n.Kind == syntax.AliasNode {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "YAML aliases are not supported in action metadata; replace alias %q", n.Value)
 		}
-		if message := workflowlang.RawYAMLTagError(n); message != "" {
+		if message := workflowparser.RawYAMLTagError(n); message != "" {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, "%s in action metadata", message)
 		}
 		for _, child := range n.Content {
@@ -89,7 +91,7 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 		}
 	}
 	checkSyntax(meta.Root)
-	if err := workflowlang.AdmitYAMLAliases(meta.Root); err != nil {
+	if err := workflowparser.AdmitYAMLAliases(meta.Root); err != nil {
 		return
 	}
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemapath.Path{}, 0, false)

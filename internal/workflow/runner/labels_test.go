@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
@@ -402,7 +402,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 }
 
 func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
-	if errs := Check(documentparse.JobView{}, nil); len(errs) != 0 {
+	if errs := Check(workflowdecl.JobView{}, nil); len(errs) != 0 {
 		t.Fatal(errs)
 	}
 }

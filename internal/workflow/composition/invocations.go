@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
@@ -83,7 +84,7 @@ func metadataOutcome(result actionlocal.MetadataResult) (invocation.Outcome, err
 	}
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action documentparse.ExecActionView) (*actionmeta.Metadata, actionlocal.SourceDocument, invocation.Outcome, error) {
+func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionView) (*actionmeta.Metadata, actionlocal.SourceDocument, invocation.Outcome, error) {
 	uses := action.Uses()
 	if !uses.Present() || uses.Value() == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")
