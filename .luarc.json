@@ -1,5 +1,5 @@
 {
-  "diagnostics.globals": [
-    "pandoc"
-  ]
+	"diagnostics.globals": [
+		"pandoc"
+	]
 }

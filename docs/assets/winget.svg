@@ -1,10 +1,10 @@
 <svg viewBox="0 12.5 180 150" xmlns="http://www.w3.org/2000/svg">
-  <title>
-    Windows Package Manager
-  </title>
-  <rect x="41.817" y="21.394" rx="8" width="96" height="96" fill="#9c640a" />
-  <rect x="33.817" y="37.5" rx="8" width="112" height="96" fill="#bc822a" />
-  <rect x="25.817" y="53.419" rx="8" width="128" height="96" fill="#dcb374" />
-  <path d="M90 77v48.5M70 105.5l20 20 20-20"
-        fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+	<title>
+		Windows Package Manager
+	</title>
+	<rect x="41.817" y="21.394" rx="8" width="96" height="96" fill="#9c640a" />
+	<rect x="33.817" y="37.5" rx="8" width="112" height="96" fill="#bc822a" />
+	<rect x="25.817" y="53.419" rx="8" width="128" height="96" fill="#dcb374" />
+	<path d="M90 77v48.5M70 105.5l20 20 20-20"
+	      fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

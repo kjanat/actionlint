@@ -1,3 +1,0 @@
-[tasks.test]
-description = "Test the expression probe"
-run         = "node --test probe.test.ts"

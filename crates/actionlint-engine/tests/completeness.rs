@@ -6,6 +6,21 @@ use actionlint_model::{
 
 struct EmptyAnalyzer;
 
+#[test]
+fn source_only_analysis_does_not_require_yaml_or_workflow_facts() {
+    let source = Snapshot::new("notes.txt".into(), "not yaml: [".into());
+    let run = analyze_workflow(
+        source,
+        &[actionlint_engine::Analyzer {
+            name: "source-only",
+            implementation: &EmptyAnalyzer,
+        }],
+    );
+    assert!(run.failures.is_empty());
+    assert!(run.analysis.diagnostics.is_empty());
+    assert_eq!(run.analysis.completion, Completion::Complete);
+}
+
 impl WorkflowAnalyzer for EmptyAnalyzer {
     fn analyze(&self, _: &Input<'_>) -> Result<Analysis, String> {
         Ok(Analysis {

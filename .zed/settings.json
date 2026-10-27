@@ -3,150 +3,150 @@
 // mkdir -p .zed; curl -fsSLo .zed/settings.json https://github.com/kjanat/kjanat/raw/HEAD/.zed/settings.json
 // assumes mise is on PATH
 {
-  "formatter": [
-    { "language_server": { "name": "dprint" } },
-  ],
-  "prettier": {
-    "allowed": false
-  },
-  "languages": {
-    "JavaScript": {
-      "language_servers": [
-        "typescript", // https://github.com/kjanat/zed-typescript
-        "biome",
-        "dprint"
-      ],
-      "code_actions_on_format": {
-        "source.fixAll.biome": true,
-        "source.organizeImports.biome": true
-      }
-    },
-    "TypeScript": {
-      "language_servers": [
-        "typescript", // https://github.com/kjanat/zed-typescript
-        "biome",
-        "dprint"
-      ],
-      "code_actions_on_format": {
-        "source.fixAll.biome": true,
-        "source.organizeImports.biome": true
-      }
-    },
-    "TOML": {
-      "formatter": { "language_server": { "name": "tombi" } },
-      "language_servers": ["tombi", "..."]
-    },
-    "Markdown": {}
-  },
-  "markdown_preview": { // available in per-project config since https://github.com/kjanat/zed-editor v1.4.10
-    "limit_content_width": false,
-    "open_markdown_files_in_preview": false
-  },
-  "lsp": {
-    "actup-lsp": {
-      "binary": { // currently private project.
-        "path": "mise",
-        "arguments": ["exec", "--silent", "actup-lsp", "--", "actup-lsp"],
-        "env": {},
-      },
-    },
-    "golangci-lint": {
-      "binary": {
-        "env": {}
-      },
-      "initialization_options": {
-        "command": [
-          "mise",
-          "exec",
-          "--silent",
-          "golangci-lint@latest",
-          "--",
-          "golangci-lint",
-          "run",
-          "--allow-parallel-runners",
-          "--output.json.path",
-          "stdout",
-          "--show-stats=false",
-          "--output.text.path=",
-          "--issues-exit-code=1"
-        ]
-      }
-    },
-    "biome": {
-      "binary": {
-        "path": "mise",
-        "arguments": ["exec", "--silent", "biome@latest", "--", "biome", "lsp-proxy"],
-        "env": {
-          "BIOME_WATCHER_KIND": "none" // https://github.com/biomejs/biome/pull/12459
-        },
-      },
-      "settings": {
-        "config_path": "./biome.jsonc",
-        "require_config_file": true
-      }
-    },
-    "gopls": {
-      "initialization_options": {
-        "buildFlags": ["-buildvcs=true", "-tags=actionlint_external_catalog"],
-        // "local": "actionlint.kjanat.dev",
-        "gofumpt": true,
-        "staticcheck": true,
-        "usePlaceholders": true,
-        "vulncheck": "Imports",
-        "hints": {
-          "ignoredError": true,
-          "parameterNames": true,
-          "constantValues": true,
-          "functionTypeParameters": true,
-        },
-        "hoverKind": "SynopsisDocumentation"
-      }
-    },
-    "tombi": {
-      "binary": {
-        "path": "mise",
-        "arguments": ["exec", "--silent", "github:tombi-toml/tombi@latest", "--", "tombi", "lsp", "-vv"],
-        "env": { "NO_COLOR": "true" },
-      }
-    },
-    "json-language-server": {
-      "settings": {
-        "json": {
-          "schemas": [
-            {
-              "fileMatch": ["internal/actioncatalog/popular_actions.json"],
-              "url": "internal/actioncatalog/popular_actions.schema.json"
-            },
-          ]
-        }
-      }
-    },
-    "yaml-language-server": {
-      "binary": {
-        "path": "npx",
-        "arguments": ["yaml-language-server@latest", "--stdio"],
-        "env": {},
-      },
-      "settings": {
-        "yaml": {
-          "schemas": {
-            "https://raw.githubusercontent.com/github/codeql-action/HEAD/src/db-config-schema.json": [
-              ".github/codeql/codeql-config.yaml"
-            ],
-            "https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json": [
-              "actionlint.yaml",
-              "actionlint.yml"
-            ]
-          }
-        }
-      }
-    },
-    "dprint": {
-      "binary": {
-        "path": "mise",
-        "arguments": ["exec", "--silent", "github:kjanat/dprint@latest", "--", "dprint", "lsp"],
-        "env": {},
-      }
-    }
-  }
+	"formatter": [
+		{ "language_server": { "name": "dprint" } },
+	],
+	"prettier": {
+		"allowed": false
+	},
+	"languages": {
+		"JavaScript": {
+			"language_servers": [
+				"typescript", // https://github.com/kjanat/zed-typescript
+				"biome",
+				"dprint"
+			],
+			"code_actions_on_format": {
+				"source.fixAll.biome": true,
+				"source.organizeImports.biome": true
+			}
+		},
+		"TypeScript": {
+			"language_servers": [
+				"typescript", // https://github.com/kjanat/zed-typescript
+				"biome",
+				"dprint"
+			],
+			"code_actions_on_format": {
+				"source.fixAll.biome": true,
+				"source.organizeImports.biome": true
+			}
+		},
+		"TOML": {
+			"formatter": { "language_server": { "name": "tombi" } },
+			"language_servers": ["tombi", "..."]
+		},
+		"Markdown": {}
+	},
+	"markdown_preview": { // available in per-project config since https://github.com/kjanat/zed-editor v1.4.10
+		"limit_content_width": false,
+		"open_markdown_files_in_preview": false
+	},
+	"lsp": {
+		"actup-lsp": {
+			"binary": { // currently private project.
+				"path": "mise",
+				"arguments": ["exec", "--silent", "actup-lsp", "--", "actup-lsp"],
+				"env": {},
+			},
+		},
+		"golangci-lint": {
+			"binary": {
+				"env": {}
+			},
+			"initialization_options": {
+				"command": [
+					"mise",
+					"exec",
+					"--silent",
+					"golangci-lint@latest",
+					"--",
+					"golangci-lint",
+					"run",
+					"--allow-parallel-runners",
+					"--output.json.path",
+					"stdout",
+					"--show-stats=false",
+					"--output.text.path=",
+					"--issues-exit-code=1"
+				]
+			}
+		},
+		"biome": {
+			"binary": {
+				"path": "mise",
+				"arguments": ["exec", "--silent", "biome@latest", "--", "biome", "lsp-proxy"],
+				"env": {
+					"BIOME_WATCHER_KIND": "none" // https://github.com/biomejs/biome/pull/12459
+				},
+			},
+			"settings": {
+				"config_path": "./biome.jsonc",
+				"require_config_file": true
+			}
+		},
+		"gopls": {
+			"initialization_options": {
+				"buildFlags": ["-buildvcs=true", "-tags=actionlint_external_catalog"],
+				// "local": "actionlint.kjanat.dev",
+				"gofumpt": true,
+				"staticcheck": true,
+				"usePlaceholders": true,
+				"vulncheck": "Imports",
+				"hints": {
+					"ignoredError": true,
+					"parameterNames": true,
+					"constantValues": true,
+					"functionTypeParameters": true,
+				},
+				"hoverKind": "SynopsisDocumentation"
+			}
+		},
+		"tombi": {
+			"binary": {
+				"path": "mise",
+				"arguments": ["exec", "--silent", "github:tombi-toml/tombi@latest", "--", "tombi", "lsp", "-vv"],
+				"env": { "NO_COLOR": "true" },
+			}
+		},
+		"json-language-server": {
+			"settings": {
+				"json": {
+					"schemas": [
+						{
+							"fileMatch": ["internal/actioncatalog/popular_actions.json"],
+							"url": "internal/actioncatalog/popular_actions.schema.json"
+						},
+					]
+				}
+			}
+		},
+		"yaml-language-server": {
+			"binary": {
+				"path": "npx",
+				"arguments": ["yaml-language-server@latest", "--stdio"],
+				"env": {},
+			},
+			"settings": {
+				"yaml": {
+					"schemas": {
+						"https://raw.githubusercontent.com/github/codeql-action/HEAD/src/db-config-schema.json": [
+							".github/codeql/codeql-config.yaml"
+						],
+						"https://cdn.jsdelivr.net/npm/@kjanat/actionlint/actionlint.schema.json": [
+							"actionlint.yaml",
+							"actionlint.yml"
+						]
+					}
+				}
+			}
+		},
+		"dprint": {
+			"binary": {
+				"path": "mise",
+				"arguments": ["exec", "--silent", "github:kjanat/dprint@latest", "--", "dprint", "lsp"],
+				"env": {},
+			}
+		}
+	}
 }

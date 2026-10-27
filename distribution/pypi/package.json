@@ -1,21 +1,21 @@
 {
-  "name": "@kjanat/actionlint-pypi",
-  "version": "0.0.0",
-  "private": true,
-  "description": "PyPI wheel builder for the actionlint-kjanat package",
-  "type": "module",
-  "imports": {
-    "#*": "./src/*.ts"
-  },
-  "scripts": {
-    "build": "node src/cli.ts build",
-    "test": "node --test test/*.test.ts",
-    "typecheck": "tsc"
-  },
-  "dependencies": {
-    "@kjanat/dreamcli": "4.1.0"
-  },
-  "devDependencies": {
-    "typescript": ">=7"
-  }
+	"name": "@kjanat/actionlint-pypi",
+	"version": "0.0.0",
+	"private": true,
+	"description": "PyPI wheel builder for the actionlint-kjanat package",
+	"type": "module",
+	"imports": {
+		"#*": "./src/*.ts"
+	},
+	"scripts": {
+		"build": "node src/cli.ts build",
+		"test": "node --test test/*.test.ts",
+		"typecheck": "tsc"
+	},
+	"dependencies": {
+		"@kjanat/dreamcli": "4.1.0"
+	},
+	"devDependencies": {
+		"typescript": ">=7"
+	}
 }

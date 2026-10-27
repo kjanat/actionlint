@@ -169,11 +169,7 @@ would require a separate contract.
 ## TypeScript and compatibility
 
 ```typescript
-import type {
-  CheckResult,
-  CheckResultV1,
-  DiagnosticRecord,
-} from '@kjanat/actionlint/result';
+import type { CheckResult, CheckResultV1, DiagnosticRecord } from '@kjanat/actionlint/result';
 
 function describe(result: CheckResult): string {
   if (!result.completed) return result.error ?? result.status;
