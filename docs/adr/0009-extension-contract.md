@@ -50,9 +50,10 @@ world extension {
   resolution. This is a consequence of ADR-0004 memoisation, not of the
   WIT.
 - Runtime: `wasmtime` with `default-features = false`, features
-  `["runtime", "cranelift", "component-model"]` (+`std`, UNVERIFIED whether
-  cranelift requires it). `component-model-async` not enabled (docs: "very
-  incomplete"). [docs.rs/wasmtime crate features]
+  `["runtime", "cranelift", "component-model"]`. `cranelift` is defined as
+  `["dep:wasmtime-cranelift", "std", …]`, so `std` comes in with it and is
+  not listed separately. `component-model-async` not enabled (docs: "very
+  incomplete"). [wasmtime `crates/wasmtime/Cargo.toml` `[features]`]
 - Limits, all exist in 50.0.0:
   - CPU: `Config::consume_fuel(true)` + `Store::set_fuel(u64)` per call,
     or `Config::epoch_interruption(true)` + `Store::set_epoch_deadline`
@@ -62,11 +63,18 @@ world extension {
     .memory_size(n).instances(1).tables(k).build()`.
     [docs.rs/wasmtime `StoreLimitsBuilder`]
   - Stack: `Config::max_wasm_stack` (default 512 KiB).
-- WASI: `wasmtime_wasi::WasiCtxBuilder::new()` — no preopens by default,
-  network denied by default (`allow_tcp`/`allow_udp`/`allow_ip_name_lookup`
-  off. Nothing reachable unless `inherit_network` or `socket_addr_check`
-  is called). Host grants read-only preopens only when an extension's
-  manifest asks and config allows. [docs.rs/wasmtime-wasi `WasiCtxBuilder`]
+- WASI: `wasmtime_wasi::WasiCtxBuilder::new()` — no preopens by default.
+  Network is closed by construction: `WasiSocketsCtx` and
+  `AllowedNetworkUses` derive `Default` (tcp/udp/ip_name_lookup all
+  `false`) and `SocketAddrCheck::default()` is a closure that returns
+  `false` for every address. The `new()` doc sentence "TCP/UDP are allowed
+  but all addresses are denied" and the setter docs "by default this is
+  disabled" describe the same end state. Nothing reachable unless
+  `inherit_network` or `socket_addr_check` is called. Host grants
+  `preopened_dir(host, guest, FsPerms::ReadOnly)` only when an extension's
+  manifest asks and config allows. `FsPerms` is `ReadOnly | ReadWrite`.
+  [wasmtime `crates/wasi/src/sockets/mod.rs`; docs.rs/wasmtime-wasi
+  `WasiCtxBuilder`, `filesystem::FsPerms`]
 - Host bindings: `wasmtime::component::bindgen!` at compile time. Guest
   (Rust): `wit_bindgen::generate!`. Nothing committed (ADR-0012).
 - Built-in rules use the identical provider trait natively. There is no
@@ -112,8 +120,6 @@ Therefore:
 
 ## Open
 
-- `std` feature requirement for the cranelift path: check when the
-  workspace is created.
 - Formatter/completion/code-action exports: same pattern, later minor
   versions.
 - Extension distribution/registry: out of scope for this ADR.

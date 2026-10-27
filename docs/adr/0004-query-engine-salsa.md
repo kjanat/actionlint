@@ -109,7 +109,15 @@ Limits`), so changing them invalidates exactly the queries that read them.
 
 ## Open
 
-- Whether the `rayon` feature compiles on wasm32 is unverified. It is off,
-  so moot unless parallel queries are wanted later.
-- Exact `Send + Sync` bound site on tracked-fn outputs unverified. Model
-  types are `Send + Sync` anyway (`Arc`, no `Rc`/`RefCell`).
+- None. Two earlier open items, resolved:
+  - `rayon` on WebAssembly compiles and "will fall back to sequential
+    iteration" with no code changes (multithreading needs
+    `wasm-bindgen-rayon`). So the feature is safe either way. It stays off
+    because we have no in-query parallelism. [rayon README, "WebAssembly"]
+  - Tracked-fn outputs have **no** `Send`/`Sync` bound in the macro. The
+    only generated assertion is `SalsaValue`-or-`'static`
+    (`assert_salsa_value_or_static`). Equality is a plain `==`, so
+    `PartialEq` is required unless `no_eq`. Non-salsa-struct arguments get
+    the same `SalsaValue` field assertion. Model types are `Send + Sync`
+    regardless, for the LSP thread pool. [salsa
+    `components/salsa-macros/src/{tracked_fn,salsa_value}.rs`]
