@@ -17,7 +17,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/report"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
-	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -33,7 +32,7 @@ func capturedEditorSource(t testing.TB, path string, content []byte, model sourc
 type editorPathAnalyzer struct{}
 
 func (editorPathAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Descriptor: rule.Descriptor{Name: "editor-paths"}, Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "editor-paths", Requires: []analyzer.Fact{analyzer.Source}}
 }
 
 func (editorPathAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {

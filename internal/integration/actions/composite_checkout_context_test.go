@@ -69,9 +69,9 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, checkout := range []string{"", "source"} {
-		paths := execution.Paths{Workspace: root, Analysis: root, Reader: fsread.New(t.Context(), nil, nil), Placements: &execution.CheckoutPlacement{
+		paths := execution.Paths{Workspace: root, Analysis: root, Reader: fsread.New(t.Context(), nil, nil), Placements: execution.NewCheckoutPlacement(execution.Checkout{
 			Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: checkout}, CaseInsensitive: true,
-		}}
+		}, execution.CheckoutPlacement{})}
 		mapped, known := paths.AnalysisPath(execution.JoinPath(checkout, "SCRIPTS/nested"))
 		if !known || mapped != filepath.Join(root, "scripts", "Nested") {
 			t.Fatalf("checkout %q: mapped=%q, known=%v", checkout, mapped, known)

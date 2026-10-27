@@ -24,38 +24,43 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// compositeAnalyzer owns script-analyzer policy and invocation-specific state,
-// leaving Visitor responsible for the workflow's ordinary pass lifecycle.
+// compositionSession owns the graph and accumulated results shared by invocations.
+type compositionSession struct {
+	scriptInputs           []analyzer.ScriptInput
+	scriptInputsForConfig  func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
+	scriptCatalogues       map[*repoconfig.Config][]analyzer.ScriptInput
+	runners                *runnerlang.Knowledge
+	resolveScriptExecution bool
+	scripts                []scriptexecution.ScriptRequest
+	scriptScopes           []*scriptexecution.Scope
+	scriptPaths            execution.Paths
+	collectScripts         bool
+	ctx                    context.Context
+	passes                 []workflowvisit.Pass
+	rules                  []compositeScriptRules
+	configForFile          func(string) (*repoconfig.Config, error)
+	sourceSnapshots        *documentparse.SourceSnapshots
+	invocations            *invocation.Builder
+	budget                 invocation.Budget
+	interrupted            bool
+}
+
+// compositeAnalyzer is one traversal frame. Child calls share session results,
+// but cannot replace their caller's source, configuration or invocation context.
 type compositeAnalyzer struct {
-	scriptInputs                      []analyzer.ScriptInput
-	scriptInputsForConfig             func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
-	scriptCatalogues                  map[*repoconfig.Config][]analyzer.ScriptInput
-	runners                           *runnerlang.Knowledge
-	resolveScriptExecution            bool
-	scripts                           []scriptexecution.ScriptRequest
-	scriptScopes                      []*scriptexecution.Scope
+	*compositionSession
+	actions                           *actionlocal.Resolver
+	sourceSnapshot                    *documentparse.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope
-	scriptPaths                       execution.Paths
+	scriptConfig                      *repoconfig.Config
+	context                           invocation.Context
 	scriptJobShell, scriptRunnerShell value.Value
 	scriptWorkflowDir, scriptJobDir   execution.Directory
-	scriptConfig                      *repoconfig.Config
-	collectScripts                    bool
 	workflowScriptShell               *string
 	jobScriptShell                    *string
-	ctx                               context.Context
-	actions                           *actionlocal.Resolver
-	passes                            []workflowvisit.Pass
-	rules                             []compositeScriptRules
 	workflowEnv                       mapping.Mapping
 	workflowShell                     value.Value
-	configForFile                     func(string) (*repoconfig.Config, error)
 	jobID                             string
-	sourceSnapshots                   *documentparse.SourceSnapshots
-	sourceSnapshot                    *documentparse.SourceSnapshot
-	invocations                       *invocation.Builder
-	context                           invocation.Context
-	budget                            invocation.Budget
-	interrupted                       bool
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {

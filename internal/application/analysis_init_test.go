@@ -123,12 +123,12 @@ func TestAnalysisBlockedCaptureConstructorCancelsJoinsAndReturnsNoResult(t *test
 			signalJoin := sync.OnceFunc(func() { close(joinStarted) })
 			failure := &blockedAnalysisInitError{cause: context.Canceled}
 			constructorErr := fmt.Errorf("capture constructor: %w", failure)
-			lifetime := parent
+			lifetimeError := parent.Err
 			var joinBudget time.Duration
 			var lifetimeCancelled, cleanupUncancelled, valuesPreserved bool
 			joinFailure := errors.New("metadata join timed out")
 			failure.join = func(cleanup context.Context) error {
-				lifetimeCancelled = errors.Is(lifetime.Err(), context.Canceled)
+				lifetimeCancelled = errors.Is(lifetimeError(), context.Canceled)
 				cleanupUncancelled = cleanup.Err() == nil
 				valuesPreserved = cleanup.Value(contextKey{}) == "caller value"
 				deadline, ok := cleanup.Deadline()
@@ -177,7 +177,7 @@ func TestAnalysisBlockedCaptureConstructorCancelsJoinsAndReturnsNoResult(t *test
 				defer close(finished)
 				result, err := runWithSourceCaptureConstructor(parent, request, io.Discard, LogLevelNone,
 					func(ctx context.Context, _ []capture.Overlay, _ capture.Reader) (*capture.Store, error) {
-						lifetime = ctx
+						lifetimeError = ctx.Err
 						close(started)
 						<-ctx.Done()
 						return nil, constructorErr

@@ -67,7 +67,7 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 		t.Fatal(err)
 	}
 	declaration := &findingmodel.Finding{Path: first, Rule: "syntax-check", Message: "invalid manifest"}
-	caller := &findingmodel.Finding{Rule: "action", Message: "cannot parse manifest", MetadataParsePath: alias, MetadataParseSource: captured.Revision()}
+	caller := &findingmodel.Finding{Rule: "action", Message: "cannot parse manifest", MetadataParseSource: captured.Revision()}
 	files := []File{
 		{InputPath: first, Source: captured.Revision(), Action: true, Content: content, Findings: []*findingmodel.Finding{declaration}},
 		{InputPath: "ci.yml", Content: []byte("workflow"), Findings: []*findingmodel.Finding{caller}},

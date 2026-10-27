@@ -72,6 +72,24 @@ resources before reading rule collectors, including after traversal failure.
 Adapter-construction failures are joined by the application before returning.
 Cleanup failures accompany partial findings and are reported once.
 
+Each composite invocation has its own traversal frame: source snapshot,
+configuration, invocation context, script scope and local-action resolver.
+The session owns graph construction and accumulated results. Resolver forks
+share consulted-source storage; joining a child transfers checkout and persistent
+environment effects according to its condition, background and failure policy.
+Nested traversal does not replace the caller's frame while callbacks run.
+Checkout chains use value handles over private storage; returned details are
+copies. Prepared batches share these immutable handles without cloning the chain.
+
+Declaration lookup returns immutable views. Workflow and action traversal still
+expose AST cursors to rule callbacks; migrating those callbacks and removing
+`Workflow()`/`ActionSteps()` is separate unfinished work.
+
+Configuration report values live in `config/report`. Result storage and rendering
+depend on that leaf contract, independently of configuration loading and resolution.
+Metadata parse findings carry their captured source revision when created; source
+admission never reconstructs that provenance from a display path.
+
 Script producers snapshot ownership before execution, independently of suppression
 selectors. Reference inference consumes explicit owners and source indexes; it does
 not reconstruct owners from ignore state.

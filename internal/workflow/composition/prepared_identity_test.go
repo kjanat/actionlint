@@ -38,11 +38,11 @@ func TestPreparedScopeRetainsEarlierCheckoutPlacement(t *testing.T) {
 		t.Fatalf("expected entry and child, got %d scopes", len(scopes))
 	}
 	paths := scopes[1].Paths
-	if paths.ActionPath != directory || paths.ActionRunnerPath != "repo/child" || paths.Placements == nil || !paths.Placements.CaseInsensitive || paths.Placements.Directory.Kind != execution.DirectoryKnown || paths.Placements.Directory.Path != "repo" {
+	if paths.ActionPath != directory || paths.ActionRunnerPath != "repo/child" || !paths.Placements.Present() || !paths.Placements.Details().CaseInsensitive || paths.Placements.Details().Directory.Kind != execution.DirectoryKnown || paths.Placements.Details().Directory.Path != "repo" {
 		t.Fatalf("earlier checkout origin changed: %+v", paths)
 	}
 	current := f.service.options.Actions.CheckoutState()
-	if current == nil || current.Directory.Path != "Repo" {
+	if !current.Present() || current.Details().Directory.Path != "Repo" {
 		t.Fatal("fixture did not advance checkout after the child")
 	}
 }
@@ -74,7 +74,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}]}}\n", nil, nil)
 	paths := &f.service.options.Paths
 	paths.ActionPath, paths.ActionRunnerPath, paths.ActionIndependent = "stale source", "stale runner", true
-	paths.Placements = &execution.CheckoutPlacement{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "checkout"}}
+	paths.Placements = execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "checkout"}}, execution.CheckoutPlacement{})
 	result, err := f.service.Workflow(f.root)
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +84,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 		t.Fatal("fixture must have only an entry scope")
 	}
 	got := scopes[0].Paths
-	if got.ActionPath != "" || got.ActionRunnerPath != "" || got.ActionIndependent || got.Workspace != paths.Workspace || got.Analysis != paths.Analysis || got.Placements == nil || got.Placements.Directory.Path != "checkout" {
+	if got.ActionPath != "" || got.ActionRunnerPath != "" || got.ActionIndependent || got.Workspace != paths.Workspace || got.Analysis != paths.Analysis || !got.Placements.Present() || got.Placements.Details().Directory.Path != "checkout" {
 		t.Fatalf("entry origin or shared paths incorrect: %+v", got)
 	}
 	if fact, exists := result.Batch.Fact(0, false); !exists || invocation.ID(fact.Occurrence.Owner) != result.Batch.Invocations().RootID() || fact.Occurrence.Depth != 0 {

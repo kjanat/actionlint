@@ -24,7 +24,7 @@ func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 
 func TestOwnedDeclarationSurvivesEveryLegacyMutationPath(t *testing.T) {
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: original\n        name: Original\n        run: echo original\n")
-	for _, access := range []string{"before binding", "workflow accessor", "step accessor"} {
+	for _, access := range []string{"before binding", "workflow accessor", "original cursor after binding"} {
 		t.Run(access, func(t *testing.T) {
 			document := Workflow("ci.yml", content)
 			cursor := document.Workflow.Jobs["build"].Steps[0]
@@ -56,9 +56,8 @@ func TestOwnedDeclarationSurvivesEveryLegacyMutationPath(t *testing.T) {
 			case "workflow accessor":
 				tree, _ := snapshot.Workflow()
 				mutate(tree.Jobs["build"].Steps[0])
-			case "step accessor":
-				legacy, _ := snapshots.Step(reference)
-				mutate(legacy.Step)
+			case "original cursor after binding":
+				mutate(cursor)
 			}
 			declaration, ok := snapshots.Declaration(reference)
 			if !ok || declaration != view || !snapshots.Owns(view) {

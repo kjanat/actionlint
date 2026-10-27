@@ -529,8 +529,8 @@ func executionSnapshot(result Result) executionFactSnapshot {
 func checkoutSnapshot(result Result) []string {
 	var paths []string
 	for _, scope := range result.Batch.Scopes() {
-		if placement := scope.Paths.Placements; placement != nil {
-			paths = append(paths, placement.Directory.Path)
+		if placement := scope.Paths.Placements; placement.Present() {
+			paths = append(paths, placement.Details().Directory.Path)
 		}
 	}
 	return paths

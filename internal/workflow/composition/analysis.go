@@ -125,15 +125,19 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 	}
 	configs := map[string]*repoconfig.Config{}
 	c := &compositeAnalyzer{
-		ctx: options.Context, actions: options.Actions, passes: passes,
-		runners:      options.Runners,
-		scriptConfig: options.Config, scriptPaths: options.Paths,
-		collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
-		budget:                invocation.DefaultBudget(),
-		scriptInputs:          scriptInputs,
-		scriptInputsForConfig: options.ScriptInputsForConfig,
-		scriptCatalogues:      map[*repoconfig.Config][]analyzer.ScriptInput{},
-		sourceSnapshots:       options.SourceSnapshots,
+		scriptConfig: options.Config,
+		actions:      options.Actions,
+		compositionSession: &compositionSession{
+			ctx: options.Context, passes: passes,
+			runners:        options.Runners,
+			scriptPaths:    options.Paths,
+			collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
+			budget:                invocation.DefaultBudget(),
+			scriptInputs:          scriptInputs,
+			scriptInputsForConfig: options.ScriptInputsForConfig,
+			scriptCatalogues:      map[*repoconfig.Config][]analyzer.ScriptInput{},
+			sourceSnapshots:       options.SourceSnapshots,
+		},
 	}
 	if options.Budget != nil {
 		c.budget = *options.Budget

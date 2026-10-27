@@ -436,19 +436,26 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 
 func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection) (*workflowlang.ExecRun, *workflowlang.Input) {
 	t.Helper()
-	first, found := collection.Declarations.Step(graph.Scripts()[0].Declaration)
+	snapshot, found := collection.Declarations.Lookup(graph.Entry().Reference)
 	if !found {
-		t.Fatal("fixture run declaration absent")
+		t.Fatal("fixture entry snapshot absent")
 	}
-	second, found := collection.Declarations.Step(graph.Scripts()[1].Declaration)
-	if !found {
-		t.Fatal("fixture input declaration absent")
+	workflow, available := snapshot.Workflow()
+	if !available || len(workflow.Jobs["test"].Steps) != 2 {
+		t.Fatal("fixture mutable traversal absent")
 	}
-	run, ok := first.Step.Exec.(*workflowlang.ExecRun)
+	steps := workflow.Jobs["test"].Steps
+	for index, step := range steps {
+		reference, err := snapshot.StepReference(step)
+		if err != nil || reference != graph.Scripts()[index].Declaration {
+			t.Fatalf("fixture cursor does not match script %d: %v", index, err)
+		}
+	}
+	run, ok := steps[0].Exec.(*workflowlang.ExecRun)
 	if !ok {
 		t.Fatal("fixture run has wrong kind")
 	}
-	action, ok := second.Step.Exec.(*workflowlang.ExecAction)
+	action, ok := steps[1].Exec.(*workflowlang.ExecAction)
 	if !ok {
 		t.Fatal("fixture input has wrong kind")
 	}
@@ -459,7 +466,8 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	graph, collection := batchFixture(t, true)
 	scopes := collection.Scopes
 	run, argument := fixtureBodies(t, graph, collection)
-	scopes[0].Paths.Placements = &workflowexecution.CheckoutPlacement{Directory: workflowexecution.Directory{Kind: workflowexecution.DirectoryKnown, Path: "original"}}
+	placement := workflowexecution.Checkout{Directory: workflowexecution.Directory{Kind: workflowexecution.DirectoryKnown, Path: "original"}}
+	scopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
 	batch, err := NewBatch(graph, collection)
 	if err != nil {
 		t.Fatal(err)
@@ -476,16 +484,26 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	run.Run.Value = "corrupt original"
 	run.Source.Spans[0].YamlLine = 999
 	argument.Value.Value = "corrupt input"
-	declaration, _ := collection.Declarations.Step(graph.Scripts()[0].Declaration)
-	declaration.Step.Pos.Line = 999
+	snapshot, exists := collection.Declarations.Lookup(graph.Entry().Reference)
+	if !exists {
+		t.Fatal("fixture entry snapshot absent")
+	}
+	workflow, available := snapshot.Workflow()
+	if !available {
+		t.Fatal("fixture mutable traversal absent")
+	}
+	workflow.Jobs["test"].Steps[0].Pos.Line = 999
 	scopes[0].Context = invocation.Context{}
-	scopes[0].Paths.Placements.Directory.Path = "corrupt placement"
+	placement.Directory.Path = "corrupt placement"
+	scopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
 	clonedScopes, clonedUnits := batch.Snapshot()
 	if clonedUnits[0].Scope != clonedScopes[0] || clonedUnits[1].Scope != clonedScopes[0] || clonedUnits[0].Content != nil || clonedUnits[1].Content != nil {
 		t.Fatal("snapshot lost scope ownership or workflow source fallback")
 	}
 	clonedScopes[0].Context = invocation.Context{}
-	clonedScopes[0].Paths.Placements.Directory.Path = "corrupt returned placement"
+	placement = clonedScopes[0].Paths.Placements.Details()
+	placement.Directory.Path = "corrupt returned placement"
+	clonedScopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
 	clonedUnits[0].Owner.Step.Line = 888
 	clonedUnits[0].Origin.StepPosition.Line = 777
 	after, _ := batch.Fact(0, false)
@@ -494,7 +512,7 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 		t.Fatal("caller mutation changed a prepared fact")
 	}
 	_, fresh := batch.Snapshot()
-	if fresh[0].Scope.Paths.Placements.Directory.Path != "original" {
+	if fresh[0].Scope.Paths.Placements.Details().Directory.Path != "original" {
 		t.Fatal("snapshot mutation changed checkout placement")
 	}
 	if fresh[0].Content != nil || fresh[0].Owner.Step.Line != 6 || fresh[0].Origin.StepPosition.Line != 6 || fresh[0].Scope.Context.ID() != graph.RootID() {

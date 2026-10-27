@@ -3,8 +3,6 @@ package execution
 import (
 	"bytes"
 	"slices"
-
-	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
 
 func copyValue[T any](value *T) *T {
@@ -18,17 +16,9 @@ func copyValue[T any](value *T) *T {
 func cloneInputs(scopes []*Scope, units []Unit) ([]*Scope, []Unit) {
 	clonedScopes := make([]*Scope, len(scopes))
 	byScope := make(map[*Scope]*Scope, len(scopes))
-	placements := map[*workflowexecution.CheckoutPlacement]*workflowexecution.CheckoutPlacement{}
 	for i, scope := range scopes {
 		clonedScopes[i] = copyValue(scope)
-		for placement := scope.Paths.Placements; placement != nil && placements[placement] == nil; placement = placement.Previous {
-			placements[placement] = copyValue(placement)
-		}
-		clonedScopes[i].Paths.Placements = placements[scope.Paths.Placements]
 		byScope[scope] = clonedScopes[i]
-	}
-	for original, cloned := range placements {
-		cloned.Previous = placements[original.Previous]
 	}
 	clonedUnits := slices.Clone(units)
 	// Repeated invocations share one copy of each supplied document buffer.

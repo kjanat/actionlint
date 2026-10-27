@@ -153,7 +153,7 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 			continue
 		}
 		evidence := result.Sources[i]
-		if evidence.RawScript && (!utf8.Valid(evidence.Content) || bytes.HasPrefix(evidence.Content, []byte("\ufeff")) || bytes.IndexAny(evidence.Content, "\r\u0085\u2028\u2029") >= 0) {
+		if evidence.RawScript && (!utf8.Valid(evidence.Content) || bytes.HasPrefix(evidence.Content, []byte("\ufeff")) || bytes.ContainsAny(evidence.Content, "\r\u0085\u2028\u2029")) {
 			missing[originalPath] = struct{}{}
 			continue
 		}

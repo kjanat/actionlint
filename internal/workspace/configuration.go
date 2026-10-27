@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
@@ -11,9 +12,9 @@ type configState struct {
 	sync.Mutex
 	source   *repoconfig.Loaded
 	overlays []repoconfig.Overlay
-	onLoaded func(repoconfig.Report)
+	onLoaded func(configreport.Report)
 	loaded   map[*Project]*repoconfig.Config
-	reports  map[*Project]repoconfig.Report
+	reports  map[*Project]configreport.Report
 }
 
 func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error) {
@@ -32,7 +33,7 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 		return cfg, nil
 	}
 	s.Lock()
-	var notification *repoconfig.Report
+	var notification *configreport.Report
 	defer func() {
 		s.Unlock()
 		if notification != nil && s.onLoaded != nil {
@@ -42,7 +43,7 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 	if loaded, ok := s.loaded[project]; ok {
 		return loaded, nil
 	}
-	report := repoconfig.Report{Explicit: a.DefaultConfig != nil}
+	report := configreport.Report{Explicit: a.DefaultConfig != nil}
 	if project != nil {
 		report.Project = project.RootDir()
 	}
@@ -56,7 +57,7 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 	if err != nil {
 		return nil, err
 	}
-	report.Inspection = repoconfig.Inspection{Path: report.File, Config: resolved.Values, Origins: resolved.Origins, Warnings: resolved.Warnings}
+	report.Inspection = configreport.Inspection{Path: report.File, Config: resolved.Values, Origins: resolved.Origins, Warnings: resolved.Warnings}
 	if s.onLoaded == nil {
 		for _, warning := range resolved.Warnings {
 			file := warning.File
@@ -67,7 +68,10 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 		}
 	}
 	s.loaded[project] = cfg
-	s.reports[project] = report
-	notification = &report
+	s.reports[project] = configurationSnapshot(report)
+	if s.onLoaded != nil {
+		notify := configurationSnapshot(report)
+		notification = &notify
+	}
 	return cfg, nil
 }

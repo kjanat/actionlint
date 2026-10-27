@@ -35,7 +35,7 @@ jobs:
 	}
 	workflow := document.Workflow
 	snapshot := workflowSnapshot(t, content, document)
-	collector := &compositeAnalyzer{collectScripts: true, actions: actionlocal.NewResolver(nil, nil)}
+	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, actions: actionlocal.NewResolver(nil, nil)}
 	startWorkflowEntry(t, collector, snapshot)
 	if err := collector.beginWorkflow(workflow); err != nil {
 		t.Fatal(err)
@@ -81,7 +81,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	actionCollector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: snapshots.SourceSnapshots, sourceSnapshot: actionSnapshot, invocations: workflowGraph, context: workflowGraph.RootContext()}
+	actionCollector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: snapshots.SourceSnapshots, invocations: workflowGraph}, sourceSnapshot: actionSnapshot, context: workflowGraph.RootContext()}
 	paths := execution.Paths{}
 	execution.ActionOrigin(&paths, workflowGraph.RootContext(), deployment.ActionPath())
 	actionCollector.scriptScope = &scriptexecution.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}

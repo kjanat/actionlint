@@ -24,12 +24,12 @@ type RuleAction struct {
 	workflowvisit.Base
 	ruleLogger
 	Configuration
-	cache      actionlocal.MetadataLookup
+	cache      actionlocal.MetadataDocumentLookup
 	validation *actionMetadataValidation
 }
 
 // NewRuleAction creates new RuleAction instance.
-func NewRuleAction(cache actionlocal.MetadataLookup) *RuleAction {
+func NewRuleAction(cache actionlocal.MetadataDocumentLookup) *RuleAction {
 	validation := newActionMetadataValidation()
 
 	return &RuleAction{
@@ -84,7 +84,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
-	meta, source, err := rule.findMetadataDocument(localSpec)
+	meta, _, source, err := rule.cache.FindMetadataDocument(localSpec)
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
@@ -94,7 +94,6 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		} else {
 			finding := findingmodel.At(action.Uses.Pos, rule.Name(), err.Error())
 			if parseError, ok := errors.AsType[*actionlocal.ParseError](err); ok {
-				finding.MetadataParsePath = parseError.Path
 				finding.MetadataParseSource = source.Capture().Revision()
 				if !finding.MetadataParseSource.Valid() {
 					return fmt.Errorf("metadata parse source %q has no captured revision: %w", parseError.Path, err)
@@ -138,17 +137,4 @@ func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, admitted.Reference().Document, finding), Declaration: true}
 	}
 	return nil
-}
-
-func (rule *RuleAction) findMetadataDocument(spec string) (*actionmeta.Metadata, actionlocal.SourceDocument, error) {
-	switch cache := rule.cache.(type) {
-	case interface {
-		FindMetadataDocument(string) (*actionmeta.Metadata, bool, actionlocal.SourceDocument, error)
-	}:
-		metadata, _, document, err := cache.FindMetadataDocument(spec)
-		return metadata, document, err
-	default:
-		metadata, _, err := rule.cache.FindMetadata(spec)
-		return metadata, actionlocal.SourceDocument{}, err
-	}
 }

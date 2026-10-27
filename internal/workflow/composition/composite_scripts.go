@@ -70,8 +70,8 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 	if !admitted {
 		return invocation.ErrForeignContext
 	}
-	parent := analysis.context
-	analysis.context = callContext
+	callFrame := *analysis
+	callFrame.context = callContext
 	opened := false
 	defer func() {
 		err = analysis.interrupt(err)
@@ -80,7 +80,6 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 				err = errors.Join(err, closeErr)
 			}
 		}
-		analysis.context = parent
 	}()
 	if validate != nil {
 		if err := validate(); err != nil {
@@ -96,7 +95,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		return err
 	}
 	if outcome.Kind() != invocation.OutcomeExpanded {
-		return analysis.visitOpaqueAction(call, declaration, actionView, parents)
+		return callFrame.visitOpaqueAction(call, declaration, actionView, parents)
 	}
 	opened = true
 	target, ok := outcome.Target()
@@ -107,7 +106,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 	if !ok {
 		return errors.New("expanded action source snapshot is unavailable")
 	}
-	return analysis.visitMetadataScripts(meta, snapshot, sourceDocument.Address(), callContext, parents)
+	return callFrame.visitMetadataScripts(meta, snapshot, sourceDocument.Address(), callContext, parents)
 }
 
 func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, declaration documentparse.StepView, actionView documentparse.ExecActionView, parents []workflowvisit.Rule) error {
@@ -121,7 +120,7 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, de
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted *documentparse.SourceSnapshot, address string, callContext invocation.Context, parents []workflowvisit.Rule) error {
+func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted *documentparse.SourceSnapshot, address string, callContext invocation.Context, parents []workflowvisit.Rule) (err error) {
 	if !analysis.invocations.Owns(callContext) {
 		return invocation.ErrForeignContext
 	}
@@ -139,10 +138,11 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	if !available {
 		return fmt.Errorf("action %q has no indexed declarations", meta.Path())
 	}
-	parentSnapshot := analysis.sourceSnapshot
-	analysis.sourceSnapshot = snapshot
-	defer func() { analysis.sourceSnapshot = parentSnapshot }()
-	defer analysis.actions.EnterComposite(callContext)()
+	actions, err := analysis.actions.ForkComposite(callContext)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, analysis.actions.JoinComposite(actions)) }()
 
 	scriptConfig := analysis.scriptConfig
 	if analysis.configForFile != nil {
@@ -152,9 +152,6 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 			return err
 		}
 	}
-	parentConfig := analysis.scriptConfig
-	analysis.scriptConfig = scriptConfig
-	defer func() { analysis.scriptConfig = parentConfig }()
 	deployment, err := scriptexecution.NewDeployment(snapshot, address, meta.Path(), meta.SourceMapped)
 	if err != nil {
 		return err
@@ -164,15 +161,19 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	if parentScope != nil {
 		scope.Paths = parentScope.Paths
 	}
-	scope.Paths.Placements = analysis.actions.CheckoutState()
+	scope.Paths.Placements = actions.CheckoutState()
 	execution.ActionOrigin(&scope.Paths, callContext, deployment.ActionPath())
-	analysis.scriptScope = scope
 	if callContext.IsEntry() && len(analysis.scriptScopes) != 0 {
 		analysis.scriptScopes[len(analysis.scriptScopes)-1] = scope
 	} else {
 		analysis.scriptScopes = append(analysis.scriptScopes, scope)
 	}
-	defer func() { analysis.scriptScope = parentScope }()
+	child := *analysis
+	child.actions = actions
+	child.sourceSnapshot = snapshot
+	child.scriptConfig = scriptConfig
+	child.scriptScope = scope
+	child.context = callContext
 	children := make([]workflowvisit.Rule, 0, len(parents))
 	var participants []workflowvisit.Rule
 	for _, parent := range parents {
@@ -180,7 +181,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		if !ok {
 			continue
 		}
-		child, err := participant.ForComposite(builtin.Invocation{Context: callContext, ActionPath: deployment.ActionPath(), Actions: analysis.actions, Source: snapshot})
+		child, err := participant.ForComposite(builtin.Invocation{Context: callContext, ActionPath: deployment.ActionPath(), Actions: actions, Source: snapshot})
 		if err != nil {
 			return err
 		}
@@ -196,19 +197,19 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 		if err != nil {
 			return err
 		}
-		analysis.actions.ObserveExecution(declaration)
-		analysis.actions.ObserveCheckout(declaration)
-		if err := analysis.collectScript(step, scriptConfig, nil, nil); err != nil {
+		actions.ObserveExecution(declaration)
+		actions.ObserveCheckout(declaration)
+		if err := child.collectScript(step, scriptConfig, nil, nil); err != nil {
 			return err
 		}
 		if _, action := declaration.Action(); action {
-			if err := analysis.visitActionScripts(step, children, func() error { return analysis.validateMetadataStep(meta, step, scriptConfig) }); err != nil {
+			if err := child.visitActionScripts(step, children, func() error { return child.validateMetadataStep(meta, step, scriptConfig) }); err != nil {
 				return err
 			}
 			continue
 		}
 		for _, rule := range children {
-			compositeCheckoutPaths(rule, analysis.actions)
+			compositeCheckoutPaths(rule, actions)
 			if err := checks.VisitWithOrigin(rule, canonicalStepOrigin(declaration, analysis.jobID), checks.HasConfiguredIgnores(scriptConfig), func() error { return rule.VisitStep(step) }); err != nil {
 				return err
 			}

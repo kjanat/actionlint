@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
@@ -28,7 +29,7 @@ type Source struct {
 type Selection struct {
 	Sources        []Source
 	Inputs         []string
-	Configurations []repoconfig.Report
+	Configurations []configreport.Report
 }
 
 // Options controls only input preparation, not analysis or rendering.
@@ -36,7 +37,7 @@ type Options struct {
 	Context                               context.Context
 	WorkingDir, StdinFileName, ConfigFile string
 	ConfigOverlays                        []repoconfig.Overlay
-	OnConfigLoaded                        func(repoconfig.Report)
+	OnConfigLoaded                        func(configreport.Report)
 	SkipProjectConfig                     bool
 	OnFilesSelected                       func([]string)
 	ReadFile                              func(string) ([]byte, error)
@@ -78,7 +79,7 @@ func New(opts Options) (*Session, error) {
 	a.projects.readFile = a.readFile
 	a.projects.ruleNames = a.ruleNames
 	a.projects.skipConfig = opts.SkipProjectConfig
-	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*repoconfig.Config), reports: make(map[*Project]repoconfig.Report)}
+	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*repoconfig.Config), reports: make(map[*Project]configreport.Report)}
 	if opts.ConfigFile != "" {
 		source, err := repoconfig.Read(opts.ConfigFile, a.readFile, a.ruleNames...)
 		if err != nil {
@@ -221,7 +222,7 @@ func (a *Session) Empty() (*Selection, error) {
 		}
 		a.configState.Lock()
 		inputs.AddConfig(a.configState.loaded[project], project, a.cwd)
-		result.Configurations = append(result.Configurations, a.configState.reports[project])
+		result.Configurations = append(result.Configurations, configurationSnapshot(a.configState.reports[project]))
 		a.configState.Unlock()
 	}
 	result.Inputs = inputs.List()
@@ -348,7 +349,7 @@ func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Select
 		if !seen[project] {
 			seen[project] = true
 			inputs.AddConfig(a.configState.loaded[project], project, a.cwd)
-			result.Configurations = append(result.Configurations, a.configState.reports[project])
+			result.Configurations = append(result.Configurations, configurationSnapshot(a.configState.reports[project]))
 		}
 	}
 	a.configState.Unlock()

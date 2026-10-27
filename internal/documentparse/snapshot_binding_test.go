@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func TestSourceSnapshotsLookupAndStepRequireExactReference(t *testing.T) {
+func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) {
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n")
 	document := Workflow("ci.yml", content)
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -42,13 +42,13 @@ func TestSourceSnapshotsLookupAndStepRequireExactReference(t *testing.T) {
 	if _, ok := snapshots.Lookup(source.Reference{Document: ref.Document}); ok {
 		t.Fatal("lookup accepted a missing reference")
 	}
-	if declaration, ok := snapshots.Step(source.Reference{}); ok || declaration.Source != nil || declaration.Step != nil {
+	if declaration, ok := snapshots.Declaration(source.Reference{}); ok || declaration != (StepView{}) {
 		t.Fatal("step lookup accepted a zero reference")
 	}
-	if declaration, ok := nilSnapshots.Step(ref); ok || declaration.Source != nil || declaration.Step != nil {
+	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (StepView{}) {
 		t.Fatal("step lookup accepted a nil snapshot set")
 	}
-	if _, ok := snapshots.Step(source.Reference{Document: ref.Document}); ok {
+	if _, ok := snapshots.Declaration(source.Reference{Document: ref.Document}); ok {
 		t.Fatal("step lookup accepted a missing reference")
 	}
 
@@ -67,7 +67,7 @@ func TestSourceSnapshotsLookupAndStepRequireExactReference(t *testing.T) {
 			if got, ok := snapshots.Lookup(documentRef); ok || got != nil {
 				t.Fatalf("lookup accepted modified document reference: %+v", documentRef)
 			}
-			if declaration, ok := snapshots.Step(modified); ok || declaration.Source != nil || declaration.Step != nil {
+			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (StepView{}) {
 				t.Fatalf("step lookup accepted modified reference: %+v", modified)
 			}
 		})
@@ -111,9 +111,10 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 		if err != nil {
 			t.Fatalf("step %d reference: %v", i, err)
 		}
-		declaration, ok := workflowSnapshots.Step(refs[i])
-		if !ok || declaration.Source != workflowSnapshot || declaration.Step != step {
-			t.Fatalf("step %d declaration does not match indexed AST", i)
+		declaration, ok := workflowSnapshots.Declaration(refs[i])
+		view, err := workflowSnapshot.StepView(step)
+		if err != nil || !ok || declaration != view || declaration.SourceReference() != workflowSnapshot.Reference() || declaration.Reference() != refs[i] {
+			t.Fatalf("step %d declaration does not match its canonical cursor view: %v", i, err)
 		}
 	}
 	for i, ref := range refs {
@@ -124,9 +125,9 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 		}
 	}
 	for i, want := range []string{"Build", "Build", "Build", "Build", "Build", "Deploy"} {
-		declaration, ok := workflowSnapshots.Step(refs[i])
-		if !ok || declaration.Job != want {
-			t.Fatalf("step %d declaring job: got %q, want %q", i, declaration.Job, want)
+		declaration, ok := workflowSnapshots.Declaration(refs[i])
+		if !ok || declaration.DeclaringJob() != want {
+			t.Fatalf("step %d declaring job: got %q, want %q", i, declaration.DeclaringJob(), want)
 		}
 	}
 
@@ -144,8 +145,9 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	actionDeclaration, ok := actionSnapshots.Step(actionRef)
-	if !ok || actionDeclaration.Source != actionSnapshot || actionDeclaration.Step != actionSteps[0] || actionDeclaration.Job != "" {
-		t.Fatalf("action declaration has unexpected source, AST, or job: %+v", actionDeclaration)
+	actionDeclaration, ok := actionSnapshots.Declaration(actionRef)
+	actionView, err := actionSnapshot.StepView(actionSteps[0])
+	if err != nil || !ok || actionDeclaration != actionView || actionDeclaration.SourceReference() != actionSnapshot.Reference() || actionDeclaration.Reference() != actionRef || actionDeclaration.DeclaringJob() != "" {
+		t.Fatalf("action declaration has unexpected source, cursor view, or job: %+v error=%v", actionDeclaration, err)
 	}
 }

@@ -142,27 +142,8 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		all = append(all, composed.Findings...)
 	}
 	references := map[string]workflowfacts.References{sourcePath: snapshot.CanonicalReferences()}
-	rejected := map[string]bool{}
-	for path, source := range composed.Sources {
-		sourceDocument, exists := composed.SourceDocuments[path]
-		if !exists {
-			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q has no admitted parse provenance", path))
-			sourceRejected(rejected, path, capture.Snapshot{})
-			continue
-		}
-		if err := s.captures.Verify(sourceDocument.Capture(), source); err != nil {
-			analysisErr = errors.Join(analysisErr, err)
-			sourceRejected(rejected, path, sourceDocument.Capture())
-			continue
-		}
-		nested, err := s.snapshots.Document(sourceDocument.Capture(), sourceDocument.Document())
-		if err != nil {
-			analysisErr = errors.Join(analysisErr, fmt.Errorf("admit source %q parse provenance: %w", path, err))
-			sourceRejected(rejected, path, sourceDocument.Capture())
-			continue
-		}
-		references[path] = nested.CanonicalReferences()
-	}
+	rejected, sourceErr := s.admitSourceDocuments(composed, references)
+	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {
 		input, inputErr := composed.AnalyzerInput(path, sourcePath, content, document, references)
 		input.Revision, input.Coordinates = captured.Revision(), captured.Coordinates()

@@ -21,9 +21,10 @@ func (e *RejectedError) Error() string {
 	}
 	return message
 }
-func (e *RejectedError) Unwrap() error { return e.cause }
-func (*RejectedError) Code() string    { return "admission-rejected" }
-func (e *RejectedError) Count() int    { return e.Withheld }
+func (e *RejectedError) Unwrap() error     { return e.cause }
+func (*RejectedError) Code() string        { return "admission-rejected" }
+func (e *RejectedError) Count() int        { return e.Withheld }
+func (e *RejectedError) relatedCount() int { return e.Withheld }
 
 // Consolidate exposes the complete count across request bridges and sealed
 // admission while retaining every original operational cause for errors.Is/As.
@@ -33,8 +34,9 @@ func Consolidate(prior error, withheld int) error {
 		if err == nil {
 			return 0
 		}
-		if rejected, ok := err.(*RejectedError); ok {
-			return rejected.Count()
+		// Aggregate counts already include their causes; do not descend twice.
+		if aggregate, ok := err.(interface{ relatedCount() int }); ok {
+			return aggregate.relatedCount()
 		}
 		if group, ok := err.(interface{ Unwrap() []error }); ok {
 			n := 0

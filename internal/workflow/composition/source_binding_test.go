@@ -30,8 +30,9 @@ func TestWorkflowUsesSnapshotRegistryWhenOptionIsNil(t *testing.T) {
 	if len(result.Batch.Scripts()) != 1 {
 		t.Fatalf("prepared scripts = %d, want 1", len(result.Batch.Scripts()))
 	}
-	declaration, exists := registry.Step(result.Batch.Scripts()[0].Reference)
-	if !exists || declaration.Source == nil || declaration.Step == nil {
+	reference := result.Batch.Scripts()[0].Reference
+	declaration, exists := registry.Declaration(reference)
+	if !exists || !declaration.Present() || declaration.Reference() != reference || !registry.Owns(declaration) {
 		t.Fatal("nested action declaration was not added to the workflow snapshot registry")
 	}
 }
@@ -205,10 +206,10 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 		t.Fatal("fixture workflow unavailable")
 	}
 	job := workflow.Jobs["build"]
-	analysis := &compositeAnalyzer{
-		ctx: t.Context(), actions: f.service.options.Actions, sourceSnapshots: f.snapshots.SourceSnapshots,
+	analysis := &compositeAnalyzer{compositionSession: &compositionSession{
+		ctx: t.Context(), sourceSnapshots: f.snapshots.SourceSnapshots,
 		collectScripts: true,
-	}
+	}, actions: f.service.options.Actions}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 		t.Fatal(err)
@@ -283,7 +284,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	analysis := &compositeAnalyzer{sourceSnapshots: registry.SourceSnapshots}
+	analysis := &compositeAnalyzer{compositionSession: &compositionSession{sourceSnapshots: registry.SourceSnapshots}}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryAction, snapshot); err != nil {
 		t.Fatal(err)
@@ -321,7 +322,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	if !ok {
 		t.Fatal("workflow snapshot unavailable")
 	}
-	analysis := &compositeAnalyzer{collectScripts: true, sourceSnapshot: snapshot, sourceSnapshots: registry.SourceSnapshots}
+	analysis := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, sourceSnapshots: registry.SourceSnapshots}, sourceSnapshot: snapshot}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 		t.Fatal(err)

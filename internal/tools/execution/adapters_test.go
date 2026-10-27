@@ -236,12 +236,13 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declaration, exists := collection.Declarations.Step(graph.Scripts()[0].Declaration)
-	if !exists {
+	declaration, exists := collection.Declarations.Declaration(graph.Scripts()[0].Declaration)
+	position, hasPosition := declaration.Pos()
+	if !exists || !hasPosition {
 		t.Fatal("fixture source absent")
 	}
-	owner := &findingmodel.Owner{Job: "test", Step: declaration.Step.Pos}
-	origin := findingmodel.StepOrigin("test", declaration.Step)
+	owner := &findingmodel.Owner{Job: "test", Step: &position}
+	origin := &findingmodel.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
 	for name, adapter := range map[string]Analyzer{
 		"fact": FactAnalyzer{Analyzer: partialFactAnalyzer{t: t, failure: failure}},

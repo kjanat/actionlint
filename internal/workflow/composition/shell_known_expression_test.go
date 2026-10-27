@@ -27,7 +27,7 @@ jobs:
 		t.Fatal(document.Findings)
 	}
 	workflow := document.Workflow
-	collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
+	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: actionlocal.NewResolver(nil, nil)}
 	startWorkflowEntry(t, collector, workflowSnapshot(t, content, document))
 	if err := collector.beginWorkflow(workflow); err != nil {
 		t.Fatal(err)

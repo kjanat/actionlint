@@ -25,21 +25,38 @@ type MetadataLookup interface {
 	FindMetadata(string) (*actionmeta.Metadata, bool, error)
 }
 
+// MetadataDocumentLookup supplies metadata and its captured parse provenance
+// together, including the source of a failed parse.
+type MetadataDocumentLookup interface {
+	FindMetadataDocument(string) (*actionmeta.Metadata, bool, SourceDocument, error)
+}
+
 // Resolver interprets local action references in one workflow's execution scope.
-// Metadata is shared through base; checkout, mappings and environment state stay local.
+// Metadata and consulted sources are shared with composite children. Checkout
+// and environment traversal state belongs to each resolver frame.
 type Resolver struct {
 	Runners              *runnerlang.Knowledge
 	base                 *Cache
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string
-	usedDocuments        map[string]SourceDocument
-	checkout             *execution.CheckoutPlacement
+	documents            *resolverDocuments
+	activeChild          *Resolver
+	branch               *compositeBranch
+	retired              bool
+	checkout             execution.CheckoutPlacement
 	platform             runnerlang.Platform
 	caseInsensitive      bool
 	checkoutEnvUnknown   bool
 	persistentEnvUnknown bool
 	shellEnvUnknown      bool
 	checkoutShell        execution.Shell
+}
+
+// resolverDocuments owns the consulted-source map and its synchronization.
+// Forks share this pointer, never a copied mutex protecting the same map.
+type resolverDocuments struct {
+	mu   sync.RWMutex
+	used map[string]SourceDocument
 }
 
 // SourceDocument carries immutable source bytes and the parse record that owns
@@ -63,9 +80,19 @@ func (d SourceDocument) Capture() capture.Snapshot { return d.captured }
 
 func (d SourceDocument) Document() documentparse.Document { return d.document }
 
-// NewResolver starts a document scope over shared repository metadata.
+// NewResolver starts a document scope over shared repository metadata and takes
+// its own immutable copy of the source mappings.
 func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
-	return &Resolver{base: cache, sourceMappings: mappings, usedDocuments: make(map[string]SourceDocument)}
+	return &Resolver{base: cache, sourceMappings: maps.Clone(mappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
+}
+
+func (c *Resolver) documentOwner() *resolverDocuments {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.documents == nil {
+		c.documents = &resolverDocuments{used: make(map[string]SourceDocument)}
+	}
+	return c.documents
 }
 
 // FindMetadata translates a reference using this invocation's checkout and source mappings.
@@ -102,22 +129,23 @@ func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 		return MetadataResult{status: status}, false
 	}
 	certain := true
-	if state := c.CheckoutState(); state != nil {
+	if state := c.CheckoutState(); state.Present() {
 		placement := state.Matching(spec)
-		if placement == nil {
+		if !placement.Present() {
 			placement = state
 		}
-		certain = placement.Directory.Kind != execution.DirectoryUnknown
+		certain = placement.Details().Directory.Kind != execution.DirectoryUnknown
 	}
 	return c.findRepositoryMetadata(local, certain)
 }
 
 // Sources returns raw metadata consulted by this document, including parse failures.
 func (c *Resolver) Sources() map[string][]byte {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	cloned := make(map[string][]byte, len(c.usedDocuments))
-	for path, document := range c.usedDocuments {
+	owner := c.documentOwner()
+	owner.mu.RLock()
+	defer owner.mu.RUnlock()
+	cloned := make(map[string][]byte, len(owner.used))
+	for path, document := range owner.used {
 		cloned[path] = document.Content()
 	}
 	return cloned
@@ -126,9 +154,10 @@ func (c *Resolver) Sources() map[string][]byte {
 // SourceDocuments returns provenance for every consulted local metadata file,
 // including manifests whose semantic metadata lookup failed.
 func (c *Resolver) SourceDocuments() map[string]SourceDocument {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return maps.Clone(c.usedDocuments)
+	owner := c.documentOwner()
+	owner.mu.RLock()
+	defer owner.mu.RUnlock()
+	return maps.Clone(owner.used)
 }
 
 // SourceDocument returns the cached parse record associated with a lookup.
@@ -239,12 +268,10 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 	source, exists := c.base.sources[spec]
 	c.base.mu.RUnlock()
 	if exists {
-		c.mu.Lock()
-		if c.usedDocuments == nil {
-			c.usedDocuments = make(map[string]SourceDocument)
-		}
-		c.usedDocuments[source.path] = SourceDocument(source)
-		c.mu.Unlock()
+		owner := c.documentOwner()
+		owner.mu.Lock()
+		owner.used[source.path] = SourceDocument(source)
+		owner.mu.Unlock()
 	}
 	return result, cached
 }
@@ -256,28 +283,25 @@ func missingMappedLocalAction(alias, source string) error {
 // The workflow-scoped view translates runner workspace paths before consulting
 // the shared repository cache. Its placement never leaks between jobs or files.
 func (c *Resolver) currentCheckout() execution.Directory {
-	if placement := c.CheckoutState(); placement != nil {
-		return placement.Directory
-	}
-	return execution.Directory{}
+	return c.CheckoutState().Details().Directory
 }
 
-// CheckoutState returns the immutable placement chain for this invocation.
-func (c *Resolver) CheckoutState() *execution.CheckoutPlacement {
+// CheckoutState returns an immutable placement value for this invocation.
+func (c *Resolver) CheckoutState() execution.CheckoutPlacement {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.checkout
 }
 
 func (c *Resolver) setCheckout(checkout execution.Directory) {
-	var placement *execution.CheckoutPlacement
+	var placement execution.CheckoutPlacement
 	if checkout.Kind != execution.DirectoryUnspecified {
-		placement = &execution.CheckoutPlacement{Directory: checkout}
+		placement = execution.NewCheckoutPlacement(execution.Checkout{Directory: checkout}, execution.CheckoutPlacement{})
 	}
 	c.restoreCheckout(placement)
 }
 
-func (c *Resolver) restoreCheckout(placement *execution.CheckoutPlacement) {
+func (c *Resolver) restoreCheckout(placement execution.CheckoutPlacement) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.checkout = placement
@@ -288,15 +312,16 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 		return "", false
 	}
 	state := c.CheckoutState()
-	if state == nil {
+	if !state.Present() {
 		return spec, true
 	}
 	placement := state.Matching(spec)
-	if placement == nil {
-		return spec, state.Directory.Kind == execution.DirectoryUnknown
+	if !placement.Present() {
+		return spec, state.Details().Directory.Kind == execution.DirectoryUnknown
 	}
-	checkout := placement.Directory
-	if placement.Foreign || placement.Redirected {
+	details := placement.Details()
+	checkout := details.Directory
+	if details.Foreign || details.Redirected {
 		return "", false
 	}
 	if checkout.Kind == execution.DirectoryUnknown {
@@ -332,7 +357,7 @@ func (c *Resolver) ObserveCheckout(step documentparse.StepView) {
 	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(step.Env().Mapping(), c.platform) {
 		// Git may write outside the requested path or execute a wrapper. Literal
 		// metadata fallback is not evidence of the resulting repository contents.
-		c.restoreCheckout(&execution.CheckoutPlacement{Directory: execution.Directory{Kind: execution.DirectoryUnknown}, Redirected: true})
+		c.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryUnknown}, Redirected: true}, execution.CheckoutPlacement{}))
 		return
 	}
 	checkoutPath, pathKnown := checkoutInput(action.ResolvedInputs(), "path")
@@ -374,7 +399,7 @@ func (c *Resolver) ObserveCheckout(step documentparse.StepView) {
 			checkout.Kind = execution.DirectoryKnown
 		}
 	}
-	c.restoreCheckout(&execution.CheckoutPlacement{Directory: checkout, Previous: previous, CaseInsensitive: c.caseInsensitive, Foreign: foreign})
+	c.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: checkout, CaseInsensitive: c.caseInsensitive, Foreign: foreign}, previous))
 }
 
 func checkoutInput(inputs mapping.Mapping, name string) (string, bool) {

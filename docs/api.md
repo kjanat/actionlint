@@ -3,18 +3,22 @@
 The Go library has one module, `actionlint.kjanat.dev/v2`, with packages for distinct responsibilities. The v2 API
 intentionally breaks the former flat root API. The command-line interface and its output formats are separate contracts.
 
-| Package                               | Responsibility                                                        |
-| ------------------------------------- | --------------------------------------------------------------------- |
-| `actionlint.kjanat.dev/v2`            | Convenience `Analyze` entry point                                     |
-| `actionlint.kjanat.dev/v2/analysis`   | Source requests, file/repository discovery and results                |
-| `actionlint.kjanat.dev/v2/analyzer`   | Analyzer input, required facts, registration and returned diagnostics |
-| `actionlint.kjanat.dev/v2/document`   | Workflow/action outlines and structured action references             |
-| `actionlint.kjanat.dev/v2/diagnostic` | Diagnostics, source positions and suggested edits                     |
-| `actionlint.kjanat.dev/v2/config`     | Configuration values, loading, composition and inspection             |
-| `actionlint.kjanat.dev/v2/rule`       | Shared rule metadata, categories, examples and capabilities           |
-| `actionlint.kjanat.dev/v2/source`     | Document revision, node identity and structural address               |
-| `actionlint.kjanat.dev/v2/resolver`   | Optional dependency resolver contract and provenance                  |
-| `actionlint.kjanat.dev/v2/syntax`     | Workflow syntax model and parser                                      |
+| Package                                  | Responsibility                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `actionlint.kjanat.dev/v2`               | Convenience `Analyze` entry point                                     |
+| `actionlint.kjanat.dev/v2/analysis`      | Source requests, file/repository discovery and results                |
+| `actionlint.kjanat.dev/v2/analyzer`      | Analyzer input, required facts, registration and returned diagnostics |
+| `actionlint.kjanat.dev/v2/document`      | Workflow/action outlines and structured action references             |
+| `actionlint.kjanat.dev/v2/diagnostic`    | Diagnostics, source positions and suggested edits                     |
+| `actionlint.kjanat.dev/v2/config`        | Configuration values, loading, composition and inspection             |
+| `actionlint.kjanat.dev/v2/config/report` | Value-only configuration reports and inspection provenance            |
+| `actionlint.kjanat.dev/v2/rule`          | Shared rule metadata, categories, examples and capabilities           |
+| `actionlint.kjanat.dev/v2/source`        | Document revision, node identity and structural address               |
+| `actionlint.kjanat.dev/v2/resolver`      | Optional dependency resolver contract and provenance                  |
+| `actionlint.kjanat.dev/v2/syntax`        | Workflow syntax model and parser                                      |
+
+`config/report` defines `Report`, `Inspection`, `Origin` and `Warning`. The existing names in `config` alias those exact
+types.
 
 ## Analyze loaded sources
 

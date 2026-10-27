@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/source/capture"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -34,7 +35,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			var snapshots [2]*SourceSnapshot
 			var failures [2]error
-			var earlier StepDeclaration
+			var earlierCursor *workflowlang.Step
 			var earlierView StepView
 			var earlierReference source.Reference
 			bind := func(index int) {
@@ -54,7 +55,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 					t.Fatal(failures[0])
 				}
 				for step, reference := range snapshots[0].CanonicalReferences().Steps {
-					earlier = StepDeclaration{Step: step}
+					earlierCursor = step
 					earlierReference = reference
 					earlierView, err = snapshots[0].StepView(step)
 					if err != nil {
@@ -62,7 +63,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 					}
 					break
 				}
-				if earlier.Step == nil {
+				if earlierCursor == nil {
 					t.Fatal("initial declaration has no indexed step")
 				}
 				bind(1)
@@ -91,14 +92,11 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if _, ok := registry.LookupDocument(captured.Revision().Document()); ok {
 				t.Fatal("registry retained a live document after conflict")
 			}
-			if earlier.Step != nil {
-				if _, ok := registry.Step(earlierReference); ok {
-					t.Fatal("quarantined step remained registered")
-				}
+			if earlierCursor != nil {
 				if _, ok := registry.Declaration(earlierReference); ok || registry.Owns(earlierView) {
 					t.Fatal("quarantined view retained semantic ownership")
 				}
-				if _, err := previous.StepReference(earlier.Step); err == nil {
+				if _, err := previous.StepReference(earlierCursor); err == nil {
 					t.Fatal("quarantined step reference remained available")
 				}
 			}

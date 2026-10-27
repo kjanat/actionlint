@@ -48,7 +48,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			if mappedFirst {
 				first, second = second, first
 			}
-			analysis := &compositeAnalyzer{ctx: t.Context(), collectScripts: true, actions: actionlocal.NewResolver(nil, nil)}
+			analysis := &compositeAnalyzer{compositionSession: &compositionSession{ctx: t.Context(), collectScripts: true}, actions: actionlocal.NewResolver(nil, nil)}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/source\n      - uses: $/source\n")
 			document := documentparse.Workflow("fixture.yml", content)
 			if len(document.Findings) != 0 {

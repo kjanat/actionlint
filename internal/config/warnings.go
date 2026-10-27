@@ -8,14 +8,6 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// Warning identifies an ignored setting without rejecting legacy config files.
-type Warning struct {
-	File    string `json:"file,omitempty" yaml:"file,omitempty"`
-	Message string `json:"message" yaml:"message"`
-	Line    int    `json:"line" yaml:"line"`
-	Column  int    `json:"column" yaml:"column"`
-}
-
 func MergeWarnings(groups ...[]Warning) []Warning {
 	var result []Warning
 	seen := map[Warning]bool{}

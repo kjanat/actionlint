@@ -3,6 +3,7 @@ package position
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"unicode/utf8"
 
@@ -71,7 +72,7 @@ func Range(content []byte, model source.Coordinates, start, end diagnostic.Posit
 		return 0, 0, err
 	}
 	if b < a {
-		return 0, 0, fmt.Errorf("source range end precedes start")
+		return 0, 0, errors.New("source range end precedes start")
 	}
 	return a, b, nil
 }

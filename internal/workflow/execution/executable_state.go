@@ -36,7 +36,7 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 	state.pristine, state.repositoryUnknown = true, false
 	// Reset only paths replaced by this checkout; sibling and independent
 	// action copies keep their own mutation histories.
-	placement := CheckoutPlacement{Directory: Directory{Path: checkout}, CaseInsensitive: caseInsensitive}
+	placement := NewCheckoutPlacement(Checkout{Directory: Directory{Path: checkout}, CaseInsensitive: caseInsensitive}, CheckoutPlacement{})
 	for name := range state.changed {
 		if _, replaced := placement.Relative(name); replaced {
 			delete(state.changed, name)

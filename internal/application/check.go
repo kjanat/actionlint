@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
@@ -38,7 +39,7 @@ type Options struct {
 	// SourceOverlays supplies all editor buffers, independently of selected
 	// entries. They become explicit YAML captures before analysis begins.
 	SourceOverlays               []SourceOverlay
-	OnConfigLoaded               func(repoconfig.Report)
+	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
 	LoadScriptEngine             func(context.Context, string) (analyzer.ScriptBackend, error)
 	Presets                      repoconfig.Presets

@@ -61,7 +61,7 @@ func TestLocalActionSourceMappings(t *testing.T) {
 	if _, _, err := view.FindMetadata("$/generated"); err != nil {
 		t.Fatal(err)
 	}
-	view.restoreCheckout(&execution.CheckoutPlacement{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "."}, Foreign: true})
+	view.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "."}, Foreign: true}, execution.CheckoutPlacement{}))
 	if meta, _, err := view.FindMetadata("./generated"); err != nil || meta != nil {
 		t.Fatalf("mapping resolved a foreign checkout: %+v %v", meta, err)
 	}

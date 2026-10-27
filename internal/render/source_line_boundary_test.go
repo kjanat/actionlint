@@ -25,6 +25,7 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 				d := diagnostic.Diagnostic{Start: diagnostic.Position{Line: 1}}
 				canonical := (&findingmodel.Finding{Diagnostic: d, RawScriptSource: raw}).Canonical(source)
 				view := render.FindingOf(canonical, source)
+				view.RawScript = raw
 				got := view.TemplateFields().Snippet
 				want := "token"
 				if raw {

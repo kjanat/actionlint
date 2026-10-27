@@ -18,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/langserver"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
-	"actionlint.kjanat.dev/v2/rule"
 )
 
 func editorSymlink(t testing.TB, target, alias string) {
@@ -170,7 +169,7 @@ func TestEditorInvalidUTF8DependencyCannotSupplyRanges(t *testing.T) {
 type cancellingEditorAnalyzer struct{ started chan struct{} }
 
 func (*cancellingEditorAnalyzer) Descriptor() analyzer.Descriptor {
-	return analyzer.Descriptor{Descriptor: rule.Descriptor{Name: "editor-cancellation"}, Requires: []analyzer.Fact{analyzer.Source}}
+	return analyzer.Descriptor{Name: "editor-cancellation", Requires: []analyzer.Fact{analyzer.Source}}
 }
 
 func (a *cancellingEditorAnalyzer) Analyze(ctx context.Context, _ analyzer.Input) ([]diagnostic.Diagnostic, error) {

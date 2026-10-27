@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/report"
 )
 
@@ -20,7 +20,7 @@ type Result struct {
 	Diagnostics    []diagnostic.Diagnostic
 	Findings       []Finding
 	Documents      documentmodel.Outlines
-	Configurations []repoconfig.Report
+	Configurations []configreport.Report
 	Rules          []Rule
 }
 
@@ -63,11 +63,11 @@ type CheckResult struct {
 
 // ResultConfig identifies the configuration used for a project, including overlays.
 type ResultConfig struct {
-	File      string                       `json:"file"`
-	Project   string                       `json:"project"`
-	Overrides []string                     `json:"overrides"`
-	Origins   map[string]repoconfig.Origin `json:"origins,omitempty"`
-	Warnings  []repoconfig.Warning         `json:"warnings,omitempty"`
+	File      string                         `json:"file"`
+	Project   string                         `json:"project"`
+	Overrides []string                       `json:"overrides"`
+	Origins   map[string]configreport.Origin `json:"origins,omitempty"`
+	Warnings  []configreport.Warning         `json:"warnings,omitempty"`
 }
 
 // CheckSummary counts the selected inputs and reported findings.
@@ -93,7 +93,7 @@ func NewCheckResult(code int) CheckResult {
 }
 
 // AddConfiguration preserves selection provenance without serializing internal config state.
-func (r *CheckResult) AddConfiguration(config repoconfig.Report) {
+func (r *CheckResult) AddConfiguration(config configreport.Report) {
 	r.Configs = append(r.Configs, ResultConfig{config.File, config.Project, config.Overrides, config.Inspection.Origins, config.Inspection.Warnings})
 }
 

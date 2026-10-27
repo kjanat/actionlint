@@ -18,21 +18,13 @@ import (
 
 // SourceSnapshot binds declaration references to the exact AST that produced them.
 type SourceSnapshot struct {
-	registry     *SourceSnapshots
-	captured     capture.Snapshot
-	reference    source.Reference
-	facts        *workflowlang.Workflow
-	steps        map[*workflowlang.Step]source.Reference
-	declarations map[source.Reference]StepDeclaration
-	action       bool
-	bound        *frozen.Bound
-}
-
-// StepDeclaration is a read-only view of an indexed declaration and its source.
-type StepDeclaration struct {
-	Source *SourceSnapshot
-	Step   *workflowlang.Step
-	Job    string
+	registry  *SourceSnapshots
+	captured  capture.Snapshot
+	reference source.Reference
+	facts     *workflowlang.Workflow
+	steps     map[*workflowlang.Step]source.Reference
+	action    bool
+	bound     *frozen.Bound
 }
 
 func (s *SourceSnapshot) Reference() source.Reference { return s.reference }
@@ -136,20 +128,6 @@ func (s *SourceSnapshots) LookupDocument(identity string) (*SourceSnapshot, bool
 	return snapshot, true
 }
 
-func (s *SourceSnapshots) Step(reference source.Reference) (StepDeclaration, bool) {
-	if s == nil {
-		return StepDeclaration{}, false
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	snapshot := s.documents[reference.Document]
-	if snapshot == nil || snapshot.verify() != nil {
-		return StepDeclaration{}, false
-	}
-	declaration, exists := snapshot.declarations[reference]
-	return declaration, exists
-}
-
 func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (*SourceSnapshot, error) {
 	previous := s.documents[document]
 	if previous == nil {
@@ -240,13 +218,13 @@ func (s *SourceSnapshots) bind(captured capture.Snapshot, record *frozen.Record,
 		registry:  s,
 		reference: references.Document, captured: captured, facts: legacy, bound: bound,
 		steps: references.Steps, action: action,
-		declarations: make(map[source.Reference]StepDeclaration, len(references.Steps)),
 	}
-	for step, reference := range references.Steps {
-		if _, duplicate := snapshot.declarations[reference]; duplicate {
+	seen := make(map[source.Reference]struct{}, len(references.Steps))
+	for _, reference := range references.Steps {
+		if _, duplicate := seen[reference]; duplicate {
 			return nil, fmt.Errorf("source document %q has duplicate step references", document)
 		}
-		snapshot.declarations[reference] = StepDeclaration{Source: snapshot, Step: step, Job: references.StepJobs[step]}
+		seen[reference] = struct{}{}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

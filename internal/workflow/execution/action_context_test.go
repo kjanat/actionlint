@@ -144,7 +144,7 @@ func TestEmptyUsesAndAbsentUsesRetainDistinctOriginSemantics(t *testing.T) {
 			facts.Uses = ""
 		}
 		context := testFactsContext(t, facts)
-		paths := Paths{Workspace: root, Placements: &CheckoutPlacement{Directory: Directory{Kind: DirectoryKnown}, CaseInsensitive: true}}
+		paths := Paths{Workspace: root, Placements: NewCheckoutPlacement(Checkout{Directory: Directory{Kind: DirectoryKnown}, CaseInsensitive: true}, CheckoutPlacement{})}
 		ActionOrigin(&paths, context, filepath.Join(root, "local", "action"))
 		want := ""
 		if present {

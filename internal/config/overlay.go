@@ -140,15 +140,6 @@ type Loaded struct {
 	Filename string
 }
 
-// Report describes the configuration actually selected for one project.
-type Report struct {
-	Project    string
-	File       string
-	Explicit   bool
-	Overrides  []string
-	Inspection Inspection
-}
-
 type Input = configtree.Input
 
 func MarkInput(node *yaml.Node, input string, inputs map[*yaml.Node]Input) {

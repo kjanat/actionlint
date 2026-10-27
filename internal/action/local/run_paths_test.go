@@ -26,7 +26,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			actions := &Resolver{caseInsensitive: true}
-			actions.restoreCheckout(&execution.CheckoutPlacement{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true})
+			actions.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true}, execution.CheckoutPlacement{}))
 			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState(), Reader: fsread.New(t.Context(), nil, nil)}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.spec + "\n")
 			parsed := documentparse.Workflow("fixture.yml", content)
@@ -95,7 +95,7 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 	}
 	resolver.ObserveCheckout(checkout)
 	placement := resolver.CheckoutState()
-	if placement == nil || placement.Directory.Kind != execution.DirectoryKnown || placement.Directory.Path != "repo" || !placement.CaseInsensitive {
+	if !placement.Present() || placement.Details().Directory.Kind != execution.DirectoryKnown || placement.Details().Directory.Path != "repo" || !placement.Details().CaseInsensitive {
 		t.Fatalf("canonical checkout facts were not applied: %+v", placement)
 	}
 	local, ok := resolver.localSpec("./REPO/child")
