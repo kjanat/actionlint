@@ -15,6 +15,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
@@ -193,7 +194,7 @@ func TestCachedMetadataIsVisibleDuringDocumentNotification(t *testing.T) {
 	entered, release, notified := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	unblock := sync.OnceFunc(func() { close(release) })
 	t.Cleanup(unblock)
-	cache.Configure(Options{OnDocument: func(_ string, _ *actionmeta.Metadata, _ error) {
+	cache.Configure(Options{OnDocument: func(_ capture.Snapshot, _ string, _ *actionmeta.Metadata, _ error) {
 		close(entered)
 		<-release
 		close(notified)
@@ -257,13 +258,13 @@ func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
 			writeFixture(t, root, "action/action.yml", content)
 			cache := newCapturedActionCache(t, root, nil)
 			var notifications atomic.Int32
-			cache.Configure(Options{OnDocument: func(path string, metadata *actionmeta.Metadata, parseErr error) {
+			cache.Configure(Options{OnDocument: func(captured capture.Snapshot, path string, metadata *actionmeta.Metadata, parseErr error) {
 				notifications.Add(1)
 				published, exists := cache.readCache("./action")
 				cache.mu.RLock()
 				raw := cache.sources["./action"]
 				cache.mu.RUnlock()
-				if !exists || raw.path != path || !bytes.Equal(raw.captured.Bytes(), metadata.Source) {
+				if !exists || raw.path != path || !bytes.Equal(raw.captured.Bytes(), metadata.Source) || raw.captured.Revision() != captured.Revision() {
 					t.Error("observer ran before matching metadata/source publication")
 				}
 				if !broken && published.Metadata() != metadata {

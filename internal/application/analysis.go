@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -53,6 +54,8 @@ type analysisRequest struct {
 	captureJoinTimeout   time.Duration
 	Runners              runner.Options
 	Sources              []sourceUnit
+	SourceOverlays       []SourceOverlay
+	DiskSources          bool
 	Analyzers            []analyzer.Registration
 	Tools                []tools.Registration
 	IgnorePatterns       repoconfig.IgnorePatterns
@@ -188,8 +191,19 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 	lifetime, cancel := context.WithCancel(ctx)
 	defer cancel()
 	reader := fsread.New(lifetime, request.ReadFile, inputs.add)
+	contentReader := fsread.New(lifetime, request.ReadFile, nil)
 	allSources := slices.Clone(request.Sources)
-	overlays := make([]capture.Overlay, len(allSources))
+	overlays := make([]capture.Overlay, 0, len(allSources)+len(request.SourceOverlays))
+	for _, overlay := range request.SourceOverlays {
+		path := overlay.Path
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			path = filepath.Join(request.WorkingDir, path)
+		}
+		if path != "<stdin>" {
+			path = filepath.Clean(path)
+		}
+		overlays = append(overlays, capture.Overlay{Path: path, Content: overlay.Content, Coordinates: sourcemodel.YAML})
+	}
 	sourcePaths := make([]string, len(allSources))
 	for index := range allSources {
 		unit := &allSources[index]
@@ -202,10 +216,19 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 		}
 		unit.InputPath = path
 		sourcePaths[index] = path
-		overlays[index] = capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcemodel.YAML}
+		if !request.DiskSources {
+			overlays = append(overlays, capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcemodel.YAML})
+		}
 	}
+	// Disk selections are backing evidence, not explicit editor overlays. Only
+	// identity-to-index metadata is retained; Store ingests the existing selection
+	// bytes once unless an explicit overlay already owns that canonical document.
+	selectedDocuments := make(map[string]int, len(allSources))
 	captures, err := capture.New(lifetime, overlays, func(_ context.Context, path string) ([]byte, error) {
-		return reader.ReadFile(filepath.FromSlash(path))
+		if index, selected := selectedDocuments[path]; selected {
+			return allSources[index].Content, nil
+		}
+		return contentReader.ReadFile(filepath.FromSlash(path))
 	})
 	if err != nil {
 		return nil, err
@@ -227,13 +250,25 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 	if err != nil {
 		return nil, err
 	}
-	explicitDocuments := make(map[string]struct{}, len(allSources))
-	for _, unit := range allSources {
-		document, err := captures.Canonical(lifetime, unit.InputPath)
+	explicitDocuments := make(map[string]struct{}, len(overlays))
+	for _, overlay := range overlays {
+		document, err := captures.Canonical(lifetime, overlay.Path)
 		if err != nil {
 			return nil, err
 		}
 		explicitDocuments[document] = struct{}{}
+	}
+	if request.DiskSources {
+		for index, unit := range allSources {
+			document, err := captures.Canonical(lifetime, unit.InputPath)
+			if err != nil {
+				return nil, err
+			}
+			previous, exists := selectedDocuments[document]
+			if !exists || unit.InputPath < allSources[previous].InputPath || unit.InputPath == allSources[previous].InputPath && bytes.Compare(unit.Content, allSources[previous].Content) < 0 {
+				selectedDocuments[document] = index
+			}
+		}
 	}
 	selected := make([]sourceUnit, 0, len(request.Sources))
 	for _, source := range allSources {
@@ -307,16 +342,15 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 		ac, wc := actions.GetCache(projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
 		ac.Configure(actionlocal.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Captures: captures, Context: lifetime, WorkingDir: session.workingDir, ExplicitDocuments: explicitDocuments,
-			OnDocument: func(path string, meta *actionmeta.Metadata, parseErr error) {
-				captured, _, err := captures.Lookup(path)
-				if err != nil {
+			OnManifestRequest: documents.request,
+			OnDocument: func(captured capture.Snapshot, path string, meta *actionmeta.Metadata, parseErr error) {
+				if err := captures.Verify(captured, captured.Bytes()); err != nil {
 					documents.addError(err)
 					return
 				}
 				documents.add(captured.Revision().Document(), documentparse.ActionOutline(path, meta, parseErr))
 			},
 		})
-		wc.SetReader(reader)
 		wc.SetSources(lifetime, captures, session.workingDir)
 	}
 	group := errgroup.Group{}
@@ -345,7 +379,7 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 		})
 	}
 	groupErr := group.Wait()
-	err = errors.Join(append(entryErrors, groupErr, documents.error())...)
+	err = errors.Join(errors.Join(entryErrors...), groupErr, documents.error())
 	if err == nil {
 		err = ctx.Err()
 	}
@@ -358,14 +392,30 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 	if sourceErr != nil {
 		return nil, errors.Join(err, sourceErr)
 	}
+	result.CapturedSources = make(map[string]report.CapturedSource)
 	for _, row := range rows {
-		if row.State == capture.Captured || row.State == capture.Conflicted {
-			for _, alias := range row.Aliases {
-				inputs.add(alias)
+		if row.State != capture.Captured {
+			continue
+		}
+		for _, alias := range row.Aliases {
+			captured, state, lookupErr := captures.Lookup(alias)
+			if lookupErr != nil || state != capture.Captured {
+				return nil, errors.Join(err, lookupErr, errors.New("sealed source capture is unavailable"))
 			}
+			result.CapturedSources[alias] = report.CapturedSource{Revision: row.Revision, Coordinates: row.Coordinates, CoordinatesAvailable: row.CoordinatesAvailable, Content: captured.Bytes()}
 		}
 	}
-	err = result.revalidateCaptures(captures, rows, err)
+	readAliases, sourceErr := captures.ReadAliases()
+	if sourceErr != nil {
+		return nil, errors.Join(err, sourceErr)
+	}
+	for _, alias := range readAliases {
+		inputs.add(alias)
+	}
+	if completionErr := documents.complete(captures, readAliases); completionErr != nil {
+		err = errors.Join(err, completionErr)
+	}
+	err = result.revalidateCaptures(captures, rows, session.workingDir, err)
 	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int {
 		if order := strings.Compare(a.Path, b.Path); order != 0 {
 			return order
@@ -390,14 +440,21 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 			explicitActions[file.captured.Revision().Document()] = true
 		}
 	}
+	sourceStates := make(map[string]capture.State, len(rows))
+	for _, row := range rows {
+		sourceStates[row.Document] = row.State
+	}
 	for _, document := range documents.list() {
-		path := diagnosticpolicy.RelativePath(session.workingDir, document.DocumentPath())
-		captured, _, lookupErr := captures.Lookup(document.DocumentPath())
-		if lookupErr != nil {
-			err = errors.Join(err, lookupErr)
+		path := document.DocumentPath()
+		if filepath.IsAbs(path) {
+			if relative, relErr := filepath.Rel(session.workingDir, path); relErr == nil {
+				path = relative
+			}
+		}
+		if sourceStates[document.identity] != capture.Captured {
 			continue
 		}
-		if !explicitActions[captured.Revision().Document()] {
+		if !explicitActions[document.identity] {
 			result.Documents = append(result.Documents, document.WithPath(path))
 		}
 	}
@@ -406,9 +463,57 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 }
 
 type actionDocuments struct {
-	mu     sync.Mutex
-	byPath map[string]documentmodel.Action
-	err    error
+	mu       sync.Mutex
+	byPath   map[string]documentmodel.Action
+	requests map[string]struct{}
+	err      error
+}
+
+type actionDocument struct {
+	documentmodel.Action
+	identity string
+}
+
+func (d *actionDocuments) request(address string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.requests == nil {
+		d.requests = make(map[string]struct{})
+	}
+	d.requests[address] = struct{}{}
+}
+
+// complete uses only sealed, consumed manifest bytes; it never resumes analysis.
+func (d *actionDocuments) complete(captures *capture.Store, consumed []string) error {
+	if _, err := captures.Sources(); err != nil {
+		return err
+	}
+	for _, address := range consumed {
+		d.mu.Lock()
+		_, requested := d.requests[address]
+		d.mu.Unlock()
+		if !requested {
+			continue
+		}
+		snapshot, state, err := captures.Lookup(address)
+		if err != nil || state != capture.Captured || snapshot.Coordinates() != sourcemodel.YAML {
+			continue
+		}
+		identity := snapshot.Revision().Document()
+		d.mu.Lock()
+		_, exists := d.byPath[identity]
+		d.mu.Unlock()
+		if exists {
+			continue
+		}
+		document := documentparse.Action(address, address, snapshot.Bytes())
+		outline, ok := document.Outline.(documentmodel.Action)
+		if !ok {
+			return fmt.Errorf("captured manifest %q has no action outline", address)
+		}
+		d.add(identity, outline)
+	}
+	return nil
 }
 
 func (d *actionDocuments) add(identity string, document documentmodel.Action) {
@@ -431,7 +536,7 @@ func (d *actionDocuments) error() error {
 	return d.err
 }
 
-func (d *actionDocuments) list() documentmodel.Outlines {
+func (d *actionDocuments) list() []actionDocument {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	paths := make([]string, 0, len(d.byPath))
@@ -439,9 +544,9 @@ func (d *actionDocuments) list() documentmodel.Outlines {
 		paths = append(paths, path)
 	}
 	slices.Sort(paths)
-	documents := make(documentmodel.Outlines, 0, len(paths))
+	documents := make([]actionDocument, 0, len(paths))
 	for _, path := range paths {
-		documents = append(documents, d.byPath[path])
+		documents = append(documents, actionDocument{Action: d.byPath[path], identity: path})
 	}
 	return documents
 }
@@ -455,7 +560,7 @@ func (r *analysisResult) collectDiagnostics() {
 			project = absPath(file.source.Project.RootDir())
 		}
 		_, action := file.outline.(documentmodel.Action)
-		files[i] = diagnosticpolicy.File{Project: project, InputPath: file.source.InputPath, Content: file.source.Content, Action: action, Findings: file.errors}
+		files[i] = diagnosticpolicy.File{Project: project, InputPath: file.source.InputPath, Source: file.captured.Revision(), Content: file.source.Content, Action: action, Findings: file.errors}
 	}
 	r.Diagnostics, r.Sources = diagnosticpolicy.Collect(files)
 	if r.Diagnostics == nil {
@@ -468,8 +573,9 @@ func (r *analysisResult) collectDiagnostics() {
 
 // revalidateCaptures is the final publication boundary: a handle admitted before
 // a later conflict cannot publish an entry, observation or entry outline.
-func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.Source, prior error) error {
+func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.Source, workingDir string, prior error) error {
 	admitted := make(map[string]capture.Source, len(rows))
+	withheld := 0
 	for _, row := range rows {
 		admitted[row.Document] = row
 		if row.State == capture.Conflicted && !errors.Is(prior, row.Error) {
@@ -480,6 +586,7 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 		file := &r.files[index]
 		if file.captured.Valid() {
 			if err := captures.Verify(file.captured, file.captured.Bytes()); err != nil {
+				withheld += len(file.errors)
 				file.errors, file.outline = nil, nil
 				if !errors.Is(prior, err) {
 					prior = errors.Join(prior, err)
@@ -489,9 +596,47 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 		}
 		accepted := file.errors[:0]
 		for _, finding := range file.errors {
+			if marker := finding.UnavailableSource; marker.Present() {
+				row := admitted[marker.Document()]
+				if marker.Document() == "" || row.State == capture.Conflicted {
+					withheld++
+					if row.Error != nil && !errors.Is(prior, row.Error) {
+						prior = errors.Join(prior, row.Error)
+					}
+					continue
+				}
+				// Another consumer's captured row never promotes a tool's unavailable
+				// reported source. E7/M07 remove this transitional allowance.
+				finding.Reference, finding.Fixes = nil, nil
+				accepted = append(accepted, finding)
+				continue
+			}
+			entry := admitted[file.captured.Revision().Document()]
+			own := finding.Path == "" || finding.Path == file.source.Path || finding.Path == file.source.InputPath || finding.Path == entry.Document
+			if relative, err := filepath.Rel(workingDir, entry.Document); err == nil {
+				own = own || finding.Path == relative
+			}
+			for _, alias := range entry.Aliases {
+				own = own || finding.Path == alias
+				if relative, err := filepath.Rel(workingDir, alias); err == nil {
+					own = own || finding.Path == relative
+				}
+			}
+			if !own && (finding.Reference == nil || finding.Reference.Document == file.captured.Revision().Document()) {
+				withheld++
+				continue
+			}
+			if target := finding.MetadataParseSource; target.Valid() {
+				row, exists := admitted[target.Document()]
+				if !exists || row.State != capture.Captured || row.Revision != target {
+					withheld++
+					continue
+				}
+			}
 			if reference := finding.Reference; reference != nil {
 				row, exists := admitted[reference.Document]
 				if !exists || row.State != capture.Captured || row.Revision.Digest() != reference.Revision {
+					withheld++
 					if row.Error != nil {
 						if !errors.Is(prior, row.Error) {
 							prior = errors.Join(prior, row.Error)
@@ -501,11 +646,19 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 					}
 					continue
 				}
+			} else if finding.Source != nil || finding.RawScriptSource {
+				if !own || !file.captured.Valid() || captures.Verify(file.captured, finding.Source) != nil {
+					withheld++
+					continue
+				}
 			}
 			accepted = append(accepted, finding)
 		}
 		clear(file.errors[len(accepted):])
 		file.errors = accepted
+	}
+	if withheld != 0 {
+		prior = errors.Join(prior, &admissionRejectedError{count: withheld})
 	}
 	return prior
 }

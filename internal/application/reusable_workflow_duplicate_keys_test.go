@@ -76,7 +76,7 @@ jobs:
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
-			astCache := calls.NewCache(project.RootDir(), root, nil)
+			astCache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 			astCache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 			fromAST, _, _ := astCache.Lookup("./callee.yaml")
 			fromFile, err := calls.ParseMetadata(callee)
@@ -103,7 +103,7 @@ jobs:
 				}
 			}
 			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				for _, name := range order {
 					source, want := caller, 0
 					if name == "callee.yaml" {

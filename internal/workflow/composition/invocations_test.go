@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
@@ -52,7 +53,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		}
 		explicit[captured.Revision().Document()] = struct{}{}
 	}
-	f.cache.Configure(actionlocal.Options{Captures: f.snapshots.Sources.Store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(path string, metadata *actionmeta.Metadata, _ error) {
+	f.cache.Configure(actionlocal.Options{Captures: f.snapshots.Sources.Store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.Snapshot, path string, metadata *actionmeta.Metadata, _ error) {
 		f.parsed = append(f.parsed, path)
 		if f.mutateMeta != nil {
 			f.mutateMeta(metadata)

@@ -6,13 +6,14 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/report"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // File carries completed document findings and their diagnostic identity scope.
 type File struct {
 	Project, InputPath string
+	Source             source.Revision
 	Content            []byte
 	Action             bool
 	Findings           []*findingmodel.Finding
@@ -35,12 +36,12 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 		finding findingmodel.MetadataKey
 	}
 	declarations := make(map[declarationLocation]bool)
-	parseDeclarations := make(map[string]bool)
+	parseDeclarations := make(map[source.Revision]bool)
 	for _, file := range files {
 		project := file.Project
 		for _, finding := range file.Findings {
-			if file.Action && finding.Rule == "syntax-check" {
-				parseDeclarations[fsread.PhysicalPath(file.InputPath)] = true
+			if file.Action && file.Source.Valid() && finding.Rule == "syntax-check" {
+				parseDeclarations[file.Source] = true
 			}
 			if identity := finding.MetadataIdentity; identity != nil && identity.Declaration && finding.Rule == "action" {
 				declarations[declarationLocation{project, identity.Key}] = true
@@ -52,7 +53,7 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 		project := file.Project
 		unique := file.Findings[:0]
 		for _, finding := range file.Findings {
-			if finding.Rule == "action" && finding.MetadataParsePath != "" && parseDeclarations[fsread.PhysicalPath(finding.MetadataParsePath)] {
+			if finding.Rule == "action" && finding.MetadataParseSource.Valid() && parseDeclarations[finding.MetadataParseSource] {
 				continue
 			}
 			diagnostic := finding.Canonical(file.Content)
@@ -60,7 +61,7 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 			if finding.Source != nil {
 				identityPath = diagnostic.Path
 			}
-			CompleteDiagnostic(&diagnostic, finding.SourceFor(file.Content), identityPath)
+			CompleteDiagnostic(&diagnostic, finding.SourceFor(file.Content), identityPath, finding.UnavailableSource.Present())
 			if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
 				key := metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
 				if !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
@@ -79,7 +80,7 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 			}
 			seen[key] = append(seen[key], diagnostic)
 			diagnostics = append(diagnostics, diagnostic)
-			sources = append(sources, report.DiagnosticSource{Content: finding.SourceFor(file.Content), RawScript: finding.RawScriptSource})
+			sources = append(sources, report.DiagnosticSource{Content: finding.SourceFor(file.Content), RawScript: finding.RawScriptSource, Unavailable: finding.UnavailableSource.Present()})
 			unique = append(unique, finding)
 		}
 		clear(file.Findings[len(unique):])

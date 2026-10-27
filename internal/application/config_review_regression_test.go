@@ -6,9 +6,12 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestDependencyPathsDoNotResolveWorkflowOverrides(t *testing.T) {
@@ -34,17 +37,7 @@ overrides:
 				if err != nil {
 					t.Fatal(err)
 				}
-				result, err := runTestAnalysis(t.Context(), analysisRequest{
-					WorkingDir: root,
-					Sources:    []sourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
-					OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
-						rule := workflowvisit.NewBase("expression-reference", "dependency finding")
-						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-						rule.Findings[0].Path = filepath.Join(root, dependency)
-						rule.Findings[0].Source = []byte("dependency content")
-						return []workflowvisit.Rule{&rule}
-					},
-				})
+				result, err := capturedDependencyOverrideFixture(t, root, dependency, cfg)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -74,17 +67,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				result, err := runTestAnalysis(t.Context(), analysisRequest{
-					WorkingDir: root,
-					Sources:    []sourceUnit{{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}},
-					OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
-						rule := workflowvisit.NewBase("expression-reference", "dependency finding")
-						rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-						rule.Findings[0].Path = filepath.Join(root, dependency)
-						rule.Findings[0].Source = []byte("dependency content")
-						return []workflowvisit.Rule{&rule}
-					},
-				})
+				result, err := capturedDependencyOverrideFixture(t, root, dependency, cfg)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -98,6 +81,58 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 			})
 		}
 	}
+}
+
+func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cfg *repoconfig.Config) (*analysisResult, error) {
+	t.Helper()
+	cache := newCapturedWorkflowCache(t, root, root, nil)
+	path := filepath.Join(root, dependency)
+	coordinates := source.YAML
+	if filepath.Ext(path) == ".sh" {
+		coordinates = source.RawLF
+	}
+	// The synthetic producer observes bytes captured before traversal by the
+	// same owner used for workflow analysis and final publication.
+	dependencySource, err := cache.snapshots.Sources.Capture(path, []byte("dependency content"), coordinates)
+	if err != nil {
+		return nil, err
+	}
+	reference := sourceid.New(dependencySource.Revision().Document(), dependencySource.Bytes()).Ref("", "document", "", "$")
+	workflow := sourceUnit{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}
+	findings, err := checkWithCaches(t, t.Context(), analysisRequest{
+		WorkingDir: root,
+		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
+			rule := workflowvisit.NewBase("expression-reference", "dependency finding")
+			rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
+			rule.Findings[0].Path, rule.Findings[0].Source = path, dependencySource.Bytes()
+			rule.Findings[0].Reference = &reference
+			rule.Findings[0].RawScriptSource = coordinates == source.RawLF
+			return []workflowvisit.Rule{&rule}
+		},
+	}, workflow, nil, nil, cache)
+	if err != nil {
+		return nil, err
+	}
+	entry, state, err := cache.snapshots.Sources.Store.Lookup(cache.snapshots.Sources.Path(workflow.Path))
+	if err != nil {
+		return nil, err
+	}
+	if state != capture.Captured {
+		t.Fatalf("workflow fixture was not captured: %s", state)
+	}
+	if err := cache.snapshots.Sources.Store.Close(t.Context()); err != nil {
+		return nil, err
+	}
+	rows, err := cache.snapshots.Sources.Store.Sources()
+	if err != nil {
+		return nil, err
+	}
+	result := &analysisResult{files: []analyzedFile{{captured: entry, source: workflow, errors: findings}}}
+	if err := result.revalidateCaptures(cache.snapshots.Sources.Store, rows, root, nil); err != nil {
+		return result, err
+	}
+	result.collectDiagnostics()
+	return result, nil
 }
 
 func TestWorkflowOverrideControlsCompositeFindings(t *testing.T) {

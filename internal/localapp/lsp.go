@@ -7,12 +7,11 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
-	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/langserver"
 	"actionlint.kjanat.dev/v2/internal/workflow/editor"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // LanguageServer shares application selection, configuration and plugin loading
@@ -54,36 +53,34 @@ func (s *editorSession) analyze(ctx context.Context, documents map[string]langse
 }
 
 func analyzeDocuments(ctx context.Context, options application.Options, documents map[string]langserver.Document) (langserver.Analysis, error) {
-	directory := options.WorkingDir
+	directory, err := filepath.Abs(options.WorkingDir)
+	if err != nil {
+		return langserver.Analysis{}, err
+	}
 	if len(documents) == 0 {
 		return langserver.Analysis{}, nil
 	}
 	opts := options
-	sources := map[string]string{}
-	var sourceMu sync.Mutex
-	disk := fsread.New(ctx, options.ReadFile, nil)
-	opts.ReadFile = func(path string) ([]byte, error) {
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(directory, path)
+	opts.WorkingDir = directory
+	opts.SourceOverlays = slices.Clone(options.SourceOverlays)
+	paths := make([]string, 0, len(documents))
+	for _, path := range slices.Sorted(maps.Keys(documents)) {
+		address := path
+		if !filepath.IsAbs(address) {
+			address = filepath.Join(directory, address)
 		}
-		absolute, err := filepath.Abs(path)
-		if err != nil {
-			return nil, err
-		}
-		if d, ok := documents[absolute]; ok {
-			return []byte(d.Text), nil
-		}
-		content, err := disk.ReadFile(absolute)
-		if err == nil {
-			sourceMu.Lock()
-			sources[absolute] = string(content)
-			sourceMu.Unlock()
-		}
-		return content, err
+		paths = append(paths, address)
+		opts.SourceOverlays = append(opts.SourceOverlays, application.SourceOverlay{Path: address, Content: []byte(documents[path].Text)})
 	}
-	result, err := application.Check(ctx, opts, application.Input{Kind: application.Files, Paths: slices.Sorted(maps.Keys(documents))})
+	result, err := application.Check(ctx, opts, application.Input{Kind: application.Files, Paths: paths})
 	if result == nil {
-		return langserver.Analysis{Sources: sources}, err
+		return langserver.Analysis{}, err
+	}
+	sources := make(map[string]string, len(result.CapturedSources))
+	for path, captured := range result.CapturedSources {
+		if captured.Coordinates == source.YAML && captured.CoordinatesAvailable {
+			sources[path] = string(captured.Content)
+		}
 	}
 	for i := range result.Diagnostics {
 		d := &result.Diagnostics[i]

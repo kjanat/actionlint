@@ -369,3 +369,33 @@ func TestMalformedConfigurationReturnsNoStore(t *testing.T) {
 		t.Fatal("accepted nil reader")
 	}
 }
+
+func TestReadAliasesExcludeUnusedOverlaysAndIdentityLookups(t *testing.T) {
+	root := t.TempDir()
+	used, unused := filepath.Join(root, "used.yml"), filepath.Join(root, "unused.yml")
+	alias := root + string(filepath.Separator) + "." + string(filepath.Separator) + "used.yml"
+	store := newStore(t, []Overlay{{used, []byte("used"), source.YAML}, {unused, []byte("unused"), source.YAML}}, func(context.Context, string) ([]byte, error) {
+		return nil, os.ErrNotExist
+	})
+	if _, err := store.ReadAliases(); !errors.Is(err, ErrNotSealed) {
+		t.Fatalf("unsealed read aliases = %v", err)
+	}
+	if _, err := store.Canonical(t.Context(), unused); err != nil {
+		t.Fatal(err)
+	}
+	readSnapshot(t, store, alias, source.YAML)
+	if _, err := store.Read(t.Context(), filepath.Join(root, "missing.yml"), source.YAML); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
+	if err := store.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := store.ReadAliases()
+	if err != nil || !slices.Equal(paths, []string{alias}) {
+		t.Fatalf("consumed aliases = %v, error=%v", paths, err)
+	}
+	paths[0] = "changed"
+	if again, err := store.ReadAliases(); err != nil || !slices.Equal(again, []string{alias}) {
+		t.Fatalf("caller mutated read aliases = %v, error=%v", again, err)
+	}
+}

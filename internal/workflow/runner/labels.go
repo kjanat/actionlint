@@ -105,6 +105,8 @@ type checker struct {
 	compats    map[runnerOSCompat]labelFact
 }
 
+// Check owns built-in runner-label diagnostics. Spelling is checked on declared
+// alternatives; compatibility is checked only on execution selectors.
 func Check(job documentparse.JobView, customLabels []string) []diagnostic.Diagnostic {
 	if !job.Present() {
 		return nil
@@ -126,7 +128,12 @@ func Check(job documentparse.JobView, customLabels []string) []diagnostic.Diagno
 		}
 	}
 	for _, combination := range combinations {
-		check.checkSelection(selection, combination)
+		check.checkDeclaredSelection(selection, combination)
+	}
+	if executed, complete := strategy.Combinations(256); !complete || len(executed) != 0 {
+		for _, selector := range Selectors(job) {
+			check.checkSelector(selector)
+		}
 	}
 	findings := make([]diagnostic.Diagnostic, len(check.rejections))
 	seen := map[string]bool{}
@@ -134,9 +141,6 @@ func Check(job documentparse.JobView, customLabels []string) []diagnostic.Diagno
 	for _, rejection := range check.rejections {
 		finding := diagnostic.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason}
 		key := fmt.Sprintf("%d:%d:%s", finding.Start.Line, finding.Start.Column, finding.Message)
-		if strings.Contains(finding.Message, " conflicts with label ") {
-			key = fmt.Sprintf("%d:%d:conflict", finding.Start.Line, finding.Start.Column)
-		}
 		if !seen[key] {
 			seen[key] = true
 			filtered = append(filtered, finding)
@@ -145,13 +149,12 @@ func Check(job documentparse.JobView, customLabels []string) []diagnostic.Diagno
 	return filtered
 }
 
-func (rule *checker) checkSelection(selection value.Value, combination matrixmodel.Combination) {
+func (rule *checker) checkDeclaredSelection(selection value.Value, combination matrixmodel.Combination) {
 	labels := selectionLabels(selection, combination)
 	allowNull := hasMatrixReference(selection)
 	if len(labels) == 0 {
 		return
 	}
-	rule.compats = map[runnerOSCompat]labelFact{}
 	for _, label := range labels {
 		if label.Kind() == value.Null && !allowNull {
 			continue
@@ -160,12 +163,30 @@ func (rule *checker) checkSelection(selection value.Value, combination matrixmod
 		if !ok {
 			continue
 		}
-		if len(labels) == 1 {
-			rule.verifyRunnerLabel(fact)
-		} else {
+		rule.verifyRunnerLabel(fact)
+	}
+}
+
+func (rule *checker) checkSelector(selector runner.Selector) ([]value.Value, bool) {
+	rule.compats = map[runnerOSCompat]labelFact{}
+	unknown := selector.Expression != "" || selector.Incomplete
+	if selector.Group != nil {
+		_, unresolved := selector.Group.Value.(runner.Expression)
+		unknown = unknown || unresolved
+	}
+	var labels []value.Value
+	for _, constraint := range selector.Labels {
+		switch term := constraint.Value.(type) {
+		case runner.Literal:
+			item := value.FromJSON(string(term), value.Origin{Span: value.Span{Start: constraint.Position}})
+			labels = append(labels, item)
+			fact, _ := knownLabel(item)
 			rule.checkCompat(rule.verifyRunnerLabel(fact), fact)
+		case runner.Expression:
+			unknown = true
 		}
 	}
+	return labels, unknown
 }
 
 func hasMatrixReference(selection value.Value) bool {

@@ -15,6 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/tools"
 )
@@ -330,6 +331,7 @@ func (f *pluginSourceFiles) finding(finding diagnostic.Diagnostic, script tools.
 		result.Path = filepath.Join(mount.host, filepath.FromSlash(name))
 		result.Reference, result.Fixes = nil, nil
 		result.Content, result.RawScript = content, true
+		result.UnavailableSource = findingmodel.PluginShellcheckUnavailable(result.Path)
 		last := script.Value.Line
 		for span := range script.Source.LineSpans() {
 			last = max(last, span.YamlLine)

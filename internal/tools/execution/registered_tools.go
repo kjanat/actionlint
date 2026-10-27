@@ -45,6 +45,7 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 	for _, result := range findings {
 		finding := findingmodel.FromDiagnostic(result.Diagnostic)
 		finding.Source, finding.RawScriptSource = result.Content, result.RawScript
+		finding.UnavailableSource = result.UnavailableSource
 		if result.Script >= 0 && result.Script < len(batchScripts) {
 			finding.IgnoreOrigin = batchScripts[result.Script].Origin
 			finding.Owner = batchScripts[result.Script].Owner

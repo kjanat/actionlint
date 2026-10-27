@@ -9,7 +9,6 @@ import (
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
-	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -24,7 +23,7 @@ func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
 					}
 				}
 				proj := workspace.Identity(root)
-				cache := calls.NewCache(proj.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, proj.RootDir(), root, nil)
 				request := analysisRequest{WorkingDir: root}
 				var err error
 
@@ -123,7 +122,7 @@ jobs:
 				}
 			}
 			for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				for range 2 {
 					for _, name := range order {
 						source := caller

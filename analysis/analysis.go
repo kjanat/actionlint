@@ -44,6 +44,7 @@ type Tool struct {
 
 // Options controls configuration, external tools and filesystem access.
 // ReadFile must support concurrent calls. It does not sandbox external tools.
+// A nil read error promises complete content, including when cancellation races.
 type Options struct {
 	Runners   runner.Options
 	Resolver  resolver.Resolver

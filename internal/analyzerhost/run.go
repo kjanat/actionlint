@@ -54,7 +54,7 @@ func Prepare(registration analyzer.Registration, available []analyzer.Fact) (Pre
 	}
 	descriptor := registration.Analyzer.Descriptor()
 	descriptor.Requires = slices.Clone(descriptor.Requires)
-	descriptor.Descriptor = descriptor.Descriptor.Clone()
+	descriptor.Descriptor = descriptor.Clone()
 	options := slices.Clone(registration.Options)
 	if descriptor.Name == "" {
 		return PreparedRegistration{}, errors.New("analyzer name must not be empty")

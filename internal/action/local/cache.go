@@ -22,6 +22,7 @@ import (
 
 type metadataSource struct {
 	path     string
+	address  string
 	captured capture.Snapshot
 	document documentparse.Document
 }
@@ -49,8 +50,10 @@ type Cache struct {
 	captures          *capture.Store
 	ctx               context.Context
 	sourceBase        string
+	sourceRoot        string
 	explicitDocuments map[string]struct{}
-	onDocument        func(string, *actionmeta.Metadata, error)
+	onDocument        func(capture.Snapshot, string, *actionmeta.Metadata, error)
+	onManifestRequest func(string)
 	reader            *fsread.Reader
 	customReader      bool
 	mu                sync.RWMutex
@@ -72,7 +75,8 @@ type Options struct {
 	ExplicitDocuments map[string]struct{}
 	// OnDocument completes before the publishing lookup returns. Cache hits can
 	// return during notification; consumers join all lookups before reading outlines.
-	OnDocument func(string, *actionmeta.Metadata, error)
+	OnDocument        func(capture.Snapshot, string, *actionmeta.Metadata, error)
+	OnManifestRequest func(string)
 }
 
 // Configure installs shared input resources before any lookups start.
@@ -90,8 +94,13 @@ func (c *Cache) Configure(options Options) {
 	if options.WorkingDir != "" {
 		c.sourceBase = options.WorkingDir
 	}
+	c.sourceRoot = c.root
+	if c.sourceRoot != "" && !filepath.IsAbs(c.sourceRoot) && c.sourceBase != "" {
+		c.sourceRoot = filepath.Join(c.sourceBase, c.sourceRoot)
+	}
 	c.explicitDocuments = maps.Clone(options.ExplicitDocuments)
 	c.onDocument = options.OnDocument
+	c.onManifestRequest = options.OnManifestRequest
 }
 
 // NewCache creates a repository metadata cache. An empty root disables lookups.
@@ -146,8 +155,30 @@ func (c *Cache) writeCache(key string, result MetadataResult, source metadataSou
 
 // FindMetadata reports missing manifests at each reference and other cached failures once.
 func (c *Cache) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
+	metadata, cached, _, err := c.FindMetadataDocument(spec)
+	return metadata, cached, err
+}
+
+// FindMetadataDocument returns metadata and its provenance from the same lookup,
+// including the captured source of a failed parse. It performs no second read.
+func (c *Cache) FindMetadataDocument(spec string) (*actionmeta.Metadata, bool, SourceDocument, error) {
 	result, cached := c.LookupMetadata(spec)
-	return result.Metadata(), cached, c.reportMetadataError(result)
+	document, _ := c.SourceDocument(result)
+	return result.Metadata(), cached, document, c.reportMetadataError(result)
+}
+
+// SourceDocument projects the captured parse record associated with a lookup.
+func (c *Cache) SourceDocument(result MetadataResult) (SourceDocument, bool) {
+	if c == nil || result.cacheSpec == "" {
+		return SourceDocument{}, false
+	}
+	c.mu.RLock()
+	source, exists := c.sources[result.cacheSpec]
+	c.mu.RUnlock()
+	if !exists {
+		return SourceDocument{}, false
+	}
+	return SourceDocument(source), true
 }
 
 // LookupMetadata preserves failure causes without consuming their diagnostics.
@@ -168,21 +199,13 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	}
 
 	dir := filepath.Join(c.root, filepath.FromSlash(spec))
-	explicit, err := c.hasExplicitAction(spec)
-	if err != nil {
-		return c.writeCache(spec, MetadataResult{status: MetadataReadFailed, cause: err}, metadataSource{})
-	}
-	if explicit {
-		if absolute, err := filepath.Abs(dir); err == nil {
-			dir = absolute
-		}
-	}
-	captured, f, err := c.readLocalActionMetadataFile(dir)
+	address := filepath.Join(c.sourceRoot, filepath.FromSlash(spec))
+	captured, f, err := c.readLocalActionMetadataFile(address)
 	if err != nil {
 		return c.writeCache(spec, MetadataResult{status: MetadataReadFailed, cause: err}, metadataSource{})
 	}
 	if f == "" {
-		docker, err := c.hasDockerfile(dir)
+		docker, err := c.hasDockerfile(address)
 		if err != nil {
 			return c.writeCache(spec, MetadataResult{status: MetadataReadFailed, cause: err}, metadataSource{})
 		}
@@ -193,7 +216,7 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 		c.debug("No action metadata found in %s", dir)
 		return c.writeCache(spec, MetadataResult{status: MetadataMissingManifest, cause: missingLocalActionMetadata(spec)}, metadataSource{})
 	}
-	loadedSource := metadataSource{path: filepath.Join(dir, f), captured: captured}
+	loadedSource := metadataSource{path: filepath.Join(dir, f), address: filepath.Join(address, f), captured: captured}
 	document := documentparse.Action(loadedSource.path, loadedSource.path, captured.Bytes())
 	loadedSource.document = document
 	meta, parseErr := document.Metadata, document.ActionParseError()
@@ -206,7 +229,7 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	}
 	result, cached := c.writeCache(spec, loaded, loadedSource)
 	if !cached && c.onDocument != nil {
-		c.onDocument(loadedSource.path, meta, parseErr)
+		c.onDocument(captured, loadedSource.path, meta, parseErr)
 	}
 	return result, cached
 }
@@ -238,11 +261,10 @@ func (c *Cache) readLocalActionMetadataFile(dir string) (capture.Snapshot, strin
 	}
 	for _, name := range []string{"action.yml", "action.yaml"} {
 		path := filepath.Join(dir, name)
-		address := path
-		if !filepath.IsAbs(address) && c.sourceBase != "" {
-			address = filepath.Join(c.sourceBase, address)
+		if c.onManifestRequest != nil {
+			c.onManifestRequest(path)
 		}
-		captured, err := c.captures.Read(c.ctx, address, source.YAML)
+		captured, err := c.captures.Read(c.ctx, path, source.YAML)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
@@ -262,12 +284,9 @@ func (c *Cache) hasExplicitAction(spec string) (bool, error) {
 	if c.captures == nil {
 		return false, errors.New("explicit actions require a capture store")
 	}
-	dir := filepath.Join(c.root, filepath.FromSlash(spec))
+	dir := filepath.Join(c.sourceRoot, filepath.FromSlash(spec))
 	for _, name := range []string{"action.yml", "action.yaml"} {
 		address := filepath.Join(dir, name)
-		if !filepath.IsAbs(address) && c.sourceBase != "" {
-			address = filepath.Join(c.sourceBase, address)
-		}
 		document, err := c.captures.Canonical(c.ctx, address)
 		if err != nil {
 			return false, err

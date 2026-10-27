@@ -8,7 +8,6 @@ import (
 
 	checks "actionlint.kjanat.dev/v2/internal/checks"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-	"actionlint.kjanat.dev/v2/internal/source/capture"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
@@ -88,7 +87,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 			return err
 		}
 	}
-	meta, outcome, err := analysis.resolveAction(actionView)
+	meta, sourceDocument, outcome, err := analysis.resolveAction(actionView)
 	if err != nil {
 		return err
 	}
@@ -100,7 +99,15 @@ func (analysis *compositeAnalyzer) visitActionScripts(call *workflowlang.Step, p
 		return analysis.visitOpaqueAction(call, declaration, actionView, parents)
 	}
 	opened = true
-	return analysis.visitMetadataScripts(meta, callContext, parents)
+	target, ok := outcome.Target()
+	if !ok {
+		return errors.New("expanded action has no source reference")
+	}
+	snapshot, ok := analysis.sourceSnapshots.Lookup(target)
+	if !ok {
+		return errors.New("expanded action source snapshot is unavailable")
+	}
+	return analysis.visitMetadataScripts(meta, snapshot, sourceDocument.Address(), callContext, parents)
 }
 
 func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, declaration documentparse.StepView, actionView documentparse.ExecActionView, parents []workflowvisit.Rule) error {
@@ -114,24 +121,17 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call *workflowlang.Step, de
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, callContext invocation.Context, parents []workflowvisit.Rule) error {
+func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted *documentparse.SourceSnapshot, address string, callContext invocation.Context, parents []workflowvisit.Rule) error {
 	if !analysis.invocations.Owns(callContext) {
 		return invocation.ErrForeignContext
 	}
 	if analysis.sourceSnapshots == nil {
 		return errors.New("action source registry is unavailable")
 	}
-	var captured capture.Snapshot
-	if callContext.IsEntry() && analysis.sourceSnapshot != nil && analysis.sourceSnapshot.Kind() == documentparse.KindAction {
-		captured = analysis.sourceSnapshot.Capture()
-	} else {
-		var err error
-		captured, err = analysis.sourceSnapshots.Capture(meta.Path())
-		if err != nil {
-			return err
-		}
+	if admitted == nil || admitted.Registry() != analysis.sourceSnapshots {
+		return errors.New("action source snapshot belongs to a different registry")
 	}
-	snapshot, err := analysis.sourceSnapshots.Action(captured, meta)
+	snapshot, err := analysis.sourceSnapshots.Action(admitted.Capture(), meta)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	scriptConfig := analysis.scriptConfig
 	if analysis.configForFile != nil {
 		var err error
-		scriptConfig, err = analysis.configForFile(meta.Path())
+		scriptConfig, err = analysis.configForFile(address)
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	parentConfig := analysis.scriptConfig
 	analysis.scriptConfig = scriptConfig
 	defer func() { analysis.scriptConfig = parentConfig }()
-	deployment, err := scriptexecution.NewDeployment(snapshot, meta.Path(), meta.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(snapshot, address, meta.Path(), meta.SourceMapped)
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // Finding carries a canonical diagnostic and analysis-only provenance. All rule
@@ -23,7 +24,8 @@ type Finding struct {
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	Source []byte
 	// RawScriptSource selects LF-only line splitting for external checker positions.
-	RawScriptSource bool
+	RawScriptSource   bool
+	UnavailableSource UnavailableSource
 	// suppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
 	SuppressionOrigin *SuppressionOrigin
@@ -35,6 +37,9 @@ type Finding struct {
 	MetadataIdentity *MetadataIdentity
 	// metadataParsePath links caller parse failures to a selected manifest.
 	MetadataParsePath string
+	// MetadataParseSource is the captured revision whose parse failure was
+	// observed. MetadataParsePath remains the caller-facing spelling.
+	MetadataParseSource source.Revision
 }
 
 // String returns a diagnostic with its source location and rule name.

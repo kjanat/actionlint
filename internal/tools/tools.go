@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/rule"
@@ -103,10 +104,11 @@ type Batch struct {
 // by the host after adapters finish, including for externally sourced findings.
 type Finding struct {
 	diagnostic.Diagnostic
-	Script      int
-	Content     []byte
-	RawScript   bool
-	Suppression *Suppression
+	Script            int
+	Content           []byte
+	RawScript         bool
+	UnavailableSource findingmodel.UnavailableSource
+	Suppression       *Suppression
 }
 type Suppression struct {
 	Path        string

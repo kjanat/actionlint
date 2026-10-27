@@ -46,11 +46,16 @@ type Resolver struct {
 // their canonical references, independently of metadata lookup success.
 type SourceDocument struct {
 	path     string
+	address  string
 	captured capture.Snapshot
 	document documentparse.Document
 }
 
 func (d SourceDocument) Path() string { return d.path }
+
+// Address is the absolute alias passed to the capture owner, separate from the
+// caller's metadata display spelling.
+func (d SourceDocument) Address() string { return d.address }
 
 func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
 
@@ -65,11 +70,19 @@ func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
 
 // FindMetadata translates a reference using this invocation's checkout and source mappings.
 func (c *Resolver) FindMetadata(spec string) (*actionmeta.Metadata, bool, error) {
+	metadata, cached, _, err := c.FindMetadataDocument(spec)
+	return metadata, cached, err
+}
+
+// FindMetadataDocument retains the capture belonging to this invocation's
+// translated lookup without resolving or reading the metadata a second time.
+func (c *Resolver) FindMetadataDocument(spec string) (*actionmeta.Metadata, bool, SourceDocument, error) {
 	result, cached := c.LookupMetadata(spec)
+	document, _ := c.SourceDocument(result)
 	if c == nil {
-		return result.Metadata(), cached, result.Err()
+		return result.Metadata(), cached, document, result.Err()
 	}
-	return result.Metadata(), cached, c.base.reportMetadataError(result)
+	return result.Metadata(), cached, document, c.base.reportMetadataError(result)
 }
 
 // LookupMetadata looks up action metadata without emitting validation diagnostics.
@@ -120,16 +133,10 @@ func (c *Resolver) SourceDocuments() map[string]SourceDocument {
 
 // SourceDocument returns the cached parse record associated with a lookup.
 func (c *Resolver) SourceDocument(result MetadataResult) (SourceDocument, bool) {
-	if c == nil || c.base == nil || result.cacheSpec == "" {
+	if c == nil || c.base == nil {
 		return SourceDocument{}, false
 	}
-	c.base.mu.RLock()
-	source, exists := c.base.sources[result.cacheSpec]
-	c.base.mu.RUnlock()
-	if !exists {
-		return SourceDocument{}, false
-	}
-	return SourceDocument{path: source.path, captured: source.captured, document: source.document}, true
+	return c.base.SourceDocument(result)
 }
 
 // ApplyCheckout adapts shared script paths to this invocation's checkout placement.
@@ -188,7 +195,7 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 		return MetadataResult{status: MetadataReadFailed, cause: err}, false
 	}
 	if c.caseInsensitive && c.base.root != "" && !c.base.customReader && !explicit {
-		local, err := execution.CaseInsensitiveRepositoryPath(c.base.root, spec, c.base.reader)
+		local, err := execution.CaseInsensitiveRepositoryPath(c.base.sourceRoot, spec, c.base.reader)
 		if err != nil {
 			_, ambiguous := errors.AsType[execution.AmbiguousPathError](err)
 			if !errors.Is(err, os.ErrNotExist) && !ambiguous {
@@ -208,7 +215,7 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 		spec = local
 	}
 	if mapped && c.base.root != "" && !c.base.customReader && !explicit {
-		if err := checkMappedSource(c.base.root, spec); err != nil {
+		if err := checkMappedSource(c.base.sourceRoot, spec); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				return MetadataResult{status: MetadataMappingFailed, cause: missingMappedLocalAction(original, spec)}, false
 			}
@@ -236,7 +243,7 @@ func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataRe
 		if c.usedDocuments == nil {
 			c.usedDocuments = make(map[string]SourceDocument)
 		}
-		c.usedDocuments[source.path] = SourceDocument{path: source.path, captured: source.captured, document: source.document}
+		c.usedDocuments[source.path] = SourceDocument(source)
 		c.mu.Unlock()
 	}
 	return result, cached

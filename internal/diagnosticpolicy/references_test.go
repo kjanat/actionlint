@@ -67,3 +67,13 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 		t.Fatalf("mixed-case job reference = %+v, want %+v", finding.Reference, want)
 	}
 }
+
+func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
+	references := workflowfacts.References{Document: source.Reference{Document: "entry", Revision: "revision", Node: "document"}}
+	foreign := &findingmodel.Finding{Path: "unrelated.sh"}
+	alias := &findingmodel.Finding{Path: "entry-alias.yml"}
+	InferReferences([]*findingmodel.Finding{foreign, alias}, "entry.yml", map[string]workflowfacts.References{"entry.yml": references}, "entry-alias.yml")
+	if foreign.Reference != nil || alias.Reference == nil || *alias.Reference != references.Document {
+		t.Fatalf("path ownership inference changed: foreign=%+v alias=%+v", foreign.Reference, alias.Reference)
+	}
+}

@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
@@ -75,6 +76,37 @@ func TestStructuredRenderRanges(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
+	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: diagmodel.Position{Line: 1, Column: 6}, End: diagmodel.Position{Line: 1, Column: 6}}
+	analysis := report.Analysis{Diagnostics: []diagmodel.Diagnostic{diagnostic}, Sources: []report.DiagnosticSource{{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: true}}}
+	result := Prepare(analysis)
+	fields := result.Findings[0].TemplateFields()
+	if fields.EndColumn != diagnostic.Start.Column || fields.Snippet != "echo long_unverified_token\n     ^" {
+		t.Fatalf("template inferred an unverified token extent: %+v", fields)
+	}
+	for _, mode := range []struct {
+		format   Format
+		template string
+	}{{format: FormatText}, {template: "{{range .}}{{.Snippet}}{{end}}"}} {
+		renderer, err := New(mode.format, mode.template, false, testVersion, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var output bytes.Buffer
+		if err := renderer.Render(&output, result); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(output.String(), "~") || !strings.Contains(output.String(), "     ^") {
+			t.Fatalf("unavailable point inferred text extent: %q", output.String())
+		}
+	}
+	analysis.Diagnostics[0].End.Column = 10
+	fields = Prepare(analysis).Findings[0].TemplateFields()
+	if fields.EndColumn != 9 || !strings.HasSuffix(fields.Snippet, "     ^~~~") {
+		t.Fatalf("reported extent was lost: %+v", fields)
 	}
 }
 

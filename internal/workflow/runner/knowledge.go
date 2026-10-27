@@ -77,6 +77,7 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 		return k, errors.New("invalid runner snapshot freshness")
 	}
 	var selected runnerapi.Provider
+	builtinLabels := false
 	identity := ""
 	if options.Scope != "" {
 		scope = options.Scope
@@ -86,6 +87,7 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 	}
 	if options.Target == "github" && (options.Provider == "" || options.Provider == "github") {
 		selected = builtinProvider{custom: slices.Clone(custom)}
+		builtinLabels = true
 		identity = "builtin-github"
 	}
 	if options.Target == "github" && options.Provider == "snapshot" {
@@ -201,6 +203,11 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 		knowledge, err := joinAnswers(span.job, answers[span.start:span.end])
 		if err != nil {
 			return k, fmt.Errorf("runner provider %s: %w", selected.RunnerDescriptor().Name, err)
+		}
+		if builtinLabels && (!hasSnapshot || options.Snapshot.Freshness == runnerapi.Fresh && options.Snapshot.Complete) {
+			// Provider answers describe execution alternatives. Built-in declaration
+			// spelling and execution compatibility share Check's diagnostic owner.
+			knowledge.Findings = Check(span.job, custom)
 		}
 		jobs[span.job] = knowledge
 	}

@@ -12,10 +12,10 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, *documentparse.SourceSnapshot, string) {
@@ -23,11 +23,11 @@ func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection
 	path := filepath.Join(t.TempDir(), "source", "action.yml")
 	content := []byte("name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo first\n    - shell: sh\n      run: echo second\n")
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := snapshots.Document(fsread.PhysicalPath(path), content, documentparse.Action(path, path, content))
+	snapshot, err := snapshots.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, path, mapped)
+	deployment, err := NewDeployment(snapshot, path, path, mapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,18 +124,18 @@ func TestDeploymentRejectsForeignSources(t *testing.T) {
 	root, _ := workflow.Declarations.Lookup(graph.Entry().Reference)
 	for name, snapshot := range map[string]*documentparse.SourceSnapshot{"nil": nil, "workflow": root, "zero": {}} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := NewDeployment(snapshot, path, false); !errors.Is(err, ErrInvalidBatch) {
+			if _, err := NewDeployment(snapshot, path, path, false); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("foreign deployment accepted: %v", err)
 			}
 		})
 	}
 	for _, wrong := range []string{"", filepath.Join(filepath.Dir(path), "other.yml")} {
-		if _, err := NewDeployment(action, wrong, false); !errors.Is(err, ErrInvalidBatch) {
+		if _, err := NewDeployment(action, wrong, wrong, false); !errors.Is(err, ErrInvalidBatch) {
 			t.Fatalf("foreign display path accepted: %v", err)
 		}
 	}
 	foreignGraph, foreign, _, _ := actionBatchFixture(t, false)
-	deployment, err := NewDeployment(action, path, false)
+	deployment, err := NewDeployment(action, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,11 +217,11 @@ func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "action.yml")
 	content := []byte("name: node\ndescription: node\nruns: {using: node24, main: index.js}\n")
 	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-	snapshot, err := registry.Document(fsread.PhysicalPath(path), content, documentparse.Action(path, path, content))
+	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, path, false)
+	deployment, err := NewDeployment(snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +258,7 @@ func TestDeploymentPreservesWindowsDisplaySeparators(t *testing.T) {
 		t.Fatal("fixture did not provide a Windows display path")
 	}
 	for _, display := range []string{path, filepath.ToSlash(path)} {
-		deployment, err := NewDeployment(snapshot, display, false)
+		deployment, err := NewDeployment(snapshot, path, display, false)
 		if err != nil || deployment.SourcePath() != display || deployment.reference != snapshot.Reference() {
 			t.Fatalf("display separator normalization changed source identity: %+v %v", deployment, err)
 		}
@@ -280,7 +280,16 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, alias, false)
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	content := snapshot.Content()
+	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := registry.Sources.Capture(alias, content, source.YAML); err != nil {
+		t.Fatal(err)
+	}
+	deployment, err := NewDeployment(snapshot, alias, alias, false)
 	if err != nil || deployment.SourcePath() != alias || deployment.reference != snapshot.Reference() {
 		t.Fatalf("stable symlink alias rejected: %+v %v", deployment, err)
 	}
@@ -294,7 +303,13 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 	if err := os.Symlink(other, alias); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewDeployment(snapshot, alias, false); !errors.Is(err, ErrInvalidBatch) {
-		t.Fatalf("retargeted source alias accepted: %v", err)
+	if err := registry.Sources.Store.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if deployment, err := NewDeployment(snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {
+		t.Fatalf("retargeted alias changed its captured identity after sealing: %+v %v", deployment, err)
+	}
+	if _, err := NewDeployment(snapshot, other, other, false); !errors.Is(err, ErrInvalidBatch) {
+		t.Fatalf("uncaptured target address accepted: %v", err)
 	}
 }

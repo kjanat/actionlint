@@ -177,7 +177,7 @@ jobs:
 	request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
 
 	for _, order := range [][]string{{"read.yaml", "write.yaml", "callee.yaml"}, {"callee.yaml", "write.yaml", "read.yaml"}} {
-		cache := calls.NewCache(project.RootDir(), root, nil)
+		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 		for range 2 {
 			for _, name := range order {
 				diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
@@ -282,7 +282,7 @@ jobs:
 					}
 				}
 				for _, order := range [][]string{{"caller.yaml", "callee.yaml", "leaf.yaml"}, {"leaf.yaml", "callee.yaml", "caller.yaml"}} {
-					cache := calls.NewCache(project.RootDir(), root, nil)
+					cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
 							diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: []byte(files[name]), Project: project, Config: project.Config()}, nil, nil, cache)
@@ -370,7 +370,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		}
 	}
 	for _, astFirst := range []bool{false, true} {
-		cache := calls.NewCache(project.RootDir(), root, nil)
+		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 		if astFirst {
 			for name, source := range sources {
 				w, errs := documentparse.Parse([]byte(source))

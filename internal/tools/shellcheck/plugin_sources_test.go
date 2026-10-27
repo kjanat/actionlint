@@ -61,9 +61,18 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 			t.Fatalf("dependency missing: %s from %v", path, inputs)
 		}
 	}
-	finding, err := sources.finding(diagnostic.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: diagnostic.Position{Line: 1, Column: 1}}, script, 3)
+	finding, err := sources.finding(diagnostic.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: diagnostic.Position{Line: 1, Column: 1}, Fixes: []diagnostic.Fix{{Description: "must not survive"}}}, script, 3)
 	if err != nil || finding.Path != sourcePath(file, root) || !finding.RawScript || string(finding.Content) != "VALUE=one\n" || finding.Script != 3 {
 		t.Fatalf("mapping=%+v error=%v", finding, err)
+	}
+	if !finding.UnavailableSource.Present() || finding.UnavailableSource.Reason() != "not-captured" || finding.Reference != nil || len(finding.Fixes) != 0 {
+		t.Fatalf("plugin grant source fabricated revision evidence: %+v", finding)
+	}
+	for _, path := range []string{"/workspace/lib/unread.sh", "/ungranted/clean.sh"} {
+		finding, err := sources.finding(diagnostic.Diagnostic{Path: path}, script, 3)
+		if err == nil || finding.UnavailableSource.Present() {
+			t.Fatalf("unread or ungranted source acquired an unavailable allowance: path=%s finding=%+v error=%v", path, finding, err)
+		}
 	}
 	dir, err := input.Files[0].FS.Open(".")
 	if err != nil {

@@ -71,8 +71,61 @@ func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
 		t.Fatalf("work survived Close: running=%d reads=%d", running.Load(), reads.Load())
 	}
 	rows, err := store.Sources()
-	if err != nil || len(rows) != 1 || rows[0].State != Failed || rows[0].Code != "cancelled" || !errors.Is(rows[0].Error, context.Canceled) {
+	if err != nil || len(rows) != 1 || rows[0].State != Captured || rows[0].Code != "" || rows[0].Error != nil || rows[0].Revision.Digest() != sourceid.Digest([]byte("joined")) {
 		t.Fatalf("sealed sources = %#v, %v", rows, err)
+	}
+}
+
+func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
+	lifetime, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	path := filepath.Join(t.TempDir(), "complete.yml")
+	content := []byte("complete\r\n")
+	store, err := New(lifetime, nil, func(context.Context, string) ([]byte, error) {
+		cancel()
+		return content, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupStore(t, store)
+	if _, err := store.Read(t.Context(), path, source.YAML); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled waiter returned success: %v", err)
+	}
+	store.mu.Lock()
+	done := store.docs[physicalDocument(path)].done
+	store.mu.Unlock()
+	<-done
+	for range 128 {
+		if _, err := store.Read(t.Context(), path, source.YAML); !errors.Is(err, context.Canceled) {
+			t.Fatalf("completed entry bypassed lifetime cancellation: %v", err)
+		}
+	}
+	if err := store.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, state, err := store.Lookup(path)
+	if err != nil || state != Captured || !bytes.Equal(snapshot.Bytes(), content) || snapshot.Revision().Digest() != sourceid.Digest(content) {
+		t.Fatalf("completed bytes lost after cancellation: %q, %v", state, err)
+	}
+}
+
+func TestPartialReadErrorCannotPublishBytes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "partial.yml")
+	failure := errors.New("truncated read")
+	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { return []byte("partial"), failure })
+	if _, err := store.Read(t.Context(), path, source.YAML); !errors.Is(err, failure) {
+		t.Fatal(err)
+	}
+	if snapshot, state, err := store.Lookup(path); snapshot.Valid() || state != Failed || !errors.Is(err, failure) {
+		t.Fatalf("partial bytes became captured evidence: %q, %v", state, err)
+	}
+	if err := store.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := store.Sources()
+	if err != nil || len(rows) != 1 || rows[0].Revision.Valid() || rows[0].Code != "capture-failed" {
+		t.Fatalf("partial bytes published a revision: %#v, %v", rows, err)
 	}
 }
 

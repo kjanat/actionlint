@@ -16,7 +16,7 @@ func TestSourcedShellcheckPhysicalLines(t *testing.T) {
 	content := []byte(first + "\n" + second + "\n")
 	rule := &shellcheckRun{}
 	for line, want := range []string{first, second} {
-		finding := rule.sourcedDiagnostic(shellcheckError{File: path, Line: line + 1, Column: 1, Code: 2086, Message: "Quote expansion"}, "", map[string][]byte{path: content})
+		finding := rule.sourcedDiagnostic(shellcheckError{File: path, Line: line + 1, Column: 1, Code: 2086, Message: "Quote expansion"}, "", map[string]reportedSource{path: {content: content}})
 		if !finding.rawScriptSource {
 			t.Fatal("sourced checker did not select raw script coordinates")
 		}

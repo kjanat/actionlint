@@ -73,7 +73,7 @@ jobs:
 			var previousMetadata *calls.Metadata
 			var previousDiagnostics []*findingmodel.Finding
 			for _, fromAST := range []bool{false, true} {
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				if fromAST {
 					cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 				}
@@ -191,7 +191,7 @@ jobs:
 				var previousMetadata *calls.Metadata
 				var previousDiagnostics []*findingmodel.Finding
 				for _, fromAST := range []bool{false, true} {
-					cache := calls.NewCache(project.RootDir(), root, nil)
+					cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 					if fromAST {
 						cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 					}

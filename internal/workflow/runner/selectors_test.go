@@ -186,11 +186,17 @@ func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-latest, ubuntu-lates], arch: [x64, arm64], exclude: "+tc.exclude+", include: "+tc.include+"}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
-			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
+			// This contract covers execution selectors. Declaration lint separately
+			// retains excluded spelling errors in prepared job findings.
+			answers, err := (builtinProvider{}).ResolveRunners(t.Context(), runnerapi.Request{Target: "github", Scope: "scope", Selectors: Selectors(w.Views["test"])})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := k.Job(w.Views["test"]); len(got.Findings) != tc.wantFindings || got.Platform != Any || got.Shell != "" {
+			got, err := joinAnswers(w.Views["test"], answers)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got.Findings) != tc.wantFindings || got.Platform != Any || got.Shell != "" {
 				t.Fatalf("excluded fallback label diagnostics or certainty: %#v", got)
 			}
 		})

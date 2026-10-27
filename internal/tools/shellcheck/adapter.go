@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/config/rules"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
@@ -34,6 +35,7 @@ type Error struct {
 	endColumn         int
 	source            []byte
 	rawScriptSource   bool
+	unavailableSource findingmodel.UnavailableSource
 	scriptIndex       int
 	suppressionOrigin *suppressionOrigin
 }
@@ -149,7 +151,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if f.endPosition != nil {
 			d.End = diagnostic.Position{Line: f.endPosition.Line, Column: f.endPosition.Col}
 		}
-		out := tools.Finding{Diagnostic: d, Script: f.scriptIndex, Content: f.source, RawScript: f.rawScriptSource}
+		out := tools.Finding{Diagnostic: d, Script: f.scriptIndex, Content: f.source, RawScript: f.rawScriptSource, UnavailableSource: f.unavailableSource}
 		if out.Script >= 0 && out.Script < len(scriptIndexes) {
 			out.Script = scriptIndexes[out.Script]
 		}

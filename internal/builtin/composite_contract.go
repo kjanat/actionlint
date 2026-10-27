@@ -34,7 +34,7 @@ type (
 	InvocationParticipant interface{ DeferActionInvocation() bool }
 	MetadataParticipant   interface {
 		workflowvisit.Rule
-		CheckStandaloneMetadata(*actionmeta.Metadata)
+		CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error
 		ForMetadata(*actionlocal.Resolver) workflowvisit.Rule
 	}
 )

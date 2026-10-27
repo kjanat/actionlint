@@ -1,3 +1,4 @@
+// Package capturefixture supplies result-owned source captures to tests.
 package capturefixture
 
 import (
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -30,6 +32,7 @@ func NewCapturedSources(t testing.TB, base string, overlays ...capture.Overlay) 
 		t.Fatalf("capture fixture requires an absolute base: %q", base)
 	}
 	fixture := &CapturedSources{base: base, ctx: t.Context(), content: make(map[string][]byte)}
+	reader := fsread.New(t.Context(), nil, nil)
 	store, err := capture.New(t.Context(), overlays, func(_ context.Context, document string) ([]byte, error) {
 		fixture.mu.Lock()
 		content, exists := fixture.content[document]
@@ -38,7 +41,7 @@ func NewCapturedSources(t testing.TB, base string, overlays ...capture.Overlay) 
 		if exists {
 			return content, nil
 		}
-		return os.ReadFile(document)
+		return reader.ReadFile(document)
 	})
 	if err != nil {
 		t.Fatal(err)

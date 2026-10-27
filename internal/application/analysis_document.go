@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -122,26 +123,30 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	}
 	composed := composition.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
-		composed, analysisErr = s.composeDocument(path, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
+		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
 			return nil, outline, analysisErr
 		}
 		all = append(all, composed.Findings...)
 	}
 	references := map[string]workflowfacts.References{sourcePath: snapshot.CanonicalReferences()}
+	rejected := map[string]bool{}
 	for path, source := range composed.Sources {
 		sourceDocument, exists := composed.SourceDocuments[path]
 		if !exists {
 			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q has no admitted parse provenance", path))
+			sourceRejected(rejected, path, capture.Snapshot{})
 			continue
 		}
 		if err := s.captures.Verify(sourceDocument.Capture(), source); err != nil {
 			analysisErr = errors.Join(analysisErr, err)
+			sourceRejected(rejected, path, sourceDocument.Capture())
 			continue
 		}
 		nested, err := s.snapshots.Document(sourceDocument.Capture(), sourceDocument.Document())
 		if err != nil {
 			analysisErr = errors.Join(analysisErr, fmt.Errorf("admit source %q parse provenance: %w", path, err))
+			sourceRejected(rejected, path, sourceDocument.Capture())
 			continue
 		}
 		references[path] = nested.CanonicalReferences()
@@ -153,7 +158,15 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		all = append(all, external...)
 		analysisErr = errors.Join(analysisErr, err)
 	}
-	diagnosticpolicy.InferReferences(all, sourcePath, references)
+	entryAliases := append(snapshot.Capture().Aliases(), path, snapshot.Reference().Document)
+	for _, alias := range entryAliases {
+		if relative, err := filepath.Rel(s.workingDir, alias); err == nil {
+			entryAliases = append(entryAliases, relative)
+		}
+	}
+	diagnosticpolicy.InferReferences(all, sourcePath, references, entryAliases...)
+	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
+	analysisErr = errors.Join(analysisErr, err)
 	policy := diagnosticpolicy.Policy{RuleDescriptors: s.toolDescriptors, Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: document.Metadata, Presets: s.rulePresets, AdditionalRules: names, IgnorePatterns: s.ignorePats}
 	all, err = policy.Apply(all, composed.Sources, composed.Configs)
 	if err != nil {
@@ -163,7 +176,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	return all, outline, analysisErr
 }
 
-func (s *analysisSession) composeDocument(path, root string, content []byte, document documentparse.Document, snapshot *documentparse.SourceSnapshot, action bool,
+func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot *documentparse.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {
@@ -236,7 +249,7 @@ func (s *analysisSession) composeDocument(path, root string, content []byte, doc
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),
 	})
 	if action {
-		deployment, deploymentErr := scriptexecution.NewDeployment(snapshot, document.Metadata.Path(), document.Metadata.SourceMapped)
+		deployment, deploymentErr := scriptexecution.NewDeployment(snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
 		if deploymentErr != nil {
 			return result, deploymentErr
 		}

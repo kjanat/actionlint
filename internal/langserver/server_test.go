@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -79,7 +80,11 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 				}
 				result = append(result, diagnostic.Diagnostic{Path: path, Rule: "test", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []diagnostic.Fix{{Description: "replace", Applicability: "safe", Revisions: map[string]string{path: sourceid.Digest([]byte(doc.Text))}, Edits: []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
 			}
-			return Analysis{Diagnostics: result}, nil
+			sources := make(map[string]string, len(docs))
+			for path, doc := range docs {
+				sources[path] = doc.Text
+			}
+			return Analysis{Diagnostics: result, Sources: sources}, nil
 		})
 	}()
 	reader := bufio.NewReader(receive)
@@ -207,7 +212,7 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 					<-ctx.Done()
 					close(cancelled)
 					<-release
-					return Analysis{Diagnostics: []diagnostic.Diagnostic{{Path: path, Message: "stale"}}}, nil
+					return Analysis{Diagnostics: []diagnostic.Diagnostic{{Path: path, Message: "stale"}}, Sources: map[string]string{path: doc.Text}}, errors.New("source-revision-conflict: stale generation")
 				}
 			}
 			return Analysis{}, nil

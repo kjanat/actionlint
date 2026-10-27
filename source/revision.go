@@ -33,6 +33,9 @@ func (r Revision) Document() string { return r.document }
 func (r Revision) Digest() string   { return r.digest }
 func (r Revision) Valid() bool      { return r.document != "" && r.digest != "" }
 
+// Equal compares complete revision values, including equal zero values.
+func (r Revision) Equal(other Revision) bool { return r == other }
+
 type revisionJSON struct {
 	Document string `json:"document"`
 	Digest   string `json:"digest"`

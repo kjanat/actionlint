@@ -241,7 +241,7 @@ func (run *shellcheckRun) runShellcheck(src string, source documentparse.ScriptS
 				finding.scriptIndex = ignoreOrigin
 			}
 		}()
-		sources := make(map[string][]byte)
+		sources := make(map[string]reportedSource)
 		for _, err := range errs {
 			if err.File != "" && err.File != "-" {
 				finding := run.sourcedDiagnostic(err, directory.path, sources)

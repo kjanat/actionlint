@@ -12,9 +12,12 @@ func (e *Finding) Canonical(source []byte) diagnostic.Diagnostic {
 	end := e.End
 	if end == (diagnostic.Position{}) {
 		end = diagnostic.Position{Line: e.Start.Line, Column: e.Start.Column + 1}
+		if e.UnavailableSource.Present() {
+			end = e.Start
+		}
 	}
 	snippet, _ := sourcemap.DiagnosticLine(source, e.Start.Line, e.RawScriptSource)
-	if e.End == (diagnostic.Position{}) && snippet != "" {
+	if !e.UnavailableSource.Present() && e.End == (diagnostic.Position{}) && snippet != "" {
 		end.Column = text.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
 	}
 	if e.EndPosition != nil {
@@ -36,6 +39,9 @@ func (e *Finding) Canonical(source []byte) diagnostic.Diagnostic {
 	}
 	d := e.Diagnostic
 	d.End, d.Fixes = end, fixes
+	if e.UnavailableSource.Present() {
+		d.Reference, d.Fixes = nil, nil
+	}
 	if snippet != "" || d.Snippet == "" {
 		d.Snippet = snippet
 	}

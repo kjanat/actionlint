@@ -38,6 +38,7 @@ func Prepare(analysis report.Analysis) Result {
 		}
 		finding := FindingOf(d, source.Content)
 		finding.RawScript = source.RawScript
+		finding.Unavailable = source.Unavailable
 		r.Findings = append(r.Findings, finding)
 	}
 	return r

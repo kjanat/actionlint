@@ -11,12 +11,11 @@ import (
 
 func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 	testCases := []struct {
-		what         string
-		labels       []string
-		matrix       []string
-		known        []string
-		errs         []string
-		providerErrs []string
+		what   string
+		labels []string
+		matrix []string
+		known  []string
+		errs   []string
 	}{
 		// Normal cases
 		{
@@ -266,11 +265,10 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			},
 		},
 		{
-			what:         "GH-hosted labels conflict with matrix at first label",
-			labels:       []string{"${{matrix.os}}", "ubuntu-latest"},
-			matrix:       []string{"windows-latest", "macos-latest"},
-			errs:         []string{`label "ubuntu-latest" conflicts with label`},
-			providerErrs: []string{`label "ubuntu-latest" conflicts with label "windows-latest"`, `label "ubuntu-latest" conflicts with label "macos-latest"`},
+			what:   "GH-hosted labels conflict with matrix at first label",
+			labels: []string{"${{matrix.os}}", "ubuntu-latest"},
+			matrix: []string{"windows-latest", "macos-latest"},
+			errs:   []string{`label "ubuntu-latest" conflicts with label "windows-latest"`, `label "ubuntu-latest" conflicts with label "macos-latest"`},
 		},
 		{
 			what:   "Repeated matrix references select the same value",
@@ -381,10 +379,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 				t.Fatal(err)
 			}
 			provided := prepared.Job(fixture.Views["test"]).Findings
-			wantProvided := tc.providerErrs
-			if wantProvided == nil {
-				wantProvided = tc.errs
-			}
+			wantProvided := tc.errs
 			if len(provided) != len(wantProvided) {
 				t.Fatalf("provider: want %d findings, got %v", len(wantProvided), provided)
 			}

@@ -83,7 +83,7 @@ jobs:
 					}
 				}
 				for _, order := range [][]string{{"caller.yaml", "callee.yaml"}, {"callee.yaml", "caller.yaml"}} {
-					cache := calls.NewCache(project.RootDir(), root, nil)
+					cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 					for range 2 {
 						for _, name := range order {
 							source := caller
@@ -109,7 +109,7 @@ jobs:
 				}
 				workflow, _ := documentparse.Parse(callee)
 				event, _ := workflow.FindWorkflowCallEvent()
-				cache := calls.NewCache(project.RootDir(), root, nil)
+				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, workflow)
 				fromAST, _, _ := cache.Lookup("./callee.yaml")
 				fromFile, err := calls.ParseMetadata(callee)

@@ -83,60 +83,60 @@ func metadataOutcome(result actionlocal.MetadataResult) (invocation.Outcome, err
 	}
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action documentparse.ExecActionView) (*actionmeta.Metadata, invocation.Outcome, error) {
+func (analysis *compositeAnalyzer) resolveAction(action documentparse.ExecActionView) (*actionmeta.Metadata, actionlocal.SourceDocument, invocation.Outcome, error) {
 	uses := action.Uses()
 	if !uses.Present() || uses.Value() == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")
-		return nil, outcome, err
+		return nil, actionlocal.SourceDocument{}, outcome, err
 	}
 	spec := uses.Value()
 	if exprlang.ContainsExpression(spec) {
 		outcome, err := invocation.Dynamic(spec)
-		return nil, outcome, err
+		return nil, actionlocal.SourceDocument{}, outcome, err
 	}
 	position, hasPosition := uses.Pos()
 	if invalidActionReference(spec, position, hasPosition) {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference has invalid syntax")
-		return nil, outcome, err
+		return nil, actionlocal.SourceDocument{}, outcome, err
 	}
 	lookup, _ := analysis.actions.LookupMetadata(spec)
 	if errors.Is(lookup.Err(), context.Canceled) || errors.Is(lookup.Err(), context.DeadlineExceeded) {
-		return nil, invocation.Outcome{}, lookup.Err()
+		return nil, actionlocal.SourceDocument{}, invocation.Outcome{}, lookup.Err()
 	}
 	if err := analysis.cancelled(); err != nil {
-		return nil, invocation.Outcome{}, err
+		return nil, actionlocal.SourceDocument{}, invocation.Outcome{}, err
 	}
 	sourceDocument, hasSource := analysis.actions.SourceDocument(lookup)
 	var snapshot *documentparse.SourceSnapshot
 	if hasSource {
 		admitted, err := analysis.sourceSnapshots.Document(sourceDocument.Capture(), sourceDocument.Document())
 		if err != nil {
-			return nil, invocation.Outcome{}, err
+			return nil, sourceDocument, invocation.Outcome{}, err
 		}
 		snapshot = admitted
 	}
 	if lookup.Status() != actionlocal.MetadataResolved {
 		outcome, err := metadataOutcome(lookup)
-		return nil, outcome, err
+		return nil, sourceDocument, outcome, err
 	}
 	meta := lookup.Metadata()
 	if meta == nil {
-		return nil, invocation.Outcome{}, errors.New("resolved action metadata is unavailable")
+		return nil, sourceDocument, invocation.Outcome{}, errors.New("resolved action metadata is unavailable")
 	}
 	if snapshot == nil {
-		return nil, invocation.Outcome{}, errors.New("resolved action source document is unavailable")
+		return nil, sourceDocument, invocation.Outcome{}, errors.New("resolved action source document is unavailable")
 	}
 	actionView, available := snapshot.ActionView()
 	if !available {
-		return nil, invocation.Outcome{}, errors.New("resolved action source has no action view")
+		return nil, sourceDocument, invocation.Outcome{}, errors.New("resolved action source has no action view")
 	}
 	using := actionView.Using()
 	if !strings.EqualFold(using, "composite") {
 		outcome, err := invocation.Opaque(invocation.ReasonNonComposite, using)
-		return meta, outcome, err
+		return meta, sourceDocument, outcome, err
 	}
 	outcome, err := invocation.Expanded(snapshot.Reference())
-	return meta, outcome, err
+	return meta, sourceDocument, outcome, err
 }
 
 func invalidActionReference(spec string, position workflowlang.Pos, hasPosition bool) bool {

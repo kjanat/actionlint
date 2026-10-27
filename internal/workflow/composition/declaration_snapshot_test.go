@@ -98,7 +98,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 					t.Fatal(err)
 				}
 				analysis.context = context
-				if err := analysis.visitMetadataScripts(target, context, nil); err != nil {
+				if err := analysis.visitMetadataScripts(target, snapshot, target.Path(), context, nil); err != nil {
 					t.Fatal(err)
 				}
 				if err := analysis.invocations.Close(context); err != nil {

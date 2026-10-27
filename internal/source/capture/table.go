@@ -67,6 +67,9 @@ func (s *Store) Lookup(path string) (Snapshot, State, error) {
 		return Snapshot{}, Pending, nil
 	}
 	e := s.docs[name.document]
+	if !name.documentRequired || e == nil {
+		return Snapshot{}, Absent, nil
+	}
 	current := state(e)
 	switch current {
 	case Captured:
@@ -81,8 +84,9 @@ func (s *Store) Lookup(path string) (Snapshot, State, error) {
 }
 
 // Sources returns copied rows only after Close has successfully joined all work.
-// Aliases include every completed resolution, even from cancelled/conflicting
-// requests. Returned rows and alias slices cannot mutate the sealed table.
+// Aliases include every completed source resolution, even from cancelled or
+// conflicting requests. Identity-only aliases are omitted. Returned rows and
+// alias slices cannot mutate the sealed table.
 func (s *Store) Sources() ([]Source, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -94,6 +98,27 @@ func (s *Store) Sources() ([]Source, error) {
 		rows[index].Aliases = slices.Clone(rows[index].Aliases)
 	}
 	return rows, nil
+}
+
+// ReadAliases lists requested Read aliases whose documents sealed as Captured,
+// including cancelled waiters. Overlays and identity-only lookups do not count.
+func (s *Store) ReadAliases() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.sealed {
+		return nil, ErrNotSealed
+	}
+	var paths []string
+	for _, entry := range s.docs {
+		if state(entry) != Captured {
+			continue
+		}
+		for path := range entry.readAliases {
+			paths = append(paths, path)
+		}
+	}
+	slices.Sort(paths)
+	return paths, nil
 }
 
 // sourceTable requires s.mu after all counted work has been joined.

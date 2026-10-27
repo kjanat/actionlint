@@ -77,7 +77,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(actionSnapshot, meta.Path(), meta.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(actionSnapshot, snapshots.Sources.Path(meta.Path()), meta.Path(), meta.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}

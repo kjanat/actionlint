@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
+	"fmt"
 	"io"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -20,7 +22,7 @@ type Document struct {
 	Text    string `json:"text"`
 }
 
-// Analysis supplies diagnostic source text for files outside the editor's open buffers.
+// Analysis supplies the captured source text used for diagnostic coordinates.
 // Sources and Diagnostics must belong to the same analysis generation.
 type Analysis struct {
 	Diagnostics []diagnostic.Diagnostic
@@ -115,20 +117,38 @@ serve:
 				continue
 			}
 			latest = map[string][]diagnostic.Diagnostic{}
-			if result.err != nil {
-				if err := notify("window/logMessage", map[string]any{"type": 1, "message": result.err.Error()}); err != nil {
+			missingSources := make(map[string]struct{})
+			for _, d := range result.analysis.Diagnostics {
+				if _, captured := result.analysis.Sources[d.Path]; captured {
+					latest[d.Path] = append(latest[d.Path], d)
+				} else {
+					missingSources[d.Path] = struct{}{}
+				}
+				for _, related := range d.Related {
+					if _, captured := result.analysis.Sources[related.Path]; !captured {
+						missingSources[related.Path] = struct{}{}
+					}
+				}
+			}
+			analysisErr := result.err
+			if len(missingSources) != 0 {
+				analysisErr = errors.Join(analysisErr, fmt.Errorf("incomplete analysis: diagnostic sources unavailable for %d paths: %s", len(missingSources), strings.Join(slices.Sorted(maps.Keys(missingSources)), ", ")))
+			}
+			if analysisErr != nil {
+				if err := notify("window/logMessage", map[string]any{"type": 1, "message": analysisErr.Error()}); err != nil {
 					return err
 				}
 			}
-			for _, d := range result.analysis.Diagnostics {
-				latest[d.Path] = append(latest[d.Path], d)
-			}
-			// Open buffers supply editor versions; dependency snapshots supply ranges.
+			// Editor metadata supplies URI/version; captured text supplies ranges.
 			sources := make(map[string]Document, len(result.analysis.Sources)+len(documents))
 			for path, content := range result.analysis.Sources {
-				sources[path] = Document{URI: FileURI(path), Text: content}
+				doc, open := documents[path]
+				if !open {
+					doc.URI = FileURI(path)
+				}
+				doc.Text = content
+				sources[path] = doc
 			}
-			maps.Copy(sources, documents)
 			current := maps.Clone(documents)
 			for path := range latest {
 				doc, ok := sources[path]

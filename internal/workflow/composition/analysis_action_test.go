@@ -46,7 +46,11 @@ func standaloneActionForTest(t *testing.T, service *Service, metadata *actionmet
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshot, metadata.Path(), metadata.SourceMapped)
+	address := metadata.Path()
+	if fixture != nil {
+		address = fixture.Sources.Path(address)
+	}
+	deployment, err := scriptexecution.NewDeployment(snapshot, address, metadata.Path(), metadata.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,9 +61,10 @@ type mutatingStandaloneMetadata struct {
 	workflowvisit.Base
 }
 
-func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata) {
+func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ *documentparse.SourceSnapshot) error {
 	metadata.Runs.Using = "node24"
 	metadata.Source[0] = 'x'
+	return nil
 }
 
 func (rule *mutatingStandaloneMetadata) ForMetadata(*actionlocal.Resolver) workflowvisit.Rule {
@@ -78,7 +83,7 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshot, path, false)
+	deployment, err := scriptexecution.NewDeployment(snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}

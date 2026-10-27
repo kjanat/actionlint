@@ -19,7 +19,7 @@ func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *
 	}
 	cache := NewCache(root, cwd, debug)
 	store, err := capture.New(t.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
-		return cache.reader.ReadFile(filepath.FromSlash(path))
+		return os.ReadFile(filepath.FromSlash(path))
 	})
 	if err != nil {
 		t.Fatal(err)

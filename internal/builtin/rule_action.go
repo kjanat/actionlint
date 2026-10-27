@@ -10,6 +10,7 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	"actionlint.kjanat.dev/v2/internal/actioncatalog"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
@@ -83,7 +84,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
-	meta, _, err := rule.cache.FindMetadata(localSpec)
+	meta, source, err := rule.findMetadataDocument(localSpec)
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return err
 	}
@@ -94,6 +95,10 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 			finding := findingmodel.At(action.Uses.Pos, rule.Name(), err.Error())
 			if parseError, ok := errors.AsType[*actionlocal.ParseError](err); ok {
 				finding.MetadataParsePath = parseError.Path
+				finding.MetadataParseSource = source.Capture().Revision()
+				if !finding.MetadataParseSource.Valid() {
+					return fmt.Errorf("metadata parse source %q has no captured revision: %w", parseError.Path, err)
+				}
 			}
 			rule.Findings = append(rule.Findings, finding)
 		}
@@ -103,7 +108,9 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action *
 		return nil
 	}
 
-	rule.replayMetadataFindings(meta, action, displaySpec)
+	if err := rule.replayMetadataFindings(meta, source, action, displaySpec); err != nil {
+		return err
+	}
 
 	rule.Findings = append(rule.Findings, actioncheck.Inputs(meta, action, func(m *actionmeta.Metadata) string {
 		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)
@@ -118,9 +125,30 @@ func (rule *RuleAction) ForMetadata(actions *actionlocal.Resolver) workflowvisit
 	return child
 }
 
-func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata) {
+func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snapshot *documentparse.SourceSnapshot) error {
+	if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+		return errors.New("standalone metadata has no admitted source snapshot")
+	}
+	admitted, err := snapshot.Registry().Action(snapshot.Capture(), meta)
+	if err != nil {
+		return err
+	}
 	rule.Findings = append(rule.Findings, actioncheck.Standalone(meta)...)
 	for _, finding := range rule.Findings {
-		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, finding), Declaration: true}
+		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, admitted.Reference().Document, finding), Declaration: true}
+	}
+	return nil
+}
+
+func (rule *RuleAction) findMetadataDocument(spec string) (*actionmeta.Metadata, actionlocal.SourceDocument, error) {
+	switch cache := rule.cache.(type) {
+	case interface {
+		FindMetadataDocument(string) (*actionmeta.Metadata, bool, actionlocal.SourceDocument, error)
+	}:
+		metadata, _, document, err := cache.FindMetadataDocument(spec)
+		return metadata, document, err
+	default:
+		metadata, _, err := rule.cache.FindMetadata(spec)
+		return metadata, actionlocal.SourceDocument{}, err
 	}
 }

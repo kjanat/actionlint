@@ -28,6 +28,7 @@ type Finding struct {
 	Source           []byte
 	EndColumn        int
 	RawScript        bool
+	Unavailable      bool
 	canonicalSnippet string
 }
 
@@ -48,6 +49,9 @@ func (f Finding) line() (string, bool) {
 }
 
 func (f Finding) end(line string) int {
+	if f.Unavailable {
+		return max(f.Diagnostic.Start.Column, f.EndColumn)
+	}
 	return text.InclusiveEnd(line, f.Diagnostic.Start.Column, f.EndColumn)
 }
 

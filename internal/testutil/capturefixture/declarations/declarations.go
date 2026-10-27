@@ -55,3 +55,15 @@ func (s *CapturedSnapshots) Action(path string, metadata *actionmeta.Metadata) (
 	}
 	return s.SourceSnapshots.Action(captured, metadata)
 }
+
+// LookupDocument accepts either an admitted identity or a fixture source path.
+func (s *CapturedSnapshots) LookupDocument(path string) (*documentparse.SourceSnapshot, bool) {
+	if snapshot, exists := s.SourceSnapshots.LookupDocument(path); exists {
+		return snapshot, true
+	}
+	captured, _, err := s.Sources.Store.Lookup(s.Sources.Path(path))
+	if err != nil || !captured.Valid() {
+		return nil, false
+	}
+	return s.SourceSnapshots.LookupDocument(captured.Revision().Document())
+}

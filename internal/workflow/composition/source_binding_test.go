@@ -258,7 +258,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	}
 	analysis.context, analysis.sourceSnapshot = callContext, snapshot
 	analysis.jobID = "corrupted nested collector state"
-	if err := analysis.visitMetadataScripts(meta, callContext, nil); err != nil {
+	if err := analysis.visitMetadataScripts(meta, snapshot, meta.Path(), callContext, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := analysis.invocations.Close(callContext); err != nil {
@@ -290,7 +290,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	}
 	foreign := *meta
 	foreign.Directory = "foreign"
-	deployment, err := scriptexecution.NewDeployment(snapshot, meta.Path(), meta.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(snapshot, registry.Sources.Path(meta.Path()), meta.Path(), meta.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}

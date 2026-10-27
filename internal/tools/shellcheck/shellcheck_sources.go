@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -30,7 +31,7 @@ func (run *shellcheckRun) recordSources(paths []string, directory string) error 
 			}
 		}
 		// The checker already read it. Keep the dependency even if it disappeared.
-		run.paths.reader.Record(sourcePath(name, directory))
+		run.paths.reader.Record(name)
 	}
 	return nil
 }
@@ -51,23 +52,28 @@ func sourcePath(name, directory string) string {
 	return absPath(name)
 }
 
-func (run *shellcheckRun) sourcedDiagnostic(comment shellcheckError, directory string, sources map[string][]byte) *Error {
+type reportedSource struct {
+	content    []byte
+	readFailed bool
+}
+
+func (run *shellcheckRun) sourcedDiagnostic(comment shellcheckError, directory string, sources map[string]reportedSource) *Error {
 	path := sourcePath(comment.File, directory)
-	content, found := sources[path]
+	source, found := sources[path]
 	if !found {
 		var err error
-		content, err = run.paths.reader.ReadFile(path)
+		source.content, err = run.paths.reader.ReadFile(sourceName(comment.File, directory))
 		if err != nil {
 			run.Debug("Cannot read ShellCheck diagnostic source %q: %v", path, err)
 			// Keep the diagnostic if the file disappeared, with an empty snippet.
-			content = []byte{}
+			source.content, source.readFailed = []byte{}, true
 		}
-		sources[path] = content
+		sources[path] = source
 	}
 	finding := &Error{
 		Path: path, Start: DiagnosticPosition{Line: comment.Line, Column: comment.Column}, Rule: "shellcheck",
 		Message: fmt.Sprintf("shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", comment.Code, comment.Level, comment.Line, comment.Column, strings.TrimSuffix(comment.Message, ".")),
-		source:  content, rawScriptSource: true, Code: fmt.Sprintf("SC%d", comment.Code), Severity: comment.Level,
+		source:  source.content, rawScriptSource: true, unavailableSource: findingmodel.NativeShellcheckUnavailable(sourceName(comment.File, directory), source.readFailed), Code: fmt.Sprintf("SC%d", comment.Code), Severity: comment.Level,
 	}
 	if comment.EndLine >= comment.Line && comment.EndColumn > 0 {
 		finding.endPosition = &workflowlang.Pos{Line: comment.EndLine, Col: comment.EndColumn}

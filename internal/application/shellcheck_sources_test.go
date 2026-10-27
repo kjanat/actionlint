@@ -1,6 +1,7 @@
 package application_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,13 @@ jobs:
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
 				t.Fatalf("wrong sourced metadata: %+v", finding)
 			}
+			encoded, err := json.Marshal(finding)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if finding.Reference != nil || strings.Contains(string(encoded), `"reference"`) || strings.Contains(string(encoded), `"revision"`) || strings.Contains(string(encoded), `"fixes"`) {
+				t.Fatalf("native sourced diagnostic fabricated known evidence: %s", encoded)
+			}
 			want, err := os.Stat(path)
 			if err != nil {
 				t.Fatal(err)
@@ -156,6 +164,41 @@ jobs:
 			}
 			if len(result.Diagnostics) != 1 || filepath.ToSlash(result.Diagnostics[0].Path) != tc.wantPath {
 				t.Fatalf("want finding in %s, got %+v", tc.wantPath, result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestUnavailableSourcedDiagnosticKeepsYAMLSuppressionAnchor(t *testing.T) {
+	command := shellcheckForTest(t)
+	for _, suppressed := range []bool{false, true} {
+		t.Run(map[bool]string{false: "reported", true: "suppressed"}[suppressed], func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeFixture(t, root, "scripts/lib.sh", "echo $VALUE\n")
+			comment := ""
+			if suppressed {
+				comment = " # actionlint:ignore shellcheck -- reviewed source"
+			}
+			workflow := writeFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: . ./scripts/lib.sh"+comment+"\n")
+			options := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()}
+			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 1
+			if suppressed {
+				want = 0
+			}
+			if len(result.Diagnostics) != want {
+				t.Fatalf("YAML anchor suppression changed: %+v", result.Diagnostics)
+			}
+			for _, finding := range result.Diagnostics {
+				if finding.Reference != nil || len(finding.Fixes) != 0 || filepath.ToSlash(finding.Path) != "scripts/lib.sh" {
+					t.Fatalf("unavailable source gained known evidence: %+v", finding)
+				}
 			}
 		})
 	}

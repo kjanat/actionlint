@@ -326,8 +326,8 @@ func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 }
 
 func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
-	graph, collection, snapshot, _ := actionBatchFixture(t, false)
-	graph, collection = nestedActionBatch(t, collection, snapshot)
+	_, collection, snapshot, _ := actionBatchFixture(t, false)
+	graph, collection := nestedActionBatch(t, collection, snapshot)
 	batch, err := NewBatch(graph, collection)
 	if err != nil {
 		t.Fatal(err)

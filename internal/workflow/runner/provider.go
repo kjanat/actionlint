@@ -38,24 +38,8 @@ func (p builtinProvider) ResolveRunners(ctx context.Context, request runnerapi.R
 			answers = append(answers, answer)
 			continue
 		}
-		check := checker{labels: p.custom, compats: map[runnerOSCompat]labelFact{}}
-		unknown := selector.Expression != "" || selector.Incomplete
-		if selector.Group != nil {
-			_, unresolved := selector.Group.Value.(runnerapi.Expression)
-			unknown = unknown || unresolved
-		}
-		var labels []value.Value
-		for _, constraint := range selector.Labels {
-			switch term := constraint.Value.(type) {
-			case runnerapi.Literal:
-				item := value.FromJSON(string(term), value.Origin{Span: value.Span{Start: constraint.Position}})
-				labels = append(labels, item)
-				fact, _ := knownLabel(item)
-				check.checkCompat(check.verifyRunnerLabel(fact), fact)
-			case runnerapi.Expression:
-				unknown = true
-			}
-		}
+		check := checker{labels: p.custom}
+		labels, unknown := check.checkSelector(selector)
 		switch {
 		case len(check.rejections) != 0:
 			answer.Resolution = runnerapi.NoMatch{Rejections: check.rejections}

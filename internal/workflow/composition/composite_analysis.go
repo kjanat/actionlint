@@ -86,7 +86,7 @@ func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deploy
 	if analysis.sourceSnapshot == nil || analysis.sourceSnapshot.Kind() != documentparse.KindAction {
 		return errors.New("action source snapshot is unavailable")
 	}
-	validated, err := scriptexecution.NewDeployment(analysis.sourceSnapshot, deployment.SourcePath(), deployment.ActionPath() == "")
+	validated, err := scriptexecution.NewDeployment(analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
 	if err != nil || validated != deployment {
 		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
 	}

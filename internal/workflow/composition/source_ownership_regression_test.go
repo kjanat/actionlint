@@ -41,7 +41,9 @@ func (r *sourceMutationRule) ForMetadata(*actionlocal.Resolver) workflowvisit.Ru
 	r.metadata++
 	return r
 }
-func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata) {}
+func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error {
+	return nil
+}
 
 var _ builtin.MetadataParticipant = (*sourceMutationRule)(nil)
 var _ builtin.CompositeParticipant = (*sourceMutationRule)(nil)

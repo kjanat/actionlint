@@ -80,7 +80,7 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 		}
 		t.Fatal(err)
 	}
-	aliasDeployment, err := NewDeployment(snapshot, alias, false)
+	aliasDeployment, err := NewDeployment(snapshot, path, alias, false)
 	if err != nil {
 		t.Fatal(err)
 	}

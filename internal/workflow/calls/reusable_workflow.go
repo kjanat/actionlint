@@ -14,7 +14,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
@@ -134,8 +133,7 @@ func collectCacheOperations(operations []string, steps []*workflowlang.Step) []s
 type Cache struct {
 	captures   *capture.Store
 	ctx        context.Context
-	sourceBase string
-	reader     *fsread.Reader
+	sourceRoot string
 	mu         sync.RWMutex
 	root       string // empty when no repository is available
 	cache      map[string]reusableWorkflowMetadataResult
@@ -162,6 +160,11 @@ func (c *Cache) Lookup(key string) (*Metadata, error, bool) {
 	c.mu.RLock()
 	result, ok := c.cache[key]
 	c.mu.RUnlock()
+	if ok && result.captured.Valid() {
+		if err := c.captures.VerifyHandle(result.captured); err != nil {
+			return nil, err, true
+		}
+	}
 	return result.metadata, result.err, ok
 }
 
@@ -181,30 +184,43 @@ func (c *Cache) Seed(snapshot *documentparse.SourceSnapshot) error {
 	if c == nil || c.root == "" {
 		return nil
 	}
-	if c.captures == nil || snapshot == nil || snapshot.Kind() != documentparse.KindWorkflow {
+	if c.captures == nil || snapshot == nil || c.ctx == nil {
 		return errors.New("reusable workflow metadata requires a captured workflow")
 	}
 	captured := snapshot.Capture()
-	if err := c.captures.Verify(captured, snapshot.Content()); err != nil {
+	if err := c.captures.VerifyHandle(captured); err != nil {
 		return err
 	}
-	spec, local := c.convWorkflowPathToSpec(captured.Revision().Document())
+	if snapshot.Kind() != documentparse.KindWorkflow {
+		return errors.New("reusable workflow metadata requires a captured workflow")
+	}
+	root, err := c.captures.CanonicalIdentity(c.ctx, c.sourceRoot)
+	if err != nil {
+		return err
+	}
+	spec, local := workflowPathToSpec(filepath.FromSlash(root), filepath.FromSlash(captured.Revision().Document()))
 	if !local {
 		return nil
 	}
 	if _, _, exists := c.Lookup(spec); exists {
 		return nil
 	}
-	metadata, err := ParseMetadata(captured.Bytes())
-	if err != nil {
-		return err
+	metadata, parseErr := ParseMetadata(captured.Bytes())
+	if parseErr != nil {
+		parseErr = reusableMetadataParseError(spec, parseErr)
 	}
 	c.mu.Lock()
 	if _, exists := c.cache[spec]; !exists {
-		c.cache[spec] = reusableWorkflowMetadataResult{metadata: metadata, captured: captured}
+		c.cache[spec] = reusableWorkflowMetadataResult{metadata: metadata, err: parseErr, captured: captured}
 	}
 	c.mu.Unlock()
+	// Metadata failures belong to caller diagnostics. A callee entry still
+	// traverses its recovered workflow and every other rule.
 	return nil
+}
+
+func reusableMetadataParseError(spec string, cause error) error {
+	return fmt.Errorf("error while parsing reusable workflow %q: %s", spec, strings.ReplaceAll(cause.Error(), "\n", " "))
 }
 
 // FindMetadata finds/parses a reusable workflow metadata located by the 'spec' argument. When project
@@ -224,15 +240,11 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 		return m, err
 	}
 
-	file := filepath.Join(c.root, filepath.FromSlash(spec))
+	file := filepath.Join(c.sourceRoot, filepath.FromSlash(spec))
 	if c.captures == nil || c.ctx == nil {
 		return nil, errors.New("reusable workflow cache requires a capture store")
 	}
-	address := file
-	if !filepath.IsAbs(address) && c.sourceBase != "" {
-		address = filepath.Join(c.sourceBase, address)
-	}
-	captured, err := c.captures.Read(c.ctx, address, source.YAML)
+	captured, err := c.captures.Read(c.ctx, file, source.YAML)
 	if err != nil {
 		err = fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
 		c.Store(spec, nil, err)
@@ -241,20 +253,18 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 
 	m, err := ParseMetadata(captured.Bytes())
 	if err != nil {
-		msg := strings.ReplaceAll(err.Error(), "\n", " ")
-		err = fmt.Errorf("error while parsing reusable workflow %q: %s", spec, msg)
+		err = reusableMetadataParseError(spec, err)
 		c.Store(spec, nil, err)
 		return nil, err
 	}
 
 	c.debug("New reusable workflow metadata at %s: %v", file, m)
 	c.mu.Lock()
-	if previous, exists := c.cache[spec]; exists {
-		m, err = previous.metadata, previous.err
-	} else {
+	if _, exists := c.cache[spec]; !exists {
 		c.cache[spec] = reusableWorkflowMetadataResult{metadata: m, captured: captured}
 	}
 	c.mu.Unlock()
+	m, err, _ = c.Lookup(spec)
 	return m, err
 }
 
@@ -273,18 +283,8 @@ func (c *Cache) FindMetadataForCall(sourceSpec string) (*Metadata, error) {
 	return m, nil
 }
 
-func (c *Cache) convWorkflowPathToSpec(p string) (string, bool) {
-	if c.root == "" {
-		return "", false
-	}
-	if !filepath.IsAbs(p) {
-		p = filepath.Join(c.cwd, p)
-	}
-	// Compare canonical identities without changing caller-owned project or
-	// source spellings used by readers and diagnostics.
-	p = absPath(p)
-	r := absPath(c.root)
-	p, err := filepath.Rel(r, p)
+func workflowPathToSpec(root, path string) (string, bool) {
+	p, err := filepath.Rel(root, path)
 	if err != nil || p == ".." || strings.HasPrefix(p, ".."+string(filepath.Separator)) {
 		return "", false
 	}
@@ -295,93 +295,15 @@ func (c *Cache) convWorkflowPathToSpec(p string) (string, bool) {
 	return p, true
 }
 
-// WriteWorkflowCallEvent writes reusable workflow metadata by converting from WorkflowCallEvent AST
-// node. The 'wpath' parameter is a path to the workflow file of the AST, which is a relative to the
-// project root directory or an absolute path.
-// This method does nothing when (1) no project is set, (2) it could not convert the workflow path
-// to workflow call spec, (3) some cache for the workflow is already existing.
-// This method is thread safe.
-func (c *Cache) WriteWorkflowCallEvent(wpath string, event *workflowlang.WorkflowCallEvent) {
-	c.WriteWorkflowCallEventFromWorkflow(wpath, event, nil)
-}
-
-// WriteWorkflowCallEventFromWorkflow is like WriteWorkflowCallEvent but also records the permissions
-// each job of the reusable workflow requires, taken from the workflow AST. The permission check on
-// workflow calls needs them. Passing a nil 'w' is equivalent to WriteWorkflowCallEvent. The same
-// do-nothing conditions and thread safety apply.
-func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflowlang.WorkflowCallEvent, w *workflowlang.Workflow) {
-	// Convert workflow path to workflow call spec
-	spec, ok := c.convWorkflowPathToSpec(wpath)
-	if !ok {
-		return
-	}
-	c.debug("Workflow call spec from workflow path %s: %s", wpath, spec)
-
-	c.mu.RLock()
-	_, ok = c.cache[spec]
-	c.mu.RUnlock()
-	if ok {
-		return
-	}
-
-	m := &Metadata{
-		Inputs:  Inputs{},
-		Outputs: Outputs{},
-		Secrets: Secrets{},
-	}
-
-	for _, i := range event.Inputs {
-		var t exprlang.Type = exprlang.AnyType{}
-		switch i.Type {
-		case workflowlang.WorkflowCallEventInputTypeBoolean:
-			t = exprlang.BoolType{}
-		case workflowlang.WorkflowCallEventInputTypeNumber:
-			t = exprlang.NumberType{}
-		case workflowlang.WorkflowCallEventInputTypeString:
-			t = exprlang.StringType{}
-		}
-		m.Inputs[i.ID] = &Input{
-			Type:     t,
-			Required: i.Required != nil && i.Required.Value && i.Default == nil,
-			Name:     i.Name.Value,
-		}
-	}
-
-	for n, o := range event.Outputs {
-		m.Outputs[n] = &Output{
-			Name: o.Name.Value,
-		}
-	}
-
-	for n, s := range event.Secrets {
-		r := s.Required != nil && s.Required.Value
-		m.Secrets[n] = &Secret{
-			Required: r,
-			Name:     s.Name.Value,
-		}
-	}
-
-	m.recordWorkflowFacts(w)
-
-	c.mu.Lock()
-	if _, exists := c.cache[spec]; !exists {
-		c.cache[spec] = reusableWorkflowMetadataResult{metadata: m}
-	}
-	c.mu.Unlock()
-
-	c.debug("Workflow call metadata from workflow %s: %v", wpath, m)
-}
-
 // NewCache creates a new Cache instance for the given
 // project. 'cwd' is a current working directory as an absolute file path. The 'Local' means that
 // the cache instance is project-local. It is not available across multiple projects.
 func NewCache(root, cwd string, dbg io.Writer) *Cache {
 	return &Cache{
-		reader: fsread.New(context.Background(), nil, nil),
-		root:   root,
-		cache:  map[string]reusableWorkflowMetadataResult{},
-		cwd:    cwd,
-		dbg:    dbg,
+		root:  root,
+		cache: map[string]reusableWorkflowMetadataResult{},
+		cwd:   cwd,
+		dbg:   dbg,
 	}
 }
 

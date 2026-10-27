@@ -3,11 +3,18 @@ package builtin
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
+	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/documentparse"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture/declarations"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -26,6 +33,86 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T) {
+	root := t.TempDir()
+	first, second, alias := filepath.Join(root, "first", "action.yml"), filepath.Join(root, "second", "action.yml"), filepath.Join(root, "alias.yml")
+	content := []byte("name: source\ndescription: source\nruns: {using: node24, main: index.js}\n")
+	for _, path := range []string{first, second} {
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, content, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(first, alias); err != nil {
+		if runtime.GOOS == "windows" && errors.Is(err, os.ErrPermission) {
+			t.Skipf("symlink privilege unavailable: %v", err)
+		}
+		t.Fatal(err)
+	}
+	registry := declarations.NewCapturedSnapshots(t, root)
+	snapshot, err := registry.Document(alias, content, documentparse.Action(alias, alias, content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := actionmeta.Parse(alias, content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finding := &findingmodel.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
+	document := snapshot.Reference().Document
+	before := metadataFindingKey(metadata, document, finding)
+	if err := registry.Sources.Store.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(second, alias); err != nil {
+		t.Fatal(err)
+	}
+	after := metadataFindingKey(metadata, document, finding)
+	if before != after || after.Path != document || !strings.Contains(after.Message, strconv.Quote(document)) {
+		t.Fatalf("metadata key recanonicalized a sealed alias: before=%+v after=%+v", before, after)
+	}
+}
+
+func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "index.js"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "action.yml")
+	content := []byte("name: source\nruns: {using: node24, main: index.js}\n")
+	registry := declarations.NewCapturedSnapshots(t, root)
+	snapshot, err := registry.Document(path, content, documentparse.Action(path, path, content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := actionmeta.Parse(path, content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule := NewRuleAction(nil)
+	if err := rule.CheckStandaloneMetadata(metadata, nil); err == nil {
+		t.Fatal("missing source was accepted")
+	}
+	other, err := actionmeta.Parse(path, append([]byte("# another revision\n"), content...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rule.CheckStandaloneMetadata(other, snapshot); err == nil || len(rule.Errs()) != 0 {
+		t.Fatalf("mismatching parse source was accepted: %v", err)
+	}
+	if err := rule.CheckStandaloneMetadata(metadata, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if len(rule.Errs()) != 1 || rule.Errs()[0].MetadataIdentity == nil || rule.Errs()[0].MetadataIdentity.Key.Path != snapshot.Reference().Document {
+		t.Fatalf("standalone metadata lost captured identity: %+v", rule.Errs())
 	}
 }
 

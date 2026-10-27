@@ -1,13 +1,15 @@
 package builtin
 
 import (
+	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -18,14 +20,14 @@ type actionMetadataValidation struct {
 	visits    uint64
 }
 
-func metadataFindingKey(meta *actionmeta.Metadata, finding *findingmodel.Finding) findingmodel.MetadataKey {
+func metadataFindingKey(meta *actionmeta.Metadata, document string, finding *findingmodel.Finding) findingmodel.MetadataKey {
 	// Validation messages may embed the metadata filename or directory. Normalize
 	// those spellings for identity without changing the user-facing source path.
 	message := strings.NewReplacer(
-		strconv.Quote(meta.Path()), strconv.Quote(fsread.PhysicalPath(meta.Path())),
-		strconv.Quote(meta.Dir()), strconv.Quote(fsread.PhysicalPath(meta.Dir())),
+		strconv.Quote(meta.Path()), strconv.Quote(document),
+		strconv.Quote(meta.Dir()), strconv.Quote(path.Dir(document)),
 	).Replace(finding.Message)
-	key := findingmodel.MetadataKey{Path: fsread.PhysicalPath(meta.Path()), Message: message}
+	key := findingmodel.MetadataKey{Path: document, Message: message}
 	if finding.Source != nil {
 		key.Line, key.Column = finding.Start.Line, finding.Start.Column
 	}
@@ -36,7 +38,7 @@ func newActionMetadataValidation() *actionMetadataValidation {
 	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding)}
 }
 
-func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, action *workflowlang.ExecAction, displaySpec string) {
+func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, source actionlocal.SourceDocument, action *workflowlang.ExecAction, displaySpec string) error {
 	store := rule.validation
 	path := meta.Path()
 	templates, checked := store.templates[path]
@@ -45,10 +47,17 @@ func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, action
 		templates = actioncheck.Check(meta, action.Uses.Pos)
 		store.templates[path] = templates
 	}
+	if len(templates) != 0 {
+		original, present := meta.OriginalSource()
+		if !source.Capture().Valid() || !present || original != string(source.Content()) {
+			return fmt.Errorf("metadata source %q has no matching captured revision", path)
+		}
+	}
+	document := source.Capture().Revision().Document()
 	store.visits++
 	for _, template := range templates {
 		finding := *template
-		key := metadataFindingKey(meta, &finding)
+		key := metadataFindingKey(meta, document, &finding)
 		if finding.Source == nil {
 			finding.Start.Line, finding.Start.Column = action.Uses.Pos.Line, action.Uses.Pos.Col
 		}
@@ -63,4 +72,5 @@ func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, action
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: key, Visit: store.visits}
 		rule.Findings = append(rule.Findings, &finding)
 	}
+	return nil
 }

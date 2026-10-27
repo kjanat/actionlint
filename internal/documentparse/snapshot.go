@@ -40,9 +40,18 @@ func (s *SourceSnapshot) Content() []byte             { return s.captured.Bytes(
 func (s *SourceSnapshot) Capture() capture.Snapshot   { return s.captured }
 func (s *SourceSnapshot) Registry() *SourceSnapshots  { return s.registry }
 
+// Identity and byte access remain available for diagnostics after quarantine;
+// semantic access requires the capture to remain admitted by its owner.
+func (s *SourceSnapshot) verify() error {
+	if s == nil || s.registry == nil || s.registry.store == nil {
+		return errors.New("source snapshot is unavailable")
+	}
+	return s.registry.store.VerifyHandle(s.captured)
+}
+
 // Workflow supplies the indexed AST for read-only workflow traversal.
 func (s *SourceSnapshot) Workflow() (*workflowlang.Workflow, bool) {
-	if s.action || s.facts == nil {
+	if s.verify() != nil || s.action || s.facts == nil {
 		return nil, false
 	}
 	return s.facts, true
@@ -50,13 +59,16 @@ func (s *SourceSnapshot) Workflow() (*workflowlang.Workflow, bool) {
 
 // ActionSteps supplies the indexed declarations for read-only action traversal.
 func (s *SourceSnapshot) ActionSteps() ([]*workflowlang.Step, bool) {
-	if !s.action || s.facts == nil {
+	if s.verify() != nil || !s.action || s.facts == nil {
 		return nil, false
 	}
 	return slices.Clone(s.facts.Jobs[""].Steps), true
 }
 
 func (s *SourceSnapshot) StepReference(step *workflowlang.Step) (source.Reference, error) {
+	if err := s.verify(); err != nil {
+		return source.Reference{}, err
+	}
 	ref, exists := s.steps[step]
 	if !exists {
 		return source.Reference{}, fmt.Errorf("step does not belong to source snapshot %q", s.reference.Document)
@@ -103,7 +115,7 @@ func (s *SourceSnapshots) Lookup(reference source.Reference) (*SourceSnapshot, b
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	snapshot := s.documents[reference.Document]
-	if snapshot == nil || snapshot.reference != reference {
+	if snapshot == nil || snapshot.reference != reference || snapshot.verify() != nil {
 		return nil, false
 	}
 	return snapshot, true
@@ -118,7 +130,10 @@ func (s *SourceSnapshots) LookupDocument(identity string) (*SourceSnapshot, bool
 	s.mu.Lock()
 	snapshot, ok := s.documents[identity]
 	s.mu.Unlock()
-	return snapshot, ok
+	if !ok || snapshot.verify() != nil {
+		return nil, false
+	}
+	return snapshot, true
 }
 
 func (s *SourceSnapshots) Step(reference source.Reference) (StepDeclaration, bool) {
@@ -128,7 +143,7 @@ func (s *SourceSnapshots) Step(reference source.Reference) (StepDeclaration, boo
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	snapshot := s.documents[reference.Document]
-	if snapshot == nil {
+	if snapshot == nil || snapshot.verify() != nil {
 		return StepDeclaration{}, false
 	}
 	declaration, exists := snapshot.declarations[reference]
@@ -141,10 +156,13 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 		return nil, nil
 	}
 	if previous.reference.Revision != revision {
-		return nil, fmt.Errorf("source document %q has conflicting revisions in one analysis", document)
+		return nil, s.store.Quarantine(previous.captured, "conflicting declaration revisions")
 	}
 	if previous.action != action {
-		return nil, fmt.Errorf("source document %q has conflicting declaration kinds", document)
+		return nil, s.store.Quarantine(previous.captured, "conflicting declaration kinds: action, workflow")
+	}
+	if err := previous.verify(); err != nil {
+		return nil, err
 	}
 	return previous, nil
 }
@@ -252,7 +270,7 @@ const (
 )
 
 func (s *SourceSnapshot) Kind() DocumentKind {
-	if s == nil || s.bound == nil {
+	if s.verify() != nil || s.bound == nil {
 		return KindUnknown
 	}
 	if s.action {
@@ -278,6 +296,9 @@ func (s *SourceSnapshot) ActionView() (ActionBodyView, bool) {
 }
 
 func (s *SourceSnapshot) StepView(cursor *workflowlang.Step) (StepView, error) {
+	if err := s.verify(); err != nil {
+		return StepView{}, err
+	}
 	if s == nil || s.bound == nil {
 		return StepView{}, errors.New("source snapshot is unavailable")
 	}
@@ -289,6 +310,9 @@ func (s *SourceSnapshot) StepView(cursor *workflowlang.Step) (StepView, error) {
 }
 
 func (s *SourceSnapshot) JobView(cursor *workflowlang.Job) (JobView, error) {
+	if err := s.verify(); err != nil {
+		return JobView{}, err
+	}
 	if s == nil || s.bound == nil {
 		return JobView{}, errors.New("source snapshot is unavailable")
 	}
@@ -306,7 +330,7 @@ func (s *SourceSnapshots) Declaration(reference source.Reference) (StepView, boo
 	s.mu.Lock()
 	snapshot := s.documents[reference.Document]
 	s.mu.Unlock()
-	if snapshot == nil || snapshot.bound == nil {
+	if snapshot == nil || snapshot.bound == nil || snapshot.verify() != nil {
 		return StepView{}, false
 	}
 	return snapshot.bound.Step(reference)
@@ -319,20 +343,20 @@ func (s *SourceSnapshots) Owns(step StepView) bool {
 	s.mu.Lock()
 	snapshot := s.documents[step.SourceReference().Document]
 	s.mu.Unlock()
-	return snapshot != nil && snapshot.bound != nil && snapshot.bound.Owns(step)
+	return snapshot != nil && snapshot.bound != nil && snapshot.verify() == nil && snapshot.bound.Owns(step)
 }
 
 // CanonicalReferences returns detached index maps keyed by legacy traversal
 // cursors. References and positions come from the owned parse record.
 func (s *SourceSnapshot) CanonicalReferences() workflowfacts.References {
-	if s == nil || s.bound == nil {
+	if s.verify() != nil || s.bound == nil {
 		return workflowfacts.References{}
 	}
 	return s.bound.CursorReferences()
 }
 
 func (s *SourceSnapshot) Declarations() ([]analyzer.Mapping, []analyzer.Dependency) {
-	if s == nil || s.bound == nil {
+	if s.verify() != nil || s.bound == nil {
 		return nil, nil
 	}
 	return s.bound.Declarations()

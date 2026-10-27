@@ -38,14 +38,16 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution
 			return err
 		}
 		if participant, ok := rule.(builtin.MetadataParticipant); ok {
-			participant.CheckStandaloneMetadata(meta)
+			if err := participant.CheckStandaloneMetadata(meta, snapshot); err != nil {
+				return err
+			}
 		}
 		if participant, ok := rule.(builtin.CompositeParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}
 	if strings.EqualFold(view.Using(), "composite") {
-		if err := analysis.visitMetadataScripts(meta, analysis.invocations.RootContext(), scripts); err != nil {
+		if err := analysis.visitMetadataScripts(meta, snapshot, deployment.Address(), analysis.invocations.RootContext(), scripts); err != nil {
 			return err
 		}
 	}

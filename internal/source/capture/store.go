@@ -19,6 +19,7 @@ import (
 // Reader receives the Store lifetime context and canonical document address.
 // Cancellation is cooperative. Close must join even a Reader ignoring ctx.
 // The caller must not mutate returned bytes concurrently with their capture.
+// A nil error promises complete content; partial reads must return an error.
 type Reader func(context.Context, string) ([]byte, error)
 
 // Overlay supplies explicit bytes before any backing reads can begin.
@@ -48,17 +49,19 @@ type Store struct {
 }
 
 type alias struct {
-	done     chan struct{}
-	document string
+	done             chan struct{}
+	document         string
+	documentRequired bool
 }
 
 type entry struct {
-	model    source.Coordinates
-	aliases  map[string]struct{}
-	done     chan struct{}
-	value    *captured
-	err      *CaptureError
-	conflict *ConflictError
+	model       source.Coordinates
+	aliases     map[string]struct{}
+	readAliases map[string]struct{}
+	done        chan struct{}
+	value       *captured
+	err         *CaptureError
+	conflict    *ConflictError
 }
 
 // New preflights all overlays before making the Store available. Conflicting
@@ -97,7 +100,7 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 		name := s.aliases[overlay.Path]
 		if name == nil {
 			s.startWork()
-			name = &alias{done: make(chan struct{}), document: s.resolve(overlay.Path)}
+			name = &alias{done: make(chan struct{}), document: s.resolve(overlay.Path), documentRequired: true}
 			close(name.done)
 			s.aliases[overlay.Path] = name
 			s.finishWork()
@@ -169,6 +172,17 @@ func (s *Store) finishWork() {
 // only cancels the wait; Close joins the metadata task. Discovered aliases,
 // including aliases from cancelled or conflicting requests, enter Sources.
 func (s *Store) Canonical(ctx context.Context, path string) (string, error) {
+	return s.canonical(ctx, path, true)
+}
+
+// CanonicalIdentity shares the alias memo and lifecycle without declaring a
+// source document. Repository roots and other identity-only metadata never
+// enter Sources. A later Canonical/Read can promote the alias before Close.
+func (s *Store) CanonicalIdentity(ctx context.Context, path string) (string, error) {
+	return s.canonical(ctx, path, false)
+}
+
+func (s *Store) canonical(ctx context.Context, path string, documentRequired bool) (string, error) {
 	if ctx == nil {
 		return "", errors.New("source canonicalization requires a caller context")
 	}
@@ -193,10 +207,25 @@ func (s *Store) Canonical(ctx context.Context, path string) (string, error) {
 			s.mu.Unlock()
 			return "", err
 		}
-		name = &alias{done: make(chan struct{})}
+		name = &alias{done: make(chan struct{}), documentRequired: documentRequired}
 		s.aliases[path] = name
 		s.startWork()
 		go s.canonicalize(path, name)
+	} else if documentRequired && !name.documentRequired {
+		if s.closing {
+			s.mu.Unlock()
+			return "", &ClosedError{}
+		}
+		if err := s.ctx.Err(); err != nil {
+			s.mu.Unlock()
+			return "", err
+		}
+		name.documentRequired = true
+		select {
+		case <-name.done:
+			s.registerDocument(path, name.document)
+		default:
+		}
 	}
 	s.mu.Unlock()
 	select {
@@ -216,15 +245,23 @@ func (s *Store) canonicalize(path string, name *alias) {
 	document := s.resolve(path)
 	s.mu.Lock()
 	name.document = document
+	if name.documentRequired {
+		s.registerDocument(path, document)
+	}
+	close(name.done)
+	s.finishWork()
+	s.mu.Unlock()
+}
+
+// registerDocument requires s.mu. Identity resolution and document promotion
+// use the same alias flight, including when promotion arrives mid-resolution.
+func (s *Store) registerDocument(path, document string) {
 	e := s.docs[document]
 	if e == nil {
 		e = &entry{aliases: make(map[string]struct{})}
 		s.docs[document] = e
 	}
 	e.aliases[path] = struct{}{}
-	close(name.done)
-	s.finishWork()
-	s.mu.Unlock()
 }
 
 // Read shares one capture per canonical document. Caller cancellation only
@@ -250,6 +287,10 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 		return Snapshot{}, err
 	}
 	e := s.docs[document]
+	if e.readAliases == nil {
+		e.readAliases = make(map[string]struct{})
+	}
+	e.readAliases[path] = struct{}{}
 	if e.done == nil {
 		if err := s.ctx.Err(); err != nil {
 			s.mu.Unlock()
@@ -283,6 +324,9 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 	if err := ctx.Err(); err != nil {
 		return Snapshot{}, err
 	}
+	if err := s.ctx.Err(); err != nil {
+		return Snapshot{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e.conflict != nil {
@@ -299,9 +343,6 @@ func (s *Store) read(document string, e *entry) {
 	err := s.ctx.Err()
 	if err == nil {
 		content, err = s.reader(s.ctx, document)
-	}
-	if lifetimeErr := s.ctx.Err(); lifetimeErr != nil {
-		err = lifetimeErr
 	}
 	var value *captured
 	if err == nil {
@@ -326,14 +367,19 @@ func (s *Store) snapshot(e *entry) Snapshot {
 	return Snapshot{store: s, value: e.value, aliases: aliases}
 }
 
-// Verify rejects foreign, zero or stale handles and disagreeing supplied bytes.
-// Verification never reads content, changes a capture or promotes other evidence.
-func (s *Store) Verify(snapshot Snapshot, supplied []byte) error {
+// VerifyHandle rejects foreign, zero, stale or quarantined capture handles.
+// It checks owner identity without copying or comparing source bytes.
+func (s *Store) VerifyHandle(snapshot Snapshot) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.verifyHandle(snapshot)
+}
+
+// verifyHandle requires s.mu.
+func (s *Store) verifyHandle(snapshot Snapshot) error {
 	if snapshot.store != s || snapshot.value == nil {
 		return ErrInvalidSnapshot
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	document := snapshot.value.revision.Document()
 	e := s.docs[document]
 	if e != nil && e.conflict != nil {
@@ -342,8 +388,19 @@ func (s *Store) Verify(snapshot Snapshot, supplied []byte) error {
 	if e == nil || e.err != nil || e.value != snapshot.value || e.model != snapshot.value.model {
 		return &ConflictError{document, "stale snapshot"}
 	}
+	return nil
+}
+
+// Verify rejects invalid handles and disagreeing externally supplied bytes.
+// Verification never reads content, changes a capture or promotes other evidence.
+func (s *Store) Verify(snapshot Snapshot, supplied []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.verifyHandle(snapshot); err != nil {
+		return err
+	}
 	if !bytes.Equal(snapshot.value.content, supplied) {
-		return &ConflictError{document, "supplied bytes differ from captured revision"}
+		return &ConflictError{snapshot.value.revision.Document(), "supplied bytes differ from captured revision"}
 	}
 	return nil
 }
