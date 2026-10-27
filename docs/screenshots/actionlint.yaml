@@ -1,4 +1,0 @@
-# yaml-language-server: $schema=../../actionlint.schema.json
----
-policy:
-  require-commit-hash: true
