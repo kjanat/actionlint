@@ -171,14 +171,23 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 			f := &d.Fixes[j]
 			f.Edits = slices.Clone(f.Edits)
 			revisions := make(map[string]string, len(f.Revisions))
+			consistent := true
 			for editedPath, digest := range f.Revisions {
 				normalized := address(editedPath)
 				if normalized == originalPath && digest == revision.Digest() {
 					normalized = path
 				}
+				if previous, exists := revisions[normalized]; exists && previous != digest {
+					consistent = false
+				}
 				revisions[normalized] = digest
 			}
 			f.Revisions = revisions
+			if !consistent {
+				f.Edits = nil
+				missing[originalPath] = struct{}{}
+				continue
+			}
 			for k := range f.Edits {
 				e := &f.Edits[k]
 				e.Path = address(e.Path)
