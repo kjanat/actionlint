@@ -190,7 +190,7 @@ func mutatingAPI(pass *analysis.Pass, t types.Type, flows map[*ssa.Function]flow
 				continue
 			}
 			for fn, effect := range flows {
-				if obj, ok := fn.Object().(*types.Func); ok && functionKey(obj) == functionKey(method) && effect.Writes[0] {
+				if obj, ok := fn.Object().(*types.Func); ok && functionKey(obj) == functionKey(method) && (effect.Writes[0] || effect.Writes[-1]) {
 					return true
 				}
 			}
@@ -198,7 +198,7 @@ func mutatingAPI(pass *analysis.Pass, t types.Type, flows map[*ssa.Function]flow
 				var imported flowFact
 				if pass.ImportPackageFact(method.Pkg(), &imported) {
 					for _, effect := range imported.Functions {
-						if effect.Name == functionKey(method) && slices.Contains(effect.Writes, 0) {
+						if effect.Name == functionKey(method) && (slices.Contains(effect.Writes, 0) || slices.Contains(effect.Writes, -1)) {
 							return true
 						}
 					}
@@ -333,6 +333,12 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		}
 		result.Writes.add(get(address))
 	}
+	possibleWrite := func(address ssa.Value) {
+		if storage(address.Type()) {
+			result.Writes.add(uncertain(get(address)))
+		}
+	}
+
 	// A value copy can detach each reference field before publication. Read
 	// the dominating stores for that load instead of confusing copied payloads
 	// with aliases to the fresh aggregate itself.
@@ -512,7 +518,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 								if index < 0 {
 									index = -index - 1
 									if index < len(args) {
-										result.Writes.add(uncertain(get(args[index])))
+										possibleWrite(args[index])
 									}
 									continue
 								}
@@ -551,6 +557,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					// No purity or ownership is inferred from a function's name.
 					for _, arg := range args {
 						put(v, uncertain(get(arg)))
+						possibleWrite(arg)
 					}
 				case *ssa.Return:
 					for i, value := range v.Results {

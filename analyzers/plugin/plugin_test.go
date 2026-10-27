@@ -41,12 +41,14 @@ func TestUnrelatedModule(t *testing.T) {
 	write("go.mod", "module example.org/unrelated\n\ngo 1.27.0\n")
 	write(".golangci.yml", "version: '2'\nlinters:\n  default: none\n  enable: [actionlintarch]\n  settings:\n    custom:\n      actionlintarch:\n        type: module\nissues:\n  max-issues-per-linter: 0\n  max-same-issues: 0\n")
 	write("internal/storage/value.go", "package storage\ntype Value struct { Number int }\n")
-	write("helper/helper.go", "package helper\nfunc View(b []byte) []byte { return b }\n")
+	write("helper/helper.go", "package helper\nfunc View(b []byte) []byte { return b }\ntype Alias[T any] = []T\n")
 	write("api.go", `package unrelated
-import ("example.org/unrelated/helper"; "example.org/unrelated/internal/storage")
+import ("example.org/unrelated/helper"; "example.org/unrelated/internal/storage"; "sync/atomic")
 type CompletelyDifferent struct { private []byte; Writable int }
 func (s *CompletelyDifferent) Retrieve() []byte { return helper.View(s.private) }
-func Leak() storage.Value { return storage.Value{} }
+func Leak() helper.Alias[storage.Value] { return nil }
+type Counter struct { Value int64 }
+func (c *Counter) Inc() { atomic.AddInt64(&c.Value, 1) }
 `)
 	run := func(wantFailure bool) []string {
 		t.Helper()
@@ -72,7 +74,7 @@ func Leak() storage.Value { return storage.Value{} }
 		return messages
 	}
 	messages := strings.Join(run(true), "\n")
-	for _, code := range []string{"ARC001", "ARC002", "ARC003"} {
+	for _, code := range []string{"ARC001", "ARC002", "ARC003", "ARC004"} {
 		if !strings.Contains(messages, code) {
 			t.Fatalf("missing %s: %s", code, messages)
 		}

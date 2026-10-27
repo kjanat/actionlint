@@ -34,6 +34,7 @@ func run(pass *analysis.Pass) (any, error) {
 	program := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	flows := solve(pass, program.SrcFuncs)
 	owned := map[*types.Named]bool{}
+	possiblyOwned := map[*types.Named]bool{}
 	for _, fn := range program.SrcFuncs {
 		if fn.Signature.Recv() == nil || isTest(pass, fn.Pos()) {
 			continue
@@ -41,6 +42,9 @@ func run(pass *analysis.Pass) (any, error) {
 		named := namedType(fn.Signature.Recv().Type())
 		if named != nil && flows[fn].Writes[0] {
 			owned[named.Origin()] = true
+		}
+		if named != nil && flows[fn].Writes[-1] {
+			possiblyOwned[named.Origin()] = true
 		}
 	}
 	for _, file := range pass.Files {
@@ -68,11 +72,15 @@ func run(pass *analysis.Pass) (any, error) {
 			for i := range fields.NumFields() {
 				stateful = stateful || !fields.Field(i).Exported()
 			}
-			if stateful {
+			if stateful || possiblyOwned[named.Origin()] {
 				for i := range fields.NumFields() {
 					field := fields.Field(i)
 					if field.Exported() {
-						pass.Reportf(field.Pos(), "ARC002: state-owning type %s exposes writable field %s; keep representation private and expose value operations", obj.Name(), field.Name())
+						if stateful {
+							pass.Reportf(field.Pos(), "ARC002: state-owning type %s exposes writable field %s; keep representation private and expose value operations", obj.Name(), field.Name())
+						} else {
+							pass.Reportf(field.Pos(), "ARC004: type %s exposes writable field %s and passes receiver storage to a call without a mutation summary; read-only behavior is not established", obj.Name(), field.Name())
+						}
 					}
 				}
 			}
@@ -136,6 +144,9 @@ func checkAPI(pass *analysis.Pass) {
 			seen[t] = true
 			switch t := t.(type) {
 			case *types.Alias:
+				for i := 0; i < t.TypeArgs().Len(); i++ {
+					walk(t.TypeArgs().At(i))
+				}
 				if t.Obj().Pkg() != pass.Pkg && t.Obj().Exported() && !internalPackage(t.Obj().Pkg().Path()) {
 					return
 				}

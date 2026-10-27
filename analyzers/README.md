@@ -9,7 +9,7 @@ list. It also works in modules unrelated to Actionlint.
 | ARC001 | Public API signatures, aliases, fields and constraints cannot expose types from an `internal` package. Implementation imports and private representation fields are allowed. |
 | ARC002 | An exported struct with private representation or receiver-mutating methods cannot expose writable fields. Plain value records without either property are allowed.          |
 | ARC003 | Exported methods cannot return mutable storage reachable from their receiver. Return detached storage or an opaque value handle.                                             |
-| ARC004 | A reference-returning call without a source summary prevents establishing detachment from the receiver. The unresolved flow fails explicitly.                                |
+| ARC004 | Calls without source summaries may mutate receiver storage or return aliases. Unresolved ownership and detachment fail explicitly.                                |
 
 ARC003 follows assignments, branches, field/index access, pointer loads,
 interfaces, closures, containers and function results. Parameter/result and
@@ -22,14 +22,15 @@ Fresh byte copies using `make`/`copy` or `append` are also allowed. Value handle
 with only private representation can share their internal storage; their public
 methods are checked separately. A constructor returning fresh storage is allowed.
 
-These checks enforce structural properties, not all semantic architecture.
+These checks enforce structural properties.
 Alias findings are conservative: complex deep copies through loops can need
 review even when the resulting value is detached. ARC003 identifies a possible
 receiver-to-result storage path; it is not a runtime proof of mutation.
 They cannot establish whether two differently represented algorithms implement
 the same responsibility. They do not infer which packages should perform I/O,
 prove concurrency safety or verify Go/WIT equivalence. Unknown/interface calls
-produce ARC004 rather than a claim of a proven alias. Aggregate value copies use
+produce ARC004 for unresolved alias and mutation effects. This includes standard-library
+calls whose bodies are unavailable, even when they only read their arguments. Aggregate value copies use
 dominating field stores to recognize detachment before publication. Other flows
 are flow-insensitive. The analyzer does not implement a whole-program heap
 analysis; reflection and arbitrary unsafe
