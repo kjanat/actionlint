@@ -1,6 +1,7 @@
 package localapp
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -9,12 +10,14 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/langserver"
 	"actionlint.kjanat.dev/v2/internal/report"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
+	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -25,6 +28,52 @@ func capturedEditorSource(t testing.TB, path string, content []byte, model sourc
 		t.Fatal(err)
 	}
 	return report.CapturedSource{Revision: revision, Coordinates: model, CoordinatesAvailable: utf8.Valid(content), Content: content}
+}
+
+type editorPathAnalyzer struct{}
+
+func (editorPathAnalyzer) Descriptor() analyzer.Descriptor {
+	return analyzer.Descriptor{Descriptor: rule.Descriptor{Name: "editor-paths"}, Requires: []analyzer.Fact{analyzer.Source}}
+}
+
+func (editorPathAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
+	reference := input.Reference
+	return []diagnostic.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Fixes: []diagnostic.Fix{{Description: "normalize", Applicability: "safe", Revisions: map[string]string{input.Path: reference.Revision}, Edits: []diagnostic.Edit{{Path: input.Path, Start: diagnostic.Position{Line: 1, Column: 1}, End: diagnostic.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
+}
+
+func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testing.T) {
+	current, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	relative, err := filepath.Rel(current, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, directory := range []string{relative, ""} {
+		path := filepath.Join(root, "workflow.yml")
+		key := path
+		if directory != "" {
+			key = "workflow.yml"
+		}
+		analysis, err := analyzeDocuments(t.Context(), application.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []analyzer.Registration{{Analyzer: editorPathAnalyzer{}}}}, map[string]langserver.Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"}})
+		if err != nil || len(analysis.Diagnostics) != 1 {
+			t.Fatalf("working directory %q lost findings: %+v %v", directory, analysis, err)
+		}
+		finding := analysis.Diagnostics[0]
+		if finding.Path != path || !filepath.IsAbs(finding.Path) || analysis.Sources[path].Text == "" {
+			t.Fatalf("relative primary path escaped normalization: %+v", finding)
+		}
+		if len(finding.Fixes) != 1 || len(finding.Fixes[0].Edits) != 1 || finding.Fixes[0].Edits[0].Path != path {
+			t.Fatalf("relative fix path escaped normalization: %+v", finding.Fixes)
+		}
+		for edited := range finding.Fixes[0].Revisions {
+			if !filepath.IsAbs(edited) || edited != path {
+				t.Fatalf("relative revision key escaped normalization: %q", edited)
+			}
+		}
+	}
 }
 
 func TestEditorCaseVariantBuffersConflictOnWindows(t *testing.T) {

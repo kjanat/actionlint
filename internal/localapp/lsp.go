@@ -85,11 +85,17 @@ func analyzeDocuments(ctx context.Context, options application.Options, document
 		return langserver.Analysis{}, err
 	}
 	analysis, conversionErr := editorAnalysis(result, directory, documents)
+	if ctx.Err() != nil {
+		return langserver.Analysis{}, errors.Join(err, conversionErr, ctx.Err())
+	}
 	return analysis, errors.Join(err, conversionErr)
 }
 
 func editorAnalysis(result *application.Result, directory string, documents map[string]langserver.Document) (langserver.Analysis, error) {
 	address := func(path string) string {
+		if path == "" {
+			return ""
+		}
 		if path != "<stdin>" && !filepath.IsAbs(path) {
 			return filepath.Join(directory, path)
 		}
@@ -174,7 +180,7 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 			consistent := true
 			for editedPath, digest := range f.Revisions {
 				normalized := address(editedPath)
-				if normalized == originalPath && digest == revision.Digest() {
+				if normalized != "" && normalized == originalPath && digest == revision.Digest() {
 					normalized = path
 				}
 				if previous, exists := revisions[normalized]; exists && previous != digest {
@@ -184,14 +190,14 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 			}
 			f.Revisions = revisions
 			if !consistent {
-				f.Edits = nil
+				f.Edits, f.Revisions = nil, nil
 				missing[originalPath] = struct{}{}
 				continue
 			}
 			for k := range f.Edits {
 				e := &f.Edits[k]
 				e.Path = address(e.Path)
-				if e.Path == originalPath && revisions[path] == revision.Digest() {
+				if e.Path != "" && e.Path == originalPath && revisions[path] == revision.Digest() {
 					e.Path = path
 				}
 			}
