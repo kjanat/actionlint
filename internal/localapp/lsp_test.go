@@ -40,7 +40,7 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "deprecated-commands" || result.Diagnostics[0].Path != actionPath {
 		t.Fatalf("dependency finding lost: %+v", result.Diagnostics)
 	}
-	if result.Sources[actionPath] != action {
+	if result.Sources[actionPath].Text != action {
 		t.Fatalf("dependency snapshot lost: %+v", result.Sources)
 	}
 	// Opening an unsaved, fixed action must override the disk dependency.
@@ -90,8 +90,8 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 	if finding.Path != actionPath || finding.Rule != "deprecated-commands" || finding.Start.Line != 7 || finding.Reference == nil || finding.Reference.Revision != sourceid.Digest([]byte(unsaved)) {
 		t.Fatalf("dependency diagnostic used different bytes or coordinates: %+v", finding)
 	}
-	if result.Sources[actionPath] != unsaved || actionReads.Load() != 0 {
-		t.Fatalf("open dependency escaped capture: text=%q backing reads=%d", result.Sources[actionPath], actionReads.Load())
+	if result.Sources[actionPath].Text != unsaved || actionReads.Load() != 0 {
+		t.Fatalf("open dependency escaped capture: text=%q backing reads=%d", result.Sources[actionPath].Text, actionReads.Load())
 	}
 }
 
@@ -123,7 +123,7 @@ func TestEditorConflictingAliasesWithholdOnlyConflictedSource(t *testing.T) {
 		if _, exposed := result.Sources[actionPath]; exposed {
 			t.Fatal("conflicted bytes were offered for editor coordinates")
 		}
-		if result.Sources[good] != goodText {
+		if result.Sources[good].Text != goodText {
 			t.Fatal("unrelated captured source was discarded")
 		}
 		found := false

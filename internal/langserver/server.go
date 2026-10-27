@@ -12,8 +12,11 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/sourceid"
+	sourcemodel "actionlint.kjanat.dev/v2/source"
 )
 
 type Document struct {
@@ -26,8 +29,20 @@ type Document struct {
 // Sources and Diagnostics must belong to the same analysis generation.
 type Analysis struct {
 	Diagnostics []diagnostic.Diagnostic
-	Sources     map[string]string
+	Sources     map[string]Source
 }
+
+// Source carries the sealed revision and coordinate model used for publication.
+type Source struct {
+	Text        string
+	Revision    sourcemodel.Revision
+	Coordinates sourcemodel.Coordinates
+}
+
+func (s Source) valid() bool {
+	return s.Coordinates == sourcemodel.YAML && s.Revision.Valid() && utf8.ValidString(s.Text) && s.Revision.Digest() == sourceid.Digest([]byte(s.Text))
+}
+
 type (
 	Analyze        func(context.Context, map[string]Document) (Analysis, error)
 	analysisResult struct {
@@ -40,6 +55,21 @@ type (
 type incoming struct {
 	message message
 	err     error
+}
+
+func analyzeGeneration(ctx context.Context, analyze Analyze, documents map[string]Document, generation int, results chan<- analysisResult) {
+	analysis, err := analyze(ctx, documents)
+	select {
+	case results <- analysisResult{generation, analysis, err}:
+	case <-ctx.Done():
+	}
+}
+
+func currentAnalysis(result analysisResult, generation int, shutdown bool) (Analysis, error, bool) {
+	if result.generation != generation || shutdown {
+		return Analysis{}, nil, false
+	}
+	return result.analysis, result.err, true
 }
 
 // Serve uses full or ranged document updates, cancels superseded analyses, and
@@ -66,6 +96,7 @@ func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, co
 	documents := map[string]Document{}
 	latest := map[string][]diagnostic.Diagnostic{}
 	published := map[string]Document{}
+	publishedSources := map[string]Document{}
 	results := make(chan analysisResult, 1)
 	generation := 0
 	stop := func() {}
@@ -93,6 +124,7 @@ func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, co
 	}
 	schedule := func() {
 		latest = map[string][]diagnostic.Diagnostic{}
+		publishedSources = map[string]Document{}
 		stop()
 		generation++
 		snapshot := maps.Clone(documents)
@@ -100,11 +132,7 @@ func Serve(ctx context.Context, in io.Reader, out io.Writer, analyze Analyze, co
 		var work context.Context
 		work, stop = context.WithCancel(ctx)
 		workers.Go(func() {
-			findings, err := analyze(work, snapshot)
-			select {
-			case results <- analysisResult{gen, findings, err}:
-			case <-work.Done():
-			}
+			analyzeGeneration(work, analyze, snapshot, gen, results)
 		})
 	}
 serve:
@@ -113,24 +141,56 @@ serve:
 		case <-ctx.Done():
 			return ctx.Err()
 		case result := <-results:
-			if result.generation != generation || shutdown {
+			analysis, analysisErr, currentGeneration := currentAnalysis(result, generation, shutdown)
+			if !currentGeneration {
 				continue
 			}
 			latest = map[string][]diagnostic.Diagnostic{}
-			missingSources := make(map[string]struct{})
-			for _, d := range result.analysis.Diagnostics {
-				if _, captured := result.analysis.Sources[d.Path]; captured {
-					latest[d.Path] = append(latest[d.Path], d)
-				} else {
-					missingSources[d.Path] = struct{}{}
+			// Editor metadata supplies URI/version; captured text supplies ranges.
+			sources := make(map[string]Document, len(analysis.Sources))
+			for path, captured := range analysis.Sources {
+				if !captured.valid() {
+					continue
 				}
-				for _, related := range d.Related {
-					if _, captured := result.analysis.Sources[related.Path]; !captured {
-						missingSources[related.Path] = struct{}{}
-					}
+				doc, open := documents[path]
+				if !open {
+					doc.URI = FileURI(path)
 				}
+				doc.Text = captured.Text
+				sources[path] = doc
 			}
-			analysisErr := result.err
+			missingSources := make(map[string]struct{})
+			for _, d := range analysis.Diagnostics {
+				captured, available := sources[d.Path]
+				if !available {
+					missingSources[d.Path] = struct{}{}
+					continue
+				}
+				row := analysis.Sources[d.Path]
+				if d.Reference != nil && (d.Reference.Document != row.Revision.Document() || d.Reference.Revision != row.Revision.Digest()) {
+					missingSources[d.Path] = struct{}{}
+					continue
+				}
+				if _, err := diagnosticRange([]byte(captured.Text), d.Start, d.End); err != nil {
+					missingSources[d.Path] = struct{}{}
+					continue
+				}
+				keptRelated := make([]diagnostic.Related, 0, len(d.Related))
+				for _, related := range d.Related {
+					target, available := sources[related.Path]
+					if !available {
+						missingSources[related.Path] = struct{}{}
+						continue
+					}
+					if _, err := diagnosticRange([]byte(target.Text), related.Start, related.End); err != nil {
+						missingSources[related.Path] = struct{}{}
+						continue
+					}
+					keptRelated = append(keptRelated, related)
+				}
+				d.Related = keptRelated
+				latest[d.Path] = append(latest[d.Path], d)
+			}
 			if len(missingSources) != 0 {
 				analysisErr = errors.Join(analysisErr, fmt.Errorf("incomplete analysis: diagnostic sources unavailable for %d paths: %s", len(missingSources), strings.Join(slices.Sorted(maps.Keys(missingSources)), ", ")))
 			}
@@ -138,16 +198,6 @@ serve:
 				if err := notify("window/logMessage", map[string]any{"type": 1, "message": analysisErr.Error()}); err != nil {
 					return err
 				}
-			}
-			// Editor metadata supplies URI/version; captured text supplies ranges.
-			sources := make(map[string]Document, len(result.analysis.Sources)+len(documents))
-			for path, content := range result.analysis.Sources {
-				doc, open := documents[path]
-				if !open {
-					doc.URI = FileURI(path)
-				}
-				doc.Text = content
-				sources[path] = doc
 			}
 			current := maps.Clone(documents)
 			for path := range latest {
@@ -172,6 +222,7 @@ serve:
 				}
 			}
 			published = current
+			publishedSources = sources
 		case event := <-input:
 			if event.err != nil {
 				if errors.Is(event.err, io.EOF) {
@@ -364,7 +415,7 @@ serve:
 					}
 					continue serve
 				}
-				actions := codeActions(ctx, path, p.Range, latest[path], documents)
+				actions := codeActions(ctx, path, p.Range, latest[path], publishedSources, documents)
 				if err := respond(m.ID, actions, nil); err != nil {
 					return err
 				}

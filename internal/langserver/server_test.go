@@ -80,9 +80,9 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 				}
 				result = append(result, diagnostic.Diagnostic{Path: path, Rule: "test", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Message: "bad", Fixes: []diagnostic.Fix{{Description: "replace", Applicability: "safe", Revisions: map[string]string{path: sourceid.Digest([]byte(doc.Text))}, Edits: []diagnostic.Edit{{Path: path, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Replacement: "good"}}}}})
 			}
-			sources := make(map[string]string, len(docs))
+			sources := make(map[string]Source, len(docs))
 			for path, doc := range docs {
-				sources[path] = doc.Text
+				sources[path] = testSource(t, path, doc.Text)
 			}
 			return Analysis{Diagnostics: result, Sources: sources}, nil
 		})
@@ -212,7 +212,7 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 					<-ctx.Done()
 					close(cancelled)
 					<-release
-					return Analysis{Diagnostics: []diagnostic.Diagnostic{{Path: path, Message: "stale"}}, Sources: map[string]string{path: doc.Text}}, errors.New("source-revision-conflict: stale generation")
+					return Analysis{Diagnostics: []diagnostic.Diagnostic{{Path: path, Message: "stale"}}, Sources: map[string]Source{path: testSource(t, path, doc.Text)}}, errors.New("source-revision-conflict: stale generation")
 				}
 			}
 			return Analysis{}, nil
@@ -267,7 +267,9 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 	}
 	releaseOld()
 	send("shutdown", 3, nil)
-	receive()
+	if response := receive(); response["id"] != float64(3) || response["method"] != nil {
+		t.Fatalf("stale generation escaped before shutdown response: %+v", response)
+	}
 	send("exit", nil, nil)
 	if err := <-finished; err != nil {
 		t.Fatal(err)
@@ -305,7 +307,7 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 			for _, doc := range documents {
 				if doc.Text == "uses dependency" {
 					return Analysis{
-						Sources:     map[string]string{dependency: "\ufeff😀bad\n", related: "\ufeff😀related\n"},
+						Sources:     map[string]Source{dependency: testSource(t, dependency, "\ufeff😀bad\n"), related: testSource(t, related, "\ufeff😀related\n")},
 						Diagnostics: []diagnostic.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Related: []diagnostic.Related{{Path: related, Message: "related", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 9}}}}},
 					}, nil
 				}
