@@ -10,7 +10,7 @@ A rule id is `<area>/<name>`, kebab-case. The **area** is the layer of the
 model the rule reads, not a judgement about the finding. The **category**
 is the judgement, carried as metadata, and it decides the default level.
 
-```
+```text
 id        = area "/" name          e.g. expression/unknown-context
 category  ∈ correctness | suspicious | pedantic | style | restriction | nursery
 level     ∈ off | on | info | warn | error        ("on" = the rule's default)

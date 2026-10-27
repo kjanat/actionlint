@@ -43,14 +43,40 @@ code, in GitHub's own parser.
 
 ### 2. `actions/runner` (C#, what actually executes)
 
-| path                                         | what it is                                                                                                                                                                                                                             |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/Sdk/WorkflowParser/workflow-v1.0.json`  | runner's copy of the workflow schema. ≥306 definitions. Has `snapshot`, `image-version`, `parallel-step`/`wait-step` **not found** in either read portion                                                                              |
-| `src/Sdk/DTPipelines/workflow-v1.0.json`     | legacy copy, 47 definitions. Ignored                                                                                                                                                                                                   |
-| `src/Sdk/WorkflowParser/ObjectTemplating/*`  | C# template reader/evaluator, incl. `Tokens/InsertExpressionToken.cs`, `TemplateUnraveler.cs` (expression expansion), `TemplateEvaluator.cs`                                                                                           |
-| `src/Sdk/DTExpressions2/*`                   | C# expression parser, `Sdk/Functions/{Case,Contains,EndsWith,Format,FromJson,Join,NoOperation,StartsWith,ToJson}.cs`                                                                                                                   |
-| `src/Runner.Worker/action_yaml.json`         | runner's action schema. `runs.using` is only `non-empty-string` here                                                                                                                                                                   |
-| `src/Runner.Worker/ActionManifestManager.cs` | where `using` is really decided: `docker`, `node12`, `node16`, `node20`, `node24`, `composite`, compared `OrdinalIgnoreCase`, `pre-if`/`post-if` default `always()`, `image`/`main`/`steps` requiredness and their exact error strings |
+Local checkout: `~/Projects/runny-mc-fuzzface/third_party/actions-runner`
+at `80bb1fb8` (2026-09-14). `xtask vendor-github` reads from there when
+present, network otherwise.
+
+**The runner does not parse workflow files.** `JobExtension.InitializeJob`
+receives `Pipelines.AgentJobRequestMessage` with `message.Steps` already
+expanded by the GitHub service, including `Action.Background` and
+`Action.ParallelGroupId` (`JobExtension.cs` ~470). Its
+`GitHub.Actions.WorkflowParser` namespace is consumed only by
+`ActionManifestManager` (action.yml), the four `Runner.Worker/Expressions`
+functions, and `PipelineTemplateEvaluatorWrapper`. So the runner's
+workflow schema copy is **not** what validates user YAML on github.com —
+that parser is server-side and closed. `actions/languageservices` is the
+only public artefact of it, which is why it, not the runner, knows
+`parallel-step`, `wait-step`, `cancel-step`, `step-background`,
+`concurrency-queue`. The runner *executes* those
+(`BackgroundStepCoordinator.cs`, `ExecutionContext.IsBackground`,
+`StepsRunner.cs`) without ever seeing their YAML. `concurrency.queue` has
+zero footprint in the runner: pure service-side.
+
+Precedence therefore: workflow syntax → languageservices schema; action
+syntax → runner `ActionManifestManager` + `action_yaml.json`; expression
+functions and `fromJSON` leniency → runner `DTExpressions2`; execution
+semantics (background/parallel/wait/cancel ordering, `pre-if`/`post-if`)
+→ runner `Runner.Worker`.
+
+| path                                         | what it is                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/Sdk/WorkflowParser/workflow-v1.0.json`  | runner's copy of the workflow schema. **312** definitions at `80bb1fb8`. Has `snapshot`, `image-version`, `workflow-root-new`, `on-new`, `*-relaxed`, `dynamic-string`. No `parallel-step`/`wait-step`/`cancel-step`/`step-background`/`concurrency-queue` (grep-confirmed on the local checkout). Used by nothing in the runner for workflows — vendored for cross-check only |
+| `src/Sdk/DTPipelines/workflow-v1.0.json`     | legacy copy, 47 definitions. Ignored                                                                                                                                                                                                                                                                                                                                           |
+| `src/Sdk/WorkflowParser/ObjectTemplating/*`  | C# template reader/evaluator, incl. `Tokens/InsertExpressionToken.cs`, `TemplateUnraveler.cs` (expression expansion), `TemplateEvaluator.cs`                                                                                                                                                                                                                                   |
+| `src/Sdk/DTExpressions2/*`                   | C# expression parser, `Sdk/Functions/{Case,Contains,EndsWith,Format,FromJson,Join,NoOperation,StartsWith,ToJson}.cs`                                                                                                                                                                                                                                                           |
+| `src/Runner.Worker/action_yaml.json`         | runner's action schema. `runs.using` is only `non-empty-string` here                                                                                                                                                                                                                                                                                                           |
+| `src/Runner.Worker/ActionManifestManager.cs` | where `using` is really decided: `docker`, `node12`, `node16`, `node20`, `node24`, `composite`, compared `OrdinalIgnoreCase`, `pre-if`/`post-if` default `always()`, `image`/`main`/`steps` requiredness and their exact error strings                                                                                                                                         |
 
 ### 3. `actions/runner-images` (hosted runner labels)
 
@@ -158,25 +184,29 @@ field errors quoted above. Schema alone does not constrain `using`.
     `wait-step`, `wait-all-step`, `cancel-step`, `step-background`,
     `step-wait-target`, `step-wait-all-value`, `step-cancel-target`,
     `concurrency-queue`, `sequence-of-string`
-  - only in runner (≥306): `workflow-root-new`, `on-new`, `on-string`,
+  - only in runner (312): `workflow-root-new`, `on-new`, `on-string`,
     `sequence-of-on-string`, `on-mapping-new`, the `*-relaxed` family
     (`schedule-relaxed`, `workflow-dispatch-*-relaxed`,
     `on-event-config-*-relaxed`, `event-property-strings-relaxed`),
     `dynamic-string`, `interactive-component-string`, `member-string`,
     `snapshot-image-name`
-    Both are vendored. The union is the accepted surface. The intersection
-    is the documented-stable surface. The symmetric difference is exactly
-    what `preview/*` rules flag. `xtask vendor-github` prints this diff on
-    every update so a change in either copy is noticed.
+    Both are vendored. For **workflows** the languageservices copy is
+    authoritative (it mirrors the server-side parser; the runner never
+    sees workflow YAML). Its extras (`parallel-step` …) are real, executed
+    by the runner, feature-gated at the service → `preview/*`. The
+    runner-only extras (`*-relaxed`, `-new`, `dynamic-string`) are not
+    reachable through github.com's parser as far as public code shows →
+    modelled, flagged `preview/*`, never required. `xtask vendor-github`
+    prints the diff on every update so a change in either copy is noticed.
 - Licences: `actions/runner` MIT, `actions/languageservices` MIT
   ("Copyright GitHub"). Vendoring their JSON data is permitted with
   attribution. `semantics/vendor/LICENSE-github` carries it.
 
 ## Open
 
-- The runner schema's tail (chars 100000–101439) was read separately and
-  adds only `string-runner-context-no-secrets`, `string-steps-context`,
-  `shell`, `working-directory`, `cron-mapping`, `cron-pattern`. Exact
-  runner count still unconfirmed. `xtask vendor-github` will report it.
-- What the runner does with a `*-relaxed` / `-new` definition at runtime
-  (feature flag? GHES?) is unknown. Model them, flag them, don't guess.
+- Who consumes the runner's `workflow-root-new` / `*-relaxed`
+  definitions: no C# reference outside the schema file itself
+  (grep on `80bb1fb8`). Possibly GHES or a dead branch. Model, flag,
+  don't guess.
+- Whether `actions/languageservices` lags or leads the service: the only
+  signal is its own release cadence. Pin a sha, re-vendor on a schedule.
