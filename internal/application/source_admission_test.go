@@ -22,7 +22,7 @@ func (unrelatedPathAnalyzer) Descriptor() analyzer.Descriptor {
 }
 
 func (a unrelatedPathAnalyzer) Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error) {
-	return []diagnostic.Diagnostic{{Path: a.path, Message: "foreign observation"}, {Message: "entry observation"}}, nil
+	return []diagnostic.Diagnostic{{Path: a.path, Message: "foreign observation", Start: diagnostic.Position{Line: 1, Column: 1}}, {Message: "entry observation", Start: diagnostic.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestAnalyzerForeignPathWithoutSourceCannotClaimEntryIdentity(t *testing.T) {

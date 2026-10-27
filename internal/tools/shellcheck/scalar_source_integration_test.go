@@ -14,7 +14,7 @@ func TestSourcedShellcheckPhysicalLines(t *testing.T) {
 	const first = "echo first\u2028still-first\u0085same-line\u2029same-line"
 	const second = "echo $VALUE"
 	content := []byte(first + "\n" + second + "\n")
-	rule := &shellcheckRun{}
+	rule := newShellcheckRunForTest(&externalCommand{})
 	for line, want := range []string{first, second} {
 		finding := rule.sourcedDiagnostic(shellcheckError{File: path, Line: line + 1, Column: 1, Code: 2086, Message: "Quote expansion"}, "", map[string]reportedSource{path: {content: content}})
 		if !finding.rawScriptSource {

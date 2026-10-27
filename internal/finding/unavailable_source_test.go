@@ -133,6 +133,21 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 			t.Fatalf("producer gate missed %s: factories=%d literals=%d", expression.source, factories, literals)
 		}
 	}
+	file, err := parser.ParseFile(token.NewFileSet(), "escape.go", `package finding; type Alias = UnavailableSource; func escaped() { _ = Alias{state: sourceNotCaptured} }`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	escapes := 0
+	ast.Inspect(file, func(node ast.Node) bool {
+		_, forbidden := unavailableSourceUse(node)
+		if forbidden {
+			escapes++
+		}
+		return true
+	})
+	if escapes == 0 {
+		t.Fatal("producer gate missed a literal through a marker type alias")
+	}
 }
 
 func TestUnavailableSourceStatesAndBinding(t *testing.T) {
