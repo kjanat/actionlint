@@ -1,17 +1,13 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	actionlint "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/genfile"
@@ -62,127 +58,6 @@ func TestPluginRuleSelectors(t *testing.T) {
 	}
 }
 
-func TestRuffTargetVersionSuggestions(t *testing.T) {
-	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
-	target, ok := schema.Properties.Get("target-version")
-	if !ok {
-		t.Fatal("missing Ruff target-version schema")
-	}
-	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
-		t.Fatal("expected version choices and a hidden reset branch")
-	}
-	if target.OneOf[0].Type != "string" || len(target.OneOf[0].Enum) != 0 || target.OneOf[0].Ref != "" {
-		t.Fatal("Ruff targets must be validated by the selected engine")
-	}
-}
-
-func TestRuffSelectorSuggestions(t *testing.T) {
-	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
-	for _, key := range []string{"select", "ignore"} {
-		property, ok := schema.Properties.Get(key)
-		if !ok || property.Items == nil {
-			t.Fatalf("missing Ruff %s schema", key)
-		}
-		if property.Items.Ref != "" || len(property.Items.Enum) != 0 || !reflect.DeepEqual(property.Items.Examples, []any{"F", "F821"}) {
-			t.Fatalf("Ruff %s completion must use small safe examples, not an upstream or copied catalogue", key)
-		}
-		if property.Not != nil || property.Items.MinLength == nil {
-			t.Fatalf("Ruff %s must constrain shape without pinning engine semantics", key)
-		}
-	}
-}
-
-func TestRuffEditorCompletions(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("Node.js is not installed")
-	}
-	if _, err := os.Stat(filepath.Join("..", "..", "node_modules", "yaml-language-server", "package.json")); err != nil {
-		t.Skip("run npm ci first: yaml-language-server is not installed")
-	}
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-	command := exec.CommandContext(ctx, node, "editor-completions.mjs")
-	command.WaitDelay = time.Second
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("YAML language service regression: %v\n%s", err, output)
-	}
-	t.Log(string(output))
-}
-
-func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
-	t.Helper()
-	rootURL, err := url.Parse(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, filename := range []string{shellcheckSchemaPath} {
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var document any
-		if err := json.Unmarshal(data, &document); err != nil {
-			t.Fatal(err)
-		}
-		location := rootURL.ResolveReference(&url.URL{Path: filename}).String()
-		if err := compiler.AddResource(location, document); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-func TestRuffEngineIndependentSchema(t *testing.T) {
-	root := generatedSchema(t)
-	var document any
-	if err := json.Unmarshal(root, &document); err != nil {
-		t.Fatal(err)
-	}
-	const base = "file:///offline/actionlint.schema.json"
-	c := validator.NewCompiler()
-	c.UseLoader(validator.SchemeURLLoader{})
-	addToolSchemas(t, c, base)
-	if err := c.AddResource(base, document); err != nil {
-		t.Fatal(err)
-	}
-	schema, err := c.Compile(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	selectors := []string{"F", "E111", "RUF055", "ENGINE999", ""}
-	for _, key := range []string{"select", "ignore", "target-version"} {
-		values := selectors
-		if key == "target-version" {
-			values = []string{"py36", "py316", "py399", ""}
-		}
-		for _, value := range values {
-			for _, override := range []bool{false, true} {
-				var property any = []any{value}
-				want := value != ""
-				if key == "target-version" {
-					property = value
-					want = value != ""
-				}
-				input := map[string]any{"tools": map[string]any{"ruff": map[string]any{key: property}}}
-				if override {
-					input["includes"] = []any{"**"}
-					input = map[string]any{"overrides": []any{input}}
-				}
-				data, err := json.Marshal(input)
-				if err != nil {
-					t.Fatal(err)
-				}
-				_, parseErr := actionlint.Parse(data)
-				schemaErr := schema.Validate(input)
-				if (parseErr == nil) != want || (schemaErr == nil) != want {
-					t.Fatalf("%s=%q override=%v want valid=%v: parser=%v schema=%v", key, value, override, want, parseErr, schemaErr)
-				}
-			}
-		}
-	}
-}
-
 func TestGeneratedSchemaUpToDate(t *testing.T) {
 	got := generatedSchema(t)
 	want, err := os.ReadFile("actionlint.schema.json")
@@ -228,41 +103,6 @@ func TestGeneratedSchemaFormatting(t *testing.T) {
 	}
 }
 
-func TestShellcheckSchemaSnapshot(t *testing.T) {
-	t.Chdir("../..")
-	generated, err := generateShellcheckSchema()
-	if err != nil {
-		t.Fatal(err)
-	}
-	snapshot, err := os.ReadFile(shellcheckSchemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got, want any
-	if err := json.Unmarshal(generated, &got); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(snapshot, &want); err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Fatalf("ShellCheck schema contract changed; add a versioned snapshot for new directives, or explicitly review corrections to the existing version. See README.md (-snapshot +current):\n%s", diff)
-	}
-	if err := initializeShellcheckSchema(); !errors.Is(err, os.ErrExist) {
-		t.Fatalf("initialization must refuse to overwrite an existing version, got %v", err)
-	}
-}
-
-func TestShellcheckSchemaReference(t *testing.T) {
-	b := generatedSchema(t)
-	if !strings.Contains(string(b), `"$ref": "`+shellcheckSchemaPath+`"`) {
-		t.Fatal("root schema must reference the versioned ShellCheck schema")
-	}
-	if strings.Contains(string(b), `"source-path"`) {
-		t.Fatal("root schema must not inline ShellCheck directive properties")
-	}
-}
-
 func TestSchemaRelativeResolution(t *testing.T) {
 	root := generatedSchema(t)
 	for _, base := range []string{
@@ -273,7 +113,6 @@ func TestSchemaRelativeResolution(t *testing.T) {
 		t.Run(base, func(t *testing.T) {
 			c := validator.NewCompiler()
 			c.UseLoader(validator.SchemeURLLoader{})
-			addToolSchemas(t, c, base)
 			var document any
 			if err := json.Unmarshal(root, &document); err != nil {
 				t.Fatal(err)
@@ -298,7 +137,6 @@ func TestSchemaValidation(t *testing.T) {
 	// Resolve checked-in resources only. Schema tests must not access the network.
 	c.UseLoader(validator.SchemeURLLoader{})
 	const url = "https://example.com/actionlint.schema.json"
-	addToolSchemas(t, c, url)
 	if err := c.AddResource(url, document); err != nil {
 		t.Fatal(err)
 	}
@@ -314,11 +152,6 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
-		{"ruff wasm path", `tools: {ruff: {backend: {wasm: {path: ruff.wasm}}}}`, true, true},
-		{"ruff empty wasm path", `tools: {ruff: {backend: {wasm: {path: ""}}}}`, false, false},
-		{"shellcheck wasm path", `tools: {shellcheck: {backend: {wasm: {path: shellcheck.wasm}}}}`, true, true},
-		{"shellcheck empty wasm path", `tools: {shellcheck: {backend: {wasm: {path: ""}}}}`, false, false},
-		{"override empty wasm path", `overrides: [{includes: ['**'], tools: {ruff: {backend: {wasm: {path: ""}}}}}]`, false, false},
 		{"runner knowledge", `lint: {rules: {correctness: {runner-label: {level: default, options: {labels: [gpu]}}}}}`, true, true},
 		{"expression knowledge", `lint: {rules: {correctness: {expression-reference: {level: default, options: {variables: [], secrets: null}}}}}`, true, true},
 		{"workflow knowledge", `lint: {rules: {correctness: {workflow-call: {level: default, options: {default-permissions: permissive}}}}}`, true, true},
@@ -326,7 +159,6 @@ func TestSchemaValidation(t *testing.T) {
 		{"message filters", `lint: {message-ignores: {'**': ['legacy.*']}}`, true, true},
 		{"invalid message regex", `lint: {message-ignores: {'**': ['[']}}`, true, false},
 		{"invalid message path", `lint: {message-ignores: {'[': []}}`, true, false},
-		{"plugin shorthand", `plugins: [kjanat/actionlint-plugin-shellcheck@v0.1.1]`, true, true},
 		{"plugin custom catalogue", `plugins: [{name: gitlab.com/group/plugin, version: v1, registry: 'https://example.com/catalog/'}]`, true, true},
 		{"plugin empty list", `plugins: []`, true, true},
 		{"plugin null", `plugins: null`, true, true},
@@ -344,27 +176,6 @@ func TestSchemaValidation(t *testing.T) {
 		{"ignore blank uses", `ignores: [{rule: expression, uses: ' '}]`, false, false},
 		{"ignore unicode blank reason", `ignores: [{rule: expression, job: build, reason: "\u0085\u00a0\u3000"}]`, false, false},
 		{"ignore padded reason", `ignores: [{rule: expression, job: build, reason: ' reviewed '}]`, true, true},
-		{"ruff oldest target", `tools: {ruff: {target-version: py37}}`, true, true},
-		{"ruff selector prefix", `tools: {ruff: {select: [F82]}}`, true, true},
-		{"ruff selector alias", `tools: {ruff: {select: [C9, U004, SIM111]}}`, true, true},
-		{"ruff preview rule codes", `tools: {ruff: {select: [E111, RUF055]}}`, true, true},
-		{"ruff stable copyright rule", `tools: {ruff: {select: [CPY001]}}`, true, true},
-		{"ruff removed rules", `tools: {ruff: {select: [ANN101, ANN102, S320]}}`, true, true},
-		{"ruff redirected removed names", `tools: {ruff: {select: [PGH001, RUF035]}}`, true, true},
-		{"ruff unknown selector", `tools: {ruff: {select: [XYZ]}}`, true, true},
-		{"ruff unknown ignored selector", `tools: {ruff: {ignore: [F9999]}}`, true, true},
-		{"ruff invalid selector override", `overrides: [{includes: ['**'], tools: {ruff: {select: [XYZ]}}}]`, true, true},
-		{"ruff selection reset", `tools: {ruff: {select: null, ignore: null}}`, true, true},
-		{"ruff empty selection", `tools: {ruff: {select: [], ignore: []}}`, true, true},
-		{"ruff newest target", `tools: {ruff: {target-version: py315}}`, true, true},
-		{"ruff omitted target", `tools: {ruff: {}}`, true, true},
-		{"ruff target reset", `tools: {ruff: {target-version: null}}`, true, true},
-		{"ruff empty single-quoted target", `tools: {ruff: {target-version: ''}}`, false, false},
-		{"ruff empty double-quoted target", `tools: {ruff: {target-version: ""}}`, false, false},
-		{"ruff unsupported old target", `tools: {ruff: {target-version: py30}}`, true, true},
-		{"ruff unsupported future target", `tools: {ruff: {target-version: py316}}`, true, true},
-		{"ruff override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py315}}}]`, true, true},
-		{"ruff unsupported override target", `overrides: [{includes: ['**'], tools: {ruff: {target-version: py36}}}]`, true, true},
 		{"nursery group", `lint: {rules: {nursery: {preset: all}}}`, true, true},
 		{"nursery level", `lint: {rules: {nursery: warn}}`, true, true},
 		{"nursery null", `lint: {rules: {nursery: null}}`, true, true},
@@ -428,68 +239,18 @@ func TestSchemaValidation(t *testing.T) {
 		{"experimental unknown option", `lint: {rules: {experimental: {typo: true}}}`, false, false},
 		{"experimental string boolean", `lint: {rules: {experimental: {enabled: 'true'}}}`, false, false},
 		{"not policy", `policy: {mixed-type-matrix-filters: true}`, false, false},
-		{"lint suppression", `lint: {rules: {disable: [expression, shellcheck]}}`, true, true},
 		{"lint null suppression", `lint: {rules: {disable: null}}`, true, true},
 		{"lint unknown rule requires registration", `lint: {rules: {disable: [typo]}}`, true, false},
 		{"lint empty rule", `lint: {rules: {disable: ['']}}`, false, false},
-		{"external Ruff config group", `lint: {rules: {external: {ruff: warn}}}`, true, true},
-		{"semantic category is not configuration group", `lint: {rules: {correctness: {ruff: warn}}}`, false, false},
 		{"plugin settings require registration", `lint: {rules: {plugins: {custom: {level: warn, options: {count: 2}}}}}`, true, false},
 		{"lint unknown key", `lint: {rules: {typo: true}}`, false, false},
 		{"file override", `overrides: [{includes: ['.github/workflows/**'], lint: {rules: {suspicious: on}}}]`, true, true},
 		{"file override null lint", `overrides: [{includes: ['**'], lint: null}]`, true, true},
-		{"file override tools", `overrides: [{includes: ['**'], tools: {shellcheck: {config: {disable: [SC2086]}}}}]`, true, true},
-		{"file override tool shorthand", `overrides: [{includes: ['**'], tools: {shellcheck: false}}]`, true, true},
-		{"file override null tools", `overrides: [{includes: ['**'], tools: null}]`, true, true},
-		{"file override unknown tool", `overrides: [{includes: ['**'], tools: {typo: true}}]`, false, false},
 		{"file override missing includes", `overrides: [{lint: {rules: {suspicious: on}}}]`, false, false},
 		{"file override empty includes", `overrides: [{includes: []}]`, false, false},
 		{"file override numeric include", `overrides: [{includes: [1]}]`, false, false},
 		{"file override unknown key", `overrides: [{includes: ['**'], typo: true}]`, false, false},
 		{"file override invalid glob", `overrides: [{includes: ['[']}]`, true, false},
-		{"ShellCheck disabled", `tools: {shellcheck: {enabled: false}}`, true, true},
-		{"ShellCheck shorthand enabled", `tools: {shellcheck: true}`, true, true},
-		{"ShellCheck shorthand disabled", `tools: {shellcheck: false}`, true, true},
-		{"ShellCheck shorthand null", `tools: {shellcheck: null}`, true, true},
-		{"ShellCheck empty mapping", `tools: {shellcheck: {}}`, true, true},
-		{"ShellCheck unknown option", `tools: {shellcheck: {typo: true}}`, false, false},
-		{"ShellCheck empty directive mapping", `tools: {shellcheck: {config: {}}}`, true, true},
-		{"ShellCheck rc path", `tools: {shellcheck: {config: ./.shellcheckrc}}`, true, true},
-		{"ShellCheck rc directory", `tools: {shellcheck: {config: '${{ gitdir }}/.github/'}}`, true, true},
-		{"ShellCheck rc config directory", `tools: {shellcheck: {config: '${{ configdir }}/.shellcheckrc'}}`, true, true},
-		{"ShellCheck rc workspace directory", `tools: {shellcheck: {config: '${{ github.workspace }}/.shellcheckrc'}}`, true, true},
-		{"ShellCheck rc action directory", `tools: {shellcheck: {config: '${{ github.action_path }}/.shellcheckrc'}}`, true, true},
-		{"ShellCheck empty rc path", `tools: {shellcheck: {config: ''}}`, false, false},
-		{"ShellCheck multiline rc path", `tools: {shellcheck: {config: "first\nsecond"}}`, false, false},
-		{"ShellCheck trailing newline rc path", `tools: {shellcheck: {config: "file\n"}}`, false, false},
-		{"ShellCheck carriage return rc path", `tools: {shellcheck: {config: "file\r"}}`, false, false},
-		{"ShellCheck NUL rc path", `tools: {shellcheck: {config: "file\0"}}`, false, false},
-		{"ShellCheck invalid rc type", `tools: {shellcheck: {config: false}}`, false, false},
-		{"ShellCheck nullable", `tools: {shellcheck: {enabled: null, config: null}}`, true, true},
-		{"ShellCheck directives", `tools: {shellcheck: {config: {disable: [SC2086, SC3000-SC4000, all], enable: [all], shell: bash, external-sources: false, extended-analysis: true, source-path: ['my scripts']}}}`, true, true},
-		{"ShellCheck all optional", `tools: {shellcheck: {config: {enable: all}}}`, true, true},
-		{"ShellCheck true optional", `tools: {shellcheck: {enabled: false, config: {enable: true}}}`, true, true},
-		{"ShellCheck false optional", `tools: {shellcheck: {config: {enable: false}}}`, false, false},
-		{"ShellCheck quoted true optional", `tools: {shellcheck: {config: {enable: 'true'}}}`, false, false},
-		{"ShellCheck empty source path", `tools: {shellcheck: {config: {source-path: [""]}}}`, false, false},
-		{"ShellCheck multiline source path", `tools: {shellcheck: {config: {source-path: ["first\nsecond"]}}}`, false, false},
-		{"ShellCheck trailing newline source path", `tools: {shellcheck: {config: {source-path: ["file\n"]}}}`, false, false},
-		{"ShellCheck carriage return source path", `tools: {shellcheck: {config: {source-path: ["file\r"]}}}`, false, false},
-		{"ShellCheck NUL source path", `tools: {shellcheck: {config: {source-path: ["file\0"]}}}`, false, false},
-		{"ShellCheck source path single quote", `tools: {shellcheck: {config: {source-path: ["user's scripts"]}}}`, true, true},
-		{"ShellCheck source path double quote", `tools: {shellcheck: {config: {source-path: ['user"s scripts']}}}`, true, true},
-		{"ShellCheck source path both quotes", `tools: {shellcheck: {config: {source-path: ["user's\"scripts"]}}}`, true, true},
-		{"ShellCheck source path both quotes and hash", `tools: {shellcheck: {config: {source-path: ["dir'\"#part"]}}}`, true, true},
-		{"ShellCheck source path both quotes and space", `tools: {shellcheck: {config: {source-path: ["user's\" scripts"]}}}`, false, false},
-		{"ShellCheck source path both quotes and tab", `tools: {shellcheck: {config: {source-path: ["user's\"\tscripts"]}}}`, false, false},
-		{"ShellCheck source path leading single quote", `tools: {shellcheck: {config: {source-path: ["'user\"scripts"]}}}`, false, false},
-		{"ShellCheck source path leading double quote", `tools: {shellcheck: {config: {source-path: ["\"user'scripts"]}}}`, false, false},
-		{"ShellCheck flag misplaced", `tools: {shellcheck: {config: {format: json}}}`, false, false},
-		{"ShellCheck dialect", `tools: {shellcheck: {config: {shell: python}}}`, false, false},
-		{"ShellCheck number code", `tools: {shellcheck: {config: {disable: [2086]}}}`, false, false},
-		{"ShellCheck invalid code", `tools: {shellcheck: {config: {disable: [bad]}}}`, false, false},
-		{"ShellCheck invalid bool", `tools: {shellcheck: {config: {extended-analysis: yes}}}`, false, false},
-		{"ShellCheck unknown setting", `tools: {shellcheck: {config: {typo: []}}}`, false, false},
 		{"all settings", `
 self-hosted-runner:
   labels: [linux.2xlarge, custom-*]
@@ -498,7 +259,6 @@ config-secrets: [DEPLOY_TOKEN]
 assume-default-permissions: permissive
 paths:
   .github/workflows/**/*.yaml:
-    ignore: ['(?i)shellcheck reported .+']
 policy:
   require-commit-hash: true
   require-job-timeout: {min-minutes: 5, max-minutes: 60.5}
@@ -693,13 +453,4 @@ func TestSchemaDescriptions(t *testing.T) {
 		}
 	}
 	check(document, "config")
-	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var toolDocument map[string]any
-	if err := json.Unmarshal(toolSchema, &toolDocument); err != nil {
-		t.Fatal(err)
-	}
-	check(toolDocument, "shellcheck")
 }

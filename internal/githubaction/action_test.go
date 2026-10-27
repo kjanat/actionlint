@@ -104,7 +104,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		".github/workflows/readme.txt": "not a workflow",
 	})
 	run, recorder := runAction(t, workspace, knownFiles(&lintOutcome{"", "", render.ExitSuccessNoProblem}, 0),
-		"", "json", "", "", "true", "true", ".", "", "true")
+		"", "json", "", "", ".", "", "true")
 
 	if run.code != 0 {
 		t.Errorf("wanted exit code 0 but got %d: %s", run.code, run.stdout)
@@ -123,7 +123,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		}
 	}
 	wantLog := fmt.Sprintf(
-		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck)\n",
+		"actionlint %s: 0 problems in 0 workflow files\n",
 		actionVersion(),
 	) + "::stop-commands::DELIM\n" + want["output"] + "\n::DELIM::\n"
 	if run.stdout != wantLog {
@@ -131,9 +131,6 @@ func TestActionReportsSuccess(t *testing.T) {
 	}
 	if recorder.req.workingDir != workspace {
 		t.Errorf("wanted the workspace as the working directory but got %q", recorder.req.workingDir)
-	}
-	if recorder.req.shellcheck != "shellcheck" {
-		t.Errorf("wanted ShellCheck enabled but got %#v", recorder.req)
 	}
 	if recorder.req.format != formatJSON {
 		t.Errorf("wanted the JSON format but got %q", recorder.req.format)
@@ -143,7 +140,7 @@ func TestActionReportsSuccess(t *testing.T) {
 func TestActionReportsProblems(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, problemResult(t, formatGitHub),
-		"w.yaml", "github", "", "", "true", "true", ".", "", "true")
+		"w.yaml", "github", "", "", ".", "", "true")
 
 	if run.code != 1 {
 		t.Errorf("wanted exit code 1 but got %d", run.code)
@@ -152,7 +149,7 @@ func TestActionReportsProblems(t *testing.T) {
 		t.Errorf("wanted a single problem but got %#v", run.outputs)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: 1 problem in 1 workflow file (requested tools: shellcheck)\n",
+		"actionlint %s: 1 problem in 1 workflow file\n",
 		actionVersion(),
 	) + "::error file=w.yaml,line=4,col=14,endColumn=21,title=actionlint (k)::m%0A%0A    runs-on: \"a<b>&c\"%0A             ^~~~~~~~\n"
 	if run.stdout != want {
@@ -163,7 +160,7 @@ func TestActionReportsProblems(t *testing.T) {
 func TestActionKeepsProblemsNonFatal(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, problemResult(t, formatOneline),
-		"", "oneline", "", "", "true", "true", ".", "", "false")
+		"", "oneline", "", "", ".", "", "false")
 
 	if run.code != 0 {
 		t.Errorf("wanted exit code 0 when fail-on-error is false but got %d", run.code)
@@ -176,7 +173,7 @@ func TestActionKeepsProblemsNonFatal(t *testing.T) {
 func TestActionReportsFailure(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "could not read \"w.yaml\"\n", render.ExitFailure}, 1),
-		"w.yaml", "json", "", "", "true", "true", ".", "", "false")
+		"w.yaml", "json", "", "", ".", "", "false")
 
 	if run.code != 3 {
 		t.Errorf("wanted exit code 3 but got %d", run.code)
@@ -185,7 +182,7 @@ func TestActionReportsFailure(t *testing.T) {
 		t.Errorf("wanted a failure without a problem count but got %#v", run.outputs)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: failed with unknown problems while checking 1 workflow file (requested tools: shellcheck)\n",
+		"actionlint %s: failed with unknown problems while checking 1 workflow file\n",
 		actionVersion(),
 	) + "::error title=actionlint failed::could not read \"w.yaml\"%0A\n"
 	if run.stdout != want {
@@ -196,10 +193,10 @@ func TestActionReportsFailure(t *testing.T) {
 func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, unknownFiles(&lintOutcome{"", "no project\n", render.ExitFailure}),
-		"", "json", "", "", "true", "true", ".", "", "true")
+		"", "json", "", "", ".", "", "true")
 
 	want := fmt.Sprintf(
-		"actionlint %s: failed with unknown problems while checking unknown workflow files (requested tools: shellcheck)\n",
+		"actionlint %s: failed with unknown problems while checking unknown workflow files\n",
 		actionVersion(),
 	)
 	if !strings.HasPrefix(run.stdout, want) {
@@ -216,13 +213,13 @@ func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "", render.ExitSuccessNoProblem}, 0),
-		"", "json", "", "", "true", "true", ".", "blocked/results.json", "true")
+		"", "json", "", "", ".", "blocked/results.json", "true")
 
 	if run.code != render.ExitFailure {
 		t.Errorf("wanted exit code %d but got %d", render.ExitFailure, run.code)
 	}
 	want := fmt.Sprintf(
-		"actionlint %s: 0 problems in 0 workflow files (requested tools: shellcheck)\n",
+		"actionlint %s: 0 problems in 0 workflow files\n",
 		actionVersion(),
 	)
 	if !strings.HasPrefix(run.stdout, want) {
@@ -232,7 +229,7 @@ func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
 
 func TestActionReportsInvalidInput(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
-	run, recorder := runAction(t, workspace, nil, "", "text", "", "", "true", "true", ".", "", "true")
+	run, recorder := runAction(t, workspace, nil, "", "text", "", "", ".", "", "true")
 
 	if run.code != 2 {
 		t.Errorf("wanted exit code 2 but got %d", run.code)
@@ -253,7 +250,7 @@ func TestActionWritesOutputFile(t *testing.T) {
 	workspace := resolved(t, t.TempDir())
 	analysis := problemResult(t, formatJSONLines)
 	run, _ := runAction(t, workspace, analysis,
-		"", "json-lines", "", "", "true", "true", ".", "results/out.jsonl", "false")
+		"", "json-lines", "", "", ".", "results/out.jsonl", "false")
 
 	if run.code != 0 {
 		t.Errorf("wanted exit code 0 but got %d", run.code)
@@ -278,7 +275,7 @@ func TestActionRejectsEscapingOutputPath(t *testing.T) {
 		name string
 		argv []string
 	}{
-		{"output-file", []string{"", "json", "", "", "true", "true", ".", "../escaped.json", "true"}},
+		{"output-file", []string{"", "json", "", "", ".", "../escaped.json", "true"}},
 	} {
 		run, recorder := runAction(t, workspace, nil, tc.argv...)
 		if run.code != 2 {
@@ -299,7 +296,7 @@ func TestActionRejectsEscapingOutputPath(t *testing.T) {
 
 func TestActionReportsMissingWorkspace(t *testing.T) {
 	workspace := filepath.Join(resolved(t, t.TempDir()), "missing")
-	run, recorder := runAction(t, workspace, nil, "", "json", "", "", "true", "true", ".", "", "true")
+	run, recorder := runAction(t, workspace, nil, "", "json", "", "", ".", "", "true")
 
 	if run.code != 3 {
 		t.Errorf("wanted exit code 3 but got %d", run.code)
@@ -343,9 +340,6 @@ func TestActionPassesInputsToLinter(t *testing.T) {
 	if strings.Join(req.ignore, "|") != "first|second" {
 		t.Errorf("wanted both ignore patterns but got %#v", req.ignore)
 	}
-	if req.shellcheck != "" {
-		t.Errorf("wanted ShellCheck disabled but got %#v", req)
-	}
 	if req.format != formatSARIF {
 		t.Errorf("wanted the SARIF format but got %q", req.format)
 	}
@@ -358,7 +352,7 @@ func TestActionFallsBackToProcessDirectory(t *testing.T) {
 	var out strings.Builder
 	recorder := &recordedLint{result: knownFiles(&lintOutcome{"", "", render.ExitSuccessNoProblem}, 0)}
 	a := &action{
-		args:    args("", "json", "", "", "true", "true", ".", "", "true"),
+		args:    args("", "json", "", "", ".", "", "true"),
 		stdout:  &out,
 		env:     func(string) string { return "" },
 		lint:    recorder.run,
@@ -385,7 +379,7 @@ func TestActionTimesOut(t *testing.T) {
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath}
 	finished := make(chan struct{})
 	a := &action{
-		args:   args("", "json", "", "", "true", "true", ".", "", "true"),
+		args:   args("", "json", "", "", ".", "", "true"),
 		stdout: &out,
 		env:    func(name string) string { return env[name] },
 		lint: func(req *lintRequest) *lintResult {

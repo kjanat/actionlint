@@ -5,16 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestMain(m *testing.M) {
 	if mode := os.Getenv("ACTIONLINT_TEST_JSON_FORMATTER"); mode != "" {
 		os.Exit(jsonFormatterHelper(mode))
-	}
-	if os.Getenv("ACTIONLINT_TEST_RUFF_DISCOVERY") == "1" {
-		os.Exit(testutil.RuffDiscoveryHelper())
 	}
 	if err := os.Chdir("../.."); err != nil {
 		fmt.Fprintln(os.Stderr, err)

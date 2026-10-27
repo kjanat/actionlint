@@ -44,7 +44,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 		for _, failingFirst := range []bool{false, true} {
 			for _, outputFile := range []bool{false, true} {
 				t.Run(fmt.Sprintf("modern=%t/failing-first=%t/file=%t", modern, failingFirst, outputFile), func(t *testing.T) {
-					args := []string{"actionlint", "--config", "config.yml", "--no-color", "--pyflakes=", "--json"}
+					args := []string{"actionlint", "--config", "config.yml", "--no-color", "--json"}
 					if modern {
 						args = append(args, "check")
 					}
@@ -115,7 +115,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--pyflakes=", "--json"}
+			args := []string{"actionlint", "--no-config", "--json"}
 			if modern {
 				args = append(args, "check")
 			}
@@ -154,7 +154,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--shellcheck=", "--ruff=" + filepath.Join(dir, "missing-ruff"), "--json"}
+			args := []string{"actionlint", "--no-config" + filepath.Join(dir, "missing-ruff"), "--json"}
 			if modern {
 				args = append(args, "check")
 			}

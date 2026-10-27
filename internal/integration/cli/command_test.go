@@ -88,7 +88,7 @@ func TestModernInformationCommandsDoNotRunAnalysis(t *testing.T) {
 	if got := testRunCommand("", "rules", "nonexistent"); got.Status != 2 {
 		t.Fatal(got)
 	}
-	got := testRunCommand("", "doctor", "--no-config", "--json", "--shellcheck=this-tool-does-not-exist", "--pyflakes=")
+	got := testRunCommand("", "doctor", "--no-config", "--json", "--shellcheck=this-tool-does-not-exist")
 	var report struct {
 		Tools []doctorTool `json:"tools"`
 	}
@@ -169,7 +169,7 @@ func TestCommandMain(t *testing.T) {
 
 	// Run the command end-to-end. Note that given args should contain program name
 	workflow := filepath.Join("testdata", "examples", "main.yaml")
-	status := cmd.Main([]string{"actionlint", "-no-color", "-shellcheck=", "-pyflakes=", "-ignore", `label .+ is unknown\.`, workflow})
+	status := cmd.Main([]string{"actionlint", "-no-color", "-ignore", `label .+ is unknown\.`, workflow})
 
 	if status != 1 {
 		t.Fatal("exit status should be 1 but got", status)

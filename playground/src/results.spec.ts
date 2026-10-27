@@ -4,13 +4,9 @@ import { afterAll, beforeAll, it, vi } from 'vitest';
 import { diagnosticCount } from '@codemirror/lint';
 import { EditorView } from '@codemirror/view';
 
-const callbacks = vi.hoisted(() => ({ cancel: vi.fn(), invalidate: vi.fn(), lint: vi.fn() }));
+const callbacks = vi.hoisted(() => ({ invalidate: vi.fn(), lint: vi.fn() }));
 vi.mock('wasm_exec.js', () => ({}));
 vi.mock('./catalogue.ts', () => ({ fetchActionCatalogue: () => Promise.resolve('test catalogue') }));
-vi.mock('./shellcheck', () => ({
-	loadShellcheck: () => Promise.resolve({ check: vi.fn(), cancel: callbacks.cancel }),
-	shellcheckAssets: { license: 'https://example.test/LICENSE' },
-}));
 
 let editor: EditorView;
 let body: HTMLElement;
@@ -28,7 +24,6 @@ beforeAll(async () => {
 		['button', 'permalink-btn'],
 		['input', 'check-url-input'],
 		['p', 'invalid-input'],
-		['a', 'shellcheck-license'],
 	];
 	for (const [tag, id] of elements) {
 		const element = document.createElement(tag);
@@ -89,7 +84,7 @@ afterAll(() => {
 
 function populate(): void {
 	window.onCheckCompleted([
-		{ line: 1, column: 1, endColumn: 2, kind: 'shellcheck', message: 'previous finding' },
+		{ line: 1, column: 1, endColumn: 2, kind: 'syntax-check', message: 'previous finding' },
 	], window.getYamlSource());
 	assert.equal(body.children.length, 1, 'fixture must populate a clickable result');
 	assert.equal(diagnosticCount(editor.state), 1, 'fixture must populate editor diagnostics');
@@ -104,14 +99,10 @@ it('clears old clickable rows and editor diagnostics when analysis fails', () =>
 	assert.equal(error.style.display, 'block');
 });
 
-it('invalidates, cancels and clears immediately on edit before the debounced lint', async () => {
+it('invalidates and clears immediately on edit before the debounced lint', async () => {
 	populate();
 	editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: 'on: push\njobs: {}' } });
 	assert.equal(callbacks.invalidate.mock.calls.length, 1);
-	assert.equal(callbacks.cancel.mock.calls.length, 1);
-	const invalidatedAt = callbacks.invalidate.mock.invocationCallOrder[0];
-	const cancelledAt = callbacks.cancel.mock.invocationCallOrder[0];
-	assert.ok(invalidatedAt && cancelledAt && invalidatedAt < cancelledAt, 'invalidate before rejecting worker requests');
 	assert.equal(callbacks.lint.mock.calls.length, 0, 'lint should still be debounced');
 	assert.equal(body.children.length, 0);
 	assert.equal(diagnosticCount(editor.state), 0);

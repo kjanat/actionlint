@@ -120,22 +120,6 @@ test('install-only never inspects plugin configuration and cache input is valida
 	assert.deepEqual(setup.calls, []);
 });
 
-test('deprecated Python input warns and cannot enable Pyflakes in a selected older binary', async (t) => {
-	const messages: string[] = [];
-	t.mock.method(console, 'log', (message: string) => messages.push(message));
-	const setup = fixture();
-	assert.equal(await runAction({ INPUT_PYFLAKES: 'true', INPUT_SHELLCHECK: 'false' }, setup.runtime), 0);
-	assert.deepEqual(setup.calls, ['native']);
-	assert.equal(setup.executions[0]?.environment.INPUT_PYFLAKES, 'false');
-	assert.equal(setup.publications[0], join(tmpdir(), 'downloaded actionlint'));
-	assert.ok(
-		messages.some((message) =>
-			message.startsWith('::warning::') && message.includes('pyflakes input is ignored')
-			&& message.includes('Ruff Wasm plugin')
-		),
-	);
-});
-
 test('install-only publishes actionlint without plugin configuration or analysis', async () => {
 	const setup = fixture();
 	setup.runtime.plugins = async () => assert.fail('setup must not inspect workflows');
@@ -162,20 +146,16 @@ test('launcher validates setup inputs before downloading', async () => {
 test('ordinary binary receives explicit action mode, untouched inputs, and its exit code is preserved', async () => {
 	const setup = fixture(1);
 	const environment = {
-		INPUT_SHELLCHECK: 'false',
-		INPUT_PYFLAKES: 'false',
 		INPUT_FILES: 'workflow name.yml\n$(not-a-command).yml',
 		INPUT_CONFIG: '{"self-hosted-runner":{"labels":["ubuntu-24.04-custom"]}}',
 		'INPUT_FAIL-ON-ERROR': 'false',
 	};
 	assert.equal(await runAction(environment, setup.runtime), 1);
-	assert.equal(setup.calls.includes('shellcheck'), false);
-	assert.equal(setup.calls.includes('pyflakes'), false);
 	assert.deepEqual(setup.publications, [join(tmpdir(), 'downloaded actionlint')]);
 	assert.deepEqual(setup.executions, [{
 		executable: join(tmpdir(), 'downloaded actionlint'),
 		args: ['-github-action'],
-		environment: { ...environment, INPUT_RUFF: 'true' },
+		environment,
 	}]);
 });
 
@@ -201,16 +181,15 @@ test('actionlint PATH export can be disabled without disabling analysis', async 
 	assert.equal(setup.executions.length, 1);
 });
 
-test('Wasm check selection and invalid analysis booleans reach the native parser unchanged', async () => {
+test('analysis booleans reach the native parser unchanged', async () => {
 	for (const value of ['true', 'false', 'yes']) {
 		const setup = fixture(value === 'yes' ? 2 : 0);
 		assert.equal(
-			await runAction({ INPUT_SHELLCHECK: value, INPUT_RUFF: value }, setup.runtime),
+			await runAction({ 'INPUT_FAIL-ON-ERROR': value }, setup.runtime),
 			value === 'yes' ? 2 : 0,
 		);
 		assert.deepEqual(setup.calls, ['native']);
-		assert.equal(setup.executions[0]?.environment.INPUT_SHELLCHECK, value);
-		assert.equal(setup.executions[0]?.environment.INPUT_RUFF, value);
+		assert.equal(setup.executions[0]?.environment['INPUT_FAIL-ON-ERROR'], value);
 	}
 	assert.equal(toolEnabled('TRUE'), undefined);
 	assert.equal(toolEnabled('false'), false);
@@ -228,10 +207,8 @@ test('explicit actionlint binary requires an absolute executable and bypasses do
 
 test('Windows input names are case-insensitive', { skip: process.platform !== 'win32' }, async () => {
 	const setup = fixture();
-	await runAction({ input_shellcheck: 'false', input_token: 'fixture-review-token' }, setup.runtime);
+	await runAction({ input_files: 'workflow.yml', input_token: 'fixture-review-token' }, setup.runtime);
 	assert.deepEqual(setup.executions[0]?.environment, {
-		INPUT_SHELLCHECK: 'false',
-		INPUT_PYFLAKES: 'false',
-		INPUT_RUFF: 'true',
+		INPUT_FILES: 'workflow.yml',
 	});
 });

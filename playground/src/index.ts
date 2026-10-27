@@ -17,7 +17,6 @@ import { basicSetup } from 'codemirror';
 import isMobile from 'ismobilejs';
 
 import { errorRange } from './range';
-import { loadShellcheck, type ShellcheckClient, shellcheckAssets } from './shellcheck';
 import { querySource, readSource, sharedSource, shareURL } from './source';
 
 const editorTheme = new Compartment();
@@ -128,7 +127,6 @@ jobs:
 	const debounceInterval = isMobile().phone ? 1000 : 300;
 	let debounceId: number | null = null;
 	let contentChanged = false;
-	let shellcheck: ShellcheckClient | null = null;
 
 	function clearResults(): void {
 		body.textContent = '';
@@ -148,7 +146,6 @@ jobs:
 		contentChanged = true;
 		// Invalidate before rejecting worker promises, including during debounce.
 		window.invalidateActionlint?.();
-		shellcheck?.cancel();
 		clearResults();
 
 		if (typeof window.runActionlint !== 'function') {
@@ -398,9 +395,6 @@ jobs:
 	}
 
 	window.actionlintCatalogue = await fetchActionCatalogue(catalogueUrl);
-	getElementById('shellcheck-license').setAttribute('href', shellcheckAssets.license);
-	shellcheck = await loadShellcheck();
-	window.runShellcheck = shellcheck.check;
 	await go.run(result.instance);
 })().catch((err: unknown) => {
 	console.error('ERROR!:', err);

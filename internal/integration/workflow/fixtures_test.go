@@ -273,9 +273,7 @@ CheckFiles:
 				continue CheckFiles
 			}
 		}
-		if !strings.Contains(f, "pyflakes") && !strings.Contains(f, "shellcheck") {
-			t.Errorf("Workflow %q caused no error: %v", f, errs)
-		}
+		t.Errorf("Workflow %q caused no error: %v", f, errs)
 	}
 }
 

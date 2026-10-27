@@ -17,7 +17,6 @@ func TestOverlayBeforePluginsDefersOnlyRuleNames(t *testing.T) {
 		"unknown-field: true",
 		"plugins: [123]",
 		"lint: {rules: {plugins: {example: invalid-level}}}",
-		"tools: {ruff: {backend: {process: {}, wasm: {path: engine.wasm}}}}",
 		"policy: {require-job-timeout: {min-minutes: 20, max-minutes: 10}}",
 	} {
 		if _, err := ParseOverlayBeforePlugins("config", []byte(invalid)); err == nil {

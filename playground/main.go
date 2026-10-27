@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -39,36 +38,9 @@ func encodeErrorAsMap(d diagnostic.Diagnostic, src []byte) map[string]any {
 	return obj
 }
 
-// The JS worker returns a Promise. Run lint in a goroutine so the Go callback
-// returns to the browser event loop before waiting for its resolution.
-func shellcheck(args []string, stdin string) ([]byte, error) {
-	type response struct {
-		output []byte
-		err    error
-	}
-	result := make(chan response, 1)
-	resolve := js.FuncOf(func(_ js.Value, args []js.Value) any {
-		result <- response{output: []byte(args[0].String())}
-		return nil
-	})
-	reject := js.FuncOf(func(_ js.Value, args []js.Value) any {
-		result <- response{err: fmt.Errorf("ShellCheck worker: %s", js.Global().Get("String").Invoke(args[0]).String())}
-		return nil
-	})
-	defer resolve.Release()
-	defer reject.Release()
-	arguments := make([]any, len(args))
-	for i, arg := range args {
-		arguments[i] = arg
-	}
-	window.Call("runShellcheck", js.ValueOf(arguments), stdin).Call("then", resolve, reject)
-	r := <-result
-	return r.output, r.err
-}
-
 func lint(source string, check uint64) {
 	src := []byte(source)
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: "/", Tools: adapters.Options{ShellcheckRunner: shellcheck}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src}})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: "/"}, []workspace.Source{{Path: "test.yaml", Content: src}})
 	if check != latestCheck {
 		return // An edit superseded this worker request.
 	}
@@ -106,10 +78,6 @@ func main() {
 	}
 	if err := application.LoadActionCatalog(data); err != nil {
 		fail(err, "initializing action metadata")
-		return
-	}
-	if window.Get("runShellcheck").Type() != js.TypeFunction {
-		fail(errors.New("ShellCheck worker was not loaded"), "initializing ShellCheck")
 		return
 	}
 	window.Set("runActionlint", js.FuncOf(runActionlint))

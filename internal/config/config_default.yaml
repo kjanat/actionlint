@@ -3,7 +3,6 @@
 # Lint rules: recommended checks are enabled without a configuration file.
 # Use all for all stable rules, or none to select rules individually.
 ---
-plugins: [shellcheck, ruff]
 lint:
   enabled: true
   rules:
@@ -38,24 +37,12 @@ lint:
     #     level: error
     #     options: {actions: [actions/checkout]}
     # external:
-    #   shellcheck: on
-    #   ruff: on
     # Document analyzers loaded with --plugin use their registered rule names.
     # plugins:
     #   no-sudo: warn
     # Nursery rules require explicit selection; stable presets exclude them.
     # nursery: {preset: none}
     # disable: []
-
-# Plugins check scripts without executing them. Configure a native backend explicitly when needed.
-# This example selects F, B and S rules and targets Python 3.14.
-# tools:
-#   ruff: {enabled: true, target-version: py314, select: [F, B, S], ignore: []}
-#   shellcheck:
-#     enabled: true
-#     # config also accepts an rc path, auto for discovery, or false to skip rc files.
-#     config: {disable: [SC2086], enable: [check-unassigned-uppercase], shell: bash,
-#       extended-analysis: true, external-sources: true, source-path: ["${{ workspace }}"]}
 
 # Input selection uses repository-relative globs. Omitted includes selects all
 # workflows and actions; includes: [] selects none. Git ignore rules also apply.
@@ -66,11 +53,6 @@ lint:
 # Reusable suppressions match a rule and at least one file/job/step/uses selector.
 # All supplied selectors must match. Prefer a documented, narrow exception.
 # ignores:
-#   - rule: shellcheck
-#     file: .github/workflows/legacy.yml
-#     job: build
-#     step: example
-#     reason: Reviewed exception
 #   - rule: missing-local-action
 #     uses: ./generated-action
 #     reason: Created by an earlier workflow step
@@ -80,7 +62,6 @@ lint:
 #   - includes: [".github/workflows/release*.yml"]
 #     excludes: [".github/workflows/release-preview.yml"]
 #     lint: {rules: {policy: {require-commit-hash: error}}}
-#     tools: {ruff: {ignore: [F401]}}
 
 # Shared local configs resolve relative to this file, in the order listed.
 # Mappings merge recursively; lists/scalars replace; null resets a setting.

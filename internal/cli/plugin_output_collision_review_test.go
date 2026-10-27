@@ -37,7 +37,7 @@ func TestCheckRefusesFileURIPluginAsOutput(t *testing.T) {
 		}
 		var out, logs bytes.Buffer
 		command := Command{Stdout: &out, Stderr: &logs}
-		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--no-shellcheck", "--no-ruff", "--summary=false", "--plugin", source, "--output-file", plugin, "--yes", workflow})
+		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--summary=false", "--plugin", source, "--output-file", plugin, "--yes", workflow})
 		actual, err := os.ReadFile(plugin)
 		if err != nil {
 			t.Fatal(err)

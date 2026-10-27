@@ -140,23 +140,18 @@ func TestEmitStatus(t *testing.T) {
 		count      string
 		files      int
 		filesKnown bool
-		req        *lintRequest
 		contain    string
 	}{
-		{"both tools", 0, "0", 2, true, &lintRequest{shellcheck: "shellcheck", ruff: "ruff"}, ": 0 problems in 2 workflow files (requested tools: shellcheck, ruff)\n"},
-		{"shellcheck only", 1, "1", 1, true, &lintRequest{shellcheck: "shellcheck"}, ": 1 problem in 1 workflow file (requested tools: shellcheck)\n"},
-		{"ruff only", 1, "1", 1, true, &lintRequest{ruff: "ruff"}, ": 1 problem in 1 workflow file (requested tools: ruff)\n"},
-		{"zero files", 0, "0", 0, true, &lintRequest{}, ": 0 problems in 0 workflow files (external linters disabled)\n"},
-		{"unknown files", 0, "0", 0, false, &lintRequest{}, ": 0 problems in unknown workflow files (external linters disabled)\n"},
-		{"failure with unknown count", 3, "", 0, true, &lintRequest{}, ": failed with unknown problems while checking 0 workflow files (external linters disabled)\n"},
-		{"failure with known count", 3, "1", 1, true, &lintRequest{shellcheck: "shellcheck"}, ": failed with 1 problem while checking 1 workflow file (requested tools: shellcheck)\n"},
-		{"ruff failure", 3, "", 1, true, &lintRequest{ruff: "ruff"}, ": failed with unknown problems while checking 1 workflow file (requested tools: ruff)\n"},
-		{"failure with unknown files", 3, "", 0, false, &lintRequest{}, ": failed with unknown problems while checking unknown workflow files (external linters disabled)\n"},
+		{"zero files", 0, "0", 0, true, ": 0 problems in 0 workflow files\n"},
+		{"unknown files", 0, "0", 0, false, ": 0 problems in unknown workflow files\n"},
+		{"failure with unknown count", 3, "", 0, true, ": failed with unknown problems while checking 0 workflow files\n"},
+		{"failure with known count", 3, "1", 1, true, ": failed with 1 problem while checking 1 workflow file\n"},
+		{"failure with unknown files", 3, "", 0, false, ": failed with unknown problems while checking unknown workflow files\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out strings.Builder
 			a := newTestAction(t, &out, map[string]string{})
-			a.emitStatus(tc.code, tc.count, tc.files, tc.filesKnown, tc.req)
+			a.emitStatus(tc.code, tc.count, tc.files, tc.filesKnown)
 			if !strings.HasPrefix(out.String(), "actionlint ") || !strings.HasSuffix(out.String(), tc.contain) {
 				t.Errorf("wanted a versioned status ending in %q but got %q", tc.contain, out.String())
 			}

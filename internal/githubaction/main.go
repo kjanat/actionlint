@@ -8,9 +8,6 @@ import (
 
 // Main runs the GitHub Action adapter using the action's input environment.
 func Main(env func(string) string, stdout io.Writer) int {
-	if env("INPUT_PYFLAKES") == "true" {
-		_, _ = io.WriteString(stdout, "::warning::The pyflakes input is deprecated and ignored; use Ruff for Python script linting.\n")
-	}
 	a := &action{
 		args:    environmentArgs(env),
 		stdout:  stdout,
@@ -23,15 +20,13 @@ func Main(env func(string) string, stdout io.Writer) int {
 }
 
 func environmentArgs(env func(string) string) []string {
-	args := make([]string, 1, 10)
+	args := make([]string, 1, 8)
 	args[0] = "actionlint -github-action"
 	for _, input := range []struct{ name, fallback string }{
 		{"FILES", ""},
 		{"FORMAT", "github"},
 		{"IGNORE", ""},
 		{"CONFIG-FILE", ""},
-		{"SHELLCHECK", "true"},
-		{"PYFLAKES", "false"},
 		{"WORKING-DIRECTORY", "."},
 		{"OUTPUT-FILE", ""},
 		{"FAIL-ON-ERROR", "true"},

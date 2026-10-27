@@ -94,14 +94,14 @@ func TestRegistryCLI(t *testing.T) {
 	}
 	requests = len(r.Requests)
 	pluginCommandTest(t, 0, "plugin", "list", "--json")
-	if output := pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
+	if output := pluginCommandTest(t, 1, "check", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
 		t.Fatal(output)
 	}
 	if output := pluginCommandTest(t, 0, "rules", "no-sudo"); !strings.Contains(output, "no-sudo") {
 		t.Fatal(output)
 	}
-	pluginCommandTest(t, 0, "check", "--no-config", "--no-ruff", "--no-shellcheck", "workflow.yml")
-	pluginCommandTest(t, 1, "check", "--no-config", "--plugin-lock", lockPath, "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 0, "check", "--no-config", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "--no-config", "--plugin-lock", lockPath, "workflow.yml")
 	if len(r.Requests) != requests {
 		t.Fatal("pinned offline commands contacted network")
 	}
@@ -109,7 +109,7 @@ func TestRegistryCLI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 3, "check", "--no-ruff", "--no-shellcheck", "--yes", "--output-file", lockPath, "workflow.yml")
+	pluginCommandTest(t, 3, "check", "--yes", "--output-file", lockPath, "workflow.yml")
 	after, err := os.ReadFile(lockPath)
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("output overwrote lock")
@@ -163,12 +163,12 @@ func TestRegistryCLI(t *testing.T) {
 	delete(r.Files, testutil.FixtureRegistryURL+"index.json")
 	pluginCommandTest(t, 0, "plugin", "sync")
 	r.Offline = true
-	pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "workflow.yml")
 	pluginCommandTest(t, 0, "plugin", "remove", "publisher/plugin")
 	if refs := readDeclarations(); refs == nil || len(refs) != 0 {
 		t.Fatalf("removal must persist explicit empty plugins: %#v", refs)
 	}
-	pluginCommandTest(t, 0, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 0, "check", "workflow.yml")
 }
 
 func TestRegistryManifestInstallAndMigration(t *testing.T) {

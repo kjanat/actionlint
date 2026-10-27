@@ -96,12 +96,6 @@ func configDefaultOrigins(values map[string]any, prefix string, origins map[stri
 // EffectiveValues serializes the configuration schema after resolving defaults.
 func EffectiveValues(cfg *Config) (map[string]any, error) {
 	resolved := *cfg
-	if resolved.Tools.Ruff.Enabled == nil {
-		resolved.Tools.Ruff.Enabled = new(true)
-	}
-	if resolved.Tools.Shellcheck.Enabled == nil {
-		resolved.Tools.Shellcheck.Enabled = new(true)
-	}
 	var document yaml.Node
 	if err := document.Encode(&resolved); err != nil {
 		return nil, err

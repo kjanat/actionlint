@@ -80,39 +80,3 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 		})
 	}
 }
-
-func TestShellcheckSourcesCanBeConstructed(t *testing.T) {
-	file, err := config.ShellcheckConfigPath("./.shellcheckrc")
-	if err != nil || file.Path() != "./.shellcheckrc" || file.Inline() != nil {
-		t.Fatalf("path source: %#v: %v", file, err)
-	}
-	shell := "bash"
-	extended, external := true, false
-	settings := config.ShellcheckConfig{Disable: []string{"SC2086"}, Enable: []string{"all"}, Shell: &shell, ExtendedAnalysis: &extended, ExternalSources: &external, SourcePath: []string{"scripts"}}
-	inline, err := config.ShellcheckConfigInline(settings)
-	if err != nil {
-		t.Fatal(err)
-	}
-	parsed, err := config.Parse([]byte("tools: {shellcheck: {config: {disable: [SC2086], enable: [all], shell: bash, extended-analysis: true, external-sources: false, source-path: [scripts]}}}"))
-	if err != nil || !reflect.DeepEqual(inline.Inline(), parsed.Tools.Shellcheck.Config.Inline()) || inline.Path() != "" {
-		t.Fatalf("inline constructor differs from parsed settings: %#v: %v", inline, err)
-	}
-	settings.Disable[0], settings.Enable[0], settings.SourcePath[0], shell = "SC2154", "check-set-e-suppressed", "other", "sh"
-	extended, external = false, true
-	if !reflect.DeepEqual(inline.Inline(), parsed.Tools.Shellcheck.Config.Inline()) {
-		t.Fatal("constructor stored mutable caller settings")
-	}
-	for _, path := range []string{"", "bad\npath", "bad\x00path"} {
-		if _, err := config.ShellcheckConfigPath(path); err == nil {
-			t.Errorf("accepted invalid rc path %q", path)
-		}
-	}
-	invalidShell := "python"
-	for _, settings := range []config.ShellcheckConfig{
-		{Disable: []string{"SC2086\nenable=all"}}, {Enable: []string{"some_check"}}, {Shell: &invalidShell}, {SourcePath: []string{""}},
-	} {
-		if _, err := config.ShellcheckConfigInline(settings); err == nil {
-			t.Errorf("accepted invalid inline settings %#v", settings)
-		}
-	}
-}

@@ -60,7 +60,6 @@ func Rules() []Rule {
 	rules := []Rule{
 		{Name: "workflow-run-names"},
 		{Name: "unsound-ternary"},
-		{Name: "ruff", SupportsActions: true, Scope: CompositeScope},
 		{Name: "syntax-check", SupportsActions: true},
 		{Name: "inline-suppression", Scope: SourceScope},
 		{Name: "missing-local-action"},
@@ -102,7 +101,6 @@ func Rules() []Rule {
 		{Name: "cache-write-untrusted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted })},
 		{Name: "cache-call-unrestricted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted })},
 		{Name: "cache-operation", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })},
-		{Name: "shellcheck", SupportsActions: true, Scope: SourceScope},
 	}
 	for i := range rules {
 		metadata, ok := rulecatalog.Find(rules[i].Name)

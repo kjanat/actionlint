@@ -5,7 +5,6 @@ import (
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 )
 
@@ -33,7 +32,6 @@ type (
 	PluginReference              = pluginref.Reference
 	PermissionsPolicy            = repoconfig.PermissionsPolicy
 	Policy                       = repoconfig.Policy
-	RuffToolConfig               = repoconfig.RuffToolConfig
 	RuleGroupConfig              = repoconfig.Group
 	RuleLevel                    = repoconfig.Level
 	RulePreset                   = repoconfig.Preset
@@ -44,14 +42,7 @@ type (
 	// CommitHashOptions selects exceptions to immutable action references.
 	CommitHashOptions      = lintconfig.CommitHashOptions
 	SelfHostedRunnerConfig = repoconfig.SelfHostedRunnerConfig
-	ShellcheckConfig       = repoconfig.ShellcheckConfig
-	ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
-	ShellcheckToolConfig   = repoconfig.ShellcheckToolConfig
 	SuppressionsPolicy     = repoconfig.SuppressionsPolicy
-	ToolsConfig            = repoconfig.ToolsConfig
-	ToolModule             = toolconfig.Module
-	ToolBackend            = toolconfig.Backend
-	ToolCommand            = toolconfig.Command
 )
 
 const (
@@ -99,14 +90,4 @@ func RequirePermissions(scope string) (*PermissionsPolicy, error) {
 // DisallowSuppressions constructs an enabled suppression policy for the selected rules.
 func DisallowSuppressions(report string, rules ...string) (*SuppressionsPolicy, error) {
 	return repoconfig.DisallowSuppressions(report, rules...)
-}
-
-// ShellcheckConfigPath selects a nonempty, single-line rc file or directory path.
-func ShellcheckConfigPath(path string) (*ShellcheckConfigSource, error) {
-	return repoconfig.ShellcheckConfigPath(path)
-}
-
-// ShellcheckConfigInline validates inline settings and owns a copy of their values.
-func ShellcheckConfigInline(settings ShellcheckConfig) (*ShellcheckConfigSource, error) {
-	return repoconfig.ShellcheckConfigInline(settings)
 }

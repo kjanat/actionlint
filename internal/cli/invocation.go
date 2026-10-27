@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 )
 
@@ -40,20 +39,14 @@ type checkInvocation struct {
 	Config                repoconfig.Selection
 	StdinFilename         string
 	IgnoreRegex           []string
-	ShellCheck            string
-	Ruff                  string
-	RuffOptions           *processconfig.Options
-	Pyflakes              string
 	Plugins               []string
 	PluginLock            string
-	ShellcheckOptions     *processconfig.Options
 	Verbose               bool
 	Debug                 bool
 	Strict                bool
 	Experimental          bool
 	ExperimentalSet       bool
 	PreCommit             bool
-	AllowConfigProcesses  bool
 }
 
 // renderOptions controls result presentation without changing analysis.
@@ -76,7 +69,7 @@ func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
 		Render:    renderOptions{PrettyJSON: true, Summary: true, Width: 100},
-		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Ruff: "ruff"},
+		Check:     checkInvocation{StdinFilename: "<stdin>"},
 	}
 }
 
@@ -194,10 +187,8 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationDoctor:
 		return doctorRequest{
 			ResolverCommand: inv.Check.ResolverCommand, ResolverArguments: inv.Check.ResolverArguments,
-			Config: inv.Check.Config, Plugins: inv.Check.Plugins, ShellCheck: inv.Check.ShellCheck,
-			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,
-			ShellcheckOptions: inv.Check.ShellcheckOptions,
-			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
+			Config: inv.Check.Config, Plugins: inv.Check.Plugins,
+			JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
 		}, nil
 	case operationConfigPath:
 		return configPathRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil

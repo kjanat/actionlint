@@ -8,7 +8,6 @@ interface ActionlintError {
 }
 
 interface Window {
-	runShellcheck(args: string[], script: string): Promise<string>;
 	actionlintCatalogue?: string;
 	runActionlint?(src: string): void;
 	invalidateActionlint?(): void;
@@ -24,15 +23,6 @@ declare class Go {
 }
 
 declare module '*wasm_exec.js';
-
-// The published wrapper has no declarations. Keep its narrow boundary
-// typed here; result validation is shared by the worker and integration tests.
-declare module '@kjanat/rshellcheck-wasm' {
-	export function createChecker(bytes: BufferSource): Promise<{
-		check(request: import('./shellcheck-request').ShellcheckRequest): unknown;
-		close(): void;
-	}>;
-}
 
 declare module '*?url' {
 	const url: string;

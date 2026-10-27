@@ -24,7 +24,7 @@ func NormalizeForMerge(node *yaml.Node) (*yaml.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	canonical, _, err := migrateNode(normalizeToolSwitch(expanded))
+	canonical, _, err := migrateNode(expanded)
 	return canonical, err
 }
 

@@ -1,18 +1,12 @@
 package cli
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"strconv"
-	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
-
-	"github.com/mattn/go-shellwords"
 )
 
 func (a *commandApp) anySet(names ...string) bool {
@@ -80,41 +74,6 @@ func (a *commandApp) applyEnvironment() error {
 	}
 	if i.Operation != operationCheck && i.Operation != operationDoctor && i.Operation != "lsp" {
 		return nil
-	}
-	var err error
-	for name, command := range map[string]*string{"ruff": &i.Check.Ruff, "shellcheck": &i.Check.ShellCheck} {
-		disabled := name == "ruff" && a.opts.noRuff || name == "shellcheck" && a.opts.noShellCheck
-		if disabled || a.set[name] && strings.EqualFold(*command, "false") {
-			*command = ""
-		}
-	}
-	if !a.set["ruff"] && !a.opts.noRuff {
-		i.Check.RuffOptions, err = externalToolEnvironment("RUFF")
-		if err != nil {
-			return err
-		}
-		if i.Check.RuffOptions == nil {
-			i.Check.RuffOptions = &processconfig.Options{Optional: true}
-			if a.set["pyflakes"] {
-				if i.Check.Pyflakes == "" || strings.EqualFold(i.Check.Pyflakes, "false") {
-					i.Check.Ruff = ""
-				} else {
-					i.Check.RuffOptions.Arguments = []string{"--select", "F"}
-				}
-			}
-		}
-	}
-	if !a.set["shellcheck"] && !a.opts.noShellCheck {
-		i.Check.ShellcheckOptions, err = externalToolEnvironment("SHELLCHECK")
-		if err != nil {
-			return err
-		}
-	}
-	if a.set["shellcheck"] {
-		i.Check.ShellcheckOptions = &processconfig.Options{IgnoreConfig: true}
-	}
-	if a.set["ruff"] {
-		i.Check.RuffOptions = &processconfig.Options{IgnoreConfig: true}
 	}
 	if i.Operation == operationDoctor {
 		return nil
@@ -194,136 +153,4 @@ func (a *commandApp) checkEnvironment() error {
 		}
 	}
 	return nil
-}
-
-func externalToolEnvironment(tool string) (*processconfig.Options, error) {
-	prefix := "ACTIONLINT_" + tool
-	options := &processconfig.Options{}
-	if bin, ok := os.LookupEnv(prefix + "_BIN"); ok {
-		if strings.ContainsRune(bin, 0) {
-			return nil, commandUsageError{fmt.Errorf("%s_BIN cannot contain NUL", prefix)}
-		}
-		options.Executable = &bin
-		if bin == "" {
-			return options, nil
-		}
-	}
-	if flags := os.Getenv(prefix + "_FLAGS"); flags != "" {
-		var err error
-		options.Arguments, err = parseEnvironmentWords(flags)
-		if err != nil {
-			return nil, commandUsageError{fmt.Errorf("%s_FLAGS must be a JSON string array or a quoted argument list", prefix)}
-		}
-	}
-	if value := os.Getenv(prefix + "_ENV"); value != "" {
-		var err error
-		options.Environment, err = parseChildEnvironment(value)
-		if err != nil {
-			return nil, commandUsageError{fmt.Errorf("%s_ENV: %w", prefix, err)}
-		}
-	}
-	if options.Executable == nil && len(options.Arguments) == 0 && len(options.Environment) == 0 {
-		return nil, nil
-	}
-	return options, nil
-}
-
-func parseEnvironmentWords(value string) ([]string, error) {
-	var words []string
-	if strings.HasPrefix(strings.TrimSpace(value), "[") {
-		var err error
-		words, err = environmentStringArray(value)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		parser := shellwords.NewParser()
-		parser.ParseEnv, parser.ParseBacktick = false, false
-		var err error
-		words, err = parser.Parse(value)
-		if err != nil {
-			return nil, err
-		}
-		if parser.Position >= 0 {
-			return nil, errors.New("shell operators are not supported")
-		}
-	}
-	for _, word := range words {
-		if strings.ContainsRune(word, 0) {
-			return nil, errors.New("arguments cannot contain NUL")
-		}
-	}
-	return words, nil
-}
-
-func environmentStringArray(value string) ([]string, error) {
-	var entries []json.RawMessage
-	if err := json.Unmarshal([]byte(value), &entries); err != nil || entries == nil {
-		return nil, errors.New("expected a JSON string array")
-	}
-	words := make([]string, len(entries))
-	for i, entry := range entries {
-		if len(entry) == 0 || entry[0] != '"' {
-			return nil, errors.New("expected a JSON string")
-		}
-		if err := json.Unmarshal(entry, &words[i]); err != nil {
-			return nil, err
-		}
-	}
-	return words, nil
-}
-
-func parseChildEnvironment(value string) ([]string, error) {
-	var entries []string
-	if strings.HasPrefix(strings.TrimSpace(value), "{") {
-		var object map[string]*string
-		if err := json.Unmarshal([]byte(value), &object); err != nil {
-			return nil, errors.New("expected a JSON object with string or null values")
-		}
-		for key, value := range object {
-			if !validEnvironmentName(key) {
-				return nil, errors.New("variable names must match [A-Za-z_][A-Za-z0-9_]*")
-			}
-			entry := key
-			if value != nil {
-				entry += "=" + *value
-			}
-			entries = append(entries, entry)
-		}
-		slices.Sort(entries)
-	} else {
-		var err error
-		entries, err = parseEnvironmentWords(value)
-		if err != nil {
-			return nil, errors.New("expected variable names or NAME=value entries")
-		}
-	}
-	var environment []string
-	for _, entry := range entries {
-		name, _, set := strings.Cut(entry, "=")
-		if !validEnvironmentName(name) || strings.ContainsRune(entry, 0) {
-			return nil, errors.New("variable names must match [A-Za-z_][A-Za-z0-9_]* and values cannot contain NUL")
-		}
-		if !set {
-			value, exists := os.LookupEnv(name)
-			if !exists {
-				continue
-			}
-			entry += "=" + value
-		}
-		environment = append(environment, entry)
-	}
-	return environment, nil
-}
-
-func validEnvironmentName(name string) bool {
-	if name == "" {
-		return false
-	}
-	for i, c := range name {
-		if c != '_' && (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (i == 0 || c < '0' || c > '9') {
-			return false
-		}
-	}
-	return true
 }

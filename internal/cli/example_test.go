@@ -26,7 +26,7 @@ jobs:
 	}
 
 	// Run the command end-to-end. Note that given args should contain program name
-	status := cmd.Main([]string{"actionlint", "--no-config", "--shellcheck=", "--ruff=", "-"})
+	status := cmd.Main([]string{"actionlint", "--no-config", "-"})
 
 	fmt.Println("Exited with status", status)
 	// Output: Exited with status 0

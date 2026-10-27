@@ -16,7 +16,7 @@ func TestPrettyCheckCommand(t *testing.T) {
 			Stdin:  strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\n"),
 			Stdout: &out, Stderr: &stderr,
 		}
-		exit := cmd.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--shellcheck=", "--ruff=", "--output-format=pretty", "--diagnostic-width=60", "--color=" + mode, "--summary=false", "-"})
+		exit := cmd.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=pretty", "--diagnostic-width=60", "--color=" + mode, "--summary=false", "-"})
 		if exit != 1 {
 			t.Fatalf("exit=%d stdout=%s stderr=%s", exit, &out, &stderr)
 		}

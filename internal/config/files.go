@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/filefilter"
 
 	"github.com/kjanat/go-yaml/v4"
@@ -54,40 +53,6 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 	for i := range resolved.Warnings {
 		resolved.Warnings[i].File = path
 	}
-	toolconfig.NormalizePaths(node, filepath.Dir(path))
-	// Preserve the declaring origin of inherited relative ShellCheck rc paths.
-	var visit func(*yaml.Node, []string)
-	visit = func(n *yaml.Node, keys []string) {
-		if len(keys) == 0 {
-			if n.Kind == yaml.ScalarNode && n.ShortTag() == "!!str" {
-				value := expandInheritedConfigDirectory(n.Value, filepath.Dir(path))
-				if !filepath.IsAbs(value) && !strings.Contains(value, "${{") {
-					value = filepath.Join(filepath.Dir(path), value)
-				}
-				n.Value = value
-			}
-			return
-		}
-		if n.Kind == yaml.MappingNode {
-			for i := 0; i < len(n.Content); i += 2 {
-				if n.Content[i].Value == keys[0] {
-					visit(n.Content[i+1], keys[1:])
-				}
-			}
-		}
-	}
-	if inherited {
-		visit(node, []string{"tools", "shellcheck", "config"})
-		if node.Kind == yaml.MappingNode {
-			for i := 0; i < len(node.Content); i += 2 {
-				if node.Content[i].Value == "overrides" {
-					for _, override := range node.Content[i+1].Content {
-						visit(override, []string{"tools", "shellcheck", "config"})
-					}
-				}
-			}
-		}
-	}
 	if node.Kind == yaml.MappingNode {
 		for i := 0; i < len(node.Content); i += 2 {
 			if node.Content[i].Value == "local-actions" {
@@ -98,31 +63,5 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 			}
 		}
 	}
-	return normalizeToolSwitch(node), resolved.Warnings, nil
-}
-
-func expandInheritedConfigDirectory(value, directory string) string {
-	context := PathContext{ConfigDir: directory}
-	var out strings.Builder
-	for {
-		before, expression, found := strings.Cut(value, "${{")
-		out.WriteString(before)
-		if !found {
-			return out.String()
-		}
-		name, after, closed := strings.Cut(expression, "}}")
-		if !closed {
-			out.WriteString("${{")
-			out.WriteString(expression)
-			return out.String()
-		}
-		token := "${{" + name + "}}"
-		// Use runtime name normalization, leaving analysis-context paths late-bound.
-		if expanded, err := context.Expand(token); err == nil {
-			out.WriteString(expanded)
-		} else {
-			out.WriteString(token)
-		}
-		value = after
-	}
+	return node, resolved.Warnings, nil
 }

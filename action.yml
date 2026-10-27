@@ -2,8 +2,7 @@
 ---
 name: actionlint by @kjanat
 description: >-
-  Static-check GitHub Actions workflow files with actionlint,
-  and ShellCheck.
+  Static-check GitHub Actions workflow files with actionlint.
 inputs:
   version:
     description: Exact actionlint release version, optionally prefixed with v. Defaults to this Action's version; overrides version-file.
@@ -50,18 +49,6 @@ inputs:
       merged over the config file.
     required: false
     default: ""
-  shellcheck:
-    description: Enable the configured ShellCheck Wasm plugin for shell scripts in workflow steps.
-    required: false
-    default: "true"
-  ruff:
-    description: Enable the configured Ruff Wasm plugin for Python run steps.
-    required: false
-    default: "true"
-  pyflakes:
-    description: "Deprecated and ignored: use the ruff input for Python script linting."
-    required: false
-    default: "false"
   add-actionlint-to-path:
     description: Make actionlint available on PATH for subsequent steps in this job.
     required: false

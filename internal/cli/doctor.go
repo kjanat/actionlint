@@ -7,16 +7,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"slices"
-	"strings"
 	"text/tabwriter"
-	"time"
 
 	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-
-	"actionlint.kjanat.dev/v2/internal/tools/ruff"
 )
 
 type doctorTool struct {
@@ -51,34 +46,12 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	tools := []struct {
-		name, command string
-		options       *processconfig.Options
-	}{
-		{"shellcheck", req.ShellCheck, req.ShellcheckOptions},
-		{"ruff", req.Ruff, req.RuffOptions},
-		{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}},
-	}
-	for _, item := range tools {
-		if item.name == "resolver" && item.command == "" {
-			continue
-		}
-		if item.options != nil && item.options.Executable != nil {
-			item.command = *item.options.Executable
-		}
-		tool := doctorTool{Name: item.name, Command: item.command, Status: "disabled"}
-		if item.command != "" {
-			tool.Path, tool.Arguments, err = processconfig.ResolveOptions(item.command, item.options)
-			tool.Status = "available"
-			if err == nil && item.name == "ruff" && item.options != nil && item.options.Optional {
-				err = probeDoctorRuff(ctx, tool.Path, item.options)
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-			}
-			if err != nil {
-				tool.Status, tool.Error = "unavailable", err.Error()
-			}
+	if req.ResolverCommand != "" {
+		options := &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}
+		tool := doctorTool{Name: "resolver", Command: req.ResolverCommand, Status: "available"}
+		tool.Path, tool.Arguments, err = processconfig.ResolveOptions(req.ResolverCommand, options)
+		if err != nil {
+			tool.Status, tool.Error = "unavailable", err.Error()
 		}
 		report.Tools = append(report.Tools, tool)
 	}
@@ -115,26 +88,4 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 		return err
 	}
 	return configErr
-}
-
-func probeDoctorRuff(ctx context.Context, executable string, options *processconfig.Options) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	var result error
-	run := func(args []string, stdin string, callback func([]byte, error) error) {
-		cmd := exec.CommandContext(ctx, executable, args...)
-		cmd.WaitDelay = time.Second
-		cmd.Dir = options.WorkingDir
-		cmd.Stdin = strings.NewReader(stdin)
-		cmd.Env = append(cmd.Environ(), options.Environment...)
-		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
-			name, _, _ := strings.Cut(entry, "=")
-			return slices.ContainsFunc(ruff.UnsetEnvironment(), func(unset string) bool {
-				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
-			})
-		})
-		output, err := cmd.Output()
-		result = callback(output, err)
-	}
-	return ruff.CheckCompatibility(ctx, run, func() error { return result })
 }

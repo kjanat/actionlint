@@ -244,9 +244,6 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -version                version
   -verbose / -debug       --log-level=info / --log-level=debug
   -color / -no-color      boolean options on the root; no-color wins
-  -shellcheck[=COMMAND]   false or an empty value disables ShellCheck
-  -ruff[=COMMAND]         false or an empty value disables Ruff
-  -pyflakes COMMAND       Select Pyflakes rules through Ruff unless Ruff is selected
   -stdin-filename PATH
 
 Options may appear before or after filenames. -- ends option parsing.

@@ -12,7 +12,6 @@ import (
 type commandOptions struct {
 	output, colorMode, logLevel, command            string
 	color, noColor, initConfig, version, helpLegacy bool
-	noRuff, noShellCheck                            bool
 	completion                                      completionShell
 }
 
@@ -152,10 +151,10 @@ func newCommandApp(streams *Command) *commandApp {
 	a.configFlags(rules.Flags())
 	a.pluginLockFlag(rules.Flags())
 	plugins := a.pluginCommand()
-	doctor := &cobra.Command{Use: "doctor", Short: "Inspect configuration and external tool availability", Args: cobra.NoArgs, RunE: a.capture("doctor")}
+	doctor := &cobra.Command{Use: "doctor", Short: "Inspect configuration and dependency resolver availability", Args: cobra.NoArgs, RunE: a.capture("doctor")}
 	a.commonFlags(doctor, doctor.Flags())
 	a.configFlags(doctor.Flags())
-	a.toolFlags(doctor.Flags())
+	a.dependencyFlags(doctor.Flags())
 	a.pluginFlags(doctor.Flags())
 	completion := &cobra.Command{
 		Use: "completion <shell>", Aliases: []string{"completions"}, Short: "Generate shell completions",
@@ -186,7 +185,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.commonFlags(init, init.Flags())
 	lsp := &cobra.Command{Use: "lsp", Short: "Serve the language server over stdin/stdout", Args: cobra.NoArgs, RunE: a.capture("lsp")}
 	a.configFlags(lsp.Flags())
-	a.toolFlags(lsp.Flags())
+	a.dependencyFlags(lsp.Flags())
 	a.runnerFlags(lsp.Flags())
 	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or URI")
 	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
@@ -229,26 +228,11 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 	}
 }
 
-func (a *commandApp) toolFlags(f *pflag.FlagSet) {
+func (a *commandApp) dependencyFlags(f *pflag.FlagSet) {
 	f.StringVar(&a.inv.Check.ResolverCommand, "resolve-with", "", "Resolve remote dependencies using this executable")
 	f.StringArrayVar(&a.inv.Check.ResolverArguments, "resolver-arg", nil, "Pass an argument to the remote resolver (repeatable)")
 	annotateFlag(f, "resolve-with", "Dependency resolution")
 	annotateFlag(f, "resolver-arg", "Dependency resolution")
-	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Check Python scripts")
-	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "Check shell scripts")
-	f.BoolVar(&a.opts.noRuff, "no-ruff", false, "Disable Python script linting")
-	f.BoolVar(&a.opts.noShellCheck, "no-shellcheck", false, "Disable shell script linting")
-	f.BoolVar(&a.inv.Check.AllowConfigProcesses, "allow-config-processes", false, "Allow trusted repository configuration to select native executables")
-	for _, name := range []string{"ruff", "shellcheck", "no-ruff", "no-shellcheck", "allow-config-processes"} {
-		annotateFlag(f, name, "External linters")
-	}
-	for _, name := range []string{"ruff", "shellcheck"} {
-		f.Lookup(name).NoOptDefVal = name
-		f.Lookup(name).Annotations[commandOptionalValueAnnotation] = []string{"COMMAND"}
-	}
-	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: select Pyflakes rules through Ruff")
-	_ = f.MarkHidden("pyflakes")
-	annotateFlag(f, "pyflakes", "External linters")
 }
 
 func (a *commandApp) pluginFlags(f *pflag.FlagSet) {
@@ -260,7 +244,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	f := c.Flags()
 	a.commonFlags(c, f)
 	a.configFlags(f)
-	a.toolFlags(f)
+	a.dependencyFlags(f)
 	a.pluginFlags(f)
 	f.BoolVar(&a.inv.Check.Strict, "strict", false, "Enable all stable rules")
 	f.BoolVar(&a.inv.Check.Experimental, "experimental", false, "Enable nursery rules")

@@ -16,8 +16,6 @@ import (
 )
 
 func TestEnvironmentDefaults(t *testing.T) {
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
-	t.Setenv("ACTIONLINT_PYFLAKES_BIN", "")
 	t.Setenv("ACTIONLINT_OUTPUT_FORMAT", "json")
 	t.Setenv("ACTIONLINT_STDIN_FILENAME", "from-env.yml")
 	t.Setenv("ACTIONLINT_SUMMARY", "true")
@@ -49,26 +47,26 @@ func TestExplicitRuffMissingExecutable(t *testing.T) {
 		return commandTranscript{status, out.String(), stderr.String()}
 	}
 	for _, prefix := range [][]string{nil, {"check"}} {
-		args := append(append([]string{}, prefix...), "--shellcheck=", "-")
+		args := append(append([]string{}, prefix...), "-")
 		if got := run(commandGoodWorkflow, args...); got.Status != 0 {
 			t.Fatalf("automatic discovery: %+v", got)
 		}
-		args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff=missing-ruff", "-")
+		args = append(append([]string{}, prefix...), "--ruff=missing-ruff", "-")
 		if got := testRunCommand(commandGoodWorkflow, args...); got.Status == 0 || !strings.Contains(got.Stderr, "could not initialize Ruff") {
 			t.Fatalf("explicit checker silently skipped: %+v", got)
 		}
 		for _, disabled := range []string{"", "false", "FALSE"} {
-			args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff="+disabled, "-")
+			args = append(append([]string{}, prefix...)+disabled, "-")
 			if got := testRunCommand(commandGoodWorkflow, args...); got.Status != 0 {
 				t.Fatalf("disable %q: %+v", disabled, got)
 			}
 		}
 	}
 	t.Setenv("ACTIONLINT_RUFF_BIN", "missing-ruff")
-	if got := run(commandGoodWorkflow, "--shellcheck=", "-"); got.Status == 0 {
+	if got := run(commandGoodWorkflow, "-"); got.Status == 0 {
 		t.Fatalf("environment checker silently skipped: %+v", got)
 	}
-	if got := testRunCommand(commandGoodWorkflow, "--shellcheck=", "--ruff=", "-"); got.Status != 0 {
+	if got := testRunCommand(commandGoodWorkflow, "-"); got.Status != 0 {
 		t.Fatalf("explicit disable: %+v", got)
 	}
 	got := testRunCommand("", "doctor", "--no-config", "--ruff=false", "--shellcheck=false", "--json")
@@ -98,7 +96,7 @@ func TestFalseDisablesExternalCheckers(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, prefix := range [][]string{nil, {"check"}} {
 		for _, disabled := range []string{"", "false", "FALSE"} {
-			args := append(append([]string{}, prefix...), "--shellcheck="+disabled, "--ruff="+disabled, "-")
+			args := append(append([]string{}, prefix...)+disabled+disabled, "-")
 			got := testRunCommand(`on: push
 jobs:
   test:

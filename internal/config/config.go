@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	ruffconfig "actionlint.kjanat.dev/v2/internal/config/tools/ruff"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 
@@ -58,7 +56,6 @@ type PathConfig struct {
 	// Ignore suppresses diagnostics whose message matches any of these Go regular expressions.
 	//
 	// Applies only to workflow files matching the parent path glob. For example,
-	// `["shellcheck reported issue in this script: SC2086"]` ignores that ShellCheck diagnostic.
 	// Omit this key, use `null`, or use `[]` to suppress nothing. Like the `-ignore` CLI option.
 	Ignore IgnorePatterns `yaml:"ignore" jsonschema:"nullable"`
 }
@@ -365,8 +362,6 @@ type Config struct {
 	// Ignores suppresses a rule for matching files, actions, jobs, or steps.
 	// Every specified selector must match. Later config files replace the list.
 	Ignores IgnoreConfigs `yaml:"ignores" jsonschema:"nullable"`
-	// Tools configures external linters for both the CLI and GitHub Action.
-	Tools ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	// LocalActions maps generated action directories to checked-in source directories.
 	// Both paths are relative to the repository root, using ./ or $/ prefixes.
 	// Known checkout placements are removed before matching. Sources resolve once
@@ -407,73 +402,6 @@ type Config struct {
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
 	Policy Policy `yaml:"-"`
-}
-
-// ToolsConfig contains configuration for external analysis tools.
-type ToolsConfig struct {
-	// Ruff configures checking of embedded Python scripts.
-	Ruff RuffToolConfig `yaml:"ruff"`
-	// Shellcheck configures checking of embedded shell scripts.
-	Shellcheck ShellcheckToolConfig `yaml:"shellcheck"`
-}
-
-// RuffToolConfig selects isolated, read-only Ruff checks for Python run steps.
-// Repository Ruff configuration and noqa comments are not loaded; use actionlint
-// rule settings and inline suppressions for workflow exceptions.
-type RuffToolConfig = ruffconfig.Config
-
-// ShellcheckToolConfig contains ShellCheck's native configuration directives.
-type ShellcheckToolConfig struct {
-	// Backend selects the execution transport and its settings.
-	// Explicit CLI or application invocation settings take precedence.
-	Backend *toolconfig.Backend `yaml:"backend,omitempty"`
-	// Enabled turns ShellCheck analysis on or off. Omission or null keeps it enabled.
-	// An empty CLI command or shellcheck: false Action input still disables the tool.
-	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
-	// Config selects inline ShellCheck settings or an rc file/directory for each checked script.
-	// File-relative paths use the directory containing actionlint.yaml; paths supplied by an overlay use the analysis working directory.
-	// ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} uses the repository root.
-	// ${{ github.workspace }} selects the runner workspace or local repository; ${{ github.action_path }} requires a composite action context.
-	// Lists replace during actionlint config overlays.
-	// Omission or null adds no directives. This does not enable rc-file discovery.
-	Config *ShellcheckConfigSource `yaml:"config"`
-}
-
-// ShellcheckConfigSource selects inline directives or a configuration file/directory.
-// Relative paths use their config file or overlay working directory. ${{ configdir }} and
-// ${{ gitdir }} explicitly select that directory or the checked repository root.
-type ShellcheckConfigSource struct {
-	value     shellcheckConfigValue
-	fromInput bool
-}
-
-type (
-	shellcheckConfigValue interface{ shellcheckConfigValue() }
-	shellcheckConfigPath  string
-)
-
-func (shellcheckConfigPath) shellcheckConfigValue() {}
-
-type shellcheckInlineConfig struct{ ShellcheckConfig }
-
-func (shellcheckInlineConfig) shellcheckConfigValue() {}
-
-// ShellcheckConfig is a typed representation of project-wide ShellCheck directives.
-type ShellcheckConfig struct {
-	// Disable lists codes, code ranges or all, for example [SC2086, SC3000-SC4000].
-	Disable []string `yaml:"disable" jsonschema:"nullable,pattern=^(all|(SC)?[0-9]+(-(SC)?[0-9]+)?)$"`
-	// Enable selects optional check names. Scalar all or true expands to [all].
-	// This selection does not change the tool enabled setting.
-	Enable []string `yaml:"enable" jsonschema:"nullable,pattern=^[a-zA-Z-]+$"`
-	// Shell overrides the inferred dialect of scripts selected for ShellCheck.
-	Shell *string `yaml:"shell" jsonschema:"nullable,enum=sh,enum=bash,enum=dash,enum=ksh,enum=busybox"`
-	// ExtendedAnalysis enables or disables ShellCheck dataflow analysis. Omission keeps its default.
-	ExtendedAnalysis *bool `yaml:"extended-analysis" jsonschema:"nullable"`
-	// ExternalSources controls following sourced files. Omission preserves actionlint's enabled default.
-	ExternalSources *bool `yaml:"external-sources" jsonschema:"nullable"`
-	// SourcePath lists directories searched for sourced files, relative to the run step's effective working directory.
-	// Scripts arrive on stdin, so SCRIPTDIR does not denote the workflow file's directory.
-	SourcePath []string `yaml:"source-path" jsonschema:"nullable,minLength=1"`
 }
 
 // DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,
@@ -602,7 +530,7 @@ func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, a
 		if err != nil {
 			return Resolved{}, err
 		}
-		root = normalizeToolSwitch(expanded)
+		root = expanded
 	}
 	legacyWarnings := configWarnings(root, inputs)
 	var err error
@@ -643,15 +571,6 @@ func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, a
 	configDefaultOrigins(values, "", origins)
 	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return Resolved{}, err
-	}
-	if c.Tools.Shellcheck.Config != nil {
-		c.Tools.Shellcheck.Config.fromInput = origins["/tools/shellcheck/config"].Source == "input"
-	}
-	for i := range c.Overrides {
-		tools := c.Overrides[i].Tools
-		if tools != nil && tools.Shellcheck.Config != nil {
-			tools.Shellcheck.Config.fromInput = origins["/overrides"].Source == "input"
-		}
 	}
 	return Resolved{Node: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }

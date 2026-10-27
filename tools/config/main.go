@@ -13,15 +13,9 @@ import (
 	"unicode"
 
 	actionlint "actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/genfile"
 
 	"github.com/invopop/jsonschema"
-)
-
-const (
-	shellcheckSchemaVersion = "0.11.0"
-	shellcheckSchemaPath    = "schemas/shellcheck/" + shellcheckSchemaVersion + ".schema.json"
 )
 
 func reflector() *jsonschema.Reflector {
@@ -56,7 +50,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return &jsonschema.Schema{
 			Type: "array",
 			Items: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
-				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.1.1", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64)}},
+				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.", Examples: []any{"example-plugin", "owner/repository@v1.0.0", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64)}},
 				mapping,
 			}},
 		}
@@ -172,77 +166,6 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		mapping.Version, mapping.ID = "", ""
 		return mapping
-	case reflect.TypeFor[actionlint.ShellcheckConfigSource]():
-		markdown := "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
-		description := strings.ReplaceAll(markdown, "`", "")
-		// Type-only alternatives keep unknown-key diagnostics attached to the mapping.
-		return &jsonschema.Schema{
-			Description: description,
-			Extras:      map[string]any{"markdownDescription": markdown},
-			AnyOf: []*jsonschema.Schema{
-				{Type: "string", Extras: map[string]any{"defaultSnippets": []any{map[string]string{
-					"label": "ShellCheck rc file or directory", "body": "${1:.shellcheckrc}",
-				}}}},
-				{Type: "object", Extras: map[string]any{"defaultSnippets": []any{map[string]string{
-					"label": "Inline ShellCheck directives", "bodyText": "{}",
-				}}}},
-				{Type: "null"},
-			},
-			MinLength: new(uint64(1)),
-			Not:       &jsonschema.Schema{Type: "string", Pattern: `[\x00\r\n]`},
-			If:        &jsonschema.Schema{Type: "object"},
-			Then: &jsonschema.Schema{AllOf: []*jsonschema.Schema{
-				// Keep the selecting property's hover ahead of the referenced title.
-				{Title: "config", Description: description, Extras: map[string]any{"markdownDescription": markdown}},
-				{Ref: shellcheckSchemaPath},
-			}},
-		}
-	case reflect.TypeFor[actionlint.ShellcheckToolConfig]():
-		mapping := reflectMapping(struct {
-			Backend *toolconfig.Backend                `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
-			Enabled *bool                              `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable ShellCheck analysis. Omission or null keeps it enabled."`
-			Config  *actionlint.ShellcheckConfigSource `yaml:"config"`
-		}{})
-		mapping.Version, mapping.ID = "", ""
-		config, _ := mapping.Properties.Get("config")
-		config.Description = config.Then.AllOf[0].Description
-		mapping.Type = ""
-		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
-		requireOneBackend(mapping)
-		return mapping
-	case reflect.TypeFor[actionlint.RuffToolConfig]():
-		type plain actionlint.RuffToolConfig
-		mapping := reflectMapping(plain{})
-		mapping.Version, mapping.ID = "", ""
-		mapping.Type = ""
-		mapping.OneOf = []*jsonschema.Schema{{Type: "boolean"}, {Type: "object"}, {Type: "null"}}
-		mapping.Properties.Set("config", &jsonschema.Schema{
-			Description: "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
-			AnyOf:       []*jsonschema.Schema{{Type: "object"}, {Type: "null"}},
-		})
-		target, _ := mapping.Properties.Get("target-version")
-		target.Type = ""
-		target.OneOf = []*jsonschema.Schema{{Type: "string", MinLength: new(uint64(1)), Examples: []any{"py314"}}, {Type: "null", Extras: map[string]any{"doNotSuggest": true}}}
-		for _, name := range []string{"select", "ignore"} {
-			property, _ := mapping.Properties.Get(name)
-			property.Items = &jsonschema.Schema{Type: "string", MinLength: new(uint64(1)), Examples: []any{"F", "F821"}}
-		}
-		requireOneBackend(mapping)
-		for name, description := range map[string]string{
-			"backend":        "Choose how Ruff runs. Process settings only apply to the native adapter.",
-			"enabled":        "Enable Ruff analysis.",
-			"target-version": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
-			"select":         "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
-			"ignore":         "Rule codes or prefixes to skip, such as `F401`.",
-		} {
-			property, _ := mapping.Properties.Get(name)
-			property.Description = strings.ReplaceAll(description, "`", "")
-			if property.Extras == nil {
-				property.Extras = map[string]any{}
-			}
-			property.Extras["markdownDescription"] = description
-		}
-		return mapping
 	case reflect.TypeFor[actionlint.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
@@ -341,17 +264,9 @@ func documentFields(s *jsonschema.Schema) {
 	documentFields(s.AdditionalProperties)
 }
 
-func requireOneBackend(mapping *jsonschema.Schema) {
-	backend, _ := mapping.Properties.Get("backend")
-	backend.OneOf = []*jsonschema.Schema{{Required: []string{"process"}}, {Required: []string{"wasm"}}}
-}
-
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
 	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
-		return nil, err
-	}
-	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/tools/command.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
 	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "knowledge_options.go"} {
@@ -406,56 +321,9 @@ func generate() ([]byte, error) {
 	return encodeSchema(s)
 }
 
-func generateShellcheckSchema() ([]byte, error) {
-	r, err := documentedReflector()
-	if err != nil {
-		return nil, err
-	}
-	s := r.Reflect(actionlint.ShellcheckConfig{})
-	enable, _ := s.Properties.Get("enable")
-	enable.OneOf = append(enable.OneOf, &jsonschema.Schema{Type: "string", Enum: []any{"all"}}, &jsonschema.Schema{Type: "boolean", Enum: []any{true}})
-	enable.Description = enable.OneOf[0].Description
-	enable.OneOf[0].Description = ""
-	if description, ok := enable.OneOf[0].Extras["markdownDescription"]; ok {
-		if enable.Extras == nil {
-			enable.Extras = map[string]any{}
-		}
-		enable.Extras["markdownDescription"] = description
-		delete(enable.OneOf[0].Extras, "markdownDescription")
-	}
-	sourcePath, _ := s.Properties.Get("source-path")
-	// Match shellcheckDirectivePath: a directive cannot contain line breaks or
-	// NUL. Both quote types require an unquoted path with no space/tab or leading quote.
-	sourcePath.OneOf[0].Items.Not = &jsonschema.Schema{Pattern: `[\x00\r\n]`}
-	sourcePath.OneOf[0].Items.AnyOf = []*jsonschema.Schema{
-		{Not: &jsonschema.Schema{Pattern: `"`}},
-		{Not: &jsonschema.Schema{Pattern: `'`}},
-		{Not: &jsonschema.Schema{Pattern: `[ \t]|^['"]`}},
-	}
-	s.ID = ""
-	s.Title = "ShellCheck " + shellcheckSchemaVersion + " inline directives for actionlint"
-	s.Comments = "Versioned snapshot of actionlint's YAML representation of ShellCheck directives. Normal generation does not overwrite this file; see tools/config/README.md."
-	return encodeSchema(s)
-}
-
-func initializeShellcheckSchema() error {
-	b, err := generateShellcheckSchema()
-	if err != nil {
-		return err
-	}
-	return genfile.Write(context.Background(), shellcheckSchemaPath, b, true)
-}
-
 func main() {
-	if len(os.Args) == 2 && os.Args[1] == "-init-shellcheck-schema" {
-		if err := initializeShellcheckSchema(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
-	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tools/config [-init-shellcheck-schema]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./tools/config")
 		os.Exit(1)
 	}
 	b, err := generate()

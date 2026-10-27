@@ -66,7 +66,7 @@ jobs:
 					if err := os.WriteFile(workflow, []byte(policy.workflow), 0o600); err != nil {
 						t.Fatal(err)
 					}
-					args := []string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-format", "{{json .}}"}
+					args := []string{"actionlint", "--summary=false", "-format", "{{json .}}"}
 					if config.content != "" {
 						configPath := filepath.Join(root, ".github", "actionlint.yaml")
 						if explicit {

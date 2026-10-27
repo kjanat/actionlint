@@ -24,7 +24,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	const workspace = `C:\workspace`
 	const file = `D:\shared\workflow.yml`
 	analysis := &application.Result{Diagnostics: []diagnostic.Diagnostic{{
-		Rule: "shellcheck", Path: file, Message: "Quote variable",
+		Rule: "custom", Path: file, Message: "Quote variable",
 		Start: diagnostic.Position{Line: 1, Column: 6}, End: diagnostic.Position{Line: 1, Column: 8},
 		Fixes: []diagnostic.Fix{{Description: "Quote", Edits: []diagnostic.Edit{{Path: file}}}},
 	}}}
@@ -47,197 +47,6 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	annotation, err := renderAnalysis(formatGitHub, legacyAnalysis, workspace, workspace)
 	if err != nil || !strings.Contains(annotation, "file=D%3A/shared/workflow.yml,") {
 		t.Fatalf("cross-volume annotation: %q %v", annotation, err)
-	}
-}
-
-func TestActionDiagnosticAndSARIFPaths(t *testing.T) {
-	_, err := exec.LookPath("shellcheck")
-	if err != nil {
-		t.Skipf("ShellCheck required: %s", err)
-	}
-	t.Setenv("SHELLCHECK_OPTS", "")
-	const workflow = `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo $VALUE
-`
-	workspace := workspaceWith(t, map[string]string{
-		".git": "", "my workflow.yml": workflow, "work/my workflow.yml": workflow, ".github/workflows/my workflow.yml": workflow,
-	})
-	for _, format := range []string{"default", "json", "sarif"} {
-		for _, tc := range []struct{ name, file, diagnostic, uri string }{
-			{"relative spelling", "./my workflow.yml", "./my workflow.yml", "work/my%20workflow.yml"},
-			{"parent path", "../my workflow.yml", "../my workflow.yml", "my%20workflow.yml"},
-			{"absolute input", filepath.Join(workspace, "my workflow.yml"), "../my workflow.yml", "my%20workflow.yml"},
-			{"repository discovery", "", "../.github/workflows/my workflow.yml", ".github/workflows/my%20workflow.yml"},
-		} {
-			t.Run(format+"/"+tc.name, func(t *testing.T) {
-				resultPath := filepath.Join(t.TempDir(), "result.json")
-				outputPath := filepath.Join(t.TempDir(), "output")
-				env := map[string]string{
-					"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-					"INPUT_PYFLAKES": "false", "INPUT_WORKING-DIRECTORY": "work",
-					"INPUT_FILES": tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
-					"INPUT_SARIF": "true",
-				}
-				var output strings.Builder
-				if code := Main(func(key string) string { return env[key] }, &output); code != 1 {
-					t.Fatalf("code %d; want findings: %s", code, output.String())
-				}
-				var result persistedResult
-				if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
-					t.Fatal(err)
-				}
-				if len(result.Diagnostics) != 1 || len(result.Diagnostics[0].Fixes) != 1 {
-					t.Fatalf("wanted one fixable ShellCheck diagnostic: %+v", result.Diagnostics)
-				}
-				diagnostic := result.Diagnostics[0]
-				if filepath.ToSlash(diagnostic.Path) != tc.diagnostic {
-					t.Errorf("diagnostic spelling = %q, want %q", diagnostic.Path, tc.diagnostic)
-				}
-				for _, edit := range diagnostic.Fixes[0].Edits {
-					if edit.Path != diagnostic.Path {
-						t.Errorf("same-file fix path %q differs from diagnostic %q", edit.Path, diagnostic.Path)
-					}
-					if diagnostic.Fixes[0].Revisions[edit.Path] == "" {
-						t.Errorf("fix edit %q has no matching source revision: %+v", edit.Path, diagnostic.Fixes[0].Revisions)
-					}
-				}
-				var document struct {
-					Runs []struct {
-						Tool struct {
-							Driver struct{ Rules []struct{ ID string } }
-						}
-						Results []struct {
-							Locations []struct {
-								PhysicalLocation struct {
-									ArtifactLocation struct{ URI, URIBaseID string }
-								}
-							}
-							Fixes []struct {
-								ArtifactChanges []struct {
-									ArtifactLocation struct{ URI, URIBaseID string }
-								}
-							}
-						}
-					}
-				}
-				if err := json.Unmarshal(result.SARIF, &document); err != nil {
-					t.Fatal(err)
-				}
-				if len(document.Runs) != 1 || len(document.Runs[0].Results) != 1 {
-					t.Fatalf("wanted one SARIF finding: %s", result.SARIF)
-				}
-				run := document.Runs[0]
-				if !slices.ContainsFunc(run.Tool.Driver.Rules, func(rule struct{ ID string }) bool { return rule.ID == "shellcheck" }) {
-					t.Error("SARIF lost private rule metadata")
-				}
-				finding := run.Results[0]
-				if len(finding.Locations) != 1 || len(finding.Fixes) != 1 || len(finding.Fixes[0].ArtifactChanges) != 1 {
-					t.Fatalf("SARIF location or fix lost: %s", result.SARIF)
-				}
-				for _, artifact := range []struct{ URI, URIBaseID string }{
-					finding.Locations[0].PhysicalLocation.ArtifactLocation, finding.Fixes[0].ArtifactChanges[0].ArtifactLocation,
-				} {
-					if artifact.URI != tc.uri || artifact.URIBaseID != "%SRCROOT%" {
-						t.Errorf("SARIF artifact = %+v, want workspace-relative %q", artifact, tc.uri)
-					}
-				}
-				selected := parseOutputs(read(t, outputPath))["output"]
-				if file := read(t, filepath.Join(workspace, "report.txt")); strings.TrimSuffix(file, "\n") != selected {
-					t.Error("output-file differs from selected output")
-				}
-				if format == "sarif" {
-					compacted, err := json.Marshal(json.RawMessage(selected))
-					if err != nil || !bytes.Equal(compacted, result.SARIF) {
-						t.Errorf("selected and persisted SARIF differ: %v", err)
-					}
-				}
-			})
-		}
-	}
-}
-
-func TestActionSARIFOutputRetainsStructuredDiagnostics(t *testing.T) {
-	_, err := exec.LookPath("shellcheck")
-	if err != nil {
-		t.Skipf("ShellCheck required: %s", err)
-	}
-	t.Setenv("SHELLCHECK_OPTS", "")
-	workspace := workspaceWith(t, map[string]string{
-		"my workflow.yml": `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo é 🐚 $VALUE
-`,
-	})
-	resultPath := filepath.Join(t.TempDir(), "result.json")
-	outputPath := filepath.Join(t.TempDir(), "output")
-	env := map[string]string{
-		"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
-		"ACTIONLINT_ACTION_RESULT": resultPath,
-		"INPUT_FILES":              "my workflow.yml", "INPUT_FORMAT": "sarif",
-		"INPUT_OUTPUT-FILE": "report.sarif", "INPUT_PYFLAKES": "false",
-	}
-	var output strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &output); code != 1 {
-		t.Fatalf("code %d; want 1: %s", code, output.String())
-	}
-	selected := parseOutputs(read(t, outputPath))["output"]
-	if report := read(t, filepath.Join(workspace, "report.sarif")); strings.TrimSuffix(report, "\n") != selected {
-		t.Fatal("output-file differs from selected output")
-	}
-	var persisted persistedResult
-	if err := json.Unmarshal([]byte(read(t, resultPath)), &persisted); err != nil {
-		t.Fatal(err)
-	}
-	// The persisted envelope compacts its SARIF document.
-	selectedJSON, err := json.Marshal(json.RawMessage(selected))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(selectedJSON, persisted.SARIF) {
-		t.Fatalf("selected SARIF differs from persisted SARIF: %s / %s", selectedJSON, persisted.SARIF)
-	}
-	var document struct {
-		Runs []struct {
-			ColumnKind string
-			Results    []struct {
-				Level      string
-				Properties struct{ DiagnosticCode string }
-				Fixes      []json.RawMessage
-				Locations  []struct {
-					PhysicalLocation struct {
-						ArtifactLocation struct{ URI string }
-						Region           struct{ StartLine, StartColumn, EndLine, EndColumn int }
-					}
-				}
-			}
-		}
-	}
-	if err := json.Unmarshal([]byte(selected), &document); err != nil {
-		t.Fatal(err)
-	}
-	if len(document.Runs) != 1 || len(document.Runs[0].Results) != 1 {
-		t.Fatalf("wanted one SARIF result: %s", selected)
-	}
-	run := document.Runs[0]
-	finding := run.Results[0]
-	if run.ColumnKind != "unicodeCodePoints" || finding.Level != "note" || finding.Properties.DiagnosticCode != "SC2086" || len(finding.Fixes) != 1 {
-		t.Fatalf("ShellCheck metadata or fix lost: %s", selected)
-	}
-	if len(finding.Locations) != 1 {
-		t.Fatalf("wanted one source location: %s", selected)
-	}
-	location := finding.Locations[0].PhysicalLocation
-	if location.ArtifactLocation.URI != "my%20workflow.yml" || location.Region.StartLine != 7 || location.Region.EndLine != 7 || location.Region.StartColumn != 20 || location.Region.EndColumn != 26 {
-		t.Fatalf("Unicode source range or escaped path changed: %s", selected)
 	}
 }
 
@@ -271,7 +80,7 @@ jobs:
 			path := filepath.Join(t.TempDir(), "result.json")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "ACTIONLINT_ACTION_RESULT": path,
-				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false",
+				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_FAIL-ON-ERROR": "false",
 			}
 			var output strings.Builder
 			if got := Main(func(key string) string { return env[key] }, &output); got != tc.code {
@@ -311,7 +120,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	env := map[string]string{
 		"GITHUB_WORKSPACE": t.TempDir(), "ACTIONLINT_ACTION_RESULT": path,
 		"GITHUB_OUTPUT": outputPath, "INPUT_FORMAT": "json",
-		"INPUT_FILES": "missing.yml", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+		"INPUT_FILES": "missing.yml",
 	}
 	var output strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &output); code != 3 {
@@ -353,7 +162,6 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
 				"ACTIONLINT_ACTION_RESULT": resultPath,
 				"INPUT_FILES":              "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_SARIF": tc.sarif,
-				"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
 			}
 			var stdout strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {

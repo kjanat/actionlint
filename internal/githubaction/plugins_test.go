@@ -63,7 +63,7 @@ func TestActionLockedPlugins(t *testing.T) {
 				t.Fatal(err)
 			}
 			env := map[string]string{
-				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false",
+				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml",
 				"INPUT_CONFIG": "lint: {rules: {plugins: {no-sudo: warn}}}",
 			}
 			if explicit {
@@ -115,113 +115,6 @@ func TestActionLockedPlugins(t *testing.T) {
 	}
 }
 
-func TestActionConfiguredWasm(t *testing.T) {
-	for _, fixture := range []string{"../plugins/core/testdata/engines/echo.wasm", "../plugins/component/testdata/plugins/ruff-action-input.wasm"} {
-		t.Run(fixture, func(t *testing.T) {
-			isolatePluginCache(t)
-			module, err := os.ReadFile(fixture)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if strings.Contains(fixture, "/core/") {
-				module, err = testutil.ReplaceWasmDataString(module, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
-				if err != nil {
-					t.Fatal(err)
-				}
-			}
-			modulePath := filepath.Join(t.TempDir(), "ruff.wasm")
-			if err := os.WriteFile(modulePath, module, 0o600); err != nil {
-				t.Fatal(err)
-			}
-			encoded, err := json.Marshal(modulePath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n"
-			if strings.Contains(fixture, "/component/") {
-				workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: missing();\n"
-			}
-			workspace := workspaceWith(t, map[string]string{
-				".git": "", "ci.yml": workflow,
-				".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: " + string(encoded) + "\n",
-			})
-			t.Setenv("PATH", t.TempDir())
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_RUFF": "true", "INPUT_SHELLCHECK": "false"}
-			lookup := func(key string) string { return env[key] }
-			req, err := provisioningRequest(lookup)
-			if err != nil {
-				t.Fatal(err)
-			}
-			result := runLinter(req)
-			wantCode := "ECHO001"
-			if strings.Contains(fixture, "/core/") {
-				wantCode = "F821"
-			}
-			if result.code != 1 || len(result.diagnostics) != 1 || result.diagnostics[0].Code != wantCode {
-				t.Fatalf("configured Wasm result: %+v %s", result.diagnostics, result.stderr)
-			}
-			env["INPUT_RUFF"] = "false"
-			req, err = provisioningRequest(lookup)
-			if err != nil {
-				t.Fatal(err)
-			}
-			result = runLinter(req)
-			if result.code != 0 {
-				t.Fatalf("disabled engine ran: %+v %s", result.diagnostics, result.stderr)
-			}
-		})
-	}
-}
-
-func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
-	for _, configured := range []bool{false, true} {
-		t.Run(strconv.FormatBool(configured), func(t *testing.T) {
-			files := map[string]string{
-				".git":   "",
-				"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n",
-			}
-			if configured {
-				files[".github/actionlint.yaml"] = "tools: {ruff: {backend: {process: {executable: missing-ruff}}}}\n"
-			}
-			workspace := workspaceWith(t, files)
-			t.Setenv("PATH", t.TempDir())
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_RUFF": "true", "INPUT_SHELLCHECK": "false"}
-			req, err := provisioningRequest(func(key string) string { return env[key] })
-			if err != nil {
-				t.Fatal(err)
-			}
-			result := runLinter(req)
-			if configured {
-				if result.code != 3 || !strings.Contains(result.stderr, "tools.ruff.backend.process requires host opt-in") {
-					t.Fatalf("repository process was not rejected before execution: %+v", result.lintOutcome)
-				}
-			} else if result.code != 0 {
-				t.Fatalf("enabled Ruff required a native executable: %+v", result.lintOutcome)
-			}
-		})
-	}
-}
-
-func TestActionPluginPlanConfiguredDigests(t *testing.T) {
-	directory := isolatePluginCache(t)
-	digest := strings.Repeat("a", 64)
-	workspace := workspaceWith(t, map[string]string{
-		".git": "", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: https://example.invalid/ruff.wasm#sha256=" + digest + "\n",
-	})
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_RUFF": "true"}
-	var stdout, stderr bytes.Buffer
-	if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 0 {
-		t.Fatalf("plan failed: %d %s", code, &stderr)
-	}
-	var plan localapp.PluginCachePlan
-	if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
-		t.Fatal(err)
-	}
-	if plan.Directory != directory || len(plan.Artifacts) != 1 || plan.Artifacts[0] != digest {
-		t.Fatalf("configured digest missing: %+v", plan)
-	}
-}
-
 func TestActionPluginPlanPreviewsLockOnlyLegacyMigration(t *testing.T) {
 	wasm, err := os.ReadFile("../plugins/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
@@ -267,8 +160,6 @@ func TestActionPluginPlanPreviewsLockOnlyLegacyMigration(t *testing.T) {
 	env := map[string]string{
 		"GITHUB_WORKSPACE": workspace,
 		"INPUT_FILES":      "ci.yml",
-		"INPUT_SHELLCHECK": "false",
-		"INPUT_RUFF":       "false",
 	}
 	lookup := func(key string) string { return env[key] }
 	var stdout, stderr bytes.Buffer
@@ -374,7 +265,7 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false"}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace}
 			var stdout, stderr bytes.Buffer
 			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 3 {
 				t.Fatalf("got status %d, want failure: %s", code, &stderr)
@@ -400,7 +291,7 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 		"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n",
 	})
 	env := map[string]string{
-		"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false",
+		"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml",
 		"INPUT_CONFIG": fmt.Sprintf("plugins: [%q]\n", url+"#sha256="+digest),
 	}
 	lookup := func(key string) string { return env[key] }

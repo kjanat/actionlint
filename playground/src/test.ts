@@ -2,14 +2,11 @@ import { strict as assert } from 'node:assert';
 import { beforeAll, describe, it } from 'vitest';
 
 import { promises as fs } from 'node:fs';
-import { createRequire } from 'node:module';
 
 import { Text } from '@codemirror/state';
-import { createChecker } from '@kjanat/rshellcheck-wasm';
 import * as pako from 'pako';
 
 import { errorRange } from './range';
-import { shellcheckOutput, shellcheckRequest } from './shellcheck-request';
 import {
 	maxEncodedLength,
 	maxSourceBytes,
@@ -183,10 +180,6 @@ describe('main.wasm', () => {
 	const results = new CheckResults();
 
 	beforeAll(async () => {
-		const wasm = await fs.readFile(createRequire(import.meta.url).resolve('@kjanat/rshellcheck-wasm/wasm'));
-		const checker = await createChecker(wasm);
-		window.runShellcheck = (args, script) =>
-			Promise.resolve(shellcheckOutput(checker.check(shellcheckRequest(args, script))));
 		window.dismissLoading = () => {
 			/*do nothing*/
 		};
@@ -282,137 +275,5 @@ jobs:
 		const errors = await results.waitCheckCompleted();
 		const json = JSON.stringify(errors);
 		assert.equal(errors.length, 0, json);
-	});
-
-	async function checkRun(run: string): Promise<ActionlintError[]> {
-		assert.ok(window.runActionlint);
-		results.reset();
-		window.runActionlint(`on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n${run}\n`);
-		return results.waitCheckCompleted();
-	}
-
-	it('maps real ShellCheck findings through literal and quoted YAML scalars', async () => {
-		for (const run of ['      - run: |\n          echo $value', '      - run: "echo $value"']) {
-			const errors = await checkRun(run);
-			const findings = errors.filter(error => error.kind === 'shellcheck');
-			assert.equal(findings.length, 1, JSON.stringify(errors));
-			const finding = findings[0];
-			assert.ok(finding);
-			assert.match(finding.message, /SC2086/);
-			const line = run.split('\n').at(-1);
-			assert.ok(line);
-			assert.equal(finding.line, run.includes('|') ? 7 : 6);
-			assert.equal(finding.column, line.indexOf('$value') + 1);
-			assert.equal(finding.endColumn, finding.column + '$value'.length - 1);
-		}
-	});
-
-	it('keeps native and actionlint suppressions and non-shell scripts', async () => {
-		for (
-			const run of [
-				'      - run: |\n          # shellcheck disable=SC2086\n          echo $value',
-				'      # actionlint:ignore-next-line shellcheck\n      - run: echo $value',
-				'      - shell: python\n        run: print("hello")',
-				'      - shell: pwsh\n        run: Write-Output $value',
-			]
-		) {
-			const errors = await checkRun(run);
-			assert.deepEqual(errors, [], JSON.stringify({ run, errors }));
-		}
-	});
-
-	it('sanitizes expressions for ShellCheck while retaining interpolation findings', async () => {
-		const errors = await checkRun('      - run: echo "${{ github.ref }}"');
-		assert.deepEqual(
-			errors.map(({ kind, line, column, endColumn }) => ({ kind, line, column, endColumn })),
-			[{ kind: 'script-interpolation', line: 6, column: 24, endColumn: 33 }],
-		);
-	});
-
-	it('uses workflow shell defaults for portability diagnostics', async () => {
-		const errors = await checkRun('      - shell: sh\n        run: "[[ -n x ]]"');
-		assert.ok(
-			errors.some(error => error.kind === 'shellcheck' && /SC3010/.test(error.message)),
-			JSON.stringify(errors),
-		);
-	});
-
-	it('does not publish stale diagnostics when a newer edit finishes first', async () => {
-		assert.ok(window.runActionlint);
-		const real = window.runShellcheck;
-		let release: ((output: string) => void) | undefined;
-		try {
-			window.runShellcheck = () =>
-				new Promise(resolve => {
-					release = resolve;
-				});
-			results.reset();
-			window.runActionlint(
-				'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo $value\n',
-			);
-			await new Promise(resolve => setTimeout(resolve, 0));
-			assert.ok(release, 'first analysis must reach the asynchronous checker');
-			window.runShellcheck = real;
-			const current = await checkRun('      - run: echo "ok"');
-			release('{"comments":[]}');
-			await new Promise(resolve => setTimeout(resolve, 0));
-			assert.equal(results.errors, current, 'superseded analysis must not replace newer results');
-		} finally {
-			window.runShellcheck = real;
-		}
-	});
-
-	it('discards both stale successes and failures immediately on edit, before another lint starts', async () => {
-		assert.ok(window.runActionlint);
-		assert.ok(window.invalidateActionlint);
-		const real = window.runShellcheck;
-		const showError = window.showError;
-		const failures: string[] = [];
-		try {
-			window.showError = message => failures.push(message);
-			for (const reject of [false, true]) {
-				let finish: (() => void) | undefined;
-				window.runShellcheck = () =>
-					new Promise((resolve, fail) => {
-						finish = () => {
-							if (reject) fail(new Error('obsolete timeout'));
-							else resolve('{"comments":[]}');
-						};
-					});
-				results.reset();
-				window.runActionlint(
-					'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n',
-				);
-				await new Promise(resolve => setTimeout(resolve, 0));
-				assert.ok(finish, 'analysis must reach the asynchronous checker');
-				window.invalidateActionlint();
-				finish();
-				await new Promise(resolve => setTimeout(resolve, 0));
-				assert.deepEqual(failures, [], 'an edit must invalidate errors during debounce');
-				assert.equal(results.errors, null, 'an edit must invalidate results during debounce');
-			}
-		} finally {
-			window.runShellcheck = real;
-			window.showError = showError;
-		}
-	});
-
-	it('reports a rejected worker without publishing a clean result', async () => {
-		assert.ok(window.runActionlint);
-		const real = window.runShellcheck;
-		const showError = window.showError;
-		try {
-			window.runShellcheck = () => Promise.reject(new Error('test worker timeout'));
-			const failure = new Promise<string>(resolve => {
-				window.showError = resolve;
-			});
-			results.reset();
-			window.runActionlint('on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n');
-			assert.match(await failure, /test worker timeout/);
-			assert.equal(results.errors, null, 'failed analysis must not publish a clean result');
-		} finally {
-			window.runShellcheck = real;
-			window.showError = showError;
-		}
 	});
 });

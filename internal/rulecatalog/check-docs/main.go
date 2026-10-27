@@ -1,7 +1,5 @@
 package main
 
-import "actionlint.kjanat.dev/v2/internal/tools/adapters"
-
 import (
 	"bufio"
 	"bytes"
@@ -14,7 +12,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"slices"
 	"strings"
 
@@ -44,7 +41,7 @@ func Actionlint(src []byte) ([]byte, error) {
 		}
 	}
 	root = project.RootDir()
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err
 	}
@@ -57,15 +54,6 @@ func Actionlint(src []byte) ([]byte, error) {
 		return nil, err
 	}
 	if len(result.Diagnostics) == 0 {
-		var missing []string
-		for _, tool := range []string{"shellcheck"} {
-			if _, err := exec.LookPath(tool); err != nil {
-				missing = append(missing, tool)
-			}
-		}
-		if len(missing) != 0 {
-			return nil, fmt.Errorf("the input example caused no error, but required documentation linters are missing from PATH: %s; install ShellCheck and run runner lint-docs", strings.Join(missing, ", "))
-		}
 		return nil, errors.New("the input example caused no error")
 	}
 

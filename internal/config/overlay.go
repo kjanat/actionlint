@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strings"
 
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -116,7 +115,7 @@ func parseOverlay(input string, content []byte, bindRules bool, additional ...st
 			}
 		}
 	}
-	return Overlay{input, normalizeToolSwitch(node)}, nil
+	return Overlay{input, node}, nil
 }
 
 // ResolveBeforePlugins merges already parsed overlays for dependency selection.
@@ -152,13 +151,13 @@ func MarkInput(node *yaml.Node, input string, inputs map[*yaml.Node]Input) {
 // Name returns the input that supplied this overlay.
 func (o Overlay) Name() string { return o.name }
 
-// BindPaths returns a copy whose relative tool paths resolve from directory.
+// BindPaths returns a copy of the overlay. Kept for callers that bind config inputs.
 func (o Overlay) BindPaths(directory string) (Overlay, error) {
+	_ = directory
 	node, err := configtree.Expand(o.node, make(map[*yaml.Node]bool))
 	if err != nil {
 		return Overlay{}, err
 	}
-	toolconfig.NormalizePaths(node, directory)
 	return Overlay{o.name, node}, nil
 }
 

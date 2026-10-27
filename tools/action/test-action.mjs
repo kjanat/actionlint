@@ -114,7 +114,7 @@ async function run(inputs, expected = 0, extraEnvironment = {}) {
 			files: 'testdata/ok/minimal.yaml',
 			format: 'json',
 			shellcheck: 'true',
-			pyflakes: 'false',
+
 			'add-actionlint-to-path': 'false',
 			'working-directory': '.',
 			'fail-on-error': 'true',
@@ -270,7 +270,7 @@ try {
 	const shell = await run(
 		{
 			files: 'testdata/err/shellcheck_default_shell_detection.yaml',
-			pyflakes: 'false',
+
 			'fail-on-error': 'false',
 		},
 		0,
@@ -284,7 +284,7 @@ try {
 	const fixable = await run(
 		{
 			files: 'shell-fix.yaml',
-			pyflakes: 'false',
+
 			'fail-on-error': 'false',
 			annotations: 'true',
 			sarif: 'true',
@@ -295,7 +295,7 @@ try {
 	const githubFixable = await run(
 		{
 			files: 'shell-fix.yaml',
-			pyflakes: 'false',
+
 			'fail-on-error': 'false',
 			annotations: 'true',
 			format: 'github',
@@ -327,7 +327,7 @@ try {
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].artifactLocation.uri, 'shell-fix.yaml');
 	assert.equal(sarifQuote.fixes[0].artifactChanges[0].replacements.length, quote.fixes[0].edits.length);
 	const legacyStandalone = await run(
-		{ files: 'shell-fix.yaml', shellcheck: 'false', pyflakes: 'false', 'fail-on-error': 'false' },
+		{ files: 'shell-fix.yaml', shellcheck: 'false', 'fail-on-error': 'false' },
 		0,
 		shellEnvironment,
 	);
@@ -344,7 +344,7 @@ try {
 		'on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n',
 	);
 	const managedShell = await run(
-		{ files: 'managed-shell.yaml', pyflakes: 'false', 'fail-on-error': 'false' },
+		{ files: 'managed-shell.yaml', 'fail-on-error': 'false' },
 		0,
 		shellEnvironment,
 	);
@@ -360,7 +360,6 @@ try {
 		{
 			files: 'managed-shell.yaml',
 			shellcheck: 'false',
-			pyflakes: 'false',
 		},
 		0,
 		shellEnvironment,
@@ -370,7 +369,6 @@ try {
 		{
 			files: 'managed-shell.yaml',
 			config: 'tools: {shellcheck: {enabled: false}}',
-			pyflakes: 'false',
 		},
 		0,
 		shellEnvironment,
@@ -412,13 +410,13 @@ try {
 		{ config: 'tools: {shellchek: false}' },
 	];
 	for (const inputs of invalidInputs) await run(inputs, 2);
-	await run({ files: 'missing.yml', shellcheck: 'false', pyflakes: 'false' }, 3);
+	await run({ files: 'missing.yml', shellcheck: 'false' }, 3);
 	await run({ 'config-file': join(shared, 'missing.yaml') }, 3);
 	await writeFile(
 		join(workspace, '.github/workflows/custom-runner.yml'),
 		'name: Custom runner\non: push\njobs:\n  test:\n    runs-on: ubuntu-24.04-custom\n    steps:\n      - run: echo hello\n',
 	);
-	const customRunner = { files: '', shellcheck: 'false', pyflakes: 'false' };
+	const customRunner = { files: '', shellcheck: 'false' };
 	await run({ ...customRunner, config: JSON.stringify({ 'self-hosted-runner': { labels: ['ubuntu-24.04-custom'] } }) });
 	await run({ ...customRunner, config: 'self-hosted-runner: {labels: [ubuntu-24.04-custom]}' });
 	await run({ ...customRunner, ignore: 'label "ubuntu-24\\.04-custom" is unknown\\.' });

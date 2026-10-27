@@ -24,9 +24,6 @@ type Override struct {
 	// Lint overlays only explicitly supplied lint fields. Null resets lint defaults.
 	Lint     *LintConfig `yaml:"lint" jsonschema:"nullable"`
 	lintNode *yaml.Node
-	// Tools overlays external checker settings for the selected files.
-	Tools     *ToolsConfig `yaml:"tools" jsonschema:"nullable"`
-	toolsNode *yaml.Node
 	// LocalActions overlays generated action source mappings for matching files.
 	LocalActions    LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
 	localActionsSet bool
@@ -66,9 +63,6 @@ func (o *Override) UnmarshalYAML(n *yaml.Node) error {
 		if n.Content[i].Value == "lint" {
 			next.lintNode = n.Content[i+1]
 		}
-		if n.Content[i].Value == "tools" {
-			next.toolsNode = n.Content[i+1]
-		}
 		if n.Content[i].Value == "includes" || n.Content[i].Value == "excludes" {
 			for _, pattern := range n.Content[i+1].Content {
 				if pattern.Kind != yaml.ScalarNode || pattern.ShortTag() != "!!str" {
@@ -98,15 +92,6 @@ func (o Override) MarshalYAML() (any, error) {
 			return nil, err
 		}
 		value["lint"] = node
-	}
-	if o.toolsNode != nil {
-		value["tools"] = o.toolsNode
-	} else if o.Tools != nil {
-		node, err := programmaticToolsNode(o.Tools)
-		if err != nil {
-			return nil, err
-		}
-		value["tools"] = node
 	}
 	return value, nil
 }
@@ -182,7 +167,6 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 			node = lint
 		}
 	}
-	tools := config.Tools
 	localActions := config.LocalActions
 	for _, override := range config.Overrides {
 		if !override.matches(path) {
@@ -202,12 +186,6 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 				localActions = next
 			}
 		}
-		if override.toolsNode != nil || override.Tools != nil {
-			tools, err = mergeToolsOverride(tools, override)
-			if err != nil {
-				return nil, err
-			}
-		}
 		overlay := override.lintNode
 		if overlay == nil {
 			if override.Lint == nil {
@@ -221,7 +199,6 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 		node = configtree.Merge(expandLintShorthands(node), overlay, map[*yaml.Node]Input{})
 	}
 	next := *config
-	next.Tools = tools
 	next.LocalActions = localActions
 	next.Lint = LintConfig{}
 	content, err := yaml.Marshal(node)
@@ -238,71 +215,6 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 	next.Policy = Policy{}
 	projectSettings(&next)
 	return &next, nil
-}
-
-func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error) {
-	var node, overlay yaml.Node
-	if err := node.Encode(map[string]any{"tools": base}); err != nil {
-		return ToolsConfig{}, err
-	}
-	var value any
-	if override.toolsNode != nil {
-		value = override.toolsNode
-	} else {
-		var err error
-		value, err = programmaticToolsNode(override.Tools)
-		if err != nil {
-			return ToolsConfig{}, err
-		}
-	}
-	if err := overlay.Encode(map[string]any{"tools": value}); err != nil {
-		return ToolsConfig{}, err
-	}
-	merged := configtree.Merge(normalizeToolSwitch(&node), normalizeToolSwitch(&overlay), map[*yaml.Node]Input{})
-	var decoded struct {
-		Tools ToolsConfig `yaml:"tools"`
-	}
-	if err := merged.Decode(&decoded); err != nil {
-		return ToolsConfig{}, err
-	}
-	if decoded.Tools.Shellcheck.Config != nil {
-		source := base.Shellcheck.Config
-		if override.Tools != nil && override.Tools.Shellcheck.Config != nil {
-			source = override.Tools.Shellcheck.Config
-		}
-		if source != nil {
-			decoded.Tools.Shellcheck.Config.fromInput = source.fromInput
-		}
-	}
-	return decoded.Tools, nil
-}
-
-// Nil fields in Go values mean omission; explicit resets require parsed YAML nodes.
-func programmaticToolsNode(tools *ToolsConfig) (*yaml.Node, error) {
-	var node yaml.Node
-	if err := node.Encode(tools); err != nil {
-		return nil, err
-	}
-	var prune func(*yaml.Node)
-	prune = func(node *yaml.Node) {
-		if node.Kind == yaml.MappingNode {
-			entries := node.Content[:0]
-			for i := 0; i < len(node.Content); i += 2 {
-				key, value := node.Content[i], node.Content[i+1]
-				if value.ShortTag() != "!!null" {
-					prune(value)
-					entries = append(entries, key, value)
-				}
-			}
-			node.Content = entries
-		} else {
-			for _, child := range node.Content {
-				prune(child)
-			}
-		}
-	}
-	prune(&node)
-	return &node, nil
 }
 
 // Expand scalar shorthands so a partial mapping can override individual options.

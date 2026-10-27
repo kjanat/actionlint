@@ -41,10 +41,6 @@ paths: {'**': {ignore: ['a.*b']}}
 				t.Fatal("serialization changed whether variable or secret checking is enabled")
 			}
 			if source == "" {
-				tools := resolved.Values["tools"].(map[string]any)
-				if selection, exists := tools["ruff"].(map[string]any)["select"]; exists {
-					t.Fatalf("effective config overrides Ruff's defaults: %v", selection)
-				}
 				for _, rule := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted"} {
 					if !roundTrip.Config.CachePolicyEnabled(rule) || DiagnosticLevel(roundTrip.Config, rule) != "on" {
 						t.Fatalf("lost cache policy default or origin: %s", rule)

@@ -17,7 +17,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := doctorRequest{Config: repoconfig.Selection{Disabled: true}, ShellCheck: `"` + filepath.ToSlash(executable) + `"`, Hyperlinks: "never"}
+	request := doctorRequest{Config: repoconfig.Selection{Disabled: true}, ResolverCommand: executable, Hyperlinks: "never"}
 	var text, data bytes.Buffer
 	if err := writeDoctor(t.Context(), &text, request); err != nil {
 		t.Fatal(err)
@@ -38,7 +38,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 			column = start
 		}
 	}
-	if filepath.Clean(values["shellcheck"]) != filepath.Clean(executable) {
+	if filepath.Clean(values["resolver"]) != filepath.Clean(executable) {
 		t.Fatalf("unexpected tool display:\n%s", &text)
 	}
 	request.JSON = true
@@ -51,7 +51,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err := json.Unmarshal(data.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Tools) != 2 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" || report.Tools[1].Status != "disabled" {
+	if len(report.Tools) != 1 || report.Tools[0].Name != "resolver" || report.Tools[0].Status != "available" || report.Tools[0].Path == "" {
 		t.Fatalf("JSON lost tool status: %s", &data)
 	}
 }
@@ -70,7 +70,7 @@ func TestDoctorResolverSelection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var out, stderr bytes.Buffer
 			command := Command{Stdout: &out, Stderr: &stderr}
-			args := []string{"actionlint", "doctor", "--no-config", "--no-ruff", "--no-shellcheck", "--json", "--resolve-with", tc.command, "--resolver-arg=argument with spaces", "--resolver-arg=--literal"}
+			args := []string{"actionlint", "doctor", "--no-config", "--json", "--resolve-with", tc.command, "--resolver-arg=argument with spaces", "--resolver-arg=--literal"}
 			if status := command.MainContext(t.Context(), args); status != 0 {
 				t.Fatalf("doctor failed: exit=%d stderr=%s", status, &stderr)
 			}

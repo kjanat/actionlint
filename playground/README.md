@@ -35,22 +35,6 @@ Production builds give the JSON a content-hashed URL. WASM excludes the embedded
 bytes against its build-time SHA-256 before exposing the lint function. A failed fetch or mismatched deployment
 stops startup and reports an error. Ordinary CLI and library builds still embed the catalogue.
 
-Shell scripts are checked locally with `@kjanat/rshellcheck-wasm` 1.0.0. The browser loads its
-worker, JavaScript wrapper and WASM from version-pinned jsDelivr URLs. A same-origin module-worker
-bootstrap imports the CDN worker. Scripts stay in the browser; they are not sent to an analysis server.
-CDN download or initialization failures stop startup with an error. The npm development dependency
-supplies the same version for offline tests, and its runtime assets are not bundled with the site.
-The ordinary Go ShellCheck rule handles shell selection, expression placeholders, exclusions,
-inline suppressions and YAML source ranges. A small adapter maps its CLI arguments to the WASM
-request format and rejects unsupported flags. Repository source files and rc files are unavailable.
-Python and PowerShell scripts are not sent to ShellCheck; Ruff is not included in this playground.
-
-ShellCheck runs in a dedicated worker with a ten-second deadline. Worker failures and incomplete
-analysis produce error messages. Every edit immediately invalidates the previous analysis, clears
-its results and cancels busy worker requests before the debounce timer starts. The next analysis
-can restart the worker with a fresh deadline. The separate ShellCheck
-module is GPL-3.0-or-later; the footer links its corresponding source at the npm provenance commit.
-
 Vite derives the version badge and links from Git when it starts. A clean release tag links to its release; development
 builds show `git describe` and link to their commit. Documentation links use that same commit. Without tags, the badge
 shows the commit; without Git metadata, it shows `development`. Pages also reads the latest published release and displays

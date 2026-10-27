@@ -8,7 +8,7 @@ import (
 )
 
 func TestPublicConfigurationConstructors(t *testing.T) {
-	if _, err := config.ParseOverlay("tools", []byte("{shellcheck: false}")); err != nil {
+	if _, err := config.ParseOverlay("files", []byte("{includes: [workflow.yml]}")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := config.ParseOverlay("unknown-input", []byte("true")); err == nil {

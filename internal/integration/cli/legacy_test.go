@@ -97,7 +97,7 @@ jobs:
 			color.NoColor = true
 			var stdout, stderr bytes.Buffer
 			cmd := cli.Command{Stdin: strings.NewReader(tc.in), Stdout: &stdout, Stderr: &stderr}
-			args := append([]string{"actionlint", "--summary=false", "-shellcheck=", "-pyflakes=", "-no-color"}, tc.args...)
+			args := append([]string{"actionlint", "--summary=false", "-no-color"}, tc.args...)
 			status := cmd.Main(args)
 			normalize := strings.NewReplacer(runtime.Version(), "GO_VERSION", runtime.GOOS+"/"+runtime.GOARCH, "GO_PLATFORM", root, "REPO_ROOT")
 			got := commandTranscript{status, normalize.Replace(stdout.String()), normalize.Replace(stderr.String())}

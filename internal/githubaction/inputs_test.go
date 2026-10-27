@@ -14,7 +14,7 @@ func args(values ...string) []string {
 }
 
 func defaultArgs() []string {
-	return args("", "github", "", "", "true", "true", ".", "", "true")
+	return args("", "github", "", "", ".", "", "true")
 }
 
 func isInputError(t *testing.T, err error) *inputError {
@@ -40,8 +40,8 @@ func TestParseInputsDefaults(t *testing.T) {
 	if in.format != formatGitHub {
 		t.Errorf("wanted the github format but got %q", in.format)
 	}
-	if !in.shellcheck || !in.pyflakes || !in.failOnError {
-		t.Errorf("wanted every boolean input to be true but got %#v", in)
+	if !in.failOnError {
+		t.Errorf("wanted fail-on-error to be true but got %#v", in)
 	}
 	if in.workingDirectory != "." || in.configFile != "" || in.outputFile != "" {
 		t.Errorf("wanted the default paths but got %#v", in)
@@ -51,8 +51,8 @@ func TestParseInputsDefaults(t *testing.T) {
 func TestParseInputsArgumentCount(t *testing.T) {
 	for _, tc := range [][]string{
 		args(),
-		args("", "github", "", "", "true", "true", ".", ""),
-		args("", "github", "", "", "true", "true", ".", "", "true", "extra"),
+		args("", "github", "", "", ".", ""),
+		args("", "github", "", "", ".", "", "true", "extra"),
 	} {
 		if _, err := parseInputs(tc); err == nil {
 			t.Errorf("wanted an error for %d arguments", len(tc))
@@ -91,9 +91,7 @@ func TestParseInputsBooleans(t *testing.T) {
 		index int
 		name  string
 	}{
-		{5, "shellcheck"},
-		{6, "pyflakes"},
-		{9, "fail-on-error"},
+		{7, "fail-on-error"},
 	} {
 		for _, bad := range []string{"", "True", "FALSE", "1", "yes", " true"} {
 			a := defaultArgs()
@@ -114,9 +112,8 @@ func TestParseInputsBooleans(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got := map[string]bool{"shellcheck": in.shellcheck, "pyflakes": in.pyflakes, "fail-on-error": in.failOnError}[tc.name]
-			if got != good.want {
-				t.Errorf("%s=%q: wanted %v but got %v", tc.name, good.value, good.want, got)
+			if in.failOnError != good.want {
+				t.Errorf("%s=%q: wanted %v but got %v", tc.name, good.value, good.want, in.failOnError)
 			}
 		}
 	}

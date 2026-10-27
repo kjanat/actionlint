@@ -22,7 +22,7 @@ func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
 			t.Errorf("rule %q declares options without a policy projection", rule.Name)
 		}
 	}
-	if !Suppressible("shellcheck") || Suppressible("unknown-rule") {
+	if !Suppressible("expression") || Suppressible("unknown-rule") {
 		t.Fatal("suppressible lookup does not follow the catalog")
 	}
 }

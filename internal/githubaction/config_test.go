@@ -38,7 +38,7 @@ func TestMainConfigurationInputs(t *testing.T) {
 				".github/actionlint.yml":  "self-hosted-runner: {labels: [unknown-runner]}",
 			})
 			output := filepath.Join(t.TempDir(), "outputs")
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output}
 			maps.Copy(env, tc.env)
 			var out strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &out); code != tc.code {
@@ -73,21 +73,6 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 		if (len(hints) == 1) != tc.want {
 			t.Errorf("%q: hints=%v", tc.pattern, hints)
 		}
-	}
-}
-
-func TestRetiredToolCommandsFromEnvironmentIgnored(t *testing.T) {
-	req := &lintRequest{shellcheck: "shellcheck"}
-	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck"}
-	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
-		t.Fatal(err)
-	}
-	if req.shellcheckOptions != nil {
-		t.Errorf("retired provisioning environment changed configuration: %#v", req.shellcheckOptions)
-	}
-	disabled := &lintRequest{}
-	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.shellcheckOptions != nil {
-		t.Errorf("disabled tools must stay disabled: %#v, %v", disabled, err)
 	}
 }
 
@@ -129,7 +114,7 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": brokenWorkflow})
 	output := filepath.Join(t.TempDir(), "outputs")
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_ANNOTATIONS": "false"}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_ANNOTATIONS": "false"}
 	var out strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &out); code != 1 {
 		t.Fatalf("exit %d: %s", code, &out)
@@ -144,7 +129,7 @@ func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
 
 func TestConfigWarningsVisibleInAction(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": cleanWorkflow, ".github/actionlint.yaml": "config-variable: [TYPO]\n"})
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace}
 	var out strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
 		t.Fatalf("exit %d: %s", code, &out)
@@ -164,7 +149,7 @@ func TestInheritedConfigWarningsVisibleInAction(t *testing.T) {
 config-variable: [TYPO]
 `,
 			})
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": overlay}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_CONFIG": overlay}
 			var out strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
 				t.Fatalf("exit %d: %s", code, &out)

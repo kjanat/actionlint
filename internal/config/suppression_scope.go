@@ -11,7 +11,7 @@ func ForSuppressions(config *Config, path, root string) (*Config, error) {
 	if config == nil {
 		return nil, nil
 	}
-	return scopedConfigForFile(config, path, root, suppressionLintNode, false)
+	return scopedConfigForFile(config, path, root, suppressionLintNode)
 }
 
 // ForAction projects only the settings consumed by action checks before merging
@@ -25,10 +25,10 @@ func ForAction(config *Config, path, root string) (*Config, error) {
 	}
 	return scopedConfigForFile(config, path, root, func(node *yaml.Node) *yaml.Node {
 		return configtree.SelectLintRules(node, selected)
-	}, true)
+	})
 }
 
-func scopedConfigForFile(config *Config, path, root string, selectLint func(*yaml.Node) *yaml.Node, tools bool) (*Config, error) {
+func scopedConfigForFile(config *Config, path, root string, selectLint func(*yaml.Node) *yaml.Node) (*Config, error) {
 	if config == nil {
 		return nil, nil
 	}
@@ -53,9 +53,6 @@ func scopedConfigForFile(config *Config, path, root string, selectLint func(*yam
 		}
 		override.lintNode = selectLint(node)
 		override.Lint = nil
-		if !tools {
-			override.Tools, override.toolsNode = nil, nil
-		}
 	}
 	return ForFile(&next, path, root)
 }
@@ -64,6 +61,5 @@ func suppressionLintNode(node *yaml.Node) *yaml.Node {
 	return configtree.SelectLintRules(node, map[string][]string{
 		"correctness": {"inline-suppression", "deprecated-commands"},
 		"policy":      {"disallow-suppressions"},
-		"external":    {"shellcheck"},
 	})
 }

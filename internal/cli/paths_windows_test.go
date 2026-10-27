@@ -41,15 +41,6 @@ func TestWindowsForwardSlashToolPaths(t *testing.T) {
 			if err != nil || !sameCommandFile(resolved, tool) || !slices.Equal(arguments, []string{"--example"}) {
 				t.Fatalf("tool command: %q, %v, %v", resolved, arguments, err)
 			}
-			t.Setenv("ACTIONLINT_SHELLCHECK_BIN", path)
-			options, err := externalToolEnvironment("SHELLCHECK")
-			if err != nil {
-				t.Fatal(err)
-			}
-			resolved, _, err = processconfig.ResolveOptions("", options)
-			if err != nil || !sameCommandFile(resolved, tool) {
-				t.Fatalf("environment tool: %q, %v", resolved, err)
-			}
 			relative := windowsPathSpellings(filepath.Join("tools with spaces", "checker.exe"))[spelling]
 			resolved, _, err = processconfig.ResolveOptions("", &processconfig.Options{
 				Executable: &relative, WorkingDir: filepath.ToSlash(root),

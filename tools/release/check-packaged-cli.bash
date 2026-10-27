@@ -17,7 +17,7 @@ jobs:
       - run: echo ok
 YAML
 
-"$@" check .github/workflows/clean.yml --no-config --shellcheck= --pyflakes= --json >clean.json
+"$@" check .github/workflows/clean.yml --no-config --json >clean.json
 jq -e '.schema_version == 1 and .diagnostics == []' clean.json
 
 cat >broken.yml <<'YAML'
@@ -25,7 +25,7 @@ on: push
 jobs: []
 YAML
 status=0
-"$@" check broken.yml --no-config --shellcheck= --pyflakes= --json >broken.json || status=$?
+"$@" check broken.yml --no-config --json >broken.json || status=$?
 test "${status}" -eq 1
 jq -e '.schema_version == 1 and (.diagnostics | length > 0)' broken.json
 

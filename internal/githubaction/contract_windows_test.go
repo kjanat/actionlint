@@ -42,7 +42,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 	}
 	var stdout, stderr bytes.Buffer
 	command := cli.Command{Stdout: &stdout, Stderr: &stderr}
-	if code := command.Main([]string{"actionlint", "check", "--json", "--shellcheck=", "--pyflakes=", "ci.yml"}); code != 1 {
+	if code := command.Main([]string{"actionlint", "check", "--json", "ci.yml"}); code != 1 {
 		t.Fatalf("CLI status %d: %s", code, &stderr)
 	}
 	var cliResult render.CheckResult
@@ -53,7 +53,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 	env := map[string]string{
 		"GITHUB_WORKSPACE": shortPath, "GITHUB_OUTPUT": filepath.Join(workspace, "outputs"),
 		"ACTIONLINT_ACTION_RESULT": resultPath, "INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json",
-		"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false",
+		"INPUT_FAIL-ON-ERROR": "false",
 	}
 	stdout.Reset()
 	if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {

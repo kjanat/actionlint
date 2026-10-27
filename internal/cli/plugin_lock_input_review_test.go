@@ -54,7 +54,7 @@ func TestCheckPreservesInactivePluginLockInputs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			output := pluginCommandTest(t, 3, "check", "--no-ruff", "--no-shellcheck", "--yes", "--output-file", lockPath, "workflow.yml")
+			output := pluginCommandTest(t, 3, "check", "--yes", "--output-file", lockPath, "workflow.yml")
 			if !strings.Contains(output, "also an input") {
 				t.Fatalf("missing collision diagnostic: %s", output)
 			}

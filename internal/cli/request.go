@@ -6,7 +6,6 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/processconfig"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.
@@ -67,11 +66,7 @@ type doctorRequest struct {
 	Plugins           []string
 	ResolverCommand   string
 	ResolverArguments []string
-	Ruff              string
-	RuffOptions       *processconfig.Options
 	Config            repoconfig.Selection
-	ShellCheck        string
-	ShellcheckOptions *processconfig.Options
 	JSON              bool
 	Hyperlinks        hyperlinkMode
 }

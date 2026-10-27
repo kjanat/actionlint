@@ -108,7 +108,7 @@ func (a *action) execute() (int, error) {
 		outcome, count, rendered = renderOutcome(lint)
 	}
 	lint.lintOutcome = outcome
-	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown, req)
+	a.emitStatus(outcome.code, count, lint.fileCount, lint.fileCountKnown)
 	result, ok := results[outcome.code]
 	if !ok {
 		result = "failure"

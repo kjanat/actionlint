@@ -95,20 +95,7 @@ func plural(count int, singular, plural string) string {
 	return plural
 }
 
-func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountKnown bool, req *lintRequest) {
-	integrations := []string{}
-	if req.shellcheck != "" {
-		integrations = append(integrations, "shellcheck")
-	}
-	if req.ruff != "" {
-		integrations = append(integrations, "ruff")
-	}
-	if len(integrations) == 0 {
-		integrations = append(integrations, "external linters disabled")
-	} else {
-		integrations[0] = "requested tools: " + integrations[0]
-	}
-
+func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCountKnown bool) {
 	fileCountText := "unknown"
 	files := "workflow files"
 	if fileCountKnown {
@@ -122,13 +109,12 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCo
 		}
 		_, _ = fmt.Fprintf(
 			a.stdout,
-			"actionlint %s: %s %s in %s %s (%s)\n",
+			"actionlint %s: %s %s in %s %s\n",
 			actionVersion(),
 			problemCount,
 			problems,
 			fileCountText,
 			files,
-			strings.Join(integrations, ", "),
 		)
 		return
 	}
@@ -141,13 +127,12 @@ func (a *action) emitStatus(code int, problemCount string, fileCount int, fileCo
 	}
 	_, _ = fmt.Fprintf(
 		a.stdout,
-		"actionlint %s: failed with %s %s while checking %s %s (%s)\n",
+		"actionlint %s: failed with %s %s while checking %s %s\n",
 		actionVersion(),
 		problemCount,
 		problems,
 		fileCountText,
 		files,
-		strings.Join(integrations, ", "),
 	)
 }
 

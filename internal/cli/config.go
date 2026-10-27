@@ -88,7 +88,6 @@ func migrateCommandConfig(ctx context.Context, streams Command, req configMigrat
 		return 0, errors.New("config migrate requires a selected config file; use --config PATH")
 	}
 	migration, err := localapp.PrepareConfigMigration(ctx, path, localapp.DefaultPluginOptions{
-		Shellcheck: true, Ruff: true,
 		Warning: func(message string) { _, _ = fmt.Fprintln(streams.Stderr, "warning: "+message) },
 	})
 	if err != nil {

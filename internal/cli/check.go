@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
-
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fix"
@@ -45,24 +43,17 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		log = &commandJSONLogWriter{out: log}
 	}
 	log = &synchronizedLogWriter{out: log}
-	if c.Pyflakes != "" {
-		fmt.Fprintln(log, "warning: --pyflakes is deprecated; use --ruff for Python script linting")
-	}
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return 0, err
 	}
 	options := application.Options{
-		AllowConfigProcesses: c.AllowConfigProcesses,
-		WorkingDir:           workingDir, ConfigFile: c.Config.Path,
+		WorkingDir: workingDir, ConfigFile: c.Config.Path,
 		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""),
 
 		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
 		Debug: c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
-		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: adapters.Options{
-			ShellCheck: c.ShellCheck, ShellcheckOptions: c.ShellcheckOptions,
-			Ruff: c.Ruff, RuffOptions: c.RuffOptions,
-		}.Registrations(),
+		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict},
 	}
 	if c.ResolverCommand != "" {
 		options.Resolver = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
@@ -90,9 +81,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
 		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
-	if err := c.pluginSelection().Migrate(ctx, workingDir, input, c.defaultPlugins(func(message string) {
+	if err := c.pluginSelection().Migrate(ctx, workingDir, input, localapp.DefaultPluginOptions{Warning: func(message string) {
 		_, _ = fmt.Fprintln(log, "warning: "+message)
-	})); err != nil {
+	}}); err != nil {
 		return 0, err
 	}
 	plugins, err := c.pluginSelection().Resolve(ctx, workingDir, input)

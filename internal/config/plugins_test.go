@@ -36,7 +36,7 @@ func TestDirectPluginDeclaration(t *testing.T) {
 
 func TestPluginDeclarations(t *testing.T) {
 	cfg, err := Parse([]byte(`plugins:
-  - Kjanat/Shellcheck@v1
+  - Kjanat/Example-check@v1
   - name: gitlab.com/Group/Subgroup/Plugin
     version: latest
     registry: https://Example.com/catalog
@@ -45,7 +45,7 @@ func TestPluginDeclarations(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := PluginDeclarations{
-		{Name: "github.com/kjanat/shellcheck", Version: "v1", Registry: pluginref.DefaultRegistry},
+		{Name: "github.com/kjanat/example-check", Version: "v1", Registry: pluginref.DefaultRegistry},
 		{Name: "gitlab.com/group/subgroup/plugin", Version: "latest", Registry: "https://example.com/catalog/"},
 	}
 	if diff := cmp.Diff(want, cfg.Plugins); diff != "" {
@@ -69,13 +69,13 @@ func TestPluginAliasRegistryScope(t *testing.T) {
   - community-check
   - name: community-check
     registry: https://custom.example/
-  - github.com/kjanat/actionlint-plugin-ruff
+  - github.com/kjanat/actionlint-plugin-example-check
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(cfg.Plugins) != 3 || cfg.Plugins[0].Name != "community-check" || cfg.Plugins[1].Name != "community-check" ||
-		cfg.Plugins[2].String() != "github.com/kjanat/actionlint-plugin-ruff" {
+		cfg.Plugins[2].String() != "github.com/kjanat/actionlint-plugin-example-check" {
 		t.Fatalf("alias scope or explicit repository rewritten: %+v", cfg.Plugins)
 	}
 	data, err := yaml.Marshal(cfg.Plugins)
