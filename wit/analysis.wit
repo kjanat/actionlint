@@ -1,0 +1,4 @@
+interface analysis {
+    use types.{request, analysis-result, failure};
+    analyze: func(input: request) -> result<analysis-result, failure>;
+}

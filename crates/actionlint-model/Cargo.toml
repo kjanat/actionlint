@@ -1,0 +1,8 @@
+[package]
+name              = "actionlint-model"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

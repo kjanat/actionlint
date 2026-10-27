@@ -53,8 +53,8 @@ or a swapped asset fails the build.
 ```bash
 cd .github/actions/npm-packages
 GITHUB_WORKSPACE="$(git rev-parse --show-toplevel)" \
-  INPUT_REPOSITORY=kjanat/actionlint \
-  INPUT_VERSION=2.0.0 \
+INPUT_REPOSITORY=kjanat/actionlint \
+INPUT_VERSION=2.0.0 \
   go run .
 ```
 

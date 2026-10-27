@@ -366,18 +366,18 @@ and initialize `compinit` for Zsh. Regenerate saved scripts after upgrading.
 
 ```sh
 mkdir -p ~/.local/share/bash-completion/completions
-actionlint completion bash > ~/.local/share/bash-completion/completions/actionlint
+actionlint completion bash >~/.local/share/bash-completion/completions/actionlint
 ```
 
 ```sh
 mkdir -p ~/.config/fish/completions
-actionlint completion fish > ~/.config/fish/completions/actionlint.fish
+actionlint completion fish >~/.config/fish/completions/actionlint.fish
 ```
 
 The zsh script belongs in a directory listed in `$fpath`.
 
 ```sh
-actionlint completion zsh > "${fpath[1]}/_actionlint"
+actionlint completion zsh >"${fpath[1]}/_actionlint"
 ```
 
 The PowerShell script is loaded from your profile. The first command creates
@@ -581,7 +581,7 @@ reviewdog as explained in ['Tools integration' section](#tools-integ) below.
 Use the built-in format directly:
 
 ```sh
-actionlint --output sarif > actionlint.sarif
+actionlint --output sarif >actionlint.sarif
 ```
 
 Native SARIF output is a typed JSON document.

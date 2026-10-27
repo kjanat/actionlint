@@ -100,7 +100,7 @@ automatically. Cancellation still cancels the command.
 actionlint --version --json
 actionlint doctor --json
 actionlint doctor --json --json-pretty=false
-actionlint check --json workflow.yml > findings.json
+actionlint check --json workflow.yml >findings.json
 ```
 
 ### Color and hyperlinks

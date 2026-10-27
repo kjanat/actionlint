@@ -1111,6 +1111,7 @@ shell and working directory. Findings point to `action.yml` or `action.yaml`.
 Remote action contents are not downloaded for these checks.
 
 [workflow-scripts-doc]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/add-scripts
+
 <a id="check-shellcheck-integ"></a>
 
 ## [shellcheck][shellcheck] integration for `run:`
@@ -1328,8 +1329,8 @@ Instead, you should store the JSON string in an environment variable:
 
 ```sh
 - run: echo "${BODIES}"
-  env:
-    BODIES: '${{ toJSON(github.event.*.body) }}'
+env:
+BODIES: '${{ toJSON(github.event.*.body) }}'
 ```
 
 The following functions return a boolean value so it is not possible to inject anything as the result of the returned value.

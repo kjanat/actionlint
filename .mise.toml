@@ -9,20 +9,32 @@ args    = ["run", "./cmd/actionlint"]
 env     = { GOFLAGS = "-buildvcs=true" }
 
 [tools]
-npm                               = "12.2.0"
-go                                = { prefix = "1.27" }
-node                              = { prefix = "26" }
-shellcheck                        = { prefix = "0.11" }
-rshellcheck                       = { version = "latest" }
-ruff                              = "0.17.0"
-tinygo                            = { prefix = "0.43" }
-wasm-tools                        = "latest"
-"github:charmbracelet/markscribe" = { prefix = "0.8" }
-"github:jgm/pandoc"               = { prefix = "3" }
-"github:kjanat/runner"            = { prefix = "0.28" }
-"github:microsoft/TypeScript"     = { prefix = "7" }
-"github:tombi-toml/tombi"         = { prefix = "1.8" }
-"github:biomejs/biome"            = { prefix = "2", version_prefix = "@biomejs/biome@" }
+npm                           = "12.2.0"
+go                            = { prefix = "1.27" }
+node                          = { prefix = "26" }
+shellcheck                    = { prefix = "0.11" }
+rshellcheck                   = { version = "latest" }
+ruff                          = "0.17.0"
+tinygo                        = { prefix = "0.43" }
+wasm-tools                    = "latest"
+mr-boxington                  = "latest"
+"github:jgm/pandoc"           = { prefix = "3" }
+"github:kjanat/runner"        = { prefix = "0.28" }
+"github:microsoft/TypeScript" = { prefix = "7" }
+"github:tombi-toml/tombi"     = { prefix = "1.9" }
+"github:biomejs/biome"        = { prefix = "2.5", version_prefix = "@biomejs/biome@" }
+
+[tools.rust]
+version      = "stable"
+profile      = "default"
+targets      = ["wasm32-unknown-unknown", "wasm32-wasip2"]
+mr_boxington = true
+
+[tools."wit-lsp"]
+version    = "branch:master"
+crate      = "wit-cli"
+bin        = "wit"
+rename_exe = "wit-lsp"
 
 [tools."golangci-lint"]
 prefix  = "2"
@@ -44,6 +56,7 @@ depends = ["tombi", "go"]
 tombi       = "github:tombi-toml/tombi"
 shellcheck  = "github:koalaman/shellcheck"
 rshellcheck = "github:kjanat/shellcheck-rs"
+wit-lsp     = "cargo:https://github.com/kjanat/wit-lsp"
 
 [settings]
 experimental                        = true

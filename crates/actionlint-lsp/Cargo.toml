@@ -1,0 +1,16 @@
+[package]
+name              = "actionlint-lsp"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+actionlint-app             = { path = "../actionlint-app" }
+actionlint-model.workspace = true
+crossbeam-channel          = "0.5"
+lsp-server                 = "0.10"
+lsp-types                  = "0.97"
+serde_json                 = "1"
+
+[lints]
+workspace = true

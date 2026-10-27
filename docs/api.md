@@ -24,11 +24,11 @@ types.
 
 ```go
 result, err := actionlint.Analyze(ctx, analysis.Request{
-    Sources: []analysis.Source{{
-        Path: "workflow.yml",
-        Content: source,
-        Config: cfg,
-    }},
+	Sources: []analysis.Source{{
+		Path:    "workflow.yml",
+		Content: source,
+		Config:  cfg,
+	}},
 })
 ```
 
@@ -47,8 +47,8 @@ JSON, but it is not the CLI's versioned result envelope.
 
 ```go
 result, err := analysis.Files(ctx, paths, analysis.FileOptions{
-    Options: analysis.Options{WorkingDir: directory},
-    ConfigFile: "actionlint.yaml",
+	Options:    analysis.Options{WorkingDir: directory},
+	ConfigFile: "actionlint.yaml",
 })
 ```
 
@@ -77,8 +77,8 @@ Implement the following contract and supply it through `Options.Analyzers`:
 
 ```go
 type Analyzer interface {
-    Descriptor() analyzer.Descriptor
-    Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error)
+	Descriptor() analyzer.Descriptor
+	Analyze(context.Context, analyzer.Input) ([]diagnostic.Diagnostic, error)
 }
 ```
 
@@ -165,7 +165,7 @@ Supply `Options.LoadScriptEngine` to authorize configuration-selected Wasm engin
 
 ```go
 options.LoadScriptEngine = func(ctx context.Context, path string) (analyzer.ScriptBackend, error) {
-    return plugin.LoadEngine(ctx, path, plugin.EngineOptions{})
+	return plugin.LoadEngine(ctx, path, plugin.EngineOptions{})
 }
 ```
 

@@ -1,74 +1,34 @@
-[package]
-name              = "actionlint-plugin-examples"
-version           = "0.1.0"
-edition.workspace = true
-publish           = false
-autoexamples      = false
-
 [workspace]
 resolver = "3"
-members  = ["crates/*", "testdata/plugins/*"]
+members  = ["crates/*", "plugins/*", "xtask"]
 
 [workspace.package]
+version = "2.0.0-dev"
 edition = "2024"
+publish = false
 
 [workspace.dependencies]
-wit-bindgen = "0.63"
+actionlint-engine          = { path = "crates/actionlint-engine" }
+actionlint-model           = { path = "crates/actionlint-model" }
+actionlint-plugin-sdk      = { path = "crates/actionlint-plugin-sdk" }
+actionlint-rules           = { path = "crates/actionlint-rules" }
+actionlint-syntax          = { path = "crates/actionlint-syntax" }
+tree-sitter-github-actions = "0.1.0"
 
-[[example]]
-crate-type = ["cdylib"]
-name       = "pipe-to-shell"
-path       = "examples/plugins/pipe-to-shell.rs"
+tree-sitter = "=0.27.1"
+wit-bindgen = "=0.63.0"
+yaml-rust2  = "=0.13.0"
 
-[[example]]
-crate-type = ["cdylib"]
-name       = "pinned-actions"
-path       = "examples/plugins/pinned-actions.rs"
-test       = false
+[workspace.dependencies.wasmtime]
+version          = "=49.0.0"
+default-features = false
+features         = ["component-model", "cranelift", "runtime", "std"]
 
-[[example]]
-crate-type        = ["cdylib"]
-name              = "source-annotations"
-path              = "examples/plugins/source-annotations.rs"
-required-features = ["source-annotations-fixture"]
-test              = false
+[workspace.lints.clippy]
+all = "deny"
 
-[[example]]
-crate-type = ["cdylib"]
-name       = "buildkite-runners"
-path       = "examples/plugins/buildkite-runners.rs"
-test       = false
+[workspace.lints.rust]
+unsafe_code = "forbid"
 
-[[example]]
-crate-type = ["cdylib"]
-name       = "script-engine"
-path       = "examples/plugins/script-engine.rs"
-test       = false
-
-[[example]]
-crate-type        = ["cdylib"]
-name              = "managed-no-sudo"
-path              = "examples/plugins/managed-no-sudo.rs"
-required-features = ["tool-integration-fixture"]
-test              = false
-
-[dev-dependencies]
-actionlint-extension-api = { path = "crates/actionlint-extension-api" }
-serde                    = { version = "1", features = ["derive"] }
-serde_json               = "1"
-sha2                     = "0.10"
-wit-bindgen.workspace    = true
-
-[features]
-action-input-fixture       = []
-ruff-fixture               = []
-source-annotations-fixture = ["actionlint-extension-api/source-annotations"]
-tool-integration-fixture   = ["actionlint-extension-api/tool-integration"]
-
-[profile.wasm]
-inherits      = "release"
-opt-level     = "s"
-strip         = true
-lto           = true
-panic         = "abort"
-codegen-units = 1
+[patch.crates-io]
+tree-sitter-github-actions = { path = "../../../tree-sitter-github-actions" }

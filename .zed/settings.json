@@ -32,6 +32,10 @@
         "source.organizeImports.biome": true
       }
     },
+    "TOML": {
+      "formatter": { "language_server": { "name": "tombi" } },
+      "language_servers": ["tombi", "..."]
+    },
     "Markdown": {}
   },
   "markdown_preview": { // available in per-project config since https://github.com/kjanat/zed-editor v1.4.10

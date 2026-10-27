@@ -983,7 +983,7 @@ This project was forked from [rhysd/actionlint] after its v1.7.12 release. Every
   - By these additions, now actionlint can output the result in [the SARIF format]. SARIF is a format for the output of static analysis tools used by [GitHub CodeQL]. [the example Go template] to format actionlint output in SARIF.
 
     ```sh
-    actionlint -format "$(cat /path/to/sarif_template.txt)" > output.json
+    actionlint -format "$(cat /path/to/sarif_template.txt)" >output.json
     ```
 
   - `allKinds` returns the kinds (lint rules) information as an array. You can include what lint rules are defined in the command output.
