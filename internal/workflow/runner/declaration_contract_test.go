@@ -79,3 +79,32 @@ func TestDeclarationChecksPreserveExternalProviderAuthority(t *testing.T) {
 		t.Fatalf("missing provider became a label rejection: knowledge=%+v error=%v", knowledge, err)
 	}
 }
+
+func TestBuiltinLabelFindingsRespectSnapshotEvidence(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		snapshot runnerapi.Snapshot
+		want     int
+	}{
+		{name: "no snapshot uses fresh built-in catalog", want: 2},
+		{name: "fresh complete", snapshot: runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}, want: 2},
+		{name: "stale", snapshot: runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Stale, Complete: true}},
+		{name: "incomplete", snapshot: runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Fresh}},
+		{name: "metadata only", snapshot: runnerapi.Snapshot{Scope: "scope", ObtainedAt: "2026-10-27T00:00:00Z"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-lates, windows-latest], exclude: [{os: ubuntu-lates}]}\n    runs-on: [linux, '${{ matrix.os }}']\n    steps: [{run: echo ok}]\n")
+			knowledge, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Snapshot: tc.snapshot}, "scope")
+			if err != nil {
+				t.Fatal(err)
+			}
+			job := knowledge.Job(w.Views["test"])
+			if len(job.Findings) != tc.want || job.PathsKnown || job.Platform != Any || job.Shell != "" {
+				t.Fatalf("snapshot evidence changed label certainty policy: %+v", job)
+			}
+			if tc.want == 2 && (!strings.Contains(job.Findings[0].Message, `label "ubuntu-lates" is unknown`) || !strings.Contains(job.Findings[1].Message, "conflicts with label")) {
+				t.Fatalf("fresh evidence lost declaration spelling or executed compatibility: %+v", job.Findings)
+			}
+		})
+	}
+}

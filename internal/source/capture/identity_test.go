@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestCanonicalIdentityDoesNotDeclareSourcesOrPromoteAfterSeal(t *testing.T) {
@@ -41,6 +43,31 @@ func TestCanonicalIdentityDoesNotDeclareSourcesOrPromoteAfterSeal(t *testing.T) 
 	rows, err := store.Sources()
 	if err != nil || len(rows) != 0 || resolutions.Load() != 1 {
 		t.Fatalf("identity memo escaped to sources: rows=%+v error=%v resolutions=%d", rows, err, resolutions.Load())
+	}
+}
+
+func TestCanonicalIdentityAliasRequiresExplicitDocumentPromotion(t *testing.T) {
+	root := t.TempDir()
+	path, alias := filepath.Join(root, "source.yml"), filepath.Join(root, "alias.yml")
+	store, err := newStoreWithResolver(t.Context(), []Overlay{{Path: path, Content: []byte("captured"), Coordinates: source.YAML}}, func(context.Context, string) ([]byte, error) {
+		t.Error("alias promotion reread captured bytes")
+		return nil, nil
+	}, func(string) string { return path })
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupStore(t, store)
+	if _, err := store.CanonicalIdentity(t.Context(), alias); err != nil {
+		t.Fatal(err)
+	}
+	if _, state, err := store.Lookup(alias); err != nil || state != Absent {
+		t.Fatalf("identity-only alias authorized a document: %v %v", state, err)
+	}
+	if _, err := store.Canonical(t.Context(), alias); err != nil {
+		t.Fatal(err)
+	}
+	if captured, state, err := store.Lookup(alias); err != nil || state != Captured || string(captured.Bytes()) != "captured" || len(captured.Aliases()) != 2 {
+		t.Fatalf("document promotion lost the existing capture: %v %v", state, err)
 	}
 }
 

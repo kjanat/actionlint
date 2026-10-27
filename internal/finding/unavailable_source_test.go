@@ -45,6 +45,7 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 				if filepath.Clean(path) != filepath.Clean(expected) {
 					t.Errorf("E7/M07 temporary source marker escaped producer: %s in %s", name, path)
 				}
+				return false
 			}
 			return true
 		})
@@ -65,8 +66,25 @@ func unavailableSourceUse(node ast.Node) (string, bool) {
 	case *ast.SelectorExpr:
 		return expression.Sel.Name, false
 	case *ast.CallExpr:
-		if name, ok := expression.Fun.(*ast.Ident); ok {
-			return name.Name, false
+		switch name := expression.Fun.(type) {
+		case *ast.Ident:
+			return "", name.Name == "UnavailableSource"
+		case *ast.SelectorExpr:
+			return "", name.Sel.Name == "UnavailableSource"
+		}
+	case *ast.Ident:
+		if expression.Obj != nil {
+			if declaration, ok := expression.Obj.Decl.(*ast.FuncDecl); ok && declaration.Name == expression {
+				return "", false
+			}
+		}
+		return expression.Name, false
+	case *ast.TypeSpec:
+		switch name := expression.Type.(type) {
+		case *ast.Ident:
+			return "", name.Name == "UnavailableSource"
+		case *ast.SelectorExpr:
+			return "", name.Sel.Name == "UnavailableSource"
 		}
 	case *ast.CompositeLit:
 		switch name := expression.Type.(type) {
@@ -86,8 +104,10 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 	}{
 		{source: `NativeShellcheckUnavailable("reported.sh", false)`, factory: "NativeShellcheckUnavailable"},
 		{source: `finding.PluginShellcheckUnavailable("reported.sh")`, factory: "PluginShellcheckUnavailable"},
+		{source: `NativeShellcheckUnavailable`, factory: "NativeShellcheckUnavailable"},
 		{source: `UnavailableSource{state: sourceNotCaptured}`, literal: true},
 		{source: `finding.UnavailableSource{}`, literal: true},
+		{source: `UnavailableSource(other)`, literal: true},
 	} {
 		node, err := parser.ParseExpr(expression.source)
 		if err != nil {
@@ -98,6 +118,7 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 			name, literal := unavailableSourceUse(node)
 			if name == expression.factory && name != "" {
 				factories++
+				return false
 			}
 			if literal {
 				literals++

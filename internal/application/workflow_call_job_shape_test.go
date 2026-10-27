@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
-
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"

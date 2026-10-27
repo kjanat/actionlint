@@ -66,6 +66,28 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
+				if tc.name == "excluded cross OS pairings" {
+					declaration, err := snapshot.JobView(workflow.Jobs["test"])
+					if err != nil {
+						t.Fatal(err)
+					}
+					answers := knowledge.Job(declaration).Answers
+					operatingSystems := map[runnerapi.OS]int{}
+					for _, answer := range answers {
+						switch resolution := answer.Resolution.(type) {
+						case runnerapi.Resolved:
+							if len(resolution.Candidates) != 1 {
+								t.Fatalf("pair did not resolve exactly one runner: %+v", resolution)
+							}
+							operatingSystems[resolution.Candidates[0].OS]++
+						default:
+							t.Fatalf("excluded-pair test did not execute a known valid pairing: %+v", answer)
+						}
+					}
+					if len(answers) != 2 || operatingSystems[runnerapi.Linux] != 1 || operatingSystems[runnerapi.Windows] != 1 {
+						t.Fatalf("excluded-pair scenario lost surviving execution combinations: %+v", answers)
+					}
+				}
 				production := productionRunnerRule(t, snapshot, knowledge)
 				if err := production.VisitJobPre(workflow.Jobs["test"]); err != nil {
 					t.Fatal(err)
