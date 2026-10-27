@@ -36,4 +36,4 @@ new users. Subcommands were implicit.
 
 ## Open
 
-- `--fail-on` default: `error` or `warning`? Leaning `error`.
+- None. `--fail-on` default is `error`. `warn` is opt-in (ADR-0015 levels).

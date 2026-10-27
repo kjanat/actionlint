@@ -6,6 +6,7 @@ This is a semantic model of GitHub Actions with consumers.
 
 - [`design/architecture.md`](design/architecture.md) — layers, data flow, identity, diagnostics
 - [`design/repo-layout.md`](design/repo-layout.md) — crates, dependency direction, what goes where
+- [`design/rules.md`](design/rules.md) — rule ids, areas, categories, config, suppression
 - [`adr/`](adr/README.md) — decisions, one per file, numbered
 
 Reading order: architecture → repo-layout → ADRs.

@@ -73,7 +73,7 @@ world extension {
   `inherit_network` or `socket_addr_check` is called. Host grants
   `preopened_dir(host, guest, FsPerms::ReadOnly)` only when an extension's
   manifest asks and config allows. `FsPerms` is `ReadOnly | ReadWrite`.
-  [wasmtime `crates/wasi/src/sockets/mod.rs`; docs.rs/wasmtime-wasi
+  [wasmtime `crates/wasi/src/sockets/mod.rs`, docs.rs/wasmtime-wasi
   `WasiCtxBuilder`, `filesystem::FsPerms`]
 - Host bindings: `wasmtime::component::bindgen!` at compile time. Guest
   (Rust): `wit_bindgen::generate!`. Nothing committed (ADR-0012).
