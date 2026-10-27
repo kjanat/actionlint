@@ -100,6 +100,21 @@ func (s *Store) Sources() ([]Source, error) {
 	return rows, nil
 }
 
+// Revision returns an exact captured revision only after sealing. It performs
+// no metadata or content IO and never admits failed or conflicted documents.
+func (s *Store) Revision(revision source.Revision) (Snapshot, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.sealed || !revision.Valid() {
+		return Snapshot{}, false
+	}
+	e := s.docs[revision.Document()]
+	if e == nil || state(e) != Captured || e.value.revision != revision {
+		return Snapshot{}, false
+	}
+	return s.snapshot(e), true
+}
+
 // ReadAliases lists requested Read aliases whose documents sealed as Captured,
 // including cancelled waiters. Overlays and identity-only lookups do not count.
 func (s *Store) ReadAliases() ([]string, error) {

@@ -121,6 +121,18 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return all, outline, err
 	}
+	// The request's display spelling is an authorized entry address. Resolve it
+	// through this capture owner before sealing, so metadata aliases (including
+	// Windows drive spelling) need no post-publication filesystem fallback.
+	if path != "" {
+		displayAddress := path
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			displayAddress = filepath.Join(s.workingDir, path)
+		}
+		if _, err := s.captures.Canonical(s.ctx, displayAddress); err != nil {
+			return all, outline, err
+		}
+	}
 	composed := composition.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
 		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
@@ -153,6 +165,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	}
 	if len(registrations) != 0 {
 		input, inputErr := composed.AnalyzerInput(path, sourcePath, content, document, references)
+		input.Revision, input.Coordinates = captured.Revision(), captured.Coordinates()
 		analysisErr = errors.Join(analysisErr, inputErr)
 		external, err := runDocumentAnalyzers(s.ctx, registrations, input, composed.Sources, usedRules)
 		all = append(all, external...)
@@ -220,6 +233,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		}
 	}}
 	toolContext.Document = document.AnalyzerSource(path, content, snapshot.Reference())
+	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
 	if err != nil {
 		return result, err

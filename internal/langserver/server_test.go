@@ -301,14 +301,15 @@ func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	relatedSource := testSource(t, related, "\ufeff😀related\n")
 	done := make(chan error, 1)
 	go func() {
 		done <- Serve(t.Context(), server, server, func(_ context.Context, documents map[string]Document) (Analysis, error) {
 			for _, doc := range documents {
 				if doc.Text == "uses dependency" {
 					return Analysis{
-						Sources:     map[string]Source{dependency: testSource(t, dependency, "\ufeff😀bad\n"), related: testSource(t, related, "\ufeff😀related\n")},
-						Diagnostics: []diagnostic.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Related: []diagnostic.Related{{Path: related, Message: "related", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 9}}}}},
+						Sources:     map[string]Source{dependency: testSource(t, dependency, "\ufeff😀bad\n"), related: relatedSource},
+						Diagnostics: []diagnostic.Diagnostic{{Path: dependency, Rule: "test", Message: "bad", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 5}, Related: []diagnostic.Related{{Revision: relatedSource.Revision, Coordinates: relatedSource.Coordinates, Path: related, Message: "related", Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 9}}}}},
 					}, nil
 				}
 			}

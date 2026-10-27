@@ -18,18 +18,20 @@ import (
 
 // Unit snapshots invocation context before analyzers run.
 type Unit struct {
-	Occurrence invocation.ID
-	Reference  source.Reference
-	Run        documentparse.ExecRunView
-	Input      *ActionInput
-	Shell      *string
-	Config     *repoconfig.Config
-	Path       string
-	Content    []byte
-	Origin     *findingmodel.IgnoreOrigin
-	Owner      *findingmodel.Owner
-	Scope      *Scope
-	Execution  Execution
+	Revision    source.Revision
+	Coordinates source.Coordinates
+	Occurrence  invocation.ID
+	Reference   source.Reference
+	Run         documentparse.ExecRunView
+	Input       *ActionInput
+	Shell       *string
+	Config      *repoconfig.Config
+	Path        string
+	Content     []byte
+	Origin      *findingmodel.IgnoreOrigin
+	Owner       *findingmodel.Owner
+	Scope       *Scope
+	Execution   Execution
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.

@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/langserver"
+	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	"actionlint.kjanat.dev/v2/internal/workflow/editor"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -168,10 +169,22 @@ func editorAnalysis(result *application.Result, directory string, documents map[
 			continue
 		}
 		d.Path = path
-		d.Related = slices.Clone(d.Related)
-		for j := range d.Related {
-			d.Related[j].Path = address(d.Related[j].Path)
+		keptRelated := make([]diagnostic.Related, 0, len(d.Related))
+		for _, related := range d.Related {
+			originalAddress := address(related.Path)
+			alias, admitted := preferredAlias(related.Revision, originalAddress)
+			if !admitted || !related.Revision.Valid() || related.Coordinates != result.CapturedSources[alias].Coordinates {
+				missing[originalAddress] = struct{}{}
+				continue
+			}
+			if _, _, err := sourceposition.Range(result.CapturedSources[alias].Content, related.Coordinates, related.Start, related.End); err != nil {
+				missing[originalAddress] = struct{}{}
+				continue
+			}
+			related.Path = alias
+			keptRelated = append(keptRelated, related)
 		}
+		d.Related = keptRelated
 		d.Fixes = slices.Clone(d.Fixes)
 		for j := range d.Fixes {
 			f := &d.Fixes[j]

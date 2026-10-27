@@ -18,7 +18,8 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/fix"
+	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 type position struct {
@@ -129,7 +130,7 @@ func FileURI(path string) string {
 }
 
 func editorPosition(content []byte, p diagnostic.Position) (position, error) {
-	offset, err := fix.Offset(content, p)
+	offset, err := sourceposition.Offset(content, source.YAML, p)
 	if err != nil {
 		return position{}, err
 	}

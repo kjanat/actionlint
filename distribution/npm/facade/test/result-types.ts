@@ -9,7 +9,37 @@ import type {
 	StepOutline,
 	UsesReference,
 	WorkflowOutline,
+	RelatedLocation,
+	SourceRevision,
 } from '@kjanat/actionlint/result';
+
+type AssertFalse<T extends false> = T;
+type LocationFields = {
+	message: string;
+	path: string;
+	start: { line: number; column: number };
+	end: { line: number; column: number };
+};
+export type RevisionAloneRejected = AssertFalse<
+	LocationFields & { revision: SourceRevision } extends RelatedLocation ? true : false
+>;
+export type CoordinatesAloneRejected = AssertFalse<
+	LocationFields & { coordinates: 'yaml' } extends RelatedLocation ? true : false
+>;
+export const boundRelated: RelatedLocation = {
+	message: 'declaration',
+	path: 'ci.yml',
+	start: { line: 1, column: 1 },
+	end: { line: 1, column: 1 },
+	revision: { document: '/repo/ci.yml', digest: '0'.repeat(64) },
+	coordinates: 'yaml',
+};
+export const unboundRelated: RelatedLocation = {
+	message: 'declaration',
+	path: 'ci.yml',
+	start: { line: 1, column: 1 },
+	end: { line: 1, column: 1 },
+};
 
 export function completedStatus(result: CheckResult): 0 | 1 | undefined {
 	if (result.completed) return result.exit_code;

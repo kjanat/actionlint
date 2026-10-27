@@ -40,6 +40,16 @@ Positions are one-based Unicode code points, with exclusive ends. Paths are
 relative to the analysis working directory where possible. Do not use array
 indexes as stable identities.
 
+Related locations optionally carry a paired `revision: {document, digest}` and
+`coordinates` (`yaml` or `raw-lf`). Both fields must be present or both absent.
+The document identity is absolute (except the reserved `<stdin>` identity),
+independent of the display path. A binding is a producer claim: publication
+checks the exact captured revision, coordinate model, admitted path alias and
+strict half-open range. Failed, conflicted, unavailable or invalid-UTF-8 sources
+cannot authorize a location. Invalid related locations are omitted individually;
+the primary remains and an `admission-rejected` error counts the withheld
+locations exactly, making the result incomplete.
+
 Successful CLI results go to stdout or `--output-file`. Failed CLI checks emit
 the result on stderr and preserve an existing output file. Logs and opt-in
 summaries on stderr use separate records. Argument errors before an operation

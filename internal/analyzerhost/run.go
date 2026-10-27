@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/related"
 )
 
 // Run isolates each analyzer's input and joins all started work.
@@ -157,6 +158,7 @@ func RunOne(ctx context.Context, input analyzer.Input, registration PreparedRegi
 	}
 	findings, err := registration.data.analyzer.Analyze(ctx, supplied)
 	findings = slices.Clone(findings)
+	err = errors.Join(err, related.BindDiagnostics(findings, input.Path, input.Revision, input.Coordinates))
 	if canceled := ctx.Err(); canceled != nil && !errors.Is(err, canceled) {
 		err = errors.Join(err, canceled)
 	}

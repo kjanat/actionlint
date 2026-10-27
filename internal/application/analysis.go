@@ -30,6 +30,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/related"
 	"actionlint.kjanat.dev/v2/internal/report"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
@@ -105,6 +106,30 @@ func runAnalysis(ctx context.Context, request analysisRequest) (*analysisResult,
 // A join failure prevents publication; it never turns into a partial result.
 const sourceCaptureJoinTimeout = 5 * time.Second
 
+type sourceCaptureInitialization interface {
+	Join(context.Context) error
+}
+
+type sourceCaptureInitFailure interface {
+	error
+	sourceCaptureInitialization
+	Pending() bool
+}
+
+var _ sourceCaptureInitFailure = (*capture.InitError)(nil)
+
+type sourceCaptureConstructor func(context.Context, []capture.Overlay, capture.Reader) (*capture.Store, error)
+
+func joinSourceCaptureInitialization(ctx context.Context, cause error, initialization sourceCaptureInitialization, cancel context.CancelFunc, budget time.Duration) error {
+	cancel()
+	if budget <= 0 {
+		budget = sourceCaptureJoinTimeout
+	}
+	cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), budget)
+	defer stop()
+	return errors.Join(cause, initialization.Join(cleanup))
+}
+
 func joinSourceCaptures(ctx context.Context, captures *capture.Store, cancel context.CancelFunc, budget time.Duration, abort bool) (bool, error) {
 	if abort {
 		cancel()
@@ -126,7 +151,11 @@ func joinSourceCaptures(ctx context.Context, captures *capture.Store, cancel con
 	return retry == nil, errors.Join(first, retry)
 }
 
-func run(ctx context.Context, request analysisRequest, log io.Writer, level LogLevel) (result *analysisResult, resultErr error) {
+func run(ctx context.Context, request analysisRequest, log io.Writer, level LogLevel) (*analysisResult, error) {
+	return runWithSourceCaptureConstructor(ctx, request, log, level, capture.New)
+}
+
+func runWithSourceCaptureConstructor(ctx context.Context, request analysisRequest, log io.Writer, level LogLevel, newCaptures sourceCaptureConstructor) (result *analysisResult, resultErr error) {
 	if request.Processes == nil {
 		return nil, errors.New("analysis requires an application-owned process pool")
 	}
@@ -224,13 +253,17 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 	// identity-to-index metadata is retained; Store ingests the existing selection
 	// bytes once unless an explicit overlay already owns that canonical document.
 	selectedDocuments := make(map[string]int, len(allSources))
-	captures, err := capture.New(lifetime, overlays, func(_ context.Context, path string) ([]byte, error) {
+	captures, err := newCaptures(lifetime, overlays, func(_ context.Context, path string) ([]byte, error) {
 		if index, selected := selectedDocuments[path]; selected {
 			return allSources[index].Content, nil
 		}
 		return contentReader.ReadFile(filepath.FromSlash(path))
 	})
 	if err != nil {
+		cancel()
+		if initialization, ok := errors.AsType[sourceCaptureInitFailure](err); ok && initialization.Pending() {
+			return nil, joinSourceCaptureInitialization(ctx, err, initialization, cancel, request.captureJoinTimeout)
+		}
 		return nil, err
 	}
 	joined := false
@@ -576,6 +609,7 @@ func (r *analysisResult) collectDiagnostics() {
 func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.Source, workingDir string, prior error) error {
 	admitted := make(map[string]capture.Source, len(rows))
 	withheld := 0
+	withheldRelated := 0
 	for _, row := range rows {
 		admitted[row.Document] = row
 		if row.State == capture.Conflicted && !errors.Is(prior, row.Error) {
@@ -608,6 +642,9 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 				// Another consumer's captured row never promotes a tool's unavailable
 				// reported source. E7/M07 remove this transitional allowance.
 				finding.Reference, finding.Fixes = nil, nil
+				var count int
+				finding.Related, count = admitRelated(finding.Related, captures, admitted, workingDir)
+				withheldRelated += count
 				accepted = append(accepted, finding)
 				continue
 			}
@@ -652,6 +689,9 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 					continue
 				}
 			}
+			var count int
+			finding.Related, count = admitRelated(finding.Related, captures, admitted, workingDir)
+			withheldRelated += count
 			accepted = append(accepted, finding)
 		}
 		clear(file.errors[len(accepted):])
@@ -660,7 +700,7 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 	if withheld != 0 {
 		prior = errors.Join(prior, &admissionRejectedError{count: withheld})
 	}
-	return prior
+	return related.Consolidate(prior, withheldRelated)
 }
 
 type sourceAnalysisError struct {

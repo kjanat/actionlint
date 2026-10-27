@@ -75,6 +75,11 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 			Origin: origin, Owner: &findingmodel.Owner{Job: job, Step: positionPointer(decl.Pos())},
 			Path: scope.Deployment.SourcePath(),
 		}
+		captured, found := collection.Declarations.LookupDocument(record.Declaration.Document)
+		if !found {
+			return nil, fmt.Errorf("%w: script source capture is unavailable", ErrInvalidBatch)
+		}
+		unit.Revision, unit.Coordinates = captured.Capture().Revision(), captured.Capture().Coordinates()
 		if unit.Path != "" {
 			ref := decl.SourceReference()
 			content, found := contents[ref]

@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/related"
 	"actionlint.kjanat.dev/v2/rule"
 	"github.com/kjanat/wacogo"
 )
@@ -365,8 +366,18 @@ func liftDiagnostic(v wacogo.Val) (diagnostic.Diagnostic, error) {
 		}
 		d.Reference = &ref
 	}
-	if d.Related, err = liftRelated(record.Field("related")); err != nil {
+	locations, err := liftList(record.Field("related"), "related locations")
+	if err != nil {
 		return d, err
+	}
+	withheld := 0
+	for i := range locations.Len() {
+		location, err := liftRelated(wacogo.NewValListOf(locations.Get(i)))
+		if err != nil {
+			withheld++
+			continue
+		}
+		d.Related = append(d.Related, location...)
 	}
 
 	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "severity": &d.Severity, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
@@ -386,10 +397,17 @@ func liftDiagnostic(v wacogo.Val) (diagnostic.Diagnostic, error) {
 	if d.Fixes, err = liftFixes(record.Field("fixes")); err != nil {
 		return diagnostic.Diagnostic{}, err
 	}
+	if withheld != 0 {
+		return d, &related.RejectedError{Withheld: withheld}
+	}
 	return d, nil
 }
 
 func liftAnalysis(v wacogo.Val) ([]diagnostic.Diagnostic, error) {
+	return liftAnalysisForInput(v, nil)
+}
+
+func liftAnalysisForInput(v wacogo.Val, input *analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	result, err := liftRecord(v, "analysis outcome")
 	if err != nil {
 		return nil, err
@@ -411,13 +429,30 @@ func liftAnalysis(v wacogo.Val) ([]diagnostic.Diagnostic, error) {
 		return nil, err
 	}
 	diagnostics := make([]diagnostic.Diagnostic, 0, list.Len())
+	withheld := 0
 	for i := range list.Len() {
 		d, diagnosticErr := liftDiagnostic(list.Get(i))
 		if diagnosticErr != nil {
-			analysisErr = errors.Join(analysisErr, fmt.Errorf("diagnostic %d: %w", i, diagnosticErr))
-			continue
+			if rejected, ok := errors.AsType[*related.RejectedError](diagnosticErr); ok {
+				withheld += rejected.Count()
+			} else {
+				analysisErr = errors.Join(analysisErr, fmt.Errorf("diagnostic %d: %w", i, diagnosticErr))
+				continue
+			}
+		}
+		if input != nil {
+			var bindingErr error
+			d.Related, bindingErr = related.Bind(d.Related, input.Path, input.Revision, input.Coordinates)
+			if rejected, ok := errors.AsType[*related.RejectedError](bindingErr); ok {
+				withheld += rejected.Count()
+			} else if bindingErr != nil {
+				analysisErr = errors.Join(analysisErr, bindingErr)
+			}
 		}
 		diagnostics = append(diagnostics, d)
+	}
+	if withheld != 0 {
+		analysisErr = errors.Join(analysisErr, &related.RejectedError{Withheld: withheld})
 	}
 	return diagnostics, analysisErr
 }

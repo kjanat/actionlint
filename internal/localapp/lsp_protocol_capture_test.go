@@ -146,16 +146,22 @@ func TestEditorCaseAliasPublishesCapturedUTF16WithOriginalURI(t *testing.T) {
 }
 
 func TestEditorUnavailableAndRawMismatchLogWithoutPublishingRanges(t *testing.T) {
-	for _, unavailable := range []bool{false, true} {
-		name := "raw LF mismatch"
-		if unavailable {
-			name = "unavailable matching captured row"
-		}
+	for _, name := range []string{"raw LF mismatch", "unavailable matching captured row", "non YAML captured row", "invalid UTF8 captured row"} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			path, text := filepath.Join(root, "workflow.yml"), "first\rsecond\nbad"
-			captured := capturedEditorSource(t, path, []byte(text), source.YAML)
-			result := &application.Result{Diagnostics: []diagnostic.Diagnostic{{Path: path, Start: diagnostic.Position{Line: 2, Column: 1}, Reference: &source.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []report.DiagnosticSource{{Content: []byte(text), RawScript: !unavailable, Unavailable: unavailable}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			model := source.YAML
+			unavailable, raw := false, true
+			switch name {
+			case "unavailable matching captured row":
+				unavailable, raw = true, false
+			case "non YAML captured row":
+				model, text = source.RawLF, "first\nbad"
+			case "invalid UTF8 captured row":
+				text, raw = string([]byte{0xff}), false
+			}
+			captured := capturedEditorSource(t, path, []byte(text), model)
+			result := &application.Result{Diagnostics: []diagnostic.Diagnostic{{Path: path, Start: diagnostic.Position{Line: 2, Column: 1}, Reference: &source.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []report.DiagnosticSource{{Content: []byte(text), RawScript: raw, Unavailable: unavailable}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			publication, logs := firstEditorPublication(t, func(_ context.Context, documents map[string]langserver.Document) (langserver.Analysis, error) {
 				return editorAnalysis(result, root, documents)
 			}, langserver.FileURI(path), text)

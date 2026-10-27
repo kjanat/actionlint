@@ -646,6 +646,15 @@ usable and add a new version for incompatible changes.
 Documents, scripts, invocations and mappings carry source references. Diagnostics
 carry structured help, related locations and revision-bound fixes. Descriptors are
 shared rule metadata with independent category, subcategory, maturity and provider.
+Related locations require paired revision and coordinate evidence. WIT 0.2
+records remain revision-less: the same trusted adapter rule used for native
+analyzers binds only an exact request `Input.Path` match to the supplied captured
+revision/model. Foreign unbound locations are withheld. Explicit bindings remain
+claims until sealed admission verifies the absolute document identity (or
+`<stdin>`), digest, model, admitted display-path alias and strict range. Each
+rejected location is omitted and counted in a typed `admission-rejected` failure;
+the primary diagnostic survives and the result is incomplete. WIT 0.3 and JSON2
+remain versioned migrations for explicit wire bindings, not changes to WIT 0.2.
 Plugins requiring `dependencies` receive literal action and reusable-workflow
 references, including source ranges and owning node identities. Dynamic references are omitted.
 

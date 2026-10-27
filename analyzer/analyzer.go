@@ -51,6 +51,10 @@ type Registration struct {
 // declared by the document itself. Invoked scripts belong to composite actions
 // the document calls and name their own Path.
 type Input struct {
+	// Revision and Coordinates bind this request's own Path to captured bytes.
+	// They are independent of the invocation graph's entry Reference.
+	Revision     source.Revision
+	Coordinates  source.Coordinates
 	Reference    source.Reference
 	Path         string
 	Content      string
