@@ -79,9 +79,13 @@ func actionInputOutlines(node *syntax.Node) []documentmodel.Input {
 			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowlang.PosAt(key)),
 		}
 		if required := fields["required"]; required != nil {
-			var value *bool
-			if err := codec.Decode(required, &value); err == nil {
-				input.Required = value
+			session, cursor, err := codec.Open(required)
+			if err == nil {
+				var value *bool
+				if err := cursor.Decode(&value); err == nil {
+					input.Required = value
+				}
+				session.Close()
 			}
 		}
 		inputs = append(inputs, input)

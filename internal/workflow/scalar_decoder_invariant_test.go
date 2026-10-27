@@ -71,11 +71,11 @@ var scalarDecoderInvariantCorpus = []string{
 func TestScalarDecoderInvariants(t *testing.T) {
 	for _, input := range scalarDecoderInvariantCorpus {
 		t.Run(input, func(t *testing.T) {
-			var root syntax.Node
-			if err := codec.Unmarshal([]byte(input), &root); err != nil {
+			root, err := codec.Parse([]byte(input))
+			if err != nil {
 				t.Fatal(err)
 			}
-			checkScalarDecoderInvariants(t, input, &root)
+			checkScalarDecoderInvariants(t, input, root)
 		})
 	}
 }
@@ -88,11 +88,11 @@ func FuzzScalarDecoderInvariants(f *testing.F) {
 		if len(input) > 64*1024 {
 			t.Skip()
 		}
-		var root syntax.Node
-		if err := codec.Unmarshal([]byte(input), &root); err != nil {
+		root, err := codec.Parse([]byte(input))
+		if err != nil {
 			return
 		}
-		checkScalarDecoderInvariants(t, input, &root)
+		checkScalarDecoderInvariants(t, input, root)
 	})
 }
 
@@ -173,8 +173,24 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowlang.Parser, node *synta
 			if node.Style&syntax.SingleQuotedStyle != 0 {
 				quote = "'"
 			}
+			encoded := []byte(quote + rawLine[start:end] + quote)
+			root, err := codec.Parse(encoded)
+			if err != nil {
+				t.Fatalf("escape %+v cannot independently decode: %v", span, err)
+			}
+			session, cursor, err := codec.Open(root)
+			if err != nil {
+				t.Fatalf("escape %+v cannot open source graph: %v", span, err)
+			}
+			entered, err := cursor.Enter()
+			if err != nil {
+				session.Close()
+				t.Fatalf("escape %+v cannot enter source scalar: %v", span, err)
+			}
 			var decoded string
-			if err := codec.Unmarshal([]byte(quote+rawLine[start:end]+quote), &decoded); err != nil {
+			decodeErr := entered.Decode(&decoded)
+			session.Close()
+			if err := decodeErr; err != nil {
 				t.Fatalf("escape %+v cannot independently decode: %v", span, err)
 			}
 			if decoded != value {

@@ -63,7 +63,20 @@ func TestShellcheckFixLiteralMapping(t *testing.T) {
 				Run  string `yaml:"run"`
 				Next string `yaml:"next"`
 			}
-			if err := codec.Unmarshal([]byte(changed), &decoded); err != nil {
+			root, err := codec.Parse([]byte(changed))
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, cursor, err := codec.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer session.Close()
+			entered, err := cursor.Enter()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := entered.Decode(&decoded); err != nil {
 				t.Fatal(err)
 			}
 			if decoded.Run != "#!/bin/bash\necho\té 🐚 \"$VALUE\"\necho \"$OTHER\"\n" || decoded.Next != "unchanged" {

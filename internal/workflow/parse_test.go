@@ -42,13 +42,13 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 }
 
 func TestParserRejectsInvalidMappingKeys(t *testing.T) {
-	var doc syntax.Node
-	if err := codec.Unmarshal([]byte(`!!int first: {nested: !!bool nope}
+	doc, err := codec.Parse([]byte(`!!int first: {nested: !!bool nope}
 !!bool second: value
 '': empty
 valid: kept
 VALID: duplicate
-`), &doc); err != nil {
+`))
+	if err != nil {
 		t.Fatal(err)
 	}
 	p := &Parser{}
@@ -76,8 +76,8 @@ VALID: duplicate
 	}
 	for _, source := range []string{"!!int invalid: value", "? [invalid]\n: value"} {
 		t.Run(source, func(t *testing.T) {
-			var doc syntax.Node
-			if err := codec.Unmarshal([]byte(source), &doc); err != nil {
+			doc, err := codec.Parse([]byte(source))
+			if err != nil {
 				t.Fatal(err)
 			}
 			p := &Parser{}
@@ -140,16 +140,16 @@ func TestParserAliasTypeLocations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var doc syntax.Node
 			src := "anchor: &value " + tt.value + `
 first: *value
 second: *value
 `
-			if err := codec.Unmarshal([]byte(src), &doc); err != nil {
+			doc, err := codec.Parse([]byte(src))
+			if err != nil {
 				t.Fatal(err)
 			}
 			p := &Parser{}
-			p.resolveAliases(&doc)
+			p.resolveAliases(doc)
 			for _, n := range []*syntax.Node{doc.Content[0].Content[3], doc.Content[0].Content[5]} {
 				tt.check(p, n)
 			}
@@ -330,8 +330,8 @@ next: value
 		input := `run: |
   echo $foo
 `
-		var root syntax.Node
-		if err := codec.Unmarshal([]byte(input), &root); err != nil {
+		root, err := codec.Parse([]byte(input))
+		if err != nil {
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]
@@ -358,12 +358,12 @@ next: value
   echo $foo
 run: *script
 `
-		var root syntax.Node
-		if err := codec.Unmarshal([]byte(input), &root); err != nil {
+		root, err := codec.Parse([]byte(input))
+		if err != nil {
 			t.Fatal(err)
 		}
 		p := NewSourceParser([]byte(input))
-		p.resolveAliases(&root)
+		p.resolveAliases(root)
 		if len(p.Errors) != 0 {
 			t.Fatal(p.Errors)
 		}
@@ -384,8 +384,8 @@ run: *script
 
   echo $foo
 `
-		var root syntax.Node
-		if err := codec.Unmarshal([]byte(input), &root); err != nil {
+		root, err := codec.Parse([]byte(input))
+		if err != nil {
 			t.Fatal(err)
 		}
 		run := root.Content[0].Content[1]

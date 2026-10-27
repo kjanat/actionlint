@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestScalarAttachedComments(t *testing.T) {
@@ -31,14 +30,14 @@ func TestScalarAttachedComments(t *testing.T) {
 		for _, newline := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+newline, func(t *testing.T) {
 				input := strings.ReplaceAll(tc.input, "\n", newline)
-				var root syntax.Node
-				if err := codec.Unmarshal([]byte(input), &root); err != nil {
+				root, err := codec.Parse([]byte(input))
+				if err != nil {
 					t.Fatal(err)
 				}
 				mapping := root.Content[0]
 				node := mapping.Content[len(mapping.Content)-1]
 				parser := NewSourceParser([]byte(input))
-				parser.IndexScalarSources(&root)
+				parser.IndexScalarSources(root)
 				source := parser.ScriptSource(node)
 				if source == nil {
 					t.Fatal("missing scalar source")
@@ -58,13 +57,13 @@ func TestScalarAttachedComments(t *testing.T) {
 
 func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
 	const input = "script: &script echo $HI # shellcheck disable=SC2034\n# shellcheck disable=SC2086\nrun: *script\nnext: *script # shellcheck shell=sh\n"
-	var root syntax.Node
-	if err := codec.Unmarshal([]byte(input), &root); err != nil {
+	root, err := codec.Parse([]byte(input))
+	if err != nil {
 		t.Fatal(err)
 	}
 	parser := NewSourceParser([]byte(input))
-	parser.IndexScalarSources(&root)
-	parser.resolveAliases(&root)
+	parser.IndexScalarSources(root)
+	parser.resolveAliases(root)
 	entries := root.Content[0].Content
 	for _, tc := range []struct {
 		index int

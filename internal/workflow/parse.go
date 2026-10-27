@@ -170,13 +170,37 @@ const (
 )
 
 func ResolveYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) map[*syntax.Node]*syntax.Node {
+	var aliases map[*syntax.Node]*syntax.Node
+	for _, use := range inspectYAMLAliases(root, report) {
+		alias := use.parent.Content[use.index]
+		resolved := *alias.Alias
+		use.parent.Content[use.index] = &resolved
+		if aliases == nil {
+			aliases = map[*syntax.Node]*syntax.Node{}
+		}
+		aliases[&resolved] = alias
+	}
+	return aliases
+}
+
+// ValidateYAMLAliases reports GitHub Actions alias diagnostics without changing source nodes.
+func ValidateYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) {
+	inspectYAMLAliases(root, report)
+}
+
+type yamlAliasUse struct {
+	parent *syntax.Node
+	index  int
+}
+
+func inspectYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) []yamlAliasUse {
 	type usage struct {
 		used    bool
 		defined bool
 	}
 
 	anchors := map[*syntax.Node]*usage{}
-	var aliases map[*syntax.Node]*syntax.Node
+	var uses []yamlAliasUse
 
 	var resolve func(*syntax.Node) // For recursive call
 	resolve = func(n *syntax.Node) {
@@ -200,13 +224,7 @@ func ResolveYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAli
 			if u, ok := anchors[c.Alias]; ok {
 				u.used = true
 				if u.defined {
-					// Keep each alias use distinct without relocating the anchored content.
-					resolved := *c.Alias
-					n.Content[i] = &resolved
-					if aliases == nil {
-						aliases = map[*syntax.Node]*syntax.Node{}
-					}
-					aliases[&resolved] = c
+					uses = append(uses, yamlAliasUse{n, i})
 				} else {
 					// Don't resolve the recursive alias because it causes stack overflow on parsing the tree as
 					// `RawYAMLValue`. (#610)
@@ -225,7 +243,7 @@ func ResolveYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAli
 			report(n, YamlAliasDiagnosticUnusedAnchor, fmt.Sprintf("anchor %q is defined but not used", n.Anchor))
 		}
 	}
-	return aliases
+	return uses
 }
 
 func (p *Parser) unexpectedKey(s *String, sec string, expected []string) {

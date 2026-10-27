@@ -7,7 +7,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestQuotedFoldedScriptSource(t *testing.T) {
@@ -37,8 +36,8 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 		{"folded-leading", "run: >+\n\n  echo\n  $foo\n\n", "$foo", "$foo"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var root syntax.Node
-			if err := codec.Unmarshal([]byte(tc.input), &root); err != nil {
+			root, err := codec.Parse([]byte(tc.input))
+			if err != nil {
 				t.Fatal(err)
 			}
 			node := root.Content[0].Content[1]
@@ -89,8 +88,8 @@ func TestStandaloneSourceReconstructionPreservesLineBreaks(t *testing.T) {
 			if got := scalarDocumentSource(document); got != source {
 				t.Fatalf("reconstructed source = %q, want original line breaks in %q", got, source)
 			}
-			var root syntax.Node
-			if err := codec.Unmarshal([]byte(source), &root); err != nil {
+			root, err := codec.Parse([]byte(source))
+			if err != nil {
 				t.Fatal(err)
 			}
 			p := NewSourceParser([]byte(source))
@@ -108,8 +107,8 @@ func TestQuotedScalarEOFPosition(t *testing.T) {
 				t.Run(quote+suffix+newline, func(t *testing.T) {
 					content := "run: " + quote + "echo ${{ github.ref"
 					input := strings.ReplaceAll(content+suffix+quote+"\n", "\n", newline)
-					var root syntax.Node
-					if err := codec.Unmarshal([]byte(input), &root); err != nil {
+					root, err := codec.Parse([]byte(input))
+					if err != nil {
 						t.Fatal(err)
 					}
 					node := root.Content[0].Content[1]
@@ -143,8 +142,8 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 				if ending != "" {
 					input = strings.ReplaceAll(input+"\nnext: value\n", "\n", ending)
 				}
-				var root syntax.Node
-				if err := codec.Unmarshal([]byte(input), &root); err != nil {
+				root, err := codec.Parse([]byte(input))
+				if err != nil {
 					t.Fatal(err)
 				}
 				node := root.Content[0].Content[1]
@@ -167,8 +166,8 @@ func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
 			t.Run(escape+suffix, func(t *testing.T) {
 				content := `run: "echo ${{ github.ref` + escape
 				input := content + suffix + "\"\n"
-				var root syntax.Node
-				if err := codec.Unmarshal([]byte(input), &root); err != nil {
+				root, err := codec.Parse([]byte(input))
+				if err != nil {
 					t.Fatal(err)
 				}
 				node := root.Content[0].Content[1]

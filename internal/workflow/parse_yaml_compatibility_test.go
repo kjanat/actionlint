@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
@@ -77,13 +76,13 @@ func TestFlowMappingNullsPhysicalTree(t *testing.T) {
 		{"{missing: &empty , ok: *empty}", 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
-			var root syntax.Node
-			if err := codec.Unmarshal([]byte(tc.source), &root); err != nil {
+			root, err := codec.Parse([]byte(tc.source))
+			if err != nil {
 				t.Fatal(err)
 			}
 			parser := NewSourceParser([]byte(tc.source))
-			parser.IndexScalarSources(&root)
-			parser.checkFlowMappingNulls(&root, false)
+			parser.IndexScalarSources(root)
+			parser.checkFlowMappingNulls(root, false)
 			if len(parser.Errors) != tc.count {
 				t.Fatalf("want %d diagnostics, got %v", tc.count, parser.Errors)
 			}
