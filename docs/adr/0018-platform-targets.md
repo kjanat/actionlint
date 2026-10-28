@@ -171,15 +171,26 @@ Rules of engagement:
   2. the kind's conventional env vars (`GH_TOKEN`, `GITHUB_TOKEN` for
      github; `GITLAB_TOKEN` for gitlab; `GITEA_TOKEN`/`FORGEJO_TOKEN` for
      gitea)
-  3. the kind's CLI, invoked as a subprocess with a 5 s timeout, output
+  3. **the git credential-helper protocol**, one mechanism for every
+     kind. Write `protocol=https\nhost=<host>\n\n` to the helper's
+     stdin, read `password=<token>` back. Tried in this order, each as a
+     subprocess with `GIT_TERMINAL_PROMPT=0`, a 5 s timeout, output
      never logged:
-     - github: `gh auth token --hostname <host>` (verified: prints the
-       active account's token for that host, honours `GH_TOKEN` itself)
-     - gitlab: `glab auth status --show-token` (verified flag), token
-       parsed from its output
-     - gitea/forgejo: `tea` login config — command to be pinned when
-       `host-gitea` is written
+     - `git credential fill` — whatever helpers the user already
+       registered (verified: returns `username=`/`password=` for
+       github.com on this machine with no prompt)
+     - the kind's CLI speaking the same protocol:
+       github `gh auth git-credential get`, gitlab
+       `glab auth git-credential get`, gitea/forgejo
+       `tea logins helper get` (all three verified to implement the
+       protocol. `tea` is `mise exec -- tea`, config under
+       `$XDG_CONFIG_HOME/tea`, logins listable as JSON with
+       `tea logins list -o json`)
   4. nothing → facts `unavailable`, no prompt, no browser flow
+
+  Step 3 is why there is no per-kind token-printing command to maintain:
+  the credential protocol is the stable surface, and anything the user
+  has taught git (including a password manager) works unchanged.
 
   `[hosts."…"] token = "none"` or `--no-token` stops at step 1.
   `actionlint doctor` prints, per host, which step supplied the token
