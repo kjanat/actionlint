@@ -453,6 +453,11 @@ In addition, actionlint performs special checks on some built-in functions.
 
 - `format()`: Checks placeholders in the first parameter which represents the format string.
 - `fromJSON()`: Checks the JSON string is valid and the return value is strongly typed.
+- `case()`: Infers the result type by merging every value branch and the final default, excluding predicates. For example,
+  `case(github.ref == 'refs/heads/main', 'production', 'development')` has type `string`, so using it for `timeout-minutes`
+  reports a type error. Objects and arrays use the existing property and element type merging rules. Unknown or incompatible
+  result types fall back to `any`; string, number, and boolean combinations follow the existing scalar merging rules.
+  This does not evaluate predicates or infer a union of individual string literals. Values exposed through `env` remain strings.
 
 Example input:
 

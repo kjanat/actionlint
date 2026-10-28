@@ -1,10 +1,61 @@
 package actionlint
 
 import (
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestRuleExpressionCaseResultInference(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		timeout string
+		want    string
+	}{
+		{"string results", "case(github.ref == 'refs/heads/main', 'production', 'development')", "must be number but found type string"},
+		{"number results", "case(github.ref == 'refs/heads/main', 10, 5)", ""},
+		{"nested string results", "case(true, case(false, 'a', 'b'), 'c')", "must be number but found type string"},
+		{"object property", `case(true, fromJSON('{"timeout":10}'), fromJSON('{"timeout":5}')).timeout`, ""},
+		{"missing object property", `case(true, fromJSON('{"timeout":10}'), fromJSON('{"timeout":5}')).missing`, `property "missing" is not defined`},
+		{"unknown default", "case(true, 10, fromJSON(vars.TIMEOUT))", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			linter, err := NewLinter(io.Discard, &LinterOptions{Shellcheck: "", Pyflakes: ""})
+			if err != nil {
+				t.Fatal(err)
+			}
+			src := `on: push
+env:
+  MY_ENV_VAR: |-
+    ${{ case(
+      github.ref == 'refs/heads/main', 'production',
+      github.ref == 'refs/heads/staging', 'staging',
+      startsWith(github.ref, 'refs/heads/feature/'), 'development',
+      'unknown'
+    ) }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ ` + tc.timeout + ` }}
+    steps:
+      - run: echo "$MY_ENV_VAR"
+`
+			errs, err := linter.Lint("test.yaml", []byte(src), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if len(errs) != 0 {
+					t.Fatalf("unexpected diagnostics: %v", errs)
+				}
+			} else if len(errs) != 1 || errs[0].Kind != "expression" || !strings.Contains(errs[0].Message, tc.want) {
+				t.Fatalf("wanted one %q diagnostic, got %v", tc.want, errs)
+			}
+		})
+	}
+}
 
 func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
 	testCases := []struct {

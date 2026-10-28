@@ -944,7 +944,7 @@ func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []ExprType) *E
 	return nil
 }
 
-func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature) ExprType {
+func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *FuncSignature, args []ExprType) ExprType {
 	sema.checkSpecialFunctionAvailability(n)
 
 	// Special checks for specific built-in functions
@@ -985,7 +985,14 @@ func (sema *ExprSemanticsChecker) checkBuiltinFuncCall(n *FuncCallNode, sig *Fun
 	case "case":
 		if len(n.Args)%2 == 0 {
 			sema.errorf(n, "case() requires an odd number of arguments (pred/value pairs + default) but got %d", len(n.Args))
+			return sig.Ret
 		}
+		// Only the value branches and final default contribute to the result type.
+		ty := args[1]
+		for i := 3; i < len(args)-1; i += 2 {
+			ty = ty.Merge(args[i])
+		}
+		return ty.Merge(args[len(args)-1])
 	}
 
 	return sig.Ret
@@ -1029,7 +1036,7 @@ func (sema *ExprSemanticsChecker) checkFuncCall(n *FuncCallNode) ExprType {
 		err := checkFuncSignature(n, sig, tys)
 		if err == nil {
 			// When one of overload pass type check, overload was resolved correctly
-			return sema.checkBuiltinFuncCall(n, sig)
+			return sema.checkBuiltinFuncCall(n, sig, tys)
 		}
 		errs = append(errs, err)
 	}

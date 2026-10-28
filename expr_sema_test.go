@@ -837,41 +837,113 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "case() with single predicate",
 			input:    "case(true, 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with multiple predicates",
 			input:    "case(true, 1, false, 2, 3)",
-			expected: AnyType{},
+			expected: NumberType{},
 		},
 		{
 			what:     "case() with number predicate (coerced to bool)",
 			input:    "case(1, 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with string predicate (coerced to bool)",
 			input:    "case('yes', 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with null predicate (coerced to bool)",
 			input:    "case(null, 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() case insensitivity",
 			input:    "CASE(true, 1, 2)",
-			expected: AnyType{},
+			expected: NumberType{},
 		},
 		{
 			what:     "case() with expression as predicate",
 			input:    "case(startsWith('hello', 'he'), 'yes', 'no')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with many predicates",
 			input:    "case(false, 'a', false, 'b', false, 'c', true, 'd', 'default')",
+			expected: StringType{},
+		},
+		{
+			what:     "case() with boolean results",
+			input:    "case('predicate', true, false)",
+			expected: BoolType{},
+		},
+		{
+			what:     "case() with null results",
+			input:    "case(true, null, null)",
+			expected: NullType{},
+		},
+		{
+			what:     "case() includes incompatible default",
+			input:    "case(true, 1, false)",
+			expected: AnyType{},
+		},
+		{
+			what:     "case() includes incompatible middle branch",
+			input:    "case(true, 1, false, null, 2)",
+			expected: AnyType{},
+		},
+		{
+			what:     "case() merges string and number results",
+			input:    "case(true, 1, 'fallback')",
+			expected: StringType{},
+		},
+		{
+			what:     "case() unknown default",
+			input:    "case(true, 'known', fromJSON(env.DATA))",
+			expected: AnyType{},
+		},
+		{
+			what:     "case() unknown branch",
+			input:    "case(true, fromJSON(env.DATA), 'known')",
+			expected: AnyType{},
+		},
+		{
+			what:     "case() unknown predicate does not affect result type",
+			input:    "case(fromJSON(env.DATA), 'yes', 'no')",
+			expected: StringType{},
+		},
+		{
+			what:     "case() nested results",
+			input:    "case(true, case(false, 1, 2), 3)",
+			expected: NumberType{},
+		},
+		{
+			what:     "case() merges array elements",
+			input:    `case(true, fromJSON('[1,2]'), fromJSON('[3]'))`,
+			expected: &ArrayType{Elem: NumberType{}},
+		},
+		{
+			what:     "case() merges incompatible array elements",
+			input:    `case(true, fromJSON('[1]'), fromJSON('[false]'))`,
+			expected: &ArrayType{Elem: AnyType{}},
+		},
+		{
+			what:  "case() merges object properties",
+			input: `case(true, fromJSON('{"count":1,"name":"one"}'), fromJSON('{"count":2,"enabled":true}'))`,
+			expected: NewStrictObjectType(map[string]ExprType{
+				"count": NumberType{}, "name": StringType{}, "enabled": BoolType{},
+			}),
+		},
+		{
+			what:     "case() object property inference",
+			input:    `case(true, fromJSON('{"count":1}'), fromJSON('{"count":2}')).count`,
+			expected: NumberType{},
+		},
+		{
+			what:     "case() object and null results",
+			input:    `case(true, fromJSON('{"count":1}'), null)`,
 			expected: AnyType{},
 		},
 	}
@@ -1467,6 +1539,11 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				"at least 3 parameters but 1 arguments are given",
 				"at least 3 parameters but 2 arguments are given",
 			},
+		},
+		{
+			what:     "case() checks each argument once",
+			input:    "case(github.missing_predicate, github.missing_value, github.missing_default)",
+			expected: []string{`property "missing_predicate"`, `property "missing_value"`, `property "missing_default"`},
 		},
 		{
 			what:  "case() with even number of arguments",
