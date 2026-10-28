@@ -8,14 +8,22 @@ ADR-0014 names GitHub's *code* as the reference. Two sibling projects have
 already measured that code — and github.com itself — far beyond what
 reading source gives:
 
-- **runny** (`runny-mc-fuzzface`): a C# oracle linked against the pinned
-  `actions/runner` SDK at `80bb1fb8`. Differential-fuzzes the legacy
-  (`DTExpressions2`, **what GitHub runs in production**) and next
-  (`Sdk/Expressions`, adds `StrictJsonParsing`, off by default) engines,
-  the service YAML reader, the step/strategy converters, both action
-  manifest loaders, the VS Code `@actions/expressions` evaluator, and
-  `kjanat/actionlint` v1.17. 104 machine-readable regressions, 13 runnable
+- **runny** (`runny-mc-fuzzface`, v0.3.0 on 2026-10-28): a C# oracle
+  linked against `actions/runner` `main`. The runner is not pinned in
+  runny: `third_party/actions-runner` tracks `main` and each release's
+  `BUILD-MANIFEST.json` and every `corpus/regressions.jsonl` row record
+  the sha measured (`1ba885c2` for v0.3.0, manifest findings at
+  `80ca6ea6`). Differential-fuzzes the legacy (`DTExpressions2`, **what
+  GitHub runs in production**) and next (`Sdk/Expressions`, adds
+  `StrictJsonParsing`, off by default) engines, the service YAML reader,
+  the step/strategy converters, both `Runner.Worker` action manifest
+  loaders (`ActionManifestManagerLegacy`, `ActionManifestManager`, via
+  `parse-action`), the VS Code `@actions/expressions` evaluator,
+  `kjanat/actionlint` v1.17 and the v2 branch at `a2ae2641` (`check
+  --json`, `lint-action`). 104+ machine-readable regressions, 13 runnable
   hosted repros, and a table of where v1 and the service parser disagree.
+  Ships prebuilt `expression-*.wasm`/`workflow-*.wasm` modules and a
+  `wasi-oracle` binary per release.
 - **commitish**: controlled github.com experiments on what `uses:
   owner/repo@ref` selects, per consumer (action vs reusable workflow),
   across dispatch/rerun modes, plus a `no_std` Rust model
@@ -86,6 +94,20 @@ Neither is reproducible from docs. Both are reproducible from their repos.
 | Azure template features (`each`, structural `if`, `split`/`replace`/`trim`/`lower`/`upper`, step/job generation) are **rejected**                                                                     | `expression/unknown-function` stays an error for those names, with a message saying they are Azure Pipelines, not Actions       |
 | composite main steps: `success()`/`failure()` read *action* status, `cancelled()` reads *job* status                                                                                                  | `type_env` carries the enclosing `(action, stage)`; `step/status-function-in-composite` (pedantic)                              |
 
+### Action manifests (runny v0.3.0 `parse-action`, both loaders agree unless noted)
+
+| fact                                                                                                                                                                                                                                                                 | becomes                                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| both loaders construct their YAML reader with anchors rejected (`Anchors are not currently supported. Remove the anchor 'x'`), while the workflow reader takes `allowAnchors`. A workflow with anchors runs and still fails at job time on a composite that uses one | `action/anchor` (correctness). v1 and v2 `a2ae2641` accept the manifest the runner rejects (kjanat/actionlint#338). Alias expansion in `semantics` stays, the rule fires on manifest documents only |
+| a composite step may not carry `timeout-minutes` (`run-step` schema lacks it, workflow `step` has it)                                                                                                                                                                | `action/composite-step-timeout` (correctness). Schema diff, not a hand rule                                                                                                                         |
+| `inputs.*.default` may not reference `inputs`, `outputs.*.value` may not reference `secrets` (`input-default-context`, `output-value` list neither)                                                                                                                  | `type_env` availability per manifest position, same mechanism as workflow contexts. `expression/context-not-available` covers it                                                                    |
+| a BOM loads cleanly (`File.ReadAllText` strips it), unlike a workflow                                                                                                                                                                                                | `syntax/bom` is workflow-only, already recorded above                                                                                                                                               |
+| no `runs:` throws `Top level 'runs:' section is required` with an empty issue list                                                                                                                                                                                   | `action/missing-runs` message mirrors the runner text                                                                                                                                               |
+| inputs `who` and `WHO` reject with `'WHO' is already defined`                                                                                                                                                                                                        | `action/input-case-collision` (correctness). v1 reported it as `duplicated`, keep that behaviour, rename                                                                                            |
+| the four `./` and `.\` classification sites use culture-sensitive `String.StartsWith`, so U+FEFF, U+200B, U+00AD, U+200E before `./x` load as a local path whose recorded `Path` keeps the invisible character. v1 rejects as `ref is missing`                       | `uses/invisible-prefix` (suspicious, fix: strip). Classification in `UsesRef` must be ordinal and then flag the leading default-ignorable, not reject as malformed                                  |
+| `!!string` vs `!!str` split reaches manifests: legacy accepts the former, next the latter                                                                                                                                                                            | `syntax/unknown-tag` carries the loader axis in its message, same as for workflows                                                                                                                  |
+| `post-if:` without `post`, missing `name`/`description`, `main:` naming an absent file all load                                                                                                                                                                      | `action/missing-description` and file-existence checks are `style`/`suspicious`, never `correctness`. runny files them under `action-file`                                                          |
+
 ### References and binding (commitish)
 
 | fact                                                                                                                                                                                                                                                                                                                                                                     | becomes                                                                                                                                                                                            |
@@ -116,15 +138,18 @@ classes. Each is a conformance fixture with the service verdict as truth.
   sha. Its `Profile` enum is the consumer axis of `UsesRef`.
 - ADR-0006, ADR-0016 and `design/rules.md` are amended to point here
   rather than restating the tables.
-- Re-vendoring is tied to the runner sha runny pins. When runny moves its
-  pin, the conformance fixtures move with it, and any newly failing
-  fixture is a real runtime change, not a flake.
+- Re-vendoring is tied to the runner sha each runny corpus row records.
+  When a runny release measures a newer sha, the conformance fixtures
+  move with it, and any newly failing fixture is a real runtime change,
+  not a flake.
 
 ## Open
 
-- runny's `wasi-host` exposes the oracle as a WASI component. Whether to
-  run it in CI for property tests against our evaluator (rather than only
-  replaying the frozen corpus) — attractive, needs the .NET WASI toolchain
-  in CI.
+- runny v0.3.0 ships `runny-vX-expression-{full,partial,untrimmed}.wasm`
+  and `workflow-*.wasm` plus a `wasi-oracle` tarball as release assets,
+  so running the oracle in CI through wasmtime no longer needs the .NET
+  WASI toolchain. Whether to run property tests against it, rather than
+  only replaying the frozen corpus, is still undecided. Module sizes are
+  in `BUILD-MANIFEST.json`.
 - `StrictJsonParsing` on github.com: unknown. If it ever ships, the
   `fromJSON` model flips first-wins/last-wins. Watch runny.

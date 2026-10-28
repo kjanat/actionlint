@@ -153,6 +153,10 @@ The model therefore records, per node:
 - Alias expansion is a `semantics` provider over the CST. The CST itself
   stays unexpanded (lossless). Alias budget (billion-laughs) is enforced
   there (ADR-0002 open item).
+- This is workflow-only. Both runner action manifest loaders reject any
+  anchor (ADR-0017, runny v0.3.0, kjanat/actionlint#338), so on a
+  manifest document the same provider expands for later layers and
+  `action/anchor` reports the anchor site as correctness.
 
 Scalars keep a **source map** from logical text to CST ranges: a folded
 plain scalar (`run: a\n  b\n  c` → `a b c`) or `>-` block maps every
