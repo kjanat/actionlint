@@ -1002,42 +1002,134 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		{
 			what:     "case() with single predicate",
 			input:    "case(true, 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with multiple predicates",
 			input:    "case(true, 1, false, 2, 3)",
-			expected: AnyType{},
+			expected: NumberType{},
 		},
 		{
 			what:     "case() with numeric comparison predicate",
 			input:    "case(1 == 1, 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with string comparison predicate",
 			input:    "case('yes' != '', 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with null comparison predicate",
 			input:    "case(null == null, 'a', 'b')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() case insensitivity",
 			input:    "CASE(true, 1, 2)",
-			expected: AnyType{},
+			expected: NumberType{},
 		},
 		{
 			what:     "case() with expression as predicate",
 			input:    "case(startsWith('hello', 'he'), 'yes', 'no')",
-			expected: AnyType{},
+			expected: StringType{},
 		},
 		{
 			what:     "case() with many predicates",
 			input:    "case(false, 'a', false, 'b', false, 'c', true, 'd', 'default')",
+			expected: StringType{},
+		},
+		{
+			what:     "case() with boolean results",
+			input:    "case(github.event_name == 'push', true, false)",
+			expected: BoolType{},
+		},
+		{
+			what:     "case() with null results",
+			input:    "case(github.event_name == 'push', null, null)",
+			expected: NullType{},
+		},
+		{
+			what:     "case() includes incompatible default",
+			input:    "case(github.event_name == 'push', 1, false)",
 			expected: AnyType{},
+		},
+		{
+			what:     "case() includes incompatible middle branch",
+			input:    "case(github.event_name == 'push', 1, github.event_name == 'pull_request', null, 2)",
+			expected: AnyType{},
+		},
+		{
+			what:     "case() merges string and number results",
+			input:    "case(github.event_name == 'push', 1, 'fallback')",
+			expected: StringType{},
+		},
+		{
+			what:     "case() unknown default",
+			input:    "case(github.event_name == 'push', 'known', fromJSON(env.DATA))",
+			expected: AnyType{},
+		},
+		{
+			what:     "case() unknown branch",
+			input:    "case(github.event_name == 'push', fromJSON(env.DATA), 'known')",
+			expected: AnyType{},
+		},
+		{
+			what:     "case() unknown predicate does not affect result type",
+			input:    "case(fromJSON(env.DATA), 'yes', 'no')",
+			expected: StringType{},
+		},
+		{
+			what:     "case() nested results",
+			input:    "case(github.event_name == 'push', case(github.event_name == 'pull_request', 1, 2), 3)",
+			expected: NumberType{},
+		},
+		{
+			what:     "case() merges array elements",
+			input:    `case(github.event_name == 'push', fromJSON('[1,2]'), fromJSON('[3]'))`,
+			expected: &ArrayType{Elem: NumberType{}},
+		},
+		{
+			what:     "case() merges incompatible array elements",
+			input:    `case(github.event_name == 'push', fromJSON('[1]'), fromJSON('[false]'))`,
+			expected: &ArrayType{Elem: AnyType{}},
+		},
+		{
+			what:  "case() merges object properties",
+			input: `case(github.event_name == 'push', fromJSON('{"count":1,"name":"one"}'), fromJSON('{"count":2,"enabled":true}'))`,
+			expected: NewStrictObjectType(map[string]Type{
+				"count": NumberType{}, "name": StringType{}, "enabled": BoolType{},
+			}),
+		},
+		{
+			what:     "case() object property inference",
+			input:    `case(github.event_name == 'push', fromJSON('{"count":1}'), fromJSON('{"count":2}')).count`,
+			expected: NumberType{},
+		},
+		{
+			what:     "case() object and null results",
+			input:    `case(github.event_name == 'push', fromJSON('{"count":1}'), null)`,
+			expected: AnyType{},
+		},
+		{
+			what:     "case() constant true predicate narrows to its branch",
+			input:    "case(true, 1, 'unreachable')",
+			expected: NumberType{},
+		},
+		{
+			what:     "case() constant false predicate drops its branch",
+			input:    "case(false, 'unreachable', 1)",
+			expected: NumberType{},
+		},
+		{
+			what:     "case() constant true predicate drops unreachable fromJSON default",
+			input:    `case(true, fromJSON('[1,2]'), fromJSON('[false]'))`,
+			expected: &ArrayType{Elem: NumberType{}},
+		},
+		{
+			what:     "case() constant predicates keep later reachable branches",
+			input:    "case(false, 'a', github.event_name == 'push', 1, 2)",
+			expected: NumberType{},
 		},
 	}
 
@@ -1134,6 +1226,15 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			input: "github.foo",
 			expected: []string{
 				"property \"foo\" is not defined in github",
+			},
+		},
+		{
+			what:  "case() checks each argument once",
+			input: "case(github.missing_predicate, github.missing_value, github.missing_default)",
+			expected: []string{
+				"property \"missing_predicate\" is not defined in github",
+				"property \"missing_value\" is not defined in github",
+				"property \"missing_default\" is not defined in github",
 			},
 		},
 		{

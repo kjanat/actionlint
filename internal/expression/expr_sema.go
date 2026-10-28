@@ -1134,13 +1134,18 @@ func (sema *Checker) checkExpressionBranch(node Node, skipped bool) Type {
 
 func (sema *Checker) checkCaseCall(n *FuncCallNode) Type {
 	sema.checkSpecialFunctionAvailability(n)
-	return sema.checkCaseBranches(n.Args, true)
+	ty, _ := sema.checkCaseBranches(n.Args, true)
+	return ty
 }
 
-func (sema *Checker) checkCaseBranches(args []Node, remaining bool) Type {
+// checkCaseBranches checks one predicate/value pair and recurses into the rest.
+// The result type merges every reachable value branch with the final default.
+// Predicates never contribute. Branches made unreachable by constant predicates
+// are still checked but skip evaluation, so their types are left out of the
+// merge. The second result reports whether any branch in args was reachable.
+func (sema *Checker) checkCaseBranches(args []Node, remaining bool) (Type, bool) {
 	if len(args) == 1 {
-		sema.checkExpressionBranch(args[0], !remaining)
-		return AnyType{}
+		return sema.checkExpressionBranch(args[0], !remaining), remaining
 	}
 	ty := sema.checkExpressionBranch(args[0], !remaining)
 	if remaining && !sema.skipEvaluation {
@@ -1152,17 +1157,29 @@ func (sema *Checker) checkCaseBranches(args []Node, remaining bool) Type {
 	}
 	value, known := ConditionConstantValue(args[0])
 	predicate, boolean := value.(bool)
-	sema.withEventGuard(args[0], true, func() Type {
-		return sema.checkExpressionBranch(args[1], !remaining || known && boolean && !predicate)
+	valueReachable := remaining && !(known && boolean && !predicate)
+	valueType := sema.withEventGuard(args[0], true, func() Type {
+		return sema.checkExpressionBranch(args[1], !valueReachable)
 	})
 	if known && boolean && predicate {
 		remaining = false
 	}
 	// Later predicates and the default are reachable only when this predicate
 	// is false. Keep those guards nested so all earlier exclusions apply.
-	return sema.withEventGuard(args[0], false, func() Type {
-		return sema.checkCaseBranches(args[2:], remaining)
+	var restType Type
+	var restReachable bool
+	sema.withEventGuard(args[0], false, func() Type {
+		restType, restReachable = sema.checkCaseBranches(args[2:], remaining)
+		return restType
 	})
+	switch {
+	case valueReachable && restReachable:
+		return valueType.Merge(restType), true
+	case valueReachable:
+		return valueType, true
+	default:
+		return restType, restReachable
+	}
 }
 
 func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
