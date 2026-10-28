@@ -25,6 +25,11 @@ The model is the product. Everything else is a view on it.
 5. **Extensible without special cases.** Built-in rules and third-party
    extensions use the same provider API. The host has no knowledge of any
    specific external tool.
+6. **Portable across Actions-compatible forges.** GitHub is the reference
+   semantics. Gitea and Forgejo are declared targets with vendored
+   deviations. Declaring more than one makes the lint the intersection,
+   so a workflow cannot pass while depending on a github.com-only
+   spelling (ADR-0018).
 
 ## Non-goals
 
@@ -104,8 +109,10 @@ machines. Diagnostics carry it. Suppressions may target it.
 The invocation graph is a provider like any other: entry document →
 `InvocationGraph`. Resolution of `uses:` targets (local path, same-repo
 workflow, remote `owner/repo@ref`) is a separate provider that `workspace`
-backs with filesystem, cache, or nothing (offline → unresolved node, not an
-error at this layer).
+backs with the filesystem, a content-addressed cache, and the network
+through the `Host` registry (ADR-0018). Networking is a normal part of the
+tool. Offline, or a host that fails, yields an `unavailable` node for that
+reference and everything else proceeds (ADR-0006).
 
 ## Model
 
@@ -257,6 +264,6 @@ See the end of each ADR. Collected here:
 
 - wasm32 route for tree-sitter (vanilla crate, not arborium's fork) is
   unproven until `syntax` builds for that target in CI (ADR-0002).
-- Remote `uses:` resolution: fetch at all, or only consult a local cache the
-  user populates? → ADR-0006 says cache-only by default.
+- Remote `uses:` resolution: networked through the `Host` registry,
+  offline degrades to `unavailable` nodes (ADR-0006, ADR-0018).
 - Formatter: in scope for v2.0 or v2.x? Layering already allows it.

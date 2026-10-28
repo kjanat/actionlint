@@ -63,9 +63,9 @@ only public artefact of it, which is why it, not the runner, knows
 `StepsRunner.cs`) without ever seeing their YAML. `concurrency.queue` has
 zero footprint in the runner: pure service-side.
 
-Precedence therefore: workflow syntax → languageservices schema; action
-syntax → runner `ActionManifestManager` + `action_yaml.json`; expression
-functions and `fromJSON` leniency → runner `DTExpressions2`; execution
+Precedence therefore: workflow syntax → languageservices schema. Action
+syntax → runner `ActionManifestManager` + `action_yaml.json`. Expression
+functions and `fromJSON` leniency → runner `DTExpressions2`. Execution
 semantics (background/parallel/wait/cancel ordering, `pre-if`/`post-if`)
 → runner `Runner.Worker`.
 
@@ -191,7 +191,7 @@ field errors quoted above. Schema alone does not constrain `using`.
     `dynamic-string`, `interactive-component-string`, `member-string`,
     `snapshot-image-name`
     Both are vendored. For **workflows** the languageservices copy is
-    authoritative (it mirrors the server-side parser; the runner never
+    authoritative (it mirrors the server-side parser. The runner never
     sees workflow YAML). Its extras (`parallel-step` …) are real, executed
     by the runner, feature-gated at the service → `preview/*`. The
     runner-only extras (`*-relaxed`, `-new`, `dynamic-string`) are not

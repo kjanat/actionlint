@@ -47,10 +47,19 @@ Full comparison with verbatim config and macro snippets in
 6. **Per-rule `{ level, fix, options }`** table (biome shape). `fix ∈
    none | safe | unsafe` reclassifies applicability (ADR-0007). `options`
    typed per rule via `schemars`.
-7. **Suppression** `# actionlint-ignore <ids>: <reason>` with trailing,
-   own-line, `-file`, `-start`/`-end` forms. Reason mandatory (biome).
-   Unused reported with a fix (biome, clippy `expect`). No blanket
-   form. Ids may use the same globs as config.
+7. **Suppression** keeps v1's grammar, which is already in users'
+   files: `# actionlint:ignore <ids> -- <reason>` trailing, and
+   `# actionlint:ignore-next-line <ids> -- <reason>` own-line (v1
+   `suppression/inline.go:44-63`); v2 adds `actionlint:ignore-file` and
+   `actionlint:ignore-start`/`-end`. The `--` separator is unambiguous
+   against rule ids (`,` `CR` `LF` `--` are forbidden in extension
+   names for that reason). Reason mandatory (v1, biome). Unused reported
+   with a fix (biome, clippy `expect`). No blanket form. Ids may use the
+   same globs as config. Config-side `[[ignores]]` with `rule`, `file`,
+   `uses`, `job`, `step`, `reason` selectors (v1 `config/ignores.go`) and
+   `[suppressions] disallow = { "<id>" = "report-suppression" |
+   "report-all" }` (v1 `policy.disallow-suppressions`) are adopted
+   as-is.
 8. **Stability**: `nursery` category, config-only opt-in (biome/oxlint),
    no `--preview` flag (ruff). `since`/`deprecated` metadata. Renamed and
    removed ids kept in a table for precise diagnostics (clippy, ruff).

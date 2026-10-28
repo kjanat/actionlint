@@ -16,6 +16,8 @@ dependency boundary someone would otherwise violate.
 │   ├── engine/                actionlint-engine
 │   ├── rules/                 actionlint-rules
 │   ├── workspace/             actionlint-workspace
+│   ├── host-github/           actionlint-host-github   (fetch via GitHub API, ADR-0018)
+│   ├── host-gitea/            actionlint-host-gitea    (Gitea/Forgejo API)
 │   ├── extensions/            actionlint-extensions   (host side)
 │   ├── extension-sdk/         actionlint-extension-sdk (guest side, Rust)
 │   ├── cli/                   actionlint   (the binary)
@@ -23,6 +25,7 @@ dependency boundary someone would otherwise violate.
 ├── wit/                       the extension contract, versioned package
 ├── xtask/                     schema gen, fixture regen, release checks
 ├── fixtures/                  shared test inputs (workflows, actions, repos)
+│   └── conformance/           vendored runny + commitish corpora, replayed first (ADR-0017)
 ├── tests/                     cross-crate integration + guest acceptance
 │   └── guests/
 │       ├── c-minimal/         C guest, source+tree only — the boundary test
@@ -43,10 +46,12 @@ dependency boundary someone would otherwise violate.
 | `source`        | —                                               | `DocumentId`, `Revision`, `Text`, `Position`, `Range`, `Edit`, `SourceRef`                                                                                                                                     | anything YAML                       |
 | `syntax`        | source, tree-sitter, tree-sitter-github-actions | `Tree`, incremental reparse, typed node views (`MappingNode`, `ExprNode`, …), `Expr` CST→AST                                                                                                                   | semantic meaning, diagnostics       |
 | `model`         | source                                          | all semantic types, `Diagnostic`, `Fix`, `Type`, `Context`, `Occurrence`                                                                                                                                       | construction logic, I/O             |
-| `semantics`     | syntax, model                                   | every provider that turns syntax into model or model into derived facts. `uses:` reference parsing                                                                                                             | filesystem, network, config         |
+| `semantics`     | syntax, model, commitish                        | every provider that turns syntax into model or model into derived facts. `uses:` reference parsing via `commitish::RefForm` + `Profile`                                                                        | filesystem, network, config         |
 | `engine`        | — (generic)                                     | `Db` trait, query definition macros/traits, memo, cancellation, budgets                                                                                                                                        | any domain type                     |
 | `rules`         | semantics, engine                               | built-in rules. Each rule = one module, one provider, one fixture dir                                                                                                                                          | per-tool code, config parsing       |
 | `workspace`     | semantics, engine, source                       | file loading, overlays, project discovery, `actionlint.toml`, caches, `resolve_uses` backing store. Feature `os` (default on) gates everything that touches the real filesystem, playground builds with it off | rules, output formatting            |
+| `host-github`   | workspace                                       | `Host` impl for the GitHub API, `static REGISTRATION` with presets (`github.com`) and `api_base` inference                                                                                                     | analysis, rules                     |
+| `host-gitea`    | workspace                                       | `Host` impl for the Gitea/Forgejo API                                                                                                                                                                          | analysis, rules                     |
 | `extensions`    | semantics, engine, wasmtime, wit                | component loading, capability negotiation, provider marshalling                                                                                                                                                | document-kind knowledge, tool names |
 | `extension-sdk` | wit                                             | guest-side bindings and helpers for Rust extensions                                                                                                                                                            | host code                           |
 | `cli`           | workspace, rules, extensions                    | clap, output formats, exit codes, `--fix`                                                                                                                                                                      | analysis logic                      |
