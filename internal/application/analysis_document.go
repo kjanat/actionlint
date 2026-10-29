@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sync"
 	"time"
@@ -166,6 +167,18 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, errors.Join(analysisErr, err)
 	}
+	// Policy reports suppression findings in the declaring document, such as a
+	// local action's metadata, under its working-directory-relative path. They
+	// need that document's reference to pass report admission.
+	reported := maps.Clone(references)
+	for document, index := range references {
+		if relative, err := filepath.Rel(s.workingDir, document); err == nil {
+			if _, exists := reported[relative]; !exists {
+				reported[relative] = index
+			}
+		}
+	}
+	diagnosticpolicy.InferReferences(all, sourcePath, reported, entryAliases...)
 	s.log("Found total", len(all), "errors in", time.Since(start).Milliseconds(), "ms for", path)
 	return all, outline, analysisErr
 }
