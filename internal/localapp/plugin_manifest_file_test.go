@@ -39,7 +39,7 @@ func readManifestTest(t *testing.T, path string) string {
 }
 
 func TestPluginManifestFormats(t *testing.T) {
-	ref := manifestTestReference(t, "kjanat/actionlint-plugin-shellcheck@v0.1.1")
+	ref := manifestTestReference(t, "kjanat/actionlint-plugin-shellcheck@v0.2.0")
 	custom, err := pluginref.New("gitlab.com/team/plugin", "v2", "https://example.com/catalogue/")
 	if err != nil {
 		t.Fatal(err)

@@ -56,7 +56,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return &jsonschema.Schema{
 			Type: "array",
 			Items: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
-				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.1.1", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64)}},
+				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.2.0", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64)}},
 				mapping,
 			}},
 		}

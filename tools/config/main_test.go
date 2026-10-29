@@ -326,7 +326,7 @@ func TestSchemaValidation(t *testing.T) {
 		{"message filters", `lint: {message-ignores: {'**': ['legacy.*']}}`, true, true},
 		{"invalid message regex", `lint: {message-ignores: {'**': ['[']}}`, true, false},
 		{"invalid message path", `lint: {message-ignores: {'[': []}}`, true, false},
-		{"plugin shorthand", `plugins: [kjanat/actionlint-plugin-shellcheck@v0.1.1]`, true, true},
+		{"plugin shorthand", `plugins: [kjanat/actionlint-plugin-shellcheck@v0.2.0]`, true, true},
 		{"plugin custom catalogue", `plugins: [{name: gitlab.com/group/plugin, version: v1, registry: 'https://example.com/catalog/'}]`, true, true},
 		{"plugin empty list", `plugins: []`, true, true},
 		{"plugin null", `plugins: null`, true, true},
