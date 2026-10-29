@@ -57,11 +57,16 @@ func run(pass *analysis.Pass) (any, error) {
 				return true
 			}
 			obj, _ := pass.TypesInfo.Defs[decl.Name].(*types.TypeName)
-			if obj == nil || obj.IsAlias() {
+			if obj == nil {
 				return true
 			}
-			named, ok := obj.Type().(*types.Named)
+			named, ok := types.Unalias(obj.Type()).(*types.Named)
 			if !ok {
+				return true
+			}
+			// An exported alias publishes its target's fields. Exported targets in
+			// this package are checked under their own name.
+			if obj.IsAlias() && (named.Obj().Pkg() != pass.Pkg || named.Obj().Exported()) {
 				return true
 			}
 			fields, ok := named.Underlying().(*types.Struct)
@@ -69,18 +74,20 @@ func run(pass *analysis.Pass) (any, error) {
 				return true
 			}
 			stateful := owned[named.Origin()]
-			for i := range fields.NumFields() {
-				stateful = stateful || !fields.Field(i).Exported()
+			for field := range fields.Fields() {
+				stateful = stateful || !field.Exported()
 			}
 			if stateful || possiblyOwned[named.Origin()] {
-				for i := range fields.NumFields() {
-					field := fields.Field(i)
-					if field.Exported() {
-						if stateful {
-							pass.Reportf(field.Pos(), "ARC002: state-owning type %s exposes writable field %s; keep representation private and expose value operations", obj.Name(), field.Name())
-						} else {
-							pass.Reportf(field.Pos(), "ARC004: type %s exposes writable field %s and passes receiver storage to a call without a mutation summary; read-only behavior is not established", obj.Name(), field.Name())
-						}
+				// Alias fields are reported at the alias that publishes them.
+				at := token.NoPos
+				if obj.IsAlias() {
+					at = decl.Name.Pos()
+				}
+				for _, field := range writableFields(pass.Pkg, named, fields, at) {
+					if stateful {
+						pass.Reportf(field.at, "ARC002: state-owning type %s exposes writable field %s; keep representation private and expose value operations", obj.Name(), field.name)
+					} else {
+						pass.Reportf(field.at, "ARC004: type %s exposes writable field %s and passes receiver storage to a call without a mutation summary; read-only behavior is not established", obj.Name(), field.name)
 					}
 				}
 			}
@@ -94,16 +101,66 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 		for index, origins := range flows[fn].Results {
 			resultType := fn.Signature.Results().At(index).Type()
-			exposed := mutable(resultType) || storage(resultType) && mutatingAPI(pass, resultType, flows, map[types.Type]bool{})
+			effect := apiReadOnly
+			if storage(resultType) {
+				effect = mutatingAPI(pass, resultType, flows, map[types.Type]bool{})
+			}
+			exposed := mutable(resultType) || effect == apiMutating
 			if origins[0] && exposed {
 				pass.Reportf(obj.Pos(), "ARC003: %s result %d may expose mutable storage reachable from its receiver; return a detached value or an opaque value handle", obj.Name(), index+1)
-			} else if origins[-1] && exposed {
+			} else if (origins[0] || origins[-1]) && (exposed || effect == apiUnresolved) {
 				pass.Reportf(obj.Pos(), "ARC004: %s result %d may alias receiver storage through a call without a source summary; detachment is not established", obj.Name(), index+1)
 			}
 		}
 	}
 	checkAPI(pass)
 	return nil, nil
+}
+
+type writableField struct {
+	name string
+	at   token.Pos
+}
+
+// writableFields lists the exported fields callers can assign through owner,
+// including fields promoted from unexported embedded structs. A promoted
+// field is reported at the embedding that publishes it; a non-zero at
+// overrides every position.
+func writableFields(pkg *types.Package, owner *types.Named, fields *types.Struct, at token.Pos) []writableField {
+	var out []writableField
+	var visit func(*types.Struct, token.Pos, map[*types.Struct]bool)
+	visit = func(fields *types.Struct, embeddedAt token.Pos, seen map[*types.Struct]bool) {
+		if seen[fields] {
+			return
+		}
+		seen[fields] = true
+		for field := range fields.Fields() {
+			field := field
+			at := embeddedAt
+			if at == token.NoPos {
+				at = field.Pos()
+			}
+			if field.Exported() {
+				// Shallower or ambiguous selectors hide deeper fields.
+				if selected, _, _ := types.LookupFieldOrMethod(owner, true, pkg, field.Name()); selected == field {
+					out = append(out, writableField{field.Name(), at})
+				}
+				continue
+			}
+			if !field.Embedded() {
+				continue
+			}
+			embedded := types.Unalias(field.Type())
+			if pointer, ok := embedded.(*types.Pointer); ok {
+				embedded = types.Unalias(pointer.Elem())
+			}
+			if nested, ok := embedded.Underlying().(*types.Struct); ok {
+				visit(nested, at, seen)
+			}
+		}
+	}
+	visit(fields, at, map[*types.Struct]bool{})
+	return out
 }
 
 func isTest(pass *analysis.Pass, pos token.Pos) bool {
@@ -138,8 +195,8 @@ func checkAPI(pass *analysis.Pass) {
 		reported := map[*types.TypeName]bool{}
 		var walk func(types.Type)
 		walkConstraints := func(params *types.TypeParamList) {
-			for i := range params.Len() {
-				walk(params.At(i).Constraint())
+			for tparam := range params.TypeParams() {
+				walk(tparam.Constraint())
 			}
 		}
 		walk = func(t types.Type) {
@@ -149,8 +206,8 @@ func checkAPI(pass *analysis.Pass) {
 			seen[t] = true
 			switch t := t.(type) {
 			case *types.Alias:
-				for i := 0; i < t.TypeArgs().Len(); i++ {
-					walk(t.TypeArgs().At(i))
+				for t0 := range t.TypeArgs().Types() {
+					walk(t0)
 				}
 				if t.Obj().Pkg() != pass.Pkg && t.Obj().Exported() && !internalPackage(t.Obj().Pkg().Path()) {
 					return
@@ -164,8 +221,8 @@ func checkAPI(pass *analysis.Pass) {
 					pass.Reportf(obj.Pos(), "ARC001: public API %s exposes internal type %s.%s; define the public value contract independently", obj.Name(), decl.Pkg().Path(), decl.Name())
 					return
 				}
-				for i := 0; i < t.TypeArgs().Len(); i++ {
-					walk(t.TypeArgs().At(i))
+				for t0 := range t.TypeArgs().Types() {
+					walk(t0)
 				}
 				// Another package's public contract is reported when that
 				// package is analyzed.
@@ -177,8 +234,8 @@ func checkAPI(pass *analysis.Pass) {
 				// The pointer method set includes methods promoted from unexported
 				// embedded types. Promoted dependency methods belong to their owner.
 				methods := types.NewMethodSet(types.NewPointer(t))
-				for i := range methods.Len() {
-					method := methods.At(i).Obj()
+				for method := range methods.Methods() {
+					method := method.Obj()
 					if method.Exported() && method.Pkg() == pass.Pkg {
 						walk(method.Type())
 					}
@@ -195,9 +252,9 @@ func checkAPI(pass *analysis.Pass) {
 			case *types.Chan:
 				walk(t.Elem())
 			case *types.Struct:
-				for i := range t.NumFields() {
-					if t.Field(i).Exported() {
-						walk(t.Field(i).Type())
+				for field := range t.Fields() {
+					if field.Exported() {
+						walk(field.Type())
 					}
 				}
 			case *types.Signature:
@@ -205,21 +262,21 @@ func checkAPI(pass *analysis.Pass) {
 				walk(t.Results())
 				walkConstraints(t.TypeParams())
 			case *types.Tuple:
-				for i := range t.Len() {
-					walk(t.At(i).Type())
+				for v := range t.Variables() {
+					walk(v.Type())
 				}
 			case *types.Interface:
-				for i := range t.NumMethods() {
-					walk(t.Method(i).Type())
+				for method := range t.Methods() {
+					walk(method.Type())
 				}
-				for i := range t.NumEmbeddeds() {
-					walk(t.EmbeddedType(i))
+				for etyp := range t.EmbeddedTypes() {
+					walk(etyp)
 				}
 			case *types.TypeParam:
 				walk(t.Constraint())
 			case *types.Union:
-				for i := range t.Len() {
-					walk(t.Term(i).Type())
+				for term := range t.Terms() {
+					walk(term.Type())
 				}
 			}
 		}

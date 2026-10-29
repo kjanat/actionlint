@@ -1,6 +1,7 @@
 package api
 
 import (
+	"math/big"
 	"sample/helper"
 	"sample/internal/detail"
 	"sync/atomic"
@@ -113,3 +114,62 @@ type embedded struct{}
 func (embedded) Leak() detail.Record { return detail.Record{} }
 
 type Promoter struct{ embedded } // want "ARC001: public API Promoter exposes internal type sample/internal/detail.Record"
+
+type SelectOwner struct{ ch chan []byte }
+
+func (s *SelectOwner) Take() []byte { // want "ARC003: Take result 1"
+	select {
+	case b := <-s.ch:
+		return b
+	default:
+		return nil
+	}
+}
+
+type BigOwner struct{ n big.Int }
+
+func (o *BigOwner) Number() big.Int { return o.n } // want "ARC004: Number result 1"
+
+type hiddenFields struct{ Public int }
+
+type PromotedOwner struct {
+	hiddenFields // want "ARC002: state-owning type PromotedOwner exposes writable field Public"
+	private      int
+}
+
+type Scalar[T ~int | ~string] struct{ value T }
+
+func (s *Scalar[T]) Value() T { return s.value }
+
+type Box struct{ Data []byte }
+
+type FillOwner struct{ private []byte }
+
+func fill(dst *Box, src []byte) { dst.Data = src }
+
+func (s *FillOwner) Boxed() *Box { // want "ARC003: Boxed result 1"
+	b := new(Box)
+	fill(b, s.private)
+	return b
+}
+
+type ClosureCounter struct {
+	Value int64 // want "ARC004: type ClosureCounter exposes writable field Value"
+}
+
+func (c *ClosureCounter) Inc(up bool) {
+	inc := func() { c.Value++ }
+	dec := func() { c.Value-- }
+	f := dec
+	if up {
+		f = inc
+	}
+	f()
+}
+
+type hiddenRecord struct {
+	private int
+	Value   int
+}
+
+type PublicRecord = hiddenRecord // want "ARC002: state-owning type PublicRecord exposes writable field Value"

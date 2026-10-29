@@ -39,12 +39,17 @@ func (to origins) add(from origins) bool {
 type flow struct {
 	Results []origins
 	Writes  origins
+	// Stores maps a destination parameter to the origins stored into its
+	// storage, so a caller can carry a source's aliases into the destination.
+	Stores map[int]origins
 }
 
 type functionFlow struct {
 	Name    string
 	Results [][]int
 	Writes  []int
+	// Stores pairs a destination parameter with one stored origin.
+	Stores [][2]int
 }
 
 // Imported helpers carry parameter-to-result and write effects. Renaming or
@@ -55,7 +60,7 @@ func (*flowFact) AFact()         {}
 func (*flowFact) String() string { return "function flow summaries" }
 
 func newFlow(results int) flow {
-	f := flow{Results: make([]origins, results), Writes: origins{}}
+	f := flow{Results: make([]origins, results), Writes: origins{}, Stores: map[int]origins{}}
 	for i := range f.Results {
 		f.Results[i] = origins{}
 	}
@@ -64,6 +69,12 @@ func newFlow(results int) flow {
 
 func (f flow) add(other flow) bool {
 	changed := f.Writes.add(other.Writes)
+	for destination, sources := range other.Stores {
+		if f.Stores[destination] == nil {
+			f.Stores[destination] = origins{}
+		}
+		changed = f.Stores[destination].add(sources) || changed
+	}
 	for i := range f.Results {
 		changed = f.Results[i].add(other.Results[i]) || changed
 	}
@@ -108,13 +119,19 @@ func solve(pass *analysis.Pass, functions []*ssa.Function) map[*ssa.Function]flo
 		for _, value := range encoded.Writes {
 			f.Writes[value] = true
 		}
+		for _, pair := range encoded.Stores {
+			if f.Stores[pair[0]] == nil {
+				f.Stores[pair[0]] = origins{}
+			}
+			f.Stores[pair[0]][pair[1]] = true
+		}
 		return f, true
 	}
 	for changed := true; changed; {
 		changed = false
 		for _, fn := range functions {
 			changed = flows[fn].add(analyzeFlow(fn, lookup, func(t types.Type) bool {
-				return mutable(t) || storage(t) && mutatingAPI(pass, t, flows, map[types.Type]bool{})
+				return mutable(t) || storage(t) && mutatingAPI(pass, t, flows, map[types.Type]bool{}) != apiReadOnly
 			})) || changed
 		}
 	}
@@ -135,6 +152,17 @@ func solve(pass *analysis.Pass, functions []*ssa.Function) map[*ssa.Function]flo
 			encoded.Writes = append(encoded.Writes, value)
 		}
 		slices.Sort(encoded.Writes)
+		for destination, sources := range f.Stores {
+			for source := range sources {
+				encoded.Stores = append(encoded.Stores, [2]int{destination, source})
+			}
+		}
+		slices.SortFunc(encoded.Stores, func(a, b [2]int) int {
+			if a[0] != b[0] {
+				return a[0] - b[0]
+			}
+			return a[1] - b[1]
+		})
 		facts.Functions = append(facts.Functions, encoded)
 	}
 	slices.SortFunc(facts.Functions, func(a, b functionFlow) int { return strings.Compare(a.Name, b.Name) })
@@ -155,21 +183,34 @@ func mutableType(t types.Type, seen map[types.Type]bool, private bool) bool {
 	switch t := t.(type) {
 	case *types.Named:
 		return mutableType(t.Underlying(), seen, private)
-	case *types.Pointer, *types.Slice, *types.Map, *types.Chan, *types.Signature, *types.Interface, *types.TypeParam:
+	case *types.Pointer, *types.Slice, *types.Map, *types.Chan, *types.Signature, *types.Interface:
 		return true
+	case *types.TypeParam:
+		// Every permitted instantiation must be a value type for the parameter
+		// to hold no storage. Constraints without type terms permit any type.
+		terms, restricted := typeTerms(t.Constraint(), map[types.Type]bool{})
+		if !restricted {
+			return true
+		}
+		for _, term := range terms {
+			if mutableType(term, seen, private) {
+				return true
+			}
+		}
+		return false
 	case *types.Basic:
 		return t.Kind() == types.UnsafePointer
 	case *types.Array:
 		return mutableType(t.Elem(), seen, private)
 	case *types.Struct:
-		for i := range t.NumFields() {
-			if (private || t.Field(i).Exported()) && mutableType(t.Field(i).Type(), seen, private) {
+		for field := range t.Fields() {
+			if (private || field.Exported()) && mutableType(field.Type(), seen, private) {
 				return true
 			}
 		}
 	case *types.Tuple:
-		for i := range t.Len() {
-			if mutableType(t.At(i).Type(), seen, private) {
+		for v := range t.Variables() {
+			if mutableType(v.Type(), seen, private) {
 				return true
 			}
 		}
@@ -177,50 +218,105 @@ func mutableType(t types.Type, seen map[types.Type]bool, private bool) bool {
 	return false
 }
 
+// typeTerms lists the type terms of a constraint. restricted is false when the
+// type set is not limited by terms, as with any, comparable or method sets.
+// Terms of embedded interfaces intersect; any restricted one bounds the set.
+func typeTerms(constraint types.Type, seen map[types.Type]bool) (terms []types.Type, restricted bool) {
+	iface, ok := constraint.Underlying().(*types.Interface)
+	if !ok || seen[constraint] {
+		return nil, false
+	}
+	seen[constraint] = true
+	for embedded := range iface.EmbeddedTypes() {
+		switch embedded := embedded.(type) {
+		case *types.Union:
+			for term := range embedded.Terms() {
+				nested, ok := typeTerms(term.Type(), seen)
+				if !ok {
+					terms = append(terms, term.Type())
+				}
+				terms = append(terms, nested...)
+			}
+			return terms, true
+		default:
+			if _, isInterface := embedded.Underlying().(*types.Interface); isInterface {
+				if nested, ok := typeTerms(embedded, seen); ok {
+					return nested, true
+				}
+				continue
+			}
+			return []types.Type{embedded}, true
+		}
+	}
+	return nil, false
+}
+
+// apiEffect orders what a value's exported methods may do to its storage.
+type apiEffect int
+
+const (
+	apiReadOnly apiEffect = iota
+	// apiUnresolved means a method has no summary, as with standard-library
+	// methods, whose bodies are not analyzed. It is not proof of immutability.
+	apiUnresolved
+	apiMutating
+)
+
 // A private representation is not an immutable handle when its exported
 // methods can mutate it. Use the same source effects as the field check.
-func mutatingAPI(pass *analysis.Pass, t types.Type, flows map[*ssa.Function]flow, seen map[types.Type]bool) bool {
+func mutatingAPI(pass *analysis.Pass, t types.Type, flows map[*ssa.Function]flow, seen map[types.Type]bool) apiEffect {
 	if seen[t] {
-		return false
+		return apiReadOnly
 	}
 	seen[t] = true
 	t = types.Unalias(t)
+	effect := apiReadOnly
 	if named, ok := t.(*types.Named); ok {
 		methods := types.NewMethodSet(types.NewPointer(named))
-		for i := range methods.Len() {
-			method := methods.At(i).Obj().(*types.Func)
+		for method := range methods.Methods() {
+			method := method.Obj().(*types.Func)
 			if !method.Exported() {
 				continue
 			}
-			for fn, effect := range flows {
-				if obj, ok := fn.Object().(*types.Func); ok && functionKey(obj) == functionKey(method) && (effect.Writes[0] || effect.Writes[-1]) {
-					return true
+			summarized := false
+			for fn, local := range flows {
+				if obj, ok := fn.Object().(*types.Func); ok && functionKey(obj) == functionKey(method) {
+					summarized = true
+					if local.Writes[0] || local.Writes[-1] {
+						return apiMutating
+					}
 				}
 			}
-			if method.Pkg() != pass.Pkg {
+			if !summarized && method.Pkg() != pass.Pkg {
 				var imported flowFact
 				if pass.ImportPackageFact(method.Pkg(), &imported) {
-					for _, effect := range imported.Functions {
-						if effect.Name == functionKey(method) && (slices.Contains(effect.Writes, 0) || slices.Contains(effect.Writes, -1)) {
-							return true
+					for _, summary := range imported.Functions {
+						if summary.Name == functionKey(method) {
+							summarized = true
+							if slices.Contains(summary.Writes, 0) || slices.Contains(summary.Writes, -1) {
+								return apiMutating
+							}
 						}
 					}
 				}
 			}
+			if !summarized {
+				effect = apiUnresolved
+			}
 		}
-		return mutatingAPI(pass, named.Underlying(), flows, seen)
+		return max(effect, mutatingAPI(pass, named.Underlying(), flows, seen))
 	}
 	if structure, ok := t.(*types.Struct); ok {
-		for i := range structure.NumFields() {
-			if structure.Field(i).Exported() && mutatingAPI(pass, structure.Field(i).Type(), flows, seen) {
-				return true
+		for field := range structure.Fields() {
+			if field.Exported() {
+				effect = max(effect, mutatingAPI(pass, field.Type(), flows, seen))
 			}
 		}
 	}
 	if array, ok := t.(*types.Array); ok {
 		return mutatingAPI(pass, array.Elem(), flows, seen)
 	}
-	return false
+	return effect
 }
 
 func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visible func(types.Type) bool) flow {
@@ -339,6 +435,28 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 	possibleWrite := func(address ssa.Value) {
 		if storage(address.Type()) {
 			result.Writes.add(uncertain(get(address)))
+		}
+	}
+	// stored records that value's origins entered storage reached through
+	// destination, keyed by the destination's parameter origins.
+	stored := func(destination, value ssa.Value) {
+		for target := range get(root(destination)) {
+			if target < 0 {
+				continue
+			}
+			sources := origins{}
+			for source := range get(value) {
+				if source != target {
+					sources[source] = true
+				}
+			}
+			if len(sources) == 0 {
+				continue
+			}
+			if result.Stores[target] == nil {
+				result.Stores[target] = origins{}
+			}
+			result.Stores[target].add(sources)
 		}
 	}
 
@@ -468,29 +586,46 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 				case *ssa.Store:
 					write(v.Addr)
 					if storage(v.Val.Type()) {
+						stored(v.Addr, v.Val)
 						put(root(v.Addr), get(v.Val))
 					}
 				case *ssa.MapUpdate:
 					write(v.Map)
 					if storage(v.Value.Type()) {
+						stored(v.Map, v.Value)
 						put(v.Map, get(v.Value))
 					}
 					if storage(v.Key.Type()) {
+						stored(v.Map, v.Key)
 						put(v.Map, get(v.Key))
 					}
 				case *ssa.Send:
 					write(v.Chan)
 					if storage(v.X.Type()) {
+						stored(v.Chan, v.X)
 						put(v.Chan, get(v.X))
 					}
 				case *ssa.Select:
+					// The result tuple is (index, recvOk, r0, r1, ...) with one
+					// slot per receive state, in state order.
+					received := 2
 					for _, state := range v.States {
 						if state.Dir == types.SendOnly {
 							write(state.Chan)
 							if storage(state.Send.Type()) {
 								put(state.Chan, get(state.Send))
 							}
+							continue
 						}
+						if tuples[v] == nil {
+							tuples[v] = make([]origins, v.Type().(*types.Tuple).Len())
+							for i := range tuples[v] {
+								tuples[v][i] = origins{}
+							}
+						}
+						changed = tuples[v][received].add(get(state.Chan)) || changed
+						changed = tuples[v][received].add(get(root(state.Chan))) || changed
+						received++
 					}
 				case ssa.CallInstruction:
 					// go and defer statements apply the same effects but have no result.
@@ -516,6 +651,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						case "copy":
 							write(args[0])
 							if s, ok := args[0].Type().Underlying().(*types.Slice); ok && visible(s.Elem()) {
+								stored(args[0], args[1])
 								put(root(args[0]), get(args[1]))
 							}
 						case "delete", "clear", "close":
@@ -532,6 +668,9 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					}
 					if closure, ok := common.Value.(*ssa.MakeClosure); ok {
 						args = append(slices.Clone(args), closure.Bindings...)
+					} else if callee == nil && !common.IsInvoke() {
+						// A function value carries the storage its closures captured.
+						args = append(slices.Clone(args), common.Value)
 					}
 					if callee != nil {
 						if summary, found := lookup(callee); found {
@@ -545,6 +684,27 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 								}
 								if index < len(args) {
 									write(args[index])
+								}
+							}
+							for destination, sources := range summary.Stores {
+								if destination >= len(args) {
+									continue
+								}
+								for index := range sources {
+									possible := index < 0
+									if possible {
+										index = -index - 1
+									}
+									if index >= len(args) {
+										continue
+									}
+									aliases := get(args[index])
+									if possible {
+										aliases = uncertain(aliases)
+									}
+									stored(args[destination], args[index])
+									put(args[destination], aliases)
+									put(root(args[destination]), aliases)
 								}
 							}
 							if call == nil {
