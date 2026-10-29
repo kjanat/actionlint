@@ -52,12 +52,7 @@
       },
       "initialization_options": {
         "command": [
-          "mise",
-          "exec",
-          "--silent",
-          "golangci-lint@latest",
-          "--",
-          "golangci-lint",
+          "./custom-gcl",
           "run",
           "--allow-parallel-runners",
           "--output.json.path",

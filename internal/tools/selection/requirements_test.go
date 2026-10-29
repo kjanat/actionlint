@@ -10,12 +10,12 @@ import (
 func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
-			cfg, err := config.Parse([]byte(fmt.Sprintf(`overrides:
+			cfg, err := config.Parse(fmt.Appendf(nil, `overrides:
   - includes: ['process-action/**']
     tools: {%s: {backend: {process: {executable: checker}}}}
   - includes: ['wasm-action/**']
     tools: {%s: {backend: {wasm: {path: checker.wasm}}}}
-`, name, name)))
+`, name, name))
 			if err != nil {
 				t.Fatal(err)
 			}

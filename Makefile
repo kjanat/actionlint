@@ -94,11 +94,25 @@ coverage.html: coverage.out
 cov: coverage.out coverage.html
 	go tool cover -func=coverage.out
 
-lint:
-	golangci-lint run
+# Rebuild on every run: analyzer changes must not leave a stale binary active.
+.PHONY: lint-build lint-architecture test-analyzers
+lint-build:
+	golangci-lint custom
+	./custom-gcl cache clean
+	go build -C analyzers -o ../.bin/actionlintarch ./cmd/actionlintarch
+
+test-analyzers:
+	go test -C analyzers -count=1 ./...
+
+lint-architecture: lint-build
+	./.bin/actionlintarch ./...
+
+lint: lint-build
+	./custom-gcl run
+	./.bin/actionlintarch ./...
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
-	GOOS=js GOARCH=wasm golangci-lint run ./playground
+	GOOS=js GOARCH=wasm ./custom-gcl run ./playground
 endif
 
 # Documentation examples use the configured external script checkers.

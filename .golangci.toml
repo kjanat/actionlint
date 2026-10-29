@@ -1,4 +1,5 @@
 #:schema https://www.schemastore.org/golangci-lint.json
+#:tombi schema.strict = false
 # this breaks in current tombi, something about the schema and tombi is wrong.
 # https://golangci-lint.run/jsonschema/golangci.v2.jsonschema.json
 
@@ -7,6 +8,9 @@ version = "2"
 [linters]
 default = "standard"
 enable  = [
+  "actionlintarch",
+  "contextcheck",
+  "exhaustive",
   "asasalint",
   "asciicheck",
   "bidichk",
@@ -52,6 +56,16 @@ forbid = [
 
 [linters.settings.staticcheck]
 checks = ["all", "-ST1003"]
+
+[linters.settings.custom.actionlintarch]
+type        = "module"
+description = "Enforce actionlint architecture and expose migration debt"
+
+[linters.settings.custom.actionlintarch.settings]
+contract = "architecture.json"
+
+[linters.settings.exhaustive]
+default-signifies-exhaustive = false
 
 [linters.exclusions]
 generated = "lax"
