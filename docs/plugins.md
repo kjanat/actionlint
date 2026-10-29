@@ -106,6 +106,10 @@ An explicit update records that release's format, filename, interface and digest
 publisher, repository or plugin identity, and reject altered bytes, format or filenames for an existing release.
 Checking, synchronization and installation with an already matching pin use the pinned artifact.
 
+The discovery metadata's `id` identifies the package in the registry and lockfile.
+Its analyzer descriptor names the rule; that name can differ from the package ID.
+The tool-integration identifier must equal the analyzer rule name.
+
 Edit `plugins` directly, then run `actionlint plugin install` without arguments to resolve missing or changed
 dependencies. Existing matching pins stay pinned. This command also migrates older lock-only installations
 into config without upgrading their artifacts. Checks require declarations and matching pins; they never

@@ -73,6 +73,11 @@ capabilities and license text, then call `write(input, output)`. It writes
 `plugin.wasm`, `metadata.json`, `schema.json`, `LICENSE` and `SHA256SUMS`.
 Only the outer discovery section is replaced; nested components/modules survive.
 
+Set `package::Identity.id` to the stable published package identifier. This is
+the registry and lockfile identity; it can differ from the analyzer's rule name
+and the package's display name. Keep it unchanged across releases. Tool
+integration identifies its tool through the analyzer's rule name.
+
 This crate owns the public contracts in [`wit/`](https://github.com/kjanat/actionlint/tree/master/crates/actionlint-extension-api/wit). Host generation, examples and
 fixtures read these same files. Cargo includes them in the published package.
 

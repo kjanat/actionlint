@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // withAnalyzer selects a document analyzer or native execution per document,
@@ -39,15 +40,39 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 		if !base.Enabled(tools.Context{Config: cfg}) {
 			return false, nil
 		}
-		_, err := negotiateDocument(ctx, integrator, cfg, nil)
-		if err == nil {
+		declined, err := declinedConfiguration(ctx, integrator, cfg)
+		if err != nil {
+			return false, err
+		}
+		// A referenced composite action can match project overrides that its
+		// workflow does not, so a declined override variant still needs native
+		// ShellCheck. Variants differ by what the guest negotiates, not only by
+		// tool gates as in selection.ConfigCandidates.
+		if declined == nil && composite && project != nil && len(project.Overrides) != 0 {
+			tool := integrator.ToolIntegration().Tool
+			candidates, err := selection.ConfigVariants(project, func(candidate *config.Config) (string, error) {
+				return negotiationKey(candidate, tool, base.Enabled(tools.Context{Config: candidate}))
+			})
+			if err != nil {
+				return false, err
+			}
+			for _, candidate := range candidates {
+				if !base.Enabled(tools.Context{Config: candidate}) {
+					continue
+				}
+				if declined, err = declinedConfiguration(ctx, integrator, candidate); err != nil {
+					return false, err
+				}
+				if declined != nil {
+					break
+				}
+			}
+		}
+		if declined == nil {
 			return false, nil
 		}
-		if _, ok := errors.AsType[*analyzer.UnsupportedToolConfigurationError](err); !ok {
-			return false, err
-		}
 		if o.ManagedOnly {
-			return false, err
+			return false, declined
 		}
 		return base.NeedsProcess(ctx, cfg, project, composite)
 	}
@@ -65,18 +90,56 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 	return next, nil
 }
 
-func negotiateDocument(ctx context.Context, guest analyzer.ToolIntegrator, cfg *config.Config, script *tools.Script) (*analyzer.ToolNegotiation, error) {
-	options := documentPluginOptions{}
-	if cfg != nil {
-		if cfg.Tools.Shellcheck.Backend != nil {
-			return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
-		}
-		options.RCFile = cfg.Tools.Shellcheck.Config.Path()
-		if inline := cfg.Tools.Shellcheck.Config.Inline(); inline != nil {
-			options.Shell, options.Disable, options.Enable = inline.Shell, inline.Disable, inline.Enable
-			options.ExtendedAnalysis, options.ExternalSources, options.SourcePath = inline.ExtendedAnalysis, inline.ExternalSources, inline.SourcePath
-		}
+// declinedConfiguration reports the guest's refusal of cfg. Other negotiation
+// failures are returned as errors.
+func declinedConfiguration(ctx context.Context, guest analyzer.ToolIntegrator, cfg *config.Config) (*analyzer.UnsupportedToolConfigurationError, error) {
+	_, err := negotiateDocument(ctx, guest, cfg, nil)
+	if err == nil {
+		return nil, nil
 	}
+	if declined, ok := errors.AsType[*analyzer.UnsupportedToolConfigurationError](err); ok {
+		return declined, nil
+	}
+	return nil, err
+}
+
+// negotiationKey identifies everything about cfg that the guest's negotiation
+// can depend on before a script is known.
+func negotiationKey(cfg *config.Config, tool string, enabled bool) (string, error) {
+	options := configuredDocumentOptions(cfg)
+	var pluginOptions any
+	if cfg != nil {
+		pluginOptions = cfg.Lint.Rules.Plugins.Rules[tool].Options
+	}
+	data, err := json.Marshal(struct {
+		Enabled bool                  `json:"enabled"`
+		Backend bool                  `json:"backend"`
+		Options documentPluginOptions `json:"options"`
+		Plugin  any                   `json:"plugin"`
+	}{enabled, cfg != nil && cfg.Tools.Shellcheck.Backend != nil, options, pluginOptions})
+	return string(data), err
+}
+
+// configuredDocumentOptions reads the ShellCheck settings sent to the guest,
+// before script-relative source paths are expanded.
+func configuredDocumentOptions(cfg *config.Config) documentPluginOptions {
+	options := documentPluginOptions{}
+	if cfg == nil {
+		return options
+	}
+	options.RCFile = cfg.Tools.Shellcheck.Config.Path()
+	if inline := cfg.Tools.Shellcheck.Config.Inline(); inline != nil {
+		options.Shell, options.Disable, options.Enable = inline.Shell, inline.Disable, inline.Enable
+		options.ExtendedAnalysis, options.ExternalSources, options.SourcePath = inline.ExtendedAnalysis, inline.ExternalSources, inline.SourcePath
+	}
+	return options
+}
+
+func negotiateDocument(ctx context.Context, guest analyzer.ToolIntegrator, cfg *config.Config, script *tools.Script) (*analyzer.ToolNegotiation, error) {
+	if cfg != nil && cfg.Tools.Shellcheck.Backend != nil {
+		return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
+	}
+	options := configuredDocumentOptions(cfg)
 	if script != nil && script.Scope != nil && len(options.SourcePath) != 0 {
 		options.SourcePath = slices.Clone(options.SourcePath)
 		run := &shellcheckRun{actionPath: script.Scope.ActionPath, paths: runPaths{analysis: script.Scope.AnalysisDir, workspace: script.Scope.Workspace}}
