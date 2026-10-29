@@ -103,26 +103,8 @@ func TestIndependentTemplateValues(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			script := strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", ending)
 			t.Run(script, func(t *testing.T) {
-				var result error
 				var diagnostics []Diagnostic
-				checker := New(func(args []string, source string, callback func([]byte, error) error) {
-					cmd := exec.CommandContext(t.Context(), binary, args...)
-					cmd.Stdin = strings.NewReader(source)
-					var stderr bytes.Buffer
-					cmd.Stderr = &stderr
-					output, runErr := cmd.Output()
-					var exitErr *exec.ExitError
-					if errors.As(runErr, &exitErr) && exitErr.ExitCode() == 1 {
-						runErr = nil
-					}
-					if runErr != nil {
-						t.Fatalf("Ruff failed: %v: %s", runErr, stderr.String())
-					}
-					result = callback(output, runErr)
-				}, func() error { return result }, func(source string) (int, bool) {
-					end := strings.Index(source, "}}")
-					return end + 2, end >= 0
-				})
+				checker := newRuffBinaryChecker(t, binary)
 				python := "python"
 				if err := checker.Check(script, &python, "workflow:12", Config{Select: []string{"F"}}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
 					t.Fatal(err)
@@ -183,4 +165,29 @@ func TestOpaqueTemplatePatternSkips(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+// newRuffBinaryChecker runs the Ruff binary per check. Exit status 1 reports
+// findings, so only other failures stop the test.
+func newRuffBinaryChecker(t *testing.T, binary string) *Checker {
+	t.Helper()
+	var result error
+	return New(func(args []string, source string, callback func([]byte, error) error) {
+		cmd := exec.CommandContext(t.Context(), binary, args...)
+		cmd.Stdin = strings.NewReader(source)
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		output, runErr := cmd.Output()
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) && exitErr.ExitCode() == 1 {
+			runErr = nil
+		}
+		if runErr != nil {
+			t.Fatalf("Ruff failed: %v: %s", runErr, stderr.String())
+		}
+		result = callback(output, runErr)
+	}, func() error { return result }, func(source string) (int, bool) {
+		end := strings.Index(source, "}}")
+		return end + 2, end >= 0
+	})
 }

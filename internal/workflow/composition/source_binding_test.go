@@ -42,24 +42,7 @@ func TestRejectedRunValuesDoNotBecomeScriptOccurrences(t *testing.T) {
 	for _, invalid := range []string{"*job", "[echo, bad]", "{command: bad}", "!unsupported bad"} {
 		t.Run(invalid, func(t *testing.T) {
 			content := []byte("on: push\njobs:\n  test: &job\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo before\n      - run: " + invalid + "\n      - run: echo after\n")
-			document := documentparse.Workflow("ci.yml", content)
-			if len(document.Findings) == 0 {
-				t.Fatal("invalid run value produced no syntax diagnostic")
-			}
-			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-			snapshot, err := registry.Document("ci.yml", content, document)
-			if err != nil {
-				t.Fatal(err)
-			}
-			service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
-			result, err := service.Workflow(snapshot)
-			if err != nil {
-				t.Fatal(err)
-			}
-			scripts := result.Batch.Scripts()
-			if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
-				t.Fatalf("recovered scripts = %+v, want only surrounding valid runs", scripts)
-			}
+			checkOnlySurroundingRuns(t, content)
 		})
 	}
 }
@@ -87,24 +70,7 @@ func TestRejectedScriptInputsDoNotBecomeOccurrences(t *testing.T) {
 	for _, invalid := range []string{"[bad]", "{command: bad}", "!unsupported bad"} {
 		t.Run(invalid, func(t *testing.T) {
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo before\n      - uses: actions/github-script@v7\n        with:\n          script: " + invalid + "\n      - run: echo after\n")
-			document := documentparse.Workflow("ci.yml", content)
-			if len(document.Findings) == 0 {
-				t.Fatal("invalid script input produced no syntax diagnostic")
-			}
-			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
-			snapshot, err := registry.Document("ci.yml", content, document)
-			if err != nil {
-				t.Fatal(err)
-			}
-			service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
-			result, err := service.Workflow(snapshot)
-			if err != nil {
-				t.Fatal(err)
-			}
-			scripts := result.Batch.Scripts()
-			if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
-				t.Fatalf("rejected action input contaminated script occurrences: %+v", scripts)
-			}
+			checkOnlySurroundingRuns(t, content)
 		})
 	}
 }
@@ -346,5 +312,30 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	}
 	if unit.Reference == (source.Reference{}) {
 		t.Fatal("prepared root script lost its source reference")
+	}
+}
+
+// checkOnlySurroundingRuns expects content to fail syntax checks yet still
+// collect exactly the valid "echo before" and "echo after" runs around the
+// rejected value.
+func checkOnlySurroundingRuns(t *testing.T, content []byte) {
+	t.Helper()
+	document := documentparse.Workflow("ci.yml", content)
+	if len(document.Findings) == 0 {
+		t.Fatal("rejected value produced no syntax diagnostic")
+	}
+	registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+	snapshot, err := registry.Document("ci.yml", content, document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
+	result, err := service.Workflow(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scripts := result.Batch.Scripts()
+	if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
+		t.Fatalf("scripts = %+v, want only the surrounding valid runs", scripts)
 	}
 }

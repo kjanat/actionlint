@@ -1,8 +1,6 @@
 package ruff
 
 import (
-	"bytes"
-	"errors"
 	"os/exec"
 	"slices"
 	"strings"
@@ -54,25 +52,7 @@ func TestTemplateReferences(t *testing.T) {
 			t.Run(tc.name+ending, func(t *testing.T) {
 				script := strings.ReplaceAll(tc.script+"\nprint(missing)", "\n", ending)
 				var diagnostics []Diagnostic
-				var result error
-				checker := New(func(args []string, source string, callback func([]byte, error) error) {
-					cmd := exec.CommandContext(t.Context(), binary, args...)
-					cmd.Stdin = strings.NewReader(source)
-					var stderr bytes.Buffer
-					cmd.Stderr = &stderr
-					output, runErr := cmd.Output()
-					var exitErr *exec.ExitError
-					if errors.As(runErr, &exitErr) && exitErr.ExitCode() == 1 {
-						runErr = nil
-					}
-					if runErr != nil {
-						t.Fatalf("Ruff failed: %v: %s", runErr, stderr.String())
-					}
-					result = callback(output, runErr)
-				}, func() error { return result }, func(source string) (int, bool) {
-					end := strings.Index(source, "}}")
-					return end + 2, end >= 0
-				})
+				checker := newRuffBinaryChecker(t, binary)
 				python := "python"
 				if err := checker.Check(script, &python, "workflow:12", Config{Select: []string{"F", "ARG", "B007"}}, func(d Diagnostic) { diagnostics = append(diagnostics, d) }); err != nil {
 					t.Fatal(err)

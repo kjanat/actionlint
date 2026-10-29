@@ -23,32 +23,7 @@ func TestExpressionRefinementReview(t *testing.T) {
 		{"environment null", "environment: ${{ null }}", "must be a non-empty string"},
 		{"environment unknown", "environment: ${{ vars.ENVIRONMENT }}", ""},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
-			var requestSources []workspace.Source
-			var err error
-
-			source := `on: push
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    ` + tc.field + `
-    steps:
-      - run: echo ok
-`
-			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
-			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if tc.want == "" {
-				if len(errs) != 0 {
-					t.Fatalf("unexpected diagnostics: %v", errs)
-				}
-			} else if len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want) {
-				t.Fatalf("want one %q diagnostic, got %v", tc.want, errs)
-			}
-		})
+		t.Run(tc.name, func(t *testing.T) { checkJobField(t, tc.field, tc.want) })
 	}
 }
 

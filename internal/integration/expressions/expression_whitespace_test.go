@@ -29,32 +29,7 @@ func TestExpressionWhitespaceWorkflowBoundaries(t *testing.T) {
 		{"bare if whitespace", `if: "  github.ref == 'refs/heads/main'  "`, ""},
 		{"interpolated if", `if: "  ${{ false }}  "`, "always evaluated to true because extra characters"},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
-			var requestSources []workspace.Source
-			var err error
-
-			source := `on: push
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    ` + tc.field + `
-    steps:
-      - run: echo ok
-`
-			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
-			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if tc.message == "" {
-				if len(errs) != 0 {
-					t.Fatalf("valid workflow rejected: %v", errs)
-				}
-			} else if len(errs) != 1 || !strings.Contains(errs[0].Message, tc.message) {
-				t.Fatalf("want one %q diagnostic, got %v", tc.message, errs)
-			}
-		})
+		t.Run(tc.name, func(t *testing.T) { checkJobField(t, tc.field, tc.message) })
 	}
 }
 
@@ -126,5 +101,32 @@ jobs:
 				t.Fatalf("want one expression syntax diagnostic, got %v", errs)
 			}
 		})
+	}
+}
+
+// checkJobField analyzes a one-job workflow carrying field and expects no
+// diagnostic when want is empty, otherwise exactly one containing want.
+func checkJobField(t *testing.T, field, want string) {
+	t.Helper()
+	source := `on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    ` + field + `
+    steps:
+      - run: echo ok
+`
+	request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	sources := []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source)}}
+	errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, sources))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want == "" {
+		if len(errs) != 0 {
+			t.Fatalf("unexpected diagnostics: %v", errs)
+		}
+	} else if len(errs) != 1 || !strings.Contains(errs[0].Message, want) {
+		t.Fatalf("want one %q diagnostic, got %v", want, errs)
 	}
 }
