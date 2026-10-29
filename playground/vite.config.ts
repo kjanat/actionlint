@@ -110,6 +110,9 @@ export default defineConfig({
 		emptyOutDir: true,
 		sourcemap: true,
 		rollupOptions: {
+			external: (source, importer) =>
+				Boolean(importer?.endsWith('/xml-viewer.ts'))
+				&& (source.startsWith('@codemirror/') || source === '@lezer/highlight' || source === 'xml-formatter'),
 			input: {
 				main: resolve(here, 'index.html'),
 				changelog: resolve(here, 'github-changelog/index.html'),
