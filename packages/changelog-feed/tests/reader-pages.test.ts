@@ -1,7 +1,8 @@
-import { readRawPages, updateFeedMetadata } from '#/reader-pages';
-import { parseFeed } from '#feed';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
+import { readRawPages, updateFeedMetadata } from '#/reader-pages';
+import { parseFeed } from '#feed';
 
 function feed(date: string) {
 	return parseFeed(`<rss><channel><title>Actions</title><lastBuildDate>${date}</lastBuildDate></channel></rss>`);
