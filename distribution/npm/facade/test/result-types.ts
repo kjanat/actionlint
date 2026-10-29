@@ -6,11 +6,11 @@ import type {
 	DiagnosticRecord,
 	DocumentOutline,
 	JobOutline,
+	RelatedLocation,
+	SourceRevision,
 	StepOutline,
 	UsesReference,
 	WorkflowOutline,
-	RelatedLocation,
-	SourceRevision,
 } from '@kjanat/actionlint/result';
 
 type AssertFalse<T extends false> = T;
