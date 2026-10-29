@@ -45,7 +45,17 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := t.TempDir()
+	// The working directory must be expressible relative to the process
+	// directory; t.TempDir can sit on another Windows volume than the checkout.
+	root, err := os.MkdirTemp(current, "editor-paths-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(root); err != nil {
+			t.Error(err)
+		}
+	})
 	relative, err := filepath.Rel(current, root)
 	if err != nil {
 		t.Fatal(err)
