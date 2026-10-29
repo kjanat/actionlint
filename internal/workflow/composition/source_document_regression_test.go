@@ -7,6 +7,7 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
@@ -38,7 +39,7 @@ func TestResolvedNonCompositeActionIsAdmittedToSourceSnapshots(t *testing.T) {
 }
 
 func TestParseFailedActionKeepsRecoveredCanonicalSourceReferences(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "action.yml")
+	path := filepath.Join(tempdir.Physical(t), "action.yml")
 	content := []byte("name: recovered\ndescription: partial\ninputs: [wrong]\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo partial\n")
 	document := documentparse.Action(path, path, content)
 	if len(document.Findings) == 0 || document.CanAnalyze() {

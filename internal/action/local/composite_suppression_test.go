@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 )
 
 func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	source := "false # actionlint:ignore action\n"
 	path := writeFixture(t, root, "inner/action.yml", source)
 	for _, spec := range []string{"./inner", "$/inner", "./INNER", "$/INNER"} {

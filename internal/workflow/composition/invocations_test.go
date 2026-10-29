@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -35,7 +36,7 @@ type invocationFixture struct {
 
 func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, actions map[string]string, budget *invocation.Budget) *invocationFixture {
 	t.Helper()
-	directory := t.TempDir()
+	directory := tempdir.Physical(t)
 	path := filepath.Join(directory, "ci.yml")
 	content := []byte(workflow)
 	document := documentparse.Workflow(path, content)

@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -72,7 +73,7 @@ func (rule *mutatingStandaloneMetadata) ForMetadata(*actionlocal.Resolver) workf
 }
 
 func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "action.yml")
+	path := filepath.Join(tempdir.Physical(t), "action.yml")
 	content := []byte("name: action\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo canonical\n")
 	document := documentparse.Action(path, path, content)
 	if document.Metadata == nil || !document.CanAnalyze() {
@@ -119,7 +120,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 		{"*runs", 9}, {"[echo, bad]", 8}, {"{command: bad}", 8}, {"!unsupported bad", 9},
 	} {
 		t.Run(invalid.value, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "action.yml")
+			path := filepath.Join(tempdir.Physical(t), "action.yml")
 			content := []byte("name: test\ndescription: test\nruns: &runs\n  using: composite\n  steps:\n    - shell: bash\n      run: echo before\n    - shell: bash\n      run: " + invalid.value + "\n    - shell: bash\n      run: echo after\n")
 			metadata, parseErr := actionmeta.Parse(path, content)
 			if metadata == nil {
@@ -149,7 +150,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 }
 
 func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "action.yml")
+	path := filepath.Join(tempdir.Physical(t), "action.yml")
 	content := []byte("name: empty\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ''\n")
 	metadata, err := actionmeta.Parse(path, content)
 	if err != nil {

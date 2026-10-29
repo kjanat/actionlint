@@ -20,6 +20,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"github.com/fatih/color"
@@ -70,7 +71,10 @@ func Actionlint(src []byte) ([]byte, error) {
 	}
 
 	// Replace checkout-specific paths in diagnostics with a stable example path.
-	return bytes.ReplaceAll(out.Bytes(), []byte(root), []byte("/path/to/repo")), nil
+	// Read errors name the physical file, which differs from root when the
+	// checkout is reached through a symlink or a Windows short name.
+	rendered := bytes.ReplaceAll(out.Bytes(), []byte(fsread.PhysicalPath(root)), []byte("/path/to/repo"))
+	return bytes.ReplaceAll(rendered, []byte(root), []byte("/path/to/repo")), nil
 }
 
 type state int

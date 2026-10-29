@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/application"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -85,7 +86,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 	if err != nil {
 		t.Skip("Git required")
 	}
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	configRoot := t.TempDir()
 	t.Setenv("GIT_CONFIG_GLOBAL", writeFixture(t, configRoot, "gitconfig", ""))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
