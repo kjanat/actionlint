@@ -313,7 +313,14 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), application.Options{WorkingDir: session.WorkingDir()}, selection.Sources))
+			// The relative repository root is relative to the process, so the
+			// analysis resolves it there. The session stays rooted in the
+			// repository for discovery and configuration.
+			cwd, err := os.Getwd()
+			if err != nil {
+				t.Fatal(err)
+			}
+			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), application.Options{WorkingDir: cwd}, selection.Sources))
 			if err != nil {
 				t.Fatal(err)
 			}
