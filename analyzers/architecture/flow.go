@@ -342,9 +342,8 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		}
 	}
 
-	// A value copy can detach each reference field before publication. Read
-	// the dominating stores for that load instead of confusing copied payloads
-	// with aliases to the fresh aggregate itself.
+	// A value copy can detach its reference fields before publication. Its
+	// origins come from the field stores dominating the load.
 	returned := func(value ssa.Value) origins {
 		load, ok := value.(*ssa.UnOp)
 		if !ok || load.Op != token.MUL {

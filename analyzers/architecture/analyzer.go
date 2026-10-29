@@ -123,8 +123,8 @@ func internalPackage(path string) bool {
 	return path == "internal" || strings.HasPrefix(path, "internal/") || strings.Contains(path, "/internal/") || strings.HasSuffix(path, "/internal")
 }
 
-// checkAPI walks exported signatures and fields, not implementation imports.
-// An opaque value may store internal implementation details privately.
+// checkAPI walks exported signatures, fields and constraints. Imports and
+// private fields may use internal types.
 func checkAPI(pass *analysis.Pass) {
 	if internalPackage(pass.Pkg.Path()) || pass.Pkg.Name() == "main" {
 		return
@@ -167,8 +167,8 @@ func checkAPI(pass *analysis.Pass) {
 				for i := 0; i < t.TypeArgs().Len(); i++ {
 					walk(t.TypeArgs().At(i))
 				}
-				// Another package owns its public contract. Report its own
-				// declarations when analyzing it, not every downstream user.
+				// Another package's public contract is reported when that
+				// package is analyzed.
 				if decl.Pkg() != pass.Pkg {
 					return
 				}
