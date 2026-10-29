@@ -27,12 +27,12 @@ func ActionOutline(path string, metadata *actionmeta.Metadata, parseErr error) d
 }
 
 func parsedActionOutline(path string, metadata *actionmeta.Metadata, parseErr error) (documentmodel.Action, error) {
-	outline := documentmodel.Action{Path: path, ParseStatus: "failed", Inputs: []documentmodel.Input{}, Outputs: []documentmodel.Output{}, Runs: documentmodel.UnknownRuns{}}
+	outline := documentmodel.ActionFields{Path: path, ParseStatus: "failed", Inputs: []documentmodel.Input{}, Outputs: []documentmodel.Output{}, Runs: documentmodel.UnknownRuns{}}
 	if metadata == nil || metadata.Root == nil {
 		if parseErr == nil {
 			parseErr = errors.New("action metadata is empty")
 		}
-		return outline, parseErr
+		return documentmodel.NewAction(outline), parseErr
 	}
 	fields := actionOutlineFields(metadata.Root)
 	outline.Name, outline.Description = actionOutlineString(fields["name"]), actionOutlineString(fields["description"])
@@ -44,7 +44,7 @@ func parsedActionOutline(path string, metadata *actionmeta.Metadata, parseErr er
 	if parseErr != nil {
 		outline.ParseStatus = "partial"
 	}
-	return outline, parseErr
+	return documentmodel.NewAction(outline), parseErr
 }
 
 func actionOutlineFields(node *syntax.Node) map[string]*syntax.Node {
@@ -115,7 +115,7 @@ func actionRunsOutline(node *syntax.Node) documentmodel.ActionRuns {
 	using := actionOutlineString(fields["using"])
 	switch strings.ToLower(using) {
 	case "composite":
-		return documentmodel.CompositeRuns{Steps: actionStepOutlines(fields["steps"])}
+		return documentmodel.NewCompositeRuns(actionStepOutlines(fields["steps"]))
 	case "docker":
 		args := []string{}
 		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == syntax.SequenceNode {
@@ -125,10 +125,10 @@ func actionRunsOutline(node *syntax.Node) documentmodel.ActionRuns {
 				}
 			}
 		}
-		return documentmodel.DockerRuns{
+		return documentmodel.NewDockerRuns(documentmodel.DockerRunsFields{
 			Image: actionOutlineString(fields["image"]), Entrypoint: actionOutlineString(fields["entrypoint"]),
 			PreEntrypoint: actionOutlineString(fields["pre-entrypoint"]), PostEntrypoint: actionOutlineString(fields["post-entrypoint"]), Args: args,
-		}
+		})
 	case "":
 		if plugin := actionOutlineString(fields["plugin"]); plugin != "" {
 			return documentmodel.PluginRuns{Plugin: plugin}
@@ -151,7 +151,7 @@ func actionStepOutlines(node *syntax.Node) []documentmodel.Step {
 	}
 	for _, node := range node.Content {
 		fields := actionOutlineFields(node)
-		step := documentmodel.Step{
+		step := documentmodel.StepFields{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
 			Start: outlinePosition(workflowparser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
 		}
@@ -163,8 +163,7 @@ func actionStepOutlines(node *syntax.Node) []documentmodel.Step {
 		case hasUses && !hasRun:
 			step.Kind = "uses"
 		}
-		step.Reference = documentmodel.ParseReference(step.Uses)
-		steps = append(steps, step)
+		steps = append(steps, documentmodel.NewStep(step))
 	}
 	return steps
 }

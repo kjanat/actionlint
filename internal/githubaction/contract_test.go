@@ -8,10 +8,16 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/render"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"github.com/google/go-cmp/cmp"
+)
+
+// documentValues compares opaque document outlines by their recorded declarations.
+var documentValues = cmp.AllowUnexported(
+	document.Workflow{}, document.Job{}, document.Step{}, document.Action{}, document.CompositeRuns{}, document.DockerRuns{},
 )
 
 func TestActionMultiProjectResultParity(t *testing.T) {
@@ -128,10 +134,10 @@ jobs:
 			if err := json.Unmarshal([]byte(parseOutputs(read(t, outputPath))["output"]), &rendered); err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(persisted, rendered); diff != "" {
+			if diff := cmp.Diff(persisted, rendered, documentValues); diff != "" {
 				t.Fatalf("public and persisted JSON differ: %s", diff)
 			}
-			if diff := cmp.Diff(cliResult, persisted); diff != "" {
+			if diff := cmp.Diff(cliResult, persisted, documentValues); diff != "" {
 				t.Fatalf("CLI and Action differ: %s", diff)
 			}
 			if persisted.ExitCode != tc.code {

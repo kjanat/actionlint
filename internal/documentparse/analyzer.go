@@ -11,10 +11,10 @@ func (d Document) AnalyzerSource(path string, content []byte, reference source.R
 	input := analyzer.Input{Reference: reference, Available: []analyzer.Fact{analyzer.Source}, Path: path, Content: string(content), Kind: "workflow", ParseStatus: "failed"}
 	switch outline := d.Outline.(type) {
 	case documentmodel.Workflow:
-		input.ParseStatus = outline.ParseStatus
+		input.ParseStatus = outline.ParseStatus()
 	case documentmodel.Action:
 		input.Kind = "action"
-		input.ParseStatus = outline.ParseStatus
+		input.ParseStatus = outline.ParseStatus()
 	}
 	return input
 }

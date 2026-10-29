@@ -39,7 +39,9 @@ non-nil result may still contain useful findings and document outlines. Always i
 
 `result.FileCount` includes clean documents. `result.Documents` uses `document.Outlines`. The `document` package can
 encode and decode workflow/action outlines and parse `uses` references without importing the parser or execution engine.
-Outlines contain selected declarations.
+Outlines contain selected declarations. Workflow, job, step, action and runtime outlines are immutable values: read them
+through accessor methods, which return detached copies, and build them with `NewWorkflow`, `NewJob`, `NewStep`,
+`NewAction`, `NewCompositeRuns` and `NewDockerRuns`. A job or step `Reference` is derived from its `uses` value.
 Positions are one-based Unicode character positions; range ends are exclusive. The library result can be marshalled to
 JSON, but it is not the CLI's versioned result envelope.
 

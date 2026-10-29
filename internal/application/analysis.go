@@ -553,7 +553,7 @@ func (d *actionDocuments) complete(captures *capture.Store, consumed []string) e
 func (d *actionDocuments) add(identity string, document documentmodel.Action) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if previous, exists := d.byPath[identity]; !exists || document.Path < previous.Path {
+	if previous, exists := d.byPath[identity]; !exists || document.DocumentPath() < previous.DocumentPath() {
 		d.byPath[identity] = document
 	}
 }

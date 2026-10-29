@@ -74,7 +74,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 				t.Fatal(err)
 			}
 			outline, ok := result.Documents[0].(documentmodel.Action)
-			if !ok || outline.ParseStatus == "failed" {
+			if !ok || outline.ParseStatus() == "failed" {
 				t.Fatalf("expected decoded action outline, got %#v", result.Documents)
 			}
 			if tc.message == "" {
@@ -106,7 +106,7 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 	if _, ok := result.Documents[0].(documentmodel.Workflow); !ok {
 		t.Fatalf("workflow routed as %T", result.Documents[0])
 	}
-	if outline, ok := result.Documents[2].(documentmodel.Action); !ok || outline.ParseStatus != "failed" {
+	if outline, ok := result.Documents[2].(documentmodel.Action); !ok || outline.ParseStatus() != "failed" {
 		t.Fatalf("broken action outline: %#v", result.Documents[2])
 	}
 }

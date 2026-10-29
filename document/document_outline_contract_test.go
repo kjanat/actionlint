@@ -37,7 +37,7 @@ func TestDocumentOutlinesAcceptMissingRuntime(t *testing.T) {
 			if err := json.Unmarshal([]byte(tc.input), &documents); err != nil {
 				t.Fatal(err)
 			}
-			want := documentmodel.Outlines{documentmodel.Action{Path: "action.yml"}}
+			want := documentmodel.Outlines{documentmodel.NewAction(documentmodel.ActionFields{Path: "action.yml"})}
 			if !reflect.DeepEqual(documents, want) {
 				t.Fatalf("missing runtime changed action: got %#v, want %#v", documents, want)
 			}

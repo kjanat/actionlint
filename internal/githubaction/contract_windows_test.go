@@ -63,7 +63,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 	if err := json.Unmarshal([]byte(read(t, resultPath)), &actionResult); err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff(cliResult, actionResult); diff != "" {
+	if diff := cmp.Diff(cliResult, actionResult, documentValues); diff != "" {
 		t.Fatalf("CLI and Action short-path identities differ: %s", diff)
 	}
 }

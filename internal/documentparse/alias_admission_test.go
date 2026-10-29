@@ -58,7 +58,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				}
 			}
 			outline, ok := document.Outline.(documentmodel.Action)
-			if !ok || outline.Name != "recovered" || outline.ParseStatus != "partial" {
+			if !ok || outline.Name() != "recovered" || outline.ParseStatus() != "partial" {
 				t.Fatalf("recovered outline lost: %+v", document.Outline)
 			}
 			var budget, schema bool
