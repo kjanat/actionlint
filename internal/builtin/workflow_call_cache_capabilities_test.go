@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
@@ -26,7 +27,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			if len(errs) != 0 {
 				t.Fatalf("%s: %v", name, errs)
 			}
-			_, ok := w.FindWorkflowCallEvent()
+			_, ok := workflowlang.FindWorkflowCallEvent(w)
 			if !ok {
 				t.Fatalf("%s has no workflow_call event", name)
 			}

@@ -110,11 +110,23 @@ func (v StepView) Parallel() (ExecParallelView, bool) { return v.Exec().Parallel
 func (v StepView) Wait() (ExecWaitView, bool)         { return v.Exec().Wait() }
 func (v StepView) Cancel() (ExecCancelView, bool)     { return v.Exec().Cancel() }
 
+// Kind dispatches over the closed set of step executions instead of calling
+// through the interface, so reading the kind cannot reach unsummarized code.
 func (v ExecView) Kind() (workflowlang.ExecKind, bool) {
-	if v.node == nil {
+	switch v.node.(type) {
+	case *workflowlang.ExecRun:
+		return workflowlang.ExecKindRun, true
+	case *workflowlang.ExecAction:
+		return workflowlang.ExecKindAction, true
+	case *workflowlang.ExecWait:
+		return workflowlang.ExecKindWait, true
+	case *workflowlang.ExecCancel:
+		return workflowlang.ExecKindCancel, true
+	case *workflowlang.ExecParallel:
+		return workflowlang.ExecKindParallel, true
+	default:
 		return 0, false
 	}
-	return v.node.Kind(), true
 }
 
 func (v JobView) Reference() source.Reference {

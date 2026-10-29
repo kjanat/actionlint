@@ -403,17 +403,15 @@ func (r Resolution) combinations(limit int, declarations bool) ([]Combination, b
 		combinations = next
 	}
 	var excludedDeclarations []Combination
-	combinations = slices.DeleteFunc(combinations, func(candidate Combination) bool {
-		for _, excluded := range r.exclude {
-			if exclusionMatches(candidate.exclusionValues, excluded) {
-				if declarations {
-					excludedDeclarations = append(excludedDeclarations, candidate)
-				}
-				return true
-			}
+	kept := combinations[:0]
+	for _, candidate := range combinations {
+		if !r.excludes(candidate) {
+			kept = append(kept, candidate)
+		} else if declarations {
+			excludedDeclarations = append(excludedDeclarations, candidate)
 		}
-		return false
-	})
+	}
+	combinations = kept
 	originalCount := len(combinations)
 	for _, inclusion := range r.include {
 		added := false
@@ -445,6 +443,16 @@ func (r Resolution) combinations(limit int, declarations bool) ([]Combination, b
 	}
 	combinations = append(combinations, excludedDeclarations...)
 	return combinations, true
+}
+
+// excludes reports whether any exclude entry removes candidate.
+func (r Resolution) excludes(candidate Combination) bool {
+	for _, excluded := range r.exclude {
+		if exclusionMatches(candidate.exclusionValues, excluded) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r Resolution) Reachable(axisName string) Reach {

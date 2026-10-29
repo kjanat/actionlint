@@ -10,6 +10,7 @@ import (
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -72,7 +73,7 @@ jobs:
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "is duplicated") {
 				t.Fatalf("expected one duplicate key diagnostic, got %v", errs)
 			}
-			_, ok := workflow.FindWorkflowCallEvent()
+			_, ok := workflowlang.FindWorkflowCallEvent(workflow)
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}

@@ -30,7 +30,10 @@ type SourceIndex struct {
 }
 
 func (r References) SourceIndex() SourceIndex {
-	steps := slices.Collect(maps.Values(r.Steps))
+	steps := make([]source.Reference, 0, len(r.Steps))
+	for _, step := range r.Steps {
+		steps = append(steps, step)
+	}
 	slices.SortFunc(steps, func(a, b source.Reference) int { return strings.Compare(a.Address, b.Address) })
 	return SourceIndex{Document: r.Document, Steps: steps, Jobs: maps.Clone(r.Jobs), Positions: maps.Clone(r.Positions)}
 }

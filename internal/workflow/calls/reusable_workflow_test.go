@@ -1021,7 +1021,7 @@ jobs:
 				if !exact && (len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("unexpected key %q", key))) {
 					t.Fatalf("expected only the case-invalid key diagnostic, got %v", diagnostics)
 				}
-				event, ok := workflow.FindWorkflowCallEvent()
+				event, ok := workflowlang.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("workflow_call was not parsed")
 				}

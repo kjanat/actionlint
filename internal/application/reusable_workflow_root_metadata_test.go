@@ -11,6 +11,7 @@ import (
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -64,7 +65,7 @@ jobs:
 			if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
 				t.Fatalf("expected the duplicate root declaration diagnostic, got %v", diagnostics)
 			}
-			_, ok := workflow.FindWorkflowCallEvent()
+			_, ok := workflowlang.FindWorkflowCallEvent(workflow)
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
@@ -182,7 +183,7 @@ jobs:
 				if len(diagnostics) != 1 || diagnostics[0].Rule != "syntax-check" || diagnostics[0].Start.Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
 					t.Fatalf("expected only the invalid root key diagnostic, got %v", diagnostics)
 				}
-				_, ok := workflow.FindWorkflowCallEvent()
+				_, ok := workflowlang.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("workflow_call event missing")
 				}

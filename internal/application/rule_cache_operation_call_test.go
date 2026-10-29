@@ -12,6 +12,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -377,7 +378,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 				if w == nil || len(errs) != 0 {
 					continue
 				}
-				_, found := w.FindWorkflowCallEvent()
+				_, found := workflowlang.FindWorkflowCallEvent(w)
 				if !found {
 					continue
 				}

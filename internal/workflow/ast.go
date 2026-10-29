@@ -111,12 +111,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 			return &Pos{Line: line, Col: column}, true
 		}
 	}
-	i := sort.Search(len(s.Spans), func(i int) bool {
-		if endPosition {
-			return s.Spans[i].End >= offset
-		}
-		return s.Spans[i].End > offset
-	})
+	i := s.spanIndex(offset, endPosition)
 	if i == len(s.Spans) {
 		return nil, false
 	}
@@ -136,6 +131,22 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 		line = span.YamlEndLine
 	}
 	return &Pos{Line: line, Col: column}, true
+}
+
+// spanIndex returns the first span ending after offset, or at offset for an end
+// position. Spans are sorted by End; len(s.Spans) means no span qualifies.
+func (s *ScriptSource) spanIndex(offset int, endPosition bool) int {
+	low, high := 0, len(s.Spans)
+	for low < high {
+		mid := int(uint(low+high) >> 1)
+		end := s.Spans[mid].End
+		if end > offset || (endPosition && end == offset) {
+			high = mid
+		} else {
+			low = mid + 1
+		}
+	}
+	return low
 }
 
 func (p *Pos) String() string {
@@ -764,7 +775,7 @@ func (o *RawYAMLObject) Equals(other RawYAMLValue) bool {
 			return false
 		}
 		for n, p1 := range o.Props {
-			if p2, ok := other.Props[n]; !ok || !p1.Equals(p2) {
+			if p2, ok := other.Props[n]; !ok || !rawEquals(p1, p2) {
 				return false
 			}
 		}
@@ -774,15 +785,15 @@ func (o *RawYAMLObject) Equals(other RawYAMLValue) bool {
 	}
 }
 
-// Pos returns the start Position of the value in the source file
+// Pos returns a copy of the start Position of the value in the source file
 func (o *RawYAMLObject) Pos() *Pos {
-	return o.Position
+	return copyPos(o.Position)
 }
 
 func (o *RawYAMLObject) String() string {
 	qs := make([]string, 0, len(o.Props))
 	for n, p := range o.Props {
-		qs = append(qs, fmt.Sprintf("%q: %s", n, p.String()))
+		qs = append(qs, fmt.Sprintf("%q: %s", n, rawString(p)))
 	}
 	sort.Strings(qs)
 	return "{" + strings.Join(qs, ", ") + "}"
@@ -808,7 +819,7 @@ func (a *RawYAMLArray) Equals(other RawYAMLValue) bool {
 			return false
 		}
 		for i, e1 := range a.Elems {
-			if !e1.Equals(other.Elems[i]) {
+			if !rawEquals(e1, other.Elems[i]) {
 				return false
 			}
 		}
@@ -818,9 +829,9 @@ func (a *RawYAMLArray) Equals(other RawYAMLValue) bool {
 	}
 }
 
-// Pos returns the start Position of the value in the source file
+// Pos returns a copy of the start Position of the value in the source file
 func (a *RawYAMLArray) Pos() *Pos {
-	return a.Position
+	return copyPos(a.Position)
 }
 
 func (a *RawYAMLArray) String() string {
@@ -834,7 +845,7 @@ func (a *RawYAMLArray) String() string {
 		} else {
 			comma = true
 		}
-		b.WriteString(e.String())
+		b.WriteString(rawString(e))
 	}
 
 	b.WriteRune(']')
@@ -909,9 +920,47 @@ func (s *RawYAMLString) ScalarValue() any {
 	return s.Value
 }
 
-// Pos returns the start Position of the value in the source file
+// Pos returns a copy of the start Position of the value in the source file
 func (s *RawYAMLString) Pos() *Pos {
-	return s.Position
+	return copyPos(s.Position)
+}
+
+// copyPos detaches a node position so callers cannot move the node through it.
+func copyPos(p *Pos) *Pos {
+	if p == nil {
+		return nil
+	}
+	c := *p
+	return &c
+}
+
+// rawEquals dispatches over the closed set of raw YAML node types so nested
+// comparisons stay within statically known methods.
+func rawEquals(a, b RawYAMLValue) bool {
+	switch a := a.(type) {
+	case *RawYAMLObject:
+		return a.Equals(b)
+	case *RawYAMLArray:
+		return a.Equals(b)
+	case *RawYAMLString:
+		return a.Equals(b)
+	default:
+		return false
+	}
+}
+
+// rawString renders a nested raw YAML node through its concrete method.
+func rawString(v RawYAMLValue) string {
+	switch v := v.(type) {
+	case *RawYAMLObject:
+		return v.String()
+	case *RawYAMLArray:
+		return v.String()
+	case *RawYAMLString:
+		return v.String()
+	default:
+		return ""
+	}
 }
 
 func (s *RawYAMLString) String() string {
@@ -1303,8 +1352,8 @@ type Workflow struct {
 	Pos *Pos
 }
 
-// FindWorkflowCallEvent returns workflow_call Event node if exists
-func (w *Workflow) FindWorkflowCallEvent() (*WorkflowCallEvent, bool) {
+// FindWorkflowCallEvent returns the workflow's workflow_call Event node if it exists.
+func FindWorkflowCallEvent(w *Workflow) (*WorkflowCallEvent, bool) {
 	for _, e := range w.On {
 		if e, ok := e.(*WorkflowCallEvent); ok {
 			return e, true

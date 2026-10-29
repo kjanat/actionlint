@@ -44,7 +44,7 @@ jobs:
 	}
 	root := t.TempDir()
 	cache := newCapturedWorkflowCache(t, root, root, nil)
-	event, _ := w.FindWorkflowCallEvent()
+	event, _ := workflowlang.FindWorkflowCallEvent(w)
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, ok := cache.Lookup("./callee.yaml")
 	if !ok {

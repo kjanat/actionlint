@@ -57,7 +57,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, ok := workflow.FindWorkflowCallEvent()
+				_, ok := workflowlang.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}

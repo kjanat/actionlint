@@ -3,6 +3,7 @@ package calls_test
 import (
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
@@ -21,7 +22,7 @@ jobs:
 	}
 	root := t.TempDir()
 	cache := newCapturedWorkflowCache(t, root, root, nil)
-	event, _ := w.FindWorkflowCallEvent()
+	event, _ := workflowlang.FindWorkflowCallEvent(w)
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, _ := cache.Lookup("./callee.yaml")
 	fromFile, err := calls.ParseMetadata(source)
