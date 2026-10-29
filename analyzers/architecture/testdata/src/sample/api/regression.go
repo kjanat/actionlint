@@ -59,3 +59,22 @@ type Pipe struct {
 }
 
 func (p *Pipe) Stop() { close(p.Ch) }
+
+type Queue struct {
+	Ch chan int // want "ARC002: state-owning type Queue exposes writable field Ch"
+}
+
+func (q *Queue) Put(v int) { q.Ch <- v }
+
+type SelectQueue struct {
+	Ch chan int // want "ARC002: state-owning type SelectQueue exposes writable field Ch"
+}
+
+func (q *SelectQueue) TryPut(v int) bool {
+	select {
+	case q.Ch <- v:
+		return true
+	default:
+		return false
+	}
+}

@@ -476,6 +476,20 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					if storage(v.Key.Type()) {
 						put(v.Map, get(v.Key))
 					}
+				case *ssa.Send:
+					write(v.Chan)
+					if storage(v.X.Type()) {
+						put(v.Chan, get(v.X))
+					}
+				case *ssa.Select:
+					for _, state := range v.States {
+						if state.Dir == types.SendOnly {
+							write(state.Chan)
+							if storage(state.Send.Type()) {
+								put(state.Chan, get(state.Send))
+							}
+						}
+					}
 				case *ssa.Call:
 					common := v.Common()
 					args := common.Args
