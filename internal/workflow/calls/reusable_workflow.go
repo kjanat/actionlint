@@ -248,7 +248,7 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 	}
 	captured, err := c.captures.Read(c.ctx, file, source.YAML)
 	if err != nil {
-		err = &capture.ReadFailure{Context: fmt.Sprintf("could not read reusable workflow file for %q", spec), Err: err}
+		err = &capture.ReadError{Context: fmt.Sprintf("could not read reusable workflow file for %q", spec), Err: err}
 		c.Store(spec, nil, err)
 		return nil, err
 	}

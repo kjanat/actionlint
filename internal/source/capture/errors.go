@@ -46,25 +46,24 @@ func (e *CaptureError) Code() string {
 }
 func (e *CaptureError) Unwrap() error { return e.cause }
 
-// ReadFailure presents a failed read under a user-facing context. A
+// ReadError presents a failed read under a user-facing context. A
 // *CaptureError is shown by its cause, which already names the file,
 // instead of its code and canonical document identity. The error itself
 // stays in the chain for errors.As and Code.
-type ReadFailure struct {
+type ReadError struct {
 	Context string
 	Err     error
 }
 
-func (e *ReadFailure) Error() string {
+func (e *ReadError) Error() string {
 	shown := e.Err
-	var captured *CaptureError
-	if errors.As(e.Err, &captured) {
+	if captured, ok := errors.AsType[*CaptureError](e.Err); ok {
 		shown = captured.cause
 	}
 	return e.Context + ": " + shown.Error()
 }
 
-func (e *ReadFailure) Unwrap() error { return e.Err }
+func (e *ReadError) Unwrap() error { return e.Err }
 
 // ClosedError rejects work started after Close begins.
 type ClosedError struct{}

@@ -1157,7 +1157,7 @@ func (sema *Checker) checkCaseBranches(args []Node, remaining bool) (Type, bool)
 	}
 	value, known := ConditionConstantValue(args[0])
 	predicate, boolean := value.(bool)
-	valueReachable := remaining && !(known && boolean && !predicate)
+	valueReachable := remaining && (!known || !boolean || predicate)
 	valueType := sema.withEventGuard(args[0], true, func() Type {
 		return sema.checkExpressionBranch(args[1], !valueReachable)
 	})
