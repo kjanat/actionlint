@@ -1,6 +1,7 @@
 package sourcemap
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -9,8 +10,8 @@ import (
 // Document indexes the physical lines and original line endings once. YAML
 // recognizes CR, LF, CRLF, NEL, LS, and PS as physical line boundaries.
 type Document struct {
-	Lines   []string
-	Breaks  []string
+	lines   []string
+	breaks  []string
 	columns [][]int
 }
 
@@ -76,8 +77,8 @@ func visitLines(source string, visit func(string, string) bool) {
 }
 
 func (d *Document) addLine(text, ending string) {
-	d.Lines = append(d.Lines, text)
-	d.Breaks = append(d.Breaks, ending)
+	d.lines = append(d.lines, text)
+	d.breaks = append(d.breaks, ending)
 	var offsets []int
 	if utf8.RuneCountInString(text) != len(text) {
 		for offset := range text {
@@ -88,9 +89,19 @@ func (d *Document) addLine(text, ending string) {
 	d.columns = append(d.columns, offsets)
 }
 
+// LineCount returns the number of physical lines, including a final empty line.
+func (d *Document) LineCount() int { return len(d.lines) }
+
+// Line returns a zero-based physical line and the break that ended it. The last
+// line has no break. Like slice indexing, row must be within LineCount.
+func (d *Document) Line(row int) (text, ending string) { return d.lines[row], d.breaks[row] }
+
+// Lines returns a copy of the physical lines without their breaks.
+func (d *Document) Lines() []string { return slices.Clone(d.lines) }
+
 // ByteOffset resolves a one-based column without rescanning a long flow line.
 func (d *Document) ByteOffset(row, column int) (int, bool) {
-	if row < 0 || row >= len(d.Lines) || column < 1 {
+	if row < 0 || row >= len(d.lines) || column < 1 {
 		return 0, false
 	}
 	if offsets := d.columns[row]; offsets != nil {
@@ -99,7 +110,7 @@ func (d *Document) ByteOffset(row, column int) (int, bool) {
 		}
 		return offsets[column-1], true
 	}
-	return column - 1, column-1 <= len(d.Lines[row])
+	return column - 1, column-1 <= len(d.lines[row])
 }
 
 func (d *Document) column(row, offset int) int {

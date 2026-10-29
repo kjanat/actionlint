@@ -37,13 +37,15 @@ func TestDocumentColumnIndex(t *testing.T) {
 func TestDocumentPhysicalLines(t *testing.T) {
 	for _, ending := range []string{"\n", "\r", "\r\n", "\u0085", "\u2028", "\u2029"} {
 		d := NewDocument("\ufeffé" + ending + "日本")
-		if len(d.Lines) != 2 || d.Lines[0] != "é" || d.Lines[1] != "日本" || d.Breaks[0] != ending || d.Breaks[1] != "" {
+		first, firstBreak := d.Line(0)
+		second, secondBreak := d.Line(1)
+		if d.LineCount() != 2 || first != "é" || second != "日本" || firstBreak != ending || secondBreak != "" {
 			t.Fatalf("incorrect physical lines: %+v", d)
 		}
 		if got, ok := d.ByteOffset(1, 2); !ok || got != len("日") {
 			t.Fatalf("second-line offset = %d, %v", got, ok)
 		}
-		for index, want := range d.Lines {
+		for index, want := range d.Lines() {
 			if got, ok := SourceLine("\ufeffé"+ending+"日本", index+1); !ok || got != want {
 				t.Fatalf("source line %d = %q, %v; want %q", index+1, got, ok, want)
 			}

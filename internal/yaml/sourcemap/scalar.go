@@ -3,6 +3,7 @@ package sourcemap
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -50,7 +51,7 @@ type decoder struct {
 // Decode scans a scalar at start, including any tag and anchor properties.
 // The caller validates Value against its YAML parser before publishing mappings.
 func decode(document *Document, start Position, context Context) (Scalar, error) {
-	lines := document.Lines
+	lines := document.lines
 	d := decoder{document: document, lines: lines, row: start.Line - 1, context: context}
 	if d.row < 0 || d.row >= len(lines) || start.Column < 1 {
 		return Scalar{}, errors.New("invalid scalar position")
@@ -76,8 +77,11 @@ func decode(document *Document, start Position, context Context) (Scalar, error)
 	if err != nil {
 		return Scalar{}, err
 	}
-	d.result.Value = d.value.String()
-	return d.result, nil
+	// The decoder borrows the document's lines; publish spans as fresh storage.
+	result := d.result
+	result.Value = d.value.String()
+	result.Spans = slices.Clone(d.result.Spans)
+	return result, nil
 }
 
 func (d *decoder) peek() byte {
@@ -310,7 +314,7 @@ func (d *decoder) whitespace(quote byte, continued bool) bool {
 // YAML normalizes physical line breaks to LF except for LS and PS.
 func (d *decoder) emitBreaks(rows []int, fold bool) {
 	for i, row := range rows {
-		value := d.document.Breaks[row]
+		value := d.document.breaks[row]
 		switch {
 		case value == "\u2028" || value == "\u2029":
 			d.emit(value, Position{row + 1, utf8.RuneCountInString(d.lines[row]) + 1}, 1)

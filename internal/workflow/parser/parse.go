@@ -117,7 +117,7 @@ type Parser struct {
 
 func NewSourceParser(source []byte) *Parser {
 	document := sourcemap.NewDocument(string(source))
-	return &Parser{SourceLines: document.Lines, ScalarDocument: document}
+	return &Parser{SourceLines: document.Lines(), ScalarDocument: document}
 }
 
 func (p *Parser) error(n *syntax.Node, m string) {

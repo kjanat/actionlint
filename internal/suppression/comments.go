@@ -34,7 +34,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	if err != nil {
 		return recoverInlineSuppressionComments(source)
 	}
-	lines := sourcemap.NewDocument(string(source)).Lines
+	lines := sourcemap.NewDocument(string(source)).Lines()
 	documentEnd := len(lines)
 	if len(root.Content) != 0 {
 		// Parse reads the first document only. Block scalar content

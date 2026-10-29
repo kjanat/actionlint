@@ -146,11 +146,10 @@ func cloneScriptSource(source *workflowlang.ScriptSource) *workflowlang.ScriptSo
 
 func scalarDocumentSource(document *sourcemap.Document) string {
 	var source strings.Builder
-	for i, line := range document.Lines {
+	for i := range document.LineCount() {
+		line, ending := document.Line(i)
 		source.WriteString(line)
-		if i < len(document.Breaks) {
-			source.WriteString(document.Breaks[i])
-		}
+		source.WriteString(ending)
 	}
 	return source.String()
 }

@@ -21,7 +21,7 @@ func Offset(content []byte, model source.Coordinates, p diagnostic.Position) (in
 	switch model {
 	case source.YAML:
 		document := sourcemap.NewDocument(string(content))
-		if p.Line > len(document.Lines) {
+		if p.Line > document.LineCount() {
 			break
 		}
 		column, ok := document.ByteOffset(p.Line-1, p.Column)
@@ -33,7 +33,8 @@ func Offset(content []byte, model source.Coordinates, p diagnostic.Position) (in
 			offset += 3
 		}
 		for i := range p.Line - 1 {
-			offset += len(document.Lines[i]) + len(document.Breaks[i])
+			text, ending := document.Line(i)
+			offset += len(text) + len(ending)
 		}
 		return offset, nil
 	case source.RawLF:

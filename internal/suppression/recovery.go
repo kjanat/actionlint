@@ -12,7 +12,7 @@ import (
 // prevents node construction.
 func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment {
 	document := sourcemap.NewDocument(string(source))
-	lines := document.Lines
+	lines := document.Lines()
 	var comments []inlineSuppressionComment
 	var quote byte
 	var flow []int

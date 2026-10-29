@@ -159,7 +159,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, node *syn
 			if span.YamlColumn != utf8.RuneCountInString(rawLine)+1 || span.YamlEndLine != span.YamlLine+1 || span.YamlEndColumn != 1 {
 				t.Fatalf("invalid physical linebreak span: %+v", span)
 			}
-			if value != p.ScalarDocument.Breaks[span.YamlLine-1] {
+			if _, ending := p.ScalarDocument.Line(span.YamlLine - 1); value != ending {
 				t.Fatalf("preserved linebreak %+v differs from source: %q", span, value)
 			}
 		case span.YamlEndColumn == 0:

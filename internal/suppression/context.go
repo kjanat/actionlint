@@ -33,7 +33,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 		return nil
 	}
 	var result Index
-	lines := sourcemap.NewDocument(string(source)).Lines
+	lines := sourcemap.NewDocument(string(source)).Lines()
 	startsLine := func(node *syntax.Node) bool {
 		if node.Line < 1 || node.Line > len(lines) {
 			return false
