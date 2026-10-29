@@ -22,7 +22,10 @@
         "internal/stringutil",
         "internal/yamlscalar",
         "internal/resolution",
-        "internal/webhook"
+        "internal/webhook",
+        "internal/analyzerref",
+        "internal/source/text",
+        "internal/related"
       ],
       "uses": [],
       "portable": true
@@ -41,7 +44,8 @@
     {
       "name": "invocation",
       "roots": [
-        "internal/workflow/invocation"
+        "internal/workflow/invocation",
+        "internal/invocationview"
       ],
       "uses": [
         "semantics"
@@ -67,7 +71,8 @@
       "roots": [
         "internal/yaml",
         "internal/yamlsource",
-        "internal/mapping"
+        "internal/mapping",
+        "internal/source/position"
       ],
       "uses": [
         "values"
@@ -122,7 +127,8 @@
         "internal/fsread",
         "internal/processconfig",
         "internal/plugins/artifact",
-        "internal/pluginregistry"
+        "internal/pluginregistry",
+        "internal/source/capture"
       ],
       "uses": [
         "values"
