@@ -44,6 +44,23 @@ func (shape workflowExpressionScalar) ValidateType(ty exprlang.Type, path string
 	return []string{fmt.Sprintf("%s must be %s but found %s", path, shape, ty.String())}
 }
 
+// validate dispatches nested shapes over this package's closed set of
+// implementations, so validation stays within statically known methods.
+func validate(shape Shape, ty exprlang.Type, path string) []string {
+	switch shape := shape.(type) {
+	case workflowExpressionScalar:
+		return shape.ValidateType(ty, path)
+	case workflowExpressionArray:
+		return shape.ValidateType(ty, path)
+	case workflowExpressionObject:
+		return shape.ValidateType(ty, path)
+	case workflowExpressionUnion:
+		return shape.ValidateType(ty, path)
+	default:
+		return []string{fmt.Sprintf("%s has an unsupported schema shape", path)}
+	}
+}
+
 type workflowExpressionArray struct {
 	elem     Shape
 	nonempty bool
@@ -54,7 +71,7 @@ func (shape workflowExpressionArray) ValidateType(ty exprlang.Type, path string)
 		return nil
 	}
 	if array, ok := ty.(*exprlang.ArrayType); ok {
-		return shape.elem.ValidateType(array.Elem, path+"[]")
+		return validate(shape.elem, array.Elem, path+"[]")
 	}
 	return []string{fmt.Sprintf("%s must be array but found %s", path, ty.String())}
 }
@@ -93,7 +110,7 @@ func (shape workflowExpressionObject) ValidateType(ty exprlang.Type, path string
 			errors = append(errors, fmt.Sprintf("%s has unknown property %q", path, name))
 			continue
 		}
-		errors = append(errors, field.ValidateType(value, path+"."+name)...)
+		errors = append(errors, validate(field, value, path+"."+name)...)
 	}
 	if object.IsStrict() {
 		for _, required := range shape.required {
@@ -102,7 +119,7 @@ func (shape workflowExpressionObject) ValidateType(ty exprlang.Type, path string
 			}
 		}
 	} else if shape.mapped != nil {
-		errors = append(errors, shape.mapped.ValidateType(object.Mapped, path+".*")...)
+		errors = append(errors, validate(shape.mapped, object.Mapped, path+".*")...)
 	}
 	slices.Sort(errors)
 	return errors
@@ -113,7 +130,7 @@ type workflowExpressionUnion []Shape
 func (shape workflowExpressionUnion) ValidateType(ty exprlang.Type, path string) []string {
 	// Report the selected structural branch's details when its outer kind matches.
 	for _, candidate := range shape {
-		if errors := candidate.ValidateType(ty, path); len(errors) == 0 {
+		if errors := validate(candidate, ty, path); len(errors) == 0 {
 			return nil
 		}
 	}
@@ -121,11 +138,11 @@ func (shape workflowExpressionUnion) ValidateType(ty exprlang.Type, path string)
 		switch candidate.(type) {
 		case workflowExpressionObject:
 			if _, ok := ty.(*exprlang.ObjectType); ok {
-				return candidate.ValidateType(ty, path)
+				return validate(candidate, ty, path)
 			}
 		case workflowExpressionArray:
 			if _, ok := ty.(*exprlang.ArrayType); ok {
-				return candidate.ValidateType(ty, path)
+				return validate(candidate, ty, path)
 			}
 		}
 	}
