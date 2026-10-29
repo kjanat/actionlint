@@ -97,3 +97,10 @@ type DeferredPipe struct {
 }
 
 func (p *DeferredPipe) Stop() { defer close(p.Ch) }
+
+type ExternalCounter struct {
+	Value int64 // want "ARC004: type ExternalCounter exposes writable field Value"
+}
+
+func (c *ExternalCounter) Inc() { mutate(&c.Value) }
+func mutate(*int64)

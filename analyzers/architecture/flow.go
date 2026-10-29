@@ -73,6 +73,9 @@ func (f flow) add(other flow) bool {
 func functionKey(obj *types.Func) string { return obj.Origin().FullName() }
 
 func solve(pass *analysis.Pass, functions []*ssa.Function) map[*ssa.Function]flow {
+	// Bodyless declarations (assembly, linkname) have unknown effects. Leaving
+	// them unsummarized sends their callers down the unknown-call path.
+	functions = slices.DeleteFunc(slices.Clone(functions), func(fn *ssa.Function) bool { return fn.Blocks == nil })
 	flows := map[*ssa.Function]flow{}
 	for _, fn := range functions {
 		flows[fn] = newFlow(fn.Signature.Results().Len())
