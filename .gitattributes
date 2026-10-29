@@ -1,5 +1,5 @@
 * text=auto eol=lf
-*.gen.go linguist-generated=true
+**/*.gen.go linguist-generated=true
 /actup.schema.json linguist-generated=true -diff
 /tools/release/bump-version/testdata/** -text
 /tools/matcher/testdata/** -text

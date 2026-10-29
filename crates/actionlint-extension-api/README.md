@@ -32,7 +32,10 @@ impl Guest for Plugin {
     }
 
     fn analyze(_input: Input) -> Outcome {
-        Outcome { diagnostics: Vec::new(), error: None }
+        Outcome {
+            diagnostics: Vec::new(),
+            error: None,
+        }
     }
 }
 

@@ -39,6 +39,10 @@ exts          = ["toml"]
 cacheKeyFiles = ["tombi.toml"]
 
 [[exec.commands]]
+command = "rustfmt --edition 2024"
+exts    = ["rs"]
+
+[[exec.commands]]
 command = "gofmt -s"
 exts    = ["go"]
 
