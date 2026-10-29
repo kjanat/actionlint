@@ -24,6 +24,9 @@ type PluginSelection struct {
 	ConfigFile string
 	Disabled   bool
 	Overlays   []config.Overlay
+	// DisabledLanguages lists script languages whose linting this invocation
+	// turned off. Plugins declaring one of them in their metadata are not loaded.
+	DisabledLanguages []string
 }
 
 type PluginSources struct {
@@ -37,6 +40,9 @@ type PluginSources struct {
 	configs   []*config.Config
 	artifacts map[string]*pluginartifact.Artifact
 	overlays  []config.Overlay
+	// disabledLanguages carries PluginSelection.DisabledLanguages to loading,
+	// where artifact metadata declares each plugin's languages.
+	disabledLanguages []string
 }
 
 type pluginSelectionMode uint8
@@ -98,6 +104,15 @@ func (s PluginSelection) SelectForCache(ctx context.Context, directory string, i
 }
 
 func (s PluginSelection) selectSources(ctx context.Context, directory string, input application.Input, mode pluginSelectionMode) (PluginSources, error) {
+	selected, err := s.selectDeclared(ctx, directory, input, mode)
+	if err != nil {
+		return PluginSources{}, err
+	}
+	selected.disabledLanguages = slices.Clone(s.DisabledLanguages)
+	return selected, nil
+}
+
+func (s PluginSelection) selectDeclared(ctx context.Context, directory string, input application.Input, mode pluginSelectionMode) (PluginSources, error) {
 	if len(s.Paths) > 0 {
 		if s.LockFile != "" {
 			return PluginSources{}, errors.New("--plugin and --plugin-lock cannot be combined")

@@ -2,11 +2,13 @@ package localapp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
@@ -41,6 +43,11 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			}
 		}
 		path = artifact.Info.Source
+		if disabled, err := declaresLanguage(artifact.Info.Metadata, sources.disabledLanguages); err != nil {
+			return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
+		} else if disabled {
+			continue
+		}
 		if artifact.Info.Kind == pluginartifact.Core {
 			engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: engineCacheDir()})
 			if err != nil {
@@ -183,4 +190,24 @@ func InspectPlugin(ctx context.Context, source string) (pluginartifact.Info, err
 		return pluginartifact.Info{}, err
 	}
 	return artifact.Info, nil
+}
+
+// declaresLanguage reports whether static plugin metadata lists one of the
+// given languages. It reads the inspected metadata without running the plugin.
+func declaresLanguage(metadata json.RawMessage, languages []string) (bool, error) {
+	if len(languages) == 0 || len(metadata) == 0 {
+		return false, nil
+	}
+	var declared struct {
+		Languages []string `json:"languages"`
+	}
+	if err := json.Unmarshal(metadata, &declared); err != nil {
+		return false, fmt.Errorf("read plugin languages: %w", err)
+	}
+	for _, language := range declared.Languages {
+		if slices.Contains(languages, language) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

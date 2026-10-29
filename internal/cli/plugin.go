@@ -66,7 +66,16 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 }
 
 func (c checkInvocation) pluginSelection() localapp.PluginSelection {
-	return localapp.PluginSelection{Paths: c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled}
+	selection := localapp.PluginSelection{Paths: c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled}
+	// --no-ruff and --no-shellcheck disable Python and shell script linting,
+	// including plugins whose metadata declares those languages.
+	if c.Ruff == "" {
+		selection.DisabledLanguages = append(selection.DisabledLanguages, "python")
+	}
+	if c.ShellCheck == "" {
+		selection.DisabledLanguages = append(selection.DisabledLanguages, "shell")
+	}
+	return selection
 }
 
 func (c checkInvocation) defaultPlugins(warning func(string)) localapp.DefaultPluginOptions {
