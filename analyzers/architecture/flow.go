@@ -490,7 +490,12 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 							}
 						}
 					}
-				case *ssa.Call:
+				case ssa.CallInstruction:
+					// go and defer statements apply the same effects but have no result.
+					var call ssa.Value
+					if value, ok := v.(*ssa.Call); ok {
+						call = value
+					}
 					common := v.Common()
 					args := common.Args
 					if common.IsInvoke() {
@@ -499,10 +504,10 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					if builtin, ok := common.Value.(*ssa.Builtin); ok {
 						switch builtin.Name() {
 						case "append":
-							put(v, get(args[0]))
-							if s, ok := v.Type().Underlying().(*types.Slice); ok && visible(s.Elem()) {
+							put(call, get(args[0]))
+							if s, ok := args[0].Type().Underlying().(*types.Slice); ok && visible(s.Elem()) {
 								for _, arg := range args[1:] {
-									put(v, get(arg))
+									put(call, get(arg))
 								}
 							}
 							write(args[0])
@@ -518,8 +523,8 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					}
 					callee := common.StaticCallee()
 					if callee != nil && standardClone(callee) {
-						if !detachedClone(callee, v.Type(), visible) && len(args) > 0 {
-							put(v, get(args[0]))
+						if call != nil && !detachedClone(callee, call.Type(), visible) && len(args) > 0 {
+							put(call, get(args[0]))
 						}
 						continue
 					}
@@ -540,10 +545,13 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 									write(args[index])
 								}
 							}
-							if tuples[v] == nil {
-								tuples[v] = make([]origins, len(summary.Results))
-								for i := range tuples[v] {
-									tuples[v][i] = origins{}
+							if call == nil {
+								continue
+							}
+							if tuples[call] == nil {
+								tuples[call] = make([]origins, len(summary.Results))
+								for i := range tuples[call] {
+									tuples[call][i] = origins{}
 								}
 							}
 							for i, sources := range summary.Results {
@@ -557,11 +565,11 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 										if possible {
 											origins = uncertain(origins)
 										}
-										changed = tuples[v][i].add(origins) || changed
+										changed = tuples[call][i].add(origins) || changed
 									}
 								}
 								if len(summary.Results) == 1 {
-									put(v, tuples[v][i])
+									put(call, tuples[call][i])
 								}
 							}
 							continue
@@ -570,7 +578,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					// Unknown and interface calls may return their reference arguments.
 					// No purity or ownership is inferred from a function's name.
 					for _, arg := range args {
-						put(v, uncertain(get(arg)))
+						put(call, uncertain(get(arg)))
 						possibleWrite(arg)
 					}
 				case *ssa.Return:

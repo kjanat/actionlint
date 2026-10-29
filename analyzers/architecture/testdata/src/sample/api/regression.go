@@ -78,3 +78,22 @@ func (q *SelectQueue) TryPut(v int) bool {
 		return false
 	}
 }
+
+type DeferredCounter struct {
+	Value int64 // want "ARC004: type DeferredCounter exposes writable field Value"
+}
+
+func (c *DeferredCounter) Inc() { defer atomic.AddInt64(&c.Value, 1) }
+
+type SpawnedCounter struct {
+	Value int64 // want "ARC002: state-owning type SpawnedCounter exposes writable field Value"
+}
+
+func (c *SpawnedCounter) Inc() { go bump(&c.Value) }
+func bump(p *int64)            { *p++ }
+
+type DeferredPipe struct {
+	Ch chan int // want "ARC002: state-owning type DeferredPipe exposes writable field Ch"
+}
+
+func (p *DeferredPipe) Stop() { defer close(p.Ch) }
