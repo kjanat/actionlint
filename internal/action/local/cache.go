@@ -269,7 +269,7 @@ func (c *Cache) readLocalActionMetadataFile(dir string) (capture.Snapshot, strin
 			continue
 		}
 		if err != nil {
-			return capture.Snapshot{}, "", fmt.Errorf("could not read action metadata in %q: %w", dir, err)
+			return capture.Snapshot{}, "", &capture.ReadFailure{Context: fmt.Sprintf("could not read action metadata in %q", dir), Err: err}
 		}
 		return captured, name, nil
 	}
