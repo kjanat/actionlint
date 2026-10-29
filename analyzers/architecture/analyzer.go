@@ -174,9 +174,13 @@ func checkAPI(pass *analysis.Pass) {
 				}
 				walkConstraints(t.TypeParams())
 				walk(t.Underlying())
-				for i := range t.NumMethods() {
-					if t.Method(i).Exported() {
-						walk(t.Method(i).Type())
+				// The pointer method set includes methods promoted from unexported
+				// embedded types. Promoted dependency methods belong to their owner.
+				methods := types.NewMethodSet(types.NewPointer(t))
+				for i := range methods.Len() {
+					method := methods.At(i).Obj()
+					if method.Exported() && method.Pkg() == pass.Pkg {
+						walk(method.Type())
 					}
 				}
 			case *types.Pointer:

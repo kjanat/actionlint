@@ -107,3 +107,9 @@ func mutate(*int64)
 
 type Token[T interface{ Use(detail.Record) }] int        // want "ARC001: public API Token exposes internal type sample/internal/detail.Record"
 type TokenAlias[T interface{ Use(detail.Record) }] = int // want "ARC001: public API TokenAlias exposes internal type sample/internal/detail.Record"
+
+type embedded struct{}
+
+func (embedded) Leak() detail.Record { return detail.Record{} }
+
+type Promoter struct{ embedded } // want "ARC001: public API Promoter exposes internal type sample/internal/detail.Record"
