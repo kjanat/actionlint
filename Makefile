@@ -30,6 +30,7 @@ ifeq ($(OS),Windows_NT)
 	SHELL := powershell.exe
 	.SHELLFLAGS := -NoProfile -ExecutionPolicy Bypass -Command
 	TARGET = actionlint.exe
+	EXE = .exe
 	TOUCH = powershell -NoProfile -ExecutionPolicy Bypass tools/ci/touch.ps1
 	# It's hard to prepare C toolchain for CGO on Windows
 	RACE =
@@ -98,19 +99,24 @@ cov: coverage.out coverage.html
 lint-build:
 	golangci-lint custom
 	./custom-gcl cache clean
-	go build -C analyzers -o ../.bin/actionlintarch ./cmd/actionlintarch
+	go build -C analyzers -o ../.bin/actionlintarch$(EXE) ./cmd/actionlintarch
 
 test-analyzers:
 	go test -C analyzers -count=1 ./...
 
 lint-architecture: lint-build
-	./.bin/actionlintarch ./...
+	./.bin/actionlintarch$(EXE) ./...
 
+# Both runners execute before the target fails.
 lint: lint-build
+ifeq ($(OS),Windows_NT)
+	./custom-gcl run; $$status = $$LASTEXITCODE; ./.bin/actionlintarch$(EXE) ./...; if ($$LASTEXITCODE -ne 0) { $$status = $$LASTEXITCODE }; if ($$status -ne 0) { exit $$status }
+else
 	@status=0; \
 	./custom-gcl run || status=$$?; \
 	./.bin/actionlintarch ./... || status=$$?; \
 	exit $$status
+endif
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ifneq ($(OS),Windows_NT)
 	GOOS=js GOARCH=wasm ./custom-gcl run ./playground
