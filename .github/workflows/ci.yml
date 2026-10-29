@@ -290,7 +290,9 @@ jobs:
       # golangci-lint-action builds .custom-gcl.yml itself and leaves the base
       # binary off PATH; make lint rebuilds custom-gcl through it.
       - name: Install golangci-lint
-        run: go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)"
+        run: |
+          version="$(awk '$1 == "golangci-lint" { print $2 }' .tool-versions)"
+          go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${version}"
       - run: go mod tidy -diff
       - name: Build through Makefile
         run: run make:build
