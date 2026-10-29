@@ -116,9 +116,10 @@ The same contract is available to other languages as the WebAssembly component i
 Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing configuration format. Configuration
 constructors include `RequireJobTimeout`, `RequireJobTimeoutRange` and `RequirePermissions`.
 `syntax.Parse` returns a workflow and structured parser diagnostics. Parsing does not execute semantic checks.
+The returned tree is a detached value copy owned by the caller; it shares no storage with the parser.
 
-The configuration and syntax packages alias standalone implementations that do not import the analysis engine. Their
-public names are the supported import surface. Treat unexported state as opaque and use keyed struct literals.
+The configuration package aliases a standalone implementation that does not import the analysis engine. Its public
+names are the supported import surface. Treat unexported state as opaque and use keyed struct literals.
 
 ## Migration from the flat API
 
