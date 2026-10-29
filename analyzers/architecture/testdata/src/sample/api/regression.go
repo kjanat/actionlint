@@ -53,3 +53,9 @@ func (c DetachedCounter) Change(f func(*int64)) { f(&c.Value) }
 type ScalarCounter struct{ Value int64 }
 
 func (c *ScalarCounter) Read(f func(int64)) { f(c.Value) }
+
+type Pipe struct {
+	Ch chan int // want "ARC002: state-owning type Pipe exposes writable field Ch"
+}
+
+func (p *Pipe) Stop() { close(p.Ch) }

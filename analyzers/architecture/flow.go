@@ -497,7 +497,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 							if s, ok := args[0].Type().Underlying().(*types.Slice); ok && visible(s.Elem()) {
 								put(root(args[0]), get(args[1]))
 							}
-						case "delete", "clear":
+						case "delete", "clear", "close":
 							write(args[0])
 						}
 						continue
