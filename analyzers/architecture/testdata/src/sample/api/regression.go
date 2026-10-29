@@ -104,3 +104,6 @@ type ExternalCounter struct {
 
 func (c *ExternalCounter) Inc() { mutate(&c.Value) }
 func mutate(*int64)
+
+type Token[T interface{ Use(detail.Record) }] int        // want "ARC001: public API Token exposes internal type sample/internal/detail.Record"
+type TokenAlias[T interface{ Use(detail.Record) }] = int // want "ARC001: public API TokenAlias exposes internal type sample/internal/detail.Record"

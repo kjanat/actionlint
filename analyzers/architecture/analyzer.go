@@ -137,6 +137,11 @@ func checkAPI(pass *analysis.Pass) {
 		seen := map[types.Type]bool{}
 		reported := map[*types.TypeName]bool{}
 		var walk func(types.Type)
+		walkConstraints := func(params *types.TypeParamList) {
+			for i := range params.Len() {
+				walk(params.At(i).Constraint())
+			}
+		}
 		walk = func(t types.Type) {
 			if t == nil || seen[t] {
 				return
@@ -150,6 +155,7 @@ func checkAPI(pass *analysis.Pass) {
 				if t.Obj().Pkg() != pass.Pkg && t.Obj().Exported() && !internalPackage(t.Obj().Pkg().Path()) {
 					return
 				}
+				walkConstraints(t.TypeParams())
 				walk(types.Unalias(t))
 			case *types.Named:
 				decl := t.Obj()
@@ -166,6 +172,7 @@ func checkAPI(pass *analysis.Pass) {
 				if decl.Pkg() != pass.Pkg {
 					return
 				}
+				walkConstraints(t.TypeParams())
 				walk(t.Underlying())
 				for i := range t.NumMethods() {
 					if t.Method(i).Exported() {
@@ -192,9 +199,7 @@ func checkAPI(pass *analysis.Pass) {
 			case *types.Signature:
 				walk(t.Params())
 				walk(t.Results())
-				for i := 0; i < t.TypeParams().Len(); i++ {
-					walk(t.TypeParams().At(i).Constraint())
-				}
+				walkConstraints(t.TypeParams())
 			case *types.Tuple:
 				for i := range t.Len() {
 					walk(t.At(i).Type())
