@@ -137,10 +137,16 @@ The root accepts single- and double-dash spellings; **check**
 uses long options and short aliases. Run **--help-legacy** for old spellings.
 
 **--output-format**, **--output**, **-o** *MODE*
-: Select `text`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
-`text`. **--output** is a supported alias. JSON emits a versioned analysis result
+: Select `text`, `pretty`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
+`text`. **--output** is a supported alias. `pretty` shows captured source, range
+indicators, explanation, help, related locations and fix descriptions, wrapping
+messages and paths. JSON emits a versioned analysis result
 with completion status, diagnostics, and configuration context. JSONL emits one diagnostic
 per line. GitHub annotations are emitted only when explicitly selected.
+
+**--diagnostic-width** *COLUMNS*
+: Wrap `pretty` diagnostics at this width. Accepts 40 to 400. Default: 100.
+Requires **--output-format**=pretty.
 
 **--json**
 : Select JSON output. With help, version, config, rules or doctor, emit JSON
