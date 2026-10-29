@@ -62,6 +62,7 @@ type node struct {
 	boolean          bool
 	number           float64
 	text             string
+	spelling         string
 	items            []Value
 	props            []Prop
 	source           string
@@ -128,6 +129,22 @@ func (v Value) ScalarString() (string, bool) {
 		return strconv.FormatFloat(v.p.number, 'g', -1, 64), true
 	case String:
 		return v.p.text, true
+	default:
+		return "", false
+	}
+}
+
+// Spelling returns the source text a YAML literal scalar was written with,
+// such as "TRUE", "~", or "+1.2e2". Diagnostics quote it so users see their
+// own input rather than its normalized semantic value. Values not built from a
+// YAML scalar (evaluated, dynamic, or composite values) have no spelling.
+func (v Value) Spelling() (string, bool) {
+	if v.p == nil || v.p.state != Literal {
+		return "", false
+	}
+	switch v.p.kind {
+	case Null, Bool, Number, String:
+		return v.p.spelling, true
 	default:
 		return "", false
 	}
@@ -262,6 +279,7 @@ func (v Value) Equal(other Value) bool {
 func YAMLScalar(text, tag string, origin Origin) Value {
 	value := makeValue(Literal, String, origin)
 	value.p.text = text
+	value.p.spelling = text
 	switch tag {
 	case "!!bool":
 		if schema.IsCoreSchemaBool(text) {

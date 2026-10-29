@@ -1553,6 +1553,8 @@ func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *workflowlang.
 	for _, e := range entries {
 		switch e.id {
 		case "run":
+			// Empty scripts keep their physical scalar and script occurrence;
+			// ParseSteps diagnoses them for workflow steps only.
 			ret.Run = p.parseString(e.val, true)
 			ret.RunPos = e.key.Pos
 			ret.Source = p.ScriptSourceForDeclaration(e.val, e.key.Pos)
@@ -1750,7 +1752,10 @@ func (p *Parser) ParseStep(n *syntax.Node) *workflowlang.Step {
 	return ret
 }
 
-// ParseSteps parses a sequence of steps.
+// ParseSteps parses a sequence of workflow steps.
+// An empty "run" script is diagnosed here rather than in ParseStep: composite
+// action steps share ParseStep and treat any parse error as rejecting the
+// step, while their metadata accepts an empty script.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
 func (p *Parser) ParseSteps(n *syntax.Node) []*workflowlang.Step {
 	if ok := p.checkSequence("steps", n, false); !ok {
@@ -1761,6 +1766,11 @@ func (p *Parser) ParseSteps(n *syntax.Node) []*workflowlang.Step {
 
 	for _, c := range n.Content {
 		if s := p.ParseStep(c); s != nil {
+			// Only a run value that passed CheckString carries a source scalar,
+			// so non-string values are not reported twice.
+			if run, ok := s.Exec.(*workflowlang.ExecRun); ok && run.Run.SourceScalar.HasSource && run.Run.Value == "" {
+				p.errorAt(run.Run.Pos, "string should not be empty")
+			}
 			ret = append(ret, s)
 		}
 	}

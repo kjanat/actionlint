@@ -115,8 +115,18 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 		"parallel": "      - parallel:\n          - run: ''\n",
 	} {
 		t.Run(name, func(t *testing.T) {
-			f := newInvocationFixture(t, t.Context(), "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n"+steps, nil, nil)
-			result, err := f.service.Workflow(f.root)
+			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + steps)
+			document := documentparse.Workflow("ci.yml", content)
+			if len(document.Findings) != 1 || document.Findings[0].Message != "string should not be empty" {
+				t.Fatalf("empty workflow script was not diagnosed exactly once: %v", document.Findings)
+			}
+			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
+			snapshot, err := registry.Document("ci.yml", content, document)
+			if err != nil {
+				t.Fatal(err)
+			}
+			service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
+			result, err := service.Workflow(snapshot)
 			if err != nil {
 				t.Fatal(err)
 			}
