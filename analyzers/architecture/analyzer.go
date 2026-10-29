@@ -4,10 +4,10 @@ package architecture
 
 import (
 	"go/ast"
+	"go/build"
 	"go/token"
 	"go/types"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -28,7 +28,9 @@ func run(pass *analysis.Pass) (any, error) {
 	if len(pass.Files) == 0 {
 		return nil, nil
 	}
-	if strings.HasPrefix(pass.Fset.Position(pass.Files[0].Pos()).Filename, filepath.Join(runtime.GOROOT(), "src")+string(filepath.Separator)) {
+	// Standard-library bodies are not summarized. build.Default.GOROOT follows
+	// the GOROOT environment and the go command, not the build machine.
+	if strings.HasPrefix(pass.Fset.Position(pass.Files[0].Pos()).Filename, filepath.Join(build.Default.GOROOT, "src")+string(filepath.Separator)) {
 		return nil, nil
 	}
 	program := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
