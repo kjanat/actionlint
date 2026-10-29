@@ -547,6 +547,9 @@ func (c *LocalActionsCache) FindMetadata(spec string) (*ActionMetadata, bool, er
 	if c.proj == nil || !strings.HasPrefix(spec, "./") {
 		return nil, false, nil
 	}
+	if !filepath.IsLocal(filepath.FromSlash(spec)) {
+		return nil, false, fmt.Errorf("local action path %q escapes the repository", spec)
+	}
 
 	if m, ok := c.readCache(spec); ok {
 		c.debug("Cache hit for %s: %v", spec, m)

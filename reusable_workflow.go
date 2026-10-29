@@ -263,6 +263,9 @@ func (c *LocalReusableWorkflowCache) FindMetadata(spec string) (*ReusableWorkflo
 	if c.proj == nil || !strings.HasPrefix(spec, "./") || ContainsExpression(spec) {
 		return nil, nil
 	}
+	if !filepath.IsLocal(filepath.FromSlash(spec)) {
+		return nil, fmt.Errorf("local reusable workflow path %q escapes the repository", spec)
+	}
 
 	if m, err, ok := c.readCache(spec); ok {
 		c.debug("Cache hit for %s: %v", spec, m)

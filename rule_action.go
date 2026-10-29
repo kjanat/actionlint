@@ -498,6 +498,13 @@ func (rule *RuleAction) checkRunsFileExists(file, dir, prop, name string, pos *P
 		return
 	}
 	p := filepath.Join(dir, f)
+	if rule.cache.proj != nil {
+		rel, err := filepath.Rel(rule.cache.proj.RootDir(), p)
+		if err != nil || !filepath.IsLocal(rel) {
+			rule.Errorf(pos, "file %q at %q in action %q escapes the repository", f, prop, name)
+			return
+		}
+	}
 	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
 		rule.Errorf(pos, `file %q does not exist in %q. it is specified at %q key in "runs" section in %q action`, f, dir, prop, name)
 	}
