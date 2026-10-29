@@ -1,5 +1,6 @@
 import type { Feed, FeedItem } from './github-actions-feed.ts';
 import { FEED_URL, feedPageUrl, parseFeed } from './github-actions-feed.ts';
+import { readRawPages, updateFeedMetadata } from './reader-pages.ts';
 
 interface CachedFeed {
 	complete?: boolean;
@@ -44,7 +45,7 @@ const el = {
 	feedTitle: requireElement('feedTitle', HTMLDivElement),
 	items: requireElement('items', HTMLDivElement),
 	layout: document.querySelector<HTMLElement>('.layout'),
-	raw: requireElement('raw', HTMLPreElement),
+	raw: requireElement('raw', HTMLDivElement),
 	rawBtn: requireElement('rawBtn', HTMLButtonElement),
 	refreshBtn: requireElement('refreshBtn', HTMLButtonElement),
 	search: requireElement('search', HTMLInputElement),
@@ -374,7 +375,7 @@ function setRawPage(page: number, xmlText: string): void {
 		}
 	}
 
-	el.raw.textContent = state.rawXml;
+	if (state.rawVisible) void showRawXml();
 }
 
 function sortItems(items: FeedItem[]): void {
@@ -394,7 +395,7 @@ function updateFeedUi({ preserveArticle = false }: RenderOptions = {}): void {
 		+ (state.cacheComplete ? '' : ' loaded')
 		+ (state.loadingAll ? ' · searching history…' : '')
 		+ (state.feed.lastBuildDate
-			? ` · built ${formatDate(state.feed.lastBuildDate)}`
+			? ` · Feed updated ${formatDate(state.feed.lastBuildDate)}`
 			: '');
 	el.feedMeta.classList.add('visible');
 	schedulePaneHeightSync();
@@ -408,7 +409,7 @@ function updateFeedUi({ preserveArticle = false }: RenderOptions = {}): void {
 	el.typeFilter.disabled = false;
 	el.rawBtn.disabled = false;
 
-	el.raw.textContent = state.rawXml;
+	if (state.rawVisible) void showRawXml();
 	applyFilters({ preserveArticle });
 }
 
@@ -426,6 +427,8 @@ function hydrateFeed(feed: Feed, rawXml: string, {
 	sortItems(feed.items);
 	state.feed = feed;
 	state.rawXml = rawXml || '';
+	const firstXml = readRawPages(state.rawXml).get(1);
+	if (firstXml) updateFeedMetadata(feed, parseFeed(firstXml), 1);
 	state.filtered = feed.items.slice();
 	state.cacheComplete = complete;
 	state.nextPage = Math.max(2, nextPage || 2);
@@ -439,6 +442,7 @@ function hydrateFeed(feed: Feed, rawXml: string, {
 function overlayItems(
 	feedPage: Feed,
 	{ preserveArticle = true }: RenderOptions = {},
+	pageNumber = 0,
 ): { added: number; updated: number } {
 	if (!state.feed) {
 		hydrateFeed({ ...feedPage, items: [...feedPage.items] }, '', {
@@ -468,13 +472,7 @@ function overlayItems(
 		}
 	}
 
-	if (feedPage.title) state.feed.title = feedPage.title;
-	if (feedPage.description) {
-		state.feed.description = feedPage.description;
-	}
-	if (feedPage.lastBuildDate) {
-		state.feed.lastBuildDate = feedPage.lastBuildDate;
-	}
+	updateFeedMetadata(state.feed, feedPage, pageNumber);
 
 	sortItems(state.feed.items);
 	updateFeedUi({ preserveArticle });
@@ -619,6 +617,7 @@ async function loadHistoricalPage(page: number = state.nextPage): Promise<boolea
 			|| result.feed.items.length === 0
 		) {
 			state.cacheComplete = true;
+			updateFeedUi({ preserveArticle: true });
 		}
 
 		void writeCache(state.cacheComplete);
@@ -763,7 +762,7 @@ async function refreshLatest() {
 				},
 			);
 		} else {
-			overlayItems(first.feed, { preserveArticle: true });
+			overlayItems(first.feed, { preserveArticle: true }, 1);
 		}
 		setRawPage(1, first.xmlText);
 
@@ -863,11 +862,40 @@ window.addEventListener('resize', schedulePaneHeightSync, {
 	passive: true,
 });
 
+let xmlViewer: ReturnType<typeof import('./xml-viewer.ts').createXmlViewer> | undefined;
+let xmlLoading: Promise<void> | undefined;
+
+async function showRawXml(): Promise<void> {
+	if (xmlViewer) {
+		xmlViewer.update(state.rawXml, state.cacheComplete);
+		return;
+	}
+	if (xmlLoading) return xmlLoading;
+	el.raw.textContent = 'Loading XML viewer…';
+	xmlLoading = import('./xml-viewer.ts').then(({ createXmlViewer }) => {
+		xmlViewer = createXmlViewer(el.raw, () => loadHistoricalPage());
+		xmlViewer.update(state.rawXml, state.cacheComplete);
+	}).catch(() => {
+		const message = document.createElement('p');
+		message.textContent = 'Could not load the XML viewer. Check your connection and reload the page.';
+		const retry = document.createElement('button');
+		retry.type = 'button';
+		retry.textContent = 'Reload page';
+		retry.addEventListener('click', () => window.location.reload());
+		el.raw.replaceChildren(message, retry);
+	}).finally(() => {
+		xmlLoading = undefined;
+	});
+	return xmlLoading;
+}
+
 el.rawBtn.addEventListener('click', () => {
 	if (!state.feed) return;
 	state.rawVisible = !state.rawVisible;
 	el.raw.classList.toggle('visible', state.rawVisible);
-	el.article.style.display = state.rawVisible ? 'none' : '';
+	el.article.hidden = state.rawVisible;
+	el.layout?.classList.toggle('xml-mode', state.rawVisible);
+	if (state.rawVisible) void showRawXml();
 	el.rawBtn.textContent = state.rawVisible
 		? 'Rendered view'
 		: 'Raw XML';

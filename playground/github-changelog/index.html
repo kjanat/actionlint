@@ -62,11 +62,33 @@
 					<div id="article" class="empty">
 						Loading the latest GitHub Actions entries…
 					</div>
-					<pre id="raw" class="raw"></pre>
+					<div id="raw" class="raw"></div>
 				</section>
 			</div>
 		</main>
 
+		<script type="importmap">
+			{
+			  "imports": {
+			    "@codemirror/commands": "https://esm.sh/@codemirror/commands@6.11.0?external=*",
+			    "@codemirror/state": "https://esm.sh/@codemirror/state@6.7.1?external=*",
+			    "@codemirror/view": "https://esm.sh/@codemirror/view@6.43.9?external=*",
+			    "@codemirror/language": "https://esm.sh/@codemirror/language@6.12.4?external=*",
+			    "@codemirror/search": "https://esm.sh/@codemirror/search@6.7.1?external=*",
+			    "@codemirror/lang-xml": "https://esm.sh/@codemirror/lang-xml@6.1.0?external=*",
+			    "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.3?external=*",
+			    "@lezer/common": "https://esm.sh/@lezer/common@1.5.2?external=*",
+			    "@lezer/lr": "https://esm.sh/@lezer/lr@1.4.8?external=*",
+			    "@lezer/xml": "https://esm.sh/@lezer/xml@1.0.5?external=*",
+			    "style-mod": "https://esm.sh/style-mod@4.1.3?external=*",
+			    "w3c-keyname": "https://esm.sh/w3c-keyname@2.2.8?external=*",
+			    "crelt": "https://esm.sh/crelt@1.0.7?external=*",
+			    "@marijn/find-cluster-break": "https://esm.sh/@marijn/find-cluster-break@1.0.4?external=*",
+			    "xml-formatter": "https://esm.sh/xml-formatter@3.6.7?external=*",
+			    "xml-parser-xo": "https://esm.sh/xml-parser-xo@4.1.5?external=*"
+			  }
+			}
+		</script>
 		<script type="module">
 			await import('@kjlint/changelog-rss');
 		</script>
