@@ -2,10 +2,6 @@
 
 # Unreleased
 
-<a id="v2.0.0"></a>
-
-## v2.0.0 (unreleased)
-
 *See the [v2 release and migration notes](docs/releases/v2.0.0.md) before upgrading.*
 
 - Show help on stdout and exit 0 when `actionlint` is launched without arguments. Use `actionlint check` for repository discovery; it exits 3 when no workflow or action inputs are found.
@@ -74,8 +70,6 @@
 - Add OSC 8 links to the project name and URLs in CLI help. `--hyperlinks=auto|always|never` follows the [no-hyperlinks convention], including `NO_HYPERLINKS` and `FORCE_HYPERLINKS`. Keep destination URLs visible and leave diagnostics and machine-readable output unchanged. (kjanat/actionlint#65)
 - Rebuild the CLI with a typed invocation model, a preserved Go flag parser for root calls, and Cobra commands for `check`, config inspection, rules, doctor, completion and version. Add JSON/JSONL/SARIF/GitHub output, template and output files, opt-in summaries, configuration origins and generated four-shell completion. Style terminal help while respecting color controls, add `-V` as a version alias, align doctor output, and keep concurrent verbose/debug log records intact. Preserve legacy options, templates, default diagnostics, version output, streams and exit codes. Test both grammars, command/file collisions and output side effects. Use the same input resolution, analysis results and renderers for commands and legacy `Lint*` methods. Preserve callbacks, working-directory handling and legacy write-error behavior. Protect all consumed local inputs from report replacement and retain configuration provenance through YAML merges. Move the frontend into `internal/cli` so library and Wasm builds do not import Cobra or pflag; Go callers migrating from the former root `Command` type can use the shared analysis APIs.
 - Add a GitHub Actions expression reference with evaluated examples for numeric parsing, coercion and workflow conditions, backed by a reproducible 85-case probe and archived measurement results. (kjanat/actionlint#171)
-
-[Changes][v2.0.0]
 
 <a id="v1.17.0"></a>
 
@@ -2616,7 +2610,6 @@ See documentation for more details:
 
 <!-- comparison links -->
 
-[v2.0.0]: https://github.com/kjanat/actionlint/compare/v1.17.0...v2.0.0
 [v1.17.0]: https://github.com/kjanat/actionlint/compare/v1.16.1...v1.17.0
 [v1.16.1]: https://github.com/kjanat/actionlint/compare/v1.16.0...v1.16.1
 [v1.16.0]: https://github.com/kjanat/actionlint/compare/v1.15.1...v1.16.0
