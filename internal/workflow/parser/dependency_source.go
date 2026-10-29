@@ -6,7 +6,7 @@ import workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 // leaves parsing. Aliases reuse the cached source mapping of their declaration.
 // IndexScalarSources supplies the physical graph; unavailable spans stay unset.
 func (p *Parser) IndexDependencySpans(workflow *workflowlang.Workflow) {
-	if workflow == nil || p.ScalarDocument == nil || p.scalarSources == nil {
+	if workflow == nil || p.scalarDocument == nil || p.scalarSources == nil {
 		return
 	}
 	add := func(value *workflowlang.String) {

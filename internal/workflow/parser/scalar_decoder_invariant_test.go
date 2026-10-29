@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/source/text"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
@@ -102,6 +103,7 @@ func checkScalarDecoderInvariants(t *testing.T, input string, root *syntax.Node)
 	t.Helper()
 	p := workflowparser.NewSourceParser([]byte(input))
 	p.IndexScalarSources(root)
+	document := sourcemap.NewDocument(input)
 	var visit func(*syntax.Node)
 	visit = func(node *syntax.Node) {
 		if node.Kind == syntax.ScalarNode {
@@ -109,7 +111,7 @@ func checkScalarDecoderInvariants(t *testing.T, input string, root *syntax.Node)
 			if node.Value == "" && node.Style == 0 {
 				return
 			}
-			checkScalarDecoderMapping(t, p, node)
+			checkScalarDecoderMapping(t, p, document, node)
 		}
 		for _, child := range node.Content {
 			visit(child)
@@ -118,8 +120,9 @@ func checkScalarDecoderInvariants(t *testing.T, input string, root *syntax.Node)
 	visit(root)
 }
 
-func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, node *syntax.Node) {
+func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document *sourcemap.Document, node *syntax.Node) {
 	t.Helper()
+	lines := document.Lines()
 	source := p.ScriptSource(node)
 	if source == nil {
 		t.Fatalf("missing scalar mapping at %d:%d: style=%d value=%q", node.Line, node.Column, node.Style, node.Value)
@@ -128,10 +131,10 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, node *syn
 		t.Fatalf("decoded value %q differs from YAML parser value %q", source.Value, node.Value)
 	}
 	for _, pos := range []workflowlang.Pos{source.ContentStart, source.ScalarEnd} {
-		if pos.Line < 1 || pos.Line > len(p.SourceLines) {
+		if pos.Line < 1 || pos.Line > len(lines) {
 			t.Fatalf("scalar boundary outside source: %+v", pos)
 		}
-		if _, ok := text.ByteOffsetAtColumn(p.SourceLines[pos.Line-1], pos.Col); !ok {
+		if _, ok := text.ByteOffsetAtColumn(lines[pos.Line-1], pos.Col); !ok {
 			t.Fatalf("scalar boundary outside line: %+v", pos)
 		}
 	}
@@ -145,10 +148,10 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, node *syn
 			t.Fatalf("unordered or out-of-bounds decoded span: %+v in %q", span, source.Value)
 		}
 		previousEnd = span.End
-		if span.YamlLine < 1 || span.YamlLine > len(p.SourceLines) {
+		if span.YamlLine < 1 || span.YamlLine > len(lines) {
 			t.Fatalf("span outside source lines: %+v", span)
 		}
-		rawLine := p.SourceLines[span.YamlLine-1]
+		rawLine := lines[span.YamlLine-1]
 		start, ok := text.ByteOffsetAtColumn(rawLine, span.YamlColumn)
 		if !ok {
 			t.Fatalf("span starts outside source line: %+v", span)
@@ -159,7 +162,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, node *syn
 			if span.YamlColumn != utf8.RuneCountInString(rawLine)+1 || span.YamlEndLine != span.YamlLine+1 || span.YamlEndColumn != 1 {
 				t.Fatalf("invalid physical linebreak span: %+v", span)
 			}
-			if _, ending := p.ScalarDocument.Line(span.YamlLine - 1); value != ending {
+			if _, ending := document.Line(span.YamlLine - 1); value != ending {
 				t.Fatalf("preserved linebreak %+v differs from source: %q", span, value)
 			}
 		case span.YamlEndColumn == 0:

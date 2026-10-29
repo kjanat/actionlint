@@ -30,7 +30,7 @@ func (p *Parser) IndexScalarSources(root *syntax.Node) {
 		if n.Kind == syntax.MappingNode || n.Kind == syntax.SequenceNode {
 			context.Flow = context.Flow || n.Style&syntax.FlowStyle != 0
 			if !context.Flow {
-				context.Indent = scalarCollectionIndent(n, p.SourceLines)
+				context.Indent = scalarCollectionIndent(n, p.sourceLines)
 			}
 		}
 		for _, child := range n.Content {
@@ -82,9 +82,9 @@ func (p *Parser) ScriptSource(n *syntax.Node) *workflowlang.ScriptSource {
 	}
 	if p.scalarContexts == nil {
 		// Standalone parser users can request a source map before parsing a tree.
-		source := strings.Join(p.SourceLines, "\n")
-		if p.ScalarDocument != nil {
-			source = scalarDocumentSource(p.ScalarDocument)
+		source := strings.Join(p.sourceLines, "\n")
+		if p.scalarDocument != nil {
+			source = scalarDocumentSource(p.scalarDocument)
 		}
 		root, err := codec.Parse([]byte(source))
 		if err != nil {
@@ -109,7 +109,7 @@ func (p *Parser) scalarSource(key workflowlang.Pos, value string) *workflowlang.
 	if !exists {
 		return nil
 	}
-	decoded, err := p.ScalarDocument.Decode(sourcemap.Position{Line: key.Line, Column: key.Col}, context)
+	decoded, err := p.scalarDocument.Decode(sourcemap.Position{Line: key.Line, Column: key.Col}, context)
 	if err != nil || decoded.Value != value {
 		return nil
 	}
@@ -117,7 +117,7 @@ func (p *Parser) scalarSource(key workflowlang.Pos, value string) *workflowlang.
 	source.Literal = decoded.Literal
 	source.ContentStart = workflowlang.Pos{Line: decoded.Start.Line, Col: decoded.Start.Column}
 	source.ScalarEnd = workflowlang.Pos{Line: decoded.End.Line, Col: decoded.End.Column}
-	source.Comments = p.scalarComments[key].comments(p.SourceLines, source)
+	source.Comments = p.scalarComments[key].comments(p.sourceLines, source)
 	for _, span := range decoded.Spans {
 		endColumn := 0
 		if span.Width != 0 {

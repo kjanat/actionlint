@@ -87,7 +87,7 @@ func (p *Parser) ScriptSourceForDeclaration(node *syntax.Node, declaration *work
 		ContentStart: workflowlang.Pos{Line: alias.Line, Col: alias.Column},
 		ScalarEnd:    workflowlang.Pos{Line: alias.Line, Col: alias.Column + utf8.RuneCountInString(alias.Value) + 1},
 	}
-	source.Comments = attachment.comments(p.SourceLines, physical)
+	source.Comments = attachment.comments(p.sourceLines, physical)
 	return source
 }
 

@@ -24,9 +24,8 @@ func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *workf
 	if !ok {
 		return opaque
 	}
-	parser.Errors = nil
-	step := parser.ParseStep(actionmeta.Fields(node))
-	if len(parser.Errors) != 0 {
+	step, clean := parser.ParseStepIsolated(actionmeta.Fields(node))
+	if !clean {
 		return opaque
 	}
 	switch step.Exec.(type) {

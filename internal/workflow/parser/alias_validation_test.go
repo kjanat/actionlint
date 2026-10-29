@@ -274,8 +274,8 @@ func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 	}
 	assertAliasTestProjection(t, projected, before)
 	leaf := NewSourceParser([]byte(source))
-	if value := leaf.ParseRawYAMLValue(projectedAlias); value != nil || len(leaf.Errors) != 1 || leaf.Errors[0].Message != "unexpected alias node on parsing value in matrix row" || leaf.Errors[0].Line != alias.Line || leaf.Errors[0].Column != alias.Column {
-		t.Fatalf("raw value followed unresolved alias: value=%+v errors=%+v", value, leaf.Errors)
+	if value := leaf.ParseRawYAMLValue(projectedAlias); value != nil || len(leaf.errs) != 1 || leaf.errs[0].Message != "unexpected alias node on parsing value in matrix row" || leaf.errs[0].Line != alias.Line || leaf.errs[0].Column != alias.Column {
+		t.Fatalf("raw value followed unresolved alias: value=%+v errors=%+v", value, leaf.errs)
 	}
 }
 

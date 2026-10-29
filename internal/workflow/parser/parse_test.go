@@ -68,12 +68,12 @@ VALID: duplicate
 		`string should not be empty`,
 		`key "VALID" is duplicated`,
 	}
-	if len(p.Errors) != len(want) {
-		t.Fatalf("want %d diagnostics, got %v", len(want), p.Errors)
+	if len(p.errs) != len(want) {
+		t.Fatalf("want %d diagnostics, got %v", len(want), p.errs)
 	}
 	for i, message := range want {
-		if !strings.HasPrefix(p.Errors[i].Message, message) {
-			t.Errorf("diagnostic %d: want %q, got %s", i, message, p.Errors[i])
+		if !strings.HasPrefix(p.errs[i].Message, message) {
+			t.Errorf("diagnostic %d: want %q, got %s", i, message, p.errs[i])
 		}
 	}
 	for _, source := range []string{"!!int invalid: value", "? [invalid]\n: value"} {
@@ -86,8 +86,8 @@ VALID: duplicate
 			for entry := range p.parseSectionMapping("test", doc.Content[0], false, false) {
 				t.Fatalf("invalid entry was returned: %v", entry)
 			}
-			if len(p.Errors) != 1 || strings.Contains(p.Errors[0].Message, "should not be empty") {
-				t.Fatalf("want only the invalid key diagnostic: %v", p.Errors)
+			if len(p.errs) != 1 || strings.Contains(p.errs[0].Message, "should not be empty") {
+				t.Fatalf("want only the invalid key diagnostic: %v", p.errs)
 			}
 		})
 	}
@@ -158,10 +158,10 @@ second: *value
 				}
 				tt.check(p, n)
 			}
-			if len(p.Errors) != 2 {
-				t.Fatalf("wanted one error per alias use, got %v", p.Errors)
+			if len(p.errs) != 2 {
+				t.Fatalf("wanted one error per alias use, got %v", p.errs)
 			}
-			for i, err := range p.Errors {
+			for i, err := range p.errs {
 				if err.Line != i+2 || err.Column != i+8 {
 					t.Errorf("error points to %d:%d, want %d:%d", err.Line, err.Column, i+2, i+8)
 				}
@@ -370,8 +370,8 @@ run: *script
 		p := NewSourceParser([]byte(input))
 		p.IndexScalarSources(root)
 		projected := projectAliasTestInput(p, root)
-		if len(p.Errors) != 0 {
-			t.Fatal(p.Errors)
+		if len(p.errs) != 0 {
+			t.Fatal(p.errs)
 		}
 		originalAlias := root.Content[0].Content[3]
 		if p.aliases[projected.Content[0].Content[3]] != originalAlias || originalAlias.Kind != syntax.AliasNode {

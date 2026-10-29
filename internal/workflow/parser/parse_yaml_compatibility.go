@@ -32,11 +32,11 @@ func (p *Parser) compactFlowNull(key, value *syntax.Node) bool {
 		return false
 	}
 	row := value.Line - 1
-	offset, ok := p.ScalarDocument.ByteOffset(row, value.Column)
+	offset, ok := p.scalarDocument.ByteOffset(row, value.Column)
 	if !ok {
 		return false
 	}
-	line := p.SourceLines[row]
+	line := p.sourceLines[row]
 	if offset >= len(line) {
 		return false
 	}
@@ -56,9 +56,9 @@ func (p *Parser) compactFlowNull(key, value *syntax.Node) bool {
 	// An explicit key may have a comment before its value indicator. That
 	// terminates the plain scalar, making even a compact separator unambiguous.
 	for r := source.ScalarEnd.Line - 1; r <= row; r++ {
-		start, end := 0, len(p.SourceLines[r])
+		start, end := 0, len(p.sourceLines[r])
 		if r == source.ScalarEnd.Line-1 {
-			start, ok = p.ScalarDocument.ByteOffset(r, source.ScalarEnd.Col)
+			start, ok = p.scalarDocument.ByteOffset(r, source.ScalarEnd.Col)
 			if !ok {
 				return false
 			}
@@ -66,7 +66,7 @@ func (p *Parser) compactFlowNull(key, value *syntax.Node) bool {
 		if r == row {
 			end = colon
 		}
-		if start > end || strings.Trim(p.SourceLines[r][start:end], " \t") != "" {
+		if start > end || strings.Trim(p.sourceLines[r][start:end], " \t") != "" {
 			return false
 		}
 	}

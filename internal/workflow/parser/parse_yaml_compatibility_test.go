@@ -83,8 +83,8 @@ func TestFlowMappingNullsPhysicalTree(t *testing.T) {
 			parser := NewSourceParser([]byte(tc.source))
 			parser.IndexScalarSources(root)
 			parser.checkFlowMappingNulls(root, false)
-			if len(parser.Errors) != tc.count {
-				t.Fatalf("want %d diagnostics, got %v", tc.count, parser.Errors)
+			if len(parser.errs) != tc.count {
+				t.Fatalf("want %d diagnostics, got %v", tc.count, parser.errs)
 			}
 		})
 	}

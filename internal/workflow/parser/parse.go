@@ -105,9 +105,9 @@ func (l *delayedSprintf) String() string {
 }
 
 type Parser struct {
-	ScalarDocument     *sourcemap.Document
-	Errors             []*SyntaxError
-	SourceLines        []string
+	scalarDocument     *sourcemap.Document
+	errs               []*SyntaxError
+	sourceLines        []string
 	aliases            map[*syntax.Node]*syntax.Node
 	scalarContexts     map[workflowlang.Pos]sourcemap.Context
 	scalarSources      map[workflowlang.Pos]*workflowlang.ScriptSource
@@ -117,15 +117,15 @@ type Parser struct {
 
 func NewSourceParser(source []byte) *Parser {
 	document := sourcemap.NewDocument(string(source))
-	return &Parser{SourceLines: document.Lines(), ScalarDocument: document}
+	return &Parser{sourceLines: document.Lines(), scalarDocument: document}
 }
 
 func (p *Parser) error(n *syntax.Node, m string) {
-	p.Errors = append(p.Errors, &SyntaxError{Message: m, Line: n.Line, Column: n.Column, Kind: "syntax-check"})
+	p.errs = append(p.errs, &SyntaxError{Message: m, Line: n.Line, Column: n.Column, Kind: "syntax-check"})
 }
 
 func (p *Parser) errorAt(pos *workflowlang.Pos, m string) {
-	p.Errors = append(p.Errors, &SyntaxError{Message: m, Line: pos.Line, Column: pos.Col, Kind: "syntax-check"})
+	p.errs = append(p.errs, &SyntaxError{Message: m, Line: pos.Line, Column: pos.Col, Kind: "syntax-check"})
 }
 
 func (p *Parser) errorfAt(pos *workflowlang.Pos, format string, args ...any) {
@@ -1671,6 +1671,16 @@ func (p *Parser) parseStepExecParallel(entries []workflowMappingEntry) *workflow
 
 // ParseStep parses a workflow or composite-action step.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
+// ParseStepIsolated decodes one step and reports whether it decoded without
+// syntax errors. The step's errors are not retained by the parser.
+func (p *Parser) ParseStepIsolated(n *syntax.Node) (*workflowlang.Step, bool) {
+	before := len(p.errs)
+	step := p.ParseStep(n)
+	clean := len(p.errs) == before
+	p.errs = p.errs[:before]
+	return step, clean
+}
+
 func (p *Parser) ParseStep(n *syntax.Node) *workflowlang.Step {
 	ret := &workflowlang.Step{Pos: PosAt(n)}
 
@@ -2120,12 +2130,12 @@ func parseDocument(source []byte, root *syntax.Node) (*workflowlang.Workflow, []
 		p.error(node, message)
 	})
 	if err := admitYAMLAliasUses(root, uses); err != nil {
-		return nil, append(p.Errors, HandleYAMLUnmarshalError(err)...)
+		return nil, append(p.errs, HandleYAMLUnmarshalError(err)...)
 	}
 	projected, aliases := projectYAMLAliases(root, uses)
 	p.aliases = aliases
 	workflow := p.parse(projected)
 	workflow.ExpressionSources = p.workflowExpressionSources(projected)
 	p.IndexDependencySpans(workflow)
-	return workflow, p.Errors
+	return workflow, p.errs
 }
