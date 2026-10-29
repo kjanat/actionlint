@@ -7,6 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 )
 
@@ -17,7 +18,7 @@ func runDocumentAnalyzers(ctx context.Context, registrations []analyzer.Registra
 		findings, err := analyzerhost.Run(ctx, input, registrations)
 		analysisErr = err
 		for _, registration := range registrations {
-			if !analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+			if !analyzerref.IsNil(registration.Analyzer) {
 				*usedRules = append(*usedRules, registration.Analyzer.Descriptor().Clone())
 			}
 		}

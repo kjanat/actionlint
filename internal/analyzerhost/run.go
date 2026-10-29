@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	"actionlint.kjanat.dev/v2/internal/related"
 )
 
@@ -50,7 +50,7 @@ type preparedRegistration struct {
 
 // Prepare validates a registration once for an exact set of available facts.
 func Prepare(registration analyzer.Registration, available []analyzer.Fact) (PreparedRegistration, error) {
-	if IsNilAnalyzer(registration.Analyzer) {
+	if analyzerref.IsNil(registration.Analyzer) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
 	descriptor := registration.Analyzer.Descriptor()
@@ -76,21 +76,6 @@ func Prepare(registration analyzer.Registration, available []analyzer.Fact) (Pre
 		}
 	}
 	return PreparedRegistration{data: &preparedRegistration{analyzer: registration.Analyzer, descriptor: descriptor, options: options, available: facts}}, nil
-}
-
-// IsNilAnalyzer detects both nil interfaces and typed nil analyzer values before
-// metadata or execution methods are called.
-func IsNilAnalyzer(value analyzer.Analyzer) bool {
-	if value == nil {
-		return true
-	}
-	reflected := reflect.ValueOf(value)
-	switch reflected.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return reflected.IsNil()
-	default:
-		return false
-	}
 }
 
 func supportedFact(fact analyzer.Fact) bool {

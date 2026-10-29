@@ -21,6 +21,7 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/checks"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
@@ -161,7 +162,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	var extensions []rule.Descriptor
 	for _, registration := range request.Analyzers {
-		if analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+		if analyzerref.IsNil(registration.Analyzer) {
 			return nil, errors.New("nil analyzer registration")
 		}
 		extensions = append(extensions, registration.Analyzer.Descriptor().Descriptor)

@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 
-	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/internal/workspace"
@@ -24,7 +24,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	var names []string
 	var descriptors []rule.Descriptor
 	for _, registration := range options.Analyzers {
-		if !analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+		if !analyzerref.IsNil(registration.Analyzer) {
 			names = append(names, registration.Analyzer.Descriptor().Name)
 			descriptors = append(descriptors, registration.Analyzer.Descriptor().Descriptor)
 		}

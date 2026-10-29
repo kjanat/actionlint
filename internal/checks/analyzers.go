@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
@@ -15,7 +15,7 @@ import (
 func ConfigureAnalyzers(config *repoconfig.Config, registrations []analyzer.Registration) ([]analyzer.Registration, error) {
 	selected := make([]analyzer.Registration, 0, len(registrations))
 	for _, registration := range registrations {
-		if analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+		if analyzerref.IsNil(registration.Analyzer) {
 			return nil, errors.New("nil analyzer registration")
 		}
 		name := registration.Analyzer.Descriptor().Name

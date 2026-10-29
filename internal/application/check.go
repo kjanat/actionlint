@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
@@ -168,7 +169,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
-		if !analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+		if !analyzerref.IsNil(registration.Analyzer) {
 			names = append(names, registration.Analyzer.Descriptor().Name)
 		}
 	}
