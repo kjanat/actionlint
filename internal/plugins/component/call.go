@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	preparedbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/preparedscripts"
+	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/sourceannotations"
+
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 	"github.com/kjanat/wacogo/wasi"
@@ -144,7 +147,10 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 		imports = append(imports, wacogo.WithInstanceImport(InvocationContextInterface, instance.Core()))
 	}
 	if p.annotationsFactory != nil {
-		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, nil)
+		// Source annotations and prepared scripts use invocation-context types,
+		// so their instances alias that call's invocation instance. Load creates
+		// the invocation factory whenever either is required.
+		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, &annotationsbind.Deps{InvocationContext: c.invocations.Core()})
 		if err != nil {
 			return err
 		}
@@ -160,7 +166,7 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 		imports = append(imports, wacogo.WithInstanceImport(SourceFilesInterface, files.Core()))
 	}
 	if p.preparedFactory != nil {
-		prepared, err := p.preparedFactory.NewInstance(ctx, preparedScripts{}, nil)
+		prepared, err := p.preparedFactory.NewInstance(ctx, preparedScripts{}, &preparedbind.Deps{InvocationContext: c.invocations.Core()})
 		if err != nil {
 			return err
 		}

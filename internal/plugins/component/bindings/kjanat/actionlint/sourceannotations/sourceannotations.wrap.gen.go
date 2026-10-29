@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/invocationcontext"
+	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 )

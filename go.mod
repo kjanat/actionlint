@@ -10,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/kjanat/go-yaml/v4 v4.0.0-rc.6.0.20261027160845-bf5e3e7bc566
-	github.com/kjanat/wacogo v0.1.2-0.20261025202354-2854ac48d3b7
+	github.com/kjanat/wacogo v0.1.2-0.20261029103812-8a2a9ec1f52a
 	github.com/kjanat/wazero v1.11.1-0.20261025184245-2dce1ead9408
 	github.com/mattn/go-colorable v0.1.16
 	github.com/mattn/go-isatty v0.0.24
@@ -23,7 +23,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/yuin/goldmark v1.8.6
 	golang.org/x/mod v0.42.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0

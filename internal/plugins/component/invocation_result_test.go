@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	bind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/invocationcontext"
+	bind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 )
 
 func TestInvocationContextQueriesStayScopedToCall(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"math"
 
-	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/invocationcontext"
+	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/invocationcontext"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 )
@@ -25,12 +25,15 @@ type Factory struct {
 }
 
 type instanceState struct {
-	impl PreparedScripts
+	impl              PreparedScripts
+	invocationContext *wacogo.ComponentInstance
 }
 
 // Deps groups the cross-component dependencies required to instantiate
 // PreparedScripts. Pass a populated value via NewInstance.
-type Deps struct{}
+type Deps struct {
+	InvocationContext *wacogo.ComponentInstance
+}
 
 // NewFactory creates a Factory bound to e. A single Factory may be
 // reused to build multiple instances backed by different implementations.
@@ -38,13 +41,14 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	f_ := &Factory{engine: e}
 	b_ := e.NewHostBuilder("kjanat_actionlint_prepared-scripts")
 
-	typ_invocationcontext_Position_ := b_.AddType("position", host.Record{Fields: []host.Field{{Name: "line", Type: host.U32}, {Name: "column", Type: host.U32}}})
-	_ = typ_invocationcontext_Position_
-	typLine_ := b_.AddType("line", host.Variant{Cases: []host.Case{{Name: "script", Payload: host.U32}, {Name: "comment", Payload: typ_invocationcontext_Position_}, {Name: "startup", Payload: nil}}})
+	typPosition_ := b_.AddType("position", host.Record{Fields: []host.Field{{Name: "line", Type: host.U32}, {Name: "column", Type: host.U32}}})
+	_ = typPosition_
+
+	typLine_ := b_.AddType("line", host.Variant{Cases: []host.Case{{Name: "script", Payload: host.U32}, {Name: "comment", Payload: typPosition_}, {Name: "startup", Payload: nil}}})
 	_ = typLine_
+
 	typPrepared_ := b_.AddType("prepared", host.Record{Fields: []host.Field{{Name: "text", Type: host.String}, {Name: "sanitized", Type: host.String}, {Name: "dialect", Type: host.Option{Inner: host.String}}, {Name: "shell", Type: host.String}, {Name: "startup", Type: host.String}, {Name: "lines", Type: host.List{Elem: typLine_}}, {Name: "excluded", Type: host.List{Elem: host.U32}}}})
 	_ = typPrepared_
-	b_.AddType("occurrence-id", host.String)
 
 	b_.AddFunction("prepare", &host.FuncType{
 		Params:  []host.Param{{Name: "occurrence", Type: host.String}, {Name: "dialect", Type: host.Option{Inner: host.String}}},
@@ -62,10 +66,20 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 // NewInstance creates a fresh component instance backed by impl. Pass
 // inst.Core() to wacogo.WithInstanceImport to wire the instance into a
 // composite world. deps may be nil only when PreparedScripts has no
-// resource imports.
+// imports.
 func (f *Factory) NewInstance(ctx context.Context, impl PreparedScripts, deps *Deps, opts ...host.InstantiateOption) (*host.ComponentInstance, error) {
-	_ = deps
-	state_ := &instanceState{impl: impl}
+	if deps == nil {
+		panic("preparedscripts.NewInstance: deps is nil")
+	}
+	var missing_ []string
+	if deps.InvocationContext == nil {
+		missing_ = append(missing_, "InvocationContext")
+	}
+	if len(missing_) > 0 {
+		panic(fmt.Sprintf("preparedscripts.NewInstance: deps missing fields: %v", missing_))
+	}
+	state_ := &instanceState{impl: impl, invocationContext: deps.InvocationContext}
+
 	opts = append(opts, host.WithUserState(state_))
 	inst_, err_ := f.comp.Instantiate(ctx, opts...)
 	if err_ != nil {

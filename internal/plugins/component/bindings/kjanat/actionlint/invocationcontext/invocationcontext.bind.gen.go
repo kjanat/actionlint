@@ -33,6 +33,8 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	f_ := &Factory{engine: e}
 	b_ := e.NewHostBuilder("kjanat_actionlint_invocation-context")
 
+	b_.AddType("occurrence-id", host.String)
+
 	typEntryKind_ := b_.AddType("entry-kind", host.Enum{Cases: []string{"workflow", "action"}})
 	_ = typEntryKind_
 	typCondition_ := b_.AddType("condition", host.Enum{Cases: []string{"enabled", "skipped", "runtime-dependent"}})
@@ -49,6 +51,7 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	_ = typInterruptionReason_
 	typStopLimit_ := b_.AddType("stop-limit", host.Enum{Cases: []string{"total", "scripts"}})
 	_ = typStopLimit_
+
 	typSourceReference_ := b_.AddType("source-reference", host.Record{Fields: []host.Field{{Name: "document", Type: host.String}, {Name: "revision", Type: host.String}, {Name: "node", Type: host.String}, {Name: "address", Type: host.String}}})
 	_ = typSourceReference_
 	typPosition_ := b_.AddType("position", host.Record{Fields: []host.Field{{Name: "line", Type: host.U32}, {Name: "column", Type: host.U32}}})
@@ -71,15 +74,15 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	_ = typInterrupted_
 	typCycle_ := b_.AddType("cycle", host.Record{Fields: []host.Field{{Name: "target", Type: typSourceReference_}, {Name: "active", Type: typSourceReference_}, {Name: "owner", Type: host.String}, {Name: "closing", Type: host.String}}})
 	_ = typCycle_
-	typOutcome_ := b_.AddType("outcome", host.Variant{Cases: []host.Case{{Name: "expanded", Payload: typSourceReference_}, {Name: "opaque", Payload: typOpaque_}, {Name: "unavailable", Payload: typUnavailable_}, {Name: "unresolved", Payload: typUnresolved_}, {Name: "dynamic", Payload: host.String}, {Name: "cycle", Payload: typCycle_}, {Name: "depth-limited", Payload: host.U32}, {Name: "interrupted", Payload: typInterrupted_}}})
-	_ = typOutcome_
-	typCall_ := b_.AddType("call", host.Record{Fields: []host.Field{{Name: "id", Type: host.String}, {Name: "parent", Type: host.String}, {Name: "ancestry", Type: host.List{Elem: host.String}}, {Name: "depth", Type: host.U32}, {Name: "site", Type: typSourceReference_}, {Name: "step", Type: host.Option{Inner: typPosition_}}, {Name: "uses", Type: host.Option{Inner: host.String}}, {Name: "condition", Type: typCondition_}, {Name: "outcome", Type: typOutcome_}}})
-	_ = typCall_
 	typStop_ := b_.AddType("stop", host.Record{Fields: []host.Field{{Name: "parent", Type: host.String}, {Name: "site", Type: typSourceReference_}, {Name: "limit", Type: typStopLimit_}, {Name: "max", Type: host.U32}}})
 	_ = typStop_
 	typSummary_ := b_.AddType("summary", host.Record{Fields: []host.Field{{Name: "entry", Type: typEntry_}, {Name: "budget", Type: typBudget_}, {Name: "calls", Type: host.U32}, {Name: "scripts", Type: host.U32}, {Name: "stop", Type: host.Option{Inner: typStop_}}, {Name: "entry-interruption", Type: host.Option{Inner: typInterruption_}}, {Name: "complete", Type: host.Bool}}})
 	_ = typSummary_
-	b_.AddType("occurrence-id", host.String)
+	typOutcome_ := b_.AddType("outcome", host.Variant{Cases: []host.Case{{Name: "expanded", Payload: typSourceReference_}, {Name: "opaque", Payload: typOpaque_}, {Name: "unavailable", Payload: typUnavailable_}, {Name: "unresolved", Payload: typUnresolved_}, {Name: "dynamic", Payload: host.String}, {Name: "cycle", Payload: typCycle_}, {Name: "depth-limited", Payload: host.U32}, {Name: "interrupted", Payload: typInterrupted_}}})
+	_ = typOutcome_
+
+	typCall_ := b_.AddType("call", host.Record{Fields: []host.Field{{Name: "id", Type: host.String}, {Name: "parent", Type: host.String}, {Name: "ancestry", Type: host.List{Elem: host.String}}, {Name: "depth", Type: host.U32}, {Name: "site", Type: typSourceReference_}, {Name: "step", Type: host.Option{Inner: typPosition_}}, {Name: "uses", Type: host.Option{Inner: host.String}}, {Name: "condition", Type: typCondition_}, {Name: "outcome", Type: typOutcome_}}})
+	_ = typCall_
 
 	b_.AddFunction("call-by-id", &host.FuncType{
 		Params:  []host.Param{{Name: "id", Type: host.String}},
@@ -117,7 +120,7 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 // NewInstance creates a fresh component instance backed by impl. Pass
 // inst.Core() to wacogo.WithInstanceImport to wire the instance into a
 // composite world. deps may be nil only when InvocationContext has no
-// resource imports.
+// imports.
 func (f *Factory) NewInstance(ctx context.Context, impl InvocationContext, deps *Deps, opts ...host.InstantiateOption) (*host.ComponentInstance, error) {
 	_ = deps
 	state_ := &instanceState{impl: impl}

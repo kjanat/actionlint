@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/v0.2.0/host"
+	hostbind "actionlint.kjanat.dev/v2/internal/plugins/component/bindings/kjanat/actionlint/host"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
 	"github.com/kjanat/wazero/experimental"
