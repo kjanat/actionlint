@@ -70,7 +70,7 @@ func (rule *RuleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 			finding.EndPosition = &end
 		}
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: key, Visit: store.visits}
-		rule.Findings = append(rule.Findings, &finding)
+		rule.Report(&finding)
 	}
 	return nil
 }

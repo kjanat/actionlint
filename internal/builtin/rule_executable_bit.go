@@ -25,7 +25,7 @@ func newRuleExecutableBit(c Context) *RuleExecutableBit {
 }
 func (rule *RuleExecutableBit) Name() string { return "executable-bit" }
 func (rule *RuleExecutableBit) Description() string {
-	return builtinRuleBase("executable-bit").DescriptionText
+	return builtinRuleDescription("executable-bit")
 }
 
 func (rule *RuleExecutableBit) Errs() []*findingmodel.Finding                     { return rule.findings }

@@ -399,7 +399,7 @@ func (rule *ExecutableChecker) redirectsKnown(redirects []*syntax.Redirect, dire
 			return false
 		}
 		snapshot := rule.index()
-		switch snapshot.Modes[name] {
+		switch snapshot.Mode(name) {
 		case "100644", "100755":
 		case "":
 			if redirect.Op == syntax.RdrIn || snapshot.DirectoryExists(name) {
@@ -524,7 +524,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run workflowdecl.E
 				return
 			}
 			location, ok := rule.scriptPath(*directory, operand)
-			mode := rule.index().Modes[location.repository]
+			mode := rule.index().Mode(location.repository)
 			if !ok || mode != "100644" && mode != "100755" {
 				rule.pristine = false
 				return
@@ -614,7 +614,7 @@ func (rule *ExecutableChecker) checkInvocation(run workflowdecl.ExecRunView, run
 	}
 	name := location.repository
 	snapshot := rule.index()
-	if snapshot.Modes[name] != "100644" {
+	if snapshot.Mode(name) != "100644" {
 		return
 	}
 	pos, _ := run.RunPos()
@@ -671,10 +671,10 @@ func LiteralShellWord(parts []syntax.WordPart) (string, bool) {
 
 func (rule *ExecutableChecker) index() *IndexSnapshot {
 	snapshot := rule.context.Index(rule.context.Context, rule.paths.Workspace)
-	if snapshot.Err != nil {
-		rule.debug("Git index unavailable: %v", snapshot.Err)
+	if err := snapshot.Err(); err != nil {
+		rule.debug("Git index unavailable: %v", err)
 	} else {
-		rule.paths.Reader.Record(snapshot.Path)
+		rule.paths.Reader.Record(snapshot.Path())
 	}
 	return snapshot
 }

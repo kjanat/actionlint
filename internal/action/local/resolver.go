@@ -36,7 +36,7 @@ type MetadataDocumentLookup interface {
 // Metadata and consulted sources are shared with composite children. Checkout
 // and environment traversal state belongs to each resolver frame.
 type Resolver struct {
-	Runners              *runnerlang.Knowledge
+	runners              *runnerlang.Knowledge
 	base                 *Cache
 	mu                   sync.RWMutex
 	sourceMappings       map[string]string
@@ -86,6 +86,10 @@ func (d SourceDocument) Document() documentparse.Document { return d.document }
 func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
 	return &Resolver{base: cache, sourceMappings: maps.Clone(mappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
 }
+
+// SetRunners installs the workflow's runner knowledge before the resolver is
+// used; composite children inherit it.
+func (c *Resolver) SetRunners(runners *runnerlang.Knowledge) { c.runners = runners }
 
 func (c *Resolver) documentOwner() *resolverDocuments {
 	c.mu.Lock()

@@ -9,17 +9,19 @@ import (
 // Base accumulates findings and provides default callbacks for synchronous visitors.
 // Configuration, logging, scheduling and resource ownership belong to callers.
 type Base struct {
-	RuleName        string
-	DescriptionText string
-	Findings        []*findingmodel.Finding
+	name        string
+	description string
+	findings    []*findingmodel.Finding
 }
 
 // NewBase initializes a visitor accumulator with its rule identity.
 func NewBase(name string, desc string) Base {
-	return Base{
-		RuleName:        name,
-		DescriptionText: desc,
-	}
+	return Base{name: name, description: desc}
+}
+
+// Report records findings produced outside the positional helpers.
+func (r *Base) Report(findings ...*findingmodel.Finding) {
+	r.findings = append(r.findings, findings...)
 }
 
 // VisitStep is callback when visiting Step node.
@@ -40,20 +42,20 @@ func (r *Base) VisitWorkflowPost(node declaration.WorkflowView) error { return n
 // Error creates a new error from the source position and the error message and stores it in the
 // rule instance. The errors can be accessed by Errs method.
 func (r *Base) Error(pos *workflowlang.Pos, msg string) {
-	err := findingmodel.At(pos, r.RuleName, msg)
-	r.Findings = append(r.Findings, err)
+	err := findingmodel.At(pos, r.name, msg)
+	r.findings = append(r.findings, err)
 }
 
 // Errorf reports a new error with the source position and the formatted error message and stores it
 // in the rule instance. The errors can be accessed by Errs method.
 func (r *Base) Errorf(pos *workflowlang.Pos, format string, args ...any) {
-	err := findingmodel.Errorf(pos, r.RuleName, format, args...)
-	r.Findings = append(r.Findings, err)
+	err := findingmodel.Errorf(pos, r.name, format, args...)
+	r.findings = append(r.findings, err)
 }
 
 // ErrorfRange reports an error with an exclusive source-range end.
 func (r *Base) ErrorfRange(start, end *workflowlang.Pos, format string, args ...any) {
-	err := findingmodel.Errorf(start, r.RuleName, format, args...)
+	err := findingmodel.Errorf(start, r.name, format, args...)
 	if end != nil {
 		copied := *end
 		err.EndPosition = &copied
@@ -61,20 +63,20 @@ func (r *Base) ErrorfRange(start, end *workflowlang.Pos, format string, args ...
 	if end != nil && end.Line == start.Line && end.Col > start.Col {
 		err.EndColumn = end.Col - 1
 	}
-	r.Findings = append(r.Findings, err)
+	r.findings = append(r.findings, err)
 }
 
 // Errs returns errors found by the rule.
 func (r *Base) Errs() []*findingmodel.Finding {
-	return r.Findings
+	return r.findings
 }
 
 // Name returns the name of the rule.
 func (r *Base) Name() string {
-	return r.RuleName
+	return r.name
 }
 
 // Description returns the description of the rule.
 func (r *Base) Description() string {
-	return r.DescriptionText
+	return r.description
 }

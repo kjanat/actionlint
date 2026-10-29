@@ -47,7 +47,7 @@ func (c *Resolver) state() resolverState {
 // BeginJob resets checkout and persistent environment assumptions for a new job.
 func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Value, job workflowdecl.JobView) {
 	c.setCheckout(execution.Directory{})
-	knowledge := c.Runners.Job(job)
+	knowledge := c.runners.Job(job)
 	c.platform = knowledge.Platform
 	c.caseInsensitive = knowledge.CaseInsensitive
 	jobEnv := job.Env().Mapping()
@@ -55,7 +55,7 @@ func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Val
 	c.persistentEnvUnknown = false
 	c.shellEnvUnknown = c.shellEnvironmentUnknown(workflowEnv) || c.shellEnvironmentUnknown(jobEnv)
 	runnerShell := value.DynamicValue("", value.KindUnknown, value.Origin{})
-	if knowledge.Shell != "" && (c.Runners != nil || c.platform != runnerlang.Any) {
+	if knowledge.Shell != "" && (c.runners != nil || c.platform != runnerlang.Any) {
 		runnerShell = value.YAMLScalar(knowledge.Shell, "!!str", value.Origin{})
 	}
 	if container := execution.ContainerShell(job.Container().Semantic()); container.State() != value.Missing {
@@ -82,7 +82,7 @@ func (c *Resolver) ForkComposite(context invocation.Context) (*Resolver, error) 
 	}
 	before := c.state()
 	child := &Resolver{
-		Runners: c.Runners, base: c.base, sourceMappings: c.sourceMappings, documents: owner,
+		runners: c.runners, base: c.base, sourceMappings: c.sourceMappings, documents: owner,
 		checkout: before.checkout, platform: before.platform, caseInsensitive: before.caseInsensitive,
 		checkoutEnvUnknown: before.checkoutEnvUnknown, persistentEnvUnknown: before.persistentEnvUnknown,
 		shellEnvUnknown: before.shellEnvUnknown,

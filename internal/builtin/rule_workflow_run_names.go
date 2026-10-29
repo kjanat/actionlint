@@ -41,7 +41,7 @@ func (r *workflowRunNamesRule) VisitWorkflowPre(w workflowdecl.WorkflowView) err
 		return err
 	}
 	for _, d := range names.CheckWorkflowRun(references) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }

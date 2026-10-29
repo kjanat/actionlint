@@ -7,7 +7,7 @@ import (
 
 func (rule *ExecutableChecker) checkedRunnerPathFor(runnerPath string, paths Paths) (string, bool) {
 	snapshot := rule.index()
-	if snapshot.Err != nil {
+	if snapshot.Err() != nil {
 		return "", false
 	}
 	checkout, known := paths.CheckoutFor(runnerPath)

@@ -104,9 +104,9 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			rule := workflowvisit.NewBase("expression-reference", "dependency finding")
 			rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-			rule.Findings[0].Path, rule.Findings[0].Source = path, dependencySource.Bytes()
-			rule.Findings[0].Reference = &reference
-			rule.Findings[0].RawScriptSource = coordinates == source.RawLF
+			rule.Errs()[0].Path, rule.Errs()[0].Source = path, dependencySource.Bytes()
+			rule.Errs()[0].Reference = &reference
+			rule.Errs()[0].RawScriptSource = coordinates == source.RawLF
 			return []workflowvisit.Rule{&rule}
 		},
 	}, workflow, nil, nil, cache)

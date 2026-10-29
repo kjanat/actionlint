@@ -63,18 +63,18 @@ func (rule *RuleAction) VisitStep(n workflowdecl.StepView) error {
 		// Normalize it to the existing local path form so metadata and output validation still work.
 		local, ok := references.SelfRepositoryLocal(spec)
 		if !ok {
-			rule.Findings = append(rule.Findings, actioncheck.InvalidReference(declarationPosition(e.Uses()), spec, "self-repository references do not support an '@ref' suffix"))
+			rule.Report(actioncheck.InvalidReference(declarationPosition(e.Uses()), spec, "self-repository references do not support an '@ref' suffix"))
 			return nil
 		}
 		return rule.checkLocalAction(local, spec, e)
 	}
 
 	if strings.HasPrefix(spec, "docker://") {
-		rule.Findings = append(rule.Findings, actioncheck.Docker(e)...)
+		rule.Report(actioncheck.Docker(e)...)
 		return nil
 	}
 
-	rule.Findings = append(rule.Findings, actioncheck.Repository(e, actioncatalog.Lookup, rule.Debug)...)
+	rule.Report(actioncheck.Repository(e, actioncatalog.Lookup, rule.Debug)...)
 	return nil
 }
 
@@ -90,7 +90,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action w
 	}
 	if err != nil {
 		if _, unresolved := errors.AsType[actionlocal.UnresolvedError](err); unresolved {
-			rule.Findings = append(rule.Findings, findingmodel.At(declarationPosition(action.Uses()), "missing-local-action", err.Error()))
+			rule.Report(findingmodel.At(declarationPosition(action.Uses()), "missing-local-action", err.Error()))
 		} else {
 			finding := findingmodel.At(declarationPosition(action.Uses()), rule.Name(), err.Error())
 			if parseError, ok := errors.AsType[*actionlocal.ParseError](err); ok {
@@ -99,7 +99,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action w
 					return fmt.Errorf("metadata parse source %q has no captured revision: %w", parseError.Path, err)
 				}
 			}
-			rule.Findings = append(rule.Findings, finding)
+			rule.Report(finding)
 		}
 		return nil
 	}
@@ -111,7 +111,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action w
 		return err
 	}
 
-	rule.Findings = append(rule.Findings, actioncheck.Inputs(meta, action, func(m *actionmeta.Metadata) string {
+	rule.Report(actioncheck.Inputs(meta, action, func(m *actionmeta.Metadata) string {
 		return fmt.Sprintf("%q defined at %q", m.Name, displaySpec)
 	})...)
 	return nil
@@ -132,8 +132,8 @@ func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 	if err != nil {
 		return err
 	}
-	rule.Findings = append(rule.Findings, actioncheck.Standalone(meta)...)
-	for _, finding := range rule.Findings {
+	rule.Report(actioncheck.Standalone(meta)...)
+	for _, finding := range rule.Errs() {
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, admitted.Reference().Document, finding), Declaration: true}
 	}
 	return nil

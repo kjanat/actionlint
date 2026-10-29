@@ -63,7 +63,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				if err := visitor.Visit(workflow); err != nil {
 					t.Fatalf("metadata cache failure stopped recovered entry traversal: %v", err)
 				}
-				return len(callRule.Findings), len(labelRule.Findings)
+				return len(callRule.Errs()), len(labelRule.Errs())
 			}
 			var callerFindings, calleeFindings int
 			if callerFirst {

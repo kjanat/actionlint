@@ -90,7 +90,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call workflowdecl.Workf
 	u := call.Uses()
 	m, err := rule.cache.FindMetadataForCall(u.Value())
 	if err != nil {
-		rule.Findings = append(rule.Findings, workflowLookupError(u, err))
+		rule.Report(workflowLookupError(u, err))
 		return
 	}
 	if m == nil {
@@ -99,12 +99,12 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call workflowdecl.Workf
 	}
 
 	for _, d := range calls.CheckArguments(call, m) {
-		rule.Findings = append(rule.Findings, findingmodel.FromDiagnostic(d))
+		rule.Report(findingmodel.FromDiagnostic(d))
 	}
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
 	for _, d := range cachepolicy.CheckCeiling(call, cachepolicy.EffectiveMode(rule.workflowCacheMode, jobCacheMode), m, rule.cache, rule.Debug) {
-		rule.Findings = append(rule.Findings, findingmodel.FromDiagnostic(d))
+		rule.Report(findingmodel.FromDiagnostic(d))
 	}
 
 	rule.Debug("Validated reusable workflow %q", u.Value())
@@ -126,7 +126,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call workflowdecl.Wor
 	}
 
 	for _, d := range calls.CheckPermissions(call, granted, m) {
-		rule.Findings = append(rule.Findings, findingmodel.FromDiagnostic(d))
+		rule.Report(findingmodel.FromDiagnostic(d))
 	}
 }
 

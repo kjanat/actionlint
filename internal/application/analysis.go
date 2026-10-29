@@ -354,7 +354,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	session.workingDir = absPath(cwd)
 	session.gitModes = &gitModes{}
 	result = &analysisResult{Diagnostics: []diagmodel.Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
-	session.workflowNames = &workflownames.Index{Paths: sourcePaths, Reader: reader, Load: func(path string) (string, bool, error) {
+	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (string, bool, error) {
 		captured, err := captures.Read(lifetime, path, sourcemodel.YAML)
 		if err != nil {
 			return "", false, err
@@ -370,7 +370,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			return *literal, true, nil
 		}
 		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
-	}}
+	})
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
 		ac, wc := actions.GetCache(lifetime, projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))

@@ -25,7 +25,7 @@ func (r *RuleCacheWriteUntrusted) VisitWorkflowPre(w workflowdecl.WorkflowView) 
 
 func (r *RuleCacheWriteUntrusted) VisitJobPre(job workflowdecl.JobView) error {
 	for _, d := range r.trust.CheckWrites(job) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }
@@ -47,7 +47,7 @@ func (r *RuleCacheCallUnrestricted) VisitWorkflowPre(w workflowdecl.WorkflowView
 
 func (r *RuleCacheCallUnrestricted) VisitJobPre(job workflowdecl.JobView) error {
 	for _, d := range r.trust.CheckCall(job) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func (r *RuleCacheOperation) VisitJobPre(job workflowdecl.JobView) error {
 	r.job = cachepolicy.EffectiveMode(r.workflow, job.CacheMode())
 	if r.cache != nil {
 		for _, d := range cachepolicy.CheckCallOperations(job.WorkflowCall(), r.job, r.cache) {
-			r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+			r.Report(findingmodel.FromDiagnostic(d))
 		}
 	}
 	return nil
@@ -86,7 +86,7 @@ func (r *RuleCacheOperation) VisitJobPre(job workflowdecl.JobView) error {
 
 func (r *RuleCacheOperation) VisitStep(step workflowdecl.StepView) error {
 	for _, d := range cachepolicy.CheckStep(step, r.job) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }

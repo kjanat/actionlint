@@ -110,7 +110,7 @@ func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *c
 }
 
 func (r *RuleExpression) Name() string                  { return "expression" }
-func (r *RuleExpression) Description() string           { return builtinRuleBase("expression").DescriptionText }
+func (r *RuleExpression) Description() string           { return builtinRuleDescription("expression") }
 func (r *RuleExpression) Errs() []*findingmodel.Finding { return r.findings }
 func (r *RuleExpression) SetConfig(config *repoconfig.Config) {
 	r.Configuration.SetConfig(config)

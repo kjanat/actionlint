@@ -129,6 +129,11 @@ func builtinRuleBase(name string) workflowvisit.Base {
 	panic("unregistered built-in rule: " + name)
 }
 
+func builtinRuleDescription(name string) string {
+	base := builtinRuleBase(name)
+	return base.Description()
+}
+
 func absolutePath(path string) string {
 	if absolute, err := filepath.Abs(path); err == nil {
 		return absolute

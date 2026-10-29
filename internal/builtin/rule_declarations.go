@@ -33,7 +33,7 @@ func (r *declarationRule) collect(input []checks.Finding, job string) {
 				finding.IgnoreOrigin.StepPosition = &origin.Position
 			}
 		}
-		r.Findings = append(r.Findings, finding)
+		r.Report(finding)
 	}
 }
 

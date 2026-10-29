@@ -24,7 +24,7 @@ func (r *RuleMatrix) VisitJobPre(view workflowdecl.JobView) error {
 		return errors.New("matrix rule requires a job declaration")
 	}
 	for _, diagnostic := range view.Strategy().MatrixResolution().Check(repoconfig.DiagnosticLevel(r.config, "mixed-type-matrix-filters") != "off") {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(diagnostic))
+		r.Report(findingmodel.FromDiagnostic(diagnostic))
 	}
 	return nil
 }

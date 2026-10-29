@@ -31,10 +31,10 @@ func (p *invocationLifecycleProbe) emit(phase string, ref source.Reference) {
 	p.t.Helper()
 	call := p.frames[len(p.frames)-1]
 	*p.events = append(*p.events, p.Name()+":"+phase+":"+call.Path)
-	before := len(p.Findings)
+	before := len(p.Errs())
 	p.Error(&workflowlang.Pos{Line: 1, Col: 1}, phase)
 	p.t.Cleanup(func() {
-		finding := p.Findings[before]
+		finding := p.Errs()[before]
 		if finding.Path != call.Path || !bytes.Equal(finding.Source, call.Source.Content()) || finding.Reference == nil || *finding.Reference != ref {
 			p.t.Errorf("%s finding lost invocation source: %+v", phase, finding)
 		}

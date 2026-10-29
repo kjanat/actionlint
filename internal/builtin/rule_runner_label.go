@@ -25,7 +25,7 @@ func (r *RuleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
 	}
 	if r.runners != nil {
 		for _, d := range r.runners.Job(declaration).Findings {
-			r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+			r.Report(findingmodel.FromDiagnostic(d))
 		}
 		return nil
 	}
@@ -34,7 +34,7 @@ func (r *RuleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
 		labels = r.config.SelfHostedRunner.Labels
 	}
 	for _, d := range runnerlang.Check(declaration, labels) {
-		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(d))
+		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil
 }

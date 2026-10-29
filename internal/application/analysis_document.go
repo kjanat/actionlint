@@ -215,7 +215,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		s.runnerReportsMu.Unlock()
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
-	resolvedActions.Runners = runners
+	resolvedActions.SetRunners(runners)
 	context := builtin.Context{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
 	if s.gitModes != nil {

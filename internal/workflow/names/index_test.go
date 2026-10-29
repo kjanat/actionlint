@@ -79,13 +79,13 @@ func TestIndexSymlinkCheckout(t *testing.T) {
 		}
 	}
 	loads := 0
-	index := &Index{Reader: fsread.New(t.Context(), nil, nil), Paths: []string{overlay, missing}, Load: func(path string) (string, bool, error) {
+	index := NewIndex([]string{overlay, missing}, fsread.New(t.Context(), nil, nil), func(path string) (string, bool, error) {
 		loads++
 		if path != overlay && path != missing {
 			t.Errorf("did not retain overlay spelling: %q", path)
 		}
 		return "", true, nil
-	}}
+	})
 	names, err := index.ForRoot(root)
 	if err != nil || !names.Complete || len(names.Values) != 2 || !names.Values[".github/workflows/build.yml"] || !names.Values[".github/workflows/new.yml"] || loads != 2 {
 		t.Fatalf("names=%+v err=%v loads=%d", names, err, loads)
@@ -113,13 +113,13 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 		overlay = disk
 	}
 	loads := 0
-	index := &Index{Reader: fsread.New(t.Context(), nil, nil), Paths: []string{overlay}, Load: func(path string) (string, bool, error) {
+	index := NewIndex([]string{overlay}, fsread.New(t.Context(), nil, nil), func(path string) (string, bool, error) {
 		loads++
 		if path != overlay {
 			t.Errorf("loaded %q instead of original overlay %q", path, overlay)
 		}
 		return "", true, nil
-	}}
+	})
 	names, err := index.ForRoot(root)
 	if err != nil || !names.Complete || len(names.Values) != 1 || !names.Values[".github/workflows/build.yml"] || loads != 1 {
 		t.Fatalf("names=%+v err=%v loads=%d", names, err, loads)
@@ -235,14 +235,14 @@ func TestIndexFilesystemCaseAlias(t *testing.T) {
 	}
 	for _, name := range []string{"New name", ""} {
 		loads := 0
-		index := &Index{Reader: fsread.New(t.Context(), nil, nil), Paths: []string{overlay}, Load: func(path string) (string, bool, error) {
+		index := NewIndex([]string{overlay}, fsread.New(t.Context(), nil, nil), func(path string) (string, bool, error) {
 			loads++
 			if path != overlay {
 				t.Errorf("loaded stale disk spelling %q", path)
 				return "", false, nil
 			}
 			return name, true, nil
-		}}
+		})
 		got, err := index.ForRoot(root)
 		if err != nil || !got.Complete || loads != 1 || len(got.Values) != 1 {
 			t.Fatalf("case alias inventory=%+v err=%v loads=%d", got, err, loads)
