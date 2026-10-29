@@ -56,6 +56,10 @@ func migrateTOML(source []byte, migrated *yaml.Node) ([]byte, error) {
 			table = slices.Clone(path)
 		case unstable.KeyValue:
 			path = append(slices.Clone(table), tomlKeyPath(node)...)
+		case unstable.Invalid, unstable.Key, unstable.Array, unstable.InlineTable, unstable.String, unstable.Bool, unstable.Float, unstable.Integer,
+			unstable.LocalDate, unstable.LocalTime, unstable.LocalDateTime, unstable.DateTime:
+			// Value and meta kinds are not top-level expressions.
+			fallthrough
 		default:
 			continue
 		}

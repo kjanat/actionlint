@@ -34,7 +34,6 @@ type Selection struct {
 
 // Options controls only input preparation, not analysis or rendering.
 type Options struct {
-	Context                               context.Context
 	WorkingDir, StdinFileName, ConfigFile string
 	ConfigOverlays                        []repoconfig.Overlay
 	OnConfigLoaded                        func(configreport.Report)
@@ -62,11 +61,9 @@ type Session struct {
 	ruleNames         []string
 }
 
-func New(opts Options) (*Session, error) {
-	a := &Session{projects: NewProjects(), ctx: opts.Context, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: opts.ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
-	if a.ctx == nil {
-		a.ctx = context.Background()
-	}
+// New prepares a session whose file reads and config loads stop when ctx is canceled.
+func New(ctx context.Context, opts Options) (*Session, error) {
+	a := &Session{projects: NewProjects(), ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: opts.ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	if a.readFile == nil {
 		a.readFile = fsread.Disk
 	}

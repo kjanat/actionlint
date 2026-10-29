@@ -66,6 +66,8 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 		return WriteGitHub(out, result.Diagnostics)
 	case FormatSARIF:
 		return WriteSARIF(out, r.version(), r.rules.sorted(), result.Diagnostics)
+	case FormatText, FormatPretty, FormatOneline:
+		// Text formats render findings below.
 	}
 	fields := make([]*TemplateFields, 0, len(result.Findings))
 	for _, finding := range result.Findings {

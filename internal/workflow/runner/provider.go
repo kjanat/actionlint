@@ -69,6 +69,7 @@ func (p builtinProvider) ResolveRunners(ctx context.Context, request runnerapi.R
 						candidate.OS = runnerapi.MacOS
 					}
 				}
+			case Any:
 			}
 			answer.Resolution = runnerapi.Resolved{Candidates: []runnerapi.Candidate{candidate}}
 		}

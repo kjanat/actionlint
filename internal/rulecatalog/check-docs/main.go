@@ -112,6 +112,9 @@ func (s state) String() string {
 		return "output block"
 	case stateEnd:
 		return "end"
+	case stateInit:
+		// The initial state reads as "init".
+		fallthrough
 	default:
 		return "init"
 	}

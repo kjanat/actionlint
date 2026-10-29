@@ -52,13 +52,15 @@ func checkEncoding(v reflect.Value, active map[encodingVisit]bool) error {
 			return nil
 		}
 	}
-	switch v.Kind() {
-	case reflect.Pointer, reflect.Map, reflect.Slice:
+	// Only reference and container kinds can form cycles or hold nested values;
+	// every other kind is a leaf.
+	kind := v.Kind()
+	if kind == reflect.Pointer || kind == reflect.Map || kind == reflect.Slice {
 		if v.IsNil() {
 			return nil
 		}
 		visit := encodingVisit{typeOf: v.Type(), pointer: v.Pointer()}
-		if v.Kind() == reflect.Slice {
+		if kind == reflect.Slice {
 			visit.length = v.Len()
 		}
 		if active[visit] {
@@ -67,13 +69,13 @@ func checkEncoding(v reflect.Value, active map[encodingVisit]bool) error {
 		active[visit] = true
 		defer delete(active, visit)
 	}
-	switch v.Kind() {
-	case reflect.Pointer, reflect.Interface:
+	if kind == reflect.Pointer || kind == reflect.Interface {
 		if v.IsNil() {
 			return nil
 		}
 		return checkEncoding(v.Elem(), active)
-	case reflect.Struct:
+	}
+	if kind == reflect.Struct {
 		for i := range v.NumField() {
 			field := v.Type().Field(i)
 			if !field.IsExported() && !field.Anonymous || field.Tag.Get("yaml") == "-" {
@@ -83,13 +85,15 @@ func checkEncoding(v reflect.Value, active map[encodingVisit]bool) error {
 				return err
 			}
 		}
-	case reflect.Array, reflect.Slice:
+	}
+	if kind == reflect.Array || kind == reflect.Slice {
 		for i := range v.Len() {
 			if err := checkEncoding(v.Index(i), active); err != nil {
 				return err
 			}
 		}
-	case reflect.Map:
+	}
+	if kind == reflect.Map {
 		iter := v.MapRange()
 		for iter.Next() {
 			if err := checkEncoding(iter.Key(), active); err != nil {

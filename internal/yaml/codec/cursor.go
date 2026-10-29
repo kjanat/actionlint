@@ -156,7 +156,10 @@ func (c Cursor) Enter() (Entered, error) {
 			}
 			c.via = &aliasCrossing{node: c.node, parent: c.via}
 			c.node = c.node.Alias
+		case syntax.SequenceNode, syntax.MappingNode, syntax.ScalarNode:
+			return Entered{cursor: c, claim: &rootClaim{}}, nil
 		default:
+			// Kind zero is the empty root node.
 			return Entered{cursor: c, claim: &rootClaim{}}, nil
 		}
 	}
@@ -258,15 +261,18 @@ func checkDecodeType(t reflect.Type, selected bool, seen map[decodeShape]bool) e
 			return fmt.Errorf("YAML hooks require an explicit schema traversal: %v", t)
 		}
 	}
-	switch t.Kind() {
-	case reflect.Pointer, reflect.Slice, reflect.Array:
+	// Only container kinds reach further types; every other kind is a leaf.
+	kind := t.Kind()
+	if kind == reflect.Pointer || kind == reflect.Slice || kind == reflect.Array {
 		return checkDecodeType(t.Elem(), false, seen)
-	case reflect.Map:
+	}
+	if kind == reflect.Map {
 		if err := checkDecodeType(t.Key(), false, seen); err != nil {
 			return err
 		}
 		return checkDecodeType(t.Elem(), false, seen)
-	case reflect.Struct:
+	}
+	if kind == reflect.Struct {
 		for field := range t.Fields() {
 			if (field.IsExported() || field.Anonymous) && field.Tag.Get("yaml") != "-" {
 				if err := checkDecodeType(field.Type, selected, seen); err != nil {

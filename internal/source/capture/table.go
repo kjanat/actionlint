@@ -78,6 +78,9 @@ func (s *Store) Lookup(path string) (Snapshot, State, error) {
 		return Snapshot{}, current, e.err
 	case Conflicted:
 		return Snapshot{}, current, e.conflict
+	case Absent, Pending:
+		// Absent and pending documents have no snapshot or error.
+		fallthrough
 	default:
 		return Snapshot{}, current, nil
 	}
@@ -151,6 +154,8 @@ func (s *Store) sourceTable() []Source {
 			row.Error, row.Code, row.Message = e.err, e.err.Code(), e.err.Error()
 		case Conflicted:
 			row.Error, row.Code, row.Message = e.conflict, e.conflict.Code(), e.conflict.Error()
+		case Absent, Pending:
+			// Absent and pending rows carry no capture payload.
 		}
 		rows = append(rows, row)
 	}

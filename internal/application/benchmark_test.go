@@ -148,7 +148,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 		}
 		b.Run(fmt.Sprintf("%s%s%s-%d", bm.what, sc, fm, len(bm.files)), func(b *testing.B) {
 			for range b.N {
-				session, err := workspace.New(workspace.Options{WorkingDir: root})
+				session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -210,7 +210,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 	}
 
 	for b.Loop() {
-		session, err := workspace.New(workspace.Options{WorkingDir: root})
+		session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root})
 		if err != nil {
 			b.Fatal(err)
 		}

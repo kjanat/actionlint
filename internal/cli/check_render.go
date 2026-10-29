@@ -34,6 +34,8 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 			color.NoColor = true
 		case render.ColorAlways:
 			color.NoColor = false
+		case render.ColorAuto:
+			// Keep the terminal detection result.
 		}
 		if file, ok := out.(*os.File); ok && !color.NoColor {
 			out = colorable.NewColorable(file)

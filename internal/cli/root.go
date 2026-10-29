@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -17,6 +18,9 @@ type commandOptions struct {
 }
 
 type commandApp struct {
+	// ctx is the invocation context. Cobra leaves Command.Context nil for
+	// commands it did not execute, such as help targets, so help output uses this.
+	ctx          context.Context
 	root         *cobra.Command
 	streams      Command
 	inv          invocation
@@ -36,8 +40,8 @@ const commandChoicesAnnotation = "actionlint/choices"
 
 const commandOptionalValueAnnotation = "actionlint/optional-value"
 
-func newCommandApp(streams *Command) *commandApp {
-	a := &commandApp{streams: *streams, inv: defaultInvocation(), set: map[string]bool{}}
+func newCommandApp(ctx context.Context, streams *Command) *commandApp {
+	a := &commandApp{ctx: ctx, streams: *streams, inv: defaultInvocation(), set: map[string]bool{}}
 	if a.streams.Stdin == nil {
 		a.streams.Stdin = strings.NewReader("")
 	}

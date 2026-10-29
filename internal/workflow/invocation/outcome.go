@@ -55,9 +55,9 @@ func (k OutcomeKind) String() string {
 		return "depth-limit"
 	case OutcomeInterrupted:
 		return "interrupted"
-	default:
-		return "invalid"
+	case OutcomeInvalid:
 	}
+	return "invalid"
 }
 
 // LimitKind names an exhausted budget.
@@ -80,9 +80,9 @@ func (k LimitKind) String() string {
 		return "total"
 	case LimitScripts:
 		return "scripts"
-	default:
-		return "invalid"
+	case LimitInvalid:
 	}
+	return "invalid"
 }
 
 // Reason is a stable machine-readable explanation for an outcome.
@@ -132,9 +132,9 @@ func reasonAllowed(kind OutcomeKind, r Reason) bool {
 		return r == ReasonExpression
 	case OutcomeInterrupted:
 		return r == ReasonCanceled || r == ReasonOperational
-	default:
-		return false
+	case OutcomeInvalid, OutcomeExpanded, OutcomeCycle, OutcomeDepthLimit:
 	}
+	return false
 }
 
 // CycleInfo identifies the active declaration and the call that closes it.

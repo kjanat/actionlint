@@ -37,7 +37,7 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 				rule.checkString(input.Default(), "")
 				rule.checkBool(input.Required(), "")
 				rule.checkStrings(input.Options(), "")
-				var ty exprlang.Type
+				var ty exprlang.Type = exprlang.AnyType{}
 				switch input.Type() {
 				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
 					ty = exprlang.BoolType{}
@@ -45,8 +45,7 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 					ty = exprlang.NumberType{}
 				case workflowlang.WorkflowDispatchEventInputTypeString, workflowlang.WorkflowDispatchEventInputTypeChoice, workflowlang.WorkflowDispatchEventInputTypeEnvironment:
 					ty = exprlang.StringType{}
-				default:
-					ty = exprlang.AnyType{}
+				case workflowlang.WorkflowDispatchEventInputTypeNone:
 				}
 				name := id
 				if input.Name().Present() {
@@ -64,7 +63,7 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 			for input := range e.Inputs() {
 				rule.checkString(input.Description(), "")
 				expressions := rule.checkString(input.Default(), "on.workflow_call.inputs.<inputs_id>.default")
-				var ty exprlang.Type
+				var ty exprlang.Type = exprlang.AnyType{}
 				switch input.Type() {
 				case workflowlang.WorkflowCallEventInputTypeString:
 					ty = exprlang.StringType{}
@@ -86,8 +85,7 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 							rule.Errorf(viewPosition(input.Default()), "type of input %q must be number but found type %s", input.Name().Value(), expressions[0].ty.String())
 						}
 					}
-				default:
-					ty = exprlang.AnyType{}
+				case workflowlang.WorkflowCallEventInputTypeInvalid:
 				}
 				inputs.SetProperty(input.Name().Value(), ty)
 			}

@@ -1304,6 +1304,9 @@ func validateCompareOpOperands(op CompareOpNodeKind, l, r Type) bool {
 		default:
 			panic("unreachable")
 		}
+	case CompareOpNodeKindInvalid:
+		// Invalid operators are not rejected here.
+		fallthrough
 	default:
 		return true
 	}
@@ -1343,6 +1346,8 @@ func (sema *Checker) checkWithNarrowing(n Node, isTruthy bool) Type {
 				sema.check(n.Left)
 				return sema.withEventGuard(n.Left, false, func() Type { return sema.check(n.Right) })
 			}
+		case LogicalOpNodeKindInvalid:
+			// Invalid operators are not narrowed.
 		}
 		return sema.checkLogicalOp(n)
 	case *NotOpNode:
@@ -1368,6 +1373,9 @@ func (sema *Checker) checkLogicalOp(n *LogicalOpNode) Type {
 		value, known := ConditionConstantValue(n.Left)
 		right := sema.withEventGuard(n.Left, false, func() Type { return sema.checkExpressionBranch(n.Right, known && ExpressionTruthy(value)) })
 		return left.Merge(right)
+	case LogicalOpNodeKindInvalid:
+		// Invalid operators still check both operands.
+		fallthrough
 	default:
 		sema.check(n.Left)
 		sema.check(n.Right)

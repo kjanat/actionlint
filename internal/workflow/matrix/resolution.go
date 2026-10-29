@@ -688,9 +688,9 @@ func Subset(actual, filter value.Value) bool {
 			}
 		}
 		return true
-	default:
-		return looseEqual(actual, filter)
+	case value.KindUnknown, value.Null, value.Bool, value.Number, value.String:
 	}
+	return looseEqual(actual, filter)
 }
 
 func lookup(object value.Value, name string) (value.Value, bool) {
@@ -751,9 +751,9 @@ func looseEqual(left, right value.Value) bool {
 		case value.String:
 			text, _ := item.Text()
 			return exprlang.ToNumber(text), true
-		default:
-			return 0, false
+		case value.KindUnknown, value.Array, value.Object:
 		}
+		return 0, false
 	}
 	a, aok := toNumber(left)
 	b, bok := toNumber(right)

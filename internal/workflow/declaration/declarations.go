@@ -36,6 +36,7 @@ func (b *Bound) declarations() (mappings []analyzer.Mapping, dependencies []anal
 				state = analyzer.KnownKey
 			case mapping.InvalidKey:
 				state = analyzer.InvalidKey
+			case mapping.UnknownKey:
 			}
 			record.Entries = append(record.Entries, analyzer.Entry{
 				Name: declaration.Name, State: state, Source: declaration.Source,

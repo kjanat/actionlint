@@ -138,6 +138,8 @@ func matrixScriptValuePaths(path string, item value.Value, safe map[string]scrip
 		// A wildcard can select no value or a missing member, so it is only
 		// proved safe when the caller also proves shell argument position.
 		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
+	case value.KindUnknown:
+		return false
 	default:
 		return false
 	}

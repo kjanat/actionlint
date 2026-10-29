@@ -27,9 +27,9 @@ func (k CacheModeKind) String() string {
 		return "write"
 	case CacheModeWriteOnly:
 		return "write-only"
-	default:
-		return "invalid"
+	case CacheModeInvalid:
 	}
+	return "invalid"
 }
 
 // CacheMode is an explicit cache-mode declaration. An omitted declaration is a nil pointer.
@@ -56,9 +56,9 @@ func (k CacheModeKind) Capabilities() (uint8, bool) {
 		return 2, true
 	case CacheModeWrite:
 		return 3, true
-	default:
-		return 0, false
+	case CacheModeInvalid:
 	}
+	return 0, false
 }
 
 func EffectiveCacheMode(workflow, job *CacheMode) *CacheMode {

@@ -25,7 +25,7 @@ func TestManualDocumentsEveryFlag(t *testing.T) {
 	for _, m := range regexp.MustCompile(`\*\*(--?[^*]+)\*\*`).FindAllStringSubmatch(body, -1) {
 		documented[m[1]] = true
 	}
-	app := newCommandApp(&Command{})
+	app := newCommandApp(t.Context(), &Command{})
 	app.root.Flags().VisitAll(func(f *pflag.Flag) {
 		for _, name := range []string{"--" + f.Name, "-" + f.Shorthand} {
 			if name == "-" {

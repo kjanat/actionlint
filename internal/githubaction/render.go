@@ -49,6 +49,9 @@ func renderAnalysis(format outputFormat, analysis *application.Result, workingDi
 		template = actionGitHub
 		// Only annotation serialization uses workspace-relative paths.
 		analysis = workspaceReportAnalysis(analysis, workingDir, workspaceDir)
+	case formatJSON, formatJSONLines, formatSARIF:
+		// Structured formats are serialized without templates.
+		fallthrough
 	default:
 		return "", fmt.Errorf("format %q has no compatibility renderer", format)
 	}

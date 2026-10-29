@@ -15,9 +15,9 @@ import (
 	"github.com/mattn/go-shellwords"
 )
 
-func (r *repo) nixCommand(command string) ([]string, error) {
+func (r *repo) nixCommand(ctx context.Context, command string) ([]string, error) {
 	return findNix(command, runtime.GOOS, exec.LookPath, func(args ...string) ([]byte, error) {
-		ctx, cancel := context.WithTimeout(r.ctx, 15*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 		cmd.Dir = r.root

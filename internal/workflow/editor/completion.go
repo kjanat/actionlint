@@ -61,6 +61,10 @@ func Complete(content string, offset int) []expr.Completion {
 						ty = expr.BoolType{}
 					case workflow.WorkflowDispatchEventInputTypeNumber:
 						ty = expr.NumberType{}
+					case workflow.WorkflowDispatchEventInputTypeNone,
+						workflow.WorkflowDispatchEventInputTypeString,
+						workflow.WorkflowDispatchEventInputTypeChoice,
+						workflow.WorkflowDispatchEventInputTypeEnvironment:
 					}
 					inputs.Props[strings.ToLower(name)] = ty
 				}
@@ -112,6 +116,7 @@ func keyAt(root *syntax.Node, content string, offset int) string {
 				bestLine, bestColumn = n.Line, n.Column
 				key = strings.Join(path, ".")
 			}
+		case syntax.AliasNode:
 		}
 	}
 	walk(root, nil)

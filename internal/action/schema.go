@@ -290,6 +290,8 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 				rule.actionSchemaError(meta, n, location, fmt.Sprintf("missing required key %q", key))
 			}
 		}
+	case actionSchemaUnion:
+		// Unions dispatch to a concrete variant before value checks run.
 	}
 }
 

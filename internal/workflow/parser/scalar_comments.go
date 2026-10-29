@@ -65,6 +65,7 @@ func (p *Parser) indexScalarComments(root *syntax.Node) {
 				}
 				visit(child, leading)
 			}
+		case syntax.ScalarNode, syntax.AliasNode:
 		}
 	}
 	visit(root, nil)

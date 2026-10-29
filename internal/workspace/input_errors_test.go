@@ -14,7 +14,7 @@ type failingInputReader struct{}
 
 func (failingInputReader) Read([]byte) (int, error) { return 0, errors.New("dummy read error") }
 func TestStdinReadFailure(t *testing.T) {
-	session, err := workspace.New(workspace.Options{WorkingDir: t.TempDir()})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestMissingInputPaths(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "existing"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	session, err := workspace.New(workspace.Options{WorkingDir: root})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
 	}

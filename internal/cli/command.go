@@ -26,7 +26,7 @@ func (cmd *Command) Main(args []string) int {
 // MainContext runs the CLI with a context that also controls external linters.
 // Cancellation returns exit status 3. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) int {
-	app := newCommandApp(cmd)
+	app := newCommandApp(ctx, cmd)
 	// Root parsing must select an operation before errors can describe a check.
 	app.inv.Operation = ""
 	if len(args) > 0 {

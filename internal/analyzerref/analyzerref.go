@@ -16,10 +16,18 @@ func IsNil(value analyzer.Analyzer) bool {
 		return true
 	}
 	reflected := reflect.ValueOf(value)
-	switch reflected.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return reflected.IsNil()
-	default:
+	if !nillableKinds[reflected.Kind()] {
 		return false
 	}
+	return reflected.IsNil()
+}
+
+// nillableKinds lists the kinds whose values reflect.Value.IsNil accepts.
+var nillableKinds = map[reflect.Kind]bool{
+	reflect.Chan:      true,
+	reflect.Func:      true,
+	reflect.Interface: true,
+	reflect.Map:       true,
+	reflect.Pointer:   true,
+	reflect.Slice:     true,
 }

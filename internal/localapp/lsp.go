@@ -52,7 +52,7 @@ func (s *editorSession) analyze(ctx context.Context, documents map[string]langse
 	if err := checkEditorPluginStatuses(ctx, s.sources, s.options.LogWriter); err != nil {
 		return langserver.Analysis{}, err
 	}
-	if err := s.sources.ValidateScope(slices.Collect(maps.Keys(documents))); err != nil {
+	if err := s.sources.ValidateScope(ctx, slices.Collect(maps.Keys(documents))); err != nil {
 		return langserver.Analysis{}, err
 	}
 	return analyzeDocuments(ctx, s.options, documents)

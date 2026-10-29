@@ -28,9 +28,9 @@ func (l PermissionLevel) String() string {
 		return "read"
 	case PermissionLevelWrite:
 		return "write"
-	default:
-		return "none"
+	case PermissionLevelNone:
 	}
+	return "none"
 }
 
 // PermissionScopeLevels maps a permission scope name to its access level. A scope absent from the
@@ -169,9 +169,9 @@ func ResolvePermissionsYAML(n *syntax.Node) ResolvedPermissions {
 		return resolvePermissions(permissionsSource{scopes: ss})
 	case syntax.ScalarNode:
 		return resolvePermissions(permissionsSource{all: strings.ToLower(n.Value)})
-	default:
-		return ResolvedPermissions{Kind: PermissionsInvalid}
+	case syntax.DocumentNode, syntax.SequenceNode, syntax.AliasNode:
 	}
+	return ResolvedPermissions{Kind: PermissionsInvalid}
 }
 
 // DefaultPermissionLevels returns the levels GitHub grants when neither the calling job nor the

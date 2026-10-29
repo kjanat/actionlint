@@ -163,6 +163,7 @@ func display(v value.Value) string {
 				fields = append(fields, fmt.Sprintf("%q: %s", name, display(props[name])))
 			}
 			return "{" + strings.Join(fields, ", ") + "}"
+		case value.KindUnknown, value.Bool, value.Number, value.String:
 		}
 	}
 	if text, ok := v.ScalarString(); ok {

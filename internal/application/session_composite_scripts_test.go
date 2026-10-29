@@ -65,7 +65,7 @@ jobs:
     steps:
       `+strings.ReplaceAll(steps, "\n", "\n      ")+"\n")
 	request.WorkingDir = root
-	session, err := workspace.New(workspace.Options{WorkingDir: root, ReadFile: request.ReadFile})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, ReadFile: request.ReadFile})
 	if err != nil {
 		t.Fatal(err)
 	}

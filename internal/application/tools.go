@@ -35,7 +35,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 			descriptors = append(descriptors, registration.Descriptor)
 		}
 	}
-	session, err := workspace.New(workspace.Options{Context: ctx, WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, ReadFile: options.ReadFile, RuleNames: names})
+	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, ReadFile: options.ReadFile, RuleNames: names})
 	if err != nil {
 		return ToolRequirements{}, err
 	}

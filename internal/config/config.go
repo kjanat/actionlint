@@ -269,6 +269,9 @@ func (p *JobTimeoutPolicy) UnmarshalYAML(n *yaml.Node) error {
 		if p.maxMinutes > 0 && p.minMinutes > p.maxMinutes {
 			return fmt.Errorf("yaml: \"min-minutes\" must not exceed \"max-minutes\" in \"require-job-timeout\" at line:%d,col:%d", n.Line, n.Column)
 		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only booleans and mappings configure this policy.
+		fallthrough
 	default:
 		return fmt.Errorf("yaml: \"require-job-timeout\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
 	}
@@ -322,6 +325,9 @@ func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 			}
 			p.scope = v.Value
 		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only booleans and mappings configure this policy.
+		fallthrough
 	default:
 		return fmt.Errorf("yaml: \"require-permissions\" must be a boolean or a mapping at line:%d,col:%d", n.Line, n.Column)
 	}

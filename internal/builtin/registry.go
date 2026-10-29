@@ -20,6 +20,7 @@ import (
 
 // Context supplies resolved document inputs and observations to built-in adapters.
 // It contains no process pool, application session or engine implementation.
+// Context is the analysis lifetime; rules that read the filesystem require it.
 type Context struct {
 	SourceSnapshot                *documentparse.SourceSnapshot
 	Runners                       *runnerlang.Knowledge

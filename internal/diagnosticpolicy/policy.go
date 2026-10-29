@@ -100,6 +100,8 @@ func (p Policy) Apply(all []*findingmodel.Finding, metadataSources map[string][]
 					if compositeConfig, ok := compositeConfigs[sourcePath]; ok {
 						levelConfig = compositeConfig
 					}
+				case repoconfig.CallerScope:
+					// Caller-scoped rules use the caller configuration.
 				}
 			}
 			return repoconfig.DiagnosticLevel(levelConfig, kind)

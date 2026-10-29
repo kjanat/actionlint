@@ -111,15 +111,11 @@ func (a *commandApp) prepareInvocation() error {
 	}
 	jsonRequested := i.JSON
 	i.JSON = a.jsonOutput()
-	if !i.Legacy {
-		switch i.Operation {
-		case operationCompletion:
-			i.Shell = i.Check.Paths[0]
-		case operationRules:
-			if len(i.Check.Paths) > 0 {
-				i.Rule = i.Check.Paths[0]
-			}
-		}
+	if !i.Legacy && i.Operation == operationCompletion {
+		i.Shell = i.Check.Paths[0]
+	}
+	if !i.Legacy && i.Operation == operationRules && len(i.Check.Paths) > 0 {
+		i.Rule = i.Check.Paths[0]
 	}
 	if i.Operation != "check" && i.Render.OutputFile != "" {
 		return commandUsageError{errors.New("--output-file is only supported for checks")}
@@ -224,6 +220,9 @@ func (inv invocation) request() (commandRequest, error) {
 		return configInitRequest{JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks}, nil
 	case operationCheck:
 		return checkRequest{Check: inv.Check, Render: inv.Render, Yes: inv.Yes, JSON: inv.JSON, Legacy: inv.Legacy}, nil
+	case operationCompletion:
+		// Completion output is not a command request.
+		fallthrough
 	default:
 		return nil, commandUsageError{fmt.Errorf("unknown operation %q", inv.Operation)}
 	}

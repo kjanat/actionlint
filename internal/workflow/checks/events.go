@@ -212,6 +212,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event declaration.WorkflowCallEv
 						i.Default().Value(),
 					)
 				}
+			case workflowlang.WorkflowCallEventInputTypeInvalid, workflowlang.WorkflowCallEventInputTypeString:
 			}
 		}
 		if i.Required().Present() && i.Required().Value() {
@@ -273,6 +274,10 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event declaration.WorkflowDi
 					if d := strings.ToLower(i.Default().Value()); d != "true" && d != "false" {
 						rule.Errorf(viewPosition(i.Default().Pos()), "type of %q input is \"boolean\". its default value %q must be \"true\" or \"false\"", n, i.Default().Value())
 					}
+				case workflowlang.WorkflowDispatchEventInputTypeNone,
+					workflowlang.WorkflowDispatchEventInputTypeString,
+					workflowlang.WorkflowDispatchEventInputTypeChoice,
+					workflowlang.WorkflowDispatchEventInputTypeEnvironment:
 				}
 			}
 		}

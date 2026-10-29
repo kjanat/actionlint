@@ -14,7 +14,7 @@ func TestGeneratePreservesExistingConfig(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			path := writeOverrideFixture(t, root, filepath.Join(".github", name), "# existing configuration\n")
-			_, err := repoconfig.Generate(root, true, "test")
+			_, err := repoconfig.Generate(t.Context(), root, true, "test")
 			if err == nil || !strings.Contains(err.Error(), "config file already exists at") {
 				t.Fatalf("wrong collision error: %v", err)
 			}

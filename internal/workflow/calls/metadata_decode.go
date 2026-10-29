@@ -126,6 +126,7 @@ func (d metadataDecoder) event(event codec.Cursor) (*Metadata, error) {
 				return &Metadata{}, nil
 			}
 		}
+	case syntax.DocumentNode, syntax.AliasNode:
 	}
 	n := on.Node()
 	return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", n.Line, n.Column)

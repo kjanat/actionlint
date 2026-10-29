@@ -171,9 +171,9 @@ func matrixValueType(item value.Value, inferred exprlang.Type) exprlang.Type {
 			element = exprlang.AnyType{}
 		}
 		return &exprlang.ArrayType{Elem: element, Deref: false}
-	default:
-		return exprlang.AnyType{}
+	case value.KindUnknown:
 	}
+	return exprlang.AnyType{}
 }
 
 func (rule *Checker) checkMatrixRow(r workflowdecl.MatrixRowView) exprlang.Type {

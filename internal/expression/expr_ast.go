@@ -221,6 +221,9 @@ func (kind CompareOpNodeKind) String() string {
 		return "=="
 	case CompareOpNodeKindNotEq:
 		return "!="
+	case CompareOpNodeKindInvalid:
+		// Invalid operators have no spelling.
+		fallthrough
 	default:
 		return ""
 	}
@@ -260,6 +263,9 @@ func (k LogicalOpNodeKind) String() string {
 		return "&&"
 	case LogicalOpNodeKindOr:
 		return "||"
+	case LogicalOpNodeKindInvalid:
+		// Invalid operators render as a placeholder.
+		fallthrough
 	default:
 		return "INVALID LOGICAL OPERATOR"
 	}

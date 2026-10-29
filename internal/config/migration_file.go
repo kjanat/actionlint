@@ -30,7 +30,8 @@ type fileSnapshot struct {
 
 // PrepareMigration reads the selected file and its inherited inputs, validates
 // the converted graph, and returns a write candidate tied to those inputs.
-func PrepareMigration(path string) (*FileMigration, error) {
+// Reads stop when ctx is canceled.
+func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func PrepareMigration(path string) (*FileMigration, error) {
 		return nil, fmt.Errorf("cannot migrate non-regular config file %q", absolute)
 	}
 	snapshots := map[string]fileSnapshot{}
-	reader := fsread.New(context.Background(), nil, nil)
+	reader := fsread.New(ctx, nil, nil)
 	read := func(path string) ([]byte, error) {
 		content, err := reader.ReadFile(path)
 		if err != nil {
@@ -135,14 +136,14 @@ func (m *FileMigration) SetContent(content []byte) error {
 // Apply atomically replaces the selected file after checking the complete
 // snapshot. A sibling exclusive lock serializes cooperating migrations;
 // external edits detected since preparation are never overwritten.
-func (m *FileMigration) Apply() error {
+func (m *FileMigration) Apply(ctx context.Context) error {
 	if err := m.SetContent(m.Content); err != nil {
 		return err
 	}
 	if !m.Changed {
 		return nil
 	}
-	if err := m.CheckUnchanged(); err != nil {
+	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
 	lockPath := m.Path + ".migrate.lock"
@@ -163,7 +164,7 @@ func (m *FileMigration) Apply() error {
 	if err := errors.Join(writeErr, temp.Sync(), temp.Close()); err != nil {
 		return err
 	}
-	if err := m.CheckUnchanged(); err != nil {
+	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
 	return os.Rename(temp.Name(), m.Path)
@@ -171,7 +172,7 @@ func (m *FileMigration) Apply() error {
 
 // CheckUnchanged verifies that the selected file and inherited inputs still
 // match this preview. Orchestrators use it when preparing a multi-file update.
-func (m *FileMigration) CheckUnchanged() error {
+func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
 	parent, err := filepath.EvalSymlinks(filepath.Dir(m.Path))
 	if err != nil {
 		return err
@@ -179,7 +180,7 @@ func (m *FileMigration) CheckUnchanged() error {
 	if parent != filepath.Dir(m.Path) {
 		return errors.New("config directory changed before migration; prepare the migration again")
 	}
-	reader := fsread.New(context.Background(), nil, nil)
+	reader := fsread.New(ctx, nil, nil)
 	for path, expected := range m.snapshots {
 		readPath := path
 		if path == m.Path {

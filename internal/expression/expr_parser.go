@@ -84,8 +84,7 @@ func (p *Parser) peek() *Token {
 
 func (p *Parser) parseIdent() parsedExprNode {
 	ident := p.next() // eat ident
-	switch p.peek().Kind {
-	case TokenKindLeftParen:
+	if p.peek().Kind == TokenKindLeftParen {
 		// Parse function call as primary expression though generally function call is parsed as
 		// postfix expression. The reason is that only built-in function call is allowed in workflow
 		// expression syntax, meant that callee is always built-in function name, not a general
@@ -105,33 +104,31 @@ func (p *Parser) parseIdent() parsedExprNode {
 
 				args = append(args, arg)
 
-				switch p.peek().Kind {
-				case TokenKindComma:
-					p.next() // eat ','
-					// continue to next argument
-				case TokenKindRightParen:
+				if p.peek().Kind == TokenKindRightParen {
 					p.next() // eat ')'
 					break LoopArgs
-				default:
+				}
+				if p.peek().Kind != TokenKindComma {
 					p.unexpected("arguments of function call", []TokenKind{TokenKindComma, TokenKindRightParen})
 					return nil
 				}
+				p.next() // eat ','
+				// continue to next argument
 			}
 		}
 		return p.node(&FuncCallNode{Callee: ident.Value, Args: args, tok: ident}, ident)
+	}
+	// Handle keywords. Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
+	switch ident.Value {
+	case "null":
+		return p.node(&NullNode{tok: ident}, ident)
+	case "true":
+		return p.node(&BoolNode{Value: true, tok: ident}, ident)
+	case "false":
+		return p.node(&BoolNode{Value: false, tok: ident}, ident)
 	default:
-		// Handle keywords. Note that keywords are case sensitive. TRUE, FALSE, NULL are invalid named value.
-		switch ident.Value {
-		case "null":
-			return p.node(&NullNode{tok: ident}, ident)
-		case "true":
-			return p.node(&BoolNode{Value: true, tok: ident}, ident)
-		case "false":
-			return p.node(&BoolNode{Value: false, tok: ident}, ident)
-		default:
-			// Variable name access is case insensitive. github.event and GITHUB.event are the same.
-			return p.node(&VariableNode{Name: strings.ToLower(ident.Value), tok: ident}, ident)
-		}
+		// Variable name access is case insensitive. github.event and GITHUB.event are the same.
+		return p.node(&VariableNode{Name: strings.ToLower(ident.Value), tok: ident}, ident)
 	}
 }
 
@@ -188,30 +185,33 @@ func (p *Parser) parseString() parsedExprNode {
 }
 
 func (p *Parser) parsePrimaryExpr() parsedExprNode {
-	switch p.peek().Kind {
-	case TokenKindIdent:
+	kind := p.peek().Kind
+	if kind == TokenKindIdent {
 		return p.parseIdent()
-	case TokenKindLeftParen:
-		return p.parseNestedExpr()
-	case TokenKindInt:
-		return p.parseInt()
-	case TokenKindFloat:
-		return p.parseFloat()
-	case TokenKindString:
-		return p.parseString()
-	default:
-		p.unexpected(
-			"variable access, function call, null, bool, int, float or string",
-			[]TokenKind{
-				TokenKindIdent,
-				TokenKindLeftParen,
-				TokenKindInt,
-				TokenKindFloat,
-				TokenKindString,
-			},
-		)
-		return nil
 	}
+	if kind == TokenKindLeftParen {
+		return p.parseNestedExpr()
+	}
+	if kind == TokenKindInt {
+		return p.parseInt()
+	}
+	if kind == TokenKindFloat {
+		return p.parseFloat()
+	}
+	if kind == TokenKindString {
+		return p.parseString()
+	}
+	p.unexpected(
+		"variable access, function call, null, bool, int, float or string",
+		[]TokenKind{
+			TokenKindIdent,
+			TokenKindLeftParen,
+			TokenKindInt,
+			TokenKindFloat,
+			TokenKindString,
+		},
+	)
+	return nil
 }
 
 func (p *Parser) parsePostfixOp() parsedExprNode {
@@ -222,40 +222,48 @@ func (p *Parser) parsePostfixOp() parsedExprNode {
 	}
 
 	for {
-		switch p.peek().Kind {
-		case TokenKindDot:
+		kind := p.peek().Kind
+		if kind == TokenKindDot {
 			p.next() // eat '.'
-			switch p.peek().Kind {
-			case TokenKindStar:
-				p.next() // eat '*'
-				ret = p.node(&ArrayDerefNode{Receiver: ret}, start)
-			case TokenKindIdent:
-				t := p.next() // eat 'b' of 'a.b'
-				// Property name is case insensitive. github.event and github.EVENT are the same
-				ret = p.node(&ObjectDerefNode{Receiver: ret, Property: strings.ToLower(t.Value), propertyToken: t}, start)
-			default:
-				p.unexpected(
-					"object property dereference like 'a.b' or array element dereference like 'a.*'",
-					[]TokenKind{TokenKindIdent, TokenKindStar},
-				)
+			ret = p.parseDeref(ret, start)
+			if ret == nil {
 				return nil
 			}
-		case TokenKindLeftBracket:
-			p.next() // eat '['
-			idx := p.parseLogicalOr()
-			if idx == nil {
-				return nil
-			}
-			if p.peek().Kind != TokenKindRightBracket {
-				p.unexpected("closing bracket ']' for index access", []TokenKind{TokenKindRightBracket})
-				return nil
-			}
-			p.next() // eat ']'
-			ret = p.node(&IndexAccessNode{Operand: ret, Index: idx}, start)
-		default:
+			continue
+		}
+		if kind != TokenKindLeftBracket {
 			return ret
 		}
+		p.next() // eat '['
+		idx := p.parseLogicalOr()
+		if idx == nil {
+			return nil
+		}
+		if p.peek().Kind != TokenKindRightBracket {
+			p.unexpected("closing bracket ']' for index access", []TokenKind{TokenKindRightBracket})
+			return nil
+		}
+		p.next() // eat ']'
+		ret = p.node(&IndexAccessNode{Operand: ret, Index: idx}, start)
 	}
+}
+
+// parseDeref parses the property or '*' following '.' in 'a.b' or 'a.*'.
+func (p *Parser) parseDeref(receiver Node, start *Token) parsedExprNode {
+	if p.peek().Kind == TokenKindStar {
+		p.next() // eat '*'
+		return p.node(&ArrayDerefNode{Receiver: receiver}, start)
+	}
+	if p.peek().Kind == TokenKindIdent {
+		t := p.next() // eat 'b' of 'a.b'
+		// Property name is case insensitive. github.event and github.EVENT are the same
+		return p.node(&ObjectDerefNode{Receiver: receiver, Property: strings.ToLower(t.Value), propertyToken: t}, start)
+	}
+	p.unexpected(
+		"object property dereference like 'a.b' or array element dereference like 'a.*'",
+		[]TokenKind{TokenKindIdent, TokenKindStar},
+	)
+	return nil
 }
 
 func (p *Parser) parsePrefixOp() parsedExprNode {
@@ -273,6 +281,16 @@ func (p *Parser) parsePrefixOp() parsedExprNode {
 	return p.node(&NotOpNode{Operand: o, tok: t}, t)
 }
 
+// compareOpTokens maps comparison operator tokens to their node kinds.
+var compareOpTokens = map[TokenKind]CompareOpNodeKind{
+	TokenKindLess:      CompareOpNodeKindLess,
+	TokenKindLessEq:    CompareOpNodeKindLessEq,
+	TokenKindGreater:   CompareOpNodeKindGreater,
+	TokenKindGreaterEq: CompareOpNodeKindGreaterEq,
+	TokenKindEq:        CompareOpNodeKindEq,
+	TokenKindNotEq:     CompareOpNodeKindNotEq,
+}
+
 func (p *Parser) parseCompareBinOp() parsedExprNode {
 	start := p.peek()
 	l := p.parsePrefixOp()
@@ -280,21 +298,8 @@ func (p *Parser) parseCompareBinOp() parsedExprNode {
 		return nil
 	}
 
-	var k CompareOpNodeKind
-	switch p.peek().Kind {
-	case TokenKindLess:
-		k = CompareOpNodeKindLess
-	case TokenKindLessEq:
-		k = CompareOpNodeKindLessEq
-	case TokenKindGreater:
-		k = CompareOpNodeKindGreater
-	case TokenKindGreaterEq:
-		k = CompareOpNodeKindGreaterEq
-	case TokenKindEq:
-		k = CompareOpNodeKindEq
-	case TokenKindNotEq:
-		k = CompareOpNodeKindNotEq
-	default:
+	k, ok := compareOpTokens[p.peek().Kind]
+	if !ok {
 		return l
 	}
 	p.next() // eat the operator token

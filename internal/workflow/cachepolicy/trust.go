@@ -75,9 +75,9 @@ func cacheRestrictedEvents(w declaration.WorkflowView) []string {
 		switch cacheEventClasses[name] {
 		case cacheEventTrusted, cacheEventRefScoped, cacheEventInherited:
 			continue
-		default:
-			events = append(events, name)
+		case cacheEventUnknown, cacheEventRestricted:
 		}
+		events = append(events, name)
 	}
 	slices.Sort(events)
 	return slices.Compact(events)

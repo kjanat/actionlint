@@ -145,7 +145,7 @@ func matrixValueForTest(item value.Value) any {
 			result[name] = matrixValueForTest(child)
 		}
 		return result
-	default:
-		return nil
+	case value.KindUnknown:
 	}
+	return nil
 }

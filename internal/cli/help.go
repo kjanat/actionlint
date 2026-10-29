@@ -48,6 +48,8 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 			force = true
 		case render.ColorNever:
 			return false
+		case render.ColorAuto:
+			// Fall back to terminal detection.
 		}
 	}
 	// Help runs before capture and prepareInvocation, but its flags are parsed.
@@ -100,7 +102,7 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		}
 		out := a.streams.Stdout
 		if a.inv.Render.PrettyJSON {
-			out = &prettyJSONOutput{Writer: out, ctx: c.Context(), color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
+			out = &prettyJSONOutput{Writer: out, ctx: a.ctx, color: a.inv.Render.Color, explicit: a.inv.Render.PrettyJSONExplicit}
 		}
 		if err := writeCommandJSON(out, describeCommand(c)); err != nil {
 			a.status = a.reportError(err)

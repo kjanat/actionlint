@@ -43,7 +43,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	f := &invocationFixture{original: document.Workflow, snapshots: newCapturedSnapshots(t, directory), cache: actionlocal.NewCache(directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
+	f := &invocationFixture{original: document.Workflow, snapshots: newCapturedSnapshots(t, directory), cache: actionlocal.NewCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
 	var err error
 	f.root, err = f.snapshots.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {

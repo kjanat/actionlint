@@ -72,6 +72,7 @@ func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflow
 			t = exprlang.NumberType{}
 		case workflowlang.WorkflowCallEventInputTypeString:
 			t = exprlang.StringType{}
+		case workflowlang.WorkflowCallEventInputTypeInvalid:
 		}
 		m.Inputs[i.ID] = &Input{
 			Type:     t,

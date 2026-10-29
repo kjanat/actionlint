@@ -13,7 +13,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['excluded.yml']}\n")
 	var reads []string
-	session, err := New(Options{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
+	session, err := New(t.Context(), Options{WorkingDir: root, ReadFile: func(path string) ([]byte, error) {
 		reads = append(reads, path)
 		if filepath.Base(path) == "broken.yml" {
 			return []byte("[invalid yaml"), nil
@@ -47,7 +47,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 }
 
 func TestSelectionProvenanceDoesNotLeakAcrossBatches(t *testing.T) {
-	session, err := New(Options{})
+	session, err := New(t.Context(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestSelectionProvenanceDoesNotLeakAcrossBatches(t *testing.T) {
 
 func TestNamedContentTracksPathRelativeToWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
-	session, err := New(Options{WorkingDir: root, SkipProjectConfig: true})
+	session, err := New(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true})
 	if err != nil {
 		t.Fatal(err)
 	}

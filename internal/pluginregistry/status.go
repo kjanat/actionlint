@@ -249,6 +249,8 @@ func checkStatus(ctx context.Context, pin Pin, snapshot StatusSnapshot, options 
 			options.warn(statusMessage(pin, status))
 		case ReleaseDeprecated:
 			options.warn(statusMessage(pin, status))
+		case ReleaseActive:
+			// Active releases need no warning.
 		}
 	}
 	return nil

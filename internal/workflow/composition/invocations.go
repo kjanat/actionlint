@@ -79,9 +79,9 @@ func metadataOutcome(result actionlocal.MetadataResult) (invocation.Outcome, err
 		return invocation.Unresolved(invocation.ReasonParseFailed, detail)
 	case actionlocal.MetadataMappingFailed:
 		return invocation.Unresolved(invocation.ReasonMappingFailed, detail)
-	default:
-		return invocation.Outcome{}, fmt.Errorf("metadata lookup returned invalid outcome %d", result.Status())
+	case actionlocal.MetadataInvalid, actionlocal.MetadataResolved:
 	}
+	return invocation.Outcome{}, fmt.Errorf("metadata lookup returned invalid outcome %d", result.Status())
 }
 
 func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionView) (*actionmeta.Metadata, actionlocal.SourceDocument, invocation.Outcome, error) {

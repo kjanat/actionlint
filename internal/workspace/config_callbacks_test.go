@@ -18,7 +18,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
-	session, err := workspace.New(workspace.Options{
+	session, err := workspace.New(t.Context(), workspace.Options{
 		ConfigOverlays: []repoconfig.Overlay{overlay},
 		OnConfigLoaded: func(repoconfig.Report) { calls.Add(1) },
 	})
@@ -79,7 +79,7 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 				t.Fatal(err)
 			}
 			var report repoconfig.Report
-			session, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -121,7 +121,7 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 				overlays = append(overlays, overlay)
 			}
 			var report repoconfig.Report
-			session, err := workspace.New(workspace.Options{ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}

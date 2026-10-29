@@ -153,7 +153,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 			}
 			check(application.Analyze(t.Context(), application.Options{WorkingDir: parent}, []workspace.Source{{Path: path, Content: []byte(content), Project: project, Config: cfg}}))
 			var reads []string
-			session, err := workspace.New(workspace.Options{WorkingDir: parent, ReadFile: func(name string) ([]byte, error) {
+			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: parent, ReadFile: func(name string) ([]byte, error) {
 				reads = append(reads, name)
 				return os.ReadFile(name)
 			}})

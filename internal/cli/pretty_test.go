@@ -42,7 +42,7 @@ func TestPrettyOptions(t *testing.T) {
 		{"wrong format", []string{"--output-format=json", "--diagnostic-width=60"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			app := newCommandApp(&Command{})
+			app := newCommandApp(t.Context(), &Command{})
 			if _, _, _, err := app.parseRoot(tc.args); err != nil {
 				t.Fatal(err)
 			}

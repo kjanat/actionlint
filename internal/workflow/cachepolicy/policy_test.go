@@ -82,9 +82,10 @@ func TestCachePolicyEventClassification(t *testing.T) {
 		}
 		switch class {
 		case cacheEventRestricted, cacheEventTrusted, cacheEventRefScoped, cacheEventInherited:
-		default:
-			t.Errorf("event %q has invalid cache trust classification %d", event, class)
+			continue
+		case cacheEventUnknown:
 		}
+		t.Errorf("event %q has invalid cache trust classification %d", event, class)
 	}
 }
 

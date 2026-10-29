@@ -269,12 +269,10 @@ func (p *Parser) parseStringSequence(sec string, n *syntax.Node, allowEmpty bool
 }
 
 func (p *Parser) parseStringOrStringSequence(sec string, n *syntax.Node) []*workflowlang.String {
-	switch n.Kind {
-	case syntax.ScalarNode:
+	if n.Kind == syntax.ScalarNode {
 		return []*workflowlang.String{p.parseString(n, false)}
-	default:
-		return p.parseStringSequence(sec, n, false)
 	}
+	return p.parseStringSequence(sec, n, false)
 }
 
 func (p *Parser) parseLiteralBool(n *syntax.Node) *workflowlang.Bool {
@@ -491,6 +489,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 							}
 							p.errorAt(pos, "string should not be empty")
 						}
+					case mapping.UnknownKey:
 					}
 				}
 				for _, name := range slices.Sorted(maps.Keys(insertedKeys)) {
@@ -896,10 +895,10 @@ func (p *Parser) parseEvents(n *syntax.Node) []workflowlang.Event {
 		}
 
 		return ret
-	default:
-		p.typeErrorf(n, "\"on\" section value is expected to be mapping or sequence but found %s node", NodeKindName(n.Kind))
-		return nil
+	case syntax.DocumentNode, syntax.AliasNode:
 	}
+	p.typeErrorf(n, "\"on\" section value is expected to be mapping or sequence but found %s node", NodeKindName(n.Kind))
+	return nil
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
@@ -1143,10 +1142,10 @@ func (p *Parser) ParseRawYAMLValue(n *syntax.Node) workflowlang.RawYAMLValue {
 			}
 		}
 		return &workflowlang.RawYAMLObject{Props: m, Position: PosAt(n)}
-	default:
-		p.typeErrorf(n, "unexpected %s node on parsing value in matrix row", NodeKindName(n.Kind))
-		return nil
+	case syntax.DocumentNode, syntax.AliasNode:
 	}
+	p.typeErrorf(n, "unexpected %s node on parsing value in matrix row", NodeKindName(n.Kind))
+	return nil
 }
 
 // ParseMatrixCombinations parses matrix include/exclude combinations.
@@ -1833,10 +1832,10 @@ func (p *Parser) parseSnapshot(pos *workflowlang.Pos, n *syntax.Node) *workflowl
 			p.errorAt(pos, "\"snapshot\" section must have \"image-name\" configuration")
 		}
 		return ret
-	default:
-		p.typeErrorf(n, "\"snapshot\" section value must be string or mapping but found %s node", NodeKindName(n.Kind))
-		return nil
+	case syntax.DocumentNode, syntax.SequenceNode, syntax.AliasNode:
 	}
+	p.typeErrorf(n, "\"snapshot\" section value must be string or mapping but found %s node", NodeKindName(n.Kind))
+	return nil
 }
 
 // JobKeyRequiresSteps is shared with file-based reusable workflow metadata.

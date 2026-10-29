@@ -129,7 +129,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 		if mode == pluginRuleDiscovery && !project.Manifest.Exists {
 			return PluginSources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
 		}
-		return s.sourcesFromProject(project, "", mode)
+		return s.sourcesFromProject(ctx, project, "", mode)
 	}
 	starts := []string{directory}
 	if input.Kind == application.Files && len(input.Paths) > 0 {
@@ -177,7 +177,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 			return PluginSources{}, err
 		}
 		configs = append(configs, prepared)
-		pins, err := s.selectedLock(project, mode, root)
+		pins, err := s.selectedLock(ctx, project, mode, root)
 		if err != nil {
 			return PluginSources{}, err
 		}
@@ -210,7 +210,7 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 	if len(roots) != 1 {
 		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
 	}
-	return s.sourcesFromProject(selectedProject, selected.root, mode)
+	return s.sourcesFromProject(ctx, selectedProject, selected.root, mode)
 }
 
 func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config, error) {
@@ -232,12 +232,12 @@ func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config,
 	return resolved.Config, nil
 }
 
-func (s PluginSelection) sourcesFromProject(project *PluginProject, root string, mode pluginSelectionMode) (PluginSources, error) {
+func (s PluginSelection) sourcesFromProject(ctx context.Context, project *PluginProject, root string, mode pluginSelectionMode) (PluginSources, error) {
 	prepared, err := s.prepareProject(project)
 	if err != nil {
 		return PluginSources{}, err
 	}
-	lock, err := s.selectedLock(project, mode, root)
+	lock, err := s.selectedLock(ctx, project, mode, root)
 	if err != nil {
 		return PluginSources{}, err
 	}
@@ -298,7 +298,7 @@ func (s *PluginSources) Hydrate(ctx context.Context) error {
 
 // ValidateScope prevents a session's automatic project plugins from being
 // applied to documents opened from another (including nested) repository.
-func (s *PluginSources) ValidateScope(paths []string) error {
+func (s *PluginSources) ValidateScope(ctx context.Context, paths []string) error {
 	if !s.automatic {
 		return nil
 	}
@@ -311,7 +311,7 @@ func (s *PluginSources) ValidateScope(paths []string) error {
 			if root == "" {
 				continue
 			}
-			project, err := openPluginSelectionProject(context.Background(), root, "")
+			project, err := openPluginSelectionProject(ctx, root, "")
 			if err != nil {
 				return err
 			}

@@ -15,7 +15,7 @@ func sourceFixtureBase(t testing.TB) string { return testutil.CurrentDir(t) }
 
 func newCapturedActionCache(t testing.TB, root string, debug io.Writer, overlays ...capture.Overlay) *Cache {
 	t.Helper()
-	cache := NewCache(root, debug)
+	cache := NewCache(t.Context(), root, debug)
 	bindCapturedActionSources(t, cache, overlays...)
 	return cache
 }

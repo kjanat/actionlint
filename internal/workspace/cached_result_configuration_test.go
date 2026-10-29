@@ -26,7 +26,7 @@ jobs:
 `), 0600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := workspace.New(workspace.Options{WorkingDir: dir, ConfigFile: config})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: dir, ConfigFile: config})
 	if err != nil {
 		t.Fatal(err)
 	}

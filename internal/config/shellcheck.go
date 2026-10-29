@@ -68,6 +68,8 @@ func normalizeToolSwitch(node *yaml.Node) *yaml.Node {
 					normalized.Content[i+1] = rewrite(normalized.Content[i+1], keys[1:], backend)
 				}
 			}
+		case yaml.SequenceNode, yaml.ScalarNode, yaml.AliasNode, yaml.StreamNode:
+			// Other nodes have no legacy keys to rewrite.
 		}
 		return &normalized
 	}

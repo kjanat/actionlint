@@ -16,12 +16,13 @@ import (
 
 // Generate creates the repository configuration without producing terminal output.
 // skipConfig avoids parsing an existing configuration before checking for a collision.
-func Generate(root string, skipConfig bool, version string) (string, error) {
+// Reading the existing configuration stops when ctx is canceled.
+func Generate(ctx context.Context, root string, skipConfig bool, version string) (string, error) {
 	if root == "" {
 		return "", errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
 	}
 	if !skipConfig {
-		if _, _, err := LoadRepository(root, fsread.New(context.Background(), nil, nil).ReadFile); err != nil {
+		if _, _, err := LoadRepository(root, fsread.New(ctx, nil, nil).ReadFile); err != nil {
 			return "", err
 		}
 	}

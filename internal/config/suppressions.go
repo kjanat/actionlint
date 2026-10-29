@@ -80,6 +80,9 @@ func (p *SuppressionsPolicy) Report() string {
 		return "violation"
 	case ReportAll:
 		return "all"
+	case SuppressionsAllowed:
+		// Allowed suppressions report nothing.
+		fallthrough
 	default:
 		return ""
 	}

@@ -113,6 +113,7 @@ func conditionStatusTruth(expression exprlang.Node, status string, cancelled boo
 			if left == conditionFalse && right == conditionFalse {
 				return conditionFalse
 			}
+		case exprlang.LogicalOpNodeKindInvalid:
 		}
 	}
 	return conditionUnknown
@@ -180,9 +181,9 @@ func SemanticTruth(semantic value.Value) (enabled, known bool) {
 		return result != "", true
 	case value.Array, value.Object:
 		return true, true
-	default:
-		return false, false
+	case value.KindUnknown:
 	}
+	return false, false
 }
 
 func CanRunAfterFailure(condition value.Value) bool {
@@ -223,9 +224,9 @@ func expressionRequiresSuccess(expression exprlang.Node) bool {
 			return left || right
 		case exprlang.LogicalOpNodeKindOr:
 			return left && right
-		default:
-			return false
+		case exprlang.LogicalOpNodeKindInvalid:
 		}
+		return false
 	default:
 		return false
 	}

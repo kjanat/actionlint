@@ -64,7 +64,7 @@ tools:
 					}
 					return result
 				}
-				baseline, err := workspace.New(opts)
+				baseline, err := workspace.New(t.Context(), opts)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -74,7 +74,7 @@ tools:
 					callback = report
 					mutateConfigurationReport(t, report, "callback")
 				}
-				session, err := workspace.New(opts)
+				session, err := workspace.New(t.Context(), opts)
 				if err != nil {
 					t.Fatal(err)
 				}

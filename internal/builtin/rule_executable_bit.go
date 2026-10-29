@@ -1,8 +1,6 @@
 package builtin
 
 import (
-	"context"
-
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
@@ -18,13 +16,9 @@ type RuleExecutableBit struct {
 }
 
 func newRuleExecutableBit(c Context) *RuleExecutableBit {
-	ctx := c.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	r := &RuleExecutableBit{tag: "executable-bit"}
 	r.ExecutableChecker = execution.NewExecutableChecker(execution.ExecutableContext{
-		Context: ctx, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
+		Context: c.Context, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
 		Reader: c.Reader, Index: c.Index, Log: r.Debug, Runners: c.Runners,
 	})
 	return r

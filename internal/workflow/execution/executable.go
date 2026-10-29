@@ -199,6 +199,7 @@ func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.StepView) erro
 		if !rule.pristine {
 			rule.repositoryUnknown = true
 		}
+	case workflowlang.ExecKindWait, workflowlang.ExecKindCancel:
 	}
 	return nil
 }
@@ -379,7 +380,10 @@ func (rule *ExecutableChecker) redirectsKnown(redirects []*syntax.Redirect, dire
 			}
 			continue
 		case syntax.RdrIn, syntax.RdrOut, syntax.AppOut, syntax.RdrInOut, syntax.RdrClob, syntax.RdrAll, syntax.AppAll:
+		case syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.AppClob, syntax.RdrAllClob, syntax.AppAllClob:
+			return false
 		default:
+			// Operators added by later mvdan.cc/sh releases are not modelled.
 			return false
 		}
 		if target == "/dev/null" {

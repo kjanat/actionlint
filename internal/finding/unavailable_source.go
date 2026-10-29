@@ -57,6 +57,9 @@ func (s UnavailableSource) Reason() string {
 		return "not-captured"
 	case sourceReadFailed:
 		return "read-failed"
+	case sourceNotUnavailable:
+		// Available sources have no unavailable reason.
+		fallthrough
 	default:
 		return ""
 	}

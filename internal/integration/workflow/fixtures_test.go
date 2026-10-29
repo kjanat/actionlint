@@ -303,7 +303,7 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 			if _, err := os.Stat(cfg); err == nil {
 				opts.ConfigFile = cfg
 			}
-			session, err := workspace.New(opts)
+			session, err := workspace.New(t.Context(), opts)
 			if err != nil {
 				t.Fatal(err)
 			}

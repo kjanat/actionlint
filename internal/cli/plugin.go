@@ -159,6 +159,10 @@ func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, e
 		if err != nil {
 			return 0, err
 		}
+	case operationCheck, operationVersion, operationRules, operationPluginInspect, operationPluginSearch, operationPluginVersions,
+		operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate, operationConfigMigrate, operationConfigInit, operationCompletion:
+		// Search and versions return before project setup; the rest are not plugin lock operations.
+		fallthrough
 	default:
 		return 0, fmt.Errorf("unsupported plugin operation %q", r.Operation)
 	}

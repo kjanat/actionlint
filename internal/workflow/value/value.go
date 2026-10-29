@@ -129,9 +129,9 @@ func (v Value) ScalarString() (string, bool) {
 		return strconv.FormatFloat(v.p.number, 'g', -1, 64), true
 	case String:
 		return v.p.text, true
-	default:
-		return "", false
+	case KindUnknown, Array, Object:
 	}
+	return "", false
 }
 
 // Spelling returns the source text a YAML literal scalar was written with,
@@ -145,9 +145,9 @@ func (v Value) Spelling() (string, bool) {
 	switch v.p.kind {
 	case Null, Bool, Number, String:
 		return v.p.spelling, true
-	default:
-		return "", false
+	case KindUnknown, Array, Object:
 	}
+	return "", false
 }
 
 func (v Value) Len() int {
@@ -159,9 +159,9 @@ func (v Value) Len() int {
 		return len(v.p.items)
 	case Object:
 		return len(v.p.props)
-	default:
-		return 0
+	case KindUnknown, Null, Bool, Number, String:
 	}
+	return 0
 }
 
 func (v Value) Index(index int) (Value, bool) {
@@ -271,9 +271,9 @@ func (v Value) Equal(other Value) bool {
 			}
 		}
 		return true
-	default:
-		return false
+	case KindUnknown:
 	}
+	return false
 }
 
 func YAMLScalar(text, tag string, origin Origin) Value {

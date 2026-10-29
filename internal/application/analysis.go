@@ -373,7 +373,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}}
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
-		ac, wc := actions.GetCache(projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
+		ac, wc := actions.GetCache(lifetime, projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
 		ac.Configure(actionlocal.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Captures: captures, Context: lifetime, WorkingDir: session.workingDir, ExplicitDocuments: explicitDocuments,
 			OnManifestRequest: documents.request,
@@ -396,7 +396,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			path = source.Path
 		}
 		inputs.add(path)
-		ac, wc := actions.GetCache(projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
+		ac, wc := actions.GetCache(lifetime, projectRoot(source.Project)), workflows.GetCache(projectRoot(source.Project))
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source

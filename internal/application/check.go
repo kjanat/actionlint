@@ -181,8 +181,8 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
 		}
 	}
-	session, err := workspace.New(workspace.Options{
-		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: input.Name,
+	session, err := workspace.New(ctx, workspace.Options{
+		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
 		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: selectionReader, RuleNames: names, Log: selectionLog, LogWriter: log,
 	})
@@ -218,6 +218,9 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		if selection != nil {
 			selection.Inputs = slices.Compact(slices.Sorted(slices.Values(append(selection.Inputs, listed...))))
 		}
+	case prepared:
+		// Prepared sources were analyzed above and never reach selection.
+		fallthrough
 	default:
 		return nil, fmt.Errorf("unknown input kind %d", input.Kind)
 	}

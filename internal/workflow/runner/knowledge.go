@@ -306,9 +306,9 @@ func candidatePlatform(c runnerapi.Candidate) Platform {
 		return Windows
 	case runnerapi.Linux, runnerapi.MacOS:
 		return MacOrLinux
-	default:
-		return Any
+	case runnerapi.UnknownOS:
 	}
+	return Any
 }
 
 func builtinJob(job workflowdecl.JobView) JobKnowledge {
