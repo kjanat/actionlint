@@ -7,6 +7,7 @@ type Format string
 
 const (
 	FormatText    Format = "text"
+	FormatPretty  Format = "pretty"
 	FormatOneline Format = "oneline"
 	FormatJSON    Format = "json"
 	FormatJSONL   Format = "jsonl"

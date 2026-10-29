@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Decode parses one configuration document into a node tree. The file

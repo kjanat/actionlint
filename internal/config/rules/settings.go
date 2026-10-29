@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Level controls one diagnostic, independently of its category or maturity.
@@ -96,6 +96,9 @@ func (s *Setting) UnmarshalYAML(n *yaml.Node) error {
 		if wire.Options.Kind != 0 {
 			next.optionsNode = &wire.Options
 		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only levels and mappings configure a setting.
+		fallthrough
 	default:
 		return errors.New("yaml: rule setting must be a level or level/options mapping")
 	}
@@ -128,6 +131,9 @@ func (g *Group) UnmarshalYAML(n *yaml.Node) error {
 		if err := n.Load((*plain)(&next), yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 			return err
 		}
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.AliasNode, yaml.StreamNode:
+		// Only levels and mappings configure a group.
+		fallthrough
 	default:
 		return errors.New("yaml: rule group must be a level or mapping")
 	}

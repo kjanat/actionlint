@@ -399,3 +399,25 @@ func TestReadAliasesExcludeUnusedOverlaysAndIdentityLookups(t *testing.T) {
 		t.Fatalf("caller mutated read aliases = %v, error=%v", again, err)
 	}
 }
+
+func TestReadErrorShowsCaptureCause(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing.yml")
+	cause := &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { return nil, cause })
+	_, err := store.Read(t.Context(), path, source.YAML)
+	if err == nil {
+		t.Fatal("missing file was read")
+	}
+	failure := &ReadError{Context: "could not read workflow", Err: err}
+	if want := "could not read workflow: " + cause.Error(); failure.Error() != want {
+		t.Fatalf("message = %q, want %q", failure.Error(), want)
+	}
+	var captured *CaptureError
+	if !errors.As(failure, &captured) || captured.Code() != "capture-failed" || !errors.Is(failure, os.ErrNotExist) {
+		t.Fatalf("read failure lost the capture error or its cause: %v", failure)
+	}
+	other := errors.New("not a capture")
+	if got := (&ReadError{Context: "ctx", Err: other}).Error(); got != "ctx: not a capture" {
+		t.Fatalf("non-capture message = %q", got)
+	}
+}

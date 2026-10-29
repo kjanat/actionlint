@@ -8,13 +8,14 @@ import (
 	"os"
 	"path/filepath"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/localapp"
 
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func writeConfigPath(out io.Writer, req configPathRequest) error {
@@ -38,9 +39,9 @@ func writeConfigValidation(ctx context.Context, out io.Writer, req configValidat
 	}
 	if req.JSON {
 		return writeCommandJSON(out, struct {
-			Path     string               `json:"path"`
-			Valid    bool                 `json:"valid"`
-			Warnings []repoconfig.Warning `json:"warnings,omitempty"`
+			Path     string                 `json:"path"`
+			Valid    bool                   `json:"valid"`
+			Warnings []configreport.Warning `json:"warnings,omitempty"`
 		}{inspection.Path, true, inspection.Warnings})
 	}
 	for _, warning := range inspection.Warnings {

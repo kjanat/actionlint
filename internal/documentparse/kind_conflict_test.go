@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/source/capture"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -34,8 +35,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			var snapshots [2]*SourceSnapshot
 			var failures [2]error
-			var earlier StepDeclaration
-			var earlierView StepView
+			var earlierView workflowdecl.StepView
 			var earlierReference source.Reference
 			bind := func(index int) {
 				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])
@@ -53,17 +53,15 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				if failures[0] != nil {
 					t.Fatal(failures[0])
 				}
-				for step, reference := range snapshots[0].CanonicalReferences().Steps {
-					earlier = StepDeclaration{Step: step}
-					earlierReference = reference
-					earlierView, err = snapshots[0].StepView(step)
-					if err != nil {
-						t.Fatal(err)
-					}
-					break
-				}
-				if earlier.Step == nil {
+				references := snapshots[0].CanonicalReferences().Steps
+				if len(references) == 0 {
 					t.Fatal("initial declaration has no indexed step")
+				}
+				earlierReference = references[0]
+				var present bool
+				earlierView, present = registry.Declaration(earlierReference)
+				if !present || !earlierView.Present() {
+					t.Fatal("initial canonical declaration unavailable")
 				}
 				bind(1)
 			}
@@ -91,18 +89,15 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if _, ok := registry.LookupDocument(captured.Revision().Document()); ok {
 				t.Fatal("registry retained a live document after conflict")
 			}
-			if earlier.Step != nil {
-				if _, ok := registry.Step(earlierReference); ok {
-					t.Fatal("quarantined step remained registered")
-				}
+			if earlierView.Present() {
 				if _, ok := registry.Declaration(earlierReference); ok || registry.Owns(earlierView) {
 					t.Fatal("quarantined view retained semantic ownership")
 				}
-				if _, err := previous.StepReference(earlier.Step); err == nil {
+				if err := previous.ValidateStep(earlierView); err == nil {
 					t.Fatal("quarantined step reference remained available")
 				}
 			}
-			if _, ok := previous.Workflow(); ok {
+			if _, ok := previous.WorkflowView(); ok {
 				t.Fatal("quarantined workflow remained available")
 			}
 			if _, ok := previous.ActionView(); ok {

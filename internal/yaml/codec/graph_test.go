@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 
-	upstream "go.yaml.in/yaml/v4"
+	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 func TestEncoderRejectsInvalidGraphBeforeWriting(t *testing.T) {

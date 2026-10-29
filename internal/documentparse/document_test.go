@@ -18,8 +18,8 @@ func TestActionFactsDoNotBecomeWorkflowTraversalInputs(t *testing.T) {
 		t.Fatal("action facts are missing or unstable across consumers")
 	}
 	refs := References("/project/action.yml", source, document, nil, filepath.Clean)
-	step := facts.Jobs[""].Steps[0]
-	if refs["/project/action.yml"].Steps[step].Address != "runs.steps[0]" {
+	steps := refs["/project/action.yml"].Steps
+	if len(steps) != 1 || steps[0].Address != "runs.steps[0]" {
 		t.Fatal("fact projections lost their action source identity")
 	}
 }

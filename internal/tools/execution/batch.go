@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/invocationview"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/source"
@@ -18,24 +19,26 @@ import (
 
 // Unit snapshots invocation context before analyzers run.
 type Unit struct {
-	Occurrence invocation.ID
-	Reference  source.Reference
-	Run        documentparse.ExecRunView
-	Input      *ActionInput
-	Shell      *string
-	Config     *repoconfig.Config
-	Path       string
-	Content    []byte
-	Origin     *findingmodel.IgnoreOrigin
-	Owner      *findingmodel.Owner
-	Scope      *Scope
-	Execution  Execution
+	Revision    source.Revision
+	Coordinates source.Coordinates
+	Occurrence  invocation.ID
+	Reference   source.Reference
+	Run         workflowdecl.ExecRunView
+	Input       *ActionInput
+	Shell       *string
+	Config      *repoconfig.Config
+	Path        string
+	Content     []byte
+	Origin      *findingmodel.IgnoreOrigin
+	Owner       *findingmodel.Owner
+	Scope       *Scope
+	Execution   Execution
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  analyzer.ScriptInput
-	Value documentparse.InputView
+	Value workflowdecl.InputView
 }
 
 // ScriptRequest contains invocation policy; declarations come from the source registry.

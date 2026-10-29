@@ -93,7 +93,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
-			collector := &compositeAnalyzer{collectScripts: true, resolveScriptExecution: true, actions: actionlocal.NewResolver(nil, nil)}
+			collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: actionlocal.NewResolver(nil, nil)}
 
 			var source strings.Builder
 			source.WriteString("on: push\n")
@@ -113,13 +113,11 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 			}
 			content := []byte(source.String())
 			document := documentparse.Workflow("fixture.yml", content)
-			w := document.Workflow
-			if w == nil {
-				t.Fatal(document.Findings)
-			}
-			j := w.Jobs["test"]
-			step := j.Steps[0]
-			startWorkflowEntry(t, collector, workflowSnapshot(t, content, document))
+			snapshot := workflowSnapshot(t, content, document)
+			w := workflowView(t, snapshot)
+			j := workflowJob(t, w, "test")
+			step := workflowStepViews(t, w, "test")[0]
+			startWorkflowEntry(t, collector, snapshot)
 			if err := collector.beginWorkflow(w); err != nil {
 				t.Fatal(err)
 			}

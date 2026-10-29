@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
 // Keep the scalar's original lines/columns by placing its anchor before an
 // appended workflow. The parser resolves the alias through its normal mapping path.
-func shellcheckFixSource(t *testing.T, input string) documentparse.ScriptSourceView {
+func shellcheckFixSource(t *testing.T, input string) workflowdecl.ScriptSourceView {
 	t.Helper()
 	text := strings.Replace(input, "run:", "run: &script", 1) + "\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n"
 	document := documentparse.Workflow("fix.yml", []byte(text))
@@ -35,7 +36,7 @@ func shellcheckFixSource(t *testing.T, input string) documentparse.ScriptSourceV
 		return run.Source()
 	}
 	t.Fatal("fixture has no step")
-	return documentparse.ScriptSourceView{}
+	return workflowdecl.ScriptSourceView{}
 }
 
 func TestShellcheckFixLiteralMapping(t *testing.T) {

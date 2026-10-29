@@ -17,6 +17,7 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/v2/document",
 		"actionlint.kjanat.dev/v2/syntax",
 		"actionlint.kjanat.dev/v2/config",
+		"actionlint.kjanat.dev/v2/config/report",
 		"actionlint.kjanat.dev/v2/internal/config",
 		"actionlint.kjanat.dev/v2/internal/config/tools/ruff",
 		"actionlint.kjanat.dev/v2/internal/render",
@@ -45,6 +46,49 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		for _, dependency := range pkg.Deps {
 			if dependency == "actionlint.kjanat.dev/v2/internal/engine" || dependency == "actionlint.kjanat.dev/v2/internal/cli" || dependency == "os/exec" || dependency == "actionlint.kjanat.dev/v2/analysis" || dependency == "actionlint.kjanat.dev/v2/config" {
 				t.Errorf("contract %s imports application dependency %s", pkg.ImportPath, dependency)
+			}
+		}
+	}
+}
+
+// A value contract must remain a leaf, and completed results and presentation
+// must not acquire configuration loading or resolution through an indirect import.
+func TestConfigurationReportDependencyDirection(t *testing.T) {
+	const contract = "actionlint.kjanat.dev/v2/config/report"
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-deps", "-json", contract).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath string
+			Standard   bool
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		if pkg.ImportPath != contract && !pkg.Standard {
+			t.Errorf("configuration report contract imports nonstandard dependency %s", pkg.ImportPath)
+		}
+	}
+	output, err = exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/report", "actionlint.kjanat.dev/v2/internal/render").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder = json.NewDecoder(strings.NewReader(string(output)))
+	for decoder.More() {
+		var pkg struct {
+			ImportPath string
+			Deps       []string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatal(err)
+		}
+		for _, dependency := range pkg.Deps {
+			const implementation = "actionlint.kjanat.dev/v2/internal/config"
+			if dependency == implementation || strings.HasPrefix(dependency, implementation+"/") {
+				t.Errorf("%s imports configuration implementation %s", pkg.ImportPath, dependency)
 			}
 		}
 	}
@@ -176,7 +220,7 @@ func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, dependency := range pkg.Imports {
-			if dependency == "go.yaml.in/yaml/v4" {
+			if dependency == "github.com/kjanat/go-yaml/v4" {
 				t.Errorf("semantic package %s imports parser types", pkg.ImportPath)
 			}
 		}

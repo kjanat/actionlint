@@ -3,7 +3,6 @@ package execution
 import (
 	"maps"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
@@ -36,7 +35,7 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 	state.pristine, state.repositoryUnknown = true, false
 	// Reset only paths replaced by this checkout; sibling and independent
 	// action copies keep their own mutation histories.
-	placement := CheckoutPlacement{Directory: Directory{Path: checkout}, CaseInsensitive: caseInsensitive}
+	placement := NewCheckoutPlacement(Checkout{Directory: Directory{Path: checkout}, CaseInsensitive: caseInsensitive}, CheckoutPlacement{})
 	for name := range state.changed {
 		if _, replaced := placement.Relative(name); replaced {
 			delete(state.changed, name)
@@ -45,9 +44,8 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 }
 
 // ForkComposite creates isolated execution state for an action entry or call and its resolved paths.
-func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths Paths, source *documentparse.SourceSnapshot) *ExecutableChecker {
+func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths Paths) *ExecutableChecker {
 	scoped := NewExecutableChecker(rule.context)
-	scoped.context.SourceSnapshot = source
 	scoped.executableState = rule.executableState
 	scoped.unix, scoped.caseInsensitive, scoped.shIsDash = rule.unix, rule.caseInsensitive, rule.shIsDash
 	effects, isCall := context.Facts()

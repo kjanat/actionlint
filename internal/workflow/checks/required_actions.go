@@ -1,8 +1,11 @@
 package checks
 
 import (
+	"iter"
 	"path"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 
@@ -26,14 +29,14 @@ func matchGlob(pattern, value string) bool {
 }
 
 // Jobs are stored in a map. Source order keeps diagnostics stable across runs.
-func firstStepsJobPos(w *workflowlang.Workflow) *workflowlang.Pos {
+func firstStepsJobPos(w declaration.WorkflowView) *workflowlang.Pos {
 	var ret *workflowlang.Pos
-	for _, j := range w.Jobs {
-		if j == nil || j.Pos == nil || j.WorkflowCall != nil {
+	for _, j := range w.Jobs() {
+		if !j.Present() || viewPosition(j.Pos()) == nil || j.WorkflowCall().Present() {
 			continue
 		}
-		if ret == nil || j.Pos.IsBefore(ret) {
-			ret = j.Pos
+		if ret == nil || viewPosition(j.Pos()).IsBefore(ret) {
+			ret = viewPosition(j.Pos())
 		}
 	}
 	return ret
@@ -46,24 +49,24 @@ type requiredActionsCheck struct {
 }
 
 // RequiredActions evaluates all action invocations from one workflow snapshot.
-func RequiredActions(w *workflowlang.Workflow, required []string) []Finding {
+func RequiredActions(w declaration.WorkflowView, required []string) []Finding {
 	rule := &requiredActionsCheck{name: "required-actions"}
 	pos := firstStepsJobPos(w)
 	if pos == nil || len(required) == 0 {
 		return nil
 	}
-	var visit func([]*workflowlang.Step)
-	visit = func(steps []*workflowlang.Step) {
-		for _, step := range steps {
+	var visit func(iter.Seq[declaration.StepView])
+	visit = func(steps iter.Seq[declaration.StepView]) {
+		for step := range steps {
 			rule.checkStep(step)
-			if group, ok := step.Exec.(*workflowlang.ExecParallel); ok {
-				visit(group.Steps)
+			if group, ok := step.Parallel(); ok {
+				visit(group.Steps())
 			}
 		}
 	}
-	for _, job := range w.Jobs {
-		if job != nil {
-			visit(job.Steps)
+	for _, job := range w.Jobs() {
+		if job.Present() {
+			visit(job.Steps())
 		}
 	}
 	if rule.unknown {
@@ -75,21 +78,21 @@ func RequiredActions(w *workflowlang.Workflow, required []string) []Finding {
 	return rule.out
 }
 
-func (rule *requiredActionsCheck) checkStep(n *workflowlang.Step) {
-	e, ok := n.Exec.(*workflowlang.ExecAction)
-	if !ok || e.Uses == nil {
+func (rule *requiredActionsCheck) checkStep(n declaration.StepView) {
+	e, ok := n.Action()
+	if !ok || !e.Uses().Present() {
 		return
 	}
-	if e.Uses.ContainsExpression() {
+	if e.Uses().ContainsExpression() {
 		rule.unknown = true
 		return
 	}
-	name, ref := references.SplitRef(e.Uses.Value)
+	name, ref := references.SplitRef(e.Uses().Value())
 	rule.uses = append(rule.uses, actionUse{
-		spec: e.Uses.Value,
+		spec: e.Uses().Value(),
 		name: name,
 		ref:  ref,
-		pos:  e.Uses.Pos,
+		pos:  viewPosition(e.Uses().Pos()),
 	})
 }
 

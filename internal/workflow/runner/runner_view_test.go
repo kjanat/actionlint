@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
-func runnerJobView(t *testing.T, source string) documentparse.JobView {
+func runnerJobView(t *testing.T, source string) workflowdecl.JobView {
 	t.Helper()
 	content := []byte(source)
 	document := documentparse.Workflow("runner.yml", content)

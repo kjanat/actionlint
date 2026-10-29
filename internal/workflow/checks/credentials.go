@@ -3,6 +3,8 @@ package checks
 import (
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
+
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -11,54 +13,54 @@ import (
 type credentialsCheck struct{ findingCollector }
 
 // Credentials checks container passwords in a complete job declaration.
-func Credentials(n *workflowlang.Job) []Finding {
+func Credentials(n declaration.JobView) []Finding {
 	rule := &credentialsCheck{name: "credentials"}
 
-	if n.Container != nil {
-		rule.checkContainer("\"container\" section", n.Container)
+	if n.Container().Present() {
+		rule.checkContainer("\"container\" section", n.Container())
 	}
-	if n.Services != nil {
-		if n.Services.Expression != nil {
-			if value, known := workflowlang.WorkflowExpressionLiteral(n.Services.Expression); known {
+	if n.Services().Present() {
+		if n.Services().Expression().Present() {
+			if value, known := expressionLiteral(n.Services().Expression()); known {
 				if services, ok := value.(map[string]any); ok {
 					for name, container := range services {
-						rule.checkContainerValue(fmt.Sprintf("%q service", name), container, n.Services.Expression.Pos)
+						rule.checkContainerValue(fmt.Sprintf("%q service", name), container, viewPosition(n.Services().Expression().Pos()))
 					}
 				}
 			}
 		}
-		for _, s := range n.Services.Value {
-			rule.checkContainer(fmt.Sprintf("%q service", s.Name.Value), s.Container)
+		for _, s := range n.Services().Value() {
+			rule.checkContainer(fmt.Sprintf("%q service", s.Name().Value()), s.Container())
 		}
 	}
 	return rule.out
 }
 
-func (rule *credentialsCheck) checkContainer(where string, n *workflowlang.Container) {
-	if n.Expression != nil {
-		if value, known := workflowlang.WorkflowExpressionLiteral(n.Expression); known {
-			rule.checkContainerValue(where, value, n.Expression.Pos)
+func (rule *credentialsCheck) checkContainer(where string, n declaration.ContainerView) {
+	if n.Expression().Present() {
+		if value, known := expressionLiteral(n.Expression()); known {
+			rule.checkContainerValue(where, value, viewPosition(n.Expression().Pos()))
 		}
 		return
 	}
-	if n.Credentials == nil {
+	if !n.Credentials().Present() {
 		return
 	}
-	if n.Credentials.Expression != nil {
-		if value, known := workflowlang.WorkflowExpressionLiteral(n.Credentials.Expression); known {
-			rule.checkCredentialsValue(where, value, n.Credentials.Expression.Pos)
+	if n.Credentials().Expression().Present() {
+		if value, known := expressionLiteral(n.Credentials().Expression()); known {
+			rule.checkCredentialsValue(where, value, viewPosition(n.Credentials().Expression().Pos()))
 		}
 		return
 	}
 
-	p := n.Credentials.Password
-	if p == nil {
+	p := n.Credentials().Password()
+	if !p.Present() {
 		return
 	}
-	if value, known := workflowlang.WorkflowExpressionLiteral(p); known {
-		rule.checkPasswordValue(where, value, p.Pos)
+	if value, known := expressionLiteral(p); known {
+		rule.checkPasswordValue(where, value, viewPosition(p.Pos()))
 	} else if !p.IsExpressionAssigned() {
-		rule.reportPassword(where, p.Pos)
+		rule.reportPassword(where, viewPosition(p.Pos()))
 	}
 }
 

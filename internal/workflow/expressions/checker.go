@@ -2,11 +2,11 @@ package expressions
 
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 )
 
@@ -26,21 +26,22 @@ type Checker struct {
 	errs             []*findingmodel.Finding
 	matrixTy         *exprlang.ObjectType
 	matrixScriptSafe map[string]scriptValueProof
-	scriptEnv        *workflowlang.Env
-	jobEnv           *workflowlang.Env
+	scriptEnv        workflowdecl.EnvView
+	jobEnv           workflowdecl.EnvView
 	stepsTy          *exprlang.ObjectType
 	needsTy          *exprlang.ObjectType
 	secretsTy        *exprlang.ObjectType
 	inputsTy         *exprlang.ObjectType
 	dispatchInputsTy *exprlang.ObjectType
 	jobsTy           *exprlang.ObjectType
-	workflow         *workflowlang.Workflow
+	workflow         workflowdecl.WorkflowView
 	eventTy          *exprlang.ObjectType
-	expressionSource *workflowlang.ScriptSource
+	expressionSource workflowdecl.ScriptSourceView
+	scriptSources    map[workflowlang.Pos]workflowdecl.ScriptSourceView
 	expressionOffset int
 	scriptScalarArgs map[int]bool
 	scriptPosition   exprlang.ScriptPosition
-	scriptJob        *workflowlang.Job
+	scriptJob        workflowdecl.JobView
 	compositeScript  bool
 }
 
@@ -53,12 +54,11 @@ type Options struct {
 
 // Dependencies supplies metadata for workflow expression inference.
 type Dependencies struct {
-	SourceSnapshot *documentparse.SourceSnapshot
-	Runners        *runner.Knowledge
-	LocalAction    func(string) (*actionmeta.Metadata, error)
-	PopularAction  func(string) *actionmeta.Metadata
-	Workflow       func(string) (*calls.Metadata, error)
-	Log            func(string, ...any)
+	Runners       *runner.Knowledge
+	LocalAction   func(string) (*actionmeta.Metadata, error)
+	PopularAction func(string) *actionmeta.Metadata
+	Workflow      func(string) (*calls.Metadata, error)
+	Log           func(string, ...any)
 }
 
 // New creates an expression checker with independent per-workflow context state.

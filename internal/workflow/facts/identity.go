@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -18,6 +19,20 @@ type References struct {
 	StepJobs  map[*workflowlang.Step]string
 	Jobs      map[string]source.Reference
 	Positions map[[2]int]source.Reference
+}
+
+// SourceIndex publishes references without decoded-node pointers.
+type SourceIndex struct {
+	Document  source.Reference
+	Steps     []source.Reference
+	Jobs      map[string]source.Reference
+	Positions map[[2]int]source.Reference
+}
+
+func (r References) SourceIndex() SourceIndex {
+	steps := slices.Collect(maps.Values(r.Steps))
+	slices.SortFunc(steps, func(a, b source.Reference) int { return strings.Compare(a.Address, b.Address) })
+	return SourceIndex{Document: r.Document, Steps: steps, Jobs: maps.Clone(r.Jobs), Positions: maps.Clone(r.Positions)}
 }
 
 func Index(path string, content []byte, workflow *workflowlang.Workflow, action bool) References {
@@ -68,6 +83,9 @@ func BuildSkeleton(workflow *workflowlang.Workflow, action bool) Skeleton {
 	}
 	for _, id := range slices.Sorted(maps.Keys(workflow.Jobs)) {
 		job := workflow.Jobs[id]
+		if job == nil {
+			continue
+		}
 		entry := skeletonJob{id: id, address: "jobs[" + strconv.Quote(id) + "]"}
 		for _, pos := range []*workflowlang.Pos{job.Pos, stringPos(job.ID)} {
 			if pos != nil {

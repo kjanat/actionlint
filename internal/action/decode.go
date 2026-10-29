@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
@@ -311,7 +311,7 @@ func (d manifestDecoder) steps(root codec.Entered) (actionCompositeSteps, error)
 		return nil, nil
 	}
 	if n.Kind != syntax.SequenceNode {
-		return nil, d.session.Wrap(n, fmt.Errorf("yaml: steps must be sequence node but %s node was found at line:%d, col:%d", workflowlang.NodeKindName(n.Kind), n.Line, n.Column))
+		return nil, d.session.Wrap(n, fmt.Errorf("yaml: steps must be sequence node but %s node was found at line:%d, col:%d", workflowparser.NodeKindName(n.Kind), n.Line, n.Column))
 	}
 	steps := make(actionCompositeSteps, 0, len(n.Content))
 	for item := range root.Items() {

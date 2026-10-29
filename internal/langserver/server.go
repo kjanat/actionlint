@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
+	sourceposition "actionlint.kjanat.dev/v2/internal/source/position"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 	sourcemodel "actionlint.kjanat.dev/v2/source"
 )
@@ -182,7 +183,12 @@ serve:
 						missingSources[related.Path] = struct{}{}
 						continue
 					}
-					if _, err := diagnosticRange([]byte(target.Text), related.Start, related.End); err != nil {
+					row := analysis.Sources[related.Path]
+					if !related.Revision.Valid() || related.Revision != row.Revision || related.Coordinates != row.Coordinates {
+						missingSources[related.Path] = struct{}{}
+						continue
+					}
+					if _, _, err := sourceposition.Range([]byte(target.Text), row.Coordinates, related.Start, related.End); err != nil {
 						missingSources[related.Path] = struct{}{}
 						continue
 					}

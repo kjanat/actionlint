@@ -23,7 +23,7 @@ func TestRelativeConfigCallbackPath(t *testing.T) {
 					content = "extends: [base.yml]\n"
 				}
 				var reads []string
-				session, err := workspace.New(workspace.Options{ConfigFile: initial, ReadFile: func(path string) ([]byte, error) {
+				session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: initial, ReadFile: func(path string) ([]byte, error) {
 					reads = append(reads, path)
 					switch path {
 					case initial:

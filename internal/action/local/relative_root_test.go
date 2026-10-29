@@ -22,7 +22,7 @@ func TestRelativeRepositoryRootUsesSessionWorkingDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	capturefixture.CloseCaptures(t, store)
-	cache := NewCache("repository", nil)
+	cache := NewCache(t.Context(), "repository", nil)
 	var observed capture.Snapshot
 	cache.Configure(Options{Captures: store, Context: t.Context(), WorkingDir: base, OnDocument: func(captured capture.Snapshot, _ string, _ *actionmeta.Metadata, _ error) { observed = captured }})
 	resolver := NewResolver(cache, map[string]string{"./generated": "./source"})

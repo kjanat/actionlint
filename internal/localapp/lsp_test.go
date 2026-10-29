@@ -126,6 +126,9 @@ func TestEditorConflictingAliasesWithholdOnlyConflictedSource(t *testing.T) {
 		if result.Sources[good].Text != goodText {
 			t.Fatal("unrelated captured source was discarded")
 		}
+		if result.Sources[workflow].Text != documents[workflow].Text {
+			t.Fatal("conflict discarded the caller's captured source")
+		}
 		found := false
 		for _, finding := range result.Diagnostics {
 			if finding.Path == actionPath || finding.Path == alias {

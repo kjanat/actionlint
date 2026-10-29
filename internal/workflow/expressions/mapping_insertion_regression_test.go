@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
@@ -16,12 +18,12 @@ func TestUnknownMatrixKeysPreserveKnownTypes(t *testing.T) {
 				matrix = "{'${{ insert }}': " + matrix + "}"
 			}
 			source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n"
-			workflow, errs := workflowlang.ParseDocument([]byte(source))
+			workflow, errs := workflowparser.ParseDocument([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
-			ty := rule.checkMatrix(workflow.Jobs["test"].Strategy.Matrix, matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
+			ty := rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
 			if !ty.IsLoose() || len(ty.Props) != 1 {
 				t.Fatalf("want open object with only the known axis, got %#v", ty)
 			}
@@ -36,13 +38,13 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 	for _, key := range []string{"os", "${{ 'os' }}", "${{ format('{0}', 'os') }}"} {
 		t.Run(key, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + fmt.Sprintf("{'${{ insert }}': {%q: [ubuntu-latest]}}", key) + "\n    steps: [{run: echo ok}]\n"
-			workflow, errs := workflowlang.ParseDocument([]byte(source))
+			workflow, errs := workflowparser.ParseDocument([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
 			for _, job := range workflow.Jobs {
-				ty := rule.checkMatrix(job.Strategy.Matrix, matrixcheck.Resolve(job.Strategy))
+				ty := rule.checkMatrix(ownedMatrixFixture(job.Strategy.Matrix), matrixcheck.Resolve(job.Strategy))
 				if !ty.IsStrict() || len(ty.Props) != 1 || ty.Props["os"] == nil {
 					t.Fatalf("known key lost or object loosened: %#v", ty)
 				}

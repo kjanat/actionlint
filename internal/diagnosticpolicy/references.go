@@ -9,7 +9,7 @@ import (
 )
 
 // InferReferences enriches completed findings from source indexes supplied by the caller.
-func InferReferences(all []*findingmodel.Finding, path string, references map[string]workflowfacts.References, entryAliases ...string) {
+func InferReferences(all []*findingmodel.Finding, path string, references map[string]workflowfacts.SourceIndex, entryAliases ...string) {
 	for _, finding := range all {
 		if finding.UnavailableSource.Present() {
 			finding.Reference, finding.Fixes = nil, nil

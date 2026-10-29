@@ -1,14 +1,14 @@
 package builtin
 
 import (
-	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"errors"
+
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
-	"errors"
 )
 
 // RuleShellName is a rule to check 'shell' field. For more details, see
@@ -17,7 +17,6 @@ type RuleShellName struct {
 	runners *runnerlang.Knowledge
 	workflowvisit.Base
 	platform runnerlang.Platform
-	source   *documentparse.SourceSnapshot
 }
 
 // NewRuleShellName creates new RuleShellName instance.
@@ -29,13 +28,9 @@ func NewRuleShellName() *RuleShellName {
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleShellName) VisitStep(n *workflowlang.Step) error {
-	if rule.source == nil {
-		return errors.New("shell-name source snapshot is unavailable")
-	}
-	view, err := rule.source.StepView(n)
-	if err != nil {
-		return err
+func (rule *RuleShellName) VisitStep(view workflowdecl.StepView) error {
+	if !view.Present() {
+		return errors.New("shell-name step declaration is unavailable")
 	}
 	if run, ok := view.Run(); ok {
 		rule.checkShellValue(run.Shell().Semantic())
@@ -44,13 +39,9 @@ func (rule *RuleShellName) VisitStep(n *workflowlang.Step) error {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleShellName) VisitJobPre(n *workflowlang.Job) error {
-	if rule.source == nil {
-		return errors.New("shell-name source snapshot is unavailable")
-	}
-	view, err := rule.source.JobView(n)
-	if err != nil {
-		return err
+func (rule *RuleShellName) VisitJobPre(view workflowdecl.JobView) error {
+	if !view.Present() {
+		return errors.New("shell-name job declaration is unavailable")
 	}
 	if rule.runners != nil {
 		rule.platform = rule.runners.Job(view).Platform
@@ -60,18 +51,14 @@ func (rule *RuleShellName) VisitJobPre(n *workflowlang.Job) error {
 }
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
-func (rule *RuleShellName) VisitJobPost(n *workflowlang.Job) error {
+func (rule *RuleShellName) VisitJobPost(workflowdecl.JobView) error {
 	rule.platform = runnerlang.Any // Clear
 	return nil
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleShellName) VisitWorkflowPre(n *workflowlang.Workflow) error {
-	if rule.source == nil {
-		return errors.New("shell-name source snapshot is unavailable")
-	}
-	view, present := rule.source.WorkflowView()
-	if !present {
+func (rule *RuleShellName) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
+	if !view.Present() {
 		return errors.New("shell-name workflow declaration is unavailable")
 	}
 	rule.checkShellValue(execution.DefaultShell(view.Defaults().Run().Semantic()))

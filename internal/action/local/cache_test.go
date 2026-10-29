@@ -604,20 +604,20 @@ func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
 func TestLocalActionsCacheFactory(t *testing.T) {
 	f := NewFactory(io.Discard)
 	p1 := "path/to/project1"
-	c1 := f.GetCache(p1)
+	c1 := f.GetCache(t.Context(), p1)
 
 	p2 := "path/to/project2"
-	c2 := f.GetCache(p2)
+	c2 := f.GetCache(t.Context(), p2)
 	if c1 == c2 {
 		t.Errorf("different cache was not created: %v", c1)
 	}
 
-	c3 := f.GetCache(p1)
+	c3 := f.GetCache(t.Context(), p1)
 	if c1 != c3 {
 		t.Errorf("same cache is not returned for the same project: %v vs %v", c1, c3)
 	}
 
-	c4 := f.GetCache("")
+	c4 := f.GetCache(t.Context(), "")
 	if c4.root != "" {
 		t.Errorf("null cache must be returned if given project is nil: %v", c4)
 	}

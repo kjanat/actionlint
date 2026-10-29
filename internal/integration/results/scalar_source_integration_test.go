@@ -15,7 +15,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
@@ -105,7 +105,7 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 			b.SetBytes(int64(len(content)))
 			b.ResetTimer()
 			for b.Loop() {
-				p := workflowlang.NewSourceParser(content)
+				p := workflowparser.NewSourceParser(content)
 				p.IndexScalarSources(root)
 				for i := 1; i < len(mapping.Content); i += 2 {
 					if p.ScriptSource(mapping.Content[i]) == nil {

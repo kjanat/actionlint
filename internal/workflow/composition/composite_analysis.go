@@ -17,6 +17,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
@@ -24,38 +25,43 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// compositeAnalyzer owns script-analyzer policy and invocation-specific state,
-// leaving Visitor responsible for the workflow's ordinary pass lifecycle.
+// compositionSession owns the graph and accumulated results shared by invocations.
+type compositionSession struct {
+	scriptInputs           []analyzer.ScriptInput
+	scriptInputsForConfig  func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
+	scriptCatalogues       map[*repoconfig.Config][]analyzer.ScriptInput
+	runners                *runnerlang.Knowledge
+	resolveScriptExecution bool
+	scripts                []scriptexecution.ScriptRequest
+	scriptScopes           []*scriptexecution.Scope
+	scriptPaths            execution.Paths
+	collectScripts         bool
+	ctx                    context.Context
+	passes                 []workflowvisit.Pass
+	metadataFindings       []*findingmodel.Finding
+	configForFile          func(string) (*repoconfig.Config, error)
+	sourceSnapshots        *documentparse.SourceSnapshots
+	invocations            *invocation.Builder
+	budget                 invocation.Budget
+	interrupted            bool
+}
+
+// compositeAnalyzer is one traversal frame. Child calls share session results,
+// but cannot replace their caller's source, configuration or invocation context.
 type compositeAnalyzer struct {
-	scriptInputs                      []analyzer.ScriptInput
-	scriptInputsForConfig             func(*repoconfig.Config) ([]analyzer.ScriptInput, error)
-	scriptCatalogues                  map[*repoconfig.Config][]analyzer.ScriptInput
-	runners                           *runnerlang.Knowledge
-	resolveScriptExecution            bool
-	scripts                           []scriptexecution.ScriptRequest
-	scriptScopes                      []*scriptexecution.Scope
+	*compositionSession
+	actions                           *actionlocal.Resolver
+	sourceSnapshot                    *documentparse.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope
-	scriptPaths                       execution.Paths
+	scriptConfig                      *repoconfig.Config
+	context                           invocation.Context
 	scriptJobShell, scriptRunnerShell value.Value
 	scriptWorkflowDir, scriptJobDir   execution.Directory
-	scriptConfig                      *repoconfig.Config
-	collectScripts                    bool
 	workflowScriptShell               *string
 	jobScriptShell                    *string
-	ctx                               context.Context
-	actions                           *actionlocal.Resolver
-	passes                            []workflowvisit.Pass
-	rules                             []compositeScriptRules
 	workflowEnv                       mapping.Mapping
 	workflowShell                     value.Value
-	configForFile                     func(string) (*repoconfig.Config, error)
 	jobID                             string
-	sourceSnapshots                   *documentparse.SourceSnapshots
-	sourceSnapshot                    *documentparse.SourceSnapshot
-	invocations                       *invocation.Builder
-	context                           invocation.Context
-	budget                            invocation.Budget
-	interrupted                       bool
 }
 
 func (analysis *compositeAnalyzer) cancelled() error {
@@ -65,13 +71,12 @@ func (analysis *compositeAnalyzer) cancelled() error {
 	return analysis.ctx.Err()
 }
 
-func (analysis *compositeAnalyzer) beginWorkflow(workflow *workflowlang.Workflow) error {
+func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.WorkflowView) error {
+	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
+		return err
+	}
 	if analysis.sourceSnapshot == nil {
 		return errors.New("workflow source snapshot is unavailable")
-	}
-	declaration, present := analysis.sourceSnapshot.WorkflowView()
-	if !present {
-		return errors.New("workflow declaration is unavailable")
 	}
 	analysis.beginEntryScope(scriptexecution.Deployment{})
 	defaults := declaration.Defaults().Run().Semantic()
@@ -103,9 +108,8 @@ func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.De
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 }
 
-func (analysis *compositeAnalyzer) beginJob(job *workflowlang.Job) error {
-	declaration, err := analysis.sourceSnapshot.JobView(job)
-	if err != nil {
+func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.JobView) error {
+	if err := analysis.sourceSnapshot.ValidateJob(declaration); err != nil {
 		return err
 	}
 	analysis.jobScriptShell = scriptDefaultShell(declaration.Defaults())
@@ -135,17 +139,17 @@ func (analysis *compositeAnalyzer) invalidateCheckout() {
 	analysis.actions.InvalidateCheckout()
 }
 
-func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
+func (analysis *compositeAnalyzer) visitStep(step workflowdecl.StepView) error {
+	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
+		return err
+	}
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
 	if analysis.sourceSnapshot == nil {
 		return errors.New("step source snapshot is unavailable")
 	}
-	declaration, err := analysis.sourceSnapshot.StepView(step)
-	if err != nil {
-		return err
-	}
+	declaration := step
 	analysis.actions.ObserveExecution(declaration)
 	analysis.actions.ObserveCheckout(declaration)
 	if err := analysis.collectScript(step, analysis.scriptConfig, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
@@ -154,32 +158,26 @@ func (analysis *compositeAnalyzer) visitStep(step *workflowlang.Step) error {
 	if _, action := declaration.Action(); !action {
 		return analysis.visitStepPasses(step)
 	}
-	var scripts []workflowvisit.Rule
+	var scripts []builtin.InvocationParticipant
 	for _, pass := range analysis.passes {
-		if participant, ok := pass.(builtin.CompositeParticipant); ok {
+		if participant, ok := pass.(builtin.InvocationParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}
 	return analysis.visitActionScripts(step, scripts, func() error { return analysis.visitStepPasses(step) })
 }
 
-func (analysis *compositeAnalyzer) visitStepPasses(step *workflowlang.Step) error {
+func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.StepView) error {
+	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
+		return err
+	}
 	if analysis.sourceSnapshot == nil {
 		return errors.New("step source snapshot is unavailable")
 	}
-	declaration, err := analysis.sourceSnapshot.StepView(step)
-	if err != nil {
-		return err
-	}
-	_, action := declaration.Action()
+	declaration := step
 	origin := canonicalStepOrigin(declaration, analysis.jobID)
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
-		if participant, ok := pass.(builtin.InvocationParticipant); ok && participant.DeferActionInvocation() {
-			if action {
-				continue // Preserve checkout state while entering a local composite.
-			}
-		}
 		if err := checks.VisitWithOrigin(pass, origin, checks.HasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
 			return err
 		}
@@ -187,7 +185,7 @@ func (analysis *compositeAnalyzer) visitStepPasses(step *workflowlang.Step) erro
 	return nil
 }
 
-func canonicalStepOrigin(step documentparse.StepView, job string) *findingmodel.IgnoreOrigin {
+func canonicalStepOrigin(step workflowdecl.StepView, job string) *findingmodel.IgnoreOrigin {
 	owned := step.Origin(job)
 	origin := &findingmodel.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
 	if owned.HasPosition {

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/rule"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // RequiredActionsOptions configures exact actions or action/ref glob patterns.

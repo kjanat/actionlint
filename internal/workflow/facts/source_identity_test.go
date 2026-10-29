@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 	"actionlint.kjanat.dev/v2/source"
@@ -58,7 +60,7 @@ func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			content := []byte(first + test.suffix)
-			workflow, findings := workflowlang.ParseDocument(content)
+			workflow, findings := workflowparser.ParseDocument(content)
 			if len(findings) != 0 {
 				t.Fatal(findings)
 			}
@@ -90,7 +92,7 @@ func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 		text.WriteString("\n")
 	}
 	content := text.String()
-	workflow, findings := workflowlang.ParseDocument([]byte(content))
+	workflow, findings := workflowparser.ParseDocument([]byte(content))
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}

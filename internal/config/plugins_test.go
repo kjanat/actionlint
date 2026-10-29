@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"github.com/google/go-cmp/cmp"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 func TestDirectPluginDeclaration(t *testing.T) {

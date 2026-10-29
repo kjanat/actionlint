@@ -103,11 +103,12 @@ func (c *Cache) Configure(options Options) {
 	c.onManifestRequest = options.OnManifestRequest
 }
 
-// NewCache creates a repository metadata cache. An empty root disables lookups.
-func NewCache(root string, dbg io.Writer) *Cache {
+// NewCache creates a repository metadata cache bound to ctx. An empty root disables lookups.
+// Configure may later replace the context together with the shared reader.
+func NewCache(ctx context.Context, root string, dbg io.Writer) *Cache {
 	return &Cache{
-		ctx:     context.Background(),
-		reader:  fsread.New(context.Background(), nil, nil),
+		ctx:     ctx,
+		reader:  fsread.New(ctx, nil, nil),
 		root:    root,
 		cache:   map[string]metadataEntry{},
 		sources: map[string]metadataSource{},
@@ -269,7 +270,7 @@ func (c *Cache) readLocalActionMetadataFile(dir string) (capture.Snapshot, strin
 			continue
 		}
 		if err != nil {
-			return capture.Snapshot{}, "", fmt.Errorf("could not read action metadata in %q: %w", dir, err)
+			return capture.Snapshot{}, "", &capture.ReadError{Context: fmt.Sprintf("could not read action metadata in %q", dir), Err: err}
 		}
 		return captured, name, nil
 	}
@@ -306,7 +307,7 @@ type Factory struct {
 
 // GetCache returns the shared cache for a repository root, or a disabled cache for an empty root.
 // Create caches serially before starting concurrent metadata lookups.
-func (f *Factory) GetCache(root string) *Cache {
+func (f *Factory) GetCache(ctx context.Context, root string) *Cache {
 	if root == "" {
 		return newNullCache(f.dbg)
 	}
@@ -314,7 +315,7 @@ func (f *Factory) GetCache(root string) *Cache {
 	if c, ok := f.caches[r]; ok {
 		return c
 	}
-	c := NewCache(root, f.dbg)
+	c := NewCache(ctx, root, f.dbg)
 	f.caches[r] = c
 	return c
 }

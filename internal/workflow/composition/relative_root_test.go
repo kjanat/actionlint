@@ -27,7 +27,7 @@ func TestCompositeCarriesCaptureAcrossRelativeDisplayPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := actionlocal.NewCache("repository", nil)
+	cache := actionlocal.NewCache(t.Context(), "repository", nil)
 	cache.Configure(actionlocal.Options{Captures: registry.Sources.Store, Context: t.Context(), WorkingDir: base})
 	service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(cache, nil), CollectScripts: true, Paths: execution.Paths{Workspace: root, Analysis: base}})
 	result, err := service.Workflow(snapshot)

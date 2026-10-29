@@ -143,7 +143,13 @@ func semanticEqual(left, right value.Value) bool {
 	return left.Equal(right)
 }
 
+// display renders a matrix value for diagnostics. Non-string YAML literals
+// keep their source spelling (TRUE, ~, +1.2e2) so the message quotes what the
+// user wrote; strings are always quoted from their decoded text.
 func display(v value.Value) string {
+	if spelling, ok := v.Spelling(); ok && spelling != "" && v.Kind() != value.String {
+		return spelling
+	}
 	if v.Known() {
 		switch v.Kind() {
 		case value.Null:
@@ -157,6 +163,7 @@ func display(v value.Value) string {
 				fields = append(fields, fmt.Sprintf("%q: %s", name, display(props[name])))
 			}
 			return "{" + strings.Join(fields, ", ") + "}"
+		case value.KindUnknown, value.Bool, value.Number, value.String:
 		}
 	}
 	if text, ok := v.ScalarString(); ok {

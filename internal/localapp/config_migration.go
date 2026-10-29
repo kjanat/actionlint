@@ -63,7 +63,7 @@ type ConfigMigration struct {
 }
 
 func PrepareConfigMigration(ctx context.Context, path string, options DefaultPluginOptions) (*ConfigMigration, error) {
-	migration, err := config.PrepareMigration(path)
+	migration, err := config.PrepareMigration(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err != nil {
 		return nil, err
 	}
-	if err := migration.CheckUnchanged(); err != nil {
+	if err := migration.CheckUnchanged(ctx); err != nil {
 		return nil, err
 	}
 	resolved, err := config.ResolveBeforePlugins(project.Manifest.node, options.Overlays)
@@ -134,16 +134,16 @@ func (m *ConfigMigration) Apply(ctx context.Context) error {
 	if !m.Changed {
 		return nil
 	}
-	if err := m.CheckUnchanged(); err != nil {
+	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
 	if !m.updatePlugins {
-		return m.FileMigration.Apply()
+		return m.FileMigration.Apply(ctx)
 	}
 	if err := m.project.Resolve(ctx, m.refs, nil); err != nil {
 		return fmt.Errorf("config migration left %s unchanged: %w", m.Path, err)
 	}
-	if err := m.CheckUnchanged(); err != nil {
+	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
 	original := m.project.Manifest.original
@@ -187,7 +187,7 @@ func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, op
 		// Skip symlinked configs to avoid writing outside the selected project.
 		return nil, nil
 	}
-	migration, err := config.PrepareMigration(path)
+	migration, err := config.PrepareMigration(ctx, path)
 	if err != nil || !migration.Changed {
 		return nil, err
 	}

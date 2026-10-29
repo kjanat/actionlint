@@ -16,7 +16,7 @@ func TestNamedContentDiscoversProjectRelativeToWorkingDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repository, "ci.yml"), []byte("on: push\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := New(Options{WorkingDir: "repo", SkipProjectConfig: true})
+	session, err := New(t.Context(), Options{WorkingDir: "repo", SkipProjectConfig: true})
 	if err != nil {
 		t.Fatal(err)
 	}

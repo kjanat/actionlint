@@ -53,7 +53,7 @@ func (p *Plugin) Analyze(ctx context.Context, input analyzer.Input) ([]diagnosti
 	if err != nil {
 		return nil, err
 	}
-	diagnostics, err := liftAnalysis(value)
+	diagnostics, err := liftAnalysisForInput(value, &input)
 	valid := diagnostics[:0]
 	for _, finding := range diagnostics {
 		if finding.Rule != "" && finding.Rule != p.analyzerDescriptor.Name {

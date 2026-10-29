@@ -33,7 +33,7 @@ func TestPluginSelectionRetainsObservedLocksAcrossRepositories(t *testing.T) {
 	if len(selected.Paths) != 0 || selected.LockFile != "" || !slices.Equal(selected.Inputs, locks) {
 		t.Fatalf("observed empty locks changed activation: %+v, want inputs %v", selected, locks)
 	}
-	if err := selected.ValidateScope(paths); err != nil {
+	if err := selected.ValidateScope(t.Context(), paths); err != nil {
 		t.Fatalf("empty lock restricted scope: %v", err)
 	}
 }
@@ -58,7 +58,7 @@ func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
 			if err != nil || len(selected.Paths) != 0 || selected.LockFile != "" {
 				t.Fatalf("empty selection: %+v, %v", selected, err)
 			}
-			if err := selected.ValidateScope(input.Paths); err != nil {
+			if err := selected.ValidateScope(t.Context(), input.Paths); err != nil {
 				t.Fatal(err)
 			}
 		})

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
@@ -51,7 +51,7 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, tc.filter)
-			workflow, parseErrors := workflowlang.Parse([]byte(source))
+			workflow, parseErrors := workflowparser.Parse([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}

@@ -18,7 +18,7 @@ func TestRootOptionalLinterCommands(t *testing.T) {
 			{"end of flags", name, []string{"--" + name, "--", "input.yml"}},
 		} {
 			t.Run(name+"/"+tc.label, func(t *testing.T) {
-				app := newCommandApp(&Command{})
+				app := newCommandApp(t.Context(), &Command{})
 				rest, _, _, err := app.parseRoot(tc.args)
 				command := app.inv.Check.Ruff
 				if name == "shellcheck" {

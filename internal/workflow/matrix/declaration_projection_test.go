@@ -3,7 +3,7 @@ package matrix
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
 func TestDeclarationCombinationsKeepValidationAndExecutionSeparate(t *testing.T) {
@@ -18,7 +18,7 @@ func TestDeclarationCombinationsKeepValidationAndExecutionSeparate(t *testing.T)
 		t.Run(tc.name, func(t *testing.T) {
 			strategies := []string{"strategy:\n      matrix: " + tc.matrix, "strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}"}
 			for _, strategy := range strategies {
-				workflow, findings := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + strategy + "\n    steps: [{run: echo ok}]\n"))
+				workflow, findings := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + strategy + "\n    steps: [{run: echo ok}]\n"))
 				if len(findings) != 0 {
 					t.Fatal(findings)
 				}

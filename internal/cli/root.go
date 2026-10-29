@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -17,6 +18,9 @@ type commandOptions struct {
 }
 
 type commandApp struct {
+	// ctx is the invocation context. Cobra leaves Command.Context nil for
+	// commands it did not execute, such as help targets, so help output uses this.
+	ctx          context.Context
 	root         *cobra.Command
 	streams      Command
 	inv          invocation
@@ -36,8 +40,8 @@ const commandChoicesAnnotation = "actionlint/choices"
 
 const commandOptionalValueAnnotation = "actionlint/optional-value"
 
-func newCommandApp(streams *Command) *commandApp {
-	a := &commandApp{streams: *streams, inv: defaultInvocation(), set: map[string]bool{}}
+func newCommandApp(ctx context.Context, streams *Command) *commandApp {
+	a := &commandApp{ctx: ctx, streams: *streams, inv: defaultInvocation(), set: map[string]bool{}}
 	if a.streams.Stdin == nil {
 		a.streams.Stdin = strings.NewReader("")
 	}
@@ -51,7 +55,7 @@ func newCommandApp(streams *Command) *commandApp {
 	a.root = &cobra.Command{
 		Use:           "actionlint [flags] [--] [files... | -]",
 		Short:         "Check GitHub Actions workflows",
-		Long:          "Check workflows, actions and embedded scripts.\nWith no files, discover workflows and actions in the current repository.\nPass - alone to read stdin.",
+		Long:          "Check workflows, actions and embedded scripts.\nRun actionlint check to discover workflows and actions in the current repository.\nWith no arguments, show help. Pass - alone to read stdin.",
 		SilenceErrors: true, SilenceUsage: true, DisableFlagsInUseLine: true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		RunE:              a.capture("check"),
@@ -271,7 +275,8 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	a.runnerFlags(f)
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.Var(f.Lookup("ignore-regex").Value, "ignore", "Alias for --ignore-regex")
-	f.StringVarP(&a.opts.output, "output-format", "o", "text", "Output mode: text, oneline, json, jsonl, sarif or github")
+	f.StringVarP(&a.opts.output, "output-format", "o", "text", "Output mode: text, pretty, oneline, json, jsonl, sarif or github")
+	f.IntVar(&a.inv.Render.Width, "diagnostic-width", 100, "Pretty diagnostic width in columns (40-400)")
 	f.StringVar(&a.opts.output, "output", "text", "Alias for --output-format")
 	f.StringVarP(&a.inv.Render.Template, "template", "f", "", "Render legacy fields with this Go template")
 	f.StringVar(&a.inv.Render.Template, "format", "", "Alias for --template")
@@ -296,7 +301,7 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	for _, name := range []string{"ignore-regex", "ignore"} {
 		annotateFlag(f, name, "Filtering")
 	}
-	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
+	for _, name := range []string{"output-format", "output", "template", "format", "template-file", "output-file", "diagnostic-width", "summary", "oneline", "verbose", "debug", "log-level", "color", "no-color"} {
 		annotateFlag(f, name, "Output")
 	}
 	for _, name := range []string{"yes", "help", "help-legacy"} {
@@ -325,8 +330,8 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 			panic(err)
 		}
 	}
-	choices("output-format", []string{"text", "oneline", "json", "jsonl", "sarif", "github"})
-	choices("output", []string{"text", "oneline", "json", "jsonl", "sarif", "github"})
+	choices("output-format", []string{"text", "pretty", "oneline", "json", "jsonl", "sarif", "github"})
+	choices("output", []string{"text", "pretty", "oneline", "json", "jsonl", "sarif", "github"})
 	choices("log-level", []string{"none", "info", "debug"})
 	if modern {
 		choices("color", []string{"auto", "always", "never"})

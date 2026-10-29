@@ -53,6 +53,7 @@ func validateGraph(root *syntax.Node) error {
 			if len(node.Content) > 1 {
 				return errors.New("YAML document requires at most one root")
 			}
+		case syntax.SequenceNode:
 		}
 		active[node] = true
 		for _, child := range node.Content {

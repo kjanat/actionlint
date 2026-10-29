@@ -51,12 +51,13 @@ func (c checkInvocation) runners() (runner.Options, error) {
 		return options, fmt.Errorf("runner snapshot: %w", err)
 	}
 	content := string(snapshot.Content)
-	switch snapshot.Content.Kind() {
-	case '"':
+	kind := snapshot.Content.Kind()
+	if kind == jsontext.KindString {
 		if err := jsonv2.Unmarshal(snapshot.Content, &content); err != nil {
 			return options, fmt.Errorf("runner snapshot content: %w", err)
 		}
-	case 'n':
+	}
+	if kind == jsontext.KindNull {
 		content = ""
 	}
 	options.Snapshot = runner.Snapshot{

@@ -11,7 +11,7 @@ import (
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Keys returns the supported top-level configuration keys in declaration order.
@@ -138,15 +138,6 @@ func ResolveBeforePlugins(node *yaml.Node, overlays []Overlay) (Resolved, error)
 type Loaded struct {
 	Resolved
 	Filename string
-}
-
-// Report describes the configuration actually selected for one project.
-type Report struct {
-	Project    string
-	File       string
-	Explicit   bool
-	Overrides  []string
-	Inspection Inspection
 }
 
 type Input = configtree.Input

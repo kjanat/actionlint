@@ -9,12 +9,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/mapping"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 
@@ -46,7 +46,6 @@ type ExecutableChecker struct {
 // ExecutableContext supplies repository observations and paths to script analysis.
 // Index loads a shared immutable snapshot; all shell interpretation stays local.
 type ExecutableContext struct {
-	SourceSnapshot          *documentparse.SourceSnapshot
 	Runners                 *runnerlang.Knowledge
 	Context                 context.Context
 	ProjectRoot, WorkingDir string
@@ -76,12 +75,8 @@ func (rule *ExecutableChecker) debug(format string, args ...any) {
 	}
 }
 
-func (rule *ExecutableChecker) VisitWorkflowPre(workflow *workflowlang.Workflow) error {
-	if rule.context.SourceSnapshot == nil {
-		return errors.New("executable-bit source snapshot is unavailable")
-	}
-	declaration, present := rule.context.SourceSnapshot.WorkflowView()
-	if !present {
+func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflowdecl.WorkflowView) error {
+	if !declaration.Present() {
 		return errors.New("executable-bit workflow declaration is unavailable")
 	}
 	defaults := declaration.Defaults().Run().Semantic()
@@ -101,13 +96,9 @@ func (rule *ExecutableChecker) VisitWorkflowPre(workflow *workflowlang.Workflow)
 	return nil
 }
 
-func (rule *ExecutableChecker) VisitJobPre(job *workflowlang.Job) error {
-	if rule.context.SourceSnapshot == nil {
-		return errors.New("executable-bit source snapshot is unavailable")
-	}
-	declaration, err := rule.context.SourceSnapshot.JobView(job)
-	if err != nil {
-		return err
+func (rule *ExecutableChecker) VisitJobPre(declaration workflowdecl.JobView) error {
+	if !declaration.Present() {
+		return errors.New("executable-bit job declaration is unavailable")
 	}
 	defaults := declaration.Defaults().Run().Semantic()
 	jobEnv := declaration.Env().Mapping()
@@ -141,13 +132,9 @@ func (rule *ExecutableChecker) VisitJobPre(job *workflowlang.Job) error {
 	return nil
 }
 
-func (rule *ExecutableChecker) VisitStep(step *workflowlang.Step) error {
-	if rule.context.SourceSnapshot == nil {
-		return errors.New("executable-bit source snapshot is unavailable")
-	}
-	declaration, err := rule.context.SourceSnapshot.StepView(step)
-	if err != nil {
-		return err
+func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.StepView) error {
+	if !declaration.Present() {
+		return errors.New("executable-bit step declaration is unavailable")
 	}
 	if !rule.unix || !rule.sequential {
 		return nil
@@ -212,11 +199,12 @@ func (rule *ExecutableChecker) VisitStep(step *workflowlang.Step) error {
 		if !rule.pristine {
 			rule.repositoryUnknown = true
 		}
+	case workflowlang.ExecKindWait, workflowlang.ExecKindCancel:
 	}
 	return nil
 }
 
-func (rule *ExecutableChecker) checkout(action documentparse.ExecActionView, mayNotComplete bool) {
+func (rule *ExecutableChecker) checkout(action workflowdecl.ExecActionView, mayNotComplete bool) {
 	rule.pristine = false
 	if rule.repositoryUnknown {
 		return
@@ -262,7 +250,7 @@ func checkoutInput(inputs mapping.Mapping, name string) (string, bool) {
 	return strings.TrimSpace(text), known
 }
 
-func (rule *ExecutableChecker) checkScript(run documentparse.ExecRunView) {
+func (rule *ExecutableChecker) checkScript(run workflowdecl.ExecRunView) {
 	semanticRun := run.Run().Semantic()
 	runText, known := semanticRun.Text()
 	if !known {
@@ -297,7 +285,7 @@ func (rule *ExecutableChecker) checkScript(run documentparse.ExecRunView) {
 	}
 }
 
-func (rule *ExecutableChecker) statement(statement *syntax.Stmt, run documentparse.ExecRunView, runText string, directory *Directory) {
+func (rule *ExecutableChecker) statement(statement *syntax.Stmt, run workflowdecl.ExecRunView, runText string, directory *Directory) {
 	if !rule.pristine {
 		return
 	}
@@ -392,7 +380,10 @@ func (rule *ExecutableChecker) redirectsKnown(redirects []*syntax.Redirect, dire
 			}
 			continue
 		case syntax.RdrIn, syntax.RdrOut, syntax.AppOut, syntax.RdrInOut, syntax.RdrClob, syntax.RdrAll, syntax.AppAll:
+		case syntax.Hdoc, syntax.DashHdoc, syntax.WordHdoc, syntax.AppClob, syntax.RdrAllClob, syntax.AppAllClob:
+			return false
 		default:
+			// Operators added by later mvdan.cc/sh releases are not modelled.
 			return false
 		}
 		if target == "/dev/null" {
@@ -425,7 +416,7 @@ func standardShellDescriptor(value string) bool {
 	return value == "0" || value == "1" || value == "2"
 }
 
-func (rule *ExecutableChecker) call(command *syntax.CallExpr, run documentparse.ExecRunView, runText string, directory *Directory) {
+func (rule *ExecutableChecker) call(command *syntax.CallExpr, run workflowdecl.ExecRunView, runText string, directory *Directory) {
 	if len(command.Args) == 0 {
 		rule.pristine = false
 		return
@@ -613,7 +604,7 @@ func (rule *ExecutableChecker) scriptPath(directory Directory, script string) (e
 	return executableLocation{repository: filepath.ToSlash(relative), runner: runnerPath}, true
 }
 
-func (rule *ExecutableChecker) checkInvocation(run documentparse.ExecRunView, runText string, word *syntax.Word, directory Directory, script string) {
+func (rule *ExecutableChecker) checkInvocation(run workflowdecl.ExecRunView, runText string, word *syntax.Word, directory Directory, script string) {
 	if rule.skipFindings {
 		return
 	}

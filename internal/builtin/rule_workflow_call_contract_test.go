@@ -54,7 +54,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 					},
 				},
 			}
-			err := r.VisitJobPre(j)
+			err := r.VisitJobPre(ownedJobFixture(j))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,11 +92,11 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 	c := newCapturedWorkflowCache(t, "", "", nil)
 	r := builtin.NewRuleWorkflowCall(nil, c)
 
-	if err := r.VisitWorkflowPre(w); err != nil {
+	if err := r.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := r.VisitJobPre(j); err != nil {
+	if err := r.VisitJobPre(ownedJobFixture(j)); err != nil {
 		t.Fatal(err)
 	}
 	errs := r.Errs()
@@ -116,7 +116,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, available := snapshot.Workflow()
+	w, available := snapshot.WorkflowView()
 	if !available {
 		t.Fatal("captured workflow unavailable")
 	}

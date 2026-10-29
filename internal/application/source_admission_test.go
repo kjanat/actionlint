@@ -3,6 +3,7 @@ package application
 import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/workflow/composition"
@@ -193,5 +194,82 @@ func TestDependencyVerifyFailureRejectsReferenceLessFindings(t *testing.T) {
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
 	if !ok || rejection.Count() != 1 || len(accepted) != 1 || accepted[0] != retained {
 		t.Fatalf("failed dependency admitted findings: %v %v", accepted, err)
+	}
+}
+
+func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
+	for _, state := range []string{"captured", "rejected", "stale", "quarantined", "foreign captured"} {
+		t.Run(state, func(t *testing.T) {
+			root := t.TempDir()
+			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
+			fixture := capturefixture.NewCapturedSources(t, root)
+			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), source.YAML)
+			if err != nil {
+				t.Fatal(err)
+			}
+			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), source.YAML)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cache := actionlocal.NewCache(t.Context(), root, nil)
+			cache.Configure(actionlocal.Options{Captures: fixture.Store, Context: t.Context(), WorkingDir: root})
+			lookup, _ := cache.LookupMetadata("./broken")
+			document, exists := cache.SourceDocument(lookup)
+			if !exists || lookup.Status() != actionlocal.MetadataParseFailed {
+				t.Fatal("fixture metadata lost its captured parse failure")
+			}
+			composed := composition.Result{
+				Sources:         map[string][]byte{metadataPath: metadata.Bytes()},
+				SourceDocuments: map[string]actionlocal.SourceDocument{metadataPath: document},
+			}
+			target := metadata.Revision()
+			rejected := map[string]bool{}
+			switch state {
+			case "rejected":
+				sourceRejected(rejected, metadataPath, metadata)
+			case "stale":
+				target, err = source.NewRevision(target.Document(), strings.Repeat("a", 64))
+				if err != nil {
+					t.Fatal(err)
+				}
+			case "quarantined":
+				if err := fixture.Store.Quarantine(metadata, "conflicting metadata declarations"); err == nil {
+					t.Fatal("metadata was not quarantined")
+				}
+			case "foreign captured":
+				foreign, err := fixture.Capture(filepath.Join(root, "unconsulted.yml"), []byte("name: [\n"), source.YAML)
+				if err != nil {
+					t.Fatal(err)
+				}
+				target = foreign.Revision()
+			}
+			parse := &findingmodel.Finding{Rule: "action", Message: "cannot parse action metadata", MetadataParseSource: target}
+			retained := &findingmodel.Finding{Message: "entry observation"}
+			session := analysisSession{ctx: t.Context(), captures: fixture.Store, workingDir: root}
+			accepted, admissionErr := session.admitReportedSources([]*findingmodel.Finding{parse, retained}, "ci.yml", entryPath, composed, rejected)
+			if parse.MetadataParseSource != target {
+				t.Fatal("admission rewrote producer provenance")
+			}
+			if err := fixture.Store.Close(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			rows, err := fixture.Store.Sources()
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
+			err = result.revalidateCaptures(fixture.Store, rows, root, admissionErr)
+			result.collectDiagnostics()
+			if state == "captured" {
+				if err != nil || len(result.Diagnostics) != 2 || result.Diagnostics[0].Message != parse.Message {
+					t.Fatalf("valid parse finding was lost: diagnostics=%+v error=%v", result.Diagnostics, err)
+				}
+				return
+			}
+			rejection, ok := errors.AsType[*admissionRejectedError](err)
+			if !ok || rejection.Count() != 1 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != retained.Message {
+				t.Fatalf("invalid metadata provenance escaped or unrelated finding lost: diagnostics=%+v error=%v", result.Diagnostics, err)
+			}
+		})
 	}
 }

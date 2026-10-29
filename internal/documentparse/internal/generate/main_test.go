@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"go/token"
 	"go/types"
 	"os"
@@ -164,7 +165,7 @@ func TestGeneratedFilesAreCurrent(t *testing.T) {
 	generateDir := filepath.Dir(file)
 	root := filepath.Clean(filepath.Join(generateDir, "..", "..", "..", ".."))
 	temporary := t.TempDir()
-	target := filepath.Join(temporary, "internal", "frozen")
+	target := filepath.Join(temporary, "internal", "workflow", "declaration")
 	if err := os.MkdirAll(target, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -173,13 +174,16 @@ func TestGeneratedFilesAreCurrent(t *testing.T) {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("go run generator: %v\n%s", err, output)
 	}
+	aliasPath := filepath.Join(temporary, "internal", "documentparse", "owned_views.gen.go")
+	if _, err := os.Stat(aliasPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("generator emitted parser view aliases: %v", err)
+	}
 	for _, path := range []struct {
 		generated string
 		checkedIn string
 	}{
-		{filepath.Join(target, "clone.gen.go"), filepath.Join(root, "internal", "documentparse", "internal", "frozen", "clone.gen.go")},
-		{filepath.Join(target, "views.gen.go"), filepath.Join(root, "internal", "documentparse", "internal", "frozen", "views.gen.go")},
-		{filepath.Join(temporary, "owned_views.gen.go"), filepath.Join(root, "internal", "documentparse", "owned_views.gen.go")},
+		{filepath.Join(target, "clone.gen.go"), filepath.Join(root, "internal", "workflow", "declaration", "clone.gen.go")},
+		{filepath.Join(target, "views.gen.go"), filepath.Join(root, "internal", "workflow", "declaration", "views.gen.go")},
 	} {
 		generated, err := os.ReadFile(path.generated)
 		if err != nil {

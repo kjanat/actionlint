@@ -45,6 +45,7 @@ func CheckShell(shell value.Value, platform runnerlang.Platform) []diagnostic.Di
 				onPlatform = " on macOS or Linux" // only when the shell is unavailable on macOS or Linux
 			}
 		}
+	case runnerlang.Any:
 	}
 
 	position := shell.Origin().Span.Start

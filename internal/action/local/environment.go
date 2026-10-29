@@ -3,8 +3,8 @@ package local
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/mapping"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 
@@ -12,7 +12,7 @@ import (
 )
 
 // ObserveExecution tracks environment-file effects across steps and composite returns.
-func (c *Resolver) ObserveExecution(step documentparse.StepView) {
+func (c *Resolver) ObserveExecution(step workflowdecl.StepView) {
 	if enabled, known := execution.Condition(step.Condition()); known && !enabled {
 		return
 	}
@@ -85,7 +85,7 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 }
 
 // ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
-func (c *Resolver) ObserveOpaqueAction(step documentparse.StepView, action documentparse.ExecActionView) {
+func (c *Resolver) ObserveOpaqueAction(step workflowdecl.StepView, action workflowdecl.ExecActionView) {
 	if enabled, known := execution.Condition(step.Condition()); known && !enabled {
 		return
 	}

@@ -46,6 +46,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			break
 		}
 		input := analyzer.Input{
+			Revision: unit.Revision, Coordinates: unit.Coordinates,
 			Reference: graph.Entry().Reference, CallGraph: graph, Path: unit.Path,
 			Available:       available,
 			SelectedScripts: []analyzer.OccurrenceID{script.Occurrence.ID},

@@ -7,6 +7,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/source"
 )
 
@@ -22,9 +23,9 @@ func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 	}
 }
 
-func TestOwnedDeclarationSurvivesEveryLegacyMutationPath(t *testing.T) {
+func TestOwnedDeclarationSurvivesDecoderAndPositionMutation(t *testing.T) {
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: original\n        name: Original\n        run: echo original\n")
-	for _, access := range []string{"before binding", "workflow accessor", "step accessor"} {
+	for _, access := range []string{"before binding", "position accessor", "original model after binding"} {
 		t.Run(access, func(t *testing.T) {
 			document := Workflow("ci.yml", content)
 			cursor := document.Workflow.Jobs["build"].Steps[0]
@@ -47,18 +48,17 @@ func TestOwnedDeclarationSurvivesEveryLegacyMutationPath(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			view, err := snapshot.StepView(cursor)
-			if err != nil {
-				t.Fatal(err)
-			}
+			view := snapshotJobSteps(t, snapshot, "build")[0]
 			reference := view.Reference()
 			switch access {
-			case "workflow accessor":
-				tree, _ := snapshot.Workflow()
-				mutate(tree.Jobs["build"].Steps[0])
-			case "step accessor":
-				legacy, _ := snapshots.Step(reference)
-				mutate(legacy.Step)
+			case "position accessor":
+				position, _ := view.Pos()
+				position.Line = 999
+				if fresh, _ := view.Pos(); fresh.Line == position.Line {
+					t.Fatal("position accessor exposed mutable declaration state")
+				}
+			case "original model after binding":
+				mutate(cursor)
 			}
 			declaration, ok := snapshots.Declaration(reference)
 			if !ok || declaration != view || !snapshots.Owns(view) {
@@ -101,8 +101,14 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	if len(steps) != 2 || steps[0].Reference() == steps[1].Reference() {
 		t.Fatal("action alias sites collapsed")
 	}
-	legacy, _ := snapshot.ActionSteps()
-	legacy[0].Pos.Line = 999
+	detached, present := steps[0].Pos()
+	if !present {
+		t.Fatal("action step position unavailable")
+	}
+	detached.Line = 999
+	if fresh, _ := steps[0].Pos(); fresh.Line == detached.Line {
+		t.Fatal("action position accessor exposed mutable declaration state")
+	}
 	for _, step := range steps {
 		run, ok := step.Run()
 		position, hasPosition := step.Pos()
@@ -121,10 +127,7 @@ func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	cursor := document.Workflow.Jobs["build"].Steps[0]
-	view, err := snapshot.StepView(cursor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	view := snapshotJobSteps(t, snapshot, "build")[0]
 	switch action := cursor.Exec.(type) {
 	case *workflowlang.ExecAction:
 		action.Uses.Value = "evil/changed@v1"
@@ -133,11 +136,11 @@ func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
 	}
 	refs := snapshot.CanonicalReferences()
 	_, dependencies := snapshot.Declarations()
-	if refs.Steps[cursor] != view.Reference() || len(dependencies) != 1 || dependencies[0].Reference != view.Reference() || dependencies[0].Uses != "actions/checkout@v4" {
+	if len(refs.Steps) != 1 || refs.Steps[0] != view.Reference() || len(dependencies) != 1 || dependencies[0].Reference != view.Reference() || dependencies[0].Uses != "actions/checkout@v4" {
 		t.Fatal("final declaration projection reindexed mutable syntax")
 	}
-	refs.Steps[cursor] = source.Reference{}
-	if snapshot.CanonicalReferences().Steps[cursor] != view.Reference() {
+	refs.Steps[0] = source.Reference{}
+	if snapshot.CanonicalReferences().Steps[0] != view.Reference() {
 		t.Fatal("consumer changed canonical index")
 	}
 }
@@ -155,24 +158,21 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	if err != nil || reused != bound {
 		t.Fatal("same revision did not retain original parse record")
 	}
-	if _, err := reused.StepView(second.Workflow.Jobs["build"].Steps[0]); err == nil {
-		t.Fatal("foreign decode accepted as cursor")
-	}
 	foreign, err := other.Document("ci.yml", content, second)
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreignStep, err := foreign.StepView(second.Workflow.Jobs["build"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
+	foreignStep := snapshotJobSteps(t, foreign, "build")[0]
+	if err := reused.ValidateStep(foreignStep); err == nil {
+		t.Fatal("foreign decode accepted as canonical declaration")
 	}
-	if snapshots.Owns(foreignStep) || snapshots.Owns(StepView{}) {
+	if snapshots.Owns(foreignStep) || snapshots.Owns(workflowdecl.StepView{}) {
 		t.Fatal("foreign or zero handle accepted")
 	}
-	if _, err := bound.StepView(nil); err == nil {
-		t.Fatal("nil cursor accepted")
+	if err := bound.ValidateStep(workflowdecl.StepView{}); err == nil {
+		t.Fatal("missing declaration accepted")
 	}
-	zero := StepView{}
+	zero := workflowdecl.StepView{}
 	if zero.Present() || zero.Reference() != (source.Reference{}) || zero.ID().Present() {
 		t.Fatal("zero handle exposes declarations")
 	}
@@ -181,7 +181,6 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 func TestOwnedHandlesAreScopedToRegistryBinding(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo owned}]}}\n")
 	document := Workflow("ci.yml", content)
-	cursor := document.Workflow.Jobs["build"].Steps[0]
 	firstRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	secondRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
 	first, err := firstRegistry.Document("ci.yml", content, document)
@@ -192,14 +191,8 @@ func TestOwnedHandlesAreScopedToRegistryBinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstCursor, err := first.StepView(cursor)
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondCursor, err := second.StepView(cursor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	firstCursor := snapshotJobSteps(t, first, "build")[0]
+	secondCursor := snapshotJobSteps(t, second, "build")[0]
 	firstCanonical, firstOK := firstRegistry.Declaration(firstCursor.Reference())
 	secondCanonical, secondOK := secondRegistry.Declaration(secondCursor.Reference())
 	if !firstOK || !secondOK || firstCanonical != firstCursor || secondCanonical != secondCursor {
@@ -216,7 +209,6 @@ func TestOwnedHandlesAreScopedToRegistryBinding(t *testing.T) {
 func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo owned}]}}\n")
 	document := Workflow("ci.yml", content)
-	cursor := document.Workflow.Jobs["build"].Steps[0]
 	const workers = 24
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	type result struct {
@@ -249,10 +241,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 			t.Fatal("concurrent bind returned a noncanonical snapshot")
 		}
 	}
-	view, err := canonical.StepView(cursor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	view := snapshotJobSteps(t, canonical, "build")[0]
 	declaration, ok := snapshots.Declaration(view.Reference())
 	if !ok || declaration != view || !snapshots.Owns(view) {
 		t.Fatal("concurrent bind did not preserve canonical bound handle identity")

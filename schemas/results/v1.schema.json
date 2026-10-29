@@ -684,7 +684,21 @@
         "path",
         "start"
       ],
+      "dependencies": {
+        "coordinates": [
+          "revision"
+        ],
+        "revision": [
+          "coordinates"
+        ]
+      },
       "properties": {
+        "coordinates": {
+          "enum": [
+            "yaml",
+            "raw-lf"
+          ]
+        },
         "end": {
           "$ref": "#/definitions/position"
         },
@@ -693,6 +707,23 @@
         },
         "path": {
           "type": "string"
+        },
+        "revision": {
+          "type": "object",
+          "required": [
+            "digest",
+            "document"
+          ],
+          "properties": {
+            "digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "document": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         },
         "start": {
           "$ref": "#/definitions/position"

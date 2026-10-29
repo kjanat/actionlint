@@ -67,7 +67,7 @@ func TestMigrationDefaultPluginsAfterEnvironment(t *testing.T) {
 			for name, value := range tc.env {
 				t.Setenv(name, value)
 			}
-			app := newCommandApp(&Command{})
+			app := newCommandApp(t.Context(), &Command{})
 			if _, _, _, err := app.parseRoot(append(tc.args, "input.yml")); err != nil {
 				t.Fatal(err)
 			}

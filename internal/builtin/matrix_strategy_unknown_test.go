@@ -24,9 +24,9 @@ jobs:
     steps:
       - run: echo ok
 `
-			workflow, snapshot := matrixTestWorkflow(t, source)
-			rule := builtin.NewRuleMatrix(snapshot)
-			if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
+			_, snapshot := matrixTestWorkflow(t, source)
+			rule := builtin.NewRuleMatrix()
+			if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 				t.Fatal(err)
 			}
 			if errs := rule.Errs(); len(errs) != 0 {

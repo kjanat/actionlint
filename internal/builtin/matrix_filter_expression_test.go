@@ -45,14 +45,14 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, section, expression)
-					workflow, snapshot := matrixTestWorkflow(t, source)
+					_, snapshot := matrixTestWorkflow(t, source)
 					cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: " + enabled + "}}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					rule := builtin.NewRuleMatrix(snapshot)
+					rule := builtin.NewRuleMatrix()
 					rule.SetConfig(cfg)
-					if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
+					if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 						t.Fatal(err)
 					}
 					count := 0
@@ -136,14 +136,14 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, section, tc.filter)
-				workflow, snapshot := matrixTestWorkflow(t, source)
+				_, snapshot := matrixTestWorkflow(t, source)
 				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := builtin.NewRuleMatrix(snapshot)
+				rule := builtin.NewRuleMatrix()
 				rule.SetConfig(cfg)
-				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
+				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
 				count := 0
@@ -205,14 +205,14 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, section, expression)
-				workflow, snapshot := matrixTestWorkflow(t, source)
+				_, snapshot := matrixTestWorkflow(t, source)
 				cfg, err := repoconfig.Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := builtin.NewRuleMatrix(snapshot)
+				rule := builtin.NewRuleMatrix()
 				rule.SetConfig(cfg)
-				if err := rule.VisitJobPre(workflow.Jobs["test"]); err != nil {
+				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
 				count, siblings := 0, 0
@@ -290,9 +290,9 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				rule := builtin.NewRuleMatrix(snapshot)
+				rule := builtin.NewRuleMatrix()
 				rule.SetConfig(cfg)
-				if err := rule.VisitJobPre(job); err != nil {
+				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
 				if job.Strategy.Matrix != originalMatrix {

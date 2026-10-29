@@ -2,6 +2,7 @@ package local
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
@@ -26,7 +27,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			actions := &Resolver{caseInsensitive: true}
-			actions.restoreCheckout(&execution.CheckoutPlacement{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true})
+			actions.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true}, execution.CheckoutPlacement{}))
 			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState(), Reader: fsread.New(t.Context(), nil, nil)}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.spec + "\n")
 			parsed := documentparse.Workflow("fixture.yml", content)
@@ -35,10 +36,9 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			view, err := snapshot.StepView(parsed.Workflow.Jobs["test"].Steps[0])
-			if err != nil {
-				t.Fatal(err)
-			}
+			workflow, _ := snapshot.WorkflowView()
+			job, _ := workflow.Job("test")
+			view := slices.Collect(job.Steps())[0]
 			facts, err := execution.CallFacts(view, paths.Platform)
 			if err != nil {
 				t.Fatal(err)
@@ -88,14 +88,10 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 	}
 	resolver := NewResolver(newCapturedActionCache(t, t.TempDir(), nil), nil)
 	resolver.BeginJob(workflow.Env().Mapping(), workflow.Defaults().Run().Semantic(), job)
-	steps := parsed.Workflow.Jobs["test"].Steps
-	checkout, err := snapshot.StepView(steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	checkout := slices.Collect(job.Steps())[0]
 	resolver.ObserveCheckout(checkout)
 	placement := resolver.CheckoutState()
-	if placement == nil || placement.Directory.Kind != execution.DirectoryKnown || placement.Directory.Path != "repo" || !placement.CaseInsensitive {
+	if !placement.Present() || placement.Details().Directory.Kind != execution.DirectoryKnown || placement.Details().Directory.Path != "repo" || !placement.Details().CaseInsensitive {
 		t.Fatalf("canonical checkout facts were not applied: %+v", placement)
 	}
 	local, ok := resolver.localSpec("./REPO/child")

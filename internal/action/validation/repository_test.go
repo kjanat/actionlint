@@ -17,7 +17,7 @@ func TestDeprecatedPopularActionKeepsInputAndOutputMetadata(t *testing.T) {
 	}
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: pos}}
-	findings := actioncheck.Repository(exec, actioncatalog.Lookup, nil)
+	findings := actioncheck.Repository(ownedActionFixture(exec), actioncatalog.Lookup, nil)
 	var deprecated, missingScript bool
 	for _, err := range findings {
 		deprecated = deprecated || strings.Contains(err.Message, "deprecated")

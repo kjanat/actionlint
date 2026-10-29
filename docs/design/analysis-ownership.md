@@ -21,6 +21,8 @@ resolve configuration, dispatch document languages or manage execution.
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `document`                      | Workflow/action outlines, references and serialization, without configuration dependencies.                         |
 | `internal/documentparse`        | Separate workflow and action decoders, syntax findings, outlines and source indexes.                                |
+| `internal/workflow/parser`      | Physical YAML admission, workflow decoding, scalar spans and comments.                                              |
+| `internal/workflow/declaration` | Immutable workflow/action declarations, bound source identities and detached value projections.                     |
 | `internal/checks`               | Builtin selection, configured analyzer registrations, pass configuration and synchronous provenance capture.        |
 | `internal/application`          | Input dispatch, resolved document configuration, registration validation, tool construction and resource ownership. |
 | `internal/workspace`            | Repository discovery and immutable Git index snapshots shared within a session.                                     |
@@ -52,7 +54,7 @@ Alias targets share declarations within that projection; alias-use provenance
 points to the original source nodes. AST parsing and expression-source collection
 consume the projection. Action metadata consumes its original graph through Cursor.
 Reusable-call metadata validates and decodes its original graph through Cursor;
-its recovered workflow facts come from a separate `workflow.Parse` projection.
+its recovered workflow facts come from a separate `parser.Parse` projection.
 
 Before semantic construction, the codec admits expansion on the physical graph
 using its shared session counters and resource policy. Workflow alias inspection
@@ -71,6 +73,32 @@ composite configurations together. It executes prepared script services and join
 resources before reading rule collectors, including after traversal failure.
 Adapter-construction failures are joined by the application before returning.
 Cleanup failures accompany partial findings and are reported once.
+
+Each composite invocation has its own traversal frame: source snapshot,
+configuration, invocation context, script scope and local-action resolver.
+The session owns graph construction and accumulated results. Resolver forks
+share consulted-source storage; joining a child transfers checkout and persistent
+environment effects according to its condition, background and failure policy.
+Nested traversal does not replace the caller's frame while callbacks run.
+Checkout chains use value handles over private storage; returned details are
+copies. Prepared batches share these immutable handles without cloning the chain.
+
+Workflow and action callbacks receive immutable declaration views. Parsing returns
+mutable decoded values; publication copies them before traversal. Source snapshots
+expose bound views and detached source indexes, without returning the decoded AST.
+Dependency scalar spans are computed during parsing and copied into declarations;
+view lookup does not decode source text.
+
+Invocation participants receive explicit entry, step, opaque-action and exit events.
+Composition exits successful entries in reverse order, including after cancellation
+or callback failure, and preserves errors from both traversal and exit. Findings are
+bound to the invocation source as each callback returns. Checker state stays private
+to each participant; executable analysis preserves job paths across nested calls.
+
+Configuration report values live in `config/report`. Result storage and rendering
+depend on that leaf contract, independently of configuration loading and resolution.
+Metadata parse findings carry their captured source revision when created; source
+admission never reconstructs that provenance from a display path.
 
 Script producers snapshot ownership before execution, independently of suppression
 selectors. Reference inference consumes explicit owners and source indexes; it does

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -98,7 +99,8 @@ func isCommandName(name string) bool {
 }
 
 var registeredCommandNames = sync.OnceValue(func() []string {
-	app := newCommandApp(&Command{})
+	// Only the static command tree is read; nothing runs under this context.
+	app := newCommandApp(context.Background(), &Command{})
 	names := []string{"help"}
 	for _, command := range app.root.Commands() {
 		names = append(names, command.Name())

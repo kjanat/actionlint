@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 
@@ -57,7 +58,7 @@ func TestPluginFallbackRespectsDocumentBackend(t *testing.T) {
 	}
 	cfg.Tools.Ruff.Backend = &toolconfig.Backend{Process: &toolconfig.Command{Executable: filepath.Join(t.TempDir(), "missing-ruff")}}
 	ctx.Config = cfg
-	if needed, err := registration.NeedsProcess(cfg, nil, false); err != nil || !needed || !registration.Required(ctx) {
+	if needed, err := registration.NeedsProcess(t.Context(), cfg, nil, false); err != nil || !needed || !registration.Required(ctx) {
 		t.Fatalf("explicit process must be required: needed=%t err=%v", needed, err)
 	}
 	if _, err := registration.Build(ctx); err == nil {
@@ -116,10 +117,9 @@ func TestRuffAdapterMapsBothEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stepView, err := snapshot.StepView(parsed.Jobs["test"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("test")
+	stepView := slices.Collect(job.Steps())[0]
 	ownedRun, _ := stepView.Run()
 	python := "python"
 	for _, endpoints := range []struct {

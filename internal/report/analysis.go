@@ -2,9 +2,9 @@
 package report
 
 import (
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	documentmodel "actionlint.kjanat.dev/v2/document"
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/runner"
 	"actionlint.kjanat.dev/v2/source"
@@ -22,7 +22,7 @@ type Analysis struct {
 	// Keys are captured aliases; values and byte slices belong to this result.
 	CapturedSources map[string]CapturedSource
 	Documents       documentmodel.Outlines
-	Configurations  []repoconfig.Report
+	Configurations  []configreport.Report
 	Inputs          []string
 	Rules           []rule.Descriptor
 }

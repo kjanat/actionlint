@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sync"
 	"time"
@@ -121,6 +122,18 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return all, outline, err
 	}
+	// The request's display spelling is an authorized entry address. Resolve it
+	// through this capture owner before sealing, so metadata aliases (including
+	// Windows drive spelling) need no post-publication filesystem fallback.
+	if path != "" {
+		displayAddress := path
+		if path != "<stdin>" && !filepath.IsAbs(path) {
+			displayAddress = filepath.Join(s.workingDir, path)
+		}
+		if _, err := s.captures.Canonical(s.ctx, displayAddress); err != nil {
+			return all, outline, err
+		}
+	}
 	composed := composition.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}, Configs: map[string]*repoconfig.Config{}}
 	if document.CanAnalyze() {
 		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, processes, actions, workflows, registrations, usedRules)
@@ -129,30 +142,12 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := map[string]workflowfacts.References{sourcePath: snapshot.CanonicalReferences()}
-	rejected := map[string]bool{}
-	for path, source := range composed.Sources {
-		sourceDocument, exists := composed.SourceDocuments[path]
-		if !exists {
-			analysisErr = errors.Join(analysisErr, fmt.Errorf("source %q has no admitted parse provenance", path))
-			sourceRejected(rejected, path, capture.Snapshot{})
-			continue
-		}
-		if err := s.captures.Verify(sourceDocument.Capture(), source); err != nil {
-			analysisErr = errors.Join(analysisErr, err)
-			sourceRejected(rejected, path, sourceDocument.Capture())
-			continue
-		}
-		nested, err := s.snapshots.Document(sourceDocument.Capture(), sourceDocument.Document())
-		if err != nil {
-			analysisErr = errors.Join(analysisErr, fmt.Errorf("admit source %q parse provenance: %w", path, err))
-			sourceRejected(rejected, path, sourceDocument.Capture())
-			continue
-		}
-		references[path] = nested.CanonicalReferences()
-	}
+	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.CanonicalReferences()}
+	rejected, sourceErr := s.admitSourceDocuments(composed, references)
+	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {
 		input, inputErr := composed.AnalyzerInput(path, sourcePath, content, document, references)
+		input.Revision, input.Coordinates = captured.Revision(), captured.Coordinates()
 		analysisErr = errors.Join(analysisErr, inputErr)
 		external, err := runDocumentAnalyzers(s.ctx, registrations, input, composed.Sources, usedRules)
 		all = append(all, external...)
@@ -172,6 +167,18 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, errors.Join(analysisErr, err)
 	}
+	// Policy reports suppression findings in the declaring document, such as a
+	// local action's metadata, under its working-directory-relative path. They
+	// need that document's reference to pass report admission.
+	reported := maps.Clone(references)
+	for document, index := range references {
+		if relative, err := filepath.Rel(s.workingDir, document); err == nil {
+			if _, exists := reported[relative]; !exists {
+				reported[relative] = index
+			}
+		}
+	}
+	diagnosticpolicy.InferReferences(all, sourcePath, reported, entryAliases...)
 	s.log("Found total", len(all), "errors in", time.Since(start).Milliseconds(), "ms for", path)
 	return all, outline, analysisErr
 }
@@ -220,6 +227,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		}
 	}}
 	toolContext.Document = document.AnalyzerSource(path, content, snapshot.Reference())
+	toolContext.Document.Revision, toolContext.Document.Coordinates = snapshot.Capture().Revision(), snapshot.Capture().Coordinates()
 	selected, err := s.buildChecks(context, toolContext, action)
 	if err != nil {
 		return result, err

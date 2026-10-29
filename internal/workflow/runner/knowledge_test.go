@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
@@ -30,7 +31,7 @@ func (p *testProvider) ResolveRunners(_ context.Context, r runnerapi.Request) ([
 type runnerFixture struct {
 	Jobs     map[string]*workflowlang.Job
 	Snapshot *documentparse.SourceSnapshot
-	Views    map[string]documentparse.JobView
+	Views    map[string]workflowdecl.JobView
 }
 
 func runnerWorkflow(t *testing.T, selection string) *runnerFixture {
@@ -54,7 +55,7 @@ func runnerSource(t *testing.T, source string) *runnerFixture {
 	if !available {
 		t.Fatal("workflow snapshot is unavailable")
 	}
-	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]documentparse.JobView{}}
+	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]workflowdecl.JobView{}}
 	for id := range fixture.Jobs {
 		view, ok := workflow.JobsAt(id)
 		if !ok {

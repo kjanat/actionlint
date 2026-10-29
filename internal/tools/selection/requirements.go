@@ -75,6 +75,16 @@ func configEnabled(name string, config *repoconfig.Config) bool {
 
 // ConfigCandidates enumerates tool-selection states across configuration overrides.
 func ConfigCandidates(name string, config *repoconfig.Config) ([]*repoconfig.Config, error) {
+	return ConfigVariants(config, func(config *repoconfig.Config) (toolGateState, error) {
+		return toolGateConfig(name, config), nil
+	})
+}
+
+// ConfigVariants enumerates the configurations a referenced action.yml can
+// resolve to under config's overrides, keeping one variant per distinct key.
+// The key decides which differences matter to the caller: tool selection
+// compares gate state, a document analyzer compares what it negotiates.
+func ConfigVariants[K comparable](config *repoconfig.Config, key func(*repoconfig.Config) (K, error)) ([]*repoconfig.Config, error) {
 	if config == nil {
 		return []*repoconfig.Config{nil}, nil
 	}
@@ -102,12 +112,15 @@ func ConfigCandidates(name string, config *repoconfig.Config) ([]*repoconfig.Con
 			}
 			candidates[i] = resolved
 		}
-		seen := make(map[toolGateState]bool, len(candidates))
+		seen := make(map[K]bool, len(candidates))
 		unique := candidates[:0]
 		for _, candidate := range candidates {
-			key := toolGateConfig(name, candidate)
-			if !seen[key] {
-				seen[key] = true
+			k, err := key(candidate)
+			if err != nil {
+				return nil, err
+			}
+			if !seen[k] {
+				seen[k] = true
 				unique = append(unique, candidate)
 			}
 		}

@@ -28,9 +28,9 @@ func RunnerDirectoryPath(path string, platform runnerlang.Platform) (string, boo
 		return strings.ReplaceAll(path, `\`, "/"), true
 	case runnerlang.MacOrLinux:
 		return path, runtime.GOOS != "windows"
-	default:
-		return "", false
+	case runnerlang.Any:
 	}
+	return "", false
 }
 
 // LocalDirectoryPath resolves runner paths whose syntax matches the analysis host.

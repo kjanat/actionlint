@@ -4,6 +4,7 @@ package syntax
 import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
 type (
@@ -101,5 +102,5 @@ const (
 // Parse returns a recovered syntax tree and all parser findings. A non-nil tree
 // may accompany findings; parsing alone does not run workflow rules.
 func Parse(source []byte) (*Workflow, []diagnostic.Diagnostic) {
-	return workflowlang.ParseDocument(source)
+	return workflowparser.ParseDocument(source)
 }

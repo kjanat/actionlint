@@ -3,7 +3,9 @@ package builtin
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
@@ -14,29 +16,28 @@ import (
 type Invocation struct {
 	Context    invocation.Context
 	ActionPath string
-	Actions    *actionlocal.Resolver
+	Config     *repoconfig.Config
+	Path       string
 	Source     *documentparse.SourceSnapshot
 }
 
-type CompositeParticipant interface {
+// InvocationParticipant observes resolved action execution without producing child rules.
+type InvocationParticipant interface {
 	workflowvisit.Rule
-	ForComposite(Invocation) (workflowvisit.Rule, error)
+	EnterInvocation(Invocation) error
+	VisitInvocationStep(workflowdecl.StepView) error
+	VisitOpaqueAction(workflowdecl.StepView) error
+	LeaveInvocation(invocation.Context) error
 }
 
-type (
-	CheckoutParticipant interface{ CheckoutPaths() *execution.Paths }
-	CompositeJoiner     interface {
-		JoinCompositeResult(invocation.Context, workflowvisit.Rule)
-	}
-)
+type CheckoutParticipant interface{ CheckoutPaths() *execution.Paths }
 
 type (
-	InvocationParticipant interface{ DeferActionInvocation() bool }
-	MetadataParticipant   interface {
+	MetadataParticipant interface {
 		workflowvisit.Rule
 		CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error
 		ForMetadata(*actionlocal.Resolver) workflowvisit.Rule
 	}
 )
 
-var _ CompositeParticipant = (*RuleExecutableBit)(nil)
+var _ InvocationParticipant = (*RuleExecutableBit)(nil)

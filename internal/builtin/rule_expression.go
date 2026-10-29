@@ -7,14 +7,13 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowexpr "actionlint.kjanat.dev/v2/internal/workflow/expressions"
+	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/internal/workflow/runner"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleExpression connects workflow expression checking to host lookups and options.
@@ -22,33 +21,73 @@ type RuleExpression struct {
 	*workflowexpr.Checker
 	ruleLogger
 	Configuration
-	compositeScripts bool
-	source           *documentparse.SourceSnapshot
+	frames   []expressionInvocation
+	findings []*findingmodel.Finding
 }
 
-func (r *RuleExpression) ForComposite(invocation Invocation) (workflowvisit.Rule, error) {
-	child := &RuleExpression{Checker: workflowexpr.New(workflowexpr.Dependencies{SourceSnapshot: invocation.Source}, workflowExpressionOptions(r.Config())), compositeScripts: true, source: invocation.Source}
-	child.SetConfig(r.Config())
-	return child, nil
+type expressionInvocation struct {
+	scope  Invocation
+	parent *workflowexpr.Checker
 }
 
-func (r *RuleExpression) VisitStep(step *workflowlang.Step) error {
-	if r.compositeScripts {
-		r.CheckCompositeScript(step)
+func (r *RuleExpression) EnterInvocation(scope Invocation) error {
+	if !scope.Context.Valid() || scope.Source == nil {
+		return invocation.ErrForeignContext
+	}
+	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})
+	r.Checker = workflowexpr.New(workflowexpr.Dependencies{}, workflowExpressionOptions(scope.Config))
+	return nil
+}
+func (r *RuleExpression) LeaveInvocation(context invocation.Context) error {
+	if len(r.frames) == 0 || r.frames[len(r.frames)-1].scope.Context != context {
+		return invocation.ErrForeignContext
+	}
+	frame := r.frames[len(r.frames)-1]
+	r.Checker = frame.parent
+	r.frames = r.frames[:len(r.frames)-1]
+	return nil
+}
+func (r *RuleExpression) collect(visit func() error) error {
+	before := len(r.Findings())
+	err := visit()
+	added := r.Findings()[before:]
+	r.findings = append(r.findings, added...)
+	return err
+}
+func (r *RuleExpression) VisitStep(step workflowdecl.StepView) error {
+	return r.collect(func() error { return r.Checker.VisitStep(step) })
+}
+func (r *RuleExpression) VisitInvocationStep(step workflowdecl.StepView) error {
+	return r.collect(func() error { r.CheckCompositeScript(step); return nil })
+}
+func (r *RuleExpression) VisitOpaqueAction(step workflowdecl.StepView) error {
+	if len(r.frames) == 0 {
+		// Workflow steps already receive the full expression pass before resolution.
 		return nil
 	}
-	return r.Checker.VisitStep(step)
+	return r.VisitInvocationStep(step)
+}
+func (r *RuleExpression) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
+	return r.collect(func() error { return r.Checker.VisitWorkflowPre(view) })
+}
+func (r *RuleExpression) VisitWorkflowPost(view workflowdecl.WorkflowView) error {
+	return r.collect(func() error { return r.Checker.VisitWorkflowPost(view) })
+}
+func (r *RuleExpression) VisitJobPre(view workflowdecl.JobView) error {
+	return r.collect(func() error { return r.Checker.VisitJobPre(view) })
+}
+func (r *RuleExpression) VisitJobPost(view workflowdecl.JobView) error {
+	return r.collect(func() error { return r.Checker.VisitJobPost(view) })
 }
 
 func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *RuleExpression {
-	return newRuleExpression(actionsCache, workflowCache, nil, nil)
+	return newRuleExpression(actionsCache, workflowCache, nil)
 }
 
-func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge, source *documentparse.SourceSnapshot) *RuleExpression {
-	r := &RuleExpression{tag: "expression", source: source}
+func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge) *RuleExpression {
+	r := &RuleExpression{tag: "expression"}
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
-		SourceSnapshot: source,
-		Runners:        runners,
+		Runners: runners,
 		LocalAction: func(spec string) (*actionmeta.Metadata, error) {
 			if actionsCache == nil {
 				return nil, nil
@@ -72,7 +111,7 @@ func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *c
 
 func (r *RuleExpression) Name() string                  { return "expression" }
 func (r *RuleExpression) Description() string           { return builtinRuleBase("expression").DescriptionText }
-func (r *RuleExpression) Errs() []*findingmodel.Finding { return r.Findings() }
+func (r *RuleExpression) Errs() []*findingmodel.Finding { return r.findings }
 func (r *RuleExpression) SetConfig(config *repoconfig.Config) {
 	r.Configuration.SetConfig(config)
 	r.Configure(workflowExpressionOptions(config))

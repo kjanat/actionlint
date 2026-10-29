@@ -78,6 +78,9 @@ func (s *Store) Lookup(path string) (Snapshot, State, error) {
 		return Snapshot{}, current, e.err
 	case Conflicted:
 		return Snapshot{}, current, e.conflict
+	case Absent, Pending:
+		// Absent and pending documents have no snapshot or error.
+		fallthrough
 	default:
 		return Snapshot{}, current, nil
 	}
@@ -98,6 +101,21 @@ func (s *Store) Sources() ([]Source, error) {
 		rows[index].Aliases = slices.Clone(rows[index].Aliases)
 	}
 	return rows, nil
+}
+
+// Revision returns an exact captured revision only after sealing. It performs
+// no metadata or content IO and never admits failed or conflicted documents.
+func (s *Store) Revision(revision source.Revision) (Snapshot, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.sealed || !revision.Valid() {
+		return Snapshot{}, false
+	}
+	e := s.docs[revision.Document()]
+	if e == nil || state(e) != Captured || e.value.revision != revision {
+		return Snapshot{}, false
+	}
+	return s.snapshot(e), true
 }
 
 // ReadAliases lists requested Read aliases whose documents sealed as Captured,
@@ -136,6 +154,8 @@ func (s *Store) sourceTable() []Source {
 			row.Error, row.Code, row.Message = e.err, e.err.Code(), e.err.Error()
 		case Conflicted:
 			row.Error, row.Code, row.Message = e.conflict, e.conflict.Code(), e.conflict.Error()
+		case Absent, Pending:
+			// Absent and pending rows carry no capture payload.
 		}
 		rows = append(rows, row)
 	}

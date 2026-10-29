@@ -3,6 +3,7 @@ package execution
 import (
 	"errors"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -76,17 +77,14 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			steps, _ = snapshot.ActionSteps()
-			for _, step := range steps {
-				if _, ok := step.Exec.(*workflowlang.ExecAction); !ok {
+			body, _ := snapshot.ActionView()
+			for step := range body.Steps() {
+				if _, ok := step.Action(); !ok {
 					continue
 				}
-				view, err := snapshot.StepView(step)
-				if err != nil {
-					t.Fatal(err)
-				}
-				facts, err := CallFacts(view, runnerlang.MacOrLinux)
-				if err != nil || facts.Step.Line < 1 || facts.Step.Column < 1 || facts.Step.Line != step.Pos.Line || facts.Step.Column != step.Pos.Col {
+				position, present := step.Pos()
+				facts, err := CallFacts(step, runnerlang.MacOrLinux)
+				if err != nil || !present || facts.Step.Line < 1 || facts.Step.Column < 1 || facts.Step.Line != position.Line || facts.Step.Column != position.Col {
 					t.Fatalf("metadata call position: %+v error=%v", facts.Step, err)
 				}
 			}
@@ -127,7 +125,7 @@ func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 func TestActionEntryInitializesPathsAndPreservesCheckerFlags(t *testing.T) {
 	parent := NewExecutableChecker(ExecutableContext{})
 	parent.jobEnv, parent.jobGitEnv, parent.jobPathUnknown, parent.skipFindings = true, true, true, true
-	child := parent.ForkComposite(testEntryContext(t), "action-source", Paths{ActionRunnerPath: "stale", ActionIndependent: true}, nil)
+	child := parent.ForkComposite(testEntryContext(t), "action-source", Paths{ActionRunnerPath: "stale", ActionIndependent: true})
 	if child.paths.ActionPath != "action-source" || child.paths.ActionRunnerPath != "" || child.paths.ActionIndependent {
 		t.Fatalf("entry inherited caller origin: %+v", child.paths)
 	}
@@ -144,7 +142,7 @@ func TestEmptyUsesAndAbsentUsesRetainDistinctOriginSemantics(t *testing.T) {
 			facts.Uses = ""
 		}
 		context := testFactsContext(t, facts)
-		paths := Paths{Workspace: root, Placements: &CheckoutPlacement{Directory: Directory{Kind: DirectoryKnown}, CaseInsensitive: true}}
+		paths := Paths{Workspace: root, Placements: NewCheckoutPlacement(Checkout{Directory: Directory{Kind: DirectoryKnown}, CaseInsensitive: true}, CheckoutPlacement{})}
 		ActionOrigin(&paths, context, filepath.Join(root, "local", "action"))
 		want := ""
 		if present {
@@ -167,10 +165,9 @@ func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := snapshot.StepView(parsed.Workflow.Jobs["é"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("é")
+	view := slices.Collect(job.Steps())[0]
 	facts, err := CallFacts(view, runnerlang.MacOrLinux)
 	prefix, _, found := strings.Cut(line, "{uses")
 	if !found {
@@ -193,10 +190,9 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	step, err := snapshot.StepView(parsed.Workflow.Jobs["test"].Steps[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("test")
+	step := slices.Collect(job.Steps())[0]
 	action, present := step.Action()
 	if !present {
 		t.Fatal("action view unavailable")
@@ -251,10 +247,9 @@ func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.
 	if err != nil {
 		return invocation.Context{}, err
 	}
-	view, err := snapshot.StepView(parsed.Workflow.Jobs["test"].Steps[0])
-	if err != nil {
-		return invocation.Context{}, err
-	}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("test")
+	view := slices.Collect(job.Steps())[0]
 	facts, err := CallFacts(view, platform)
 	if err != nil {
 		return invocation.Context{}, err

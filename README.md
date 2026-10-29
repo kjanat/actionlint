@@ -140,10 +140,10 @@ go install actionlint.kjanat.dev/v2/cmd/actionlint@latest
 
 <sub><em><code>actionlint.kjanat.dev/v2</code> is a <a href="https://pkg.go.dev/cmd/go#hdr-Fully_qualified_import_paths" title="Fully-qualified import paths">Go vanity import path</a>. The Go toolchain resolves it to <a href="https://github.com/kjanat/actionlint" title="https://github.com/kjanat/actionlint">this GitHub repository</a>, where the source, releases, and issue tracker live. Further reading available here: <a href="https://go.dev/ref/mod#goproxy-protocol" title="GOPROXY protocol">GOPROXY protocol</a>. Check for yourself: </em><code>curl https://proxy.golang.org/actionlint.kjanat.dev/v2/@latest</code></sub>
 
-Basically all you need to do is run the `actionlint` command in your repository. actionlint automatically detects workflows and checks errors. actionlint focuses on finding out mistakes. It tries to catch errors as much as possible and make false positives as minimal as possible.
+Run `actionlint check` in your repository to discover and check workflows and action manifests. Bare `actionlint` shows help and exits 0; `actionlint check` exits 3 when there is nothing to analyze.
 
 ```sh
-actionlint
+actionlint check
 ```
 
 Another option to try actionlint is [the online playground][playground]. Your browser can run actionlint through WebAssembly.

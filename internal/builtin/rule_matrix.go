@@ -4,9 +4,8 @@ import (
 	"errors"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -14,20 +13,15 @@ import (
 type RuleMatrix struct {
 	workflowvisit.Base
 	Configuration
-	snapshot *documentparse.SourceSnapshot
 }
 
-func NewRuleMatrix(snapshot *documentparse.SourceSnapshot) *RuleMatrix {
-	return &RuleMatrix{Base: builtinRuleBase("matrix"), snapshot: snapshot}
+func NewRuleMatrix() *RuleMatrix {
+	return &RuleMatrix{Base: builtinRuleBase("matrix")}
 }
 
-func (r *RuleMatrix) VisitJobPre(job *workflowlang.Job) error {
-	if r.snapshot == nil {
-		return errors.New("matrix rule requires a source snapshot")
-	}
-	view, err := r.snapshot.JobView(job)
-	if err != nil {
-		return err
+func (r *RuleMatrix) VisitJobPre(view workflowdecl.JobView) error {
+	if !view.Present() {
+		return errors.New("matrix rule requires a job declaration")
 	}
 	for _, diagnostic := range view.Strategy().MatrixResolution().Check(repoconfig.DiagnosticLevel(r.config, "mixed-type-matrix-filters") != "off") {
 		r.Findings = append(r.Findings, findingmodel.FromDiagnostic(diagnostic))

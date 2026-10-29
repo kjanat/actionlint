@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 )
@@ -45,7 +47,7 @@ jobs:
     steps:
       - run: echo ok
 `
-			workflow, parseErrors := workflowlang.Parse([]byte(source))
+			workflow, parseErrors := workflowparser.Parse([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}

@@ -242,6 +242,8 @@ func safeTruthyScriptResult(expr Node, scalarArgument bool, safeReference func(N
 		return safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
 	case LogicalOpNodeKindOr:
 		return safeTruthyScriptResult(n.Left, scalarArgument, safeReference) && safeTruthyScriptResult(n.Right, scalarArgument, safeReference)
+	case LogicalOpNodeKindInvalid:
+		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }
@@ -265,6 +267,8 @@ func safeFalsyScriptResult(expr Node, scalarArgument bool, safeReference func(No
 		return safeFalsyScriptResult(n.Left, scalarArgument, safeReference) && safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
 	case LogicalOpNodeKindOr:
 		return safeFalsyScriptResult(n.Right, scalarArgument, safeReference)
+	case LogicalOpNodeKindInvalid:
+		// Invalid operators use the generic check below.
 	}
 	return safeScriptExpression(expr, scalarArgument, safeReference)
 }

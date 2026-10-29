@@ -95,12 +95,12 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot *documentpa
 	baseScope := *collection.Scopes[0]
 	collection.Scopes = []*Scope{{Context: builder.RootContext()}}
 	collection.Scripts = nil
-	steps, _ := snapshot.ActionSteps()
+	body, _ := snapshot.ActionView()
+	workflow, _ := root.WorkflowView()
+	job, _ := workflow.Job("build")
+	steps := slices.Collect(job.Steps())
 	for i, deployment := range deployments {
-		site, err := root.StepReference(document.Workflow.Jobs["build"].Steps[i])
-		if err != nil {
-			t.Fatal(err)
-		}
+		site := steps[i].Reference()
 		ticket, err := builder.Begin(builder.RootContext(), site, invocation.Facts{Uses: "$/source", HasUses: true, Condition: invocation.ConditionEnabled})
 		if err != nil {
 			t.Fatal(err)
@@ -120,11 +120,8 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot *documentpa
 		scope.Context, scope.Deployment = owner, deployment
 		workflowexecution.ActionOrigin(&scope.Paths, owner, deployment.ActionPath())
 		collection.Scopes = append(collection.Scopes, &scope)
-		for _, step := range steps {
-			ref, err := snapshot.StepReference(step)
-			if err != nil {
-				t.Fatal(err)
-			}
+		for step := range body.Steps() {
+			ref := step.Reference()
 			id, err := builder.AddScript(owner, ref, invocation.ScriptRun, "")
 			if err != nil {
 				t.Fatal(err)
@@ -236,12 +233,13 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declaration, exists := collection.Declarations.Step(graph.Scripts()[0].Declaration)
-	if !exists {
+	declaration, exists := collection.Declarations.Declaration(graph.Scripts()[0].Declaration)
+	position, hasPosition := declaration.Pos()
+	if !exists || !hasPosition {
 		t.Fatal("fixture source absent")
 	}
-	owner := &findingmodel.Owner{Job: "test", Step: declaration.Step.Pos}
-	origin := findingmodel.StepOrigin("test", declaration.Step)
+	owner := &findingmodel.Owner{Job: "test", Step: &position}
+	origin := &findingmodel.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
 	for name, adapter := range map[string]Analyzer{
 		"fact": FactAnalyzer{Analyzer: partialFactAnalyzer{t: t, failure: failure}},

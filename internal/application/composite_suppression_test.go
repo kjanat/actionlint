@@ -38,7 +38,7 @@ jobs:
       - run: echo ok
 `)
 	project := workspace.Identity(root)
-	actions := actionlocal.NewCache(projectRoot(project), nil)
+	actions := actionlocal.NewCache(t.Context(), projectRoot(project), nil)
 	workflows := calls.NewCache(project.RootDir(), root, nil)
 	process := analyzerhost.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: fsread.New(t.Context(), nil, nil), gitModes: &gitModes{}}

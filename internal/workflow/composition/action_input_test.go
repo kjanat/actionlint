@@ -21,7 +21,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 	} {
 		for _, collect := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/%s/collect=%t", tc.action, tc.selector, collect), func(t *testing.T) {
-				analysis := compositeAnalyzer{collectScripts: collect, scriptInputs: []analyzer.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}
+				analysis := compositeAnalyzer{compositionSession: &compositionSession{collectScripts: collect, scriptInputs: []analyzer.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}}
 				content := []byte(fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n        with: {code: 'missing()'}\n", tc.action))
 				parsed := documentparse.Workflow("fixture.yml", content)
 				snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -30,10 +30,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 					t.Fatal(err)
 				}
 				startWorkflowEntry(t, &analysis, snapshot)
-				step, err := snapshot.StepView(parsed.Workflow.Jobs["test"].Steps[0])
-				if err != nil {
-					t.Fatal(err)
-				}
+				step := workflowStepViews(t, workflowView(t, snapshot), "test")[0]
 				action, present := step.Action()
 				if !present {
 					t.Fatal("fixture has no action")

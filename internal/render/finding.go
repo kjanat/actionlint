@@ -43,6 +43,9 @@ func FindingOf(d diagnostic.Diagnostic, source []byte) Finding {
 }
 
 func (f Finding) line() (string, bool) {
+	if f.Source != nil {
+		return sourcemap.DiagnosticLine(f.Source, f.Diagnostic.Start.Line, f.RawScript)
+	}
 	if f.canonicalSnippet != "" {
 		return f.canonicalSnippet, true
 	}
@@ -100,7 +103,7 @@ func (f Finding) TemplateFields() *TemplateFields {
 }
 
 // PrettyPrint writes the location, message, rule and an indicated source line.
-// A nil Source omits the snippet. Set fatih/color.NoColor to disable colors.
+// Without source bytes, the diagnostic's captured snippet is used when available.
 func (f Finding) PrettyPrint(w io.Writer) {
 	d := f.Diagnostic
 	_, _ = yellow.Fprint(w, d.Path)

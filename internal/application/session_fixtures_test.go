@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -16,7 +17,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 	if err != nil {
 		t.Skip("Git required")
 	}
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	command := func(args ...string) {
 		t.Helper()
 		if out, err := workspace.GitCommand(t.Context(), git, root, args...).CombinedOutput(); err != nil {

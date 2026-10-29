@@ -3,13 +3,14 @@ package documentparse
 import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
 // actionStep decodes an admitted composite step with its own declared shell.
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
-func actionStep(metadata *actionmeta.Step, parser *workflowlang.Parser) *workflowlang.Step {
+func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *workflowlang.Step {
 	pos := &workflowlang.Pos{Line: metadata.Line, Col: metadata.Column}
 	opaque := &workflowlang.Step{Pos: pos, Exec: &workflowlang.ExecAction{}}
 	if metadata.Node == nil || !metadata.IsMapping {

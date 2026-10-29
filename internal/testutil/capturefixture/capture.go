@@ -90,8 +90,10 @@ func (f *CapturedSources) Capture(path string, content []byte, coordinates sourc
 // CloseCaptures joins fixture IO without inheriting the test's cleanup cancellation.
 func CloseCaptures(t testing.TB, store *capture.Store) {
 	t.Helper()
+	// t.Context is canceled before cleanup runs; keep its values, drop its cancellation.
+	parent := context.WithoutCancel(t.Context())
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(parent, time.Second)
 		defer cancel()
 		if err := store.Close(ctx); err != nil {
 			t.Error(err)

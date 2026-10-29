@@ -51,8 +51,10 @@ type Edit struct {
 
 // Related identifies another declaration relevant to a finding.
 type Related struct {
-	Message string   `json:"message"`
-	Path    string   `json:"path"`
-	Start   Position `json:"start"`
-	End     Position `json:"end"`
+	Revision    source.Revision    `json:"revision,omitzero"`
+	Coordinates source.Coordinates `json:"coordinates,omitempty"`
+	Message     string             `json:"message"`
+	Path        string             `json:"path"`
+	Start       Position           `json:"start"`
+	End         Position           `json:"end"`
 }

@@ -6,7 +6,7 @@ import (
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
 func TestKnownExpressionRunnerLabels(t *testing.T) {
@@ -32,7 +32,7 @@ func TestKnownExpressionRunnerLabels(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runsOn + "\n    steps:\n      - run: echo ok\n"
-			_, parseErrors := workflowlang.Parse([]byte(source))
+			_, parseErrors := workflowparser.Parse([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}

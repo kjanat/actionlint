@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
@@ -73,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ` + tc.value + "\n")
-			workflow, errs := workflowlang.ParseDocument(source)
+			workflow, errs := workflowparser.ParseDocument(source)
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

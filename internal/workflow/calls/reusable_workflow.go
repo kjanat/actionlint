@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
@@ -24,7 +26,7 @@ func expectedMapping(where string, n *syntax.Node) error {
 	return fmt.Errorf(
 		"yaml: %s must be mapping node but %s node was found at line:%d, col:%d",
 		where,
-		workflowlang.NodeKindName(n.Kind),
+		workflowparser.NodeKindName(n.Kind),
 		n.Line,
 		n.Column,
 	)
@@ -246,7 +248,7 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 	}
 	captured, err := c.captures.Read(c.ctx, file, source.YAML)
 	if err != nil {
-		err = fmt.Errorf("could not read reusable workflow file for %q: %w", spec, err)
+		err = &capture.ReadError{Context: fmt.Sprintf("could not read reusable workflow file for %q", spec), Err: err}
 		c.Store(spec, nil, err)
 		return nil, err
 	}

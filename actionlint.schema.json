@@ -8930,7 +8930,7 @@
                 "markdownDescription": "Plugin alias, repository with optional release tag, or HTTPS artifact URL pinned with #sha256=<64 hex digits>.",
                 "examples": [
                   "shellcheck",
-                  "kjanat/actionlint-plugin-shellcheck@v0.1.1",
+                  "kjanat/actionlint-plugin-shellcheck@v0.2.0",
                   "gitlab.com/group/plugin",
                   "https://example.com/plugin.wasm#sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 ],

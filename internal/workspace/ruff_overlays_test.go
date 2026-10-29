@@ -36,7 +36,7 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		session, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
+		session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -73,7 +73,7 @@ func TestRuffShorthandOverlay(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -27,7 +27,7 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 				}, nil)
 				cache := newCapturedLocalCache(t, t.TempDir(), nil, reader)
 				rule := NewRuleAction(cache)
-				err := rule.VisitStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &workflowlang.Pos{Line: 1, Col: 1}}}})
+				err := rule.VisitStep(ownedStepFixture(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}))
 				if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 					t.Fatalf("interruption became a lint finding: error=%v findings=%+v", err, rule.Errs())
 				}
@@ -124,7 +124,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	rule := NewRuleAction(newCapturedLocalCache(t, root, &cacheLog))
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
-		if err := rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}); err != nil {
+		if err := rule.checkLocalAction("./inner", "./inner", ownedActionFixture(&workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}})); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -144,7 +144,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	rule := NewRuleAction(cache)
 	for i := 1; i <= 3; i++ {
 		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}
-		if err := rule.checkLocalAction("./inner", "./inner", action); err != nil {
+		if err := rule.checkLocalAction("./inner", "./inner", ownedActionFixture(action)); err != nil {
 			t.Fatal(err)
 		}
 	}

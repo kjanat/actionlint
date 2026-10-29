@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -16,7 +18,7 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 				if shell == "" {
 					key = "jobs.<job_id>.steps.with"
 				}
-				rule.checkScriptString(&workflowlang.String{Value: "const value = ${{ " + expression + " }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}, key, shell)
+				rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "const value = ${{ " + expression + " }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}), key, shell)
 				positionDependent := expression == "github.sha" || expression == "hashFiles('**/go.sum')"
 				unsafe := positionDependent || shell != "bash" && shell != "sh"
 				findings := rule.Findings()
@@ -30,13 +32,14 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 
 func TestGitHubScriptDoesNotUseShellWordProof(t *testing.T) {
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v8\n        with:\n          script: |\n            const repo = ${{ github.repository }}\n"
-	workflow, errs := workflowlang.Parse([]byte(source))
+	workflow, errs := workflowparser.Parse([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	rule := newTestChecker()
-	job := workflow.Jobs["test"]
-	for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0])} {
+	view := ownedWorkflowFixture(workflow)
+	job := testJob(t, view, "test")
+	for _, err := range []error{rule.VisitWorkflowPre(view), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0))} {
 		if err != nil {
 			t.Fatal(err)
 		}

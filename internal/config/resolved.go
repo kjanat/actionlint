@@ -3,7 +3,7 @@ package config
 import (
 	"strings"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // configOrigins asks the YAML decoder to resolve each mapping, including merge precedence.

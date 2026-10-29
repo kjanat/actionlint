@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/mapping"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
@@ -34,23 +33,19 @@ func scriptLiteralProof(value string) scriptValueProof {
 }
 
 func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
-	if rule.scriptEnv == nil {
+	if !rule.scriptEnv.Present() {
 		return false
 	}
-	semantic := mapping.Resolve(workflowlang.EnvMappingView(rule.scriptEnv)).Lookup(name)
+	semantic := rule.scriptEnv.Mapping().Lookup(name)
 	text, known := semantic.ScalarString()
 	return known && scriptLiteralProof(text).safe(argument)
 }
 
-func (rule *Checker) matrixResolution(strategy *workflowlang.Strategy) matrixcheck.Resolution {
-	if strategy == nil || rule.dependencies.SourceSnapshot == nil || rule.scriptJob == nil {
+func (rule *Checker) matrixResolution(strategy workflowdecl.StrategyView) matrixcheck.Resolution {
+	if !strategy.Present() {
 		return matrixcheck.Resolution{}
 	}
-	job, err := rule.dependencies.SourceSnapshot.JobView(rule.scriptJob)
-	if err != nil {
-		return matrixcheck.Resolution{}
-	}
-	return job.Strategy().MatrixResolution()
+	return strategy.MatrixResolution()
 }
 
 // safeMatrixScriptReferences proves individual paths across all declared axis
@@ -143,6 +138,8 @@ func matrixScriptValuePaths(path string, item value.Value, safe map[string]scrip
 		// A wildcard can select no value or a missing member, so it is only
 		// proved safe when the caller also proves shell argument position.
 		safe[path+"[*]"] = min(allSafe, scriptArgumentOnly)
+	case value.KindUnknown:
+		return false
 	default:
 		return false
 	}

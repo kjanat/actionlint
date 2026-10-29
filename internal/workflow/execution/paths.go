@@ -2,6 +2,7 @@ package execution
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -33,7 +34,7 @@ type Paths struct {
 	ActionPath        string
 	ActionRunnerPath  string
 	ActionIndependent bool
-	Placements        *CheckoutPlacement
+	Placements        CheckoutPlacement
 	CaseInsensitive   bool
 	Reader            *fsread.Reader
 }
@@ -149,22 +150,26 @@ func (paths Paths) Resolve(directory Directory) Directory {
 
 func (paths Paths) DirectoryOrigin(directory Directory) Paths {
 	if directory.Kind == DirectoryActionKnown {
-		paths.Checkout, paths.CheckoutUnknown, paths.Placements = "", false, nil
+		paths.Checkout, paths.CheckoutUnknown, paths.Placements = "", false, CheckoutPlacement{}
 	}
 	return paths
 }
 
 func (paths Paths) CheckoutFor(relativePath string) (string, bool) {
-	if paths.Placements != nil {
+	if paths.Placements.Present() {
 		placement := paths.Placements.Matching(relativePath)
-		if placement == nil || placement.Directory.Kind != DirectoryKnown {
+		if !placement.Present() || placement.Details().Directory.Kind != DirectoryKnown {
 			return "", false
 		}
-		if placement.CaseInsensitive && placement.Directory.Path != "" && placement.Directory.Path != "." {
+		if placement.Details().CaseInsensitive && placement.Details().Directory.Path != "" && placement.Details().Directory.Path != "." {
+			prefix := path.Clean(placement.Details().Directory.Path)
+			if prefix == "." {
+				return prefix, true
+			}
 			// Keep the caller's prefix spelling for host-side relative-path mapping.
-			return filepath.ToSlash(filepath.Clean(relativePath))[:len(placement.Directory.Path)], true
+			return path.Clean(relativePath)[:len(prefix)], true
 		}
-		return placement.Directory.Path, true
+		return placement.Details().Directory.Path, true
 	}
 	return paths.Checkout, !paths.CheckoutUnknown
 }
@@ -200,8 +205,8 @@ func (paths Paths) AnalysisPath(value string) (string, bool) {
 		return "", false
 	}
 	caseInsensitive := paths.CaseInsensitive
-	if placement := paths.Placements.Matching(relativePath); placement != nil {
-		caseInsensitive = placement.CaseInsensitive
+	if placement := paths.Placements.Matching(relativePath); placement.Present() {
+		caseInsensitive = placement.Details().CaseInsensitive
 	}
 	relativePath = filepath.FromSlash(relativePath)
 	if checkout != "" {

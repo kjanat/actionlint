@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // Backend selects one transport: a native process or a core WebAssembly engine.

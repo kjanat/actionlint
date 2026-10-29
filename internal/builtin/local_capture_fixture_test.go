@@ -24,7 +24,7 @@ func newCapturedLocalCache(t testing.TB, root string, debug io.Writer, readers .
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := actionlocal.NewCache(root, debug)
+	cache := actionlocal.NewCache(t.Context(), root, debug)
 	cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: root, Reader: reader, CustomReader: len(readers) != 0})
 	capturefixture.CloseCaptures(t, store)
 	return cache

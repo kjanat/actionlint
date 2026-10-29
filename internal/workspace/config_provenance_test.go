@@ -40,7 +40,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 					t.Fatal(err)
 				}
 				var report repoconfig.Report
-				session, err := workspace.New(workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
+				session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -51,7 +51,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 					t.Fatalf("overlay changed source warnings: %+v, want %+v", report.Inspection.Warnings, inspection.Warnings)
 				}
 				var log bytes.Buffer
-				session, err = workspace.New(workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, LogWriter: &log})
+				session, err = workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, LogWriter: &log})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -88,7 +88,7 @@ config-secrets: [SECRET]
 				overlays = append(overlays, overlay)
 			}
 			var report repoconfig.Report
-			session, err := workspace.New(workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -111,7 +111,7 @@ config-secrets: [SECRET]
 				t.Fatalf("inherited warning=%+v", warnings)
 			}
 			var log bytes.Buffer
-			session, err = workspace.New(workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, LogWriter: &log})
+			session, err = workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, LogWriter: &log})
 			if err != nil {
 				t.Fatal(err)
 			}

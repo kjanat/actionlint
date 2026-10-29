@@ -19,8 +19,8 @@ func matrixTestWorkflow(t *testing.T, source string) (*workflowlang.Workflow, *d
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, ok := snapshot.Workflow()
-	if !ok {
+	workflow := document.Workflow
+	if workflow == nil {
 		t.Fatal("workflow snapshot unavailable")
 	}
 	return workflow, snapshot

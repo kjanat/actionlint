@@ -8,7 +8,6 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
@@ -48,36 +47,30 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			if mappedFirst {
 				first, second = second, first
 			}
-			analysis := &compositeAnalyzer{ctx: t.Context(), collectScripts: true, actions: actionlocal.NewResolver(nil, nil)}
+			analysis := &compositeAnalyzer{compositionSession: &compositionSession{ctx: t.Context(), collectScripts: true}, actions: actionlocal.NewResolver(nil, nil)}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/source\n      - uses: $/source\n")
 			document := documentparse.Workflow("fixture.yml", content)
 			if len(document.Findings) != 0 {
 				t.Fatal(document.Findings)
 			}
-			workflow := document.Workflow
-			calls := workflow.Jobs["test"].Steps
 			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			rootSnapshot, err := snapshots.Document("fixture.yml", content, document)
 			if err != nil {
 				t.Fatal(err)
 			}
+			workflow := workflowView(t, rootSnapshot)
+			calls := workflowStepViews(t, workflow, "test")
 			startWorkflowEntry(t, analysis, rootSnapshot)
 			if err := analysis.beginWorkflow(workflow); err != nil {
 				t.Fatal(err)
 			}
 			for i, target := range []*actionmeta.Metadata{first, second} {
-				view, err := analysis.sourceSnapshot.StepView(calls[i])
-				if err != nil {
-					t.Fatal(err)
-				}
+				view := calls[i]
 				facts, err := execution.CallFacts(view, analysis.actions.Platform())
 				if err != nil {
 					t.Fatal(err)
 				}
-				site, err := analysis.sourceSnapshot.StepReference(calls[i])
-				if err != nil {
-					t.Fatal(err)
-				}
+				site := stepReference(t, analysis.sourceSnapshot, calls[i])
 				ticket, err := analysis.invocations.Begin(analysis.invocations.RootContext(), site, facts)
 				if err != nil {
 					t.Fatal(err)
@@ -115,27 +108,26 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			steps, ok := snapshot.ActionSteps()
-			if !ok || len(steps) != 1 {
+			steps := actionStepViews(t, snapshot)
+			if len(steps) != 1 {
 				t.Fatalf("indexed declarations = %+v", steps)
 			}
-			switch run := steps[0].Exec.(type) {
-			case *workflowlang.ExecRun:
-				for i, target := range []*actionmeta.Metadata{first, second} {
-					unit := units[i]
-					if !unit.Run.Present() || unit.Run.Run().Value() != run.Run.Value || unit.Origin.StepPosition.Line != steps[0].Pos.Line {
-						t.Fatal("script occurrence was decoded outside its declaration snapshot")
-					}
-					want := filepath.Dir(metadata.Path())
-					if target.SourceMapped {
-						want = ""
-					}
-					if unit.Scope.Deployment.ActionPath() != want || unit.Scope.Paths.ActionPath != want {
-						t.Fatalf("occurrence %d inherited deployment state: %+v, want action path %q", i, unit.Scope, want)
-					}
+			run, ok := steps[0].Run()
+			if !ok {
+				t.Fatal("declaration is not a run")
+			}
+			for i, target := range []*actionmeta.Metadata{first, second} {
+				unit := units[i]
+				if !unit.Run.Present() || unit.Run.Run().Value() != run.Run().Value() || unit.Origin.StepPosition.Line != stepPosition(t, steps[0]).Line {
+					t.Fatal("script occurrence was decoded outside its declaration snapshot")
 				}
-			default:
-				t.Fatalf("unexpected declaration %T", steps[0].Exec)
+				want := filepath.Dir(metadata.Path())
+				if target.SourceMapped {
+					want = ""
+				}
+				if unit.Scope.Deployment.ActionPath() != want || unit.Scope.Paths.ActionPath != want {
+					t.Fatalf("occurrence %d inherited deployment state: %+v, want action path %q", i, unit.Scope, want)
+				}
 			}
 			if units[0].Scope == units[1].Scope {
 				t.Fatal("distinct occurrences shared mutable execution scope")

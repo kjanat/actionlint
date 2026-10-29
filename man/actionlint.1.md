@@ -31,13 +31,14 @@ are enabled by default; ordinary workflow checks do not require configuration.
 
 # USAGE
 
-With no paths, **actionlint** and **actionlint check** find the current repository
-containing both `.git` and `.github/workflows`, then recursively check workflow
-YAML files in that directory. Pass explicit filenames or **-** for stdin.
+With no arguments, **actionlint** prints help to stdout and exits 0.
+With no paths, **actionlint check** discovers workflow and action files in the
+current repository and exits 3 if no inputs are found.
+Pass explicit filenames or **-** for stdin.
 Passing a directory does not enable recursive input expansion;
 action manifests are also discovered and can be passed as explicit inputs.
 
-    $ actionlint
+    $ actionlint check
     $ actionlint file1.yaml file2.yaml
     $ actionlint check file1.yaml --output-format=json
     $ actionlint check --stdin-filename .github/workflows/ci.yml -
@@ -136,10 +137,16 @@ The root accepts single- and double-dash spellings; **check**
 uses long options and short aliases. Run **--help-legacy** for old spellings.
 
 **--output-format**, **--output**, **-o** *MODE*
-: Select `text`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
-`text`. **--output** is a supported alias. JSON emits a versioned analysis result
+: Select `text`, `pretty`, `oneline`, `json`, `jsonl`, `sarif`, or `github`. The default is
+`text`. **--output** is a supported alias. `pretty` shows captured source, range
+indicators, explanation, help, related locations and fix descriptions, wrapping
+messages and paths. JSON emits a versioned analysis result
 with completion status, diagnostics, and configuration context. JSONL emits one diagnostic
 per line. GitHub annotations are emitted only when explicitly selected.
+
+**--diagnostic-width** *COLUMNS*
+: Wrap `pretty` diagnostics at this width. Accepts 40 to 400. Default: 100.
+Requires **--output-format**=pretty.
 
 **--json**
 : Select JSON output. With help, version, config, rules or doctor, emit JSON

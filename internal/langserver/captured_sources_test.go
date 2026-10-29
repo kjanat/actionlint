@@ -38,6 +38,13 @@ func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
 					invalid.Start.Line, outside.Start.Line = 0, 99
 					return Analysis{Diagnostics: []diagnostic.Diagnostic{invalid, outside}, Sources: map[string]Source{path: testSource(t, path, "\ufeff😀bad\n")}}, nil
 				}
+				if document.Version == 5 {
+					relatedPath := path + ".related"
+					target := testSource(t, relatedPath, "😀target\n")
+					other := testSource(t, relatedPath, "other revision\n")
+					finding.Related = []diagnostic.Related{{Revision: other.Revision, Coordinates: target.Coordinates, Path: relatedPath, Start: diagnostic.Position{Line: 1, Column: 2}, End: diagnostic.Position{Line: 1, Column: 8}}}
+					return Analysis{Diagnostics: []diagnostic.Diagnostic{finding}, Sources: map[string]Source{path: testSource(t, path, "\ufeff😀bad\n"), relatedPath: target}}, nil
+				}
 				return Analysis{Diagnostics: []diagnostic.Diagnostic{finding}, Sources: map[string]Source{path: testSource(t, path, "\ufeff😀bad\n")}}, nil
 			}
 			return Analysis{}, nil
@@ -112,6 +119,15 @@ func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
 	publication = read()
 	if publication.Params.Version != 4 || len(publication.Params.Diagnostics) != 0 {
 		t.Fatalf("invalid coordinates were fabricated: %+v", publication)
+	}
+	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 5}, "contentChanges": []any{map[string]string{"text": "open version five"}}})
+	logged = read()
+	if logged.Method != "window/logMessage" || !strings.Contains(logged.Params.Message, "diagnostic sources unavailable for 1 paths") {
+		t.Fatalf("unverifiable related revision was not logged: %+v", logged)
+	}
+	publication = read()
+	if publication.Params.Version != 5 || len(publication.Params.Diagnostics) != 1 || len(publication.Params.Diagnostics[0].Related) != 0 {
+		t.Fatalf("related coordinates were rebound to matching path text: %+v", publication)
 	}
 	send("shutdown", 3, nil)
 	read()

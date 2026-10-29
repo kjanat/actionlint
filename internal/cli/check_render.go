@@ -34,6 +34,8 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 			color.NoColor = true
 		case render.ColorAlways:
 			color.NoColor = false
+		case render.ColorAuto:
+			// Keep the terminal detection result.
 		}
 		if file, ok := out.(*os.File); ok && !color.NoColor {
 			out = colorable.NewColorable(file)
@@ -62,7 +64,16 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 }
 
 func newResultRenderer(options renderOptions) (*render.Renderer, error) {
-	return render.New(options.Format, options.Template, options.Oneline, buildinfo.Version, nil)
+	renderer, err := render.New(options.Format, options.Template, options.Oneline, buildinfo.Version, nil)
+	if err != nil {
+		return nil, err
+	}
+	if options.Width != 0 {
+		if err := renderer.SetWidth(options.Width); err != nil {
+			return nil, err
+		}
+	}
+	return renderer, nil
 }
 
 func legacyColorOutput(out io.Writer, mode render.Color) io.Writer {

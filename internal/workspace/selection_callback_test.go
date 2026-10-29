@@ -19,7 +19,7 @@ func TestSelectionCallbackPreservesInputs(t *testing.T) {
 			want := slices.Clone(paths)
 			var selected []string
 			calls := 0
-			linter, err := workspace.New(workspace.Options{WorkingDir: root, ConfigFile: config, OnFilesSelected: func(files []string) {
+			linter, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, ConfigFile: config, OnFilesSelected: func(files []string) {
 				calls++
 				selected = slices.Clone(files)
 				if len(files) > 0 {

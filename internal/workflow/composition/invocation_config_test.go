@@ -12,7 +12,7 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -100,12 +100,12 @@ func TestManifestConfigCacheRetriesFailuresAndCachesNil(t *testing.T) {
 	}
 }
 
-func (probe *configVisitProbe) VisitStep(step *workflowlang.Step) error {
-	probe.steps = append(probe.steps, step.ID.Value)
+func (probe *configVisitProbe) VisitStep(step workflowdecl.StepView) error {
+	probe.steps = append(probe.steps, step.ID().Value())
 	return nil
 }
 
-func (probe *configVisitProbe) VisitWorkflowPost(*workflowlang.Workflow) error {
+func (probe *configVisitProbe) VisitWorkflowPost(workflowdecl.WorkflowView) error {
 	probe.finished = true
 	return nil
 }
@@ -239,15 +239,16 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 
 type ignoreProbeRule struct{ workflowvisit.Base }
 
-func (*ignoreProbeRule) DeferActionInvocation() bool { return true }
+func (*ignoreProbeRule) EnterInvocation(builtin.Invocation) error { return nil }
 
-func (*ignoreProbeRule) ForComposite(builtin.Invocation) (workflowvisit.Rule, error) {
-	return &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")}, nil
-}
+func (*ignoreProbeRule) VisitInvocationStep(workflowdecl.StepView) error { return nil }
 
-func (rule *ignoreProbeRule) VisitStep(step *workflowlang.Step) error {
-	if _, action := step.Exec.(*workflowlang.ExecAction); action {
-		rule.Error(step.Pos, "probe")
+func (*ignoreProbeRule) LeaveInvocation(invocation.Context) error { return nil }
+
+func (rule *ignoreProbeRule) VisitOpaqueAction(step workflowdecl.StepView) error {
+	if _, action := step.Action(); action {
+		pos, _ := step.Pos()
+		rule.Error(&pos, "probe")
 	}
 	return nil
 }

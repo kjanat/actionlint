@@ -2,29 +2,32 @@ package checks
 
 import (
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 )
 
 func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 	const src = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: same\n        run: echo first\n      - id: same\n        run: echo second\n"
-	w, errs := workflow.Parse([]byte(src))
+	ast, errs := workflowparser.Parse([]byte(src))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
+	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
 	check := Declaration("id")
-	want := check.Job(w.Jobs["build"])
-	if len(want) != 1 || want[0].Step != w.Jobs["build"].Steps[1] {
+	want := check.Job(jobView(w, "build"))
+	if len(want) != 1 || want[0].Step.Reference() != slices.Collect(jobView(w, "build").Steps())[1].Reference() {
 		t.Fatalf("missing duplicate owner: %+v", want)
 	}
 	var workers sync.WaitGroup
 	for range 8 {
 		workers.Go(func() {
-			check.Step(w.Jobs["build"].Steps[1])
+			check.Step(slices.Collect(jobView(w, "build").Steps())[1])
 			check.Workflow(w)
-			if got := check.Job(w.Jobs["build"]); !reflect.DeepEqual(got, want) {
+			if got := check.Job(jobView(w, "build")); !reflect.DeepEqual(got, want) {
 				t.Errorf("result depends on callback order: %+v", got)
 			}
 		})
@@ -33,11 +36,12 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 }
 
 func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
-	w, errs := workflow.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
+	ast, errs := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	findings := Declaration("env-var").Job(w.Jobs["test"])
+	w := declaration.Publish("", ast, false, "").Bind("test").Workflow()
+	findings := Declaration("env-var").Job(jobView(w, "test"))
 	if len(findings) != 2 {
 		t.Fatalf("want two invalid names: %v", findings)
 	}
@@ -51,7 +55,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 }
 
 func TestParallelJobsDoNotShareBackgroundSteps(t *testing.T) {
-	w, errs := workflow.Parse([]byte(`on: push
+	ast, errs := workflowparser.Parse([]byte(`on: push
 jobs:
   producer:
     runs-on: ubuntu-latest
@@ -68,17 +72,18 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	want := ParallelSteps(w.Jobs["consumer"])
-	if len(want) != 1 || want[0].Step != w.Jobs["consumer"].Steps[0] {
+	w := declaration.Publish("", ast, false, "").Bind("test").Workflow()
+	want := ParallelSteps(jobView(w, "consumer"))
+	if len(want) != 1 || want[0].Step.Reference() != slices.Collect(jobView(w, "consumer").Steps())[0].Reference() {
 		t.Fatalf("expected unknown background step with its owner: %+v", want)
 	}
 	var workers sync.WaitGroup
 	for range 8 {
 		workers.Go(func() {
-			if got := ParallelSteps(w.Jobs["producer"]); len(got) != 0 {
+			if got := ParallelSteps(jobView(w, "producer")); len(got) != 0 {
 				t.Errorf("valid job: %+v", got)
 			}
-			if got := ParallelSteps(w.Jobs["consumer"]); !reflect.DeepEqual(got, want) {
+			if got := ParallelSteps(jobView(w, "consumer")); !reflect.DeepEqual(got, want) {
 				t.Errorf("another job changed the result: %+v", got)
 			}
 		})
@@ -87,13 +92,13 @@ jobs:
 }
 
 func TestRequiredActionsDoNotRetainEarlierWorkflow(t *testing.T) {
-	parse := func(src string) *workflow.Workflow {
+	parse := func(src string) declaration.WorkflowView {
 		t.Helper()
-		w, errs := workflow.Parse([]byte(src))
+		ast, errs := workflowparser.Parse([]byte(src))
 		if len(errs) != 0 {
 			t.Fatal(errs)
 		}
-		return w
+		return declaration.Publish(src, ast, false, "").Bind("test").Workflow()
 	}
 	withAction := parse("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v5\n")
 	withoutAction := parse("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n")
@@ -106,4 +111,9 @@ func TestRequiredActionsDoNotRetainEarlierWorkflow(t *testing.T) {
 			t.Fatalf("missing action: %+v", got)
 		}
 	}
+}
+
+func jobView(w declaration.WorkflowView, key string) declaration.JobView {
+	job, _ := w.Job(key)
+	return job
 }

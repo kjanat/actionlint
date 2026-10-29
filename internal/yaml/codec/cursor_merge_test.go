@@ -3,7 +3,7 @@ package codec
 import (
 	"testing"
 
-	upstream "go.yaml.in/yaml/v4"
+	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 func TestCursorLeafMergeCountsAndIgnoredRecursiveField(t *testing.T) {

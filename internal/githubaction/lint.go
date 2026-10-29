@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -59,7 +60,7 @@ type lintResult struct {
 	sarif          string
 	fileCount      int
 	fileCountKnown bool
-	configs        []repoconfig.Report
+	configs        []configreport.Report
 	hints          []string
 }
 
@@ -117,7 +118,7 @@ func runLinter(req *lintRequest) *lintResult {
 		ConfigOverlays: req.overlays,
 		WorkingDir:     req.workingDir,
 		LogWriter:      &logs,
-		OnConfigLoaded: func(report repoconfig.Report) {
+		OnConfigLoaded: func(report configreport.Report) {
 			result.configs = append(result.configs, report)
 		},
 		OnFilesSelected: func(files []string) {

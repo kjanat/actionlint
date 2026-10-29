@@ -21,10 +21,10 @@ func ActionOrigin(paths *Paths, context invocation.Context, actionPath string) {
 	if !paths.ActionIndependent {
 		paths.ActionRunnerPath = strings.TrimPrefix(effects.Uses, "./")
 		placement := paths.Placements.Matching(paths.ActionRunnerPath)
-		if placement != nil && placement.CaseInsensitive && placement.Directory.Kind == DirectoryKnown && !placement.Foreign {
+		if placement.Present() && placement.Details().CaseInsensitive && placement.Details().Directory.Kind == DirectoryKnown && !placement.Details().Foreign {
 			relative, err := filepath.Rel(paths.Workspace, actionPath)
 			if err == nil && filepath.IsLocal(relative) {
-				paths.ActionRunnerPath = JoinPath(placement.Directory.Path, filepath.ToSlash(relative))
+				paths.ActionRunnerPath = JoinPath(placement.Details().Directory.Path, filepath.ToSlash(relative))
 			}
 		}
 	}

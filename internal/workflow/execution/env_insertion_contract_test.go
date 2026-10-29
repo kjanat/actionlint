@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 
@@ -35,7 +37,7 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 		{"loader", "{LD_PRELOAD: custom.so}", true, true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errs := workflowlang.ParseDocument([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
+			workflow, errs := workflowparser.ParseDocument([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

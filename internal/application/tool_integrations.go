@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 )
 
 // ConfigureToolIntegrations replaces registered tools using declared contracts.
@@ -16,7 +17,7 @@ import (
 // analyzers are removed from standalone execution, making repeated calls safe.
 func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Options, error) {
 	for _, registration := range options.Analyzers {
-		if analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+		if analyzerref.IsNil(registration.Analyzer) {
 			return options, errors.New("nil analyzer registration")
 		}
 	}

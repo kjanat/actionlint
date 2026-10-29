@@ -35,10 +35,8 @@ type Finding struct {
 	Owner *Owner
 	// metadataFinding identifies a reusable validation finding independently of its caller.
 	MetadataIdentity *MetadataIdentity
-	// metadataParsePath links caller parse failures to a selected manifest.
-	MetadataParsePath string
 	// MetadataParseSource is the captured revision whose parse failure was
-	// observed. MetadataParsePath remains the caller-facing spelling.
+	// observed, bound by the producer before the finding is published.
 	MetadataParseSource source.Revision
 }
 

@@ -8,6 +8,8 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/workflow/composition"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 type admissionRejectedError struct {
@@ -21,9 +23,51 @@ func (e *admissionRejectedError) Error() string {
 func (*admissionRejectedError) Code() string { return "admission-rejected" }
 func (e *admissionRejectedError) Count() int { return e.count }
 
+func (s *analysisSession) admitSourceDocuments(composed composition.Result, references map[string]workflowfacts.SourceIndex) (map[string]bool, error) {
+	rejected := map[string]bool{}
+	var failure error
+	for path, content := range composed.Sources {
+		document, exists := composed.SourceDocuments[path]
+		if !exists {
+			failure = errors.Join(failure, fmt.Errorf("source %q has no admitted parse provenance", path))
+			sourceRejected(rejected, path, capture.Snapshot{})
+			address := path
+			if path != "<stdin>" && !filepath.IsAbs(path) {
+				address = filepath.Join(s.workingDir, path)
+			}
+			identity, err := s.captures.Canonical(s.ctx, address)
+			if err != nil {
+				failure = errors.Join(failure, fmt.Errorf("resolve rejected source %q: %w", path, err))
+			} else {
+				rejected[identity] = true
+			}
+			continue
+		}
+		if err := s.captures.Verify(document.Capture(), content); err != nil {
+			failure = errors.Join(failure, err)
+			sourceRejected(rejected, path, document.Capture())
+			continue
+		}
+		nested, err := s.snapshots.Document(document.Capture(), document.Document())
+		if err != nil {
+			failure = errors.Join(failure, fmt.Errorf("admit source %q parse provenance: %w", path, err))
+			sourceRejected(rejected, path, document.Capture())
+			continue
+		}
+		references[path] = nested.CanonicalReferences()
+	}
+	return rejected, failure
+}
+
 func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entryPath, sourcePath string, composed composition.Result, rejected map[string]bool) ([]*findingmodel.Finding, error) {
 	var failure error
 	count := 0
+	metadataSources := make(map[source.Revision]bool, len(composed.SourceDocuments))
+	for path, document := range composed.SourceDocuments {
+		if _, consulted := composed.Sources[path]; consulted && s.captures.VerifyHandle(document.Capture()) == nil {
+			metadataSources[document.Capture().Revision()] = true
+		}
+	}
 	entryOwns := func(path string) bool {
 		if path == "" || path == entryPath || path == sourcePath {
 			return true
@@ -47,21 +91,12 @@ func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entr
 	}
 	accepted := all[:0]
 	for _, finding := range all {
-		if !finding.MetadataParseSource.Valid() && finding.MetadataParsePath != "" {
-			// E11 removes this boundary bridge when every metadata producer carries
-			// its captured parse source directly. No path lookup or IO is permitted.
-			if document, exists := composed.SourceDocuments[finding.MetadataParsePath]; exists {
-				finding.MetadataParseSource = document.Capture().Revision()
-			}
-		}
 		bad := rejected[finding.Path]
 		if finding.Reference != nil {
 			bad = bad || rejected[finding.Reference.Document]
 		}
-		if finding.MetadataParseSource.Valid() {
-			bad = bad || rejected[finding.MetadataParseSource.Document()]
-		} else if finding.MetadataParsePath != "" {
-			bad = true
+		if target := finding.MetadataParseSource; target.Valid() {
+			bad = bad || rejected[target.Document()] || !metadataSources[target]
 		}
 		if bad {
 			count++

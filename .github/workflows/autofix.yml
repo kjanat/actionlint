@@ -104,6 +104,10 @@ jobs:
         if: steps.inputs.outputs.readme == 'true'
         run: bash tools/ci/autofix-step.bash go run ./internal/documentation/check-readme -fix ./README.md
         env: { GITHUB_TOKEN: "${{ github.token }}" }
+      # dprint runs rustfmt per file in parallel; each would install the
+      # rust-toolchain.toml channel at once and the rustup installs collide.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
       - name: format the code
         id: format
         # autofix-ci will fail if the .github directory is touched

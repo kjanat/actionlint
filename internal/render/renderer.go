@@ -13,6 +13,7 @@ type Renderer struct {
 	version   func() string
 	rules     *ruleSet
 	formatter *Formatter
+	width     int
 }
 
 // New validates a built-in format or custom Go template before rendering.
@@ -20,9 +21,9 @@ func New(format Format, template string, oneline bool, version func() string, ru
 	if format != "" && template != "" {
 		return nil, errors.New("OutputFormat cannot be combined with a custom Format template")
 	}
-	r := &Renderer{format: format, oneline: oneline, version: version, rules: newRuleSet(rules)}
+	r := &Renderer{format: format, oneline: oneline, version: version, rules: newRuleSet(rules), width: 100}
 	switch format {
-	case "", FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub:
+	case "", FormatPretty, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub:
 	case FormatText:
 		r.oneline = false
 	case FormatOneline:
@@ -43,6 +44,15 @@ func New(format Format, template string, oneline bool, version func() string, ru
 // Formatter returns the template formatter, or nil for built-in formats.
 func (r *Renderer) Formatter() *Formatter { return r.formatter }
 
+// SetWidth sets the pretty format's display width, including indentation.
+func (r *Renderer) SetWidth(width int) error {
+	if width < 40 || width > 400 {
+		return fmt.Errorf("diagnostic width must be between 40 and 400, got %d", width)
+	}
+	r.width = width
+	return nil
+}
+
 // Render writes the result in the selected format.
 func (r *Renderer) Render(out io.Writer, result Result) error {
 	for _, rule := range result.Rules {
@@ -56,9 +66,17 @@ func (r *Renderer) Render(out io.Writer, result Result) error {
 		return WriteGitHub(out, result.Diagnostics)
 	case FormatSARIF:
 		return WriteSARIF(out, r.version(), r.rules.sorted(), result.Diagnostics)
+	case FormatText, FormatPretty, FormatOneline:
+		// Text formats render findings below.
 	}
 	fields := make([]*TemplateFields, 0, len(result.Findings))
 	for _, finding := range result.Findings {
+		if r.format == FormatPretty {
+			if err := finding.printPretty(out, r.width); err != nil {
+				return err
+			}
+			continue
+		}
 		if r.formatter != nil {
 			fields = append(fields, finding.TemplateFields())
 			continue

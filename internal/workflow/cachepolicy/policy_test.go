@@ -6,9 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/webhook"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -18,21 +21,22 @@ const cachePolicySteps = `    runs-on: ubuntu-latest
 
 func checkPolicy(t *testing.T, source string) []diagnostic.Diagnostic {
 	t.Helper()
-	w, findings := workflowlang.ParseDocument([]byte(source))
-	if w == nil {
+	parsed, findings := workflowparser.ParseDocument([]byte(source))
+	if parsed == nil {
 		return findings
 	}
+	w := policyWorkflowView(parsed)
 	trust := NewTrust(w)
-	jobs := make([]*workflowlang.Job, 0, len(w.Jobs))
-	for _, j := range w.Jobs {
+	jobs := []declaration.JobView{}
+	for _, j := range w.Jobs() {
 		jobs = append(jobs, j)
 	}
-	slices.SortFunc(jobs, func(a, b *workflowlang.Job) int { return a.Pos.Line - b.Pos.Line })
+	slices.SortFunc(jobs, func(a, b declaration.JobView) int { return position(a).Line - position(b).Line })
 	for _, j := range jobs {
 		findings = append(findings, trust.CheckWrites(j)...)
 		findings = append(findings, trust.CheckCall(j)...)
-		mode := workflowlang.EffectiveCacheMode(w.CacheMode, j.CacheMode)
-		for _, step := range j.Steps {
+		mode := EffectiveMode(w.CacheMode(), j.CacheMode())
+		for step := range j.Steps() {
 			findings = append(findings, CheckStep(step, mode)...)
 		}
 	}
@@ -53,7 +57,10 @@ func TestCachePolicyTriggers(t *testing.T) {
 			t.Run(event, func(t *testing.T) {
 				// Exercise each event independently of event-specific required fields.
 				w := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Hook: &workflowlang.String{Value: event}}}, CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}}
-				findings := NewTrust(w).CheckWrites(&workflowlang.Job{})
+				w.Jobs = map[string]*workflowlang.Job{"test": {}}
+				view := policyWorkflowView(w)
+				job, _ := view.JobsAt("test")
+				findings := NewTrust(view).CheckWrites(job)
 				if (len(findings) == 1) != group.warn {
 					t.Fatalf("want warning=%v, got %v", group.warn, findings)
 				}
@@ -75,9 +82,10 @@ func TestCachePolicyEventClassification(t *testing.T) {
 		}
 		switch class {
 		case cacheEventRestricted, cacheEventTrusted, cacheEventRefScoped, cacheEventInherited:
-		default:
-			t.Errorf("event %q has invalid cache trust classification %d", event, class)
+			continue
+		case cacheEventUnknown:
 		}
+		t.Errorf("event %q has invalid cache trust classification %d", event, class)
 	}
 }
 
@@ -329,7 +337,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 		{"actions/cache@${{ 'v5' }}", false},
 	} {
 		t.Run(tc.uses, func(t *testing.T) {
-			findings := CheckStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{Line: 7, Col: 15}}}}, &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone})
+			findings := checkStandaloneStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{Line: 7, Col: 15}}}}, &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone})
 			if tc.warn {
 				if errs := findings; len(errs) != 1 || errs[0].Rule != "cache-operation" || errs[0].Start.Line != 7 || errs[0].Start.Column != 15 {
 					t.Fatalf("expected one cache-operation finding on the action, got %v", errs)
@@ -339,4 +347,17 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 			}
 		})
 	}
+}
+
+func policyWorkflowView(workflow *workflowlang.Workflow) declaration.WorkflowView {
+	return declaration.Publish("", workflow, false, "").Bind("policy-fixture").Workflow()
+}
+
+func checkStandaloneStep(step *workflowlang.Step, mode *workflowlang.CacheMode) []diagnostic.Diagnostic {
+	view := policyWorkflowView(&workflowlang.Workflow{CacheMode: mode, Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}})
+	job, _ := view.JobsAt("test")
+	for step := range job.Steps() {
+		return CheckStep(step, view.CacheMode())
+	}
+	return nil
 }

@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
+
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -11,11 +14,11 @@ import (
 
 func runRuleRequiredActions(t *testing.T, src string, required []string) []Finding {
 	t.Helper()
-	w, errs := workflowlang.Parse([]byte(src))
+	w, errs := workflowparser.Parse([]byte(src))
 	if len(errs) > 0 {
 		t.Fatal(errs)
 	}
-	return RequiredActions(w, required)
+	return RequiredActions(declaration.Publish(src, w, false, "").Bind("test").Workflow(), required)
 }
 
 func TestRuleRequiredActionsSplitActionRef(t *testing.T) {
@@ -121,7 +124,7 @@ func TestRuleRequiredActionsFirstStepsJobPos(t *testing.T) {
 	w.Jobs["same-line"] = &workflowlang.Job{Pos: &workflowlang.Pos{Line: 2, Col: 4}}
 
 	for range 100 {
-		p := firstStepsJobPos(w)
+		p := firstStepsJobPos(declaration.Publish("", w, false, "").Bind("test").Workflow())
 		if p == nil {
 			t.Fatal("no position was returned")
 		}
@@ -130,7 +133,7 @@ func TestRuleRequiredActionsFirstStepsJobPos(t *testing.T) {
 		}
 	}
 
-	if p := firstStepsJobPos(&workflowlang.Workflow{}); p != nil {
+	if p := firstStepsJobPos(declaration.Publish("", &workflowlang.Workflow{}, false, "").Bind("test").Workflow()); p != nil {
 		t.Fatalf("wanted nil for a workflow without a job but got %s", p)
 	}
 }
@@ -180,11 +183,11 @@ jobs:
       - run: echo 'hello'
 `
 
-	w, parsed := workflowlang.Parse([]byte(src))
+	w, parsed := workflowparser.Parse([]byte(src))
 	if len(parsed) > 0 {
 		t.Fatal(parsed)
 	}
-	if errs := RequiredActions(w, nil); len(errs) > 0 {
+	if errs := RequiredActions(declaration.Publish(src, w, false, "").Bind("test").Workflow(), nil); len(errs) > 0 {
 		t.Fatalf("wanted no errors without required actions but got %v", errs)
 	}
 }

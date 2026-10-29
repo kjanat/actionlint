@@ -12,6 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analysis"
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 )
 
 func TestInMemorySourcesRetainLocalReferenceContext(t *testing.T) {
@@ -50,7 +51,7 @@ jobs:
 `
 	for _, mode := range []string{"snapshots", "snapshot-over-reader", "reader-action"} {
 		t.Run(mode, func(t *testing.T) {
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			if err := os.MkdirAll(filepath.Join(root, ".github"), 0o755); err != nil {
 				t.Fatal(err)
 			}
@@ -106,7 +107,7 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 	for _, repository := range []bool{false, true} {
 		for _, relativeRoot := range []bool{false, true} {
 			t.Run(fmt.Sprintf("repository=%t/relative-root=%t", repository, relativeRoot), func(t *testing.T) {
-				root := t.TempDir()
+				root := tempdir.Physical(t)
 				if repository {
 					git, err := exec.LookPath("git")
 					if err != nil {

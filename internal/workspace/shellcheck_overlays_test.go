@@ -40,7 +40,7 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 				t.Fatal(err)
 			}
 			var report repoconfig.Report
-			session, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +79,7 @@ func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	var report repoconfig.Report
-	session, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }})
+	session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(value repoconfig.Report) { report = value }})
 	if err != nil {
 		t.Fatal(err)
 	}

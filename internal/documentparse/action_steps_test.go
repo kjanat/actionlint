@@ -3,7 +3,6 @@ package documentparse
 import (
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
 
@@ -17,17 +16,17 @@ func TestRejectedCompositeRunsKeepSurroundingDeclarations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			steps, ok := snapshot.ActionSteps()
-			if !ok || len(steps) != 3 {
-				t.Fatalf("recovered steps = %d, available=%v", len(steps), ok)
+			steps := snapshotActionSteps(t, snapshot)
+			if len(steps) != 3 {
+				t.Fatalf("recovered steps = %d", len(steps))
 			}
 			for index, want := range map[int]string{0: "echo before", 2: "echo after"} {
-				run, ok := steps[index].Exec.(*workflowlang.ExecRun)
-				if !ok || run.Run == nil || run.Run.Value != want || run.Source == nil {
+				run, ok := steps[index].Run()
+				if !ok || !run.Run().Present() || run.Run().Value() != want || !run.Source().Present() {
 					t.Fatalf("surrounding run %d lost its source: %+v", index, steps[index])
 				}
 			}
-			if _, executable := steps[1].Exec.(*workflowlang.ExecRun); executable {
+			if _, executable := steps[1].Run(); executable {
 				t.Fatal("rejected composite run remained executable")
 			}
 		})

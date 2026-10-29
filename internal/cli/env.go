@@ -74,6 +74,8 @@ func (a *commandApp) applyEnvironment() error {
 				return err
 			}
 		}
+	case operationVersion, operationPluginInspect, operationPluginSearch, operationPluginVersions, operationConfigInit, operationCompletion:
+		// These operations never read repository configuration.
 	}
 	if i.Operation == operationConfigShow {
 		return a.envBool("ACTIONLINT_CONFIG_ORIGIN", &i.Origin, "origin")

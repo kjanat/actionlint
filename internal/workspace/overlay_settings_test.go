@@ -29,7 +29,7 @@ func TestConfigOverlayEmptyAndNullMappings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			l, err := workspace.New(workspace.Options{ConfigOverlays: []repoconfig.Overlay{base, overlay}})
+			l, err := workspace.New(t.Context(), workspace.Options{ConfigOverlays: []repoconfig.Overlay{base, overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -75,7 +75,7 @@ paths:
 		overlays = append(overlays, o)
 	}
 	var reports []repoconfig.Report
-	l, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { reports = append(reports, r) }})
+	l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { reports = append(reports, r) }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestConfigOverlaysPreserveYAMLAliases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			l, err := workspace.New(workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
+			l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}})
 			if err != nil {
 				t.Fatal(err)
 			}

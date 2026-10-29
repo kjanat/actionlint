@@ -1,12 +1,13 @@
 package checks
 
 import (
-	"maps"
+	"iter"
 	"slices"
+
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/mapping"
 	"actionlint.kjanat.dev/v2/internal/semantics/condition"
 	"actionlint.kjanat.dev/v2/internal/semantics/envname"
 	"actionlint.kjanat.dev/v2/internal/semantics/identifier"
@@ -18,7 +19,7 @@ import (
 // Finding associates a diagnostic with its owning step.
 type Finding struct {
 	diagnostic.Diagnostic
-	Step *workflow.Step
+	Step declaration.StepView
 }
 
 // Declaration is an immutable check selection. Every call returns independent
@@ -40,12 +41,12 @@ func findings(ds []diagnostic.Diagnostic) []Finding {
 	return out
 }
 
-func environment(env *workflow.Env) []Finding {
-	if env == nil {
+func environment(env declaration.EnvView) []Finding {
+	if !env.Present() {
 		return nil
 	}
 	var entries []analyzer.Entry
-	resolved := mapping.Resolve(workflow.EnvMappingView(env))
+	resolved := env.Mapping()
 	for key := range resolved.KeyedEntries() {
 		if name, known := key.ScalarString(); known {
 			entries = append(entries, analyzer.Entry{Name: name, State: analyzer.KnownKey, Start: key.Origin().Span.Start})
@@ -54,28 +55,28 @@ func environment(env *workflow.Env) []Finding {
 	return findings(envname.Check(entries))
 }
 
-func conditional(value *workflow.String) []Finding {
-	if value == nil {
+func conditional(value declaration.StringView) []Finding {
+	if !value.Present() {
 		return nil
 	}
-	return findings(condition.Check(value.Value, position(value.Pos)))
+	return findings(condition.Check(value.Value(), position(viewPosition(value.Pos()))))
 }
 
-func permissions(p *workflow.Permissions) []Finding {
-	if p == nil {
+func permissions(p declaration.PermissionsView) []Finding {
+	if !p.Present() {
 		return nil
 	}
 	input := permission.Declaration{}
-	if p.All != nil {
-		input.All = &permission.Value{Text: p.All.Value, Start: position(p.All.Pos)}
+	if p.All().Present() {
+		input.All = &permission.Value{Text: p.All().Value(), Start: position(viewPosition(p.All().Pos()))}
 	}
-	for _, scope := range p.Scopes {
-		input.Scopes = append(input.Scopes, permission.Scope{Name: permission.Value{Text: scope.Name.Value, Start: position(scope.Name.Pos)}, Level: permission.Value{Text: scope.Value.Value, Start: position(scope.Value.Pos)}})
+	for _, scope := range p.Scopes() {
+		input.Scopes = append(input.Scopes, permission.Scope{Name: permission.Value{Text: scope.Name().Value(), Start: position(viewPosition(scope.Name().Pos()))}, Level: permission.Value{Text: scope.Value().Value(), Start: position(viewPosition(scope.Value().Pos()))}})
 	}
 	return findings(permission.Check(input))
 }
 
-func (check Declaration) Workflow(w *workflow.Workflow) []Finding {
+func (check Declaration) Workflow(w declaration.WorkflowView) []Finding {
 	switch check {
 	case "events":
 		return Events(w)
@@ -83,22 +84,30 @@ func (check Declaration) Workflow(w *workflow.Workflow) []Finding {
 		return GlobWorkflow(w)
 
 	case "env-var":
-		return environment(w.Env)
+		return environment(w.Env())
 	case "permissions":
-		return permissions(w.Permissions)
+		return permissions(w.Permissions())
 	case "job-needs":
-		jobs := slices.Collect(maps.Values(w.Jobs))
-		slices.SortStableFunc(jobs, func(a, b *workflow.Job) int {
-			if a.Pos.Line != b.Pos.Line {
-				return a.Pos.Line - b.Pos.Line
+		jobs := slices.Collect(func(yield func(declaration.JobView) bool) {
+			for _, job := range w.Jobs() {
+				if !yield(job) {
+					return
+				}
 			}
-			return a.Pos.Col - b.Pos.Col
+		})
+		slices.SortStableFunc(jobs, func(a, b declaration.JobView) int {
+			left, _ := a.Pos()
+			right, _ := b.Pos()
+			if left.Line != right.Line {
+				return left.Line - right.Line
+			}
+			return left.Col - right.Col
 		})
 		input := make([]jobneeds.Job, 0, len(jobs))
 		for _, job := range jobs {
-			item := jobneeds.Job{ID: jobneeds.Name{Value: job.ID.Value, Start: position(job.ID.Pos)}}
-			for _, dep := range job.Needs {
-				item.Needs = append(item.Needs, jobneeds.Name{Value: dep.Value, Start: position(dep.Pos)})
+			item := jobneeds.Job{ID: jobneeds.Name{Value: job.ID().Value(), Start: position(viewPosition(job.ID().Pos()))}}
+			for dep := range job.Needs() {
+				item.Needs = append(item.Needs, jobneeds.Name{Value: dep.Value(), Start: position(viewPosition(dep.Pos()))})
 			}
 			input = append(input, item)
 		}
@@ -107,7 +116,7 @@ func (check Declaration) Workflow(w *workflow.Workflow) []Finding {
 	return nil
 }
 
-func (check Declaration) Job(job *workflow.Job) []Finding {
+func (check Declaration) Job(job declaration.JobView) []Finding {
 	switch check {
 	case "credentials":
 		return Credentials(job)
@@ -117,22 +126,22 @@ func (check Declaration) Job(job *workflow.Job) []Finding {
 		return ParallelSteps(job)
 
 	case "env-var":
-		out := environment(job.Env)
-		if job.Container != nil {
-			out = append(out, environment(job.Container.Env)...)
+		out := environment(job.Env())
+		if job.Container().Present() {
+			out = append(out, environment(job.Container().Env())...)
 		}
-		if job.Services != nil {
-			for _, service := range job.Services.Value {
-				out = append(out, environment(service.Container.Env)...)
+		if job.Services().Present() {
+			for _, service := range job.Services().Value() {
+				out = append(out, environment(service.Container().Env())...)
 			}
 		}
 		return out
 	case "permissions":
-		return permissions(job.Permissions)
+		return permissions(job.Permissions())
 	case "if-cond":
-		out := conditional(job.If)
-		if job.Snapshot != nil {
-			out = append(out, conditional(job.Snapshot.If)...)
+		out := conditional(job.If())
+		if job.Snapshot().Present() {
+			out = append(out, conditional(job.Snapshot().If())...)
 		}
 		return out
 	case "id":
@@ -141,41 +150,41 @@ func (check Declaration) Job(job *workflow.Job) []Finding {
 	return nil
 }
 
-func (check Declaration) Step(step *workflow.Step) []Finding {
+func (check Declaration) Step(step declaration.StepView) []Finding {
 	switch check {
 	case "env-var":
-		return environment(step.Env)
+		return environment(step.Env())
 	case "if-cond":
-		return conditional(step.If)
+		return conditional(step.If())
 	}
 	return nil
 }
 
-func identifiers(job *workflow.Job) []Finding {
-	name := func(value *workflow.String) identifier.Name {
-		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: position(value.Pos)}
+func identifiers(job declaration.JobView) []Finding {
+	name := func(value declaration.StringView) identifier.Name {
+		return identifier.Name{Value: value.Value(), Dynamic: value.ContainsExpression(), Start: position(viewPosition(value.Pos()))}
 	}
 	input := identifier.Job{}
-	if job.ID != nil {
-		input.ID = new(name(job.ID))
+	if job.ID().Present() {
+		input.ID = new(name(job.ID()))
 	}
-	for _, value := range job.Needs {
+	for value := range job.Needs() {
 		input.Needs = append(input.Needs, name(value))
 	}
-	owners := map[diagnostic.Position]*workflow.Step{}
-	var collect func([]*workflow.Step)
-	collect = func(steps []*workflow.Step) {
-		for _, step := range steps {
-			if step.ID != nil {
-				input.Steps = append(input.Steps, name(step.ID))
-				owners[position(step.ID.Pos)] = step
+	owners := map[diagnostic.Position]declaration.StepView{}
+	var collect func(iter.Seq[declaration.StepView])
+	collect = func(steps iter.Seq[declaration.StepView]) {
+		for step := range steps {
+			if step.ID().Present() {
+				input.Steps = append(input.Steps, name(step.ID()))
+				owners[position(viewPosition(step.ID().Pos()))] = step
 			}
-			if parallel, ok := step.Exec.(*workflow.ExecParallel); ok {
-				collect(parallel.Steps)
+			if parallel, ok := step.Parallel(); ok {
+				collect(parallel.Steps())
 			}
 		}
 	}
-	collect(job.Steps)
+	collect(job.Steps())
 	out := findings(identifier.Check(input))
 	for i := range out {
 		out[i].Step = owners[out[i].Start]

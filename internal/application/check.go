@@ -13,7 +13,9 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
@@ -38,7 +40,7 @@ type Options struct {
 	// SourceOverlays supplies all editor buffers, independently of selected
 	// entries. They become explicit YAML captures before analysis begins.
 	SourceOverlays               []SourceOverlay
-	OnConfigLoaded               func(repoconfig.Report)
+	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
 	LoadScriptEngine             func(context.Context, string) (analyzer.ScriptBackend, error)
 	Presets                      repoconfig.Presets
@@ -167,7 +169,7 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
-		if !analyzerhost.IsNilAnalyzer(registration.Analyzer) {
+		if !analyzerref.IsNil(registration.Analyzer) {
 			names = append(names, registration.Analyzer.Descriptor().Name)
 		}
 	}
@@ -179,8 +181,8 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 			_, _ = io.WriteString(log, "verbose: "+fmt.Sprintln(args...))
 		}
 	}
-	session, err := workspace.New(workspace.Options{
-		Context: ctx, WorkingDir: options.WorkingDir, StdinFileName: input.Name,
+	session, err := workspace.New(ctx, workspace.Options{
+		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
 		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: selectionReader, RuleNames: names, Log: selectionLog, LogWriter: log,
 	})
@@ -216,6 +218,9 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 		if selection != nil {
 			selection.Inputs = slices.Compact(slices.Sorted(slices.Values(append(selection.Inputs, listed...))))
 		}
+	case prepared:
+		// Prepared sources were analyzed above and never reach selection.
+		fallthrough
 	default:
 		return nil, fmt.Errorf("unknown input kind %d", input.Kind)
 	}

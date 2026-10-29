@@ -2,6 +2,7 @@
 package config
 
 import (
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
@@ -10,15 +11,15 @@ import (
 
 type (
 	Config     = repoconfig.Config
-	Inspection = repoconfig.Inspection
-	Origin     = repoconfig.Origin
+	Inspection = configreport.Inspection
+	Origin     = configreport.Origin
 	Overlay    = repoconfig.Overlay
 	// OverlayError identifies individually valid inputs whose merged configuration is invalid.
 	OverlayError                 = repoconfig.OverlayError
 	ConfigOverride               = repoconfig.Override
-	Report                       = repoconfig.Report
+	Report                       = configreport.Report
 	Selection                    = repoconfig.Selection
-	Warning                      = repoconfig.Warning
+	Warning                      = configreport.Warning
 	DefaultPermissionsAssumption = repoconfig.DefaultPermissionsAssumption
 	FilesConfig                  = repoconfig.FilesConfig
 	IgnoreConfig                 = repoconfig.IgnoreConfig

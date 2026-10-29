@@ -126,6 +126,9 @@ func projectCondition(condition invocation.Condition) (analyzer.CallCondition, e
 		return analyzer.CallSkipped, nil
 	case invocation.ConditionRuntimeDependent:
 		return analyzer.CallRuntimeDependent, nil
+	case invocation.ConditionInvalid:
+		// Invalid conditions have no analyzer projection.
+		fallthrough
 	default:
 		return "", fmt.Errorf("%w: unknown condition %d", analyzer.ErrInvalidCallGraph, condition)
 	}
@@ -137,6 +140,9 @@ func projectLimit(limit invocation.LimitKind) (analyzer.StopLimit, error) {
 		return analyzer.CallLimit, nil
 	case invocation.LimitScripts:
 		return analyzer.ScriptLimit, nil
+	case invocation.LimitInvalid, invocation.LimitDepth:
+		// Depth stops are not analyzer stop limits.
+		fallthrough
 	default:
 		return "", fmt.Errorf("%w: unknown stop limit %d", analyzer.ErrInvalidCallGraph, limit)
 	}
@@ -184,6 +190,9 @@ func projectOutcome(outcome invocation.Outcome) (analyzer.CallOutcome, error) {
 			interrupted.Target = analyzer.Present(target)
 		}
 		value = interrupted
+	case invocation.OutcomeInvalid:
+		// Invalid outcomes have no analyzer projection.
+		fallthrough
 	default:
 		return analyzer.CallOutcome{}, fmt.Errorf("%w: unknown outcome %s", analyzer.ErrInvalidCallGraph, outcome.Kind())
 	}

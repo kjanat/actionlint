@@ -28,11 +28,17 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			workflow, ok := callee.Workflow()
+			workflow, ok := callee.WorkflowView()
 			if !ok {
 				t.Fatal("callee has no recovered workflow")
 			}
-			if _, reusable := workflow.FindWorkflowCallEvent(); !reusable {
+			reusable := false
+			for event := range workflow.On() {
+				if _, ok := event.WorkflowCallEvent(); ok {
+					reusable = true
+				}
+			}
+			if !reusable {
 				t.Fatal("fixture did not recover the reusable event")
 			}
 			callerPath := filepath.Join(root, "caller.yml")
@@ -45,12 +51,12 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			cache.SetSources(t.Context(), registry.Sources.Store, root)
 			visit := func(snapshot *documentparse.SourceSnapshot) (int, int) {
 				t.Helper()
-				workflow, available := snapshot.Workflow()
+				workflow, available := snapshot.WorkflowView()
 				if !available {
 					t.Fatal("workflow is unavailable")
 				}
 				callRule := builtin.NewRuleWorkflowCall(snapshot, cache)
-				labelRule := builtin.NewRuleRunnerLabel(snapshot)
+				labelRule := builtin.NewRuleRunnerLabel()
 				visitor := engine.NewVisitor()
 				visitor.AddPass(callRule)
 				visitor.AddPass(labelRule)

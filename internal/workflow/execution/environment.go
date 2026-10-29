@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/mapping"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
@@ -87,7 +87,7 @@ func EnvironmentLiteral(semantic value.Value) (string, bool) {
 
 // ServicesMayChangeWorkspace reports service mounts or options that can expose
 // the workspace even when the job itself does not run in a container.
-func ServicesMayChangeWorkspace(services documentparse.ServicesView) bool {
+func ServicesMayChangeWorkspace(services workflowdecl.ServicesView) bool {
 	if !services.Present() {
 		return false
 	}

@@ -1,32 +1,27 @@
 package builtin
 
 import (
-	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"errors"
+
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
-	"errors"
 )
 
 type RuleRunnerLabel struct {
 	runners *runnerlang.Knowledge
 	workflowvisit.Base
 	Configuration
-	source *documentparse.SourceSnapshot
 }
 
-func NewRuleRunnerLabel(source *documentparse.SourceSnapshot) *RuleRunnerLabel {
-	return &RuleRunnerLabel{Base: builtinRuleBase("runner-label"), source: source}
+func NewRuleRunnerLabel() *RuleRunnerLabel {
+	return &RuleRunnerLabel{Base: builtinRuleBase("runner-label")}
 }
 
-func (r *RuleRunnerLabel) VisitJobPre(job *workflowlang.Job) error {
-	if r.source == nil {
-		return errors.New("runner-label source snapshot is unavailable")
-	}
-	declaration, err := r.source.JobView(job)
-	if err != nil {
-		return err
+func (r *RuleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
+	if !declaration.Present() {
+		return errors.New("runner-label job declaration is unavailable")
 	}
 	if r.runners != nil {
 		for _, d := range r.runners.Job(declaration).Findings {

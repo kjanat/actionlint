@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
@@ -30,12 +31,16 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 		t.Fatal(err)
 	}
 	fromView := knowledge.Job(job)
-	fromCursor := knowledge.JobCursor(document.Workflow.Jobs["test"])
+	repeated, available := view.Job("test")
+	if !available {
+		t.Fatal("canonical job disappeared")
+	}
+	fromRepeated := knowledge.Job(repeated)
 	if fromView.Platform != MacOrLinux || fromView.Shell != "bash" || !fromView.Ephemeral || !fromView.PathsKnown {
 		t.Fatalf("canonical runner facts = %+v", fromView)
 	}
-	if !reflect.DeepEqual(fromCursor, fromView) {
-		t.Fatalf("legacy cursor did not resolve to its canonical handle: cursor=%+v view=%+v", fromCursor, fromView)
+	if !reflect.DeepEqual(fromRepeated, fromView) {
+		t.Fatalf("repeated canonical handle lost its prepared facts: repeated=%+v view=%+v", fromRepeated, fromView)
 	}
 
 	foreignDocument := documentparse.Workflow(identity, content)
@@ -55,8 +60,8 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 	if got := knowledge.Job(foreignJob); !reflect.DeepEqual(got, JobKnowledge{}) {
 		t.Fatalf("foreign registry handle received prepared facts: %+v", got)
 	}
-	if got := knowledge.JobCursor(foreignDocument.Workflow.Jobs["test"]); !reflect.DeepEqual(got, JobKnowledge{}) {
-		t.Fatalf("foreign cursor received prepared facts: %+v", got)
+	if got := knowledge.Job(workflowdecl.JobView{}); !reflect.DeepEqual(got, JobKnowledge{}) {
+		t.Fatalf("zero handle received prepared facts: %+v", got)
 	}
 }
 

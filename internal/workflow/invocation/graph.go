@@ -538,9 +538,7 @@ func (b *Builder) Resolve(context Context, lookup Outcome) (Outcome, error) {
 	if rec.state != statePending {
 		return Outcome{}, fmt.Errorf("%w: %q", ErrNotPending, string(id))
 	}
-	switch lookup.kind {
-	case OutcomeExpanded, OutcomeOpaque, OutcomeUnavailable, OutcomeUnresolved, OutcomeDynamic:
-	default:
+	if !callerResolvable(lookup.kind) {
 		return Outcome{}, fmt.Errorf("%w: %s cannot be resolved by a caller", ErrInvalidOutcome, lookup.kind)
 	}
 	if lookup.kind == OutcomeExpanded {
@@ -556,6 +554,17 @@ func (b *Builder) Resolve(context Context, lookup Outcome) (Outcome, error) {
 	rec.state = stateFinal
 	b.current = rec.call.Parent()
 	return lookup, nil
+}
+
+// callerResolvable reports whether a caller may settle a pending call with an
+// outcome of kind.
+func callerResolvable(kind OutcomeKind) bool {
+	switch kind {
+	case OutcomeExpanded, OutcomeOpaque, OutcomeUnavailable, OutcomeUnresolved, OutcomeDynamic:
+		return true
+	case OutcomeInvalid, OutcomeCycle, OutcomeDepthLimit, OutcomeInterrupted:
+	}
+	return false
 }
 
 func sameDeclaration(a, c source.Reference) bool {
@@ -670,6 +679,7 @@ func (b *Builder) Publish() (Graph, error) {
 			pending++
 		case stateOpen:
 			open++
+		case stateFinal:
 		}
 	}
 	if pending > 0 || open > 0 {

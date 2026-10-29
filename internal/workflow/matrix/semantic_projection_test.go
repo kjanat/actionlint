@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
@@ -18,7 +18,7 @@ func TestIncludesMatchOriginalAxes(t *testing.T) {
 		{"excluded originals stay excluded", `{"os":["linux"],"exclude":[{"os":"linux"}],"include":[{"os":"linux","image":"first"},{"os":"linux","extra":"second"}]}`, `[{"os":"linux","image":"first"},{"os":"linux","extra":"second"}]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -51,7 +51,7 @@ func TestNestedArrayExpressionsPreserveInterpretationBoundary(t *testing.T) {
 		{"returned nested syntax stays data", `item: [["${{ fromJSON('[{\"name\":\"${{ vars.NAME }}\"}]') }}"]]`, `[{"name":"${{ vars.NAME }}"}]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -77,7 +77,7 @@ func TestIncludeCompletenessIndependentOfExcludes(t *testing.T) {
 		{"unknown include insertion", `, include: ["${{ fromJSON(vars.INCLUDE) }}"]`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {item: [42]" + tc.filters + "}\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {item: [42]" + tc.filters + "}\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -94,7 +94,7 @@ func TestDynamicFilterComparisonsCannotEnumerateDefiniteCombinations(t *testing.
 		`exclude: [{os: ubuntu, config: {arch: "${{ vars.ARCH }}"}}]`,
 		`include: [{os: "${{ vars.OS }}", extra: x64}]`,
 	} {
-		workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {os: [ubuntu, windows], config: [{arch: x64}], " + filters + "}\n    steps: [{run: echo ok}]\n"))
+		workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {os: [ubuntu, windows], config: [{arch: x64}], " + filters + "}\n    steps: [{run: echo ok}]\n"))
 		if len(errors) != 0 {
 			t.Fatal(errors)
 		}
@@ -110,7 +110,7 @@ func TestDynamicFilterComparisonsCannotEnumerateDefiniteCombinations(t *testing.
 
 func TestDuplicateInsertedFiltersFailClosed(t *testing.T) {
 	for _, name := range []string{"include", "exclude"} {
-		workflow, errors := workflowlang.ParseDocument([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu, windows]\n        " + name + ": [{os: ubuntu}]\n        '${{ insert }}': {" + name + ": [{os: windows}]}\n    steps: [{run: echo ok}]\n"))
+		workflow, errors := workflowparser.ParseDocument([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu, windows]\n        " + name + ": [{os: ubuntu}]\n        '${{ insert }}': {" + name + ": [{os: windows}]}\n    steps: [{run: echo ok}]\n"))
 		if len(errors) != 1 {
 			t.Fatalf("want parser duplicate-key diagnostic for %s, got %v", name, errors)
 		}
@@ -124,7 +124,7 @@ func TestDuplicateInsertedFiltersFailClosed(t *testing.T) {
 		if name == "include" && len(resolution.include) != 2 || name == "exclude" && len(resolution.exclude) != 2 {
 			t.Fatalf("duplicate %s discarded declaration evidence", name)
 		}
-		workflow, errors = workflowlang.ParseDocument([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        " + name + ": \"${{ fromJSON('[]') }}\"\n        '${{ insert }}': {" + name + ": \"${{ fromJSON('[]') }}\"}\n    steps: [{run: echo ok}]\n"))
+		workflow, errors = workflowparser.ParseDocument([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        " + name + ": \"${{ fromJSON('[]') }}\"\n        '${{ insert }}': {" + name + ": \"${{ fromJSON('[]') }}\"}\n    steps: [{run: echo ok}]\n"))
 		if len(errors) != 1 || Resolve(workflow.Jobs["test"].Strategy).State() != value.Invalid {
 			t.Fatalf("empty duplicate %s lost declaration presence: %v", name, errors)
 		}
@@ -201,7 +201,7 @@ func TestSemanticMatrixDuplicateFilterKeysFailClosed(t *testing.T) {
 
 func TestIncludeAddedKeyOriginsSurviveImmutableCopies(t *testing.T) {
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        include:\n          - os: ubuntu\n            extra: first\n          - extra: second\n          - os: windows\n            extra: separate\n    steps: [{run: echo ok}]\n"
-	workflow, errors := workflowlang.Parse([]byte(source))
+	workflow, errors := workflowparser.Parse([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
@@ -235,7 +235,7 @@ func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
 		{"empty filter", `"${{ fromJSON('[{}]') }}"`, `matrix filter in "exclude" must not be empty`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -298,7 +298,7 @@ func TestOpenMatrixAxisDomainDoesNotInventExclusionIssues(t *testing.T) {
 		{"unknown row name", `{"${{ vars.KEY }}": [a], os: [b], exclude: [{k: a}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -332,7 +332,7 @@ func TestIncludeApplicabilityUsesSubsetAndSurvivingOriginals(t *testing.T) {
 		{"known mismatch disproves dynamic exclusion", `{os: [build-pool], arch: [x64], exclude: [{os: other, arch: "${{ vars.ARCH }}"}], include: [{os: BUILD-POOL}]}`, matchAlways},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow, errors := workflowlang.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}

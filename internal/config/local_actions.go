@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/action/reference"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // LocalActionSources maps generated local action directories to source directories.

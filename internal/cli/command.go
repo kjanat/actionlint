@@ -26,14 +26,17 @@ func (cmd *Command) Main(args []string) int {
 // MainContext runs the CLI with a context that also controls external linters.
 // Cancellation returns exit status 3. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) int {
-	app := newCommandApp(cmd)
+	app := newCommandApp(ctx, cmd)
 	// Root parsing must select an operation before errors can describe a check.
 	app.inv.Operation = ""
 	if len(args) > 0 {
 		args = args[1:]
 	}
-	if args == nil {
-		args = []string{}
+	if len(args) == 0 {
+		app.root.SetContext(ctx)
+		app.streams.Stderr = app.streams.Stdout
+		app.help(app.root, nil)
+		return app.status
 	}
 	if len(args) > 0 && (args[0] == cobra.ShellCompRequestCmd || args[0] == cobra.ShellCompNoDescRequestCmd) {
 		app.root.SetErr(io.Discard)

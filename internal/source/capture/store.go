@@ -66,8 +66,9 @@ type entry struct {
 
 // New preflights all overlays before making the Store available. Conflicting
 // documents are Store data, exposed by Read, Lookup and the sealed Sources table;
-// they do not fail construction. Only malformed configuration returns an error.
-// Overlay metadata resolution is synchronous and joined before New returns.
+// they do not fail construction. Failures return no Store and an InitError.
+// A successful Store has no pending work. Cancellation stops the metadata wait,
+// not the OS call; InitError owns any remaining work until Join succeeds.
 func New(ctx context.Context, overlays []Overlay, reader Reader) (*Store, error) {
 	return newStoreWithResolver(ctx, overlays, reader, physicalDocument)
 }
@@ -81,32 +82,47 @@ func physicalDocument(path string) string {
 
 func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader, resolve func(string) string) (*Store, error) {
 	if ctx == nil || reader == nil {
-		return nil, errors.New("source capture requires a lifetime context and reader")
+		return nil, &InitError{cause: errors.New("source capture requires a lifetime context and reader")}
 	}
 	for _, overlay := range overlays {
 		if err := validatePath(overlay.Path); err != nil {
-			return nil, err
+			return nil, &InitError{cause: err}
 		}
 		if !overlay.Coordinates.Valid() {
-			return nil, fmt.Errorf("source capture overlay %q requires coordinates", overlay.Path)
+			return nil, &InitError{cause: fmt.Errorf("source capture overlay %q requires coordinates", overlay.Path)}
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, &InitError{cause: err}
 	}
 	idle := make(chan struct{})
 	close(idle)
 	s := &Store{ctx: ctx, reader: reader, resolve: resolve, aliases: make(map[string]*alias), docs: make(map[string]*entry), idle: idle}
-	groups := make(map[string][]Overlay)
-	for _, overlay := range overlays {
-		// Store is not exposed yet; each synchronous resolution is fully joined.
-		name := s.aliases[overlay.Path]
-		if name == nil {
-			s.startWork()
-			name = &alias{done: make(chan struct{}), document: s.resolve(overlay.Path), documentRequired: true}
-			close(name.done)
-			s.aliases[overlay.Path] = name
-			s.finishWork()
+	destinations := make([]string, len(overlays))
+	for index, overlay := range overlays {
+		document, err := s.Canonical(ctx, overlay.Path)
+		if err != nil {
+			return nil, s.initFailure(err)
 		}
-		document := name.document
+		destinations[index] = document
+	}
+	// Canonical closes its alias notification and finishes counted work under
+	// one lock. Acquiring it here observes the final flight idle before mutation.
+	s.mu.Lock()
+	idle = s.idle
+	s.mu.Unlock()
+	select {
+	case <-idle:
+	case <-ctx.Done():
+		return nil, s.initFailure(ctx.Err())
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, s.initFailure(err)
+	}
+	groups := make(map[string][]Overlay)
+	for index, overlay := range overlays {
 		overlay.Content = bytes.Clone(overlay.Content)
+		document := destinations[index]
 		groups[document] = append(groups[document], overlay)
 	}
 	documents := make([]string, 0, len(groups))
@@ -117,7 +133,8 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 	for _, document := range documents {
 		group := groups[document]
 		first := group[0]
-		e := &entry{model: first.Coordinates, aliases: make(map[string]struct{}), done: make(chan struct{})}
+		e := s.docs[document]
+		e.model, e.done = first.Coordinates, make(chan struct{})
 		variants := make(map[string]struct{})
 		for _, overlay := range group {
 			e.aliases[overlay.Path] = struct{}{}
@@ -138,9 +155,22 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 			}
 		}
 		close(e.done)
-		s.docs[document] = e
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, s.initFailure(err)
 	}
 	return s, nil
+}
+
+func (s *Store) initFailure(cause error) *InitError {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.closing = true
+	failure := &InitError{cause: cause}
+	if s.active != 0 {
+		failure.pending = s.idle
+	}
+	return failure
 }
 
 func validatePath(path string) error {

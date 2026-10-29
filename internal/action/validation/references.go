@@ -8,26 +8,27 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
 // Repository checks a repository action reference and the metadata selected for it.
 // The caller supplies catalogue lookup and optional debug logging.
-func Repository(exec *workflowlang.ExecAction, lookup func(string) (*actionmeta.Metadata, bool), log func(string, ...any)) []*findingmodel.Finding {
-	if exec == nil || exec.Uses == nil {
+func Repository(exec workflowdecl.ExecActionView, lookup func(string) (*actionmeta.Metadata, bool), log func(string, ...any)) []*findingmodel.Finding {
+	if !exec.Present() || !exec.Uses().Present() {
 		return nil
 	}
 	rule := validator{}
-	rule.checkRepoAction(exec.Uses.Value, exec, lookup, log)
+	rule.checkRepoAction(exec.Uses().Value(), exec, lookup, log)
 	return rule.errs
 }
 
 // Docker checks the URI and optional tag of a Docker action reference.
-func Docker(exec *workflowlang.ExecAction) []*findingmodel.Finding {
-	if exec == nil || exec.Uses == nil || !strings.HasPrefix(exec.Uses.Value, "docker://") {
+func Docker(exec workflowdecl.ExecActionView) []*findingmodel.Finding {
+	if !exec.Present() || !exec.Uses().Present() || !strings.HasPrefix(exec.Uses().Value(), "docker://") {
 		return nil
 	}
-	return DockerReference(exec.Uses.Value, exec.Uses.Pos)
+	return DockerReference(exec.Uses().Value(), positionPointer(exec.Uses().Pos()))
 }
 
 // DockerReference validates a Docker reference from its canonical source value.
@@ -93,8 +94,8 @@ func InvalidReference(pos *workflowlang.Pos, spec, why string) *findingmodel.Fin
 	return rule.errs[0]
 }
 
-func (rule *validator) checkRepoAction(spec string, exec *workflowlang.ExecAction, lookup func(string) (*actionmeta.Metadata, bool), log func(string, ...any)) {
-	if !rule.checkRepositoryReference(spec, exec.Uses.Pos) {
+func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecActionView, lookup func(string) (*actionmeta.Metadata, bool), log func(string, ...any)) {
+	if !rule.checkRepositoryReference(spec, positionPointer(exec.Uses().Pos())) {
 		return
 	}
 	debug := func(format string, args ...any) {
@@ -109,14 +110,14 @@ func (rule *validator) checkRepoAction(spec string, exec *workflowlang.ExecActio
 	}
 	if meta == nil {
 		if retired {
-			rule.Errorf(exec.Uses.Pos, "the runtime or service used by %q action is retired on GitHub.com. update the action's version to fix this issue", spec)
+			rule.Errorf(positionPointer(exec.Uses().Pos()), "the runtime or service used by %q action is retired on GitHub.com. update the action's version to fix this issue", spec)
 			return
 		}
 		debug("This action is not found in popular actions data set: %s", spec)
 		return
 	}
 	if problem := actionmeta.RuntimeProblem(meta.Runs.Using); problem != "" {
-		rule.Errorf(exec.Uses.Pos, "%s. update the version of action %q", problem, spec)
+		rule.Errorf(positionPointer(exec.Uses().Pos()), "%s. update the version of action %q", problem, spec)
 	}
 	if meta.SkipInputs {
 		debug("This action skips to check inputs: %s", spec)

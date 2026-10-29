@@ -4,15 +4,14 @@ import (
 	"strings"
 
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // cacheReachableEvents removes only events for which the job condition is false.
-func cacheReachableEvents(events []string, job *workflowlang.Job) []string {
-	if job.If == nil {
+func cacheReachableEvents(events []string, condition string) []string {
+	if condition == "" {
 		return events
 	}
-	expr, err, _ := exprlang.ParseConditionExpression(job.If.Value)
+	expr, err, _ := exprlang.ParseConditionExpression(condition)
 	if err != nil || expr == nil {
 		return events
 	}

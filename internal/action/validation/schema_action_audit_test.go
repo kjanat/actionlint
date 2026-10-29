@@ -17,7 +17,7 @@ func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
 		if dynamic {
 			exec.InputsExpression = &workflowlang.String{Value: "${{ fromJSON(inputs.parameters) }}", Pos: &workflowlang.Pos{Line: 2, Col: 1}}
 		}
-		findings := actioncheck.Inputs(meta, exec, func(*actionmeta.Metadata) string { return "audit" })
+		findings := actioncheck.Inputs(meta, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "audit" })
 		if (len(findings) == 0) != dynamic {
 			t.Fatalf("dynamic=%v; diagnostics=%v", dynamic, findings)
 		}

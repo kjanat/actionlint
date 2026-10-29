@@ -37,7 +37,7 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 			if len(names) > 0 {
 				want = append(want, filepath.Join(root, ".github", names[0]))
 			}
-			session, err := workspace.New(workspace.Options{WorkingDir: root})
+			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +61,7 @@ func TestAnalysisSessionWorkflowDirectoryTypo(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	session, err := workspace.New(workspace.Options{WorkingDir: filepath.Join(root, "src")})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: filepath.Join(root, "src")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestAnalysisSessionConfigInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	session, err := workspace.New(workspace.Options{WorkingDir: root})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	session, err := workspace.New(workspace.Options{WorkingDir: root, ConfigFile: config})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, ConfigFile: config})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestAnalysisSessionEmpty(t *testing.T) {
 	if err := os.WriteFile(config, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := workspace.New(workspace.Options{WorkingDir: root})
+	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestAnalysisSessionEmpty(t *testing.T) {
 	if err := os.WriteFile(explicit, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err = workspace.New(workspace.Options{WorkingDir: outside, ConfigFile: explicit})
+	session, err = workspace.New(t.Context(), workspace.Options{WorkingDir: outside, ConfigFile: explicit})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestAnalysisSessionEmpty(t *testing.T) {
 		t.Fatalf("explicit config report: %+v", result.Configurations)
 	}
 
-	session, err = workspace.New(workspace.Options{WorkingDir: t.TempDir()})
+	session, err = workspace.New(t.Context(), workspace.Options{WorkingDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

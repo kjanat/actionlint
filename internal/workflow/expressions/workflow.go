@@ -3,331 +3,252 @@ package expressions
 import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/eventpayload"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 )
 
-// VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *Checker) VisitWorkflowPre(n *workflowlang.Workflow) error {
+func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 	rule.workflow = n
 	rule.eventTy = eventpayload.Type(n)
-	rule.checkString(n.Name, "")
-	rule.checkString(n.Description, "")
-	hasNonWorkflowCallTrigger := len(n.On) > 1
-
-	for _, e := range n.On {
-		switch e := e.(type) {
-		case *workflowlang.WebhookEvent:
-			rule.checkStrings(e.Types, "")
-			rule.checkWebhookEventFilter(e.Branches)
-			rule.checkWebhookEventFilter(e.BranchesIgnore)
-			rule.checkWebhookEventFilter(e.Tags)
-			rule.checkWebhookEventFilter(e.TagsIgnore)
-			rule.checkWebhookEventFilter(e.Paths)
-			rule.checkWebhookEventFilter(e.PathsIgnore)
-			rule.checkStrings(e.Workflows, "")
-		case *workflowlang.ScheduledEvent:
-			for _, s := range e.Schedules {
-				rule.checkString(s.Cron, "")
-				rule.checkString(s.Timezone, "")
+	rule.checkString(n.Name(), "")
+	rule.checkString(n.Description(), "")
+	triggerCount := 0
+	for range n.On() {
+		triggerCount++
+	}
+	hasNonWorkflowCallTrigger := triggerCount > 1
+	for event := range n.On() {
+		if e, ok := event.WebhookEvent(); ok {
+			rule.checkStrings(e.Types(), "")
+			for _, filter := range []workflowdecl.WebhookEventFilterView{e.Branches(), e.BranchesIgnore(), e.Tags(), e.TagsIgnore(), e.Paths(), e.PathsIgnore()} {
+				rule.checkWebhookEventFilter(filter)
 			}
-		case *workflowlang.WorkflowDispatchEvent:
-			ity := exprlang.NewEmptyStrictObjectType()
-			for id, i := range e.Inputs {
-				rule.checkString(i.Description, "")
-				rule.checkString(i.Default, "")
-				rule.checkBool(i.Required, "")
-				rule.checkStrings(i.Options, "")
-
-				var ty exprlang.Type
-				switch i.Type {
+			rule.checkStrings(e.Workflows(), "")
+		} else if e, ok := event.ScheduledEvent(); ok {
+			for schedule := range e.Schedules() {
+				rule.checkString(schedule.Cron(), "")
+				rule.checkString(schedule.Timezone(), "")
+			}
+		} else if e, ok := event.WorkflowDispatchEvent(); ok {
+			inputs := exprlang.NewEmptyStrictObjectType()
+			for id, input := range e.Inputs() {
+				rule.checkString(input.Description(), "")
+				rule.checkString(input.Default(), "")
+				rule.checkBool(input.Required(), "")
+				rule.checkStrings(input.Options(), "")
+				var ty exprlang.Type = exprlang.AnyType{}
+				switch input.Type() {
 				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
 					ty = exprlang.BoolType{}
 				case workflowlang.WorkflowDispatchEventInputTypeNumber:
 					ty = exprlang.NumberType{}
 				case workflowlang.WorkflowDispatchEventInputTypeString, workflowlang.WorkflowDispatchEventInputTypeChoice, workflowlang.WorkflowDispatchEventInputTypeEnvironment:
 					ty = exprlang.StringType{}
-				default:
-					ty = exprlang.AnyType{}
+				case workflowlang.WorkflowDispatchEventInputTypeNone:
 				}
 				name := id
-				if i.Name != nil {
-					name = i.Name.Value
+				if input.Name().Present() {
+					name = input.Name().Value()
 				}
-				ity.SetProperty(name, ty)
+				inputs.SetProperty(name, ty)
 			}
-			rule.dispatchInputsTy = ity
-		case *workflowlang.RepositoryDispatchEvent:
-			rule.checkStrings(e.Types, "")
-		case *workflowlang.WorkflowCallEvent:
-			ity := exprlang.NewEmptyStrictObjectType()
-
-			// Set `inputs` context object before checking inputs since input's default values can refer `inputs` context.
-			//   inputs:
-			//     input1:
-			//       type: string
-			//     input2:
-			//       type: string
-			//       default: ${{ inputs.input1 }}
-			rule.inputsTy = ity
-
-			for _, i := range e.Inputs {
-				rule.checkString(i.Description, "")
-				// Check default value before setting type to `ity` because referring myself should cause an error.
-				//   inputs:
-				//     recursive:
-				//       type: string
-				//       default: ${{ inputs.recursive }}
-				ts := rule.checkString(i.Default, "on.workflow_call.inputs.<inputs_id>.default")
-
-				var ty exprlang.Type
-				switch i.Type {
+			rule.dispatchInputsTy = inputs
+		} else if e, ok := event.RepositoryDispatchEvent(); ok {
+			rule.checkStrings(e.Types(), "")
+		} else if e, ok := event.WorkflowCallEvent(); ok {
+			inputs := exprlang.NewEmptyStrictObjectType()
+			// Defaults can use earlier inputs, but cannot refer to their own definition.
+			rule.inputsTy = inputs
+			for input := range e.Inputs() {
+				rule.checkString(input.Description(), "")
+				expressions := rule.checkString(input.Default(), "on.workflow_call.inputs.<inputs_id>.default")
+				var ty exprlang.Type = exprlang.AnyType{}
+				switch input.Type() {
 				case workflowlang.WorkflowCallEventInputTypeString:
 					ty = exprlang.StringType{}
 				case workflowlang.WorkflowCallEventInputTypeBoolean:
 					ty = exprlang.BoolType{}
-					if len(ts) == 1 && i.Default.IsExpressionAssigned() {
-						switch ts[0].ty.(type) {
+					if len(expressions) == 1 && input.Default().IsExpressionAssigned() {
+						switch expressions[0].ty.(type) {
 						case exprlang.BoolType, exprlang.AnyType:
-							// ok
 						default:
-							rule.Errorf(i.Default.Pos, "type of input %q must be bool but found type %s", i.Name.Value, ts[0].ty.String())
+							rule.Errorf(viewPosition(input.Default()), "type of input %q must be bool but found type %s", input.Name().Value(), expressions[0].ty.String())
 						}
 					}
 				case workflowlang.WorkflowCallEventInputTypeNumber:
 					ty = exprlang.NumberType{}
-					if len(ts) == 1 && i.Default.IsExpressionAssigned() {
-						switch ts[0].ty.(type) {
+					if len(expressions) == 1 && input.Default().IsExpressionAssigned() {
+						switch expressions[0].ty.(type) {
 						case exprlang.NumberType, exprlang.AnyType:
-							// ok
 						default:
-							rule.Errorf(i.Default.Pos, "type of input %q must be number but found type %s", i.Name.Value, ts[0].ty.String())
+							rule.Errorf(viewPosition(input.Default()), "type of input %q must be number but found type %s", input.Name().Value(), expressions[0].ty.String())
 						}
 					}
-				default:
-					ty = exprlang.AnyType{}
+				case workflowlang.WorkflowCallEventInputTypeInvalid:
 				}
-				ity.SetProperty(i.Name.Value, ty)
+				inputs.SetProperty(input.Name().Value(), ty)
 			}
-
-			// When no secret is passed, secrets may be inherited from a caller of the workflow.
-			// So `secrets` context must be typed as { string => string }. `e.Secrets` is nil when `secrets:` does not
-			// exist. When `e.Secrets` is an empty map, `secrets:` exists but it has no child. A workflow with another
-			// trigger can also access repository secrets on that trigger path.
-			if e.Secrets != nil {
-				sty := exprlang.NewEmptyStrictObjectType()
-				for id, secret := range e.Secrets {
+			// Distinguish absent secrets (inheritance) from a declared empty mapping.
+			if e.SecretsPresent() {
+				secrets := exprlang.NewEmptyStrictObjectType()
+				for id, secret := range e.Secrets() {
 					name := id
-					if secret.Name != nil {
-						name = secret.Name.Value
+					if secret.Name().Present() {
+						name = secret.Name().Value()
 					}
-					sty.SetProperty(name, exprlang.StringType{})
+					secrets.SetProperty(name, exprlang.StringType{})
 				}
 				if hasNonWorkflowCallTrigger {
-					sty.Mapped = exprlang.StringType{}
+					secrets.Mapped = exprlang.StringType{}
 				}
-				rule.secretsTy = sty
+				rule.secretsTy = secrets
 			}
-			for _, s := range e.Secrets {
-				rule.checkString(s.Description, "")
+			for _, secret := range e.Secrets() {
+				rule.checkString(secret.Description(), "")
 			}
-
-			for _, o := range e.Outputs {
-				rule.checkString(o.Description, "")
-				// o.Value will be checked in VisitWorkflowPost
+			for _, output := range e.Outputs() {
+				rule.checkString(output.Description(), "")
 			}
-		case *workflowlang.ImageVersionEvent:
-			rule.checkStrings(e.Types, "")
-			rule.checkStrings(e.Names, "")
-			rule.checkStrings(e.Versions, "")
+		} else if e, ok := event.ImageVersionEvent(); ok {
+			rule.checkStrings(e.Types(), "")
+			rule.checkStrings(e.Names(), "")
+			rule.checkStrings(e.Versions(), "")
 		}
 	}
-
-	rule.checkString(n.RunName, "run-name")
-	rule.checkEnv(n.Env, "env")
-
-	rule.checkDefaults(n.Defaults, "")
-	rule.checkConcurrency(n.Concurrency, "concurrency")
-
-	rule.workflow = n
+	rule.checkString(n.RunName(), "run-name")
+	rule.checkEnv(n.Env(), "env")
+	rule.checkDefaults(n.Defaults(), "")
+	rule.checkConcurrency(n.Concurrency(), "concurrency")
 	return nil
 }
 
-// VisitWorkflowPost is callback when visiting Workflow node after visiting its children
-func (rule *Checker) VisitWorkflowPost(n *workflowlang.Workflow) error {
-	if e, ok := n.FindWorkflowCallEvent(); ok {
-		rule.checkWorkflowCallOutputs(e.Outputs, n.Jobs)
+func (rule *Checker) VisitWorkflowPost(n workflowdecl.WorkflowView) error {
+	for event := range n.On() {
+		if call, ok := event.WorkflowCallEvent(); ok {
+			rule.checkWorkflowCallOutputs(call, n)
+			break
+		}
 	}
-	rule.workflow = nil
+	rule.workflow = workflowdecl.WorkflowView{}
 	return nil
 }
 
-// VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *Checker) VisitJobPre(n *workflowlang.Job) error {
-	rule.jobEnv = n.Env
-	rule.scriptJob = n
+func (rule *Checker) VisitJobPre(n workflowdecl.JobView) error {
+	rule.jobEnv, rule.scriptJob = n.Env(), n
 	rule.matrixScriptSafe = nil
-	// Type of needs must be resolved before resolving type of matrix because `needs` context can
-	// be used in matrix configuration.
+	// Needs must be available before matrix expressions are evaluated.
 	rule.needsTy = rule.calcNeedsType(n)
-
-	// Set matrix type at start of VisitJobPre() because matrix values are available in
-	// jobs.<job_id> section. For example:
-	//   jobs:
-	//     foo:
-	//       strategy:
-	//         matrix:
-	//           os: [ubuntu-latest, macos-latest, windows-latest]
-	//       runs-on: ${{ matrix.os }}
-	if n.Strategy != nil {
-		if n.Strategy.Expression != nil {
-			resolution := rule.matrixResolution(n.Strategy)
-			rule.checkWorkflowExpression(n.Strategy.Expression, "strategy", "jobs.<job_id>.strategy", schema.Strategy)
+	strategy := n.Strategy()
+	if strategy.Present() {
+		resolution := rule.matrixResolution(strategy)
+		if strategy.Expression().Present() {
+			rule.checkWorkflowExpression(strategy.Expression(), "strategy", "jobs.<job_id>.strategy", schema.Strategy)
 			rule.matrixTy = matrixTypeFromResolution(resolution)
 			rule.matrixScriptSafe = safeMatrixScriptReferences(resolution)
-		} else if n.Strategy.Matrix != nil {
-			// Check and guess type of the matrix.
-			rule.matrixTy = rule.checkMatrix(n.Strategy.Matrix, rule.matrixResolution(n.Strategy))
-			rule.matrixScriptSafe = safeMatrixScriptReferences(rule.matrixResolution(n.Strategy))
+		} else if strategy.Matrix().Present() {
+			rule.matrixTy = rule.checkMatrix(strategy.Matrix(), resolution)
+			rule.matrixScriptSafe = safeMatrixScriptReferences(resolution)
 		}
 	}
-
-	rule.checkString(n.Name, "jobs.<job_id>.name")
-	rule.checkStrings(n.Needs, "")
-
-	if n.RunsOn != nil {
-		rule.checkWorkflowExpression(n.RunsOn.Expression, "runs-on", "jobs.<job_id>.runs-on", schema.Runner)
-		if n.RunsOn.LabelsExpr != nil {
-			if ty := rule.checkOneExpression(n.RunsOn.LabelsExpr, "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ty != nil {
+	rule.checkString(n.Name(), "jobs.<job_id>.name")
+	rule.checkStrings(n.Needs(), "")
+	runner := n.RunsOn()
+	if runner.Present() {
+		rule.checkWorkflowExpression(runner.Expression(), "runs-on", "jobs.<job_id>.runs-on", schema.Runner)
+		if runner.LabelsExpr().Present() {
+			if ty := rule.checkOneExpression(runner.LabelsExpr(), "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ty != nil {
 				switch ty.(type) {
 				case *exprlang.ArrayType, exprlang.StringType, exprlang.AnyType:
-					if value, known := workflowlang.WorkflowExpressionLiteral(n.RunsOn.LabelsExpr); known {
-						if labels, ok := value.([]any); ok && len(labels) == 0 {
-							rule.Error(n.RunsOn.LabelsExpr.Pos, "runs-on.labels must contain at least one value")
+					if literal, known := expressionLiteral(runner.LabelsExpr().Value()); known {
+						if labels, ok := literal.([]any); ok && len(labels) == 0 {
+							rule.Error(viewPosition(runner.LabelsExpr()), "runs-on.labels must contain at least one value")
 						}
 					}
 				default:
-					rule.Errorf(n.RunsOn.LabelsExpr.Pos, "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
+					rule.Errorf(viewPosition(runner.LabelsExpr()), "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
 				}
 			}
 		} else {
-			for _, l := range n.RunsOn.Labels {
-				rule.checkString(l, "jobs.<job_id>.runs-on")
-			}
+			rule.checkStrings(runner.Labels(), "jobs.<job_id>.runs-on")
 		}
-		rule.checkString(n.RunsOn.Group, "jobs.<job_id>.runs-on")
+		rule.checkString(runner.Group(), "jobs.<job_id>.runs-on")
 	}
-
-	rule.checkConcurrency(n.Concurrency, "jobs.<job_id>.concurrency")
-
-	rule.checkEnv(n.Env, "jobs.<job_id>.env")
-
-	rule.checkDefaults(n.Defaults, "jobs.<job_id>.defaults.run")
-	rule.checkIfCondition(n.If, "jobs.<job_id>.if")
-
-	if n.Strategy != nil {
-		// Note: Types in "jobs.<job_id>.strategy.matrix" were checked `checkMatrix`
-		rule.checkBool(n.Strategy.FailFast, "jobs.<job_id>.strategy")
-		rule.checkMaxParallel(n.Strategy.MaxParallel, "jobs.<job_id>.strategy")
+	rule.checkConcurrency(n.Concurrency(), "jobs.<job_id>.concurrency")
+	rule.checkEnv(n.Env(), "jobs.<job_id>.env")
+	rule.checkDefaults(n.Defaults(), "jobs.<job_id>.defaults.run")
+	rule.checkIfCondition(n.If(), "jobs.<job_id>.if")
+	if strategy.Present() {
+		rule.checkBool(strategy.FailFast(), "jobs.<job_id>.strategy")
+		rule.checkMaxParallel(strategy.MaxParallel(), "jobs.<job_id>.strategy")
 	}
-
-	rule.checkBool(n.ContinueOnError, "jobs.<job_id>.continue-on-error")
-	rule.checkFloat(n.TimeoutMinutes, "jobs.<job_id>.timeout-minutes")
-	rule.checkFloat(n.CancelTimeoutMinutes, "jobs.<job_id>.cancel-timeout-minutes")
-	rule.checkContainer(n.Container, "jobs.<job_id>.container", "")
-
-	if n.Services != nil {
-		rule.checkWorkflowExpression(n.Services.Expression, "services", "jobs.<job_id>.services", schema.Services)
-		for _, s := range n.Services.Value {
-			rule.checkContainer(s.Container, "jobs.<job_id>.services", "<service_id>")
+	rule.checkBool(n.ContinueOnError(), "jobs.<job_id>.continue-on-error")
+	rule.checkFloat(n.TimeoutMinutes(), "jobs.<job_id>.timeout-minutes")
+	rule.checkFloat(n.CancelTimeoutMinutes(), "jobs.<job_id>.cancel-timeout-minutes")
+	rule.checkContainer(n.Container(), "jobs.<job_id>.container", "")
+	services := n.Services()
+	if services.Present() {
+		rule.checkWorkflowExpression(services.Expression(), "services", "jobs.<job_id>.services", schema.Services)
+		for _, service := range services.Value() {
+			rule.checkContainer(service.Container(), "jobs.<job_id>.services", "<service_id>")
 		}
 	}
-
-	rule.checkWorkflowCall(n.WorkflowCall)
-
+	rule.checkWorkflowCall(n.WorkflowCall())
 	rule.stepsTy = exprlang.NewEmptyStrictObjectType()
-
 	return nil
 }
 
-// VisitJobPost is callback when visiting Job node after visiting its children
-func (rule *Checker) VisitJobPost(n *workflowlang.Job) error {
-	defer func() { rule.jobEnv, rule.scriptJob = nil, nil }()
-	// Snapshot conditions run after the job's steps, so their outputs are available.
-	rule.checkSnapshot(n.Snapshot)
-	// 'environment' and 'outputs' sections are evaluated after all steps are run
-	if n.Environment != nil {
-		rule.checkWorkflowExpression(n.Environment.Expression, "environment", "jobs.<job_id>.environment", schema.Environment)
-		rule.checkString(n.Environment.Name, "jobs.<job_id>.environment")
-		rule.checkString(n.Environment.URL, "jobs.<job_id>.environment.url")
-		rule.checkBool(n.Environment.Deployment, "jobs.<job_id>.environment")
+func (rule *Checker) VisitJobPost(n workflowdecl.JobView) error {
+	defer func() { rule.jobEnv, rule.scriptJob = workflowdecl.EnvView{}, workflowdecl.JobView{} }()
+	rule.checkSnapshot(n.Snapshot())
+	environment := n.Environment()
+	if environment.Present() {
+		rule.checkWorkflowExpression(environment.Expression(), "environment", "jobs.<job_id>.environment", schema.Environment)
+		rule.checkString(environment.Name(), "jobs.<job_id>.environment")
+		rule.checkString(environment.URL(), "jobs.<job_id>.environment.url")
+		rule.checkBool(environment.Deployment(), "jobs.<job_id>.environment")
 	}
-	for _, output := range n.Outputs {
-		rule.checkString(output.Value, "jobs.<job_id>.outputs.<output_id>")
+	for _, output := range n.Outputs() {
+		rule.checkString(output.Value(), "jobs.<job_id>.outputs.<output_id>")
 	}
-
-	rule.matrixTy = nil
-	rule.matrixScriptSafe = nil
-	rule.stepsTy = nil
-	rule.needsTy = nil
-
+	rule.matrixTy, rule.matrixScriptSafe, rule.stepsTy, rule.needsTy = nil, nil, nil, nil
 	return nil
 }
 
-// VisitStep is callback when visiting Step node.
-func (rule *Checker) VisitStep(n *workflowlang.Step) error {
-	rule.scriptEnv = n.Env
-	defer func() { rule.scriptEnv = nil }()
-	rule.checkString(n.Name, "jobs.<job_id>.steps.name")
-	rule.checkIfCondition(n.If, "jobs.<job_id>.steps.if")
-
-	var spec *workflowlang.String
-	switch e := n.Exec.(type) {
-	case *workflowlang.ExecRun:
-		shell := ""
-		if rule.dependencies.SourceSnapshot != nil {
-			declaration, err := rule.dependencies.SourceSnapshot.StepView(n)
-			if err != nil {
-				return err
-			}
-			shell = rule.scriptShell(declaration)
-		}
-		rule.checkScriptString(e.Run, "jobs.<job_id>.steps.run", shell)
-		rule.checkString(e.Shell, "")
-		rule.checkString(e.WorkingDirectory, "jobs.<job_id>.steps.working-directory")
-	case *workflowlang.ExecAction:
-		rule.checkString(e.Uses, "")
-		for _, name := range e.InputNameExpressions {
+func (rule *Checker) VisitStep(n workflowdecl.StepView) error {
+	rule.scriptEnv = n.Env()
+	defer func() { rule.scriptEnv = workflowdecl.EnvView{} }()
+	rule.checkString(n.Name(), "jobs.<job_id>.steps.name")
+	rule.checkIfCondition(n.If(), "jobs.<job_id>.steps.if")
+	var spec workflowdecl.StringView
+	if run, ok := n.Run(); ok {
+		rule.checkScriptString(run.Run(), "jobs.<job_id>.steps.run", rule.scriptShell(n))
+		rule.checkString(run.Shell(), "")
+		rule.checkString(run.WorkingDirectory(), "jobs.<job_id>.steps.working-directory")
+	} else if action, ok := n.Action(); ok {
+		rule.checkString(action.Uses(), "")
+		for name := range action.InputNameExpressions() {
 			rule.checkString(name, "jobs.<job_id>.steps.with")
 		}
-		rule.checkActionInputs(e, e.Uses)
-		if !e.EntrypointEvaluated {
-			rule.checkString(e.Entrypoint, "jobs.<job_id>.steps.with")
+		rule.checkActionInputs(action, action.Uses())
+		if !action.EntrypointEvaluated() {
+			rule.checkString(action.Entrypoint(), "jobs.<job_id>.steps.with")
 		}
-		if !e.ArgsEvaluated {
-			rule.checkString(e.Args, "jobs.<job_id>.steps.with")
+		if !action.ArgsEvaluated() {
+			rule.checkString(action.Args(), "jobs.<job_id>.steps.with")
 		}
-		spec = e.Uses
+		spec = action.Uses()
 	}
-
-	rule.checkEnv(n.Env, "jobs.<job_id>.steps.env") // env: at step level can refer 'env' context (#158)
-	rule.checkBool(n.ContinueOnError, "jobs.<job_id>.steps.continue-on-error")
-	// Preserve the background-expression extension with the continue-on-error profile.
-	rule.checkBool(n.Background, "jobs.<job_id>.steps.continue-on-error")
-	rule.checkFloat(n.TimeoutMinutes, "jobs.<job_id>.steps.timeout-minutes")
-
-	if n.ID != nil {
-		if n.ID.ContainsExpression() {
-			rule.checkString(n.ID, "")
+	rule.checkEnv(n.Env(), "jobs.<job_id>.steps.env")
+	rule.checkBool(n.ContinueOnError(), "jobs.<job_id>.steps.continue-on-error")
+	rule.checkBool(n.Background(), "jobs.<job_id>.steps.continue-on-error")
+	rule.checkFloat(n.TimeoutMinutes(), "jobs.<job_id>.steps.timeout-minutes")
+	if n.ID().Present() {
+		if n.ID().ContainsExpression() {
+			rule.checkString(n.ID(), "")
 			rule.stepsTy.Loose()
 		}
-		// Step ID is case insensitive
-		rule.stepsTy.SetProperty(n.ID.Value, exprlang.NewStrictObjectType(map[string]exprlang.Type{
-			"outputs":    rule.getActionOutputsType(spec),
-			"conclusion": exprlang.StringType{},
-			"outcome":    exprlang.StringType{},
-		}))
+		rule.stepsTy.SetProperty(n.ID().Value(), exprlang.NewStrictObjectType(map[string]exprlang.Type{"outputs": rule.getActionOutputsType(spec), "conclusion": exprlang.StringType{}, "outcome": exprlang.StringType{}}))
 	}
-
 	return nil
 }

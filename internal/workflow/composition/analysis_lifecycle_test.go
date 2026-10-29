@@ -11,6 +11,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
@@ -41,16 +42,13 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 				if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 					return err
 				}
-				workflow, _ := f.root.Workflow()
-				ref, err := f.root.StepReference(workflow.Jobs["test"].Steps[0])
-				if err != nil {
-					return err
-				}
+				workflow, _ := f.root.WorkflowView()
+				ref := stepReference(t, f.root, workflowStepViews(t, workflow, "test")[0])
 				if unfinished {
-					_, err = c.invocations.Begin(c.invocations.RootContext(), ref, invocation.Facts{Uses: "$/child", HasUses: true, Condition: invocation.ConditionEnabled})
+					_, err := c.invocations.Begin(c.invocations.RootContext(), ref, invocation.Facts{Uses: "$/child", HasUses: true, Condition: invocation.ConditionEnabled})
 					return err
 				}
-				_, err = c.invocations.AddScript(c.invocations.RootContext(), ref, invocation.ScriptRun, "")
+				_, err := c.invocations.AddScript(c.invocations.RootContext(), ref, invocation.ScriptRun, "")
 				return err
 			})
 			want := scriptexecution.ErrInvalidBatch
@@ -113,7 +111,7 @@ type phaseRule struct {
 	joined  *bool
 }
 
-func (r *phaseRule) VisitStep(*workflowlang.Step) error { *r.visited = true; return r.failure }
+func (r *phaseRule) VisitStep(workflowdecl.StepView) error { *r.visited = true; return r.failure }
 func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) {
 	for _, failVisit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "visit failure"}[failVisit], func(t *testing.T) {

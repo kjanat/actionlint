@@ -3,21 +3,22 @@
 The Go library has one module, `actionlint.kjanat.dev/v2`, with packages for distinct responsibilities. The v2 API
 intentionally breaks the former flat root API. The command-line interface and its output formats are separate contracts.
 
-Update Go imports from `actionlint.kjanat.dev/...` to `actionlint.kjanat.dev/v2/...`, then run
-`go get actionlint.kjanat.dev/v2@latest` and `go mod tidy`. The unversioned module path continues to select v1.
+| Package                                  | Responsibility                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `actionlint.kjanat.dev/v2`               | Convenience `Analyze` entry point                                     |
+| `actionlint.kjanat.dev/v2/analysis`      | Source requests, file/repository discovery and results                |
+| `actionlint.kjanat.dev/v2/analyzer`      | Analyzer input, required facts, registration and returned diagnostics |
+| `actionlint.kjanat.dev/v2/document`      | Workflow/action outlines and structured action references             |
+| `actionlint.kjanat.dev/v2/diagnostic`    | Diagnostics, source positions and suggested edits                     |
+| `actionlint.kjanat.dev/v2/config`        | Configuration values, loading, composition and inspection             |
+| `actionlint.kjanat.dev/v2/config/report` | Value-only configuration reports and inspection provenance            |
+| `actionlint.kjanat.dev/v2/rule`          | Shared rule metadata, categories, examples and capabilities           |
+| `actionlint.kjanat.dev/v2/source`        | Document revision, node identity and structural address               |
+| `actionlint.kjanat.dev/v2/resolver`      | Optional dependency resolver contract and provenance                  |
+| `actionlint.kjanat.dev/v2/syntax`        | Workflow syntax model and parser                                      |
 
-| Package                               | Responsibility                                                        |
-| ------------------------------------- | --------------------------------------------------------------------- |
-| `actionlint.kjanat.dev/v2`            | Convenience `Analyze` entry point                                     |
-| `actionlint.kjanat.dev/v2/analysis`   | Source requests, file/repository discovery and results                |
-| `actionlint.kjanat.dev/v2/analyzer`   | Analyzer input, required facts, registration and returned diagnostics |
-| `actionlint.kjanat.dev/v2/document`   | Workflow/action outlines and structured action references             |
-| `actionlint.kjanat.dev/v2/diagnostic` | Diagnostics, source positions and suggested edits                     |
-| `actionlint.kjanat.dev/v2/config`     | Configuration values, loading, composition and inspection             |
-| `actionlint.kjanat.dev/v2/rule`       | Shared rule metadata, categories, examples and capabilities           |
-| `actionlint.kjanat.dev/v2/source`     | Document revision, node identity and structural address               |
-| `actionlint.kjanat.dev/v2/resolver`   | Optional dependency resolver contract and provenance                  |
-| `actionlint.kjanat.dev/v2/syntax`     | Workflow syntax model and parser                                      |
+`config/report` defines `Report`, `Inspection`, `Origin` and `Warning`. The existing names in `config` alias those exact
+types.
 
 ## Analyze loaded sources
 
@@ -196,6 +197,17 @@ nodes use content and occurrence identity. Anonymous content edits create a new 
 Addresses distinguish sibling and parallel steps within a snapshot.
 
 Diagnostic help, related locations and fix applicability are structured fields.
+`diagnostic.Related` binds `Revision` and `Coordinates` together; both zero means
+unbound, while mixed values are rejected. `analyzer.Input.Revision` and
+`Coordinates` supply the captured evidence for that request's own `Path`,
+independent of the invocation graph's `Reference`. Native and component adapters
+bind an unbound related location only when its path exactly equals `Input.Path`.
+Other unbound locations are withheld, never resolved from a path or legacy
+reference. Sealed publication revalidates revision, model, admitted alias and
+strict range against captured UTF-8 bytes. Rejection preserves the primary and
+reports the exact withheld count through a typed `admission-rejected` failure.
+Document identities are absolute, apart from the reserved `<stdin>` identity;
+display-path rewriting does not alter revision or coordinate fields.
 Fix revisions bind edits to the checked content. Missing applicability requires review.
 The CLI and editor adapters validate ranges, revisions and overlaps before applying or
 offering edits.

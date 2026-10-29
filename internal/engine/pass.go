@@ -4,11 +4,10 @@ import (
 	"cmp"
 	"fmt"
 	"io"
-	"maps"
 	"slices"
 	"time"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
@@ -22,9 +21,9 @@ type Visitor struct {
 // Hooks lets a caller observe document/job entry and own step expansion.
 // ParallelBoundary invalidates caller-owned assumptions between parallel branches.
 type Hooks struct {
-	Workflow         func(*workflowlang.Workflow) error
-	Job              func(*workflowlang.Job) error
-	Step             func(*workflowlang.Step) error
+	Workflow         func(declaration.WorkflowView) error
+	Job              func(declaration.JobView) error
+	Step             func(declaration.StepView) error
 	ParallelBoundary func()
 }
 
@@ -49,7 +48,7 @@ func (v *Visitor) reportElapsedTime(what string, start time.Time) {
 }
 
 // Visit visits given syntax tree in depth-first order
-func (v *Visitor) Visit(n *workflowlang.Workflow) error {
+func (v *Visitor) Visit(n declaration.WorkflowView) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -73,31 +72,38 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 
 	// Stable source order also makes reusable metadata findings select the first
 	// visible caller consistently, including calls through nested composites.
-	jobs := slices.SortedFunc(maps.Keys(n.Jobs), func(a, b string) int {
-		left, right := n.Jobs[a].Pos, n.Jobs[b].Pos
+	jobs := slices.SortedFunc(func(yield func(declaration.JobView) bool) {
+		for _, job := range n.Jobs() {
+			if !yield(job) {
+				return
+			}
+		}
+	}, func(a, b declaration.JobView) int {
+		left, leftPresent := a.Pos()
+		right, rightPresent := b.Pos()
 		switch {
-		case left != nil && right != nil:
+		case leftPresent && rightPresent:
 			if order := cmp.Compare(left.Line, right.Line); order != 0 {
 				return order
 			}
 			if order := cmp.Compare(left.Col, right.Col); order != 0 {
 				return order
 			}
-		case left != nil:
+		case leftPresent:
 			return -1
-		case right != nil:
+		case rightPresent:
 			return 1
 		}
-		return cmp.Compare(a, b)
+		return cmp.Compare(a.Key(), b.Key())
 	})
-	for _, id := range jobs {
-		if err := v.visitJob(n.Jobs[id]); err != nil {
+	for _, job := range jobs {
+		if err := v.visitJob(job); err != nil {
 			return err
 		}
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("Visiting %d jobs", len(n.Jobs)), t)
+		v.reportElapsedTime(fmt.Sprintf("Visiting %d jobs", len(jobs)), t)
 		t = time.Now()
 	}
 
@@ -114,7 +120,7 @@ func (v *Visitor) Visit(n *workflowlang.Workflow) error {
 	return nil
 }
 
-func (v *Visitor) visitJob(n *workflowlang.Job) error {
+func (v *Visitor) visitJob(n declaration.JobView) error {
 	if v.Hooks.Job != nil {
 		if err := v.Hooks.Job(n); err != nil {
 			return err
@@ -132,18 +138,20 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPre at job %q", n.ID.Value), t)
+		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPre at job %q", n.ID().Value()), t)
 		t = time.Now()
 	}
 
-	for _, s := range n.Steps {
+	stepCount := 0
+	for s := range n.Steps() {
+		stepCount++
 		if err := v.visitStep(s); err != nil {
 			return err
 		}
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("Visiting %d steps at job %q", len(n.Steps), n.ID.Value), t)
+		v.reportElapsedTime(fmt.Sprintf("Visiting %d steps at job %q", stepCount, n.ID().Value()), t)
 		t = time.Now()
 	}
 
@@ -154,13 +162,13 @@ func (v *Visitor) visitJob(n *workflowlang.Job) error {
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPost at job %q", n.ID.Value), t)
+		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPost at job %q", n.ID().Value()), t)
 	}
 
 	return nil
 }
 
-func (v *Visitor) visitStep(n *workflowlang.Step) error {
+func (v *Visitor) visitStep(n declaration.StepView) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -180,8 +188,8 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 
 	// Steps grouped in a 'parallel' step are visited as well so that rules are applied to them.
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
-	if e, ok := n.Exec.(*workflowlang.ExecParallel); ok {
-		for _, s := range e.Steps {
+	if e, ok := n.Parallel(); ok {
+		for s := range e.Steps() {
 			if v.Hooks.ParallelBoundary != nil {
 				v.Hooks.ParallelBoundary()
 			}
@@ -195,7 +203,7 @@ func (v *Visitor) visitStep(n *workflowlang.Step) error {
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("VisitStep at %s", n.Pos), t)
+		v.reportElapsedTime("VisitStep "+n.Reference().Node, t)
 	}
 
 	return nil

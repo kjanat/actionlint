@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
@@ -20,7 +21,7 @@ func TestCompositeAnalysisCancellation(t *testing.T) {
 			name = "invocation after action validation"
 		}
 		t.Run(name, func(t *testing.T) {
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			outer := writeShellcheckFixture(t, root, "outer/action.yml", `name: outer
 description: test
 runs:

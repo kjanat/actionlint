@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // LintConfig configures built-in and registered analysis rules.

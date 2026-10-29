@@ -1,7 +1,7 @@
 package config
 
 import (
-	"go.yaml.in/yaml/v4"
+	"github.com/kjanat/go-yaml/v4"
 )
 
 // UnmarshalYAML normalizes old documents at the boundary. Runtime values and

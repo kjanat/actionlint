@@ -7,8 +7,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/workflow/matrix"
+	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
@@ -34,8 +34,8 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := fmt.Sprintf("on: push\nenv: %s\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: %s\n    steps:\n      - env: %s\n        run: echo '${{ env.VALUE }}'\n", tc.workflowEnv, tc.jobEnv, tc.stepEnv)
 			rule, workflow := newTestCheckerForSource(t, source)
-			job := workflow.Jobs["test"]
-			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
+			job := testJob(t, workflow, "test")
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0)), rule.VisitJobPost(job)} {
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -47,7 +47,7 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 			if unsafe != tc.unsafe {
 				t.Fatalf("unsafe=%t, want %t: %+v", unsafe, tc.unsafe, rule.Findings())
 			}
-			if rule.jobEnv != nil || rule.scriptEnv != nil {
+			if rule.jobEnv.Present() || rule.scriptEnv.Present() {
 				t.Fatal("environment scope leaked after visiting job")
 			}
 		})
@@ -97,7 +97,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowlang.Parse([]byte(source))
+			workflow, errors := workflowparser.Parse([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -132,15 +132,15 @@ func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, ok := snapshot.Workflow()
+	workflow, ok := snapshot.WorkflowView()
 	if !ok {
 		t.Fatal("source snapshot has no workflow")
 	}
-	rule := New(Dependencies{SourceSnapshot: snapshot, Runners: runners}, Options{})
+	rule := New(Dependencies{Runners: runners}, Options{})
 	if err := rule.VisitWorkflowPre(workflow); err != nil {
 		t.Fatal(err)
 	}
-	job := workflow.Jobs["test"]
+	job := testJob(t, workflow, "test")
 	if err := rule.VisitJobPre(job); err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
 	if got := rule.matrixScriptSafe["matrix.os"]; got != scriptLiteralWord {
 		t.Fatalf("matrix.os script proof = %v, want literal word", got)
 	}
-	if err := rule.VisitStep(job.Steps[0]); err != nil {
+	if err := rule.VisitStep(testStep(t, job, 0)); err != nil {
 		t.Fatal(err)
 	}
 	for _, finding := range rule.Findings() {
@@ -218,7 +218,7 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowlang.Parse([]byte(source))
+			workflow, errors := workflowparser.Parse([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -337,8 +337,8 @@ func TestNestedMatrixScriptInterpolation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo '${{ matrix.target.name }}'\n"
 			rule, workflow := newTestCheckerForSource(t, source)
-			job := workflow.Jobs["test"]
-			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(job.Steps[0]), rule.VisitJobPost(job)} {
+			job := testJob(t, workflow, "test")
+			for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0)), rule.VisitJobPost(job)} {
 				if err != nil {
 					t.Fatal(err)
 				}

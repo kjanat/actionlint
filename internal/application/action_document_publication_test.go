@@ -9,6 +9,7 @@ import (
 
 	documentmodel "actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/source"
@@ -16,7 +17,7 @@ import (
 
 func virtualActionPaths(t *testing.T) (string, string, string) {
 	t.Helper()
-	root := t.TempDir()
+	root := tempdir.Physical(t)
 	physical := filepath.Join(root, "physical")
 	if err := os.Mkdir(physical, 0o755); err != nil {
 		t.Fatal(err)
@@ -96,7 +97,7 @@ func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
 func TestSharedActionOutlinesAreCompleteAfterBatch(t *testing.T) {
 	for _, broken := range []bool{false, true} {
 		t.Run(fmt.Sprintf("broken=%t", broken), func(t *testing.T) {
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			manifest := "name: shared\ndescription: test\nruns: {using: composite, steps: []}\n"
 			if broken {
 				manifest = "runs: [\n"

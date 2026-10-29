@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
@@ -30,34 +30,21 @@ type JobKnowledge struct {
 
 // Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
-	jobs     map[documentparse.JobView]JobKnowledge
-	snapshot *documentparse.SourceSnapshot
-	Report   runnerapi.Report
+	jobs   map[workflowdecl.JobView]JobKnowledge
+	Report runnerapi.Report
 }
 
-func (k *Knowledge) Job(job documentparse.JobView) JobKnowledge {
+func (k *Knowledge) Job(job workflowdecl.JobView) JobKnowledge {
 	if k == nil {
 		return builtinJob(job)
 	}
 	return k.jobs[job]
 }
 
-// JobCursor resolves an engine hook cursor through the snapshot used for preparation.
-func (k *Knowledge) JobCursor(cursor *workflowlang.Job) JobKnowledge {
-	if k == nil || k.snapshot == nil {
-		return JobKnowledge{}
-	}
-	job, err := k.snapshot.JobView(cursor)
-	if err != nil {
-		return JobKnowledge{}
-	}
-	return k.Job(job)
-}
-
 // Prepare resolves a document against the session's selected, immutable evidence.
 // Failed resolution leaves unknown facts while independent checks can continue.
 func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
-	k := &Knowledge{jobs: make(map[documentparse.JobView]JobKnowledge), snapshot: snapshot}
+	k := &Knowledge{jobs: make(map[workflowdecl.JobView]JobKnowledge)}
 	if snapshot == nil {
 		return k, nil
 	}
@@ -116,7 +103,7 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 	}
 	var selectors []runnerapi.Selector
 	type jobRange struct {
-		job        documentparse.JobView
+		job        workflowdecl.JobView
 		start, end int
 	}
 	var ranges []jobRange
@@ -198,7 +185,7 @@ func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom
 		return k, err
 	}
 	k.Report.Identity = fmt.Sprintf("%x", sha256.Sum256(append(dependency, evidence...)))
-	jobs := make(map[documentparse.JobView]JobKnowledge, len(ranges))
+	jobs := make(map[workflowdecl.JobView]JobKnowledge, len(ranges))
 	for _, span := range ranges {
 		knowledge, err := joinAnswers(span.job, answers[span.start:span.end])
 		if err != nil {
@@ -243,7 +230,7 @@ func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, err
 	return nil, errors.New("invalid runner resolution")
 }
 
-func joinAnswers(job documentparse.JobView, answers []runnerapi.Answer) (JobKnowledge, error) {
+func joinAnswers(job workflowdecl.JobView, answers []runnerapi.Answer) (JobKnowledge, error) {
 	k := JobKnowledge{Answers: slices.Clone(answers)}
 	var candidates []runnerapi.Candidate
 	uncertain := false
@@ -319,12 +306,12 @@ func candidatePlatform(c runnerapi.Candidate) Platform {
 		return Windows
 	case runnerapi.Linux, runnerapi.MacOS:
 		return MacOrLinux
-	default:
-		return Any
+	case runnerapi.UnknownOS:
 	}
+	return Any
 }
 
-func builtinJob(job documentparse.JobView) JobKnowledge {
+func builtinJob(job workflowdecl.JobView) JobKnowledge {
 	if !job.Present() {
 		return JobKnowledge{}
 	}

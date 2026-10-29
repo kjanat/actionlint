@@ -113,7 +113,7 @@ func TestPluginProjectMissingPinsAndForeignScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := sources.ValidateScope([]string{filepath.Join(foreign, "workflow.yml")}); err == nil {
+	if err := sources.ValidateScope(t.Context(), []string{filepath.Join(foreign, "workflow.yml")}); err == nil {
 		t.Fatal("foreign declarations ignored by language server")
 	}
 }

@@ -3,13 +3,13 @@ package runner
 import (
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/documentparse"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/matrix"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
-func Selectors(job documentparse.JobView) []runnerapi.Selector {
+func Selectors(job workflowdecl.JobView) []runnerapi.Selector {
 	if !job.Present() || !job.RunsOn().Present() {
 		return nil
 	}

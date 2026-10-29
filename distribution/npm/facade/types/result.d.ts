@@ -2,7 +2,14 @@
 export type Position = { line: number; column: number };
 export type Edit = { path: string; start: Position; end: Position; replacement: string };
 export type SourceReference = { document: string; revision: string; node: string; address: string };
-export type RelatedLocation = { message: string; path: string; start: Position; end: Position };
+export type SourceRevision = { document: string; digest: string };
+export type SourceCoordinates = 'yaml' | 'raw-lf';
+export type RelatedLocation =
+	& { message: string; path: string; start: Position; end: Position }
+	& (
+		| { revision?: never; coordinates?: never }
+		| { revision: SourceRevision; coordinates: SourceCoordinates }
+	);
 export type Fix = {
 	description: string;
 	edits: Edit[];

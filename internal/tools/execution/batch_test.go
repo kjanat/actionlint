@@ -3,12 +3,14 @@ package execution
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/source"
@@ -145,15 +147,25 @@ func TestBatchRejectsForgedEntryPaths(t *testing.T) {
 }
 
 func batchFixture(t *testing.T, withInput bool) (invocation.Graph, Collection) {
+	graph, collection, _ := batchFixtureWithWorkflow(t, withInput)
+	return graph, collection
+}
+
+func batchFixtureWithWorkflow(t *testing.T, withInput bool) (invocation.Graph, Collection, *workflowlang.Workflow) {
 	t.Helper()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # original\n")
 	if withInput {
 		content = append(content, []byte("      - uses: actions/github-script@v7\n        with: {script: console.log(1)}\n")...)
 	}
-	return batchSourceFixture(t, content)
+	return batchSourceFixtureWithWorkflow(t, content)
 }
 
 func batchSourceFixture(t *testing.T, content []byte) (invocation.Graph, Collection) {
+	graph, collection, _ := batchSourceFixtureWithWorkflow(t, content)
+	return graph, collection
+}
+
+func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Graph, Collection, *workflowlang.Workflow) {
 	t.Helper()
 	parsed := documentparse.Workflow("ci.yml", content)
 	if len(parsed.Findings) != 0 {
@@ -170,20 +182,18 @@ func batchSourceFixture(t *testing.T, content []byte) (invocation.Graph, Collect
 	}
 	scope := &Scope{Context: builder.RootContext()}
 	var requests []ScriptRequest
-	for _, step := range parsed.Workflow.Jobs["test"].Steps {
-		ref, err := snapshot.StepReference(step)
-		if err != nil {
-			t.Fatal(err)
-		}
+	workflow, _ := snapshot.WorkflowView()
+	job, _ := workflow.Job("test")
+	for step := range job.Steps() {
+		ref := step.Reference()
 		request := ScriptRequest{}
 		kind, input := invocation.ScriptRun, ""
-		switch step.Exec.(type) {
-		case *workflowlang.ExecRun:
-		case *workflowlang.ExecAction:
+		if _, run := step.Run(); !run {
+			if _, action := step.Action(); !action {
+				t.Fatal("unexpected fixture step")
+			}
 			kind, input = invocation.ScriptActionInput, "script"
 			request.Input = &analyzer.ScriptInput{Action: "actions/github-script", Input: input, Language: "javascript"}
-		default:
-			t.Fatal("unexpected fixture step")
 		}
 		request.Occurrence, err = builder.AddScript(builder.RootContext(), ref, kind, input)
 		if err != nil {
@@ -195,7 +205,7 @@ func batchSourceFixture(t *testing.T, content []byte) (invocation.Graph, Collect
 	if err != nil {
 		t.Fatal(err)
 	}
-	return graph, Collection{Declarations: snapshots.SourceSnapshots, Scopes: []*Scope{scope}, Scripts: requests, Collected: true}
+	return graph, Collection{Declarations: snapshots.SourceSnapshots, Scopes: []*Scope{scope}, Scripts: requests, Collected: true}, parsed.Workflow
 }
 
 func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
@@ -258,8 +268,8 @@ func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			graph, collection := batchFixture(t, true)
-			run, input := fixtureBodies(t, graph, collection)
+			graph, collection, workflow := batchFixtureWithWorkflow(t, true)
+			run, input := fixtureBodies(t, graph, collection, workflow)
 			baseline, err := NewBatch(graph, collection)
 			if err != nil {
 				t.Fatal(err)
@@ -326,17 +336,8 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			facts := document.Facts()
-			job := "test"
-			if tc.kind == invocation.EntryAction {
-				job = ""
-			}
-			var declaration *documentparse.StepView
-			for _, step := range facts.Jobs[job].Steps {
-				reference, err := snapshot.StepReference(step)
-				if err != nil {
-					t.Fatal(err)
-				}
+			var declaration *workflowdecl.StepView
+			for _, reference := range snapshot.CanonicalReferences().Steps {
 				candidate, exists := registry.Declaration(reference)
 				if !exists {
 					t.Fatalf("canonical declaration %q is missing", reference)
@@ -364,7 +365,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 				}
 			}
 			if declaration == nil {
-				t.Fatalf("fixture has no canonical script declaration: steps=%#v metadata=%#v findings=%v", facts.Jobs[job].Steps, document.Metadata, document.Findings)
+				t.Fatalf("fixture has no canonical script declaration: references=%#v metadata=%#v findings=%v", snapshot.CanonicalReferences(), document.Metadata, document.Findings)
 			}
 			builder, err := invocation.NewBuilder(tc.kind, snapshot.Reference(), invocation.DefaultBudget())
 			if err != nil {
@@ -418,7 +419,7 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 			t.Fatal("action input declaration is not an action")
 		}
 		inputs, _ := action.InputNames()
-		var input documentparse.InputView
+		var input workflowdecl.InputView
 		var inputExists bool
 		for name, candidate := range inputs {
 			if name == record.Input {
@@ -434,21 +435,28 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 	}
 }
 
-func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection) (*workflowlang.ExecRun, *workflowlang.Input) {
+func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, workflow *workflowlang.Workflow) (*workflowlang.ExecRun, *workflowlang.Input) {
 	t.Helper()
-	first, found := collection.Declarations.Step(graph.Scripts()[0].Declaration)
+	snapshot, found := collection.Declarations.Lookup(graph.Entry().Reference)
 	if !found {
-		t.Fatal("fixture run declaration absent")
+		t.Fatal("fixture entry snapshot absent")
 	}
-	second, found := collection.Declarations.Step(graph.Scripts()[1].Declaration)
-	if !found {
-		t.Fatal("fixture input declaration absent")
+	if workflow == nil || len(workflow.Jobs["test"].Steps) != 2 {
+		t.Fatal("fixture mutable traversal absent")
 	}
-	run, ok := first.Step.Exec.(*workflowlang.ExecRun)
+	steps := workflow.Jobs["test"].Steps
+	view, _ := snapshot.WorkflowView()
+	job, _ := view.Job("test")
+	for index, step := range slices.Collect(job.Steps()) {
+		if step.Reference() != graph.Scripts()[index].Declaration {
+			t.Fatalf("fixture declaration does not match script %d", index)
+		}
+	}
+	run, ok := steps[0].Exec.(*workflowlang.ExecRun)
 	if !ok {
 		t.Fatal("fixture run has wrong kind")
 	}
-	action, ok := second.Step.Exec.(*workflowlang.ExecAction)
+	action, ok := steps[1].Exec.(*workflowlang.ExecAction)
 	if !ok {
 		t.Fatal("fixture input has wrong kind")
 	}
@@ -456,10 +464,11 @@ func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection) 
 }
 
 func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
-	graph, collection := batchFixture(t, true)
+	graph, collection, workflow := batchFixtureWithWorkflow(t, true)
 	scopes := collection.Scopes
-	run, argument := fixtureBodies(t, graph, collection)
-	scopes[0].Paths.Placements = &workflowexecution.CheckoutPlacement{Directory: workflowexecution.Directory{Kind: workflowexecution.DirectoryKnown, Path: "original"}}
+	run, argument := fixtureBodies(t, graph, collection, workflow)
+	placement := workflowexecution.Checkout{Directory: workflowexecution.Directory{Kind: workflowexecution.DirectoryKnown, Path: "original"}}
+	scopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
 	batch, err := NewBatch(graph, collection)
 	if err != nil {
 		t.Fatal(err)
@@ -476,16 +485,18 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	run.Run.Value = "corrupt original"
 	run.Source.Spans[0].YamlLine = 999
 	argument.Value.Value = "corrupt input"
-	declaration, _ := collection.Declarations.Step(graph.Scripts()[0].Declaration)
-	declaration.Step.Pos.Line = 999
+	workflow.Jobs["test"].Steps[0].Pos.Line = 999
 	scopes[0].Context = invocation.Context{}
-	scopes[0].Paths.Placements.Directory.Path = "corrupt placement"
+	placement.Directory.Path = "corrupt placement"
+	scopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
 	clonedScopes, clonedUnits := batch.Snapshot()
 	if clonedUnits[0].Scope != clonedScopes[0] || clonedUnits[1].Scope != clonedScopes[0] || clonedUnits[0].Content != nil || clonedUnits[1].Content != nil {
 		t.Fatal("snapshot lost scope ownership or workflow source fallback")
 	}
 	clonedScopes[0].Context = invocation.Context{}
-	clonedScopes[0].Paths.Placements.Directory.Path = "corrupt returned placement"
+	placement = clonedScopes[0].Paths.Placements.Details()
+	placement.Directory.Path = "corrupt returned placement"
+	clonedScopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
 	clonedUnits[0].Owner.Step.Line = 888
 	clonedUnits[0].Origin.StepPosition.Line = 777
 	after, _ := batch.Fact(0, false)
@@ -494,7 +505,7 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 		t.Fatal("caller mutation changed a prepared fact")
 	}
 	_, fresh := batch.Snapshot()
-	if fresh[0].Scope.Paths.Placements.Directory.Path != "original" {
+	if fresh[0].Scope.Paths.Placements.Details().Directory.Path != "original" {
 		t.Fatal("snapshot mutation changed checkout placement")
 	}
 	if fresh[0].Content != nil || fresh[0].Owner.Step.Line != 6 || fresh[0].Origin.StepPosition.Line != 6 || fresh[0].Scope.Context.ID() != graph.RootID() {
@@ -510,62 +521,26 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 		if !exists {
 			t.Fatalf("canonical declaration %q is missing", unit.Reference)
 		}
-		entry, ok := registry.Lookup(batch.data.graph.Entry().Reference)
-		if !ok {
-			t.Fatal("entry snapshot is missing")
+		entry, present := registry.Lookup(declaration.SourceReference())
+		if !present || declaration.Reference() != unit.Reference || !registry.Owns(declaration) {
+			t.Fatal("registry declaration lost its source binding")
 		}
-		var cursor *workflowlang.Step
-		if entry.Kind() == documentparse.KindWorkflow {
-			parsed, ok := entry.Workflow()
-			if !ok {
-				t.Fatal("entry workflow is unavailable")
-			}
-			for _, job := range parsed.Jobs {
-				for _, step := range job.Steps {
-					reference, err := entry.StepReference(step)
-					if err != nil {
-						t.Fatal(err)
-					}
-					if reference == unit.Reference {
-						cursor = step
-					}
-				}
-			}
-		} else {
-			steps, ok := entry.ActionSteps()
-			if !ok {
-				t.Fatal("entry action is unavailable")
-			}
-			for _, step := range steps {
-				reference, err := entry.StepReference(step)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if reference == unit.Reference {
-					cursor = step
-				}
-			}
-		}
-		if cursor == nil {
-			t.Fatalf("legacy cursor for declaration %q is missing", unit.Reference)
-		}
-		cursorView, err := entry.StepView(cursor)
-		if err != nil || cursorView != declaration {
-			t.Fatalf("registry declaration is not its canonical cursor view: %v", err)
+		if err := entry.ValidateStep(declaration); err != nil {
+			t.Fatalf("registry declaration is not its canonical owned view: %v", err)
 		}
 		projected := unit
 		if run, isRun := declaration.Run(); isRun {
 			projected.Run, projected.Input = run, nil
 		} else if input, isInput := declaration.Action(); isInput && unit.Input != nil {
 			inputs, _ := input.InputNames()
-			var found documentparse.InputView
+			var found workflowdecl.InputView
 			for name, candidate := range inputs {
 				if name == unit.Input.Site.Input {
 					found = candidate
 					break
 				}
 			}
-			projected.Run = documentparse.ExecRunView{}
+			projected.Run = workflowdecl.ExecRunView{}
 			projected.Input = &ActionInput{Site: unit.Input.Site, Value: found}
 		} else {
 			t.Fatalf("canonical declaration kind disagrees with batch unit %d", index)
@@ -651,8 +626,8 @@ func TestUnpreparedBatchCannotExecute(t *testing.T) {
 }
 
 func TestConcurrentBatchConsumersCannotMutatePublishedFacts(t *testing.T) {
-	graph, collection := batchFixture(t, true)
-	run, _ := fixtureBodies(t, graph, collection)
+	graph, collection, workflow := batchFixtureWithWorkflow(t, true)
+	run, _ := fixtureBodies(t, graph, collection, workflow)
 	run.Source.Comments = []workflowlang.ScalarComment{{Text: "forged", Pos: workflowlang.Pos{Line: 1, Col: 1}}}
 	batch, err := NewBatch(graph, collection)
 	if err != nil {
@@ -669,7 +644,7 @@ func TestConcurrentBatchConsumersCannotMutatePublishedFacts(t *testing.T) {
 				fact.Comments[0].Text = "changed"
 				fact.Spans[0].Document.Line = 999
 				_, snapshot := batch.Snapshot()
-				snapshot[0].Run = documentparse.ExecRunView{}
+				snapshot[0].Run = workflowdecl.ExecRunView{}
 				snapshot[0].Owner.Step.Line = 999
 			}
 		})

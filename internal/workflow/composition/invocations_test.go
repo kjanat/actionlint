@@ -14,6 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
+	"actionlint.kjanat.dev/v2/internal/testutil/tempdir"
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
@@ -21,25 +23,27 @@ import (
 )
 
 type invocationFixture struct {
-	service    *Service
-	root       *documentparse.SourceSnapshot
-	snapshots  *capturedSnapshots
-	cache      *actionlocal.Cache
-	parsed     []string
-	afterParse func(string)
-	mutateMeta func(*actionmeta.Metadata)
+	service         *Service
+	root            *documentparse.SourceSnapshot
+	original        *workflowlang.Workflow
+	snapshots       *capturedSnapshots
+	cache           *actionlocal.Cache
+	parsed          []string
+	afterParse      func(string)
+	mutateMeta      func(*actionmeta.Metadata)
+	mutableMetadata map[string]*actionmeta.Metadata
 }
 
 func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, actions map[string]string, budget *invocation.Budget) *invocationFixture {
 	t.Helper()
-	directory := t.TempDir()
+	directory := tempdir.Physical(t)
 	path := filepath.Join(directory, "ci.yml")
 	content := []byte(workflow)
 	document := documentparse.Workflow(path, content)
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	f := &invocationFixture{snapshots: newCapturedSnapshots(t, directory), cache: actionlocal.NewCache(directory, nil)}
+	f := &invocationFixture{original: document.Workflow, snapshots: newCapturedSnapshots(t, directory), cache: actionlocal.NewCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
 	var err error
 	f.root, err = f.snapshots.Document(fsread.PhysicalPath(path), content, document)
 	if err != nil {
@@ -55,6 +59,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 	}
 	f.cache.Configure(actionlocal.Options{Captures: f.snapshots.Sources.Store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.Snapshot, path string, metadata *actionmeta.Metadata, _ error) {
 		f.parsed = append(f.parsed, path)
+		f.mutableMetadata[path] = metadata
 		if f.mutateMeta != nil {
 			f.mutateMeta(metadata)
 		}
@@ -127,45 +132,30 @@ jobs:
 					t.Fatalf("script occurrence differs from its owning graph: %+v", script)
 				}
 			}
-			root, _ := f.root.Workflow()
+			root, _ := f.root.WorkflowView()
 			var rootSites []source.Reference
-			for _, step := range slices.Concat(root.Jobs["first"].Steps, root.Jobs["second"].Steps) {
-				ref, err := f.root.StepReference(step)
-				if err != nil {
-					t.Fatal(err)
-				}
+			for _, step := range slices.Concat(workflowStepViews(t, root, "first"), workflowStepViews(t, root, "second")) {
+				ref := stepReference(t, f.root, step)
 				rootSites = append(rootSites, ref)
 			}
 			outer := f.actionSnapshot(t, "$/outer")
-			outerSteps, _ := outer.ActionSteps()
+			outerSteps := actionStepViews(t, outer)
 			leaf := f.actionSnapshot(t, "$/nested")
-			leafSteps, _ := leaf.ActionSteps()
-			declaration, err := leaf.StepReference(leafSteps[0])
-			if err != nil {
-				t.Fatal(err)
-			}
+			leafSteps := actionStepViews(t, leaf)
+			declaration := stepReference(t, leaf, leafSteps[0])
 			seen := map[invocation.ID]bool{}
 			for i, unit := range result.Batch.Scripts() {
 				chain := []invocation.ID{graph.RootID()}
 				sites := []source.Reference{rootSites[i/2]}
 				if middle {
-					ref, err := outer.StepReference(outerSteps[0])
-					if err != nil {
-						t.Fatal(err)
-					}
+					ref := stepReference(t, outer, outerSteps[0])
 					sites = append(sites, ref)
 					middleSnapshot := f.actionSnapshot(t, "$/middle")
-					steps, _ := middleSnapshot.ActionSteps()
-					ref, err = middleSnapshot.StepReference(steps[i%2])
-					if err != nil {
-						t.Fatal(err)
-					}
+					steps := actionStepViews(t, middleSnapshot)
+					ref = stepReference(t, middleSnapshot, steps[i%2])
 					sites = append(sites, ref)
 				} else {
-					ref, err := outer.StepReference(outerSteps[i%2])
-					if err != nil {
-						t.Fatal(err)
-					}
+					ref := stepReference(t, outer, outerSteps[i%2])
 					sites = append(sites, ref)
 				}
 				for _, site := range sites {

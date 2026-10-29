@@ -3,36 +3,25 @@ package documentparse
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/documentparse/internal/frozen"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/workflow/facts"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/source"
 )
 
-// SourceSnapshot binds declaration references to the exact AST that produced them.
+// SourceSnapshot binds immutable declarations to their admitted source revision.
 type SourceSnapshot struct {
-	registry     *SourceSnapshots
-	captured     capture.Snapshot
-	reference    source.Reference
-	facts        *workflowlang.Workflow
-	steps        map[*workflowlang.Step]source.Reference
-	declarations map[source.Reference]StepDeclaration
-	action       bool
-	bound        *frozen.Bound
-}
-
-// StepDeclaration is a read-only view of an indexed declaration and its source.
-type StepDeclaration struct {
-	Source *SourceSnapshot
-	Step   *workflowlang.Step
-	Job    string
+	registry  *SourceSnapshots
+	captured  capture.Snapshot
+	reference source.Reference
+	action    bool
+	bound     *workflowdecl.Bound
 }
 
 func (s *SourceSnapshot) Reference() source.Reference { return s.reference }
@@ -47,33 +36,6 @@ func (s *SourceSnapshot) verify() error {
 		return errors.New("source snapshot is unavailable")
 	}
 	return s.registry.store.VerifyHandle(s.captured)
-}
-
-// Workflow supplies the indexed AST for read-only workflow traversal.
-func (s *SourceSnapshot) Workflow() (*workflowlang.Workflow, bool) {
-	if s.verify() != nil || s.action || s.facts == nil {
-		return nil, false
-	}
-	return s.facts, true
-}
-
-// ActionSteps supplies the indexed declarations for read-only action traversal.
-func (s *SourceSnapshot) ActionSteps() ([]*workflowlang.Step, bool) {
-	if s.verify() != nil || !s.action || s.facts == nil {
-		return nil, false
-	}
-	return slices.Clone(s.facts.Jobs[""].Steps), true
-}
-
-func (s *SourceSnapshot) StepReference(step *workflowlang.Step) (source.Reference, error) {
-	if err := s.verify(); err != nil {
-		return source.Reference{}, err
-	}
-	ref, exists := s.steps[step]
-	if !exists {
-		return source.Reference{}, fmt.Errorf("step does not belong to source snapshot %q", s.reference.Document)
-	}
-	return ref, nil
 }
 
 // SourceSnapshots owns one declaration revision per document in an analysis.
@@ -136,20 +98,6 @@ func (s *SourceSnapshots) LookupDocument(identity string) (*SourceSnapshot, bool
 	return snapshot, true
 }
 
-func (s *SourceSnapshots) Step(reference source.Reference) (StepDeclaration, bool) {
-	if s == nil {
-		return StepDeclaration{}, false
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	snapshot := s.documents[reference.Document]
-	if snapshot == nil || snapshot.verify() != nil {
-		return StepDeclaration{}, false
-	}
-	declaration, exists := snapshot.declarations[reference]
-	return declaration, exists
-}
-
 func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (*SourceSnapshot, error) {
 	previous := s.documents[document]
 	if previous == nil {
@@ -167,8 +115,8 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 	return previous, nil
 }
 
-// Document returns the canonical indexed AST for this source revision.
-// Callers must traverse that snapshot, including when supplied a fresh decode.
+// Document returns canonical declarations for this source revision.
+// Repeated decodes share the existing immutable binding.
 func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document) (*SourceSnapshot, error) {
 	if document.record == nil {
 		return nil, errors.New("source document has no parse provenance")
@@ -176,7 +124,7 @@ func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document)
 	if err := s.verify(captured, []byte(document.record.Text())); err != nil {
 		return nil, err
 	}
-	return s.bind(captured, document.record, document.traversal)
+	return s.bind(captured, document.record)
 }
 
 func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta.Metadata) (*SourceSnapshot, error) {
@@ -205,8 +153,8 @@ func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta
 	if _, rejected := errors.AsType[*codec.AdmissionError](parseErr); !rejected {
 		traversal = actionFacts(recovered)
 	}
-	record := frozen.Publish(text, traversal, true, recovered.Runs.Using)
-	return s.bind(captured, record, traversal)
+	record := workflowdecl.Publish(text, traversal, true, recovered.Runs.Using)
+	return s.bind(captured, record)
 }
 
 func (s *SourceSnapshots) verify(captured capture.Snapshot, content []byte) error {
@@ -222,7 +170,7 @@ func (s *SourceSnapshots) verify(captured capture.Snapshot, content []byte) erro
 	return nil
 }
 
-func (s *SourceSnapshots) bind(captured capture.Snapshot, record *frozen.Record, legacy *workflowlang.Workflow) (*SourceSnapshot, error) {
+func (s *SourceSnapshots) bind(captured capture.Snapshot, record *workflowdecl.Record) (*SourceSnapshot, error) {
 	if err := s.verify(captured, []byte(record.Text())); err != nil {
 		return nil, err
 	}
@@ -235,18 +183,18 @@ func (s *SourceSnapshots) bind(captured capture.Snapshot, record *frozen.Record,
 		return previous, err
 	}
 	bound := record.Bind(document)
-	references := bound.CursorReferences()
+	references := bound.SourceIndex()
 	snapshot := &SourceSnapshot{
 		registry:  s,
-		reference: references.Document, captured: captured, facts: legacy, bound: bound,
-		steps: references.Steps, action: action,
-		declarations: make(map[source.Reference]StepDeclaration, len(references.Steps)),
+		reference: references.Document, captured: captured, bound: bound,
+		action: action,
 	}
-	for step, reference := range references.Steps {
-		if _, duplicate := snapshot.declarations[reference]; duplicate {
+	seen := make(map[source.Reference]struct{}, len(references.Steps))
+	for _, reference := range references.Steps {
+		if _, duplicate := seen[reference]; duplicate {
 			return nil, fmt.Errorf("source document %q has duplicate step references", document)
 		}
-		snapshot.declarations[reference] = StepDeclaration{Source: snapshot, Step: step, Job: references.StepJobs[step]}
+		seen[reference] = struct{}{}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -279,64 +227,36 @@ func (s *SourceSnapshot) Kind() DocumentKind {
 	return KindWorkflow
 }
 
-func (s *SourceSnapshot) WorkflowView() (WorkflowView, bool) {
+func (s *SourceSnapshot) WorkflowView() (workflowdecl.WorkflowView, bool) {
 	if s.Kind() != KindWorkflow {
-		return WorkflowView{}, false
+		return workflowdecl.WorkflowView{}, false
 	}
 	view := s.bound.Workflow()
 	return view, view.Present()
 }
 
-func (s *SourceSnapshot) ActionView() (ActionBodyView, bool) {
+func (s *SourceSnapshot) ActionView() (workflowdecl.ActionBodyView, bool) {
 	if s.Kind() != KindAction {
-		return ActionBodyView{}, false
+		return workflowdecl.ActionBodyView{}, false
 	}
 	view := s.bound.ActionBody()
 	return view, view.Present()
 }
 
-func (s *SourceSnapshot) StepView(cursor *workflowlang.Step) (StepView, error) {
-	if err := s.verify(); err != nil {
-		return StepView{}, err
-	}
-	if s == nil || s.bound == nil {
-		return StepView{}, errors.New("source snapshot is unavailable")
-	}
-	view, ok := s.bound.StepCursor(cursor)
-	if !ok {
-		return StepView{}, fmt.Errorf("step does not belong to source snapshot %q", s.reference.Document)
-	}
-	return view, nil
-}
-
-func (s *SourceSnapshot) JobView(cursor *workflowlang.Job) (JobView, error) {
-	if err := s.verify(); err != nil {
-		return JobView{}, err
-	}
-	if s == nil || s.bound == nil {
-		return JobView{}, errors.New("source snapshot is unavailable")
-	}
-	view, ok := s.bound.JobCursor(cursor)
-	if !ok {
-		return JobView{}, fmt.Errorf("job does not belong to source snapshot %q", s.reference.Document)
-	}
-	return view, nil
-}
-
-func (s *SourceSnapshots) Declaration(reference source.Reference) (StepView, bool) {
+func (s *SourceSnapshots) Declaration(reference source.Reference) (workflowdecl.StepView, bool) {
 	if s == nil {
-		return StepView{}, false
+		return workflowdecl.StepView{}, false
 	}
 	s.mu.Lock()
 	snapshot := s.documents[reference.Document]
 	s.mu.Unlock()
 	if snapshot == nil || snapshot.bound == nil || snapshot.verify() != nil {
-		return StepView{}, false
+		return workflowdecl.StepView{}, false
 	}
 	return snapshot.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Owns(step StepView) bool {
+func (s *SourceSnapshots) Owns(step workflowdecl.StepView) bool {
 	if s == nil || !step.Present() {
 		return false
 	}
@@ -346,13 +266,12 @@ func (s *SourceSnapshots) Owns(step StepView) bool {
 	return snapshot != nil && snapshot.bound != nil && snapshot.verify() == nil && snapshot.bound.Owns(step)
 }
 
-// CanonicalReferences returns detached index maps keyed by legacy traversal
-// cursors. References and positions come from the owned parse record.
-func (s *SourceSnapshot) CanonicalReferences() workflowfacts.References {
+// CanonicalReferences returns detached source identities and positions.
+func (s *SourceSnapshot) CanonicalReferences() workflowfacts.SourceIndex {
 	if s.verify() != nil || s.bound == nil {
-		return workflowfacts.References{}
+		return workflowfacts.SourceIndex{}
 	}
-	return s.bound.CursorReferences()
+	return s.bound.SourceIndex()
 }
 
 func (s *SourceSnapshot) Declarations() ([]analyzer.Mapping, []analyzer.Dependency) {
@@ -360,4 +279,32 @@ func (s *SourceSnapshot) Declarations() ([]analyzer.Mapping, []analyzer.Dependen
 		return nil, nil
 	}
 	return s.bound.Declarations()
+}
+
+func (s *SourceSnapshot) ValidateWorkflow(view workflowdecl.WorkflowView) error {
+	if err := s.verify(); err != nil {
+		return err
+	}
+	if s.action || !s.bound.OwnsWorkflow(view) {
+		return errors.New("workflow does not belong to source snapshot")
+	}
+	return nil
+}
+func (s *SourceSnapshot) ValidateJob(view workflowdecl.JobView) error {
+	if err := s.verify(); err != nil {
+		return err
+	}
+	if !s.bound.OwnsJob(view) {
+		return errors.New("job does not belong to source snapshot")
+	}
+	return nil
+}
+func (s *SourceSnapshot) ValidateStep(view workflowdecl.StepView) error {
+	if err := s.verify(); err != nil {
+		return err
+	}
+	if !s.bound.Owns(view) {
+		return errors.New("step does not belong to source snapshot")
+	}
+	return nil
 }

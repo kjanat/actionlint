@@ -441,6 +441,16 @@ falsy and structured results, and evaluates only the selected branch. Use it to
 select an object for insertion. `condition && value || fallback` also preserves
 short-circuit evaluation, but chooses the fallback when `value` is falsy.
 
+The result type of `case()` merges every reachable value branch and the final
+default, excluding predicates. `case(github.ref == 'refs/heads/main',
+'production', 'development')` has type `string`, so using it for
+`timeout-minutes` reports a type error. Objects and arrays merge by the
+existing property and element rules; string, number and boolean combinations
+follow the scalar merging rules; incompatible results fall back to `any`.
+Branches made unreachable by constant predicates do not contribute, so
+`case(true, 10, 'never')` has type `number`. No union of individual string
+literals is inferred.
+
 <a id="check-contexts-and-builtin-func"></a>
 
 ## Contexts and built-in functions
