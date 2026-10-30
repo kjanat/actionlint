@@ -286,17 +286,23 @@ func (r runner) findings(c check, script tools.Script, result outcome) ([]tools.
 	}
 	files := map[string]reportedFile{}
 	for _, d := range result.diagnostics {
-		if r.templateContract == analyzer.TemplateEffectsContract && !d.TemplateEffect.Valid() ||
-			r.templateContract != analyzer.TemplateEffectsContract && d.TemplateEffect != "" {
-			failures = errors.Join(failures, fmt.Errorf("tool %s returned an undeclared template effect %q", r.descriptor.Name, d.TemplateEffect))
-			continue
-		}
 		if d.Source != "" {
 			if !r.options.findings.reportedSources {
 				failures = errors.Join(failures, fmt.Errorf("tool %s reported a finding in %q but does not declare reported sources", r.descriptor.Name, d.Source))
 				continue
 			}
+			// Template effects describe the masked snippet. A file the engine
+			// read has no template expressions, so it carries none.
+			if d.TemplateEffect != "" && d.TemplateEffect != analyzer.TemplateEffectNone {
+				failures = errors.Join(failures, fmt.Errorf("tool %s returned template effect %q for reported source %q", r.descriptor.Name, d.TemplateEffect, d.Source))
+				continue
+			}
 			out = append(out, r.reportedFinding(c.index, script, d, result.directory, files))
+			continue
+		}
+		if r.templateContract == analyzer.TemplateEffectsContract && !d.TemplateEffect.Valid() ||
+			r.templateContract != analyzer.TemplateEffectsContract && d.TemplateEffect != "" {
+			failures = errors.Join(failures, fmt.Errorf("tool %s returned an undeclared template effect %q", r.descriptor.Name, d.TemplateEffect))
 			continue
 		}
 		if d.Filename != "" && d.Filename != c.request.Filename {

@@ -59,7 +59,8 @@ func generated(script string) tools.PreparedInput {
 	var lines []tools.PreparedLine
 	row := 0
 	write := func(line string, origin tools.LineOrigin) {
-		out.WriteString(strings.TrimSuffix(line, "\n") + "\n")
+		out.WriteString(strings.TrimSuffix(line, "\n"))
+		out.WriteString("\n")
 		mapped := tools.PreparedLine{Origin: origin}
 		if origin == tools.LineScript {
 			row++
@@ -288,6 +289,37 @@ func TestReportedSourceFindings(t *testing.T) {
 	findings, err = undeclared.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
 	if err == nil || !strings.Contains(err.Error(), "does not declare reported sources") || len(findings) != 0 {
 		t.Fatalf("undeclared reported sources accepted: %+v %v", findings, err)
+	}
+}
+
+// Template effects describe the snippet, so a provider declaring both the
+// template contract and reported sources keeps its findings in read files.
+func TestReportedSourcesUnderTemplateContract(t *testing.T) {
+	directory := t.TempDir()
+	at := analyzer.ScriptPosition{Row: 1, Column: 1}
+	backend := &reportingBackend{directory: directory, result: func(analyzer.ScriptRequest) process.Result {
+		return process.Result{Diagnostics: []analyzer.ScriptDiagnostic{
+			{Code: "X1", Severity: "warning", Message: "snippet", Location: at, TemplateEffect: analyzer.TemplateEffectNone},
+			{Source: "lib.sh", Code: "X2", Severity: "warning", Message: "read file", Location: at},
+			{Source: "lib.sh", Code: "X3", Severity: "warning", Message: "effect", Location: at, TemplateEffect: analyzer.TemplateEffectOpaqueName},
+		}}
+	}}
+	registration, err := registerEngine(analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, TemplateContract: analyzer.TemplateEffectsContract}, backend, engineOptions{findings: findingCapabilities{reportedSources: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := registration.Build(tools.Context{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := scriptFixture(t, "run: |\n  source lib.sh\n")
+	script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	if err == nil || !strings.Contains(err.Error(), `template effect "opaque-name" for reported source`) {
+		t.Errorf("reported source with a template effect accepted: %v", err)
+	}
+	if len(findings) != 2 || findings[0].Code != "X1" || findings[1].Code != "X2" || !findings[1].RawScript {
+		t.Fatalf("findings: %+v", findings)
 	}
 }
 
