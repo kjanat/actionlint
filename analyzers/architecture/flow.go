@@ -857,7 +857,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						}
 						continue
 					}
-					if contextErr(common) {
+					if contextErr(common) || lockState(common) {
 						continue
 					}
 					callee := common.StaticCallee()
@@ -1011,6 +1011,30 @@ func contextErr(common *ssa.CallCommon) bool {
 	}
 	named, ok := types.Unalias(common.Value.Type()).(*types.Named)
 	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "context" && named.Obj().Name() == "Context"
+}
+
+// lockState reports a call that locks or unlocks a sync.Mutex or sync.RWMutex.
+// Such a call changes only the lock itself. It writes no other storage and
+// returns no alias, so a method that locks only to read stays read-only.
+// Whether locks are balanced is not checked.
+func lockState(common *ssa.CallCommon) bool {
+	callee := common.StaticCallee()
+	if callee == nil {
+		return false
+	}
+	obj, _ := callee.Object().(*types.Func)
+	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "sync" || obj.Signature().Recv() == nil {
+		return false
+	}
+	named := namedType(obj.Signature().Recv().Type())
+	if named == nil || named.Obj().Name() != "Mutex" && named.Obj().Name() != "RWMutex" {
+		return false
+	}
+	switch obj.Name() {
+	case "Lock", "Unlock", "TryLock", "RLock", "RUnlock", "TryRLock":
+		return true
+	}
+	return false
 }
 
 func standardClone(fn *ssa.Function) bool {

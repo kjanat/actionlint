@@ -24,7 +24,9 @@ methods are checked separately. A constructor returning fresh storage is allowed
 `context.Context.Err` only reads its context and returns nil,
 `context.Canceled` or `context.DeadlineExceeded`, as the Context contract
 documents, so a stored context's error aliases nothing. Its other methods have
-no model.
+no model. Locking or unlocking a `sync.Mutex` or `sync.RWMutex` changes only
+the lock, so a method that locks only to read its storage stays read-only.
+Whether locks are balanced is not checked.
 
 A returned closure, such as an `iter.Seq` iterator, carries a captured variable
 only when its body can expose it: by returning it with a mutable type, by
@@ -79,8 +81,9 @@ fields stored into that local, so writing `w.m` writes no parameter. Other flows
 are flow-insensitive. The analyzer does not implement a whole-program heap
 analysis; reflection and arbitrary unsafe
 memory operations need separate review. Standard-library bodies are not analyzed;
-the clone operations and `context.Context.Err` above have explicit models. Diagnostics concern production
-declarations; test code still participates in helper summaries.
+the clone operations, `context.Context.Err` and the mutex lock calls above have
+explicit models. Diagnostics concern production declarations; test code still
+participates in helper summaries.
 
 The default golangci-lint configuration additionally enables `dupl` for structural
 code duplication, `contextcheck` for propagation and `exhaustive` for enum switches.
