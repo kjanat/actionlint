@@ -92,7 +92,12 @@ func (p *Parser) ScriptSource(n *syntax.Node) *workflowlang.ScriptSource {
 		}
 		p.IndexScalarSources(root)
 	}
-	return cloneScriptSource(p.scalarSource(*PosAt(n), n.Value))
+	cached := p.scalarSource(*PosAt(n), n.Value)
+	if cached == nil {
+		return nil
+	}
+	owned := cloneScriptSource(*cached)
+	return &owned
 }
 
 // scalarSource retains the decoder result inside the parser. Public source
@@ -133,15 +138,14 @@ func (p *Parser) scalarSource(key workflowlang.Pos, value string) *workflowlang.
 	return source
 }
 
-func cloneScriptSource(source *workflowlang.ScriptSource) *workflowlang.ScriptSource {
-	if source == nil {
-		return nil
-	}
-	result := new(*source)
-	result.Lines = slices.Clone(source.Lines)
-	result.Spans = slices.Clone(source.Spans)
-	result.Comments = slices.Clone(source.Comments)
-	return result
+// cloneScriptSource returns source with its slices detached. Copying the whole
+// value keeps fields added later; a new reference field still shares storage
+// until it is detached here.
+func cloneScriptSource(source workflowlang.ScriptSource) workflowlang.ScriptSource {
+	source.Lines = slices.Clone(source.Lines)
+	source.Spans = slices.Clone(source.Spans)
+	source.Comments = slices.Clone(source.Comments)
+	return source
 }
 
 func scalarDocumentSource(document *sourcemap.Document) string {
