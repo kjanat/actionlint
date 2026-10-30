@@ -48,8 +48,8 @@ var resultSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 // input and inputs do not compile, evaluation stops when ctx is done, and the
 // output is bounded by MaxOutputBytes and MaxDiagnostics.
 type JQ struct {
-	code  *gojq.Code
-	input JQInput
+	program *jqProgram
+	input   JQInput
 }
 
 // NewJQ compiles a transform program.
@@ -57,6 +57,17 @@ func NewJQ(program string, input JQInput) (*JQ, error) {
 	if input != JQJSON && input != JQText {
 		return nil, fmt.Errorf("unknown jq input %q", input)
 	}
+	compiled, err := compileJQ(program)
+	if err != nil {
+		return nil, err
+	}
+	return &JQ{program: compiled, input: input}, nil
+}
+
+// jqProgram is one sandboxed, compiled jq program taking $vars.
+type jqProgram struct{ code *gojq.Code }
+
+func compileJQ(program string) (*jqProgram, error) {
 	query, err := gojq.Parse(program)
 	if err != nil {
 		return nil, fmt.Errorf("parse jq transform: %w", err)
@@ -66,7 +77,16 @@ func NewJQ(program string, input JQInput) (*JQ, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compile jq transform: %w", err)
 	}
-	return &JQ{code: code, input: input}, nil
+	return &jqProgram{code: code}, nil
+}
+
+// stringVariables converts argument variables to jq values.
+func stringVariables(vars map[string]string) map[string]any {
+	variables := make(map[string]any, len(vars))
+	for name, value := range vars {
+		variables[name] = value
+	}
+	return variables
 }
 
 // Decode implements Decoder.
@@ -83,11 +103,7 @@ func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 	case JQText:
 		input = string(stdout)
 	}
-	variables := make(map[string]any, len(vars))
-	for name, value := range vars {
-		variables[name] = value
-	}
-	output, err := j.run(ctx, input, variables)
+	output, err := j.program.run(ctx, input, stringVariables(vars))
 	if err != nil {
 		return Result{}, err
 	}
@@ -98,10 +114,10 @@ func (j *JQ) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 // Errors retain no evaluator state: a cancellation is reported as ctx's error
 // and other failures by their message. The evaluator runs under a child of
 // ctx, released on return, and never sees ctx itself.
-func (j *JQ) run(ctx context.Context, input any, variables map[string]any) ([]byte, error) {
+func (p *jqProgram) run(ctx context.Context, input any, variables map[string]any) ([]byte, error) {
 	evaluation, release := context.WithCancel(ctx)
 	defer release()
-	iter := j.code.RunWithContext(evaluation, input, variables)
+	iter := p.code.RunWithContext(evaluation, input, variables)
 	var output []byte
 	for count := 0; ; count++ {
 		value, ok := iter.Next()

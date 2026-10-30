@@ -303,6 +303,18 @@
               "items": { "$ref": "#/$defs/long_option" }
             },
             "value_shorts": { "type": "string", "pattern": "^[A-Za-z0-9]*$" },
+            "attached_shorts": { "type": "string", "pattern": "^[A-Za-z0-9]*$" },
+            "inline_options": {
+              "type": "array",
+              "maxItems": 64,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/long_option" }
+            },
+            "launchers": {
+              "type": "array",
+              "maxItems": 16,
+              "items": { "$ref": "#/$defs/launcher" }
+            },
             "forbidden": {
               "type": "array",
               "maxItems": 256,
@@ -349,6 +361,53 @@
       }
     },
     "long_option": { "type": "string", "pattern": "^--[A-Za-z0-9][A-Za-z0-9-]*$" },
-    "short_letter": { "type": "string", "pattern": "^[A-Za-z0-9]$" }
+    "short_letter": { "type": "string", "pattern": "^[A-Za-z0-9]$" },
+    "option": { "type": "string", "pattern": "^--?[A-Za-z0-9][A-Za-z0-9-]*$" },
+    "options": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/option" }
+    },
+    "pattern": { "type": "string", "minLength": 1, "maxLength": 1024 },
+    "launcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "hint"],
+      "properties": {
+        "command": { "$ref": "#/$defs/pattern" },
+        "flags": { "$ref": "#/$defs/options" },
+        "value_options": { "$ref": "#/$defs/options" },
+        "choices": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": { "$ref": "#/$defs/option" },
+          "additionalProperties": { "$ref": "#/$defs/strings", "minItems": 1 }
+        },
+        "short_flags": { "type": "string", "pattern": "^[A-Za-z0-9]*$" },
+        "short_values": { "type": "string", "pattern": "^[A-Za-z0-9]*$" },
+        "assignments": { "type": "boolean" },
+        "protected": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+        },
+        "selector": { "$ref": "#/$defs/pattern" },
+        "separator": { "type": "boolean" },
+        "tool": { "$ref": "#/$defs/pattern" },
+        "module": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["short", "name"],
+          "properties": {
+            "short": { "$ref": "#/$defs/short_letter" },
+            "name": { "$ref": "#/$defs/token" }
+          }
+        },
+        "hint": { "$ref": "#/$defs/text", "minLength": 1 }
+      },
+      "anyOf": [{ "required": ["tool"] }, { "required": ["module"] }]
+    }
   }
 }

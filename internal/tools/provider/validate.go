@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -81,6 +83,12 @@ func validate(m Manifest) error {
 			return fmt.Errorf("process.version.pattern must have exactly one capture group, has %d", pattern.NumSubexp())
 		}
 	}
+	if err := validateRendering(p); err != nil {
+		return err
+	}
+	if err := validateLaunchers(p.UserArgs); err != nil {
+		return err
+	}
 	if len(p.TemplateEffects) == 0 {
 		return nil
 	}
@@ -93,6 +101,73 @@ func validate(m Manifest) error {
 	for code, effect := range p.TemplateEffects {
 		if !effect.Valid() {
 			return fmt.Errorf("process.template_effects.%s: unknown template effect %q", code, effect)
+		}
+	}
+	return nil
+}
+
+// configPlaceholders maps each configuration placeholder to the rendering it
+// needs.
+var configPlaceholders = map[string]Render{
+	"{config:toml-file}": RenderTOMLFile,
+	"{config:json-file}": RenderJSONFile,
+}
+
+// validateRendering requires every configuration placeholder to match the
+// configuration rendering and a rendering that needs a placeholder or the
+// request on stdin to have it.
+func validateRendering(p *ProcessSpec) error {
+	used := map[Render]bool{}
+	for _, arg := range p.Args {
+		render, ok := configPlaceholders[arg]
+		if strings.HasPrefix(arg, "{config:toml-pairs:") {
+			render, ok = RenderTOMLPairs, true
+		}
+		if !ok {
+			continue
+		}
+		if render != p.Config.Render {
+			return fmt.Errorf("process.args: %s needs config.render %q, not %q", arg, render, p.Config.Render)
+		}
+		if used[render] {
+			return fmt.Errorf("process.args: %s appears more than once", arg)
+		}
+		used[render] = true
+	}
+	switch p.Config.Render {
+	case RenderNone:
+	case RenderJSONStdin:
+		if p.Stdin != StdinRequest {
+			return errors.New(`process.config.render "json-stdin" needs process.stdin "request"`)
+		}
+	case RenderJSONFile, RenderTOMLFile, RenderTOMLPairs:
+		if !used[p.Config.Render] {
+			return fmt.Errorf("process.config.render %q has no placeholder in process.args", p.Config.Render)
+		}
+	default:
+		return fmt.Errorf("unknown process.config.render %q", p.Config.Render)
+	}
+	return nil
+}
+
+// validateLaunchers compiles every launcher expression.
+func validateLaunchers(args *UserArgs) error {
+	if args == nil {
+		return nil
+	}
+	for i, launcher := range args.Launchers {
+		for field, expression := range map[string]string{"command": launcher.Command, "selector": launcher.Selector, "tool": launcher.Tool} {
+			if expression == "" {
+				continue
+			}
+			if _, err := regexp.Compile(expression); err != nil {
+				return fmt.Errorf("process.user_args.launchers[%d].%s: %w", i, field, err)
+			}
+		}
+		for option := range launcher.Choices {
+			if !slices.Contains(launcher.ValueOptions, option) {
+				return fmt.Errorf("process.user_args.launchers[%d].choices: %s is not a value option", i, option)
+			}
 		}
 	}
 	return nil

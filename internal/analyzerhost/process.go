@@ -1,6 +1,7 @@
 package analyzerhost
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -291,8 +292,13 @@ func (cmd *Command) Invoke(ctx context.Context, execution Execution) ([]byte, in
 	}
 	defer cmd.proc.sema.Release(1)
 	if cmd.Runner != nil {
+		// The runner may keep its output and errors; callers own what Invoke
+		// returns.
 		stdout, err := cmd.Runner(execution.Args, execution.Stdin)
-		return stdout, 0, err
+		if err != nil {
+			return nil, 0, errors.New(err.Error())
+		}
+		return bytes.Clone(stdout), 0, nil
 	}
 	execution.Cmd = cmd.Exe
 	return execution.RunStatus(ctx)

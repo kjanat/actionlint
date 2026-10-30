@@ -81,6 +81,18 @@
     "entry": "ruff",
     "stdin": "source",
     "exit_codes": [0, 1],
+    "env_passthrough": [
+      "PATH",
+      "PATHEXT",
+      "HOME",
+      "USERPROFILE",
+      "APPDATA",
+      "LOCALAPPDATA",
+      "XDG_CACHE_HOME",
+      "TMPDIR",
+      "TEMP",
+      "TMP"
+    ],
     "args": [
       "check",
       "{config:toml-pairs:--config}",
@@ -182,6 +194,46 @@
         "--config",
         "--color",
         "--line-length"
+      ],
+      "inline_options": ["--config"],
+      "launchers": [
+        {
+          "command": "python(?:3(?:\\.[0-9]+)?)?",
+          "value_options": ["--check-hash-based-pycs"],
+          "choices": { "--check-hash-based-pycs": ["default", "always", "never"] },
+          "short_flags": "bBdEIOPqRsSuvx",
+          "short_values": "WX",
+          "module": { "short": "m", "name": "ruff" },
+          "hint": "use supported interpreter options followed by -m ruff, not a script, another module, or -c"
+        },
+        {
+          "command": "py",
+          "value_options": ["--check-hash-based-pycs"],
+          "choices": { "--check-hash-based-pycs": ["default", "always", "never"] },
+          "short_flags": "bBdEIOPqRsSuvx",
+          "short_values": "WX",
+          "selector": "-(?:V:(?:(?i:PythonCore)/)?)?3(?:\\.[0-9]+)?(?:-(?:32|64|arm64))?",
+          "module": { "short": "m", "name": "ruff" },
+          "hint": "use supported interpreter options followed by -m ruff, not a script, another module, or -c"
+        },
+        {
+          "command": "env",
+          "flags": ["-i", "--ignore-environment"],
+          "value_options": ["-u", "--unset"],
+          "assignments": true,
+          "protected": ["RUFF_OUTPUT_FILE"],
+          "separator": true,
+          "tool": "(?:.*[/\\\\])?(?i:ruff(?:\\.exe)?)",
+          "hint": "specify a Ruff command after supported launcher options"
+        },
+        {
+          "command": "uvx",
+          "flags": ["--offline", "--no-cache"],
+          "value_options": ["--from"],
+          "separator": true,
+          "tool": "(?:.*[/\\\\])?(?i:ruff(?:\\.exe)?)|ruff@[^ /\\\\\\t\\r\\n<>=,]+",
+          "hint": "specify a Ruff command after supported launcher options"
+        }
       ],
       "forbidden": [
         { "prefix": "@", "reason": "ruff argument files are not supported" },

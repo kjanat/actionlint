@@ -187,7 +187,7 @@
     "config": { "render": "none" },
     "config_files": {
       "names": [".shellcheckrc", "shellcheckrc"],
-      "search": ["upward", "xdg", "home"]
+      "search": ["upward", "home", "xdg"]
     },
     "output": {
       "format": "json",
@@ -212,6 +212,7 @@
         "--wiki-link-count"
       ],
       "value_shorts": "iefosPSW",
+      "attached_shorts": "C",
       "overrides": [{ "flag": "--shell", "short": "s", "drops": "dialect" }],
       "env_options": ["SHELLCHECK_OPTS"]
     },

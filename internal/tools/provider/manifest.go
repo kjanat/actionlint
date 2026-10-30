@@ -335,13 +335,69 @@ type UserArgs struct {
 	ValueOptions []string `json:"value_options,omitempty"`
 	// ValueShorts are short option letters consuming the rest of their
 	// cluster or the next argument.
-	ValueShorts string    `json:"value_shorts,omitempty"`
-	Forbidden   []ArgRule `json:"forbidden,omitempty"`
+	ValueShorts string `json:"value_shorts,omitempty"`
+	// AttachedShorts are short option letters whose optional value must be
+	// attached; each ends its cluster.
+	AttachedShorts string `json:"attached_shorts,omitempty"`
+	// InlineOptions are value options whose value must be an inline
+	// KEY = VALUE setting. A value naming an existing file is rejected.
+	InlineOptions []string  `json:"inline_options,omitempty"`
+	Forbidden     []ArgRule `json:"forbidden,omitempty"`
 	// Overrides are user options that replace a preparation variable.
 	Overrides []ArgOverride `json:"overrides,omitempty"`
 	// EnvOptions name environment variables the tool reads as extra options;
 	// they are scanned like user arguments.
 	EnvOptions []string `json:"env_options,omitempty"`
+	// Launchers are commands that start the tool, such as an interpreter
+	// running it as a module. When the configured executable is a launcher,
+	// its arguments up to the tool are kept ahead of the manifest arguments
+	// and only the rest are user arguments.
+	Launchers []Launcher `json:"launchers,omitempty"`
+}
+
+// Launcher is a command that runs the tool. Its options end where an operand
+// names the tool, or where its module option names the tool's module.
+type Launcher struct {
+	// Command matches the launcher's lowercase base name without ".exe"; it is
+	// an RE2 expression anchored at both ends.
+	Command string `json:"command"`
+	// Flags are options taking no value.
+	Flags []string `json:"flags,omitempty"`
+	// ValueOptions are options whose value is attached with "=" or is the
+	// next argument.
+	ValueOptions []string `json:"value_options,omitempty"`
+	// Choices restrict the values of value options.
+	Choices map[string][]string `json:"choices,omitempty"`
+	// ShortFlags are clustered short option letters taking no value.
+	ShortFlags string `json:"short_flags,omitempty"`
+	// ShortValues are short option letters consuming the rest of their
+	// cluster or the next, nonempty argument.
+	ShortValues string `json:"short_values,omitempty"`
+	// Assignments permits NAME=VALUE arguments setting the tool's
+	// environment, except the variables Protected names, compared without
+	// case.
+	Assignments bool     `json:"assignments,omitempty"`
+	Protected   []string `json:"protected,omitempty"`
+	// Selector is an RE2 expression, anchored at both ends, for at most one
+	// argument selecting the launcher's runtime version.
+	Selector string `json:"selector,omitempty"`
+	// Separator lets "--" end the options; the next argument must name the
+	// tool.
+	Separator bool `json:"separator,omitempty"`
+	// Tool is an RE2 expression, anchored at both ends, an operand naming the
+	// tool must match.
+	Tool string `json:"tool,omitempty"`
+	// Module is a short option letter whose value names the tool's module, as
+	// Python's -m does.
+	Module *LauncherModule `json:"module,omitempty"`
+	// Hint completes the error for arguments the launcher does not accept.
+	Hint string `json:"hint"`
+}
+
+// LauncherModule is a short option naming the module that runs the tool.
+type LauncherModule struct {
+	Short string `json:"short"`
+	Name  string `json:"name"`
 }
 
 // ArgRule rejects user arguments. Exactly one of Flag, Prefix and ShortLetter
