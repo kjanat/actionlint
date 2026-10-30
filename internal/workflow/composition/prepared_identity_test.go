@@ -191,7 +191,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	requests[0], requests[1] = requests[1], requests[0]
 	scopes[1], scopes[2] = scopes[2], scopes[1]
 	rebuilt, err := scriptexecution.NewBatch(graph, scriptexecution.Collection{
-		Declarations: f.root.Registry(), Scopes: scopes, Scripts: requests, Collected: true,
+		Declarations: f.snapshots.SourceSnapshots, Scopes: scopes, Scripts: requests, Collected: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -301,7 +301,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 				scopes[1].Paths.ActionIndependent = !scopes[1].Paths.ActionIndependent
 				want = "action paths disagree"
 			}
-			if _, err := scriptexecution.NewBatch(first.Batch.Invocations(), scriptexecution.Collection{Declarations: f.root.Registry(), Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
+			if _, err := scriptexecution.NewBatch(first.Batch.Invocations(), scriptexecution.Collection{Declarations: f.snapshots.SourceSnapshots, Scopes: scopes, Scripts: requestsFromUnits(units), Collected: true}); !errors.Is(err, scriptexecution.ErrInvalidBatch) || !strings.Contains(err.Error(), want) {
 				t.Fatalf("%s accepted: %v", change, err)
 			}
 		})

@@ -12,7 +12,7 @@ func TestCompositeAliasReferencesFollowStepOwners(t *testing.T) {
 	if !document.CanAnalyze() || len(document.Findings) != 0 {
 		t.Fatalf("invalid fixture: %+v", document.Findings)
 	}
-	workflow := document.Facts()
+	workflow := document.Facts
 	steps := workflow.Jobs[""].Steps
 	if len(steps) != 2 {
 		t.Fatalf("steps = %d, want 2", len(steps))

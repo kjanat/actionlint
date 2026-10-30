@@ -27,7 +27,6 @@ type SourceSnapshot struct {
 func (s *SourceSnapshot) Reference() source.Reference { return s.reference }
 func (s *SourceSnapshot) Content() []byte             { return s.captured.Bytes() }
 func (s *SourceSnapshot) Capture() capture.Snapshot   { return s.captured }
-func (s *SourceSnapshot) Registry() *SourceSnapshots  { return s.registry }
 
 // Identity and byte access remain available for diagnostics after quarantine;
 // semantic access requires the capture to remain admitted by its owner.
@@ -98,6 +97,12 @@ func (s *SourceSnapshots) LookupDocument(identity string) (*SourceSnapshot, bool
 	return snapshot, true
 }
 
+// OwnsSnapshot reports whether this registry admitted snapshot. Snapshots do
+// not expose their registry: holding a snapshot grants no admission rights.
+func (s *SourceSnapshots) OwnsSnapshot(snapshot *SourceSnapshot) bool {
+	return s != nil && snapshot != nil && snapshot.registry == s
+}
+
 func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (*SourceSnapshot, error) {
 	previous := s.documents[document]
 	if previous == nil {
@@ -118,13 +123,14 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 // Document returns canonical declarations for this source revision.
 // Repeated decodes share the existing immutable binding.
 func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document) (*SourceSnapshot, error) {
-	if document.record == nil {
+	record := document.Provenance.record
+	if record == nil {
 		return nil, errors.New("source document has no parse provenance")
 	}
-	if err := s.verify(captured, []byte(document.record.Text())); err != nil {
+	if err := s.verify(captured, []byte(record.Text())); err != nil {
 		return nil, err
 	}
-	return s.bind(captured, document.record)
+	return s.bind(captured, record)
 }
 
 func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta.Metadata) (*SourceSnapshot, error) {

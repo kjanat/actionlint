@@ -18,12 +18,16 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func TestWorkflowUsesSnapshotRegistryWhenOptionIsNil(t *testing.T) {
+func TestWorkflowRegistersNestedDeclarationsInConfiguredRegistry(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
-	registry := f.root.Registry()
+	registry := f.snapshots.SourceSnapshots
 	f.service.options.SourceSnapshots = nil
+	if _, err := f.service.Workflow(f.root); err == nil {
+		t.Fatal("workflow analysis derived a registry from its entry snapshot")
+	}
+	f.service.options.SourceSnapshots = registry
 	result, err := f.service.Workflow(f.root)
 	if err != nil {
 		t.Fatal(err)
@@ -262,7 +266,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	}
 	foreign := *meta
 	foreign.Directory = "foreign"
-	deployment, err := scriptexecution.NewDeployment(snapshot, registry.Sources.Path(meta.Path()), meta.Path(), meta.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(registry.SourceSnapshots, snapshot, registry.Sources.Path(meta.Path()), meta.Path(), meta.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}

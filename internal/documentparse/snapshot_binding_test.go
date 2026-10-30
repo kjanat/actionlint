@@ -17,7 +17,7 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Registry() != snapshots.SourceSnapshots {
+	if !snapshots.OwnsSnapshot(snapshot) {
 		t.Fatal("snapshot does not retain its owning registry")
 	}
 	if found, ok := snapshots.Lookup(snapshot.Reference()); !ok || found != snapshot {

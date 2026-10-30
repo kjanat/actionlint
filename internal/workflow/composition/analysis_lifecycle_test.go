@@ -66,7 +66,7 @@ func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 	for _, content := range []string{"on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", "jobs: ["} {
 		parsed := documentparse.Workflow("ci.yml", []byte(content))
 		input, err := (Result{}).AnalyzerInput("ci.yml", "ci.yml", []byte(content), parsed, nil)
-		if parsed.Facts() != nil {
+		if parsed.Facts != nil {
 			if !errors.Is(err, scriptexecution.ErrInvalidBatch) || len(input.Available) != 1 || input.Content != content {
 				t.Fatalf("unprepared workflow projected: %v", err)
 			}
@@ -137,6 +137,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
+			service.options.SourceSnapshots = snapshots.SourceSnapshots
 			result, err := service.Workflow(snapshot)
 			if !errors.Is(err, scriptFailure) || errors.Is(err, visitFailure) != failVisit || !joined || script.calls != 1 || len(result.Batch.Scripts()) != 1 || len(result.Findings) != 1 || result.Findings[0].Message != "joined finding" {
 				t.Fatalf("error=%v joined=%v calls=%d result=%+v", err, joined, script.calls, result)

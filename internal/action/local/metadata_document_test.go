@@ -43,7 +43,7 @@ func TestMetadataDocumentRetainsSameLookupProvenance(t *testing.T) {
 					t.Fatalf("first lookup: metadata=%+v cached=%v error=%v", metadata, cached, err)
 				}
 				if broken {
-					if _, ok := errors.AsType[*ParseError](err); !ok || document.Document().ActionParseError() == nil {
+					if _, ok := errors.AsType[*ParseError](err); !ok || document.Document().ParseError == nil {
 						t.Fatalf("failed parse lost original provenance: %v", err)
 					}
 				} else if metadata.SourceMapped != resolver || metadata.Root != document.Document().Metadata.Root {

@@ -128,13 +128,12 @@ func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 	if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
 		return errors.New("standalone metadata has no admitted source snapshot")
 	}
-	admitted, err := snapshot.Registry().Action(snapshot.Capture(), meta)
-	if err != nil {
-		return err
+	if original, parsed := meta.OriginalSource(); !parsed || original != string(snapshot.Content()) {
+		return errors.New("standalone metadata does not belong to its source snapshot")
 	}
 	rule.Report(actioncheck.Standalone(meta)...)
 	for _, finding := range rule.Errs() {
-		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, admitted.Reference().Document, finding), Declaration: true}
+		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, snapshot.Reference().Document, finding), Declaration: true}
 	}
 	return nil
 }

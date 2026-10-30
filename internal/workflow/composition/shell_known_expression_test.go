@@ -27,10 +27,10 @@ jobs:
 	if len(document.Findings) != 0 {
 		t.Fatal(document.Findings)
 	}
-	snapshot := workflowSnapshot(t, content, document)
+	registry, snapshot := registeredWorkflowSnapshot(t, content, document)
 	workflow := workflowView(t, snapshot)
 	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: actionlocal.NewResolver(nil, nil)}
-	startWorkflowEntry(t, collector, snapshot)
+	startWorkflowEntry(t, collector, registry, snapshot)
 	if err := collector.beginWorkflow(workflow); err != nil {
 		t.Fatal(err)
 	}

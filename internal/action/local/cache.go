@@ -227,7 +227,7 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	loadedSource := metadataSource{path: filepath.Join(dir, f), address: filepath.Join(address, f), captured: captured}
 	document := documentparse.Action(loadedSource.path, loadedSource.path, captured.Bytes())
 	loadedSource.document = document
-	meta, parseErr := document.Metadata, document.ActionParseError()
+	meta, parseErr := document.Metadata, document.ParseError
 	loaded := MetadataResult{status: MetadataResolved, metadata: meta}
 	if err := parseErr; err != nil {
 		cause := NewParseError(loadedSource.path, err)

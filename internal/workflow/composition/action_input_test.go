@@ -29,7 +29,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				startWorkflowEntry(t, &analysis, snapshot)
+				startWorkflowEntry(t, &analysis, snapshots.SourceSnapshots, snapshot)
 				step := workflowStepViews(t, workflowView(t, snapshot), "test")[0]
 				action, present := step.Action()
 				if !present {

@@ -196,7 +196,6 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			resultErr = errors.Join(resultErr, process.Finish())
 		}
 	}()
-	snapshots := snapshot.Registry()
 	var mappings map[string]string
 	if cfg != nil {
 		mappings = cfg.LocalActions
@@ -239,7 +238,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	requires := checks.RequiredFacts(registrations)
 	service := composition.New(composition.Options{
-		SourceSnapshots: snapshots,
+		SourceSnapshots: s.snapshots,
 		Context:         s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
 		ScriptInputsForConfig: func(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
@@ -257,7 +256,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),
 	})
 	if action {
-		deployment, deploymentErr := scriptexecution.NewDeployment(snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
+		deployment, deploymentErr := scriptexecution.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
 		if deploymentErr != nil {
 			return result, deploymentErr
 		}

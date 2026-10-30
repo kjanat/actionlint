@@ -37,7 +37,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 			if name == "action" {
 				parsed = documentparse.Action("action.yml", "action.yml", []byte(content))
 			}
-			if parsed.Facts() == nil {
+			if parsed.Facts == nil {
 				t.Fatal("fixture has no semantic facts")
 			}
 			if name == "partial workflow" && len(parsed.Findings) == 0 {

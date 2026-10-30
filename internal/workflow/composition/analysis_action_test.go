@@ -51,7 +51,7 @@ func standaloneActionForTest(t *testing.T, service *Service, metadata *actionmet
 	if fixture != nil {
 		address = fixture.Sources.Path(address)
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshot, address, metadata.Path(), metadata.SourceMapped)
+	deployment, err := scriptexecution.NewDeployment(registry, snapshot, address, metadata.Path(), metadata.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(snapshot, path, path, false)
+	deployment, err := scriptexecution.NewDeployment(registry.SourceSnapshots, snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}

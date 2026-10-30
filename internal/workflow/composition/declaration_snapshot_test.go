@@ -14,16 +14,24 @@ import (
 
 func workflowSnapshot(t *testing.T, content []byte, document documentparse.Document) *documentparse.SourceSnapshot {
 	t.Helper()
+	_, snapshot := registeredWorkflowSnapshot(t, content, document)
+	return snapshot
+}
+
+// registeredWorkflowSnapshot also returns the registry that admitted the snapshot.
+func registeredWorkflowSnapshot(t *testing.T, content []byte, document documentparse.Document) (*documentparse.SourceSnapshots, *documentparse.SourceSnapshot) {
+	t.Helper()
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("fixture.yml", content, document)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return snapshot
+	return snapshots.SourceSnapshots, snapshot
 }
 
-func startWorkflowEntry(t *testing.T, analysis *compositeAnalyzer, snapshot *documentparse.SourceSnapshot) {
+func startWorkflowEntry(t *testing.T, analysis *compositeAnalyzer, registry *documentparse.SourceSnapshots, snapshot *documentparse.SourceSnapshot) {
 	t.Helper()
+	analysis.sourceSnapshots = registry
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 		t.Fatal(err)
@@ -60,7 +68,7 @@ func TestCompositeOccurrencesShareDeclarationsAndKeepDeploymentState(t *testing.
 			}
 			workflow := workflowView(t, rootSnapshot)
 			calls := workflowStepViews(t, workflow, "test")
-			startWorkflowEntry(t, analysis, rootSnapshot)
+			startWorkflowEntry(t, analysis, snapshots.SourceSnapshots, rootSnapshot)
 			if err := analysis.beginWorkflow(workflow); err != nil {
 				t.Fatal(err)
 			}

@@ -380,7 +380,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			}
 			scope := &Scope{Context: builder.RootContext(), Composite: tc.kind == invocation.EntryAction}
 			if tc.kind == invocation.EntryAction {
-				scope.Deployment, err = NewDeployment(snapshot, registry.Sources.Path(tc.identity), tc.identity, false)
+				scope.Deployment, err = NewDeployment(registry.SourceSnapshots, snapshot, registry.Sources.Path(tc.identity), tc.identity, false)
 				if err != nil {
 					t.Fatal(err)
 				}

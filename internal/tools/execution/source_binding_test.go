@@ -34,7 +34,7 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, path, path, mapped)
+	deployment, err := NewDeployment(snapshots.SourceSnapshots, snapshot, path, path, mapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			if !isRun || !present || run.Run().Value() != "echo first" || position.Line == 999 || position.Col == 999 || spans[0].YamlLine == 999 {
 				t.Fatal("returned declaration mutated the registry")
 			}
-			originalRun := originalDocument.Facts().Jobs[""].Steps[0].Exec.(*workflowlang.ExecRun)
+			originalRun := originalDocument.Facts.Jobs[""].Steps[0].Exec.(*workflowlang.ExecRun)
 			originalRun.Run.Value = "changed original"
 
 			*collection.Scripts[0].DefaultShell = "changed default"
@@ -129,23 +129,23 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 }
 
 func TestDeploymentRejectsForeignSources(t *testing.T) {
-	_, _, action, path := actionBatchFixture(t, false)
+	_, actionCollection, action, path := actionBatchFixture(t, false)
 	graph, workflow := batchFixture(t, false)
 	root, _ := workflow.Declarations.Lookup(graph.Entry().Reference)
 	for name, snapshot := range map[string]*documentparse.SourceSnapshot{"nil": nil, "workflow": root, "zero": {}} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := NewDeployment(snapshot, path, path, false); !errors.Is(err, ErrInvalidBatch) {
+			if _, err := NewDeployment(actionCollection.Declarations, snapshot, path, path, false); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("foreign deployment accepted: %v", err)
 			}
 		})
 	}
 	for _, wrong := range []string{"", filepath.Join(filepath.Dir(path), "other.yml")} {
-		if _, err := NewDeployment(action, wrong, wrong, false); !errors.Is(err, ErrInvalidBatch) {
+		if _, err := NewDeployment(actionCollection.Declarations, action, wrong, wrong, false); !errors.Is(err, ErrInvalidBatch) {
 			t.Fatalf("foreign display path accepted: %v", err)
 		}
 	}
 	foreignGraph, foreign, _, _ := actionBatchFixture(t, false)
-	deployment, err := NewDeployment(action, path, path, false)
+	deployment, err := NewDeployment(actionCollection.Declarations, action, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, path, path, false)
+	deployment, err := NewDeployment(registry.SourceSnapshots, snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,12 +263,12 @@ func TestDeploymentPreservesWindowsDisplaySeparators(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows path separator equivalence")
 	}
-	_, _, snapshot, path := actionBatchFixture(t, false)
+	_, collection, snapshot, path := actionBatchFixture(t, false)
 	if !strings.Contains(path, `\`) {
 		t.Fatal("fixture did not provide a Windows display path")
 	}
 	for _, display := range []string{path, filepath.ToSlash(path)} {
-		deployment, err := NewDeployment(snapshot, path, display, false)
+		deployment, err := NewDeployment(collection.Declarations, snapshot, path, display, false)
 		if err != nil || deployment.SourcePath() != display || deployment.reference != snapshot.Reference() {
 			t.Fatalf("display separator normalization changed source identity: %+v %v", deployment, err)
 		}
@@ -299,7 +299,7 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 	if _, err := registry.Sources.Capture(alias, content, source.YAML); err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := NewDeployment(snapshot, alias, alias, false)
+	deployment, err := NewDeployment(registry.SourceSnapshots, snapshot, alias, alias, false)
 	if err != nil || deployment.SourcePath() != alias || deployment.reference != snapshot.Reference() {
 		t.Fatalf("stable symlink alias rejected: %+v %v", deployment, err)
 	}
@@ -316,10 +316,10 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 	if err := registry.Sources.Store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if deployment, err := NewDeployment(snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {
+	if deployment, err := NewDeployment(registry.SourceSnapshots, snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {
 		t.Fatalf("retargeted alias changed its captured identity after sealing: %+v %v", deployment, err)
 	}
-	if _, err := NewDeployment(snapshot, other, other, false); !errors.Is(err, ErrInvalidBatch) {
+	if _, err := NewDeployment(registry.SourceSnapshots, snapshot, other, other, false); !errors.Is(err, ErrInvalidBatch) {
 		t.Fatalf("uncaptured target address accepted: %v", err)
 	}
 }

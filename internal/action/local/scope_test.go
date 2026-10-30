@@ -329,7 +329,7 @@ func TestCompositeForksShareCapturedSourcesEvenWhenEffectsAreSkipped(t *testing.
 	if !cached || bad.Status() != MetadataParseFailed || bad.Err() == nil {
 		t.Fatalf("fork parse failure was not shared through cache: status=%v cached=%t error=%v", bad.Status(), cached, bad.Err())
 	}
-	if document, ok := parent.SourceDocument(bad); !ok || document.Path() != badPath || document.Document().ActionParseError() == nil {
+	if document, ok := parent.SourceDocument(bad); !ok || document.Path() != badPath || document.Document().ParseError == nil {
 		t.Fatal("failed metadata lost its captured parse record")
 	}
 	separate := NewResolver(cache, nil)
