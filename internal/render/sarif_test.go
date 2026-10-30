@@ -90,7 +90,7 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 
 func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 	for _, tc := range []struct{ severity, level string }{
-		{"error", "error"}, {"warning", "warning"}, {"info", "note"}, {"style", "note"}, {"", "error"},
+		{"error", "error"}, {"warning", "warning"}, {"info", "note"}, {"", "error"},
 	} {
 		t.Run(tc.severity, func(t *testing.T) {
 			finding := diagnostic.Diagnostic{

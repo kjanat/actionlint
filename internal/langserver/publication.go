@@ -13,7 +13,7 @@ func diagnosticItems(doc Document, findings []diagnostic.Diagnostic, documents m
 		switch d.Severity {
 		case "warning", "warn":
 			severity = 2
-		case "info", "style":
+		case "info":
 			severity = 3
 		}
 		msg := d.Message

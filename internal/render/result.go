@@ -151,7 +151,7 @@ func WriteGitHub(out io.Writer, diagnostics []diagnostic.Diagnostic) error {
 		switch diagnostic.Severity {
 		case "warning":
 			level = "warning"
-		case "info", "style", "note":
+		case "info", "note":
 			level = "notice"
 		}
 		if _, err := fmt.Fprintf(out, "::%s file=%s,%s,title=%s::%s\n", level, property.Replace(diagnostic.Path), position, property.Replace(diagnostic.Rule), data.Replace(diagnostic.Message)); err != nil {
