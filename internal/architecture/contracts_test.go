@@ -3,8 +3,11 @@ package architecture_test
 import (
 	"encoding/json"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
 )
 
 // Language implementations and public leaf contracts must not depend on their
@@ -312,21 +315,21 @@ func TestWorkflowDependencyMetadataDoesNotImportHost(t *testing.T) {
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
 		switch dependency {
-		case "actionlint.kjanat.dev/v2/internal/engine", "actionlint.kjanat.dev/v2/internal/application", "actionlint.kjanat.dev/v2/internal/analyzerhost", "actionlint.kjanat.dev/v2/internal/render", "actionlint.kjanat.dev/v2/internal/tools/adapters", "actionlint.kjanat.dev/v2/internal/config", "actionlint.kjanat.dev/v2/internal/workspace":
+		case "actionlint.kjanat.dev/v2/internal/engine", "actionlint.kjanat.dev/v2/internal/application", "actionlint.kjanat.dev/v2/internal/analyzerhost", "actionlint.kjanat.dev/v2/internal/render", "actionlint.kjanat.dev/v2/internal/tools/registry", "actionlint.kjanat.dev/v2/internal/config", "actionlint.kjanat.dev/v2/internal/workspace":
 			t.Errorf("workflow dependency metadata imports host %s", dependency)
 		}
 	}
 }
 
 func TestToolIntegrationDependencyDirection(t *testing.T) {
-	for _, name := range []string{"engine", "application", "tools", "tools/adapters", "tools/backend", "tools/managed", "tools/registry", "tools/ruff", "tools/shellcheck"} {
+	for _, name := range []string{"engine", "application", "tools", "tools/backend", "tools/managed", "tools/registry", "tools/provider/process"} {
 		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/v2/internal/"+name).Output()
 		if err != nil {
 			t.Fatal(err)
 		}
 		for dependency := range strings.SplitSeq(string(output), "\n") {
 			if name == "engine" || name == "application" {
-				if dependency == "actionlint.kjanat.dev/v2/internal/tools/adapters" || dependency == "actionlint.kjanat.dev/v2/internal/tools/ruff" || dependency == "actionlint.kjanat.dev/v2/internal/tools/backend" || dependency == "actionlint.kjanat.dev/v2/internal/tools/shellcheck" || dependency == "actionlint.kjanat.dev/v2/internal/tools/managed" || dependency == "actionlint.kjanat.dev/v2/internal/tools/registry" {
+				if dependency == "actionlint.kjanat.dev/v2/internal/tools/backend" || dependency == "actionlint.kjanat.dev/v2/internal/tools/managed" || dependency == "actionlint.kjanat.dev/v2/internal/tools/registry" || dependency == "actionlint.kjanat.dev/v2/internal/tools/provider/process" {
 					t.Errorf("%s depends on tool implementation %s", name, dependency)
 				}
 			} else if dependency == "actionlint.kjanat.dev/v2/internal/engine" || dependency == "actionlint.kjanat.dev/v2/internal/application" {
@@ -436,20 +439,21 @@ func TestBuiltinCompositionDoesNotImportHost(t *testing.T) {
 	}
 }
 
-// Bundling must not turn the two native integrations into a shared implementation.
-// Both consume the language preparation profiles, which name no tool, and
-// the shared transport selection in backend.
-func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
-	for _, name := range []string{"ruff", "shellcheck"} {
-		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/v2/internal/tools/"+name).Output()
-		if err != nil {
-			t.Fatal(err)
+// Tools are data: bundled providers are manifests under
+// internal/tools/provider/bundled, so no package below internal/tools is
+// named for one of them.
+func TestNoPackageIsNamedForABundledTool(t *testing.T) {
+	output, err := exec.CommandContext(t.Context(), "go", "list", "actionlint.kjanat.dev/v2/internal/tools/...").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
+		if strings.HasPrefix(path, "actionlint.kjanat.dev/v2/internal/tools/provider/bundled") {
+			continue
 		}
-		for dependency := range strings.SplitSeq(string(output), "\n") {
-			prefix := "actionlint.kjanat.dev/v2/internal/tools/"
-			profile := dependency == prefix+"profile" || strings.HasPrefix(dependency, prefix+"profile/")
-			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"backend" && dependency != prefix+"provider" && dependency != prefix+"provider/process" && !profile && !isProviderData(dependency) {
-				t.Errorf("tool %s imports another execution implementation %s", name, dependency)
+		for element := range strings.SplitSeq(path, "/") {
+			if slices.Contains(bundled.Names(), element) {
+				t.Errorf("package %s is named for the bundled tool %s", path, element)
 			}
 		}
 	}

@@ -13,41 +13,16 @@ const (
 	sourceReadFailed
 )
 
-type unavailableProducer uint8
-
-const (
-	nativeShellcheck unavailableProducer = iota + 1
-	pluginShellcheck
-	reportingProvider
-)
-
 // UnavailableSource is temporary provenance for files script tools report
 // findings in. Its snippet is display-only, never revision evidence. E7/M07
 // delete this marker, legacy source snippets and CompleteDiagnostic's
-// allowance when reported-source admission replaces them. Producers are the
-// two ShellCheck routes and tool providers, named by rule.
+// allowance when reported-source admission replaces them. The producer is
+// the tool provider that reported the file, named by its rule.
 type UnavailableSource struct {
 	state    unavailableState
-	producer unavailableProducer
 	provider string
 	address  string
 	document string
-}
-
-// NativeShellcheckUnavailable records whether the optional display reread failed.
-// Both states deliberately lack evidence of the revision ShellCheck analyzed.
-func NativeShellcheckUnavailable(address string, readFailed bool) UnavailableSource {
-	state := sourceNotCaptured
-	if readFailed {
-		state = sourceReadFailed
-	}
-	return UnavailableSource{state: state, producer: nativeShellcheck, address: address}
-}
-
-// PluginShellcheckUnavailable preserves the transitional grant-source contract.
-// M07 replaces this with Store-captured grants acquired before guest execution.
-func PluginShellcheckUnavailable(address string) UnavailableSource {
-	return UnavailableSource{state: sourceNotCaptured, producer: pluginShellcheck, address: address}
 }
 
 // ReportedSourceUnavailable records a file the tool provider named provider
@@ -58,16 +33,15 @@ func ReportedSourceUnavailable(provider, address string, readFailed bool) Unavai
 	if readFailed {
 		state = sourceReadFailed
 	}
-	return UnavailableSource{state: state, producer: reportingProvider, provider: provider, address: address}
+	return UnavailableSource{state: state, provider: provider, address: address}
 }
 
+// Present reports whether a tool provider recorded a reported file.
 func (s UnavailableSource) Present() bool {
-	producer := s.producer == nativeShellcheck || s.producer == pluginShellcheck || s.producer == reportingProvider && s.provider != ""
-	return (s.state == sourceNotCaptured || s.state == sourceReadFailed) && producer && s.address != "" && !strings.ContainsRune(s.address, 0)
+	return (s.state == sourceNotCaptured || s.state == sourceReadFailed) && s.provider != "" && s.address != "" && !strings.ContainsRune(s.address, 0)
 }
 
-// Provider names the tool provider that reported the file, or "" for the
-// ShellCheck routes.
+// Provider names the tool provider that reported the file.
 func (s UnavailableSource) Provider() string { return s.provider }
 
 func (s UnavailableSource) Reason() string {

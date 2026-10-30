@@ -6,16 +6,20 @@ import (
 	"go/token"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
 
 func TestUnavailableSourceProducerGate(t *testing.T) {
 	root := filepath.Join("..", "..")
-	want := map[string]string{
-		"NativeShellcheckUnavailable": filepath.Join(root, "internal", "tools", "shellcheck", "shellcheck_sources.go"),
-		"PluginShellcheckUnavailable": filepath.Join(root, "internal", "tools", "shellcheck", "plugin_sources.go"),
+	// The process runner and the managed document route each produce the
+	// marker once.
+	producers := []string{
+		filepath.Join(root, "internal", "tools", "backend", "sources.go"),
+		filepath.Join(root, "internal", "tools", "managed", "sources.go"),
 	}
+	want := map[string][]string{"ReportedSourceUnavailable": producers}
 	counts := map[string]int{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -50,8 +54,8 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 			}
 			expected, tracked := want[name]
 			if tracked {
-				counts[name]++
-				if filepath.Clean(path) != filepath.Clean(expected) {
+				counts[name+"\x00"+filepath.Clean(path)]++
+				if !slices.ContainsFunc(expected, func(producer string) bool { return filepath.Clean(path) == filepath.Clean(producer) }) {
 					t.Errorf("E7/M07 temporary source marker escaped producer: %s in %s", name, path)
 				}
 				return false
@@ -63,9 +67,11 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for factory := range want {
-		if counts[factory] != 1 {
-			t.Errorf("E7/M07 producer %s has %d sites, want exactly one until deletion", factory, counts[factory])
+	for factory, paths := range want {
+		for _, path := range paths {
+			if count := counts[factory+"\x00"+filepath.Clean(path)]; count != 1 {
+				t.Errorf("E7/M07 producer %s has %d sites in %s, want exactly one until deletion", factory, count, path)
+			}
 		}
 	}
 }
@@ -106,9 +112,9 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 		source, factory string
 		literal         bool
 	}{
-		{source: `NativeShellcheckUnavailable("reported.sh", false)`, factory: "NativeShellcheckUnavailable"},
-		{source: `finding.PluginShellcheckUnavailable("reported.sh")`, factory: "PluginShellcheckUnavailable"},
-		{source: `NativeShellcheckUnavailable`, factory: "NativeShellcheckUnavailable"},
+		{source: `ReportedSourceUnavailable("tool", "reported.sh", false)`, factory: "ReportedSourceUnavailable"},
+		{source: `finding.ReportedSourceUnavailable("tool", "reported.sh", true)`, factory: "ReportedSourceUnavailable"},
+		{source: `ReportedSourceUnavailable`, factory: "ReportedSourceUnavailable"},
 		{source: `UnavailableSource{state: sourceNotCaptured}`, literal: true},
 		{source: `finding.UnavailableSource{}`, literal: true},
 		{source: `UnavailableSource(other)`, literal: true},
@@ -151,11 +157,11 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 }
 
 func TestUnavailableSourceStatesAndBinding(t *testing.T) {
-	if (UnavailableSource{}).Present() || NativeShellcheckUnavailable("", false).Present() {
-		t.Fatal("empty marker became a reported source")
+	if (UnavailableSource{}).Present() || ReportedSourceUnavailable("tool", "", false).Present() || ReportedSourceUnavailable("", "reported.sh", false).Present() {
+		t.Fatal("marker without a provider or an address became a reported source")
 	}
-	for _, marker := range []UnavailableSource{NativeShellcheckUnavailable("reported.sh", false), NativeShellcheckUnavailable("reported.sh", true), PluginShellcheckUnavailable("reported.sh")} {
-		if !marker.Present() || marker.Document() != "" || marker.Address() != "reported.sh" {
+	for _, marker := range []UnavailableSource{ReportedSourceUnavailable("tool", "reported.sh", false), ReportedSourceUnavailable("tool", "reported.sh", true)} {
+		if !marker.Present() || marker.Provider() != "tool" || marker.Document() != "" || marker.Address() != "reported.sh" {
 			t.Fatalf("producer fabricated source identity: %+v", marker)
 		}
 		if _, err := marker.BindDocument(""); err == nil {
@@ -166,7 +172,7 @@ func TestUnavailableSourceStatesAndBinding(t *testing.T) {
 			t.Fatalf("binding changed unavailable evidence or parent marker: %+v %v", bound, err)
 		}
 	}
-	if NativeShellcheckUnavailable("reported.sh", false).Reason() != "not-captured" || NativeShellcheckUnavailable("reported.sh", true).Reason() != "read-failed" {
-		t.Fatal("native reported-source reasons changed")
+	if ReportedSourceUnavailable("tool", "reported.sh", false).Reason() != "not-captured" || ReportedSourceUnavailable("tool", "reported.sh", true).Reason() != "read-failed" {
+		t.Fatal("reported-source reasons changed")
 	}
 }

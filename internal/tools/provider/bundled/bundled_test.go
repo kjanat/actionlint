@@ -85,8 +85,9 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 // py:python ... -`. shellcheck/sourced and ruff/preview are hand-written:
 // ShellCheck 0.11.0 never reports findings in followed files or a sources
 // list, and Ruff 0.17.0 no longer emits null codes, but the native adapters
-// accept both (internal/application/shellcheck_sources_test.go,
-// internal/tools/ruff/diagnostic_test.go).
+// these manifests replaced accepted both
+// (internal/application/shellcheck_sources_test.go and the Ruff adapter's
+// diagnostic tests).
 func TestBundledGoldenDecode(t *testing.T) {
 	manifests, err := provider.Bundled()
 	if err != nil {

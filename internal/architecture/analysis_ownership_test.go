@@ -14,7 +14,7 @@ func TestAnalysisOwnership(t *testing.T) {
 		"documentparse":        {"engine", "application", "builtin", "checks", "tools", "analyzerhost", "workspace", "config", "diagnosticpolicy"},
 		"checks":               {"engine", "application", "tools", "analyzerhost", "workspace", "diagnosticpolicy", "render"},
 		"tools/execution":      {"engine", "application", "workspace", "builtin", "checks", "diagnosticpolicy", "render"},
-		"workflow/composition": {"application", "workspace", "diagnosticpolicy", "tools/adapters", "tools/backend", "tools/ruff", "tools/shellcheck", "tools/selection", "render"},
+		"workflow/composition": {"application", "workspace", "diagnosticpolicy", "tools/registry", "tools/backend", "tools/managed", "tools/provider/process", "render"},
 	}
 	args := []string{"list", "-json", "actionlint.kjanat.dev/v2/document"}
 	for name := range boundaries {

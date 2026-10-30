@@ -92,7 +92,7 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			finding := &findingmodel.Finding{Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: diagmodel.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
 				Reference: &source.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []diagmodel.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
-				Source: tc.content, RawScriptSource: true, UnavailableSource: findingmodel.NativeShellcheckUnavailable("reported.sh", tc.failed),
+				Source: tc.content, RawScriptSource: true, UnavailableSource: findingmodel.ReportedSourceUnavailable("shellcheck", "reported.sh", tc.failed),
 			}
 			diagnostics, _ := Collect([]File{{Content: []byte("workflow text"), Findings: []*findingmodel.Finding{finding}}})
 			if len(diagnostics) != 1 || diagnostics[0].Reference != nil || len(diagnostics[0].Fixes) != 0 {

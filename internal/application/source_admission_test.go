@@ -82,7 +82,7 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 			if failed {
 				content = []byte{}
 			}
-			finding := &findingmodel.Finding{Path: reportedPath, Rule: "shellcheck", Message: "reported", Start: diagnostic.Position{Line: 1, Column: 1}, Source: content, RawScriptSource: true, UnavailableSource: findingmodel.NativeShellcheckUnavailable(reportedPath, failed)}
+			finding := &findingmodel.Finding{Path: reportedPath, Rule: "shellcheck", Message: "reported", Start: diagnostic.Position{Line: 1, Column: 1}, Source: content, RawScriptSource: true, UnavailableSource: findingmodel.ReportedSourceUnavailable("shellcheck", reportedPath, failed)}
 			session := analysisSession{ctx: t.Context(), captures: fixture.Store, workingDir: root}
 			accepted, err := session.admitReportedSources([]*findingmodel.Finding{finding}, "ci.yml", entryPath, composition.Result{}, nil)
 			if err != nil || len(accepted) != 1 || finding.UnavailableSource.Document() != previous.Revision().Document() {
@@ -148,7 +148,7 @@ func TestQuarantinedDependencyWithholdsReferenceLessAndUnavailableFindings(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	unavailable := &findingmodel.Finding{Path: dependencyPath, Source: []byte("unverified"), RawScriptSource: true, UnavailableSource: findingmodel.NativeShellcheckUnavailable(dependencyPath, false)}
+	unavailable := &findingmodel.Finding{Path: dependencyPath, Source: []byte("unverified"), RawScriptSource: true, UnavailableSource: findingmodel.ReportedSourceUnavailable("shellcheck", dependencyPath, false)}
 	session := analysisSession{ctx: t.Context(), captures: fixture.Store, workingDir: root}
 	accepted, err := session.admitReportedSources([]*findingmodel.Finding{unavailable}, "ci.yml", entryPath, composition.Result{}, nil)
 	if err != nil {

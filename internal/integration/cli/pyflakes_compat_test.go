@@ -12,9 +12,38 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/cli"
-	ruffcheck "actionlint.kjanat.dev/v2/internal/tools/ruff"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 )
+
+// probeBundledVersion runs the version probe of the bundled provider named
+// name against executable and returns its error.
+func probeBundledVersion(t *testing.T, name, executable string) error {
+	t.Helper()
+	manifests, err := provider.Bundled()
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := slices.IndexFunc(manifests, func(m provider.Manifest) bool { return m.Rule.Name == name })
+	if index < 0 {
+		t.Fatalf("no bundled provider %s", name)
+	}
+	processes := analyzerhost.NewProcessPool(t.Context(), 1)
+	defer processes.Wait()
+	command, err := processes.NewCommandRunner(executable, false)
+	if err != nil {
+		return err
+	}
+	backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundled.Program, Required: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = backend.ProbeVersion(t.Context())
+	return err
+}
 
 func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 	ruff, err := exec.LookPath("ruff")
@@ -29,13 +58,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	var probeErr error
-	if err := ruffcheck.CheckCompatibility(t.Context(), func(args []string, stdin string, callback func([]byte, error) error) {
-		cmd := exec.CommandContext(t.Context(), ruff, args...)
-		cmd.Stdin = strings.NewReader(stdin)
-		output, err := cmd.Output()
-		probeErr = callback(output, err)
-	}, func() error { return probeErr }); err != nil {
+	if err := probeBundledVersion(t, "ruff", ruff); err != nil {
 		t.Skipf("Ruff integration requires a compatible executable (%s): %v", ruff, err)
 	}
 	script := "x = 1\nimport os\nif x == None:\n    print(missing)\n"

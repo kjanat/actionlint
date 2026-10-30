@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -15,17 +14,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
-	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 // The parity gate compares the bundled manifests, run by the generic process
 // transport, with snapshots captured from the bespoke ShellCheck and Ruff
-// adapters they replace. ACTIONLINT_CAPTURE_PARITY=1 captures the snapshots
-// from the adapters again.
+// adapters before they were deleted. Severities in the snapshots are mapped
+// through each manifest's severities table, as the adapters passed
+// ShellCheck's style through for renderers to interpret. A deliberate change
+// in findings updates the snapshot by hand.
 
 // parityDiagnostics are a route's tool findings and its error, in a stable,
 // machine-independent form.
@@ -35,79 +34,35 @@ type parityDiagnostics struct {
 }
 
 // paritySnapshots are captured parity results keyed by case.
-type paritySnapshots struct {
-	path    string
-	capture bool
-	mu      sync.Mutex
-	values  map[string]parityDiagnostics
-}
+type paritySnapshots map[string]parityDiagnostics
 
-// loadParitySnapshots reads the snapshots of one test, or prepares to
-// capture them, writing them when the test finishes.
-func loadParitySnapshots(t *testing.T, name string) *paritySnapshots {
+// loadParitySnapshots reads testdata/provider-parity/<name>.json.
+func loadParitySnapshots(t *testing.T, name string) paritySnapshots {
 	t.Helper()
-	s := &paritySnapshots{path: filepath.Join("internal", "integration", "tools", "testdata", "provider-parity", name+".json"), capture: os.Getenv("ACTIONLINT_CAPTURE_PARITY") == "1", values: map[string]parityDiagnostics{}}
-	if s.capture {
-		t.Cleanup(func() {
-			data, err := json.MarshalIndent(s.values, "", "  ")
-			if err == nil {
-				err = os.WriteFile(s.path, append(data, '\n'), 0o600)
-			}
-			if err != nil {
-				t.Error(err)
-			}
-		})
-		return s
-	}
-	data, err := os.ReadFile(s.path)
+	data, err := os.ReadFile(filepath.Join("internal", "integration", "tools", "testdata", "provider-parity", name+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := json.Unmarshal(data, &s.values); err != nil {
+	var snapshots paritySnapshots
+	if err := json.Unmarshal(data, &snapshots); err != nil {
 		t.Fatal(err)
 	}
-	return s
+	return snapshots
 }
 
-// selections select ShellCheck and Ruff on PATH; arguments are added to
-// ShellCheck's command line.
-func paritySelections(shellcheck, ruff string, arguments []string) (registry.Selections, adapters.Options) {
+// assertParity runs the bundled providers with ShellCheck and Ruff from PATH
+// and compares their findings with the snapshot of key. arguments are added
+// to ShellCheck's command line.
+func (s paritySnapshots) assertParity(t *testing.T, key string, run func([]tools.Registration) parityDiagnostics, shellcheck, ruff string, arguments ...string) {
+	t.Helper()
 	var options *processconfig.Options
 	if len(arguments) != 0 {
 		options = &processconfig.Options{Arguments: arguments}
 	}
-	return registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}},
-		adapters.Options{ShellCheck: shellcheck, ShellcheckOptions: options, Ruff: ruff}
-}
-
-// assertParity checks the manifest route against the snapshot of key.
-func (s *paritySnapshots) assertParity(t *testing.T, key string, run func([]tools.Registration) parityDiagnostics, shellcheck, ruff string, arguments ...string) {
-	t.Helper()
-	selections, adapted := paritySelections(shellcheck, ruff, arguments)
-	got := run(registry.Registrations(selections))
-	if s.capture {
-		want := run(adapted.Registrations())
-		// Manifests map tool severities to host severities; the adapters
-		// passed ShellCheck's style through for renderers to interpret.
-		manifests, err := provider.Bundled()
-		if err != nil {
-			t.Fatal(err)
-		}
-		for i, finding := range want.Findings {
-			for _, manifest := range manifests {
-				if manifest.Rule.Name == finding.Rule {
-					severity, _ := manifest.Capabilities.HostSeverity(finding.Severity)
-					want.Findings[i].Severity = string(severity)
-				}
-			}
-		}
-		s.mu.Lock()
-		s.values[key] = want
-		s.mu.Unlock()
-	}
-	want, ok := s.values[key]
+	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}))
+	want, ok := s[key]
 	if !ok {
-		t.Fatalf("no parity snapshot for %q; capture with ACTIONLINT_CAPTURE_PARITY=1", key)
+		t.Fatalf("no parity snapshot for %q", key)
 	}
 	wantJSON, _ := json.MarshalIndent(want, "", "  ")
 	gotJSON, _ := json.MarshalIndent(got, "", "  ")
@@ -306,26 +261,20 @@ func TestProviderParityCases(t *testing.T) {
 }
 
 // TestProviderParityEmbeddedRunner checks the command line an embedding
-// program's in-process runner receives, as the adapters built it.
+// program's in-process runner receives against the one the ShellCheck
+// adapter built.
 func TestProviderParityEmbeddedRunner(t *testing.T) {
-	var calls [2][]string
-	for i, registrations := range [][]tools.Registration{
-		(adapters.Options{ShellcheckRunner: func(args []string, _ string) ([]byte, error) {
-			calls[0] = args
-			return []byte(`{"comments":[]}`), nil
-		}}).Registrations(),
-		registry.Registrations(registry.Selections{"shellcheck": backend.Selection{Runner: func(args []string, _ string) ([]byte, error) {
-			calls[1] = args
-			return []byte(`{"comments":[]}`), nil
-		}}}),
-	} {
-		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo $1\n"
-		if _, err := application.Analyze(t.Context(), application.Options{WorkingDir: "/", Tools: registrations}, []workspace.Source{{Path: "test.yaml", Content: []byte(source)}}); err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("route %d: %q", i, calls[i])
+	var args []string
+	registrations := registry.Registrations(registry.Selections{"shellcheck": backend.Selection{Runner: func(received []string, _ string) ([]byte, error) {
+		args = received
+		return []byte(`{"comments":[]}`), nil
+	}}})
+	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo $1\n"
+	if _, err := application.Analyze(t.Context(), application.Options{WorkingDir: "/", Tools: registrations}, []workspace.Source{{Path: "test.yaml", Content: []byte(source)}}); err != nil {
+		t.Fatal(err)
 	}
-	if !slices.Equal(calls[0], calls[1]) {
-		t.Fatalf("embedded command lines differ:\nadapters:  %q\nmanifests: %q", calls[0], calls[1])
+	adapter := []string{"--norc", "-f", "json1", "--shell", "bash", "-e", "SC1091,SC2194,SC2050,SC2153,SC2154,SC2157,SC2043", "-"}
+	if !slices.Equal(args, adapter) {
+		t.Fatalf("embedded command line differs:\nadapter:   %q\nmanifests: %q", adapter, args)
 	}
 }
