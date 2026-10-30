@@ -139,6 +139,12 @@ deny  = [
   { pkg = "github.com/kjanat/wacogo", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },
 ]
 
+[linters.settings.depguard.rules.preparation-profiles]
+files = ["**/internal/tools/profile/**", "!$test"]
+deny  = [
+  { pkg = "actionlint.kjanat.dev/v2/internal/config", desc = "settings reach preparation profiles as typed values from the tool that owns them" },
+]
+
 [linters.settings.custom.actionlintarch]
 type        = "module"
 description = "Check source-derived representation ownership and public API boundaries"

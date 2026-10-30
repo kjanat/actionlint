@@ -441,6 +441,9 @@ Ruff consumes it directly; ShellCheck additionally prepares per-scope source acc
 `internal/tools/adapters` only projects the bundled options into the two registrations.
 `internal/tools/selection` owns the shared precedence between an explicit command and repository-selected
 process or WebAssembly settings. It loads modules through a callback and launches no processes.
+Language preparation (template masking, dialect and Python target inference, directive and startup lines and
+their line origins) lives in the preparation profiles `internal/tools/profile/{mask,shell,python}`. Profiles
+receive settings as typed values and never import configuration.
 
 `internal/config/tools` defines configuration types. Ruff's native command encoding and process
 restrictions belong to `internal/tools/ruff`. The selected engine validates its own options, including rule selectors,
