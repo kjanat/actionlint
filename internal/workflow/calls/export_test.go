@@ -1,7 +1,6 @@
 package calls
 
 import (
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"path/filepath"
 )
@@ -64,17 +63,17 @@ func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflow
 	}
 
 	for _, i := range event.Inputs {
-		var t exprlang.Type = exprlang.AnyType{}
+		t := InputTypeAny
 		switch i.Type {
 		case workflowlang.WorkflowCallEventInputTypeBoolean:
-			t = exprlang.BoolType{}
+			t = InputTypeBoolean
 		case workflowlang.WorkflowCallEventInputTypeNumber:
-			t = exprlang.NumberType{}
+			t = InputTypeNumber
 		case workflowlang.WorkflowCallEventInputTypeString:
-			t = exprlang.StringType{}
+			t = InputTypeString
 		case workflowlang.WorkflowCallEventInputTypeInvalid:
 		}
-		m.Inputs[i.ID] = &Input{
+		m.Inputs[i.ID] = Input{
 			Type:     t,
 			Required: i.Required != nil && i.Required.Value && i.Default == nil,
 			Name:     i.Name.Value,
@@ -82,20 +81,20 @@ func (c *Cache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflow
 	}
 
 	for n, o := range event.Outputs {
-		m.Outputs[n] = &Output{
+		m.Outputs[n] = Output{
 			Name: o.Name.Value,
 		}
 	}
 
 	for n, s := range event.Secrets {
 		r := s.Required != nil && s.Required.Value
-		m.Secrets[n] = &Secret{
+		m.Secrets[n] = Secret{
 			Required: r,
 			Name:     s.Name.Value,
 		}
 	}
 
-	m.recordWorkflowFacts(w)
+	m.JobPermissions, m.JobCacheAccess = jobFacts(w)
 
 	c.mu.Lock()
 	if _, exists := c.cache[spec]; !exists {

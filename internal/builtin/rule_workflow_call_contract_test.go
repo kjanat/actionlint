@@ -6,7 +6,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 
@@ -140,7 +139,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 
 	want := &calls.Metadata{
 		Inputs: calls.Inputs{
-			"input1": {Name: "input1", Required: false, Type: exprlang.StringType{}},
+			"input1": {Name: "input1", Required: false, Type: calls.InputTypeString},
 		},
 		Outputs: calls.Outputs{
 			"output1": {Name: "output1"},

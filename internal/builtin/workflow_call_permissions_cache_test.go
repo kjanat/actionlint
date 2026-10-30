@@ -307,7 +307,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
-			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee}, nil)
+			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			r := builtin.NewRuleWorkflowCall(nil, cache)
 			if tc.cfg != nil {

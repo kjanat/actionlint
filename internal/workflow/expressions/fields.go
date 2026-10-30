@@ -9,6 +9,7 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
+	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/schema"
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
@@ -269,10 +270,7 @@ func (rule *Checker) checkWorkflowCall(c workflowdecl.WorkflowCallView) {
 		}
 
 		mi, ok := m.Inputs[n]
-		if !ok || mi == nil {
-			continue
-		}
-		if _, ok := mi.Type.(exprlang.AnyType); ok {
+		if !ok || mi.Type == calls.InputTypeAny {
 			continue
 		}
 
@@ -297,7 +295,7 @@ func (rule *Checker) checkWorkflowCall(c workflowdecl.WorkflowCallView) {
 			}
 		}
 
-		if !mi.Type.Assignable(ty) {
+		if !mi.Type.ExprType().Assignable(ty) {
 			rule.Errorf(
 				viewPosition(i.Value()),
 				"input %q is typed as %s by reusable workflow %q. %s value cannot be assigned",

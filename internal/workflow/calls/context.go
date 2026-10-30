@@ -21,4 +21,4 @@ func (c *Cache) SetSources(ctx context.Context, captures *capture.Store, working
 }
 
 // IgnoreInvalid prevents a syntax error from turning into a second filesystem diagnostic.
-func (c *Cache) IgnoreInvalid(spec string) { c.Store(spec, nil, nil) }
+func (c *Cache) IgnoreInvalid(spec string) { c.Store(spec, nil) }

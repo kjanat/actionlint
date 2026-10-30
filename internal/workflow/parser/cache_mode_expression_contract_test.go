@@ -79,7 +79,11 @@ jobs:
 					t.Fatal(diff)
 				}
 				for id, line := range map[string]int{"inherited": 2, "explicit": 9, "call": 14} {
-					mode := fromFile.JobCacheAccess[id].Mode
+					if recorded, declared := fromFile.JobCacheAccess[id].Mode.Kind(); !declared || recorded != kind {
+						t.Fatalf("%s: metadata recorded %s (declared %t), want %s", id, recorded, declared, kind)
+					}
+					// Metadata keeps only the mode; the parsed declaration keeps its source.
+					mode := workflowlang.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
 					want := workflowlang.Pos{Line: line, Col: 17}
 					if line == 2 || aliased {
 						want = workflowlang.Pos{Line: 2, Col: 13}

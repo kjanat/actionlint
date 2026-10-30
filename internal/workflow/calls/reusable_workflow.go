@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
-	"strconv"
+	"slices"
 	"strings"
 	"sync"
 
@@ -32,19 +33,51 @@ func expectedMapping(where string, n *syntax.Node) error {
 	)
 }
 
+// InputType is the declared type of a reusable workflow input. GitHub accepts
+// only boolean, number and string; any other or omitted type is unknown.
+type InputType uint8
+
+const (
+	// InputTypeAny is an unknown type; every value is assignable.
+	InputTypeAny InputType = iota
+	// InputTypeBoolean is "type: boolean".
+	InputTypeBoolean
+	// InputTypeNumber is "type: number".
+	InputTypeNumber
+	// InputTypeString is "type: string".
+	InputTypeString
+)
+
+// ExprType returns the expression type a value passed to the input must be assignable to.
+func (t InputType) ExprType() exprlang.Type {
+	switch t {
+	case InputTypeBoolean:
+		return exprlang.BoolType{}
+	case InputTypeNumber:
+		return exprlang.NumberType{}
+	case InputTypeString:
+		return exprlang.StringType{}
+	case InputTypeAny:
+	}
+	return exprlang.AnyType{}
+}
+
+// String returns the expression type's spelling, as used in diagnostics.
+func (t InputType) String() string { return t.ExprType().String() }
+
 // Input is an input metadata for validating local reusable workflow file.
 type Input struct {
 	// Name is a name of the input defined in the reusable workflow.
 	Name string
 	// Required is true when 'required' field of the input is set to true and no default value is set.
 	Required bool
-	// Type is a type of the input. When the input type is unknown, 'any' type is set.
-	Type exprlang.Type
+	// Type is the declared type of the input.
+	Type InputType
 }
 
 // Inputs is a map from input name to reusable wokflow input metadata. The
 // keys are in lower case since input names of workflow calls are case insensitive.
-type Inputs map[string]*Input
+type Inputs map[string]Input
 
 // Secret is a secret metadata for validating local reusable workflow file.
 type Secret struct {
@@ -57,7 +90,7 @@ type Secret struct {
 
 // Secrets is a map from secret name to reusable wokflow secret metadata.
 // The keys are in lower case since secret names of workflow calls are case insensitive.
-type Secrets map[string]*Secret
+type Secrets map[string]Secret
 
 // Output is an output metadata for validating local reusable workflow file.
 type Output struct {
@@ -67,11 +100,14 @@ type Output struct {
 
 // Outputs is a map from output name to reusable wokflow output metadata.
 // The keys are in lower case since output names of workflow calls are case insensitive.
-type Outputs map[string]*Output
+type Outputs map[string]Output
 
 // Metadata is metadata to validate local reusable workflows. This struct does not
 // contain all metadata from YAML file. It only contains metadata which is necessary to validate
 // reusable workflow files by actionlint.
+//
+// It is a plain value record. Cache keeps its own copy and hands every lookup
+// a detached one, so callers may freely modify what they receive.
 type Metadata struct {
 	Inputs  Inputs  `yaml:"inputs"`
 	Outputs Outputs `yaml:"outputs"`
@@ -84,10 +120,35 @@ type Metadata struct {
 	JobCacheAccess map[string]CacheAccess `yaml:"-"`
 }
 
+// CacheModeDeclaration is a job's effective cache-mode declaration. The zero
+// value declares none: the job inherits the calling workflow's access limit.
+type CacheModeDeclaration struct {
+	kind     workflowlang.CacheModeKind
+	declared bool
+}
+
+// DeclaredCacheMode records an explicit, possibly invalid, cache-mode declaration.
+func DeclaredCacheMode(kind workflowlang.CacheModeKind) CacheModeDeclaration {
+	return CacheModeDeclaration{kind: kind, declared: true}
+}
+
+func cacheModeDeclaration(mode *workflowlang.CacheMode) CacheModeDeclaration {
+	if mode == nil {
+		return CacheModeDeclaration{}
+	}
+	return DeclaredCacheMode(mode.Kind)
+}
+
+// Kind returns the declared mode. It reports false when the job declares none.
+func (d CacheModeDeclaration) Kind() (workflowlang.CacheModeKind, bool) { return d.kind, d.declared }
+
+// Equal reports whether both declarations are the same.
+func (d CacheModeDeclaration) Equal(other CacheModeDeclaration) bool { return d == other }
+
 // CacheAccess describes a job's declared cache access and any local callee.
 type CacheAccess struct {
-	// Mode is nil when the job inherits the calling workflow's access limit.
-	Mode *workflowlang.CacheMode
+	// Mode is the job's effective declaration, if any.
+	Mode CacheModeDeclaration
 	// Uses is the normalized local workflow reference, or empty for other jobs.
 	Uses string
 	// SourceUses preserves the local reference's source spelling for diagnostics.
@@ -96,7 +157,9 @@ type CacheAccess struct {
 	Operations []string
 }
 
-func (m *Metadata) recordJobCacheAccess(id string, mode *workflowlang.CacheMode, uses string, steps []*workflowlang.Step) {
+// jobCacheAccess describes one job, or reports false when the job declares no
+// cache mode, calls no local workflow and uses no cache action.
+func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflowlang.Step) (CacheAccess, bool) {
 	local, ok := references.LocalWorkflow(uses)
 	if !ok {
 		local = ""
@@ -104,12 +167,45 @@ func (m *Metadata) recordJobCacheAccess(id string, mode *workflowlang.CacheMode,
 	}
 	operations := collectCacheOperations(nil, steps)
 	if mode == nil && local == "" && len(operations) == 0 {
-		return
+		return CacheAccess{}, false
 	}
-	if m.JobCacheAccess == nil {
-		m.JobCacheAccess = map[string]CacheAccess{}
+	return CacheAccess{Mode: cacheModeDeclaration(mode), Uses: local, SourceUses: uses, Operations: operations}, true
+}
+
+// cloneMetadata returns a copy of m sharing no storage with it.
+func cloneMetadata(m *Metadata) *Metadata {
+	if m == nil {
+		return nil
 	}
-	m.JobCacheAccess[id] = CacheAccess{Mode: mode, Uses: local, SourceUses: uses, Operations: operations}
+	return &Metadata{
+		Inputs:         maps.Clone(m.Inputs),
+		Outputs:        maps.Clone(m.Outputs),
+		Secrets:        maps.Clone(m.Secrets),
+		JobPermissions: cloneJobPermissions(m.JobPermissions),
+		JobCacheAccess: cloneJobCacheAccess(m.JobCacheAccess),
+	}
+}
+
+func cloneJobPermissions(jobs map[string]PermissionScopeLevels) map[string]PermissionScopeLevels {
+	if jobs == nil {
+		return nil
+	}
+	out := make(map[string]PermissionScopeLevels, len(jobs))
+	for id, levels := range jobs {
+		out[id] = maps.Clone(levels)
+	}
+	return out
+}
+
+func cloneJobCacheAccess(jobs map[string]CacheAccess) map[string]CacheAccess {
+	if jobs == nil {
+		return nil
+	}
+	out := make(map[string]CacheAccess, len(jobs))
+	for id, access := range jobs {
+		out[id] = CacheAccess{Mode: access.Mode, Uses: access.Uses, SourceUses: access.SourceUses, Operations: slices.Clone(access.Operations)}
+	}
+	return out
 }
 
 func collectCacheOperations(operations []string, steps []*workflowlang.Step) []string {
@@ -145,8 +241,54 @@ type Cache struct {
 
 type reusableWorkflowMetadataResult struct {
 	metadata *Metadata
-	err      error
+	failure  metadataError // zero when metadata was read and parsed, or deliberately ignored
 	captured capture.Snapshot
+}
+
+// failureKind says which step of loading a reusable workflow failed.
+type failureKind uint8
+
+const (
+	failureRead failureKind = iota + 1
+	failureParse
+)
+
+// metadataError is a cached failure to read or parse a reusable workflow.
+// It is an immutable value: each lookup receives its own copy, and a call
+// site can name the workflow in its own spelling without changing the
+// cached failure. The zero value records no failure.
+type metadataError struct {
+	kind  failureKind
+	spec  string
+	cause string
+}
+
+func readFailure(spec string, err error) metadataError {
+	// A capture failure is shown by its cause, which already names the file.
+	shown := err
+	if captured, ok := errors.AsType[*capture.CaptureError](err); ok && errors.Unwrap(captured) != nil {
+		shown = errors.Unwrap(captured)
+	}
+	return metadataError{kind: failureRead, spec: spec, cause: shown.Error()}
+}
+
+func parseFailure(spec string, err error) metadataError {
+	return metadataError{kind: failureParse, spec: spec, cause: strings.ReplaceAll(err.Error(), "\n", " ")}
+}
+
+func (f metadataError) failed() bool { return f.kind != 0 }
+
+// at names the workflow as the call site spelled it.
+func (f metadataError) at(spec string) metadataError {
+	f.spec = spec
+	return f
+}
+
+func (f metadataError) Error() string {
+	if f.kind == failureParse {
+		return fmt.Sprintf("error while parsing reusable workflow %q: %s", f.spec, f.cause)
+	}
+	return fmt.Sprintf("could not read reusable workflow file for %q: %s", f.spec, f.cause)
 }
 
 func (c *Cache) debug(format string, args ...any) {
@@ -158,25 +300,37 @@ func (c *Cache) debug(format string, args ...any) {
 }
 
 // Lookup returns a memoized dependency result without reading the filesystem.
+// The metadata is a detached copy owned by the caller.
 func (c *Cache) Lookup(key string) (*Metadata, error, bool) {
 	c.mu.RLock()
 	result, ok := c.cache[key]
 	c.mu.RUnlock()
-	if ok && result.captured.Valid() {
+	if !ok {
+		return nil, nil, false
+	}
+	if result.captured.Valid() {
 		if err := c.captures.VerifyHandle(result.captured); err != nil {
 			return nil, err, true
 		}
 	}
-	return result.metadata, result.err, ok
+	if result.failure.failed() {
+		return nil, result.failure, true
+	}
+	return cloneMetadata(result.metadata), nil, true
 }
 
-// Store records parsed metadata or a read failure for a repository-relative specification.
-func (c *Cache) Store(key string, val *Metadata, err error) {
+// Store records a copy of parsed metadata for a repository-relative
+// specification. A nil val records that the specification has no metadata.
+func (c *Cache) Store(key string, val *Metadata) {
+	c.store(key, reusableWorkflowMetadataResult{metadata: cloneMetadata(val)})
+}
+
+func (c *Cache) store(key string, result reusableWorkflowMetadataResult) {
 	if c.root == "" {
 		return
 	}
 	c.mu.Lock()
-	c.cache[key] = reusableWorkflowMetadataResult{metadata: val, err: err}
+	c.cache[key] = result
 	c.mu.Unlock()
 }
 
@@ -207,22 +361,20 @@ func (c *Cache) Seed(snapshot *documentparse.SourceSnapshot) error {
 	if _, _, exists := c.Lookup(spec); exists {
 		return nil
 	}
-	metadata, parseErr := ParseMetadata(captured.Bytes())
-	if parseErr != nil {
-		parseErr = reusableMetadataParseError(spec, parseErr)
+	result := reusableWorkflowMetadataResult{captured: captured}
+	if metadata, err := ParseMetadata(captured.Bytes()); err != nil {
+		result.failure = parseFailure(spec, err)
+	} else {
+		result.metadata = metadata
 	}
 	c.mu.Lock()
 	if _, exists := c.cache[spec]; !exists {
-		c.cache[spec] = reusableWorkflowMetadataResult{metadata: metadata, err: parseErr, captured: captured}
+		c.cache[spec] = result
 	}
 	c.mu.Unlock()
 	// Metadata failures belong to caller diagnostics. A callee entry still
 	// traverses its recovered workflow and every other rule.
 	return nil
-}
-
-func reusableMetadataParseError(spec string, cause error) error {
-	return fmt.Errorf("error while parsing reusable workflow %q: %s", spec, strings.ReplaceAll(cause.Error(), "\n", " "))
 }
 
 // FindMetadata finds/parses a reusable workflow metadata located by the 'spec' argument. When project
@@ -248,16 +400,16 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 	}
 	captured, err := c.captures.Read(c.ctx, file, source.YAML)
 	if err != nil {
-		err = capture.NewReadError(fmt.Sprintf("could not read reusable workflow file for %q", spec), err)
-		c.Store(spec, nil, err)
-		return nil, err
+		failure := readFailure(spec, err)
+		c.store(spec, reusableWorkflowMetadataResult{failure: failure})
+		return nil, failure
 	}
 
 	m, err := ParseMetadata(captured.Bytes())
 	if err != nil {
-		err = reusableMetadataParseError(spec, err)
-		c.Store(spec, nil, err)
-		return nil, err
+		failure := parseFailure(spec, err)
+		c.store(spec, reusableWorkflowMetadataResult{failure: failure})
+		return nil, failure
 	}
 
 	c.debug("New reusable workflow metadata at %s: %v", file, m)
@@ -271,7 +423,7 @@ func (c *Cache) FindMetadata(spec string) (*Metadata, error) {
 }
 
 // FindMetadataForCall owns the source-reference boundary for diagnostic rules.
-// Lookups normalize cache keys to ./ paths and format errors with the call's source spelling.
+// Lookups normalize cache keys to ./ paths and name failed workflows with the call's source spelling.
 // Invalid, remote, and expression references are handled by syntax validation.
 func (c *Cache) FindMetadataForCall(sourceSpec string) (*Metadata, error) {
 	localSpec, ok := references.LocalWorkflow(sourceSpec)
@@ -279,10 +431,10 @@ func (c *Cache) FindMetadataForCall(sourceSpec string) (*Metadata, error) {
 		return nil, nil
 	}
 	m, err := c.FindMetadata(localSpec)
-	if err != nil {
-		return m, errors.New(strings.Replace(err.Error(), strconv.Quote(localSpec), strconv.Quote(sourceSpec), 1))
+	if failure, ok := errors.AsType[metadataError](err); ok {
+		return nil, failure.at(sourceSpec)
 	}
-	return m, nil
+	return m, err
 }
 
 func workflowPathToSpec(root, path string) (string, bool) {
@@ -300,6 +452,8 @@ func workflowPathToSpec(root, path string) (string, bool) {
 // NewCache creates a new Cache instance for the given
 // project. 'cwd' is a current working directory as an absolute file path. The 'Local' means that
 // the cache instance is project-local. It is not available across multiple projects.
+// An empty root, used when no project is found, yields a cache that never hits.
+// Callers sharing one cache per project keep their own instance per root.
 func NewCache(root, cwd string, dbg io.Writer) *Cache {
 	return &Cache{
 		root:  root,
@@ -307,38 +461,4 @@ func NewCache(root, cwd string, dbg io.Writer) *Cache {
 		cwd:   cwd,
 		dbg:   dbg,
 	}
-}
-
-func newNullLocalReusableWorkflowCache(dbg io.Writer) *Cache {
-	// Null cache. Cache never hits. It is used when project is not found
-	return &Cache{dbg: dbg}
-}
-
-// CacheFactory is a factory object to create a Cache
-// instance per project.
-type CacheFactory struct {
-	caches map[string]*Cache
-	cwd    string
-	dbg    io.Writer
-}
-
-// NewCacheFactory creates a new CacheFactory instance.
-func NewCacheFactory(cwd string, dbg io.Writer) *CacheFactory {
-	return &CacheFactory{map[string]*Cache{}, cwd, dbg}
-}
-
-// GetCache returns a new or existing Cache instance per project. When a instance
-// was already created for the project, this method returns the existing instance. Otherwise it creates
-// a new instance and returns it.
-func (f *CacheFactory) GetCache(root string) *Cache {
-	if root == "" {
-		return newNullLocalReusableWorkflowCache(f.dbg)
-	}
-	r := root
-	if c, ok := f.caches[r]; ok {
-		return c
-	}
-	c := NewCache(root, f.cwd, f.dbg)
-	f.caches[r] = c
-	return c
 }
