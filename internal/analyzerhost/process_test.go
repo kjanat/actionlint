@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic" // Note: atomic.Bool was added at Go 1.19
 	"testing"
@@ -274,7 +275,7 @@ func TestProcessWorkingDirectoryEnvironment(t *testing.T) {
 					pwd = parent
 				}
 			}
-			execution := Execution{Cmd: exe, Args: []string{"-test.run=^TestProcessEnvironmentHelper$"}, Dir: directory, Env: tc.env}
+			execution := Execution{Cmd: exe, Args: []string{"-test.run=^TestProcessEnvironmentHelper$"}, Dir: directory, Env: tc.env, InheritEnvironment: true}
 			output, err := execution.Run(t.Context())
 			if err != nil {
 				t.Fatal(err)
@@ -285,6 +286,61 @@ func TestProcessWorkingDirectoryEnvironment(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProcessScrubbedEnvironment(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("LANG", "inherited")
+	execution := Execution{Cmd: exe, Args: []string{"-test.run=^TestProcessEnvironmentHelper$"}, Env: []string{"ACTIONLINT_TEST_ENVIRONMENT_HELPER=1", "PWD=explicit"}}
+	output, err := execution.Run(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(output) != "explicit\n" {
+		t.Fatalf("scrubbed child saw the host environment: %q", output)
+	}
+}
+
+func TestProcessExitCodes(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name     string
+		accepted []int
+		status   string
+		ok       bool
+	}{
+		{"listed nonzero", []int{0, 1}, "1", true},
+		{"unlisted nonzero", []int{0, 2}, "1", false},
+		{"unlisted success", []int{1}, "0", false},
+		{"listed success", []int{0}, "0", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			execution := Execution{Cmd: exe, Args: []string{"-test.run=^TestProcessExitStatusHelper$"}, Env: []string{"ACTIONLINT_TEST_EXIT_STATUS=" + tc.status}, ExitCodes: tc.accepted}
+			output, code, err := execution.RunStatus(t.Context())
+			if tc.ok != (err == nil) || tc.ok && (string(output) != "reported" || strconv.Itoa(code) != tc.status) {
+				t.Fatalf("output=%q code=%d err=%v", output, code, err)
+			}
+		})
+	}
+}
+
+func TestProcessExitStatusHelper(t *testing.T) {
+	status := os.Getenv("ACTIONLINT_TEST_EXIT_STATUS")
+	if status == "" {
+		return
+	}
+	fmt.Print("reported")
+	code, err := strconv.Atoi(status)
+	if err != nil {
+		os.Exit(2)
+	}
+	os.Exit(code)
 }
 
 func TestProcessRelativeExecutableWithWorkingDirectory(t *testing.T) {
