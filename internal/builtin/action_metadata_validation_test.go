@@ -138,8 +138,9 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 
 func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	root := t.TempDir()
-	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
-	writeFixture(t, root, "inner/index.js", "")
+	// The missing description is positioned at each caller; the composite step
+	// without a shell is positioned in the metadata and carries an ignore origin.
+	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n")
 	cache := newCapturedLocalCache(t, root, nil)
 	rule := NewRuleAction(cache)
 	for i := 1; i <= 3; i++ {
@@ -148,16 +149,36 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if len(rule.validation.templates) != 1 || len(rule.Errs()) != 3 {
-		t.Fatalf("templates=%d findings=%d", len(rule.validation.templates), len(rule.Errs()))
+	templates := rule.validation.templates[filepath.Join(root, "inner", "action.yml")]
+	if len(rule.validation.templates) != 1 || len(templates) != 2 || len(rule.Errs()) != 3*len(templates) {
+		t.Fatalf("documents=%d templates=%d findings=%d", len(rule.validation.templates), len(templates), len(rule.Errs()))
 	}
+	described, originated := 0, 0
 	for i, finding := range rule.Errs() {
-		if finding.Start.Line != i+1 || !strings.Contains(finding.Message, "description is required") {
-			t.Fatalf("%+v", finding)
+		if strings.Contains(finding.Message, "description is required") {
+			described++
+			if finding.Start.Line != i/len(templates)+1 {
+				t.Fatalf("description finding not at its caller: %+v", finding)
+			}
+		}
+		if finding.IgnoreOrigin != nil {
+			originated++
 		}
 	}
-	rule.Errs()[0].Message = "mutated caller"
-	if rule.validation.templates[filepath.Join(root, "inner", "action.yml")][0].Message == "mutated caller" {
-		t.Fatal("caller mutated cached template")
+	if described != 3 || originated != 3 {
+		t.Fatalf("description findings=%d origin findings=%d", described, originated)
+	}
+	// Annotation is the only write path into recorded findings; it must not
+	// reach the cached templates the next visit replays.
+	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
+		finding.Message = "mutated caller"
+		if finding.IgnoreOrigin != nil {
+			finding.IgnoreOrigin.Job = "mutated caller"
+		}
+	})
+	for _, template := range templates {
+		if template.Message == "mutated caller" || template.IgnoreOrigin != nil && template.IgnoreOrigin.Job == "mutated caller" {
+			t.Fatalf("annotation mutated cached template: %+v", template)
+		}
 	}
 }
