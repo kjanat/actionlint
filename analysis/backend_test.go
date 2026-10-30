@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -63,7 +64,7 @@ jobs:
         run: |
           echo missing "${{ github.actor }}"
 `)}},
-		Options: analysis.Options{Ruff: analysis.Tool{Backend: backend}, ShellCheck: analysis.Tool{Backend: backend}},
+		Options: analysis.Options{Tools: map[string]analysis.Tool{"ruff": {Backend: backend}, "shellcheck": {Backend: backend}}},
 	})
 	if !errors.Is(err, failure) {
 		t.Fatalf("partial error lost: %v", err)
@@ -102,8 +103,8 @@ func TestBackendSelectionIsExclusive(t *testing.T) {
 		return nil, nil
 	})
 	for _, options := range []analysis.Options{
-		{Ruff: analysis.Tool{Backend: backend, Process: &analysis.Process{Executable: "ruff"}}},
-		{ShellCheck: analysis.Tool{Backend: backend, Process: &analysis.Process{Executable: "shellcheck"}}},
+		{Tools: map[string]analysis.Tool{"ruff": {Backend: backend, Process: &analysis.Process{Executable: "ruff"}}}},
+		{Tools: map[string]analysis.Tool{"shellcheck": {Backend: backend, Process: &analysis.Process{Executable: "shellcheck"}}}},
 	} {
 		if _, err := analysis.Analyze(t.Context(), analysis.Request{Options: options}); err == nil {
 			t.Fatal("accepted ambiguous tool")
@@ -111,5 +112,16 @@ func TestBackendSelectionIsExclusive(t *testing.T) {
 		if _, err := analysis.Files(t.Context(), nil, analysis.FileOptions{Options: options}); err == nil {
 			t.Fatal("accepted ambiguous file tool")
 		}
+	}
+}
+
+func TestUnknownToolIsRejected(t *testing.T) {
+	options := analysis.Options{Tools: map[string]analysis.Tool{"missing": {}}}
+	_, err := analysis.Analyze(t.Context(), analysis.Request{Options: options})
+	if err == nil || !strings.Contains(err.Error(), `unknown tool "missing"`) {
+		t.Fatalf("unknown tool accepted: %v", err)
+	}
+	if !slices.Equal(analysis.Tools(), []string{"ruff", "shellcheck"}) {
+		t.Fatalf("bundled tools: %v", analysis.Tools())
 	}
 }

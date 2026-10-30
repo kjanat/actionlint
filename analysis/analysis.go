@@ -4,7 +4,11 @@ package analysis
 
 import (
 	"context"
+	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/config"
@@ -57,10 +61,12 @@ type Options struct {
 	LoadScriptEngine func(context.Context, string) (analyzer.ScriptBackend, error)
 	// WorkingDir roots source paths, config selection and local references.
 	// Empty uses the process working directory; Analyze does not discover config.
-	WorkingDir     string
-	ReadFile       func(string) ([]byte, error)
-	ShellCheck     Tool
-	Ruff           Tool
+	WorkingDir string
+	ReadFile   func(string) ([]byte, error)
+	// Tools selects how each bundled tool runs, keyed by tool id. The
+	// function Tools lists the valid ids; any other key is an error. A
+	// bundled tool missing from the map gets the zero Tool.
+	Tools          map[string]Tool
 	Presets        config.Presets
 	IgnorePatterns []string
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
@@ -139,6 +145,12 @@ func Repository(ctx context.Context, directory string, options FileOptions) (*Re
 	return applicationResultView(result), err
 }
 
+// Tools returns the ids of the tools bundled with actionlint, the keys
+// Options.Tools accepts.
+func Tools() []string {
+	return registry.IDs()
+}
+
 func toolOptions(tool Process) *processconfig.Options {
 	return &processconfig.Options{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
 }
@@ -159,8 +171,15 @@ func fileOptions(options FileOptions) (application.Options, error) {
 			}
 		}
 	}
+	ids := Tools()
+	for _, id := range slices.Sorted(maps.Keys(options.Tools)) {
+		if !slices.Contains(ids, id) {
+			return application.Options{}, fmt.Errorf("analysis: unknown tool %q; bundled tools: %s", id, strings.Join(ids, ", "))
+		}
+	}
 	selections := registry.Selections{}
-	for name, tool := range map[string]Tool{"shellcheck": options.ShellCheck, "ruff": options.Ruff} {
+	for _, name := range ids {
+		tool := options.Tools[name]
 		// A managed analyzer replaces an unselected tool without a native fallback.
 		if managed[name] && tool.Process == nil && tool.Backend == nil {
 			selections[name] = backend.Selection{Command: name, ManagedOnly: true}

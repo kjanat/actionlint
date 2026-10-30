@@ -115,7 +115,7 @@ func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		options := analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}}
 		if disabled {
-			options.ShellCheck.Process = &analysis.Process{}
+			options.Tools = map[string]analysis.Tool{"shellcheck": {Process: &analysis.Process{}}}
 		}
 		result, err := analysis.Analyze(t.Context(), analysis.Request{Options: options, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow)}}})
 		if err != nil {
