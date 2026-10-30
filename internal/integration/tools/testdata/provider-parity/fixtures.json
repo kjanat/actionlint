@@ -1,0 +1,1367 @@
+{
+  "err/alias_content_errors.yaml": {
+    "findings": null
+  },
+  "err/alias_type_errors.yaml": {
+    "findings": null
+  },
+  "err/assign_expression.yaml": {
+    "findings": null
+  },
+  "err/case_sensitive_keys.yaml": {
+    "findings": null
+  },
+  "err/concurrency_queue.yaml": {
+    "findings": null
+  },
+  "err/context_availability.yaml": {
+    "findings": null
+  },
+  "err/cron_5minutes_limit.yaml": {
+    "findings": null
+  },
+  "err/dedup_errors.yaml": {
+    "findings": null
+  },
+  "err/deprecated_action_inputs.yaml": {
+    "findings": null
+  },
+  "err/deprecated_workflow_commands.yaml": {
+    "findings": null
+  },
+  "err/docker_specific_inputs_with_normal_action.yaml": {
+    "findings": null
+  },
+  "err/duplicate_keys.yaml": {
+    "findings": null
+  },
+  "err/empty.yaml": {
+    "findings": null
+  },
+  "err/empty_image_names_and_versions.yaml": {
+    "findings": null
+  },
+  "err/empty_on.yaml": {
+    "findings": null
+  },
+  "err/empty_sequence_or_string.yaml": {
+    "findings": null
+  },
+  "err/env_context_banned.yaml": {
+    "findings": null
+  },
+  "err/errors_in_anchor.yaml": {
+    "findings": null
+  },
+  "err/evaluated_template.yaml": {
+    "findings": null
+  },
+  "err/exclusive_webhook_filters.yaml": {
+    "findings": null
+  },
+  "err/expr_check_in_container.yaml": {
+    "findings": null
+  },
+  "err/expr_check_in_credentials.yaml": {
+    "findings": null
+  },
+  "err/expr_check_in_env_var_name.yaml": {
+    "findings": null
+  },
+  "err/expr_check_in_matrix_row_assign.yaml": {
+    "findings": null
+  },
+  "err/expr_check_in_services.yaml": {
+    "findings": null
+  },
+  "err/expr_in_default_input.yaml": {
+    "findings": null
+  },
+  "err/github_script_untrusted_input.yaml": {
+    "findings": null
+  },
+  "err/glob_more.yaml": {
+    "findings": null
+  },
+  "err/if_cond_constants.yaml": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/if_cond_constants.yaml",
+          "revision": "13e265449770a66f4efad48d1435e3b1435aac8467494fbe311da49c269e85a8",
+          "node": "",
+          "address": "jobs[\"test-steps\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2006",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2006:style:1:15: Use $(...) notation instead of legacy backticks `...`",
+        "path": "testdata/err/if_cond_constants.yaml",
+        "start": {
+          "line": 7,
+          "column": 28
+        },
+        "end": {
+          "line": 7,
+          "column": 34
+        },
+        "snippet": "      - run: echo Constant `true`"
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/if_cond_constants.yaml",
+          "revision": "13e265449770a66f4efad48d1435e3b1435aac8467494fbe311da49c269e85a8",
+          "node": "",
+          "address": "jobs[\"test-steps\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2046",
+        "severity": "warning",
+        "message": "shellcheck reported issue in this script: SC2046:warning:1:15: Quote this to prevent word splitting",
+        "path": "testdata/err/if_cond_constants.yaml",
+        "start": {
+          "line": 7,
+          "column": 28
+        },
+        "end": {
+          "line": 7,
+          "column": 34
+        },
+        "snippet": "      - run: echo Constant `true`"
+      }
+    ]
+  },
+  "err/if_cond_edge_cases_trailing_leading_chars.yaml": {
+    "findings": null
+  },
+  "err/inputs_without_workflow_call_event.yaml": {
+    "findings": null
+  },
+  "err/invalid_comparisons.yaml": {
+    "findings": null
+  },
+  "err/invalid_container_syntax.yaml": {
+    "findings": null
+  },
+  "err/invalid_event_filters.yaml": {
+    "findings": null
+  },
+  "err/invalid_float_at_timeout_minutes.yaml": {
+    "findings": null
+  },
+  "err/invalid_id.yaml": {
+    "findings": null
+  },
+  "err/invalid_image_version_event.yaml": {
+    "findings": null
+  },
+  "err/invalid_int_at_max_parallel.yaml": {
+    "findings": null
+  },
+  "err/invalid_json_in_fromjson.yaml": {
+    "findings": null
+  },
+  "err/invalid_permissions.yaml": {
+    "findings": null
+  },
+  "err/invalid_runner_labels.yaml": {
+    "findings": null
+  },
+  "err/invalid_snapshot.yaml": {
+    "findings": null
+  },
+  "err/invalid_steps.yaml": {
+    "findings": null
+  },
+  "err/issue-442-download-artifact-v3-workaround.yaml": {
+    "findings": null
+  },
+  "err/issue-610_recursive_raw_yaml_value.yaml": {
+    "findings": null
+  },
+  "err/issue102.yaml": {
+    "findings": null
+  },
+  "err/issue151_child_of_child_job.yaml": {
+    "findings": null
+  },
+  "err/issue155_env_in_job_level_if.yaml": {
+    "findings": null
+  },
+  "err/issue170_empty_permissions.yaml": {
+    "findings": null
+  },
+  "err/issue193.yaml": {
+    "findings": null
+  },
+  "err/issue207_work_dir_with_uses.yaml": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/issue207_work_dir_with_uses.yaml",
+          "revision": "2bfa66f512c1a96818bccf25ca673e6af85312a45a5fdca6c8d55abaa41426c5",
+          "node": "",
+          "address": "jobs[\"foo\"].steps[1]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2005",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2005:style:1:6: Useless echo? Instead of 'echo $(cmd)', just use 'cmd'",
+        "path": "testdata/err/issue207_work_dir_with_uses.yaml",
+        "start": {
+          "line": 9,
+          "column": 19
+        },
+        "end": {
+          "line": 9,
+          "column": 27
+        },
+        "snippet": "      - run: echo \"$(pwd)\""
+      }
+    ]
+  },
+  "err/issue280_runs_on.yaml": {
+    "findings": null
+  },
+  "err/issue558_read_write_none_are_not_always_valid_permissions.yaml": {
+    "findings": null
+  },
+  "err/macos12_runner.yaml": {
+    "findings": null
+  },
+  "err/macos_10.15_removed.yaml": {
+    "findings": null
+  },
+  "err/matrix_exclude_mismatch.yaml": {
+    "findings": null
+  },
+  "err/matrix_exclude_no_match.yaml": {
+    "findings": null
+  },
+  "err/matrix_scalar_invalid_yaml_tag.yaml": {
+    "findings": null
+  },
+  "err/matrix_scalar_yaml_tags.yaml": {
+    "findings": null
+  },
+  "err/merge_group_destroyed.yaml": {
+    "findings": null
+  },
+  "err/merge_key_unsupported.yaml": {
+    "findings": null
+  },
+  "err/minimal_cycle_in_needs.yaml": {
+    "findings": null
+  },
+  "err/missing_jobs.yaml": {
+    "findings": null
+  },
+  "err/missing_on.yaml": {
+    "findings": null
+  },
+  "err/missing_required_keys.yaml": {
+    "findings": null
+  },
+  "err/nested_untrusted_input.yaml": {
+    "findings": null
+  },
+  "err/no_job.yaml": {
+    "findings": null
+  },
+  "err/no_local_action_found.yaml": {
+    "findings": null
+  },
+  "err/object_at_runner_label.yaml": {
+    "findings": null
+  },
+  "err/one_error.yaml": {
+    "findings": null
+  },
+  "err/outdated_actions.yaml": {
+    "findings": null
+  },
+  "err/outdated_popular_action.yaml": {
+    "findings": null
+  },
+  "err/outputs_map_object.yaml": {
+    "findings": null
+  },
+  "err/outputs_of_action_skipping_inputs_check.yaml": {
+    "findings": null
+  },
+  "err/parallel_step_refs.yaml": {
+    "findings": null
+  },
+  "err/parallel_steps.yaml": {
+    "findings": null
+  },
+  "err/random_order_cycle_in_needs.yaml": {
+    "findings": null
+  },
+  "err/recursive_anchors.yaml": {
+    "findings": null
+  },
+  "err/reusable_workflow_empty_secrets.yaml": {
+    "findings": null
+  },
+  "err/run_name_check_expr.yaml": {
+    "findings": null
+  },
+  "err/runner_labels_conflict_matrix.yaml": {
+    "findings": null
+  },
+  "err/schedule_event_with_no_config_1.yaml": {
+    "findings": null
+  },
+  "err/schedule_event_with_no_config_2.yaml": {
+    "findings": null
+  },
+  "err/schedule_invalid_timezone.yaml": {
+    "findings": null
+  },
+  "err/self_repository_uses_invalid_path.yaml": {
+    "findings": null
+  },
+  "err/shell_key_context_availability.yaml": {
+    "findings": null
+  },
+  "err/shellcheck_default_shell_detection.yaml": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"job-level\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 15,
+          "column": 14
+        },
+        "end": {
+          "line": 15,
+          "column": 18
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"step-level\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 20,
+          "column": 14
+        },
+        "end": {
+          "line": 20,
+          "column": 18
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"step-level-2\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 30,
+          "column": 14
+        },
+        "end": {
+          "line": 30,
+          "column": 18
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"step-level-1\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 42,
+          "column": 14
+        },
+        "end": {
+          "line": 42,
+          "column": 18
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"custom-bash\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 47,
+          "column": 14
+        },
+        "end": {
+          "line": 47,
+          "column": 18
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"custom-sh\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:1: Double quote to prevent globbing and word splitting",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 53,
+          "column": 14
+        },
+        "end": {
+          "line": 53,
+          "column": 18
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"job-level\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 15,
+          "column": 23
+        },
+        "end": {
+          "line": 15,
+          "column": 24
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"step-level\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 20,
+          "column": 23
+        },
+        "end": {
+          "line": 20,
+          "column": 24
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"step-level-2\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 30,
+          "column": 23
+        },
+        "end": {
+          "line": 30,
+          "column": 24
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"step-level-1\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 42,
+          "column": 23
+        },
+        "end": {
+          "line": 42,
+          "column": 24
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"custom-bash\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 47,
+          "column": 23
+        },
+        "end": {
+          "line": 47,
+          "column": 24
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "revision": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8",
+          "node": "",
+          "address": "jobs[\"custom-sh\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "severity": "error",
+        "message": "shellcheck reported issue in this script: SC2283:error:1:10: Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal)",
+        "path": "testdata/err/shellcheck_default_shell_detection.yaml",
+        "start": {
+          "line": 53,
+          "column": 23
+        },
+        "end": {
+          "line": 53,
+          "column": 24
+        },
+        "snippet": "      - run: $Env:FOO = \"FOO\""
+      }
+    ]
+  },
+  "err/special_function_availability.yaml": {
+    "findings": null
+  },
+  "err/undefined_anchor.yaml": {
+    "findings": null
+  },
+  "err/unexpected_keys.yaml": {
+    "findings": null
+  },
+  "err/unused_anchors.yaml": {
+    "findings": null
+  },
+  "err/upper_case_duplicate_keys.yaml": {
+    "findings": null
+  },
+  "err/variables_type_check.yaml": {
+    "findings": null
+  },
+  "err/workflow_call_event.yaml": {
+    "findings": null
+  },
+  "err/workflow_call_inputs.yaml": {
+    "findings": null
+  },
+  "err/workflow_call_invalid_secrets.yaml": {
+    "findings": null
+  },
+  "err/workflow_call_job.yaml": {
+    "findings": null
+  },
+  "err/workflow_call_outputs_sema.yaml": {
+    "findings": null
+  },
+  "err/workflow_call_outputs_syntax.yaml": {
+    "findings": null
+  },
+  "err/workflow_call_secrets.yaml": {
+    "findings": null
+  },
+  "err/workflow_dispatch_input_types.yaml": {
+    "findings": null
+  },
+  "err/workflow_dispatch_more_than_25_inputs.yaml": {
+    "findings": null
+  },
+  "err/workflow_dispatch_type_check_inputs.yaml": {
+    "findings": null
+  },
+  "err/yaml_syntax_error.yaml": {
+    "findings": null
+  },
+  "examples/action_metadata_syntax_validation.yaml": {
+    "findings": null
+  },
+  "examples/broken_yaml.yaml": {
+    "findings": null
+  },
+  "examples/builtin_func_special_checks.yaml": {
+    "findings": null
+  },
+  "examples/comparison_strict_checks.yaml": {
+    "findings": null
+  },
+  "examples/contexts_and_builtin_funcs.yaml": {
+    "findings": null
+  },
+  "examples/contexts_special_functions_availability.yaml": {
+    "findings": null
+  },
+  "examples/contextual_matrix_values.yaml": {
+    "findings": null
+  },
+  "examples/contextual_needs_object.yaml": {
+    "findings": null
+  },
+  "examples/contextual_steps_outputs.yaml": {
+    "findings": null
+  },
+  "examples/cron_schedule_check.yaml": {
+    "findings": null
+  },
+  "examples/cyclic_deps_needs.yaml": {
+    "findings": null
+  },
+  "examples/dangling_alias.yaml": {
+    "findings": null
+  },
+  "examples/deprecated_inputs.yaml": {
+    "findings": null
+  },
+  "examples/deprecated_workflow_commands.yaml": {
+    "findings": null
+  },
+  "examples/detect_outdated_popular_actions.yaml": {
+    "findings": null
+  },
+  "examples/env_var_names.yaml": {
+    "findings": null
+  },
+  "examples/expand_object.yaml": {
+    "findings": null
+  },
+  "examples/expression_syntax_error.yaml": {
+    "findings": null
+  },
+  "examples/glob.yaml": {
+    "findings": null
+  },
+  "examples/hardcoded_credentials.yaml": {
+    "findings": null
+  },
+  "examples/id_naming_convention.yaml": {
+    "findings": null
+  },
+  "examples/if_cond_always_true.yaml": {
+    "findings": null
+  },
+  "examples/invalid_action_format.yaml": {
+    "findings": null
+  },
+  "examples/invalid_ids_in_needs.yaml": {
+    "findings": null
+  },
+  "examples/job_step_ids_duplicate.yaml": {
+    "findings": null
+  },
+  "examples/local_action_inputs.yaml": {
+    "findings": null
+  },
+  "examples/local_action_outputs.yaml": {
+    "findings": null
+  },
+  "examples/main.yaml": {
+    "findings": null
+  },
+  "examples/matrix_checks.yaml": {
+    "findings": null
+  },
+  "examples/missing_required_keys.yaml": {
+    "findings": null
+  },
+  "examples/not_persistent_matrix_values.yaml": {
+    "findings": null
+  },
+  "examples/permissions.yaml": {
+    "findings": null
+  },
+  "examples/popular_action_inputs.yaml": {
+    "findings": null
+  },
+  "examples/popular_action_outputs.yaml": {
+    "findings": null
+  },
+  "examples/reusable_workflow_outputs.yaml": {
+    "findings": null
+  },
+  "examples/runner_label_check.yaml": {
+    "findings": null
+  },
+  "examples/runner_label_conflict.yaml": {
+    "findings": null
+  },
+  "examples/shell_name_validation.yaml": {
+    "findings": null
+  },
+  "examples/shellcheck_integration.yaml": {
+    "findings": [
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
+          "node": "",
+          "address": "jobs[\"test-tab\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:10: Double quote to prevent globbing and word splitting",
+        "path": "testdata/examples/shellcheck_integration.yaml",
+        "start": {
+          "line": 35,
+          "column": 20
+        },
+        "end": {
+          "line": 35,
+          "column": 24
+        },
+        "snippet": "          echo \"x\"\t$FOO",
+        "fixes": [
+          {
+            "applicability": "suggested",
+            "revisions": {
+              "testdata\\examples\\shellcheck_integration.yaml": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+            },
+            "description": "Double quote to prevent globbing and word splitting.",
+            "edits": [
+              {
+                "path": "testdata/examples/shellcheck_integration.yaml",
+                "start": {
+                  "line": 35,
+                  "column": 20
+                },
+                "end": {
+                  "line": 35,
+                  "column": 20
+                },
+                "replacement": "\""
+              },
+              {
+                "path": "testdata/examples/shellcheck_integration.yaml",
+                "start": {
+                  "line": 35,
+                  "column": 24
+                },
+                "end": {
+                  "line": 35,
+                  "column": 24
+                },
+                "replacement": "\""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
+          "node": "",
+          "address": "jobs[\"test\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": "testdata/examples/shellcheck_integration.yaml",
+        "start": {
+          "line": 6,
+          "column": 19
+        },
+        "end": {
+          "line": 6,
+          "column": 23
+        },
+        "snippet": "      - run: echo $FOO"
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
+          "node": "",
+          "address": "jobs[\"test-win\"].steps[1]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": "testdata/examples/shellcheck_integration.yaml",
+        "start": {
+          "line": 18,
+          "column": 19
+        },
+        "end": {
+          "line": 18,
+          "column": 23
+        },
+        "snippet": "      - run: echo $FOO"
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
+          "node": "",
+          "address": "jobs[\"test-folded\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+        "path": "testdata/examples/shellcheck_integration.yaml",
+        "start": {
+          "line": 30,
+          "column": 16
+        },
+        "end": {
+          "line": 30,
+          "column": 20
+        },
+        "snippet": "          echo $FOO"
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
+          "node": "",
+          "address": "jobs[\"test-unicode\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:1:8: Double quote to prevent globbing and word splitting",
+        "path": "testdata/examples/shellcheck_integration.yaml",
+        "start": {
+          "line": 10,
+          "column": 21
+        },
+        "end": {
+          "line": 10,
+          "column": 25
+        },
+        "snippet": "      - run: echo é $FOO"
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
+          "node": "",
+          "address": "jobs[\"test-literal\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2086:info:2:6: Double quote to prevent globbing and word splitting",
+        "path": "testdata/examples/shellcheck_integration.yaml",
+        "start": {
+          "line": 25,
+          "column": 16
+        },
+        "end": {
+          "line": 25,
+          "column": 20
+        },
+        "snippet": "          echo $FOO",
+        "fixes": [
+          {
+            "applicability": "suggested",
+            "revisions": {
+              "testdata\\examples\\shellcheck_integration.yaml": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+            },
+            "description": "Double quote to prevent globbing and word splitting.",
+            "edits": [
+              {
+                "path": "testdata/examples/shellcheck_integration.yaml",
+                "start": {
+                  "line": 25,
+                  "column": 16
+                },
+                "end": {
+                  "line": 25,
+                  "column": 16
+                },
+                "replacement": "\""
+              },
+              {
+                "path": "testdata/examples/shellcheck_integration.yaml",
+                "start": {
+                  "line": 25,
+                  "column": 20
+                },
+                "end": {
+                  "line": 25,
+                  "column": 20
+                },
+                "replacement": "\""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "reference": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "revision": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0",
+          "node": "",
+          "address": "jobs[\"test-tab\"].steps[0]"
+        },
+        "explanation": "Analyze embedded shell scripts with ShellCheck.",
+        "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+        "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+        "rule": "shellcheck",
+        "code": "SC2291",
+        "severity": "info",
+        "message": "shellcheck reported issue in this script: SC2291:info:1:1: Quote repeated spaces to avoid them collapsing into one",
+        "path": "testdata/examples/shellcheck_integration.yaml",
+        "start": {
+          "line": 35,
+          "column": 11
+        },
+        "end": {
+          "line": 35,
+          "column": 24
+        },
+        "snippet": "          echo \"x\"\t$FOO"
+      }
+    ]
+  },
+  "examples/type_checks.yaml": {
+    "findings": null
+  },
+  "examples/unexpected_keys.yaml": {
+    "findings": null
+  },
+  "examples/unexpected_mapping_values.yaml": {
+    "findings": null
+  },
+  "examples/untrusted_input.yaml": {
+    "findings": null
+  },
+  "examples/webhook_checks.yaml": {
+    "findings": null
+  },
+  "examples/workflow_call_definitions.yaml": {
+    "findings": null
+  },
+  "examples/workflow_call_jobs.yaml": {
+    "findings": null
+  },
+  "examples/workflow_dispatch_input_types.yaml": {
+    "findings": null
+  },
+  "examples/workflow_inputs_secrets_types.yaml": {
+    "findings": null
+  },
+  "examples/yaml_anchor_usage.yaml": {
+    "findings": null
+  },
+  "examples/yaml_anchors.yaml": {
+    "findings": null
+  },
+  "ok/alias_source_locations.yaml": {
+    "findings": null
+  },
+  "ok/allow_any_outputs.yaml": {
+    "findings": null
+  },
+  "ok/anchors.yaml": {
+    "findings": null
+  },
+  "ok/bool_conversion.yaml": {
+    "findings": null
+  },
+  "ok/concurrency_queue.yaml": {
+    "findings": null
+  },
+  "ok/container_syntax.yaml": {
+    "findings": null
+  },
+  "ok/custom_images.yaml": {
+    "findings": null
+  },
+  "ok/docker_steps.yaml": {
+    "findings": null
+  },
+  "ok/dynamic_expression_indexes.yaml": {
+    "findings": null
+  },
+  "ok/dynamic_shell_name.yaml": {
+    "findings": null
+  },
+  "ok/events_with_no_config.yaml": {
+    "findings": null
+  },
+  "ok/filters_for_specific_events.yaml": {
+    "findings": null
+  },
+  "ok/filters_ignore_for_specific_events.yaml": {
+    "findings": null
+  },
+  "ok/image_version_event.yaml": {
+    "findings": null
+  },
+  "ok/image_version_event_names_only.yaml": {
+    "findings": null
+  },
+  "ok/image_version_event_versions_only.yaml": {
+    "findings": null
+  },
+  "ok/issue-101.yaml": {
+    "findings": null
+  },
+  "ok/issue-104.yaml": {
+    "findings": null
+  },
+  "ok/issue-113.yaml": {
+    "findings": null
+  },
+  "ok/issue-145.yaml": {
+    "findings": null
+  },
+  "ok/issue-151-child-of-child-job.yaml": {
+    "findings": null
+  },
+  "ok/issue-152.yaml": {
+    "findings": null
+  },
+  "ok/issue-164.yaml": {
+    "findings": null
+  },
+  "ok/issue-174-secret-description-is-optional.yaml": {
+    "findings": null
+  },
+  "ok/issue-205-closing-braces-in-string.yaml": {
+    "findings": null
+  },
+  "ok/issue-223.yaml": {
+    "findings": null
+  },
+  "ok/issue-235-expr-in-input-default-value.yaml": {
+    "findings": null
+  },
+  "ok/issue-249_matrix_exclude_filter_object_subset.yaml": {
+    "findings": null
+  },
+  "ok/issue-250_quoted_scalar_in_matrix.yaml": {
+    "findings": null
+  },
+  "ok/issue-261_matrix_row_item_constructed_with_expr.yaml": {
+    "findings": null
+  },
+  "ok/issue-263-inputs-shared-by-multiple-events.yaml": {
+    "findings": null
+  },
+  "ok/issue-280_runs_on.yaml": {
+    "findings": null
+  },
+  "ok/issue-285_expr_assign_at_matrix_row.yaml": {
+    "findings": null
+  },
+  "ok/issue-294_matrix_row_array_expression.yaml": {
+    "findings": null
+  },
+  "ok/issue-30.yaml": {
+    "findings": null
+  },
+  "ok/issue-31.yaml": {
+    "findings": null
+  },
+  "ok/issue-312_expression_in_env_var.yaml": {
+    "findings": null
+  },
+  "ok/issue-355-shellcheck-sc2043.yaml": {
+    "findings": null
+  },
+  "ok/issue-384_narrow-logical-op.yaml": {
+    "findings": null
+  },
+  "ok/issue-402-expression-in-services.yaml": {
+    "findings": null
+  },
+  "ok/issue-409-shellcheck-default-shell.yaml": {
+    "findings": null
+  },
+  "ok/issue-412_runner_environment_prop.yaml": {
+    "findings": null
+  },
+  "ok/issue-414_expression_in_matrix_exclude.yaml": {
+    "findings": null
+  },
+  "ok/issue-45.yaml": {
+    "findings": null
+  },
+  "ok/issue-495_with_args.yaml": {
+    "findings": null
+  },
+  "ok/issue-523_matrix_superset.yaml": {
+    "findings": null
+  },
+  "ok/issue-53-shellcheck-sc2154.yaml": {
+    "findings": null
+  },
+  "ok/issue-573_shellcheck_SC2153.yaml": {
+    "findings": null
+  },
+  "ok/issue-590-expression-at-credentials.yaml": {
+    "findings": null
+  },
+  "ok/issue-66.yaml": {
+    "findings": null
+  },
+  "ok/issue-67.yaml": {
+    "findings": null
+  },
+  "ok/issue-87.yaml": {
+    "findings": null
+  },
+  "ok/matrix_exclude_match_to_expr.yaml": {
+    "findings": null
+  },
+  "ok/matrix_expression_in_exclude.yaml": {
+    "findings": null
+  },
+  "ok/matrix_in_array_at_runs_on.yaml": {
+    "findings": null
+  },
+  "ok/minimal.yaml": {
+    "findings": null
+  },
+  "ok/mixed_trigger_secrets.yaml": {
+    "findings": null
+  },
+  "ok/multi_labels_no_conflict.yaml": {
+    "findings": null
+  },
+  "ok/nested_workflow_call.yaml": {
+    "findings": null
+  },
+  "ok/no_description_workflow_call.yaml": {
+    "findings": null
+  },
+  "ok/no_local_action_found.yaml": {
+    "findings": null
+  },
+  "ok/operator_outside_expr.yaml": {
+    "findings": null
+  },
+  "ok/outputs_in_environment_url.yaml": {
+    "findings": null
+  },
+  "ok/parallel_step_refs.yaml": {
+    "findings": null
+  },
+  "ok/parallel_steps.yaml": {
+    "findings": null
+  },
+  "ok/permissions.yaml": {
+    "findings": null
+  },
+  "ok/pyflakes_python_shell.yaml": {
+    "findings": null
+  },
+  "ok/reusable_workflow_inherit_secrets.yaml": {
+    "findings": null
+  },
+  "ok/run_name.yaml": {
+    "findings": null
+  },
+  "ok/schedule_timezone.yaml": {
+    "findings": null
+  },
+  "ok/self_repository_uses.yaml": {
+    "findings": null
+  },
+  "ok/shell_name_case_insensitive.yaml": {
+    "findings": null
+  },
+  "ok/shellcheck_detect_shell_from_runner.yaml": {
+    "findings": null
+  },
+  "ok/shellcheck_job_default_shell.yaml": {
+    "findings": null
+  },
+  "ok/shellcheck_step_shell.yaml": {
+    "findings": null
+  },
+  "ok/shellcheck_workflow_default_shell.yaml": {
+    "findings": null
+  },
+  "ok/skip_inputs.yaml": {
+    "findings": null
+  },
+  "ok/snapshot_image_name_only.yaml": {
+    "findings": null
+  },
+  "ok/snapshot_name_and_version.yaml": {
+    "findings": null
+  },
+  "ok/special_function_availability.yaml": {
+    "findings": null
+  },
+  "ok/untrusted_inputs.yaml": {
+    "findings": null
+  },
+  "ok/using_reusable_workflow_call_outputs.yaml": {
+    "findings": null
+  },
+  "ok/valid_comparisons.yaml": {
+    "findings": null
+  },
+  "ok/variables.yaml": {
+    "findings": null
+  },
+  "ok/workflow_call_event.yaml": {
+    "findings": null
+  },
+  "ok/workflow_call_job.yaml": {
+    "findings": null
+  },
+  "ok/workflow_call_job_result.yaml": {
+    "findings": null
+  },
+  "ok/workflow_call_outputs.yaml": {
+    "findings": null
+  },
+  "ok/workflow_call_outputs_sema.yaml": {
+    "findings": null
+  },
+  "ok/workflow_call_with_strategy.yaml": {
+    "findings": null
+  },
+  "ok/workflow_dispatch_25_inputs.yaml": {
+    "findings": null
+  },
+  "ok/workflow_dispatch_input_types.yaml": {
+    "findings": null
+  },
+  "ok/workflow_dispatch_upper_case_inputs.yaml": {
+    "findings": null
+  }
+}
