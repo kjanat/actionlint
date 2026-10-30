@@ -60,13 +60,13 @@ type resolverDocuments struct {
 	used map[string]SourceDocument
 }
 
-// SourceDocument carries immutable source bytes and the parse record that owns
-// their canonical references, independently of metadata lookup success.
+// SourceDocument carries immutable source bytes and the parse provenance that
+// owns their canonical references, independently of metadata lookup success.
 type SourceDocument struct {
-	path     string
-	address  string
-	captured capture.Snapshot
-	document documentparse.Document
+	path       string
+	address    string
+	captured   capture.Snapshot
+	provenance documentparse.Provenance
 }
 
 func (d SourceDocument) Path() string { return d.path }
@@ -79,7 +79,9 @@ func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
 
 func (d SourceDocument) Capture() capture.Snapshot { return d.captured }
 
-func (d SourceDocument) Document() documentparse.Document { return d.document }
+// Provenance is the parse record to pass to documentparse.SourceSnapshots.Document
+// when admitting this source. It is zero when the manifest was never parsed.
+func (d SourceDocument) Provenance() documentparse.Provenance { return d.provenance }
 
 // NewResolver starts a document scope over shared repository metadata and takes
 // its own immutable copy of the source mappings.

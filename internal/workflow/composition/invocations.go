@@ -108,7 +108,7 @@ func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionV
 	sourceDocument, hasSource := analysis.actions.SourceDocument(lookup)
 	var snapshot *documentparse.SourceSnapshot
 	if hasSource {
-		admitted, err := analysis.sourceSnapshots.Document(sourceDocument.Capture(), sourceDocument.Document())
+		admitted, err := analysis.sourceSnapshots.Document(sourceDocument.Capture(), documentparse.Document{Provenance: sourceDocument.Provenance()})
 		if err != nil {
 			return nil, sourceDocument, invocation.Outcome{}, err
 		}

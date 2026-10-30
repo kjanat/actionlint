@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
@@ -43,10 +44,10 @@ func TestMetadataDocumentRetainsSameLookupProvenance(t *testing.T) {
 					t.Fatalf("first lookup: metadata=%+v cached=%v error=%v", metadata, cached, err)
 				}
 				if broken {
-					if _, ok := errors.AsType[*ParseError](err); !ok || document.Document().ParseError == nil {
+					if _, ok := errors.AsType[*ParseError](err); !ok || document.Provenance() == (documentparse.Provenance{}) {
 						t.Fatalf("failed parse lost original provenance: %v", err)
 					}
-				} else if metadata.SourceMapped != resolver || metadata.Root != document.Document().Metadata.Root {
+				} else if original, parsed := metadata.OriginalSource(); metadata.SourceMapped != resolver || !parsed || original != string(document.Content()) {
 					t.Fatal("returned metadata no longer matches its captured parse")
 				}
 				if !document.Capture().Valid() || string(document.Content()) != content || document.Address() != filepath.Join(root, "source", "action.yml") {

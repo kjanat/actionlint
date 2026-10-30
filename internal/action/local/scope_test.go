@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
@@ -329,7 +330,7 @@ func TestCompositeForksShareCapturedSourcesEvenWhenEffectsAreSkipped(t *testing.
 	if !cached || bad.Status() != MetadataParseFailed || bad.Err() == nil {
 		t.Fatalf("fork parse failure was not shared through cache: status=%v cached=%t error=%v", bad.Status(), cached, bad.Err())
 	}
-	if document, ok := parent.SourceDocument(bad); !ok || document.Path() != badPath || document.Document().ParseError == nil {
+	if document, ok := parent.SourceDocument(bad); !ok || document.Path() != badPath || document.Provenance() == (documentparse.Provenance{}) {
 		t.Fatal("failed metadata lost its captured parse record")
 	}
 	separate := NewResolver(cache, nil)

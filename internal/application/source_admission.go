@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/workflow/composition"
@@ -48,7 +49,7 @@ func (s *analysisSession) admitSourceDocuments(composed composition.Result, refe
 			sourceRejected(rejected, path, document.Capture())
 			continue
 		}
-		nested, err := s.snapshots.Document(document.Capture(), document.Document())
+		nested, err := s.snapshots.Document(document.Capture(), documentparse.Document{Provenance: document.Provenance()})
 		if err != nil {
 			failure = errors.Join(failure, fmt.Errorf("admit source %q parse provenance: %w", path, err))
 			sourceRejected(rejected, path, document.Capture())

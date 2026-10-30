@@ -20,11 +20,15 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
+// metadataSource records where a manifest was read, its captured bytes and the
+// provenance of its parse. The decoded Metadata is kept in the cached
+// MetadataResult; admitting the source to the snapshot registry needs only the
+// provenance.
 type metadataSource struct {
-	path     string
-	address  string
-	captured capture.Snapshot
-	document documentparse.Document
+	path       string
+	address    string
+	captured   capture.Snapshot
+	provenance documentparse.Provenance
 }
 
 // ParseError reports an action manifest that was read but could not be parsed.
@@ -226,7 +230,7 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	}
 	loadedSource := metadataSource{path: filepath.Join(dir, f), address: filepath.Join(address, f), captured: captured}
 	document := documentparse.Action(loadedSource.path, loadedSource.path, captured.Bytes())
-	loadedSource.document = document
+	loadedSource.provenance = document.Provenance
 	meta, parseErr := document.Metadata, document.ParseError
 	loaded := MetadataResult{status: MetadataResolved, metadata: meta}
 	if err := parseErr; err != nil {
