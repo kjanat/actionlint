@@ -32,7 +32,7 @@ func TestRepositoryRuffCommandHelper(t *testing.T) {
 func TestCLIRepositoryProcessOptIn(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	for _, name := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
+	for _, name := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(name, "")
 		if err := os.Unsetenv(name); err != nil {
 			t.Fatal(err)
@@ -53,7 +53,7 @@ func TestCLIRepositoryProcessOptIn(t *testing.T) {
 	for _, allow := range []bool{false, true} {
 		var stdout, stderr bytes.Buffer
 		command := Command{Stdout: &stdout, Stderr: &stderr}
-		args := []string{"actionlint", "check", "--config=actionlint.yaml", "--no-shellcheck", "--summary=false", "--no-color", "ci.yml"}
+		args := []string{"actionlint", "check", "--config=actionlint.yaml", "--no-tool=shellcheck", "--summary=false", "--no-color", "ci.yml"}
 		if allow {
 			args = append(args, "--allow-config-processes")
 		}

@@ -3,6 +3,7 @@ package githubaction
 import (
 	"maps"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -38,7 +39,7 @@ func TestMainConfigurationInputs(t *testing.T) {
 				".github/actionlint.yml":  "self-hosted-runner: {labels: [unknown-runner]}",
 			})
 			output := filepath.Join(t.TempDir(), "outputs")
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 			maps.Copy(env, tc.env)
 			var out strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &out); code != tc.code {
@@ -77,16 +78,17 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 }
 
 func TestRetiredToolCommandsFromEnvironmentIgnored(t *testing.T) {
-	req := &lintRequest{shellcheck: "shellcheck"}
+	req := &lintRequest{}
 	env := map[string]string{"ACTIONLINT_SHELLCHECK_COMMAND": "/cache/shellcheck"}
 	if err := req.configureEnvironment(func(k string) string { return env[k] }); err != nil {
 		t.Fatal(err)
 	}
-	if req.shellcheckOptions != nil {
-		t.Errorf("retired provisioning environment changed configuration: %#v", req.shellcheckOptions)
+	if req.processes != nil || len(req.disabledTools) != 0 {
+		t.Errorf("retired provisioning environment changed configuration: %#v", req)
 	}
+	env["INPUT_DISABLE-TOOLS"] = "shellcheck"
 	disabled := &lintRequest{}
-	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || disabled.shellcheck != "" || disabled.shellcheckOptions != nil {
+	if err := disabled.configureEnvironment(func(k string) string { return env[k] }); err != nil || !slices.Equal(disabled.disabledTools, []string{"shellcheck"}) || disabled.processes != nil {
 		t.Errorf("disabled tools must stay disabled: %#v, %v", disabled, err)
 	}
 }
@@ -129,7 +131,7 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": brokenWorkflow})
 	output := filepath.Join(t.TempDir(), "outputs")
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_ANNOTATIONS": "false"}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_ANNOTATIONS": "false"}
 	var out strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &out); code != 1 {
 		t.Fatalf("exit %d: %s", code, &out)
@@ -144,7 +146,7 @@ func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
 
 func TestConfigWarningsVisibleInAction(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": cleanWorkflow, ".github/actionlint.yaml": "config-variable: [TYPO]\n"})
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false"}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 	var out strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
 		t.Fatalf("exit %d: %s", code, &out)
@@ -164,7 +166,7 @@ func TestInheritedConfigWarningsVisibleInAction(t *testing.T) {
 config-variable: [TYPO]
 `,
 			})
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": overlay}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_CONFIG": overlay}
 			var out strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
 				t.Fatalf("exit %d: %s", code, &out)
@@ -174,5 +176,14 @@ config-variable: [TYPO]
 				t.Fatalf("warning attributed to leaf config: %s", &out)
 			}
 		})
+	}
+}
+
+func TestDisableToolsRejectsUnknownTool(t *testing.T) {
+	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yml": cleanWorkflow})
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff\nmissing"}
+	var out strings.Builder
+	if code := Main(func(key string) string { return env[key] }, &out); code != 2 || !strings.Contains(out.String(), "unknown tool missing") {
+		t.Fatalf("Action status %d: %s", code, &out)
 	}
 }

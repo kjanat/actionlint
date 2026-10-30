@@ -20,11 +20,11 @@ import (
 func TestDefaultShellcheckWithoutExecutable(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{".git": "", "ci.yml": cleanWorkflow, ".github/actionlint.yaml": "plugins: []\n"})
 	t.Setenv("PATH", t.TempDir())
-	req := &lintRequest{workingDir: workspace, files: []string{"ci.yml"}, shellcheck: "shellcheck", format: formatJSON}
+	req := &lintRequest{workingDir: workspace, files: []string{"ci.yml"}, format: formatJSON}
 	if result := runLinter(req); result.code != 0 {
 		t.Fatalf("default requires native ShellCheck: %s", result.stderr)
 	}
-	req.shellcheckOptions = &processconfig.Options{Executable: new("missing-explicit-shellcheck")}
+	req.processes = map[string]*processconfig.Options{"shellcheck": {Executable: new("missing-explicit-shellcheck")}}
 	if result := runLinter(req); result.code != render.ExitFailure || !strings.Contains(result.stderr, "missing-explicit-shellcheck") {
 		t.Fatalf("explicit missing executable was ignored: code=%d %s", result.code, result.stderr)
 	}
@@ -357,11 +357,11 @@ func TestRunLinterReadsConfigFile(t *testing.T) {
 func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{"workflows/broken.yaml": brokenWorkflow})
 	outputPath := filepath.Join(t.TempDir(), "output")
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 	var out strings.Builder
 
 	a := &action{
-		args:    args("workflows/broken.yaml", "default", "", "", "false", "false", ".", "results/out.txt", "true"),
+		args:    args("workflows/broken.yaml", "default", "", "", ".", "results/out.txt", "true"),
 		stdout:  &out,
 		env:     func(name string) string { return env[name] },
 		lint:    runLinter,
@@ -413,7 +413,7 @@ func TestActionGitHubAnnotationPaths(t *testing.T) {
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath}
 			var out strings.Builder
 			a := &action{
-				args:   args(tc.file, "github", "", "", "false", "false", tc.workingDir, "annotations.txt", "true"),
+				args:   args(tc.file, "github", "", "", tc.workingDir, "annotations.txt", "true"),
 				stdout: &out, env: func(name string) string { return env[name] },
 				lint: runLinter, newID: fixedID("DELIM"), timeout: lintTimeout,
 			}
@@ -483,10 +483,10 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 			}
 			workspace := workspaceWith(t, files)
 			outputPath := filepath.Join(t.TempDir(), "output")
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 			var out strings.Builder
 			a := &action{
-				args:    args("", "github", in.Ignore, "", "false", "false", ".", "", "true"),
+				args:    args("", "github", in.Ignore, "", ".", "", "true"),
 				stdout:  &out,
 				env:     func(name string) string { return env[name] },
 				lint:    runLinter,

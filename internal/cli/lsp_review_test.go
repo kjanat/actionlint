@@ -29,7 +29,7 @@ type lspTestMessage struct {
 func TestLSPRepositoryProcessOptIn(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
-	for _, name := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
+	for _, name := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(name, "")
 		if err := os.Unsetenv(name); err != nil {
 			t.Fatal(err)
@@ -56,7 +56,7 @@ func TestLSPRepositoryProcessOptIn(t *testing.T) {
 			}
 			var stderr bytes.Buffer
 			command := Command{Stdin: server, Stdout: server, Stderr: &stderr}
-			args := []string{"actionlint", "lsp", "--config=actionlint.yaml", "--no-shellcheck"}
+			args := []string{"actionlint", "lsp", "--config=actionlint.yaml", "--no-tool=shellcheck"}
 			if allow {
 				args = append(args, "--allow-config-processes")
 			}

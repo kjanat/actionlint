@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -66,28 +67,26 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 }
 
 func (c checkInvocation) pluginSelection() localapp.PluginSelection {
-	selection := localapp.PluginSelection{Paths: c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled}
-	// --no-ruff and --no-shellcheck disable Python and shell script linting,
-	// including plugins whose metadata declares those languages.
-	if c.Ruff == "" {
-		selection.DisabledLanguages = append(selection.DisabledLanguages, "python")
-	}
-	if c.ShellCheck == "" {
-		selection.DisabledLanguages = append(selection.DisabledLanguages, "shell")
-	}
-	return selection
+	// A tool --no-tool disabled is not linted by plugins either.
+	return localapp.PluginSelection{
+		Paths: c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
+	}.WithTools(c.DisabledTools, c.NamedTools)
 }
 
+// defaultPlugins lets every bundled tool that runs its default command
+// receive a default plugin declaration.
 func (c checkInvocation) defaultPlugins(warning func(string)) localapp.DefaultPluginOptions {
-	return localapp.DefaultPluginOptions{
-		Shellcheck: c.ShellCheck == "shellcheck" && implicitProcessOptions(c.ShellcheckOptions),
-		Ruff:       c.Ruff == "ruff" && implicitProcessOptions(c.RuffOptions),
-		Warning:    warning,
+	options := localapp.DefaultPluginOptions{Warning: warning}
+	for _, id := range slices.Sorted(maps.Keys(c.Tools)) {
+		if selection := c.Tools[id]; selection.Command == id && implicitProcessOptions(selection.Process) {
+			options.Tools = append(options.Tools, id)
+		}
 	}
+	return options
 }
 
 // Optional discovery is a default, not an explicit choice of a native checker.
-// Arguments (including the legacy pyflakes selection) still opt into native use.
+// Arguments, including those a retired flag adds, still opt into native use.
 func implicitProcessOptions(options *processconfig.Options) bool {
 	return options == nil || options.Optional && !options.IgnoreConfig && options.Executable == nil &&
 		len(options.Arguments) == 0 && len(options.LauncherArguments) == 0 &&

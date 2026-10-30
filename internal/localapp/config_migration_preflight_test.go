@@ -52,7 +52,7 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (PluginSelection{Overlays: []config.Overlay{overlay}}).Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	if err := (PluginSelection{Overlays: []config.Overlay{overlay}}).Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
 	migrated, err := config.Load(path)
@@ -81,7 +81,7 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
-	err := (PluginSelection{}).Migrate(t.Context(), first, input, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	err := (PluginSelection{}).Migrate(t.Context(), first, input, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want multi-repository plugin error", err)
 	}
@@ -187,7 +187,7 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 		filepath.Join(root, ".github", "workflows", "repo.yml"),
 		workflow,
 	}}
-	err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want unmanaged-input plugin error", err)
 	}
@@ -210,7 +210,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 		filepath.Join(root, ".github", "workflows", "root.yml"),
 		filepath.Join(alias, ".github", "workflows", "alias.yml"),
 	}}
-	if err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	if err := (PluginSelection{}).Migrate(t.Context(), root, input, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".github", "actionlint.yaml")

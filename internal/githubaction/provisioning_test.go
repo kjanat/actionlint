@@ -62,7 +62,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			"child/.github/workflows/clean.yml": cleanWorkflow,
 		}, inputs: map[string]string{"INPUT_FILES": "child/.github/workflows/missing.yml\n.github/workflows/clean.yml"}, shellcheck: true},
 		{name: "action input disables tools", inputs: map[string]string{
-			"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_CONFIG": "tools: {shellcheck: true}",
+			"INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_CONFIG": "tools: {shellcheck: true}",
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			}
 			needed, err := localapp.RequiredToolsSources(ctx, application.Options{
 				WorkingDir: req.workingDir, ConfigFile: req.configFile, ConfigOverlays: req.overlays,
-				IgnorePatterns: req.ignore, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: req.shellcheck}, "ruff": {Command: req.ruff}}),
+				IgnorePatterns: req.ignore, Tools: registry.Registrations(req.toolSelections()),
 			}, req.files, selected)
 			if err != nil || needed["shellcheck"] != tc.shellcheck {
 				t.Fatalf("requirements=%v error=%v; want shellcheck=%v", needed, err, tc.shellcheck)

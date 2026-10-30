@@ -298,28 +298,30 @@ flags are true. An explicit **--log-level** selects the requested new log level.
 **--oneline**
 : Print one diagnostic per line. Prefer **--output-format**=oneline.
 
-**--shellcheck**[=*COMMAND*]
-: Check shell scripts with ShellCheck. A bare flag uses `shellcheck` on PATH.
-Use `--shellcheck=COMMAND` for a custom executable or command line. Also available
-on **doctor**. The root also accepts `-shellcheck COMMAND`.
+**--tool** *ID*[=*COMMAND*]
+: Run the tool *ID*, such as `shellcheck` or `ruff`, and fail when it cannot run.
+A bare *ID* uses the tool's own command on PATH; `ID=COMMAND` selects a custom
+executable or command line. `ID=false` and `ID=` disable the tool. Repeatable;
+the last value for an *ID* wins. Explicit selections ignore the tool's environment
+variables and repository backend. Also available on **doctor** and **lsp**.
+Unknown ids are rejected with the list of valid ids once plugins load.
 
-**--no-shellcheck**
-: Disable ShellCheck, overriding any selected command or environment settings.
+**--no-tool** *ID*
+: Disable the tool *ID*, overriding **--tool** and environment settings. Plugins
+providing the tool are not loaded: a locked plugin whose name or alias is *ID* is
+not downloaded. Repeatable.
+
+**--shellcheck**[=*COMMAND*], **--ruff**[=*COMMAND*]
+: Deprecated aliases of **--tool** `shellcheck=COMMAND` and **--tool**
+`ruff=COMMAND`, generated for every bundled tool. Each use prints a warning.
+
+**--no-shellcheck**, **--no-ruff**
+: Deprecated aliases of **--no-tool** `shellcheck` and **--no-tool** `ruff`.
 
 **--pyflakes** *COMMAND*
-: Deprecated compatibility option. Selects Ruff's Pyflakes (`F`) rules when no Ruff
-option is supplied. An empty command or `false` disables Python linting.
-The command value is accepted for compatibility and is never executed.
-
-**--ruff**[=*COMMAND*]
-: Check Python scripts with Ruff. A bare flag uses `ruff` on PATH.
-Use `--ruff=COMMAND` for a custom executable or command line. Ruff must already be
-installed. Also available on **doctor**. The root also accepts `-ruff COMMAND`.
-Uses isolated, read-only checks with Ruff's default rule selection.
-`tools.ruff` configures rule selection and the Python target version.
-
-**--no-ruff**
-: Disable Ruff, overriding any selected command or environment settings.
+: Deprecated compatibility option declared by the bundled Ruff tool. Selects
+Ruff's Pyflakes (`F`) rules when nothing else selects Ruff. An empty command or
+`false` disables Ruff. The command value is never executed.
 
 **--allow-config-processes**
 : Authorize native executables selected by trusted repository configuration,
@@ -327,7 +329,6 @@ including inherited files and file overrides. Without this flag, selecting
 `tools.<name>.backend.process` reports an error before the executable is launched.
 Explicit CLI and environment tool selections authorize their own executable.
 
-`--ruff=false`, `--shellcheck=false`, and empty command values disable their tools.
 A disable flag takes precedence when both forms are supplied.
 
 **--init-config**, **--init**
@@ -466,8 +467,8 @@ ShellCheck checks supported shell scripts in `run:` steps.
 The executables must be available through `PATH` or the corresponding command flag. If a
 command cannot be resolved, its integration is skipped; **--verbose** explains why.
 
-    $ actionlint --shellcheck=
-    $ actionlint --shellcheck='shellcheck -e SC2086'
+    $ actionlint --no-tool shellcheck
+    $ actionlint --tool shellcheck='shellcheck -e SC2086'
 
 Command strings are parsed into an executable and arguments, not executed by a shell. Shell
 pipes and redirections are not supported in these flags. Your arguments precede actionlint's
@@ -608,17 +609,21 @@ to built-in output.
 : Presentation defaults: auto, always or never. NO_COLOR and NO_HYPERLINKS
 override these defaults; explicit CLI controls take precedence over the environment.
 
-**ACTIONLINT_SHELLCHECK_BIN**
-: Literal external-linter executable names or paths. Empty disables the tool.
+**ACTIONLINT_TOOL_**_ID_**_BIN**
+: Literal executable name or path of the bundled tool *ID*, upper-cased with
+dashes replaced by underscores, such as `ACTIONLINT_TOOL_SHELLCHECK_BIN`. Empty
+disables the tool.
 
-**ACTIONLINT_SHELLCHECK_FLAGS**
+**ACTIONLINT_TOOL_**_ID_**_FLAGS**
 : Additional arguments as a JSON string array or a quoted argument list. No shell
 execution or variable expansion is performed.
 
-**ACTIONLINT_SHELLCHECK_ENV**
+**ACTIONLINT_TOOL_**_ID_**_ENV**
 : Child environment overrides, as a JSON object or quoted NAME=value entries and
 variable names. JSON null or bare names forward inherited values; strings set values.
-An explicit tool command flag overrides its BIN, FLAGS and ENV settings together.
+**--tool** and **--no-tool** override the BIN, FLAGS and ENV settings together.
+The former names `ACTIONLINT_`*ID*`_BIN`, `_FLAGS` and `_ENV` are deprecated aliases;
+a set new variable wins over its alias.
 
 See [Environment variables](../docs/env.md) for precedence, defaults and examples.
 

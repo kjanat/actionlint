@@ -31,7 +31,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if explicit {
 					selection.ConfigFile = path
 				}
-				if err := selection.Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+				if err := selection.Migrate(t.Context(), root, application.Input{Kind: application.Repository}, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 					t.Fatal(err)
 				}
 				if len(registry.Requests) != 0 {

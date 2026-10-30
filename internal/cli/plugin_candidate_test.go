@@ -102,7 +102,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	pluginCommandTest(t, 0, "plugin", "install")
-	if output := pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
+	if output := pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"); !strings.Contains(output, "[no-sudo]") {
 		t.Fatal(output)
 	}
 	cache, err := os.UserCacheDir()
@@ -123,7 +123,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	if plan.Directory != filepath.Join(cache, "actionlint", "artifacts") || len(plan.Artifacts) != 1 || plan.Artifacts[0] != digest {
 		t.Fatalf("candidate missing from restore plan: %+v", plan)
 	}
-	pluginCommandTest(t, 3, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 3, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	beforeSync, err := os.ReadFile(lock.Path)
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +169,7 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	if err := os.WriteFile(recordPath, record, 0600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	lockPath := filepath.Join(".github", pluginregistry.LockName)
 	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
 	if err != nil {
@@ -186,7 +186,7 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	if lock.Lock.Plugins[0].SHA256 != next {
 		t.Fatal("explicit update did not import rebuilt candidate")
 	}
-	pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	cache, err := os.UserCacheDir()
 	if err != nil {
 		t.Fatal(err)
@@ -194,9 +194,9 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	if err := os.Remove(filepath.Join(cache, "actionlint", "artifacts", next)); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 3, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 3, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	pluginCommandTest(t, 0, "plugin", "sync")
-	pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 }
 
 // A broken rebuild must leave an installed candidate usable. Repairing its
@@ -257,7 +257,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(cache, "actionlint", "artifacts", wrongDigest)); !os.IsNotExist(err) {
 		t.Fatalf("failed update cached unverified bytes: %v", err)
 	}
-	pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	next := fmt.Sprintf("%x", sha256.Sum256(rebuilt))
 	if err := os.WriteFile(recordPath, bytes.ReplaceAll(record, []byte(digest), []byte(next)), 0600); err != nil {
 		t.Fatal(err)
@@ -267,7 +267,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].SHA256 != next {
 		t.Fatalf("repaired rebuild did not update lock: %+v, %v", lock, err)
 	}
-	pluginCommandTest(t, 1, "check", "--no-ruff", "--no-shellcheck", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	if len(network.Requests) != 0 {
 		t.Fatalf("candidate update contacted the registry: %v", network.Requests)
 	}

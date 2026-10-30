@@ -65,7 +65,7 @@ jobs:
 	}
 	var output bytes.Buffer
 	command := Command{Stdout: &output, Stderr: &output}
-	status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--allow-config-processes", "--no-ruff", "--output-file", file, "--yes", workflow})
+	status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--allow-config-processes", "--no-tool=ruff", "--output-file", file, "--yes", workflow})
 	actual, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)

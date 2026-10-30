@@ -1,6 +1,7 @@
 package githubaction
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -13,7 +14,7 @@ func TestDeprecatedPyflakesInputsWarnOnlyWhenRequested(t *testing.T) {
 		for _, pyflakes := range []string{"", "false", "true"} {
 			t.Run("path="+pathInput+"/pyflakes="+pyflakes, func(t *testing.T) {
 				env := map[string]string{
-					"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false",
+					"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 					"INPUT_PYFLAKES": pyflakes, "INPUT_ADD-PYFLAKES-TO-PATH": pathInput,
 				}
 				var out strings.Builder
@@ -32,5 +33,23 @@ func TestDeprecatedPyflakesInputsWarnOnlyWhenRequested(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestDeprecatedToolInputs(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		env      map[string]string
+		warnings []string
+	}{
+		{"defaults", map[string]string{"INPUT_SHELLCHECK": "true", "INPUT_RUFF": "true"}, nil},
+		{"disabled tool", map[string]string{"INPUT_RUFF": "false"}, []string{"The ruff input is deprecated; use disable-tools: ruff."}},
+		{"retired flag", map[string]string{"INPUT_PYFLAKES": "true"}, []string{"The pyflakes input is deprecated and ignored; ruff runs unless disable-tools lists it."}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := deprecatedInputWarnings(func(key string) string { return tc.env[key] }); !slices.Equal(got, tc.warnings) {
+				t.Fatalf("warnings = %q, want %q", got, tc.warnings)
+			}
+		})
 	}
 }

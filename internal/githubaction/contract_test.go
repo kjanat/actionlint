@@ -36,7 +36,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 		"ACTIONLINT_ACTION_RESULT": resultPath,
 		"INPUT_FILES":              "z/.github/workflows/test.yml\na/.github/workflows/test.yml",
 		"INPUT_FORMAT":             "json", "INPUT_OUTPUT-FILE": "report.json",
-		"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+		"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var stdout bytes.Buffer
 	if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
@@ -110,7 +110,7 @@ jobs:
 			}
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdout: &stdout, Stderr: &stderr}
-			if code := command.Main([]string{"actionlint", "check", "--json", "--shellcheck=", "--pyflakes=", "ci.yml"}); code != tc.code {
+			if code := command.Main([]string{"actionlint", "check", "--json", "--no-tool=shellcheck", "--no-tool=ruff", "ci.yml"}); code != tc.code {
 				t.Fatalf("CLI status %d: %s", code, &stderr)
 			}
 			var cliResult render.CheckResult
@@ -121,7 +121,7 @@ jobs:
 			outputPath := filepath.Join(workspace, "outputs")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false",
+				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": "json", "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			stdout.Reset()
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {

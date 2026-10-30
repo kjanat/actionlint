@@ -3,10 +3,11 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/localapp"
-	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 // commandRequest is the execution boundary: each operation carries only its own inputs.
@@ -67,16 +68,22 @@ type doctorRequest struct {
 	Plugins           []string
 	ResolverCommand   string
 	ResolverArguments []string
-	Ruff              string
-	RuffOptions       *processconfig.Options
-	Config            repoconfig.Selection
-	ShellCheck        string
-	ShellcheckOptions *processconfig.Options
-	JSON              bool
-	Hyperlinks        hyperlinkMode
+	// Tools selects every bundled tool, as checks would run it.
+	Tools registry.Selections
+	// NamedTools lists the tool ids --tool and --no-tool named.
+	NamedTools []string
+	// Deprecations holds a warning for each deprecated flag or environment
+	// variable used; doctor prints them to stderr.
+	Deprecations []string
+	Config       repoconfig.Selection
+	JSON         bool
+	Hyperlinks   hyperlinkMode
 }
 
 func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
+	for _, warning := range r.Deprecations {
+		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+warning)
+	}
 	return 0, writeDoctor(ctx, streams.Stdout, r)
 }
 

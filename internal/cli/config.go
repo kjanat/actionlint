@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -88,7 +89,7 @@ func migrateCommandConfig(ctx context.Context, streams Command, req configMigrat
 		return 0, errors.New("config migrate requires a selected config file; use --config PATH")
 	}
 	migration, err := localapp.PrepareConfigMigration(ctx, path, localapp.DefaultPluginOptions{
-		Shellcheck: true, Ruff: true,
+		Tools:   registry.IDs(),
 		Warning: func(message string) { _, _ = fmt.Fprintln(streams.Stderr, "warning: "+message) },
 	})
 	if err != nil {

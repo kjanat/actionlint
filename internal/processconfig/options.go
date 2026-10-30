@@ -17,7 +17,7 @@ type Options struct {
 	IgnoreConfig bool
 	// AllowWasm permits a configured Wasm backend despite a native executable override.
 	AllowWasm bool
-	// Optional permits automatic Ruff discovery to skip an unavailable executable.
+	// Optional lets a default command that cannot run be skipped with a warning.
 	// Explicitly configured checkers should leave this false.
 	Optional   bool
 	Executable *string

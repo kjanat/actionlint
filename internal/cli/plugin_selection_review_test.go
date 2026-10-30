@@ -19,7 +19,7 @@ func TestPluginSelectionFailureExitStatus(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			args := []string{"check", "--no-ruff", "--no-shellcheck", "workflow.yml"}
+			args := []string{"check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"}
 			want := 3
 			switch scenario {
 			case "config":

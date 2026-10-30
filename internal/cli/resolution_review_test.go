@@ -15,7 +15,7 @@ func TestResolverLeavesInvalidReferenceDiagnostics(t *testing.T) {
 				Stdin:  strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + uses + "\n"),
 				Stdout: &out, Stderr: &stderr,
 			}
-			args := []string{"actionlint", "--no-config", "--no-shellcheck", "--no-ruff", "--resolve-with", filepath.Join(t.TempDir(), "missing-resolver"), "-"}
+			args := []string{"actionlint", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--resolve-with", filepath.Join(t.TempDir(), "missing-resolver"), "-"}
 			if status := command.MainContext(t.Context(), args); status != 1 || strings.Contains(stderr.String(), "resolver") || !strings.Contains(out.String(), "invalid format") {
 				t.Fatalf("invalid reference lost its diagnostic: exit=%d stdout=%s stderr=%s", status, &out, &stderr)
 			}

@@ -24,9 +24,20 @@ type PluginSelection struct {
 	ConfigFile string
 	Disabled   bool
 	Overlays   []config.Overlay
-	// DisabledLanguages lists script languages whose linting this invocation
-	// turned off. Plugins declaring one of them in their metadata are not loaded.
-	DisabledLanguages []string
+	// disabledTools and tools are set by WithTools.
+	disabledTools, tools []string
+}
+
+// WithTools returns the selection with the tool ids an invocation disabled
+// and the tool ids it named, such as by --no-tool and --tool or the GitHub
+// Action's disable-tools input. A locked plugin whose name or alias is a
+// disabled id is never downloaded; any other plugin is skipped before it
+// runs when its static metadata names a disabled id as its engine or one of
+// its rules. Once plugins load, each named id must name a bundled provider
+// or a loaded or skipped plugin.
+func (s PluginSelection) WithTools(disabled, named []string) PluginSelection {
+	s.disabledTools, s.tools = slices.Clone(disabled), slices.Clone(named)
+	return s
 }
 
 type PluginSources struct {
@@ -40,9 +51,11 @@ type PluginSources struct {
 	configs   []*config.Config
 	artifacts map[string]*pluginartifact.Artifact
 	overlays  []config.Overlay
-	// disabledLanguages carries PluginSelection.DisabledLanguages to loading,
-	// where artifact metadata declares each plugin's languages.
-	disabledLanguages []string
+	// disabledTools and tools carry PluginSelection.DisabledTools and
+	// PluginSelection.Tools to loading.
+	disabledTools, tools []string
+	// skipped lists the disabled tool ids that matched a locked plugin.
+	skipped []string
 }
 
 type pluginSelectionMode uint8
@@ -108,7 +121,8 @@ func (s PluginSelection) selectSources(ctx context.Context, directory string, in
 	if err != nil {
 		return PluginSources{}, err
 	}
-	selected.disabledLanguages = slices.Clone(s.DisabledLanguages)
+	selected.disabledTools, selected.tools = slices.Clone(s.disabledTools), slices.Clone(s.tools)
+	selected.dropDisabledPins()
 	return selected, nil
 }
 
@@ -286,6 +300,37 @@ func sourcesFromPins(path string, lock pluginregistry.Lock, root string) (Plugin
 		selected.Paths = append(selected.Paths, p.Source())
 	}
 	return selected, nil
+}
+
+// dropDisabledPins removes locked plugins whose name or alias is a disabled
+// tool id, before Hydrate or loading could fetch them.
+func (s *PluginSources) dropDisabledPins() {
+	if s.lock == nil || len(s.disabledTools) == 0 {
+		return
+	}
+	lock := *s.lock
+	lock.Plugins = []pluginregistry.Pin{}
+	for _, pin := range s.lock.Plugins {
+		id := disabledPinTool(pin, s.disabledTools)
+		if id == "" {
+			lock.Plugins = append(lock.Plugins, pin)
+			continue
+		}
+		s.skipped = append(s.skipped, id)
+		s.Paths = slices.DeleteFunc(s.Paths, func(path string) bool { return path == pin.Source() })
+	}
+	s.lock = &lock
+}
+
+// disabledPinTool returns the disabled tool id a pin's name or alias
+// equals, or "".
+func disabledPinTool(pin pluginregistry.Pin, disabled []string) string {
+	for _, name := range []string{pin.Alias, pin.Name} {
+		if name != "" && slices.Contains(disabled, name) {
+			return name
+		}
+	}
+	return ""
 }
 
 // Hydrate verifies pinned cached artifacts and downloads missing bytes.

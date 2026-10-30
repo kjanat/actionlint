@@ -25,6 +25,12 @@ type loadedPlugins struct {
 	core    []*corewasm.Engine
 	// providers are local process tool provider manifests.
 	providers []localProvider
+	// tools lists the tool ids the invocation named; configure checks that
+	// each names a tool.
+	tools []string
+	// skipped lists the disabled tool ids that matched a plugin, which was
+	// therefore not loaded.
+	skipped []string
 }
 
 // localProvider is a tool provider manifest read from a local path.
@@ -39,13 +45,17 @@ type scriptEngineRegistration struct {
 }
 
 func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debug bool) (*loadedPlugins, error) {
-	loaded := &loadedPlugins{}
+	loaded := &loadedPlugins{tools: sources.tools, skipped: slices.Clone(sources.skipped)}
 	for _, path := range sources.Paths {
 		if provider.IsLocalManifest(path) {
 			// A local manifest names a command found on PATH; nothing is fetched.
 			manifest, programs, err := provider.ReadLocal(fsread.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
+			}
+			if slices.Contains(sources.disabledTools, manifest.Rule.Name) {
+				loaded.skipped = append(loaded.skipped, manifest.Rule.Name)
+				continue
 			}
 			loaded.providers = append(loaded.providers, localProvider{manifest, programs})
 			continue
@@ -62,9 +72,10 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			}
 		}
 		path = artifact.Info.Source
-		if disabled, err := declaresLanguage(artifact.Info.Metadata, sources.disabledLanguages); err != nil {
+		if id, err := disabledMetadataTool(artifact.Info.Metadata, sources.disabledTools); err != nil {
 			return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
-		} else if disabled {
+		} else if id != "" {
+			loaded.skipped = append(loaded.skipped, id)
 			continue
 		}
 		if artifact.Info.Kind == pluginartifact.Core {
@@ -212,22 +223,32 @@ func InspectPlugin(ctx context.Context, source string) (pluginartifact.Info, err
 	return artifact.Info, nil
 }
 
-// declaresLanguage reports whether static plugin metadata lists one of the
-// given languages. It reads the inspected metadata without running the plugin.
-func declaresLanguage(metadata json.RawMessage, languages []string) (bool, error) {
-	if len(languages) == 0 || len(metadata) == 0 {
-		return false, nil
+// disabledMetadataTool returns the disabled tool id that static plugin
+// metadata names as the engine or as one of its rules, or "". It reads the
+// inspected metadata without running the plugin.
+func disabledMetadataTool(metadata json.RawMessage, disabled []string) (string, error) {
+	if len(disabled) == 0 || len(metadata) == 0 {
+		return "", nil
 	}
 	var declared struct {
-		Languages []string `json:"languages"`
+		Rules []struct {
+			Name string `json:"name"`
+		} `json:"rules"`
+		Engine struct {
+			Name string `json:"name"`
+		} `json:"engine"`
 	}
 	if err := json.Unmarshal(metadata, &declared); err != nil {
-		return false, fmt.Errorf("read plugin languages: %w", err)
+		return "", fmt.Errorf("read plugin metadata: %w", err)
 	}
-	for _, language := range declared.Languages {
-		if slices.Contains(languages, language) {
-			return true, nil
+	names := []string{declared.Engine.Name}
+	for _, rule := range declared.Rules {
+		names = append(names, rule.Name)
+	}
+	for _, name := range names {
+		if name != "" && slices.Contains(disabled, name) {
+			return name, nil
 		}
 	}
-	return false, nil
+	return "", nil
 }

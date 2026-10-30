@@ -29,7 +29,7 @@ func provisioningRequest(env func(string) string) (*lintRequest, error) {
 }
 
 func (req *lintRequest) pluginSelection() localapp.PluginSelection {
-	return localapp.PluginSelection{ConfigFile: req.configFile, Overlays: req.overlays}
+	return localapp.PluginSelection{ConfigFile: req.configFile, Overlays: req.overlays}.WithTools(req.disabledTools, req.disabledTools)
 }
 
 func (req *lintRequest) pluginInput() application.Input {

@@ -24,7 +24,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	}
 	registry.Offline = true
 	before := len(registry.Requests)
-	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests) != before {
@@ -98,7 +98,7 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	}
 	registry.Offline = true
 
-	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
+	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}}); err != nil {
 		t.Fatal(err)
 	}
 	migrated, err := config.Load(path)
@@ -124,7 +124,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err := os.WriteFile(path, []byte("extends: [base.yaml]\nconfig-variables: []\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+	plan, err := PrepareConfigMigration(t.Context(), path, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,23 +256,23 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 
 func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 	for _, tc := range []struct{ config, want string }{
-		{"{}", "shellcheck,ruff"},
+		{"{}", "ruff,shellcheck"},
 		{"plugins: []", ""},
 		{"plugins: null", ""},
 		{"plugins: [owner/custom]", "github.com/owner/custom"},
 		{"tools: {ruff: false}", "shellcheck"},
 		{"lint: {rules: {external: {shellcheck: off}}}", "ruff"},
 		{"tools: {ruff: {backend: {process: {executable: custom-ruff}}}}", "shellcheck"},
-		{"tools: {shellcheck: {config: .shellcheckrc}}", "shellcheck,ruff"},
-		{"tools: {shellcheck: {config: {external-sources: true}}}", "shellcheck,ruff"},
-		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "shellcheck,ruff"},
+		{"tools: {shellcheck: {config: .shellcheckrc}}", "ruff,shellcheck"},
+		{"tools: {shellcheck: {config: {external-sources: true}}}", "ruff,shellcheck"},
+		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "ruff,shellcheck"},
 	} {
 		t.Run(tc.config, func(t *testing.T) {
 			cfg, err := config.Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
-			refs, err := DefaultPluginReferences(cfg, DefaultPluginOptions{Shellcheck: true, Ruff: true})
+			refs, err := DefaultPluginReferences(cfg, DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}})
 			if err != nil {
 				t.Fatal(err)
 			}

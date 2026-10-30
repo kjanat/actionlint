@@ -82,7 +82,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	registry.Requests, registry.Offline = nil, true
 	pluginCommandTest(t, 0, "plugin", "install")
 	pluginCommandTest(t, 0, "plugin", "list")
-	pluginCommandTest(t, 1, "check", "--no-shellcheck", "--no-ruff", "workflow.yml")
+	pluginCommandTest(t, 1, "check", "--no-tool=shellcheck", "--no-tool=ruff", "workflow.yml")
 	if len(registry.Requests) != 0 {
 		t.Fatalf("offline alias triggered registry lookup: %v", registry.Requests)
 	}

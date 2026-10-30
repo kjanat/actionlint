@@ -148,22 +148,8 @@ func (a *commandApp) help(c *cobra.Command, _ []string) {
 		flags.AddFlagSet(c.Flags())
 		flags.AddFlagSet(c.InheritedFlags())
 		flags.VisitAll(func(f *pflag.Flag) {
-			if name, negated := strings.CutPrefix(f.Name, "no-"); negated {
-				if positive := flags.Lookup(name); positive != nil && len(positive.Annotations[commandOptionalValueAnnotation]) > 0 {
-					return
-				}
-			}
 			if groups := f.Annotations[commandGroupAnnotation]; len(groups) > 0 && groups[0] == group {
-				display := *f
-				if value := f.Annotations[commandOptionalValueAnnotation]; len(value) > 0 {
-					display.Name += "[=" + value[0] + "]"
-					if flags.Lookup("no-"+f.Name) != nil {
-						display.Name = "[no-]" + display.Name
-					}
-					display.NoOptDefVal, display.DefValue = "", ""
-					display.Value = helpOptionalValue{Value: f.Value}
-				}
-				fs.AddFlag(&display)
+				fs.AddFlag(f)
 			}
 		})
 		if usage := fs.FlagUsagesWrapped(width); usage != "" {
@@ -224,11 +210,6 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 	_, _ = fmt.Fprintln(out, "Docs: "+terminalLink(links, "https://actionlint.kjanat.dev", "https://actionlint.kjanat.dev"))
 }
 
-// The optional value is already part of the display name, so omit its type label.
-type helpOptionalValue struct{ pflag.Value }
-
-func (helpOptionalValue) Type() string { return "" }
-
 func (a *commandApp) legacyHelp(c *cobra.Command) {
 	a.helpShown = true
 	out, colored, restore := a.helpOutput(c)
@@ -246,9 +227,8 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -version                version
   -verbose / -debug       --log-level=info / --log-level=debug
   -color / -no-color      boolean options on the root; no-color wins
-  -shellcheck[=COMMAND]   false or an empty value disables ShellCheck
-  -ruff[=COMMAND]         false or an empty value disables Ruff
-  -pyflakes COMMAND       Select Pyflakes rules through Ruff unless Ruff is selected
+  -ID[=COMMAND]           --tool ID[=COMMAND], for each bundled tool ID (deprecated)
+  -no-ID                  --no-tool ID (deprecated)
   -stdin-filename PATH
 
 Options may appear before or after filenames. -- ends option parsing.

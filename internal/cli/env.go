@@ -83,46 +83,12 @@ func (a *commandApp) applyEnvironment() error {
 	if i.Operation != operationCheck && i.Operation != operationDoctor && i.Operation != "lsp" {
 		return nil
 	}
-	var err error
-	for name, command := range map[string]*string{"ruff": &i.Check.Ruff, "shellcheck": &i.Check.ShellCheck} {
-		disabled := name == "ruff" && a.opts.noRuff || name == "shellcheck" && a.opts.noShellCheck
-		if disabled || a.set[name] && strings.EqualFold(*command, "false") {
-			*command = ""
-		}
+	resolved, err := i.Check.resolveTools()
+	if err != nil {
+		return err
 	}
-	if !a.set["ruff"] && !a.opts.noRuff {
-		i.Check.RuffOptions, err = externalToolEnvironment("RUFF")
-		if err != nil {
-			return err
-		}
-		if i.Check.RuffOptions == nil {
-			i.Check.RuffOptions = &processconfig.Options{Optional: true}
-			if a.set["pyflakes"] {
-				if i.Check.Pyflakes == "" || strings.EqualFold(i.Check.Pyflakes, "false") {
-					i.Check.Ruff = ""
-				} else {
-					i.Check.RuffOptions.Arguments = []string{"--select", "F"}
-				}
-			}
-		}
-	}
-	if !a.set["shellcheck"] && !a.opts.noShellCheck {
-		i.Check.ShellcheckOptions, err = externalToolEnvironment("SHELLCHECK")
-		if err != nil {
-			return err
-		}
-		if i.Check.ShellcheckOptions == nil {
-			// The default command is optional: when it cannot run, the tool
-			// is skipped with a warning.
-			i.Check.ShellcheckOptions = &processconfig.Options{Optional: true}
-		}
-	}
-	if a.set["shellcheck"] {
-		i.Check.ShellcheckOptions = &processconfig.Options{IgnoreConfig: true}
-	}
-	if a.set["ruff"] {
-		i.Check.RuffOptions = &processconfig.Options{IgnoreConfig: true}
-	}
+	i.Check.Tools, i.Check.DisabledTools, i.Check.NamedTools = resolved.tools, resolved.disabled, resolved.named
+	i.Check.Deprecations = append(i.Check.Deprecations, resolved.deprecations...)
 	if i.Operation == operationDoctor {
 		return nil
 	}
@@ -203,30 +169,32 @@ func (a *commandApp) checkEnvironment() error {
 	return nil
 }
 
-func externalToolEnvironment(tool string) (*processconfig.Options, error) {
-	prefix := "ACTIONLINT_" + tool
+// externalToolEnvironment reads a tool's _BIN, _FLAGS and _ENV variables
+// through lookup, which returns the name and value of the variable that
+// holds a suffix. It returns nil when none is set.
+func externalToolEnvironment(lookup func(suffix string) (name, value string, ok bool)) (*processconfig.Options, error) {
 	options := &processconfig.Options{}
-	if bin, ok := os.LookupEnv(prefix + "_BIN"); ok {
+	if name, bin, ok := lookup("_BIN"); ok {
 		if strings.ContainsRune(bin, 0) {
-			return nil, commandUsageError{fmt.Errorf("%s_BIN cannot contain NUL", prefix)}
+			return nil, commandUsageError{fmt.Errorf("%s cannot contain NUL", name)}
 		}
 		options.Executable = &bin
 		if bin == "" {
 			return options, nil
 		}
 	}
-	if flags := os.Getenv(prefix + "_FLAGS"); flags != "" {
+	if name, flags, _ := lookup("_FLAGS"); flags != "" {
 		var err error
 		options.Arguments, err = parseEnvironmentWords(flags)
 		if err != nil {
-			return nil, commandUsageError{fmt.Errorf("%s_FLAGS must be a JSON string array or a quoted argument list", prefix)}
+			return nil, commandUsageError{fmt.Errorf("%s must be a JSON string array or a quoted argument list", name)}
 		}
 	}
-	if value := os.Getenv(prefix + "_ENV"); value != "" {
+	if name, value, _ := lookup("_ENV"); value != "" {
 		var err error
 		options.Environment, err = parseChildEnvironment(value)
 		if err != nil {
-			return nil, commandUsageError{fmt.Errorf("%s_ENV: %w", prefix, err)}
+			return nil, commandUsageError{fmt.Errorf("%s: %w", name, err)}
 		}
 	}
 	if options.Executable == nil && len(options.Arguments) == 0 && len(options.Environment) == 0 {

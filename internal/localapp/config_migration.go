@@ -14,42 +14,64 @@ import (
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 // DefaultPluginOptions preserves invocation-level native selections during migration.
 // Configured backends and explicit configuration disables take precedence.
 type DefaultPluginOptions struct {
-	Shellcheck bool
-	Ruff       bool
-	Warning    func(string)
-	Overlays   []config.Overlay
+	// Tools lists the bundled tool ids that run their default command in
+	// this invocation. Each may receive a default plugin declaration; ids
+	// the invocation selected or disabled explicitly are left out.
+	Tools    []string
+	Warning  func(string)
+	Overlays []config.Overlay
 }
 
 // DefaultPluginReferences supplies the v2 defaults only when plugins was omitted.
 // An explicit empty list is a durable opt-out, including through inheritance.
+// It declares, in bundled directory order, the registry plugin named after
+// each bundled tool in options.Tools that configuration leaves enabled and
+// on its default backend.
 func DefaultPluginReferences(cfg *config.Config, options DefaultPluginOptions) ([]pluginref.Reference, error) {
 	if cfg.Plugins != nil {
 		return slices.Clone(cfg.Plugins), nil
 	}
 	refs := []pluginref.Reference{}
-	for _, selected := range []struct {
-		name    string
-		enabled bool
-	}{
-		{"shellcheck", options.Shellcheck},
-		{"ruff", options.Ruff},
-	} {
-		tool := cfg.Tools[selected.name]
-		if !selected.enabled || tool.Backend != nil || tool.Enabled != nil && !*tool.Enabled || config.DiagnosticLevel(cfg, selected.name) == "off" {
+	for _, id := range registry.IDs() {
+		tool := cfg.Tools[id]
+		if !slices.Contains(options.Tools, id) || tool.Backend != nil || tool.Enabled != nil && !*tool.Enabled || config.DiagnosticLevel(cfg, id) == "off" {
 			continue
 		}
-		ref, err := pluginref.Parse(selected.name)
+		ref, err := pluginref.Parse(id)
 		if err != nil {
 			return nil, err
 		}
 		refs = append(refs, ref)
 	}
 	return refs, nil
+}
+
+// sourceFollowingNotes warns, for each default registry plugin in refs that
+// replaces a bundled tool reporting findings in files its scripts source,
+// that the isolated plugin stops following those files.
+func sourceFollowingNotes(refs []pluginref.Reference) ([]string, error) {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		return nil, err
+	}
+	var notes []string
+	for _, manifest := range manifests {
+		id := manifest.Rule.Name
+		if !manifest.Capabilities.ReportedSources || !slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
+			return ref.Name == id && ref.Registry == pluginref.DefaultRegistry
+		}) {
+			continue
+		}
+		notes = append(notes, fmt.Sprintf("%s now uses the isolated Wasm plugin, which does not follow files the script sources. Explicit native configuration in tools.%s keeps the native backend.", id, id))
+	}
+	return notes, nil
 }
 
 // ConfigMigration previews the syntax conversion and default plugin declarations.
@@ -117,10 +139,12 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err := migration.SetContent(content); err != nil {
 		return nil, err
 	}
-	if !project.Manifest.Declared && slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
-		return ref.Name == "shellcheck" && ref.Registry == pluginref.DefaultRegistry
-	}) {
-		migration.Notes = append(migration.Notes, "ShellCheck now uses the isolated Wasm plugin; implicit source-file following stops. Explicit native source/rc configuration retains the native backend.")
+	if !project.Manifest.Declared {
+		notes, err := sourceFollowingNotes(refs)
+		if err != nil {
+			return nil, err
+		}
+		migration.Notes = append(migration.Notes, notes...)
 	}
 	project.StatusOptions.Warning = options.Warning
 	return &ConfigMigration{FileMigration: migration, project: project, refs: refs, updatePlugins: updatePlugins}, nil

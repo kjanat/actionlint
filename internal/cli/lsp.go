@@ -21,6 +21,9 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, err
 	}
 	c := r.Check
+	for _, warning := range c.Deprecations {
+		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+warning)
+	}
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
 		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
@@ -41,5 +44,5 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	if c.ResolverCommand != "" {
 		provider = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
 	}
-	return 0, localapp.LanguageServer(ctx, streams.Stdin, streams.Stdout, application.Options{AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.toolSelections())}, plugins)
+	return 0, localapp.LanguageServer(ctx, streams.Stdin, streams.Stdout, application.Options{AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.Tools)}, plugins)
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
@@ -41,29 +40,32 @@ type checkInvocation struct {
 	Config                repoconfig.Selection
 	StdinFilename         string
 	IgnoreRegex           []string
-	ShellCheck            string
-	Ruff                  string
-	RuffOptions           *processconfig.Options
-	Pyflakes              string
-	Plugins               []string
-	PluginLock            string
-	ShellcheckOptions     *processconfig.Options
-	Verbose               bool
-	Debug                 bool
-	Strict                bool
-	Experimental          bool
-	ExperimentalSet       bool
-	PreCommit             bool
-	AllowConfigProcesses  bool
-}
-
-// toolSelections returns the provider selections set by the --shellcheck and --ruff flags.
-// The generic --tool flag will replace both.
-func (c checkInvocation) toolSelections() registry.Selections {
-	return registry.Selections{
-		"shellcheck": {Command: c.ShellCheck, Process: c.ShellcheckOptions},
-		"ruff":       {Command: c.Ruff, Process: c.RuffOptions},
-	}
+	// ToolFlags lists the --tool values, ID or ID=COMMAND, in command-line
+	// order. --no-tool ID and the deprecated --ID and --no-ID flags add
+	// their values here too.
+	ToolFlags []string
+	// DeprecatedToolFlags lists uses of retired flags that bundled provider
+	// manifests declare.
+	DeprecatedToolFlags []deprecatedToolFlag
+	// Tools selects every bundled tool. applyEnvironment sets it, and the
+	// two lists below, from the flags above and the environment.
+	Tools registry.Selections
+	// DisabledTools lists the tool ids the flags disabled.
+	DisabledTools []string
+	// NamedTools lists the tool ids --tool and --no-tool named.
+	NamedTools []string
+	// Deprecations holds a warning for each deprecated flag or environment
+	// variable used.
+	Deprecations         []string
+	Plugins              []string
+	PluginLock           string
+	Verbose              bool
+	Debug                bool
+	Strict               bool
+	Experimental         bool
+	ExperimentalSet      bool
+	PreCommit            bool
+	AllowConfigProcesses bool
 }
 
 // renderOptions controls result presentation without changing analysis.
@@ -86,7 +88,7 @@ func defaultInvocation() invocation {
 	return invocation{
 		Operation: "check",
 		Render:    renderOptions{PrettyJSON: true, Summary: true, Width: 100},
-		Check:     checkInvocation{StdinFilename: "<stdin>", ShellCheck: "shellcheck", Ruff: "ruff"},
+		Check:     checkInvocation{StdinFilename: "<stdin>"},
 	}
 }
 
@@ -200,10 +202,9 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationDoctor:
 		return doctorRequest{
 			ResolverCommand: inv.Check.ResolverCommand, ResolverArguments: inv.Check.ResolverArguments,
-			Config: inv.Check.Config, Plugins: inv.Check.Plugins, ShellCheck: inv.Check.ShellCheck,
-			Ruff: inv.Check.Ruff, RuffOptions: inv.Check.RuffOptions,
-			ShellcheckOptions: inv.Check.ShellcheckOptions,
-			JSON:              inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
+			Config: inv.Check.Config, Plugins: inv.Check.Plugins, Tools: inv.Check.Tools,
+			NamedTools: inv.Check.NamedTools, Deprecations: inv.Check.Deprecations,
+			JSON: inv.JSON, Hyperlinks: inv.Render.Hyperlinks,
 		}, nil
 	case operationConfigPath:
 		return configPathRequest{Config: inv.Check.Config, JSON: inv.JSON}, nil

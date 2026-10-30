@@ -265,10 +265,9 @@ func TestActionPluginPlanPreviewsLockOnlyLegacyMigration(t *testing.T) {
 	}
 	registry.Requests = nil
 	env := map[string]string{
-		"GITHUB_WORKSPACE": workspace,
-		"INPUT_FILES":      "ci.yml",
-		"INPUT_SHELLCHECK": "false",
-		"INPUT_RUFF":       "false",
+		"GITHUB_WORKSPACE":    workspace,
+		"INPUT_FILES":         "ci.yml",
+		"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	lookup := func(key string) string { return env[key] }
 	var stdout, stderr bytes.Buffer

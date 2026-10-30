@@ -44,7 +44,8 @@ func ProcessOptions(name, requested string, explicit *processconfig.Options, cfg
 	for _, key := range slices.Sorted(maps.Keys(command.Env)) {
 		options.Environment = append(options.Environment, key+"="+command.Env[key])
 	}
-	// Legacy --pyflakes selects F even when a repository supplies the executable.
+	// Arguments a retired command-line flag adds still apply when a repository
+	// supplies the executable.
 	if explicit != nil {
 		options.Arguments = append(options.Arguments, explicit.Arguments...)
 		options.Environment = append(options.Environment, explicit.Environment...)

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestDoctorToolPresentation(t *testing.T) {
@@ -17,7 +18,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := doctorRequest{Config: repoconfig.Selection{Disabled: true}, ShellCheck: `"` + filepath.ToSlash(executable) + `"`, Hyperlinks: "never"}
+	request := doctorRequest{Config: repoconfig.Selection{Disabled: true}, Tools: registry.Selections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
 	var text, data bytes.Buffer
 	if err := writeDoctor(t.Context(), &text, request); err != nil {
 		t.Fatal(err)
@@ -51,7 +52,11 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err := json.Unmarshal(data.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Tools) != 2 || report.Tools[0].Status != "available" || report.Tools[0].Path == "" || report.Tools[1].Status != "disabled" {
+	status := map[string]doctorTool{}
+	for _, tool := range report.Tools {
+		status[tool.Name] = tool
+	}
+	if len(report.Tools) != 2 || status["shellcheck"].Status != "available" || status["shellcheck"].Path == "" || status["ruff"].Status != "disabled" {
 		t.Fatalf("JSON lost tool status: %s", &data)
 	}
 }
@@ -70,7 +75,7 @@ func TestDoctorResolverSelection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var out, stderr bytes.Buffer
 			command := Command{Stdout: &out, Stderr: &stderr}
-			args := []string{"actionlint", "doctor", "--no-config", "--no-ruff", "--no-shellcheck", "--json", "--resolve-with", tc.command, "--resolver-arg=argument with spaces", "--resolver-arg=--literal"}
+			args := []string{"actionlint", "doctor", "--no-config", "--no-tool=ruff", "--no-tool=shellcheck", "--json", "--resolve-with", tc.command, "--resolver-arg=argument with spaces", "--resolver-arg=--literal"}
 			if status := command.MainContext(t.Context(), args); status != 0 {
 				t.Fatalf("doctor failed: exit=%d stderr=%s", status, &stderr)
 			}

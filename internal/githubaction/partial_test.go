@@ -56,6 +56,7 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 	env := map[string]string{
 		"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),
 		"ACTIONLINT_ACTION_RESULT": resultPath,
+		"INPUT_DISABLE-TOOLS":      "ruff",
 	}
 	var output strings.Builder
 	// Trigger expiration only after the native process has started. Its startup
@@ -66,15 +67,15 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 		withTimeout: func(context.Context, time.Duration) (context.Context, context.CancelFunc) {
 			return ctx, expire
 		},
-		args:   args("./timeout.yaml", "json", "", "", "true", "false", ".", "", "true"),
+		args:   args("./timeout.yaml", "json", "", "", ".", "", "true"),
 		stdout: &output, env: func(name string) string { return env[name] },
 		newID: fixedID("DELIM"), timeout: 2 * time.Second,
 		lint: func(req *lintRequest) *lintResult {
 			// The tool's environment is scrubbed; only these variables reach it.
-			req.shellcheckOptions = &processconfig.Options{
+			req.processes = map[string]*processconfig.Options{"shellcheck": {
 				Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
 				Environment: []string{"ACTIONLINT_PARTIAL_RESULT_HELPER=1", "ACTIONLINT_PARTIAL_RESULT_READY=" + ready},
-			}
+			}}
 			return runLinter(req)
 		},
 	}
@@ -164,19 +165,19 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 			resultPath := filepath.Join(t.TempDir(), "result.json")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),
-				"ACTIONLINT_ACTION_RESULT": resultPath,
+				"ACTIONLINT_ACTION_RESULT": resultPath, "INPUT_DISABLE-TOOLS": "ruff",
 			}
 			var output strings.Builder
 			a := &action{
-				args:   args(tc.files, "json", "", "", "true", "false", ".", "", "true"),
+				args:   args(tc.files, "json", "", "", ".", "", "true"),
 				stdout: &output, env: func(name string) string { return env[name] },
 				newID: fixedID("DELIM"), timeout: lintTimeout,
 				lint: func(req *lintRequest) *lintResult {
 					// The tool's environment is scrubbed; only this variable reaches it.
-					req.shellcheckOptions = &processconfig.Options{
+					req.processes = map[string]*processconfig.Options{"shellcheck": {
 						Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
 						Environment: []string{"ACTIONLINT_PARTIAL_RESULT_HELPER=1"},
-					}
+					}}
 					return runLinter(req)
 				},
 			}

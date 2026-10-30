@@ -45,8 +45,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		log = &commandJSONLogWriter{out: log}
 	}
 	log = &synchronizedLogWriter{out: log}
-	if c.Pyflakes != "" {
-		fmt.Fprintln(log, "warning: --pyflakes is deprecated; use --ruff for Python script linting")
+	for _, warning := range c.Deprecations {
+		_, _ = fmt.Fprintln(log, "warning: "+warning)
 	}
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -59,7 +59,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 
 		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
 		Debug: c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
-		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.toolSelections()),
+		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.Tools),
 	}
 	if c.ResolverCommand != "" {
 		options.Resolver = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
@@ -99,6 +99,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	result, err := localapp.CheckSources(ctx, options, input, plugins)
 	if err != nil {
 		if _, ok := errors.AsType[*localapp.PluginLoadError](err); ok && len(c.Plugins) != 0 {
+			return 0, commandUsageError{err}
+		}
+		if _, ok := errors.AsType[*localapp.UnknownToolError](err); ok {
 			return 0, commandUsageError{err}
 		}
 		if result != nil {

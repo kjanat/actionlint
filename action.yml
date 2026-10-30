@@ -50,16 +50,25 @@ inputs:
       merged over the config file.
     required: false
     default: ""
+  disable-tools:
+    description: >-
+      Tool ids to turn off, separated by newlines or commas, such as shellcheck or ruff.
+      A disabled tool runs neither natively nor as a plugin.
+    required: false
+    default: ""
   shellcheck:
-    description: Enable the configured ShellCheck Wasm plugin for shell scripts in workflow steps.
+    description: "Deprecated: false is the same as listing shellcheck in disable-tools."
+    deprecationMessage: Use disable-tools to turn ShellCheck off.
     required: false
     default: "true"
   ruff:
-    description: Enable the configured Ruff Wasm plugin for Python run steps.
+    description: "Deprecated: false is the same as listing ruff in disable-tools."
+    deprecationMessage: Use disable-tools to turn Ruff off.
     required: false
     default: "true"
   pyflakes:
-    description: "Deprecated and ignored: use the ruff input for Python script linting."
+    description: "Deprecated and ignored: Ruff checks Python scripts unless disable-tools lists ruff."
+    deprecationMessage: The pyflakes input is ignored; use disable-tools to turn Ruff off.
     required: false
     default: "false"
   add-actionlint-to-path:

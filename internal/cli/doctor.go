@@ -50,18 +50,27 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	if configErr != nil {
 		report.ConfigError = configErr.Error()
 	}
-	tools := []struct {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		return err
+	}
+	if err := checkDoctorTools(manifests, req.NamedTools); err != nil {
+		return err
+	}
+	type doctorItem struct {
 		name, command string
 		options       *processconfig.Options
-	}{
-		{"shellcheck", req.ShellCheck, req.ShellcheckOptions},
-		{"ruff", req.Ruff, req.RuffOptions},
-		{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}},
+		manifest      *provider.Manifest
 	}
-	for _, item := range tools {
-		if item.name == "resolver" && item.command == "" {
-			continue
-		}
+	items := make([]doctorItem, 0, len(manifests)+1)
+	for i := range manifests {
+		selection := req.Tools[manifests[i].Rule.Name]
+		items = append(items, doctorItem{manifests[i].Rule.Name, selection.Command, selection.Process, &manifests[i]})
+	}
+	if req.ResolverCommand != "" {
+		items = append(items, doctorItem{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}, nil})
+	}
+	for _, item := range items {
 		if item.options != nil && item.options.Executable != nil {
 			item.command = *item.options.Executable
 		}
@@ -69,8 +78,8 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 		if item.command != "" {
 			tool.Path, tool.Arguments, err = processconfig.ResolveOptions(item.command, item.options)
 			tool.Status = "available"
-			if err == nil && item.options != nil && item.options.Optional {
-				err = probeDoctorVersion(ctx, item.name, item.command, item.options)
+			if err == nil && item.manifest != nil && item.options != nil && item.options.Optional {
+				err = probeDoctorVersion(ctx, *item.manifest, item.command, item.options)
 				if ctx.Err() != nil {
 					return ctx.Err()
 				}
@@ -116,16 +125,30 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	return configErr
 }
 
-// probeDoctorVersion runs the version probe of the bundled provider named
-// name against command, as analysis does before it uses an automatically
-// discovered tool. A provider without a version probe passes.
-func probeDoctorVersion(ctx context.Context, name, command string, options *processconfig.Options) error {
-	manifests, err := provider.Bundled()
-	if err != nil {
-		return err
+// checkDoctorTools rejects tool ids named by --tool or --no-tool that no
+// bundled provider has. Doctor loads no plugins, so only bundled tools count.
+func checkDoctorTools(manifests []provider.Manifest, named []string) error {
+	known := make([]string, len(manifests))
+	for i, manifest := range manifests {
+		known[i] = manifest.Rule.Name
 	}
-	index := slices.IndexFunc(manifests, func(m provider.Manifest) bool { return m.Rule.Name == name })
-	if index < 0 || manifests[index].Process == nil || manifests[index].Process.Version == nil {
+	var unknown []string
+	for _, id := range named {
+		if !slices.Contains(known, id) {
+			unknown = append(unknown, id)
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	return commandUsageError{localapp.NewUnknownToolError(unknown, known)}
+}
+
+// probeDoctorVersion runs the manifest's version probe against command, as
+// analysis does before it uses an automatically discovered tool. A provider
+// without a version probe passes.
+func probeDoctorVersion(ctx context.Context, manifest provider.Manifest, command string, options *processconfig.Options) error {
+	if manifest.Process == nil || manifest.Process.Version == nil {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -136,7 +159,7 @@ func probeDoctorVersion(ctx context.Context, name, command string, options *proc
 	if err != nil {
 		return err
 	}
-	backend, err := process.NewBackend(manifests[index], resolved, process.Options{Programs: bundled.Program, Required: true})
+	backend, err := process.NewBackend(manifest, resolved, process.Options{Programs: bundled.Program, Required: true})
 	if err != nil {
 		return err
 	}

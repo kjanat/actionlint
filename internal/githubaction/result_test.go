@@ -271,7 +271,7 @@ jobs:
 			path := filepath.Join(t.TempDir(), "result.json")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "ACTIONLINT_ACTION_RESULT": path,
-				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false", "INPUT_FAIL-ON-ERROR": "false",
+				"INPUT_FILES": "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			var output strings.Builder
 			if got := Main(func(key string) string { return env[key] }, &output); got != tc.code {
@@ -311,7 +311,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	env := map[string]string{
 		"GITHUB_WORKSPACE": t.TempDir(), "ACTIONLINT_ACTION_RESULT": path,
 		"GITHUB_OUTPUT": outputPath, "INPUT_FORMAT": "json",
-		"INPUT_FILES": "missing.yml", "INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+		"INPUT_FILES": "missing.yml", "INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var output strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &output); code != 3 {
@@ -353,7 +353,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
 				"ACTIONLINT_ACTION_RESULT": resultPath,
 				"INPUT_FILES":              "ci.yml", "INPUT_FORMAT": tc.format, "INPUT_SARIF": tc.sarif,
-				"INPUT_SHELLCHECK": "false", "INPUT_PYFLAKES": "false",
+				"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 			}
 			var stdout strings.Builder
 			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {

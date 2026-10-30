@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -53,9 +54,12 @@ func TestMigrationDefaultPluginsAfterEnvironment(t *testing.T) {
 		{name: "explicit shellcheck", args: []string{"--shellcheck"}, ruff: true},
 		{name: "disabled shellcheck", args: []string{"--no-shellcheck"}, ruff: true},
 		{name: "shellcheck executable env", env: map[string]string{"ACTIONLINT_SHELLCHECK_BIN": "shellcheck"}, ruff: true},
+		{name: "tool ruff", args: []string{"--tool", "ruff"}, shell: true},
+		{name: "no-tool shellcheck", args: []string{"--no-tool", "shellcheck"}, ruff: true},
+		{name: "new ruff env", env: map[string]string{"ACTIONLINT_TOOL_RUFF_FLAGS": "--select F"}, shell: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, tool := range []string{"RUFF", "SHELLCHECK"} {
+			for _, tool := range []string{"RUFF", "SHELLCHECK", "TOOL_RUFF", "TOOL_SHELLCHECK"} {
 				for _, suffix := range []string{"BIN", "FLAGS", "ENV"} {
 					name := "ACTIONLINT_" + tool + "_" + suffix
 					t.Setenv(name, "")
@@ -75,8 +79,9 @@ func TestMigrationDefaultPluginsAfterEnvironment(t *testing.T) {
 				t.Fatal(err)
 			}
 			defaults := app.inv.Check.defaultPlugins(nil)
-			if defaults.Ruff != tc.ruff || defaults.Shellcheck != tc.shell {
-				t.Fatalf("migration defaults: Ruff=%t Shellcheck=%t; want %t %t", defaults.Ruff, defaults.Shellcheck, tc.ruff, tc.shell)
+			ruff, shell := slices.Contains(defaults.Tools, "ruff"), slices.Contains(defaults.Tools, "shellcheck")
+			if ruff != tc.ruff || shell != tc.shell {
+				t.Fatalf("migration defaults: %v; want ruff=%t shellcheck=%t", defaults.Tools, tc.ruff, tc.shell)
 			}
 		})
 	}

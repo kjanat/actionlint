@@ -13,7 +13,6 @@ import (
 type commandOptions struct {
 	output, colorMode, logLevel, command            string
 	color, noColor, initConfig, version, helpLegacy bool
-	noRuff, noShellCheck                            bool
 	completion                                      completionShell
 }
 
@@ -37,8 +36,6 @@ type commandUsageError struct{ error }
 const commandGroupAnnotation = "actionlint/group"
 
 const commandChoicesAnnotation = "actionlint/choices"
-
-const commandOptionalValueAnnotation = "actionlint/optional-value"
 
 func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a := &commandApp{ctx: ctx, streams: *streams, inv: defaultInvocation(), set: map[string]bool{}}
@@ -238,21 +235,7 @@ func (a *commandApp) toolFlags(f *pflag.FlagSet) {
 	f.StringArrayVar(&a.inv.Check.ResolverArguments, "resolver-arg", nil, "Pass an argument to the remote resolver (repeatable)")
 	annotateFlag(f, "resolve-with", "Dependency resolution")
 	annotateFlag(f, "resolver-arg", "Dependency resolution")
-	f.StringVar(&a.inv.Check.Ruff, "ruff", "ruff", "Check Python scripts")
-	f.StringVar(&a.inv.Check.ShellCheck, "shellcheck", "shellcheck", "Check shell scripts")
-	f.BoolVar(&a.opts.noRuff, "no-ruff", false, "Disable Python script linting")
-	f.BoolVar(&a.opts.noShellCheck, "no-shellcheck", false, "Disable shell script linting")
-	f.BoolVar(&a.inv.Check.AllowConfigProcesses, "allow-config-processes", false, "Allow trusted repository configuration to select native executables")
-	for _, name := range []string{"ruff", "shellcheck", "no-ruff", "no-shellcheck", "allow-config-processes"} {
-		annotateFlag(f, name, "External linters")
-	}
-	for _, name := range []string{"ruff", "shellcheck"} {
-		f.Lookup(name).NoOptDefVal = name
-		f.Lookup(name).Annotations[commandOptionalValueAnnotation] = []string{"COMMAND"}
-	}
-	f.StringVar(&a.inv.Check.Pyflakes, "pyflakes", "", "Deprecated: select Pyflakes rules through Ruff")
-	_ = f.MarkHidden("pyflakes")
-	annotateFlag(f, "pyflakes", "External linters")
+	a.externalToolFlags(f)
 }
 
 func (a *commandApp) pluginFlags(f *pflag.FlagSet) {

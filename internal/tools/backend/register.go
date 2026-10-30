@@ -61,10 +61,18 @@ type selection struct {
 
 // defaultCommand reports whether the selection runs the provider's own
 // default command: its rule name with no explicit choice beyond being
-// optional.
+// optional. A working directory chooses where the command runs, not which
+// command, so it does not count.
 func (s selection) defaultCommand(name string) bool {
-	return s.Backend == nil && s.Runner == nil && s.Command == name &&
-		(s.Process == nil || reflect.DeepEqual(*s.Process, processconfig.Options{Optional: true}))
+	if s.Backend != nil || s.Runner != nil || s.Command != name {
+		return false
+	}
+	if s.Process == nil {
+		return true
+	}
+	options := *s.Process
+	options.WorkingDir = ""
+	return reflect.DeepEqual(options, processconfig.Options{Optional: true})
 }
 
 // forConfig lets a repository backend replace a default plugin.

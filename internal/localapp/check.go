@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/tools"
@@ -156,5 +157,47 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 	}
 	options.Analyzers = slices.Concat(options.Analyzers, l.registrations())
 	options.Runners.Providers = slices.Concat(options.Runners.Providers, l.runnerProviders())
-	return options, nil
+	return options, l.checkTools(options.Tools)
+}
+
+// checkTools reports the tool ids the invocation named that match no
+// registration and no skipped plugin.
+func (l *loadedPlugins) checkTools(registrations []tools.Registration) error {
+	known := slices.Clone(l.skipped)
+	for _, registration := range registrations {
+		known = append(known, registration.Descriptor.Name)
+	}
+	var unknown []string
+	for _, id := range l.tools {
+		if !slices.Contains(known, id) && !slices.Contains(unknown, id) {
+			unknown = append(unknown, id)
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	return NewUnknownToolError(unknown, known)
+}
+
+// UnknownToolError reports tool ids that name no tool provider.
+type UnknownToolError struct {
+	// ids are the unknown ids in the order they were named.
+	ids []string
+	// known lists every id that names a provider, sorted and unique.
+	known []string
+}
+
+// NewUnknownToolError reports the unknown tool ids ids, listing the ids in
+// known as the valid choices.
+func NewUnknownToolError(ids, known []string) *UnknownToolError {
+	known = slices.Clone(known)
+	slices.Sort(known)
+	return &UnknownToolError{ids: slices.Clone(ids), known: slices.Compact(known)}
+}
+
+// IDs returns the unknown ids in the order they were named.
+func (e *UnknownToolError) IDs() []string { return slices.Clone(e.ids) }
+
+func (e *UnknownToolError) Error() string {
+	return fmt.Sprintf("unknown tool %s; valid tools: %s", strings.Join(e.ids, ", "), strings.Join(e.known, ", "))
 }

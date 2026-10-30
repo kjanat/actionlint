@@ -40,7 +40,7 @@ func TestCheckPluginRuntimeFailureExitStatus(t *testing.T) {
 		{"explicit", []string{"--plugin", lock.Plugins[0].Source()}, 2},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			args := append([]string{"check", "--no-ruff", "--no-shellcheck", "workflow.yml"}, scenario.args...)
+			args := append([]string{"check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"}, scenario.args...)
 			output := pluginCommandTest(t, scenario.status, args...)
 			if !strings.Contains(output, "export") {
 				t.Fatalf("did not reach runtime export validation: %s", output)
