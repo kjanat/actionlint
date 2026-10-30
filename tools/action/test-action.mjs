@@ -495,7 +495,7 @@ try {
 	/** @type {import('../../distribution/npm/facade/types/result.d.ts').Diagnostic[]} */
 	const disabledDiagnostics = disabled.analysis.diagnostics;
 	assert.deepEqual(disabledDiagnostics, installedDiagnostics.filter(diagnostic => diagnostic.rule === 'shellcheck-rs'));
-	const installRuff = spawnSync(candidate, ['plugin', 'install', 'ruff@v0.1.0'], {
+	const installRuff = spawnSync(candidate, ['plugin', 'install', 'ruff@v0.2.0'], {
 		cwd: workspace,
 		env: { ...process.env, ...pluginEnvironment },
 		encoding: 'utf8',

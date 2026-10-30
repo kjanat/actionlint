@@ -22,7 +22,7 @@ online="$(docker run --rm --platform "${platform}" \
 	cd "${HOME}/project"
 	git init --quiet
 	actionlint plugin install shellcheck@v0.2.0 >&2
-	actionlint plugin install ruff@v0.1.0 >&2
+	actionlint plugin install ruff@v0.2.0 >&2
 	cat > workflow.yml <<"YAML"
 on: push
 jobs:
