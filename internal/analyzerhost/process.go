@@ -44,20 +44,23 @@ func (e *Execution) Run(ctx context.Context) ([]byte, error) {
 
 // RunStatus runs the execution and also returns the accepted exit status.
 func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
-	cmd := exec.CommandContext(ctx, e.Cmd, e.Args...)
+	// The child command and the status checks work on detached copies, so the
+	// caller's slices are never shared with os/exec or the filters below.
+	args, unsetEnv, exitCodes := slices.Clone(e.Args), slices.Clone(e.UnsetEnv), slices.Clone(e.ExitCodes)
+	cmd := exec.CommandContext(ctx, e.Cmd, args...)
 	cmd.Dir = e.Dir
 	cmd.Stderr = nil
 	switch {
 	case !e.InheritEnvironment:
 		// A non-nil empty slice keeps os/exec from inheriting the host environment.
 		cmd.Env = append([]string{}, e.Env...)
-	case len(e.Env) > 0 || len(e.UnsetEnv) > 0:
+	case len(e.Env) > 0 || len(unsetEnv) > 0:
 		cmd.Env = append(cmd.Environ(), e.Env...)
 	}
-	if len(e.UnsetEnv) > 0 && cmd.Env != nil {
+	if len(unsetEnv) > 0 && cmd.Env != nil {
 		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
 			name, _, _ := strings.Cut(entry, "=")
-			return slices.ContainsFunc(e.UnsetEnv, func(unset string) bool {
+			return slices.ContainsFunc(unsetEnv, func(unset string) bool {
 				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
 			})
 		})
@@ -87,8 +90,8 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 				return nil, code, fmt.Errorf("%s was terminated. stderr: %q", e.Cmd, stderr)
 			}
 			accepted := !e.RequireSuccess && (e.MaxExitCode <= 0 || code <= e.MaxExitCode)
-			if len(e.ExitCodes) > 0 {
-				accepted = slices.Contains(e.ExitCodes, code)
+			if len(exitCodes) > 0 {
+				accepted = slices.Contains(exitCodes, code)
 			}
 			if !accepted {
 				return nil, code, fmt.Errorf("%s exited with status %d. stderr: %q", e.Cmd, code, stderr)
@@ -103,7 +106,7 @@ func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
 		}
 		return nil, 0, err
 	}
-	if len(e.ExitCodes) > 0 && !slices.Contains(e.ExitCodes, 0) {
+	if len(exitCodes) > 0 && !slices.Contains(exitCodes, 0) {
 		return nil, 0, fmt.Errorf("%s exited with status 0, which the tool does not report", e.Cmd)
 	}
 	return stdout, 0, nil
