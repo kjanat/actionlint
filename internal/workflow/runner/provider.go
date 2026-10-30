@@ -50,15 +50,15 @@ func (p builtinProvider) ResolveRunners(ctx context.Context, request runnerapi.R
 			if selector.Group != nil {
 				selection = value.Map(value.Origin{}, value.Prop{Name: "labels", Value: value.Seq(value.Origin{}, labels...)}, value.Prop{Name: "group", Value: value.FromJSON("group", value.Origin{})})
 			}
-			knowledge := builtinKnowledge(selection, labels)
-			candidate := runnerapi.Candidate{Name: "github", OS: runnerapi.UnknownOS, DefaultShell: knowledge.Shell, CaseSensitivity: runnerapi.UnknownCase, ShIsDash: knowledge.ShIsDash, Ephemeral: knowledge.Ephemeral}
-			if knowledge.PathsKnown {
+			traits := builtinTraits(selection, labels)
+			candidate := runnerapi.Candidate{Name: "github", OS: runnerapi.UnknownOS, DefaultShell: traits.Shell, CaseSensitivity: runnerapi.UnknownCase, ShIsDash: traits.ShIsDash, Ephemeral: traits.Ephemeral}
+			if traits.PathsKnown {
 				candidate.CaseSensitivity = runnerapi.CaseSensitive
-				if knowledge.CaseInsensitive {
+				if traits.CaseInsensitive {
 					candidate.CaseSensitivity = runnerapi.CaseInsensitive
 				}
 			}
-			switch knowledge.Platform {
+			switch traits.Platform {
 			case Windows:
 				candidate.OS = runnerapi.Windows
 			case MacOrLinux:

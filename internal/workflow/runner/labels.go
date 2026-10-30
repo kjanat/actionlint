@@ -108,6 +108,24 @@ type checker struct {
 // Check owns built-in runner-label diagnostics. Spelling is checked on declared
 // alternatives; compatibility is checked only on execution selectors.
 func Check(job workflowdecl.JobView, customLabels []string) []diagnostic.Diagnostic {
+	return labelFindings(labelRejections(job, customLabels))
+}
+
+// labelFindings reports runner-label rejections as fresh diagnostics.
+func labelFindings(rejections []runner.Rejection) []diagnostic.Diagnostic {
+	if len(rejections) == 0 {
+		return nil
+	}
+	findings := make([]diagnostic.Diagnostic, len(rejections))
+	for i, rejection := range rejections {
+		findings[i] = diagnostic.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason}
+	}
+	return findings
+}
+
+// labelRejections lists the distinct built-in label rejections of a job, in
+// the order they were found.
+func labelRejections(job workflowdecl.JobView, customLabels []string) []runner.Rejection {
 	if !job.Present() {
 		return nil
 	}
@@ -135,18 +153,15 @@ func Check(job workflowdecl.JobView, customLabels []string) []diagnostic.Diagnos
 			check.checkSelector(selector)
 		}
 	}
-	findings := make([]diagnostic.Diagnostic, len(check.rejections))
-	seen := map[string]bool{}
-	filtered := findings[:0]
+	var distinct []runner.Rejection
+	seen := map[runner.Rejection]bool{}
 	for _, rejection := range check.rejections {
-		finding := diagnostic.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason}
-		key := fmt.Sprintf("%d:%d:%s", finding.Start.Line, finding.Start.Column, finding.Message)
-		if !seen[key] {
-			seen[key] = true
-			filtered = append(filtered, finding)
+		if !seen[rejection] {
+			seen[rejection] = true
+			distinct = append(distinct, rejection)
 		}
 	}
-	return filtered
+	return distinct
 }
 
 func (rule *checker) checkDeclaredSelection(selection value.Value, combination matrixmodel.Combination) {

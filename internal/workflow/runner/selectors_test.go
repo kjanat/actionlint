@@ -192,11 +192,11 @@ func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := joinAnswers(w.Views["test"], answers)
+			record, err := joinAnswers(w.Views["test"], answers)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(got.Findings) != tc.wantFindings || got.Platform != Any || got.Shell != "" {
+			if got := record.knowledge(); len(got.Findings) != tc.wantFindings || got.Platform != Any || got.Shell != "" {
 				t.Fatalf("excluded fallback label diagnostics or certainty: %#v", got)
 			}
 		})

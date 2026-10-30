@@ -206,8 +206,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		customLabels = cfg.SelfHostedRunner.Labels
 	}
 	runners, runnerErr := runnerlang.Prepare(s.ctx, snapshot, customLabels, s.runners, root)
-	if runners.Report.Identity != "" {
-		report := runners.Report
+	if report := runners.Report(); report.Identity != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
 		s.runnerReports = append(s.runnerReports, report)
