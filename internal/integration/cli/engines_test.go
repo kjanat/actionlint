@@ -60,7 +60,7 @@ func TestCheckRunsConfiguredWasmEngine(t *testing.T) {
 func TestCheckReportsEngineLoadFailures(t *testing.T) {
 	config := writeEngineConfig(t, filepath.Join(componentTestdata, "wat", "forbidden-import.wasm"))
 	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "-")
-	if got.Status != 3 || !strings.Contains(got.Stderr, "could not initialize Ruff: plugin ") ||
+	if got.Status != 3 || !strings.Contains(got.Stderr, "could not initialize ruff: plugin ") ||
 		!strings.Contains(got.Stderr, "forbidden-import.wasm") ||
 		!strings.Contains(got.Stderr, "plugin imports wasi:sockets/tcp-create-socket@0.2.9, which this host does not grant") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", got.Status, got.Stdout, got.Stderr)

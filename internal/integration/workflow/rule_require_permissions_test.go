@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -45,7 +45,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.Source
 				linterConfig := cfg
 				source := []byte("on: push\n" + tc.workflowPermissions + `jobs:

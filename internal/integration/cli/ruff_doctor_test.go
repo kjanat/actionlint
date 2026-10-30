@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestDoctorRuffCompatibility(t *testing.T) {
@@ -29,7 +30,6 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 	}
 	t.Chdir(t.TempDir())
 	t.Setenv("PATH", bin)
-	t.Setenv("ACTIONLINT_TEST_RUFF_DISCOVERY", "1")
 	for _, key := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
@@ -49,14 +49,14 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 	}{
 		{"old", "ruff 0.16.10", "unavailable", "is incompatible; requires 0.17.0 or newer", nil, true},
 		{"current", "ruff 0.17.0", "available", "", nil, true},
-		{"invalid", "unexpected banner", "unavailable", "could not identify Ruff version", nil, true},
+		{"invalid", "unexpected banner", "unavailable", "could not identify ruff version", nil, true},
 		{"explicit", "ruff 0.16.10", "available", "", []string{"--ruff=" + tool}, false},
 		{"disabled", "ruff 0.16.10", "disabled", "", []string{"--ruff=false"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			calls := filepath.Join(t.TempDir(), "calls")
-			t.Setenv("ACTIONLINT_TEST_RUFF_CALLS", calls)
-			t.Setenv("ACTIONLINT_TEST_RUFF_VERSION", tc.version)
+			// The probe runs with a scrubbed environment; the fake reads its
+			// version from a file beside it.
+			calls := testutil.RuffDiscoveryFixture(t, bin, tc.version)
 			args := append([]string{"doctor", "--no-config", "--shellcheck=false"}, tc.args...)
 			result := run(append(args, "--json")...)
 			if result.Status != 0 || result.Stderr != "" {

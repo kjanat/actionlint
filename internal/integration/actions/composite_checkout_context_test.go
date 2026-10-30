@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 )
 
@@ -121,7 +121,7 @@ runs:
 					inputs += ", ref: \"" + tc.ref + "\""
 				}
 				steps := "- uses: actions/checkout@v6\n  with: {" + inputs + "}\n- uses: ./" + filepath.ToSlash(filepath.Join(destination, "local"))
-				result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+				result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 				read := slices.Contains(result.Inputs, metadata) || slices.Contains(result.Inputs, decoy)
 				if read != tc.read {
 					t.Fatalf("metadata read=%v, want %v: %v", read, tc.read, result.Inputs)
@@ -141,7 +141,7 @@ runs:
 	}
 	result := testutil.Composite(t, root, `- uses: actions/checkout@v6
   with: {ref: v1}
-- uses: $/local`, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+- uses: $/local`, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if !slices.Contains(result.Inputs, metadata) {
 		t.Fatalf("independent action metadata lost after alternate checkout: %v", result.Inputs)
 	}

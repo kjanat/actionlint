@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/config"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -66,7 +67,7 @@ func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
 	}
 	backend := &reviewShellcheckBackend{}
 	_, err = runTestAnalysis(t.Context(), analysisRequest{
-		WorkingDir: root, Tools: (adapters.Options{ShellcheckBackend: backend}).Registrations(),
+		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: backend}}),
 		Sources: []sourceUnit{{Path: "workflow.yml", Config: cfg, Project: workspace.Identity(root),
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n")}},
 	})
@@ -85,9 +86,13 @@ func TestRepositoryProcessHelper(t *testing.T) {
 	if err := os.WriteFile(os.Getenv("ACTIONLINT_REPOSITORY_PROCESS_MARKER"), []byte("executed"), 0o600); err != nil {
 		os.Exit(2)
 	}
-	if os.Getenv("ACTIONLINT_REPOSITORY_TOOL") == "shellcheck" {
+	switch {
+	case os.Getenv("ACTIONLINT_REPOSITORY_TOOL") == "shellcheck":
 		fmt.Print(`{"comments":[]}`)
-	} else {
+	case slices.Contains(os.Args, "--version"):
+		// The bundled Ruff provider checks the minimum version first.
+		fmt.Print("ruff 0.17.0\n")
+	default:
 		fmt.Print(`[]`)
 	}
 	os.Exit(0)
@@ -107,16 +112,13 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 				Args:       []string{"-test.run=^TestRepositoryProcessHelper$", "--"},
 				Env:        map[string]string{"ACTIONLINT_REPOSITORY_PROCESS": "1", "ACTIONLINT_REPOSITORY_PROCESS_MARKER": marker, "ACTIONLINT_REPOSITORY_TOOL": tool},
 			}}
-			cfg := &config.Config{}
-			options := adapters.Options{}
+			cfg := &config.Config{Tools: config.ToolsConfig{tool: {Backend: backend}}}
+			options := registry.Selections{tool: {Command: tool}}
 			shell := "python"
-			if tool == "ruff" {
-				cfg.Tools, options.Ruff = config.ToolsConfig{"ruff": {Backend: backend}}, "ruff"
-			} else {
-				cfg.Tools, options.ShellCheck = config.ToolsConfig{"shellcheck": {Backend: backend}}, "shellcheck"
+			if tool == "shellcheck" {
 				shell = "bash"
 			}
-			request := analysisRequest{WorkingDir: root, Tools: options.Registrations(), Sources: []sourceUnit{{Path: "ci.yml", Config: cfg,
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(options), Sources: []sourceUnit{{Path: "ci.yml", Config: cfg,
 				Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n")}}}
 			_, err := runTestAnalysis(t.Context(), request)
 			if err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {

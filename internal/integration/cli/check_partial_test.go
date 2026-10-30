@@ -165,7 +165,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
 			}
-			if status != 3 || result.Completed || !strings.Contains(result.Error, "could not initialize Ruff") || stdout.Len() != 0 {
+			if status != 3 || result.Completed || !strings.Contains(result.Error, "could not initialize ruff") || stdout.Len() != 0 {
 				t.Fatalf("changed failure contract: status=%d, stdout=%s, stderr=%s", status, &stdout, &stderr)
 			}
 			if len(result.Documents) != 1 {

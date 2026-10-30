@@ -9,7 +9,7 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestCompositeCheckoutLocations(t *testing.T) {
@@ -53,7 +53,7 @@ runs:
 - uses: ./source/local
   id: local
 - run: echo '${{ steps.local.outputs.missing }}'`
-			result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
@@ -114,7 +114,7 @@ runs:
 			result := testutil.Composite(t, root, tc.before+"\n- uses: $/local"+tc.call+`
 - shell: bash
   working-directory: .
-  run: ./bad.sh`, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+  run: ./bad.sh`, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			var shell, executable []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {

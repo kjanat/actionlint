@@ -6,17 +6,16 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"runtime"
 	"slices"
-	"strings"
 	"text/tabwriter"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-
-	"actionlint.kjanat.dev/v2/internal/tools/ruff"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 )
 
 type doctorTool struct {
@@ -70,8 +69,8 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 		if item.command != "" {
 			tool.Path, tool.Arguments, err = processconfig.ResolveOptions(item.command, item.options)
 			tool.Status = "available"
-			if err == nil && item.name == "ruff" && item.options != nil && item.options.Optional {
-				err = probeDoctorRuff(ctx, tool.Path, item.options)
+			if err == nil && item.options != nil && item.options.Optional {
+				err = probeDoctorVersion(ctx, item.name, item.command, item.options)
 				if ctx.Err() != nil {
 					return ctx.Err()
 				}
@@ -117,24 +116,30 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest) error {
 	return configErr
 }
 
-func probeDoctorRuff(ctx context.Context, executable string, options *processconfig.Options) error {
+// probeDoctorVersion runs the version probe of the bundled provider named
+// name against command, as analysis does before it uses an automatically
+// discovered tool. A provider without a version probe passes.
+func probeDoctorVersion(ctx context.Context, name, command string, options *processconfig.Options) error {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		return err
+	}
+	index := slices.IndexFunc(manifests, func(m provider.Manifest) bool { return m.Rule.Name == name })
+	if index < 0 || manifests[index].Process == nil || manifests[index].Process.Version == nil {
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var result error
-	run := func(args []string, stdin string, callback func([]byte, error) error) {
-		cmd := exec.CommandContext(ctx, executable, args...)
-		cmd.WaitDelay = time.Second
-		cmd.Dir = options.WorkingDir
-		cmd.Stdin = strings.NewReader(stdin)
-		cmd.Env = append(cmd.Environ(), options.Environment...)
-		cmd.Env = slices.DeleteFunc(cmd.Env, func(entry string) bool {
-			name, _, _ := strings.Cut(entry, "=")
-			return slices.ContainsFunc(ruff.UnsetEnvironment(), func(unset string) bool {
-				return name == unset || runtime.GOOS == "windows" && strings.EqualFold(name, unset)
-			})
-		})
-		output, err := cmd.Output()
-		result = callback(output, err)
+	processes := analyzerhost.NewProcessPool(ctx, 1)
+	defer processes.Wait()
+	resolved, err := processes.ConfiguredCommandRunner(command, options, false)
+	if err != nil {
+		return err
 	}
-	return ruff.CheckCompatibility(ctx, run, func() error { return result })
+	backend, err := process.NewBackend(manifests[index], resolved, process.Options{Programs: bundled.Program, Required: true})
+	if err != nil {
+		return err
+	}
+	_, err = backend.ProbeVersion(ctx)
+	return err
 }

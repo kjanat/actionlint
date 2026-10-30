@@ -47,10 +47,8 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ACTIONLINT_PARTIAL_RESULT_HELPER", "1")
 	t.Setenv("SHELLCHECK_OPTS", "")
 	ready := filepath.Join(t.TempDir(), "ready")
-	t.Setenv("ACTIONLINT_PARTIAL_RESULT_READY", ready)
 	workspace := workspaceWith(t, map[string]string{
 		"timeout.yaml": strings.ReplaceAll(brokenWorkflow, "echo hi", "echo HANG_ANALYZER\n        shell: bash"),
 	})
@@ -72,8 +70,10 @@ func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
 		stdout: &output, env: func(name string) string { return env[name] },
 		newID: fixedID("DELIM"), timeout: 2 * time.Second,
 		lint: func(req *lintRequest) *lintResult {
+			// The tool's environment is scrubbed; only these variables reach it.
 			req.shellcheckOptions = &processconfig.Options{
 				Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
+				Environment: []string{"ACTIONLINT_PARTIAL_RESULT_HELPER=1", "ACTIONLINT_PARTIAL_RESULT_READY=" + ready},
 			}
 			return runLinter(req)
 		},
@@ -147,7 +147,6 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ACTIONLINT_PARTIAL_RESULT_HELPER", "1")
 	t.Setenv("SHELLCHECK_OPTS", "")
 	workspace := workspaceWith(t, map[string]string{
 		"finding.yaml": cleanWorkflow,
@@ -173,8 +172,10 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 				stdout: &output, env: func(name string) string { return env[name] },
 				newID: fixedID("DELIM"), timeout: lintTimeout,
 				lint: func(req *lintRequest) *lintResult {
+					// The tool's environment is scrubbed; only this variable reaches it.
 					req.shellcheckOptions = &processconfig.Options{
 						Executable: &executable, Arguments: []string{"-test.run=^TestPartialResultAnalyzer$", "--"},
+						Environment: []string{"ACTIONLINT_PARTIAL_RESULT_HELPER=1"},
 					}
 					return runLinter(req)
 				},

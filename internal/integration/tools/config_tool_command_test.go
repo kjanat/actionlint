@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -26,6 +26,11 @@ func TestConfiguredBackendProcessHelper(t *testing.T) {
 		os.Exit(2)
 	}
 	args := os.Args[index+2:]
+	if args[0] == "--version" {
+		// The bundled Ruff provider checks the minimum version first.
+		fmt.Print("ruff 0.17.0\n")
+		os.Exit(0)
+	}
 	source, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		os.Exit(2)
@@ -68,10 +73,10 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			shell := "python"
 			if name == "ruff" {
 				cfg.Tools = repoconfig.ToolsConfig{"ruff": {Backend: process}}
-				request.Tools = (adapters.Options{Ruff: "ruff"}).Registrations()
+				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})
 			} else {
 				cfg.Tools = repoconfig.ToolsConfig{"shellcheck": {Backend: process}}
-				request.Tools = (adapters.Options{ShellCheck: "shellcheck"}).Registrations()
+				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})
 				shell = "bash"
 			}
 			requestSources = []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n")}}

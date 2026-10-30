@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -26,7 +26,7 @@ func TestCaseResultTypeInference(t *testing.T) {
 		{"constant predicate narrows to reachable branch", "case(true, 10, 'unreachable')", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			src := `on: push
 env:
   MY_ENV_VAR: |-

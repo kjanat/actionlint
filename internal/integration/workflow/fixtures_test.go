@@ -15,7 +15,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"golang.org/x/sys/execabs"
@@ -107,7 +107,7 @@ func TestWorkflowFixturesOK(t *testing.T) {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
 
-			request := application.Options{Tools: adapters.Options{ShellCheck: shellcheck}.Registrations()}
+			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}
 			requestSources := testutil.FixtureSources(t, []string{f}, proj, &repoconfig.Config{})
 			errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
 			if err != nil {
@@ -225,7 +225,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 					}
 					tool = shellcheck
 				}
-				request := application.Options{Tools: adapters.Options{ShellCheck: tool}.Registrations()}
+				request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tool}})}
 				requestSources := []workspace.Source{{Path: "test.yaml", Content: b, Project: proj, Config: &repoconfig.Config{}}}
 				errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
 				if err != nil {
@@ -258,7 +258,7 @@ func TestWorkflowFixturesBatch(t *testing.T) {
 	}
 	files = append(files, fs...)
 
-	request := application.Options{Tools: adapters.Options{ShellCheck: shellcheck}.Registrations()}
+	request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}
 	requestSources := testutil.FixtureSources(t, files, proj, &repoconfig.Config{})
 	errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, requestSources))
 	if err != nil {

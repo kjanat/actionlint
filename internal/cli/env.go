@@ -111,6 +111,11 @@ func (a *commandApp) applyEnvironment() error {
 		if err != nil {
 			return err
 		}
+		if i.Check.ShellcheckOptions == nil {
+			// The default command is optional: when it cannot run, the tool
+			// is skipped with a warning.
+			i.Check.ShellcheckOptions = &processconfig.Options{Optional: true}
+		}
 	}
 	if a.set["shellcheck"] {
 		i.Check.ShellcheckOptions = &processconfig.Options{IgnoreConfig: true}

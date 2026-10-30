@@ -13,7 +13,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -105,7 +105,7 @@ func TestRuffPythonScripts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src), Config: config}})
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src), Config: config}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -129,7 +129,7 @@ jobs:
     steps:
       - shell: python
         run: ` + script + "\n"
-		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -162,7 +162,7 @@ jobs:
         run: print('ok')
 `
 	start := time.Now()
-	_, err = application.Analyze(ctx, application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: options}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+	_, err = application.Analyze(ctx, application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 	if err == nil || time.Since(start) > 3*time.Second {
 		t.Fatalf("cancellation did not stop Ruff promptly: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestRuffMissingExecutable(t *testing.T) {
 			_, err = application.Analyze(t.Context(), application.Options{
 				WorkingDir: t.TempDir(),
 
-				Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &missing, Optional: tc.optional}}).Registrations(),
+				Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &missing, Optional: tc.optional}}}),
 			}, []workspace.Source{{Path: "ci.yml", Config: config, Content: []byte(`on: push
 jobs:
   test:
@@ -216,7 +216,7 @@ jobs:
       - shell: python
         run: print(missing) # actionlint:ignore ruff -- intentional undefined-name fixture
 `
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)
 	}
@@ -225,7 +225,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src), Config: cfg}})
+	result, err = application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src), Config: cfg}})
 	if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Severity != "warning" {
 		t.Fatalf("%+v %v", result, err)
 	}
@@ -247,7 +247,7 @@ jobs:
 			source = strings.Replace(source, "value = ${{ github.run_number }}.0", script, 1)
 			result, err := application.Analyze(t.Context(), application.Options{
 				WorkingDir: t.TempDir(),
-				Tools:      (adapters.Options{Ruff: testutil.RequireRuff(t)}).Registrations(),
+				Tools:      registry.Registrations(registry.Selections{"ruff": {Command: testutil.RequireRuff(t)}}),
 			}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}},
 			)
 			if err != nil {
@@ -278,7 +278,7 @@ jobs:
 			source = strings.ReplaceAll(source, "\n", ending)
 			result, err := application.Analyze(t.Context(), application.Options{
 				WorkingDir: t.TempDir(),
-				Tools:      (adapters.Options{Ruff: testutil.RequireRuff(t)}).Registrations(),
+				Tools:      registry.Registrations(registry.Selections{"ruff": {Command: testutil.RequireRuff(t)}}),
 			}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}},
 			)
 			if err != nil {
@@ -319,7 +319,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: options}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if (err != nil) != tc.failed {
 				t.Fatalf("error=%v, want failed=%v", err, tc.failed)
 			}
@@ -353,7 +353,7 @@ jobs:
       - shell: python
         run: print('ok')
 `
-			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command, RuffOptions: options}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command, Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -374,7 +374,7 @@ jobs:
       - shell: python
         run: 'if:'
 `
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--preview"}}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{"--preview"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +403,7 @@ jobs:
 `
 	for _, language := range []string{"ipynb", "pyi"} {
 		options := &processconfig.Options{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
-		result, err := application.Analyze(t.Context(), application.Options{Tools: (adapters.Options{RuffOptions: options}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+		result, err := application.Analyze(t.Context(), application.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -432,7 +432,7 @@ jobs:
     steps:
       - uses: $/python-action
 `
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: workspace.Identity(root)}})
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(src), Project: workspace.Identity(root)}})
 	if err != nil {
 		t.Fatal(err)
 	}

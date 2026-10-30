@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,6 +18,12 @@ func TestRepositoryRuffCommandHelper(t *testing.T) {
 	}
 	if err := os.WriteFile(os.Getenv("ACTIONLINT_REPO_RUFF_MARKER"), []byte("executed"), 0o600); err != nil {
 		os.Exit(2)
+	}
+	// The bundled Ruff provider checks the minimum version before it checks
+	// scripts.
+	if slices.Contains(os.Args, "--version") {
+		fmt.Print("ruff 0.17.0\n")
+		os.Exit(0)
 	}
 	fmt.Print("[]")
 	os.Exit(0)

@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -62,7 +62,7 @@ func TestConcurrencyExpressionConflictReview(t *testing.T) {
 				source += `    steps:
       - run: echo ok
 `
-				request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.Source
 				var err error
 				requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}

@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
@@ -28,13 +28,9 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 	}
 	result, err := application.Analyze(t.Context(), application.Options{
 		WorkingDir: dir,
-		Tools: (adapters.Options{
-			ShellCheck: "shellcheck",
-
-			ShellcheckRunner: func([]string, string) ([]byte, error) {
-				return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
-			},
-		}).Registrations(),
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Runner: func([]string, string) ([]byte, error) {
+			return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
+		}}}),
 	}, []workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\n")}},
 	)
 	if err != nil {

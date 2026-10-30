@@ -20,7 +20,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
@@ -128,7 +128,7 @@ func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: t.TempDir(),
 		Sources:    []sourceUnit{{Path: "workflow.yml", Content: content}, {Path: "workflow.yml", Content: content}},
-		Tools:      (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}).Registrations(),
+		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")
@@ -186,7 +186,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
 		Sources:    []sourceUnit{{Path: "first.yml", Content: content, Project: workspace.Identity(root)}, {Path: "second.yml", Content: content, Project: workspace.Identity(root)}},
-		Tools:      (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}).Registrations(),
+		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
 				t.Error("default rules were not built")

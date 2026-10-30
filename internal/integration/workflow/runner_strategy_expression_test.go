@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -28,7 +28,7 @@ func TestKnownStrategyRunnerLabelsLint(t *testing.T) {
 		{`{"include":[{"os":{"labels":null}}]}`, ""},
 	} {
 		t.Run(tc.matrix, func(t *testing.T) {
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error
 
@@ -68,7 +68,7 @@ func TestKnownStrategyRunnerGroupsLint(t *testing.T) {
 		{"group only", `{"os":[{"group":"custom-group"}]}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error
 

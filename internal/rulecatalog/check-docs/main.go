@@ -1,6 +1,6 @@
 package main
 
-import "actionlint.kjanat.dev/v2/internal/tools/adapters"
+import "actionlint.kjanat.dev/v2/internal/tools/registry"
 
 import (
 	"bufio"
@@ -45,7 +45,7 @@ func Actionlint(src []byte) ([]byte, error) {
 		}
 	}
 	root = project.RootDir()
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err
 	}

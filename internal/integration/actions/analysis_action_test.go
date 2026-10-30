@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"golang.org/x/sys/execabs"
@@ -207,9 +207,9 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 			var requestSources []workspace.Source
 			source := strings.Replace(testutil.CompositeAction, "echo ok", "echo $UNQUOTED", 1)
 			if tool == "shellcheck" {
-				request.Tools = (adapters.Options{ShellCheck: executable}).Registrations()
+				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: executable}})
 			} else {
-				request.Tools = (adapters.Options{Ruff: executable}).Registrations()
+				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: executable}})
 				source = strings.Replace(testutil.CompositeAction, "echo ok", "print(UNDEFINED)", 1)
 				source = strings.Replace(source, "shell: bash", "shell: python", 1)
 			}
@@ -245,7 +245,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 			result, err := application.Analyze(t.Context(), application.Options{
 				WorkingDir: root,
 
-				Tools: (adapters.Options{ShellCheck: executable}).Registrations(),
+				Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: executable}}),
 			}, []workspace.Source{
 				{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
 				{Path: "inner/action.yml", Content: []byte(manifest), Project: project, Config: cfg},

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -73,6 +74,11 @@ func TestRuffPlanningHelper(t *testing.T) {
 	}
 	if _, err := io.Copy(io.Discard, os.Stdin); err != nil {
 		t.Fatal(err)
+	}
+	// The bundled Ruff provider checks the minimum version first.
+	if slices.Contains(os.Args, "--version") {
+		fmt.Fprintln(os.Stdout, "ruff 0.17.0")
+		os.Exit(0)
 	}
 	fmt.Fprintln(os.Stdout, "[]")
 	os.Exit(0)

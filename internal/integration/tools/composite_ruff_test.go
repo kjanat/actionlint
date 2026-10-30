@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -47,7 +47,7 @@ runs:
 		t.Run(paths.first, func(t *testing.T) {
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" +
 				"      - uses: $/" + paths.first + "\n      - uses: $/" + paths.second + "\n"
-			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -118,7 +118,7 @@ jobs:
     steps:
       - uses: $/python-action
 `
-			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
+			result, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: path, Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
 			}

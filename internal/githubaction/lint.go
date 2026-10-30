@@ -15,7 +15,7 @@ import (
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 
@@ -124,12 +124,10 @@ func runLinter(req *lintRequest) *lintResult {
 		OnFilesSelected: func(files []string) {
 			result.fileCount = len(files)
 			result.fileCountKnown = true
-		}, Tools: adapters.Options{
-			Ruff:              req.ruff,
-			RuffOptions:       &processconfig.Options{Optional: true},
-			ShellcheckOptions: toolOptionsInDirectory(req.shellcheckOptions, req.workingDir),
-			ShellCheck:        req.shellcheck,
-		}.Registrations(),
+		}, Tools: registry.Registrations(registry.Selections{
+			"ruff":       {Command: req.ruff, Process: &processconfig.Options{Optional: true}},
+			"shellcheck": {Command: req.shellcheck, Process: toolOptionsInDirectory(req.shellcheckOptions, req.workingDir)},
+		}),
 	}
 
 	ctx := req.ctx

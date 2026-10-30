@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
@@ -65,7 +65,7 @@ jobs:
 					}
 				}
 				project := workspace.Identity(root)
-				request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 				var err error
 
 				check := func(diagnostics []*findingmodel.Finding, includeCallee bool) {

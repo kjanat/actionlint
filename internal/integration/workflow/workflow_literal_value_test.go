@@ -9,7 +9,7 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	sourceref "actionlint.kjanat.dev/v2/source"
 
@@ -66,7 +66,7 @@ jobs:
     steps:
       - id: action
         uses: ` + uses + tc.extra + "\n"
-				request := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.Source
 				var err error
 				requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(root), Config: workspace.Identity(root).Config()}}
@@ -95,7 +95,7 @@ jobs:
 
 func TestWorkflowLiteralCallInvalidSpec(t *testing.T) {
 	for _, uses := range []string{"oooops", "${{ 'oooops' }}"} {
-		request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+		request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 		var requestSources []workspace.Source
 		var err error
 		requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(`on: push

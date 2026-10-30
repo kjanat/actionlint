@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/config"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 type integratedAnalyzer struct {
@@ -39,7 +39,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 				t.Fatal(err)
 			}
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: true}
-			options := application.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}
+			options := application.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 			needed, err := application.RequiredTools(t.Context(), options, []string{"workflow.yml"})
 			if err != nil || needed["shellcheck"] != tc.want {
 				t.Fatalf("native fallback required=%v, want %t; error=%v", needed, tc.want, err)
@@ -157,7 +157,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 
 func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}
+	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	if _, err := application.ConfigureToolIntegrations(options, "shellcheck"); err == nil {
 		t.Fatal("document analyzer replaced an already selected engine")
 	}
@@ -168,7 +168,7 @@ func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 
 func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T) {
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: adapters.Options{ShellCheck: "shellcheck"}.Registrations()}
+	options := application.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	configured, err := application.ConfigureToolIntegrations(options)
 	if err != nil {
 		t.Fatal(err)

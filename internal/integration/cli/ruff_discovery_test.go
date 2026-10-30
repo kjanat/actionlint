@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
 func TestRuffAutomaticVersionCompatibility(t *testing.T) {
@@ -31,7 +32,6 @@ func TestRuffAutomaticVersionCompatibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin)
-	t.Setenv("ACTIONLINT_TEST_RUFF_DISCOVERY", "1")
 	for _, key := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
@@ -56,18 +56,19 @@ jobs:
 			{name: "old py315", version: "ruff 0.16.0", config: "tools: {ruff: {target-version: py315}}", source: python, warning: true, probe: true},
 			{name: "unrecognized", version: "unexpected banner", source: python, warning: true, probe: true},
 			{name: "current py315", version: "ruff 0.17.0", config: "tools: {ruff: {target-version: py315}}", source: python, probe: true},
-			{name: "explicit old", version: "ruff 0.9.0", source: python, explicit: true, status: 3},
-			{name: "environment binary old", version: "ruff 0.9.0", source: python, environment: "BIN", status: 3},
-			{name: "environment flags old", version: "ruff 0.9.0", source: python, environment: "FLAGS", status: 3},
+			// An explicitly selected Ruff is probed too; an old one is an error.
+			{name: "explicit old", version: "ruff 0.9.0", source: python, explicit: true, probe: true, status: 3},
+			{name: "environment binary old", version: "ruff 0.9.0", source: python, environment: "BIN", probe: true, status: 3},
+			{name: "environment flags old", version: "ruff 0.9.0", source: python, environment: "FLAGS", probe: true, status: 3},
 			{name: "non python", version: "ruff 0.9.0", source: commandGoodWorkflow},
 			{name: "tool disabled", version: "ruff 0.9.0", source: python, config: "tools: {ruff: false}"},
 			{name: "rule disabled", version: "ruff 0.9.0", source: python, config: "lint: {rules: {external: {ruff: off}}}"},
 			{name: "independent findings", version: "ruff 0.9.0", source: python + "      - run: echo '${{ missing.value }}'\n", warning: true, probe: true, status: 1},
 		} {
 			t.Run(fmt.Sprint(prefix, tc.name), func(t *testing.T) {
-				calls := filepath.Join(t.TempDir(), "calls")
-				t.Setenv("ACTIONLINT_TEST_RUFF_CALLS", calls)
-				t.Setenv("ACTIONLINT_TEST_RUFF_VERSION", tc.version)
+				// The tool runs with a scrubbed environment; the fake reads
+				// its version from a file beside it.
+				calls := testutil.RuffDiscoveryFixture(t, bin, tc.version)
 				switch tc.environment {
 				case "BIN":
 					t.Setenv("ACTIONLINT_RUFF_BIN", tool)
@@ -98,10 +99,10 @@ jobs:
 				var stdout, stderr bytes.Buffer
 				command := cli.Command{Stdout: &stdout, Stderr: &stderr}
 				status := command.Main(args)
-				if status != tc.status || strings.Contains(stderr.String(), "warning: skipping automatically discovered Ruff") != tc.warning {
+				if status != tc.status || strings.Contains(stderr.String(), "warning: skipping automatically discovered ruff") != tc.warning {
 					t.Fatalf("status=%d stdout=%s stderr=%s", status, &stdout, &stderr)
 				}
-				if tc.warning && strings.Count(stderr.String(), "warning: skipping automatically discovered Ruff") != 1 {
+				if tc.warning && strings.Count(stderr.String(), "warning: skipping automatically discovered ruff") != 1 {
 					t.Fatalf("warning repeated: %s", &stderr)
 				}
 				invocations, err := os.ReadFile(calls)

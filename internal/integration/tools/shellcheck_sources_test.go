@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
@@ -25,7 +25,7 @@ runs:
       working-directory: app
       run: . ./lib/check.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"-a"}}}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"-a"}}}})})
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}
@@ -55,7 +55,7 @@ runs:
         . ./value.sh
         echo $VALUE
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("composite did not analyze sibling source: %+v", result.Diagnostics)
 	}

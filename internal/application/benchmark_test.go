@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 
 	"golang.org/x/sys/execabs"
@@ -165,7 +165,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: bm.shellcheck}.Registrations()}, selected.Sources)
+				result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: bm.shellcheck}})}, selected.Sources)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -219,7 +219,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: adapters.Options{ShellCheck: shellcheck}.Registrations()}, selected.Sources)
+		result, err := application.Analyze(b.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}, selected.Sources)
 		if err != nil {
 			b.Fatal(err)
 		}

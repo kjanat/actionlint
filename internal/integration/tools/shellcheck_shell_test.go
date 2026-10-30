@@ -8,7 +8,7 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -59,7 +59,7 @@ jobs:
     steps:
       - run: '[[ -n "$HOME" ]]'
 `
-			request := application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			request := application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var requestSources []workspace.Source
 			var err error
 			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}

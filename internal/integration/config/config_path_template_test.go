@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -35,7 +35,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := application.Analyze(t.Context(), application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()}, []workspace.Source{{Path: ".github/workflows/test.yml", Content: content, Project: project, Config: project.Config()}})
+			result, err := application.Analyze(t.Context(), application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: ".github/workflows/test.yml", Content: content, Project: project, Config: project.Config()}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -12,7 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/resolver"
 	"actionlint.kjanat.dev/v2/runner"
@@ -158,23 +159,18 @@ func fileOptions(options FileOptions) (application.Options, error) {
 			}
 		}
 	}
-	var managedOnly []string
+	selections := registry.Selections{}
 	for name, tool := range map[string]Tool{"shellcheck": options.ShellCheck, "ruff": options.Ruff} {
+		// A managed analyzer replaces an unselected tool without a native fallback.
 		if managed[name] && tool.Process == nil && tool.Backend == nil {
-			managedOnly = append(managedOnly, name)
+			selections[name] = backend.Selection{Command: name, ManagedOnly: true}
+			continue
 		}
-	}
-	toolName := func(name string, tool Tool) string {
-		if managed[name] && tool.Process == nil && tool.Backend == nil {
-			return name
+		selections[name] = backend.Selection{
+			Command: configuredToolName(name, tool, options.LoadScriptEngine != nil),
+			Process: backendProcessOptions(tool, options.LoadScriptEngine != nil),
+			Backend: tool.Backend,
 		}
-		return configuredToolName(name, tool, options.LoadScriptEngine != nil)
-	}
-	processOptions := func(name string, tool Tool) *processconfig.Options {
-		if managed[name] && tool.Process == nil && tool.Backend == nil {
-			return nil
-		}
-		return backendProcessOptions(tool, options.LoadScriptEngine != nil)
 	}
 	return application.Options{
 		Resolver: options.Resolver, Analyzers: options.Analyzers, Runners: options.Runners, WorkingDir: root, ConfigFile: options.ConfigFile,
@@ -184,14 +180,7 @@ func fileOptions(options FileOptions) (application.Options, error) {
 		LoadScriptEngine:     options.LoadScriptEngine,
 
 		Presets:        options.Presets,
-		IgnorePatterns: options.IgnorePatterns, Tools: adapters.Options{
-			ManagedOnly:       managedOnly,
-			ShellCheck:        toolName("shellcheck", options.ShellCheck),
-			Ruff:              toolName("ruff", options.Ruff),
-			ShellcheckOptions: processOptions("shellcheck", options.ShellCheck),
-			RuffOptions:       processOptions("ruff", options.Ruff), RuffBackend: options.Ruff.Backend,
-			ShellcheckBackend: options.ShellCheck.Backend,
-		}.Registrations(),
+		IgnorePatterns: options.IgnorePatterns, Tools: registry.Registrations(selections),
 	}, nil
 }
 

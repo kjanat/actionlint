@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -42,10 +42,10 @@ func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
 			{Analyzer: failedActionFactProbe{name: "failed-action-source", fact: analyzer.Source, calls: &sourceCalls}},
 			{Analyzer: failedActionFactProbe{name: "failed-action-scripts", fact: analyzer.Scripts, calls: &scriptCalls}},
 		},
-		Tools: (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) {
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 			calls.Add(1)
 			return []byte(`{"comments":[]}`), nil
-		}}).Registrations(),
+		}}}),
 	}, []workspace.Source{{Path: "action.yml", Content: source}})
 	if result == nil || err == nil || err.Error() != `analyzer "failed-action-scripts" requires unavailable fact "scripts"` {
 		t.Fatal("failed action lost its result or explicit unavailable-fact error", err)

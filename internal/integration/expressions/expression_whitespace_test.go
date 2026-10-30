@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
@@ -58,7 +58,7 @@ jobs:
 			if uses.Value != tc.parsed {
 				t.Fatalf("decoded uses changed: got %q, want %q", uses.Value, tc.parsed)
 			}
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error
 			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: source, Project: nil}}
@@ -80,7 +80,7 @@ jobs:
 func TestExpressionWhitespacePreservesExpressionErrors(t *testing.T) {
 	for _, value := range []string{"${{ ... }}", "${{ fromJSON( }}", "${{ 'unfinished }}"} {
 		t.Run(value, func(t *testing.T) {
-			request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error
 
@@ -116,7 +116,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	request := application.Options{Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	request := application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 	sources := []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source)}}
 	errs, err := testutil.Diagnostics(application.Analyze(t.Context(), request, sources))
 	if err != nil {

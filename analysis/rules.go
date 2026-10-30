@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -21,7 +21,7 @@ func Rules(extensions ...analyzer.Analyzer) ([]rule.Descriptor, error) {
 		}
 		registrations = append(registrations, analyzer.Registration{Analyzer: extension})
 	}
-	configured, err := application.ConfigureToolIntegrations(application.Options{Analyzers: registrations, Tools: adapters.Options{ShellCheck: "shellcheck", Ruff: "ruff"}.Registrations()})
+	configured, err := application.ConfigureToolIntegrations(application.Options{Analyzers: registrations, Tools: registry.Registrations(registry.Defaults())})
 	if err != nil {
 		return nil, err
 	}

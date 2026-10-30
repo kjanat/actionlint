@@ -16,8 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
-	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
@@ -38,9 +37,9 @@ func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 	workflow := writeFixture(t, root, "ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: '. ./reported.sh'}]}}\n")
-	options := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellcheckRunner: func([]string, string) ([]byte, error) {
+	options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 		return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":1,"column":6,"level":"info","code":2086,"message":"reported source"}]}`, encodedPath), nil
-	}}).Registrations()}
+	}}})}
 	result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
@@ -91,13 +90,13 @@ jobs:
       - run: . ./lib/check.sh
 `)
 			options := application.Options{WorkingDir: root}
-			optionsTools := adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}
+			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}}
 			if tc.rc {
 				rc := writeFixture(t, root, ".shellcheckrc", "shell=bash\n")
-				optionsTools.ShellcheckSettings = &shellprofile.Settings{Config: shellprofile.RCFile(rc)}
+				options.ConfigFile = writeFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: '"+filepath.ToSlash(rc)+"'}}\n")
 			}
 			session := options
-			session.Tools = optionsTools.Registrations()
+			session.Tools = registry.Registrations(optionsTools)
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -187,7 +186,7 @@ jobs:
           echo $INLINE
           . ./scripts/lib.sh
 `)
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -221,7 +220,7 @@ func TestUnavailableSourcedDiagnosticKeepsYAMLSuppressionAnchor(t *testing.T) {
 				comment = " # actionlint:ignore shellcheck -- reviewed source"
 			}
 			workflow := writeFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: . ./scripts/lib.sh"+comment+"\n")
-			options := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()}
+			options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})}
 			result, err := application.Check(t.Context(), options, application.Input{Kind: application.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)

@@ -11,7 +11,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -71,7 +71,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -92,7 +92,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-	_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+	_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err == nil || !strings.Contains(err.Error(), "statistics output is not supported") {
 		t.Fatalf("statistics mode not rejected before invocation: %v", err)
 	}
@@ -119,7 +119,7 @@ jobs:
         run: |
           ` + strings.ReplaceAll(script+"\n"+tc.suffix, "\n", "\n          ") + "\n"
 					source = strings.ReplaceAll(source, "\n", ending)
-					result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+					result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -149,7 +149,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-		_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+		_, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err == nil || !strings.Contains(err.Error(), "silent output is not supported") {
 			t.Fatalf("silent mode not rejected before invocation: %v", err)
 		}
@@ -169,7 +169,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+	result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ jobs:
           match 1:
             case 1: pass
 `
-		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: (adapters.Options{Ruff: command}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
+		result, err := application.Analyze(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -237,7 +237,7 @@ jobs:
       - shell: python
         run: print(missing)
 `
-			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{RuffOptions: &processconfig.Options{Executable: &command, Arguments: flags}}).Registrations()}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+			_, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err == nil || !strings.Contains(err.Error(), "output redirection") {
 				t.Errorf("redirection not rejected: %v", err)
 			}

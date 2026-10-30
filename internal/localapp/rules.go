@@ -2,7 +2,7 @@ package localapp
 
 import (
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"context"
 	"errors"
 	"io"
@@ -24,7 +24,7 @@ func RulesSources(ctx context.Context, sources PluginSources) (result []rule.Des
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plugins.close(context.WithoutCancel(ctx))) }()
-	if _, err := plugins.configureManaged(application.Options{Tools: (adapters.Options{}).Registrations(), Analyzers: plugins.registrations()}); err != nil {
+	if _, err := plugins.configureManaged(application.Options{Tools: registry.Registrations(nil), Analyzers: plugins.registrations()}); err != nil {
 		return nil, err
 	}
 	var extensions []rule.Descriptor

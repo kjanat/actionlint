@@ -8,7 +8,7 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/builtin"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
@@ -152,7 +152,7 @@ runs:
   with: {path: source}
 - uses: ./source/local`, analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 		return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-	}, Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
@@ -187,7 +187,7 @@ runs:
 		t.Run(tc.name, func(t *testing.T) {
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {sparse-checkout: "+tc.sparse+"}\n- uses: ./local", analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 				return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-			}, Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("best-effort metadata validation lost: %v", result.Inputs)
 			}

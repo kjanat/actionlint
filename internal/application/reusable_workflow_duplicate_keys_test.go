@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
@@ -90,7 +90,7 @@ jobs:
 			if diff := cmp.Diff(fromAST.JobPermissions, fromFile.JobPermissions); diff != "" {
 				t.Fatal(diff)
 			}
-			request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 			check := func(errs []*findingmodel.Finding, want int) {
 				t.Helper()

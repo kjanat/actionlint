@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestShellcheckRequiredToolsCompositeBackends(t *testing.T) {
@@ -33,10 +33,12 @@ overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {enabled: false,
 overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {process: {executable: shellcheck}}}}, lint: {rules: {external: {shellcheck: off}}}}]`, false},
 		{"caller lint disabled", `tools: {shellcheck: {backend: {wasm: {path: engine.wasm}}}}
 overrides: [{includes: ['.github/workflows/**'], lint: {enabled: false}}, {includes: ['shell-action/**'], tools: {shellcheck: {backend: {process: {executable: shellcheck}}}}}]`, false},
+		// The composite action's own configuration decides whether its
+		// scripts are checked, whatever the calling workflow's says.
 		{"caller rule disabled", `tools: {shellcheck: {backend: {wasm: {path: engine.wasm}}}}
-overrides: [{includes: ['.github/workflows/**'], lint: {rules: {external: {shellcheck: off}}}}, {includes: ['shell-action/**'], tools: {shellcheck: {backend: {process: {executable: shellcheck}}}}}]`, false},
+overrides: [{includes: ['.github/workflows/**'], lint: {rules: {external: {shellcheck: off}}}}, {includes: ['shell-action/**'], tools: {shellcheck: {backend: {process: {executable: shellcheck}}}}}]`, true},
 		{"caller tool disabled", `tools: {shellcheck: {backend: {wasm: {path: engine.wasm}}}}
-overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: false}}, {includes: ['shell-action/**'], tools: {shellcheck: {enabled: true, backend: {process: {executable: shellcheck}}}}}]`, false},
+overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: false}}, {includes: ['shell-action/**'], tools: {shellcheck: {enabled: true, backend: {process: {executable: shellcheck}}}}}]`, true},
 		{"workflow-only wasm preserves process baseline", `tools: {shellcheck: {backend: {process: {executable: shellcheck}}}}
 overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: {backend: {wasm: {path: workflow.wasm}}}}}]`, true},
 	} {
@@ -47,7 +49,7 @@ overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: {backend: {
 			writeFixture(t, root, "shell-action/action.yml", "name: Shell\ndescription: test\nruns:\n  using: composite\n  steps: [{shell: bash, run: echo hello}]\n")
 			writeFixture(t, root, ".github/actionlint.yaml", tc.config)
 			for _, command := range []string{"shellcheck", ""} {
-				options := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+				options := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 				needed, err := application.RequiredTools(t.Context(), options, []string{workflow})
 				if err != nil || needed["shellcheck"] != (tc.want && command != "") {
 					t.Fatalf("command %q: needed=%+v, error=%v", command, needed, err)
@@ -64,7 +66,7 @@ func TestShellcheckRequiredToolsExplicitProcessAndCancellation(t *testing.T) {
 	defer cancel()
 	options := application.Options{
 		WorkingDir: root, ConfigFile: config,
-		Tools: (adapters.Options{ShellCheck: "shellcheck", ShellcheckOptions: &processconfig.Options{}}).Registrations(),
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{}}}),
 	}
 	needed, err := application.RequiredTools(ctx, options, []string{"never-read.yml"})
 	if err != nil || !needed["shellcheck"] {
@@ -91,10 +93,10 @@ overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {proce
 	backend := &recordingEngine{code: "SC2086"}
 	options := application.Options{
 		WorkingDir: root,
-		Tools: (adapters.Options{ShellCheck: "shellcheck", ShellcheckOptions: &processconfig.Options{
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{
 			Executable: &executable, AllowWasm: true,
 			LauncherArguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"},
-		}}).Registrations(),
+		}}}),
 		LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return backend, nil },
 	}
 	needed, err := application.RequiredTools(t.Context(), options, []string{workflow})

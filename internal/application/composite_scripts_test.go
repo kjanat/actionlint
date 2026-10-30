@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
@@ -34,7 +34,7 @@ jobs:
 `
 	first := writeFixture(t, root, ".github/workflows/a.yml", workflow)
 	second := writeFixture(t, root, ".github/workflows/b.yml", workflow)
-	session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: shellcheckForTest(t)}).Registrations()}
+	session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheckForTest(t)}})}
 	var err error
 
 	result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{first, second}})
@@ -107,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       `+strings.ReplaceAll(tc.workflowSteps, "\n", "\n      ")+"\n")
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -251,7 +251,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: {path: '`+checkout+"'}\n      - uses: ./"+prefix+"outer\n")
-			session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+			session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})
@@ -295,7 +295,7 @@ runs:
 jobs:
   first:
 `+job+"  second:\n"+job)
-	session := application.Options{WorkingDir: root, Tools: (adapters.Options{ShellCheck: command}).Registrations()}
+	session := application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 	var err error
 
 	result, err := application.Check(t.Context(), session, application.Input{Kind: application.Files, Paths: []string{workflow}})

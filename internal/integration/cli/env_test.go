@@ -54,7 +54,7 @@ func TestExplicitRuffMissingExecutable(t *testing.T) {
 			t.Fatalf("automatic discovery: %+v", got)
 		}
 		args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff=missing-ruff", "-")
-		if got := testRunCommand(commandGoodWorkflow, args...); got.Status == 0 || !strings.Contains(got.Stderr, "could not initialize Ruff") {
+		if got := testRunCommand(commandGoodWorkflow, args...); got.Status == 0 || !strings.Contains(got.Stderr, "could not initialize ruff") {
 			t.Fatalf("explicit checker silently skipped: %+v", got)
 		}
 		for _, disabled := range []string{"", "false", "FALSE"} {
@@ -217,6 +217,11 @@ type environmentToolReport struct {
 }
 
 func environmentToolHelper() int {
+	// The bundled Ruff provider checks the minimum version first.
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		fmt.Println("ruff 0.17.0")
+		return 0
+	}
 	input, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return 1

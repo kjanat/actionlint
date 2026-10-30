@@ -9,7 +9,7 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestCompositeShellcheck(t *testing.T) {
@@ -27,7 +27,7 @@ runs:
       run: |
         echo $VALUE
 `)
-			result := testutil.Composite(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -83,7 +83,7 @@ runs:
         . value.sh
         echo $VALUE
 `)
-			result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./outer", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./outer", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -128,7 +128,7 @@ runs:
         print(
     - uses: ./outer
 `)
-	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	for _, rule := range []string{"shellcheck"} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule && filepath.Join(root, d.Path) == metadata }) {
 			t.Errorf("missing %s syntax finding: %+v", rule, result.Diagnostics)
@@ -257,7 +257,7 @@ runs:
       if: `+tc.inner+"\n")
 			result := testutil.Composite(t, root, `- uses: actions/checkout@v6
 - uses: ./local
-  if: `+tc.outer, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+  if: `+tc.outer, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			finding := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == inner
 			})
@@ -289,7 +289,7 @@ runs:
     ignore: ['SC2086']
 `} {
 		testutil.WriteFixture(t, root, ".github/actionlint.yaml", config)
-		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 		if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
 			t.Fatalf("config ignored: %+v", result.Diagnostics)
 		}
@@ -310,7 +310,7 @@ runs:
   steps:
     - shell: bash
 `+directory+"      run: . ./lib.sh\n")
-		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+		result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 		found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 			return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == file
 		})
@@ -346,7 +346,7 @@ runs:
       working-directory: ${{ github.action_path }}
       run: . ./lib.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner
 	}) {
@@ -679,7 +679,7 @@ runs:
 `)
 	testutil.WriteFixture(t, root, "lib.sh", "if then\n")
 	testutil.WriteFixture(t, root, "relocated/lib.sh", "echo wrong file\n")
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
@@ -746,7 +746,7 @@ runs:
 ` + run, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result := testutil.Composite(t, root, tc.steps, application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+			result := testutil.Composite(t, root, tc.steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			warnings := 0
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" && strings.Contains(diagnostic.Message, "SC2086") {
@@ -795,7 +795,7 @@ runs:
       run: . ./lib.sh
 `)
 	testutil.WriteFixture(t, root, "lib.sh", "if then\n")
-	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: (adapters.Options{ShellCheck: command}).Registrations()})
+	result := testutil.Composite(t, root, "- uses: ./local", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("unknown checkout sourced local decoy: %+v", result.Diagnostics)
 	}

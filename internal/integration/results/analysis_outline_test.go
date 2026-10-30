@@ -19,7 +19,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -260,7 +260,7 @@ jobs:
 		{"workflow config", bogus("**"), "", map[string]string{"ci.yml": workflow}, "rule level", []string{"ci.yml:complete"}},
 		{"workflow config with partial parse", bogus("**"), "", map[string]string{"ci.yml": strings.Replace(workflow, "    steps:", "    unknown: x\n    steps:", 1)}, "rule level", []string{"ci.yml:partial"}},
 		{"workflow config with failed parse", bogus("**"), "", map[string]string{"ci.yml": "on: [\n"}, "rule level", []string{"ci.yml:failed"}},
-		{"ruff", nil, filepath.Join(root, "missing-ruff"), map[string]string{"ci.yml": workflow}, "could not initialize Ruff", []string{"ci.yml:complete"}},
+		{"ruff", nil, filepath.Join(root, "missing-ruff"), map[string]string{"ci.yml": workflow}, "could not initialize ruff", []string{"ci.yml:complete"}},
 		{"metadata config", bogus("local/action.yml"), "", map[string]string{"ci.yml": workflow}, "rule level", []string{"ci.yml:complete", action}},
 		{"one of several sources", bogus("bad.yml"), "", map[string]string{"bad.yml": workflow, "ok.yml": workflow}, "rule level", []string{"bad.yml:complete", "ok.yml:complete", action}},
 	} {
@@ -269,7 +269,7 @@ jobs:
 			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
 				sources = append(sources, workspace.Source{Path: path, Content: []byte(tc.sources[path]), Project: workspace.Identity(root), Config: tc.config})
 			}
-			analysis, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: (adapters.Options{Ruff: tc.ruff}).Registrations()}, sources)
+			analysis, err := application.Analyze(t.Context(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: tc.ruff}})}, sources)
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("fixture must fail with %q: %v", tc.wantErr, err)
 			}

@@ -7,6 +7,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.
@@ -54,6 +55,15 @@ type checkInvocation struct {
 	ExperimentalSet       bool
 	PreCommit             bool
 	AllowConfigProcesses  bool
+}
+
+// toolSelections returns the provider selections set by the --shellcheck and --ruff flags.
+// The generic --tool flag will replace both.
+func (c checkInvocation) toolSelections() registry.Selections {
+	return registry.Selections{
+		"shellcheck": {Command: c.ShellCheck, Process: c.ShellcheckOptions},
+		"ruff":       {Command: c.Ruff, Process: c.RuffOptions},
+	}
 }
 
 // renderOptions controls result presentation without changing analysis.

@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestSourcedShellcheckDeclarationSuppression(t *testing.T) {
@@ -69,7 +69,7 @@ runs:
     `+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 						steps = "- uses: ./local"
 					}
-					result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+					result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 					manifest := map[string]diagmodel.Position{}
 					if composite && tc.name == "split-anchor" {
 						manifest[`YAML anchors are not supported in action metadata; remove anchor "script"`] = diagmodel.Position{Line: 9, Column: 9}
@@ -149,7 +149,7 @@ runs:
 `)
 					steps = "- uses: ./outer"
 				}
-				result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+				result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 				want := 1
 				if both {
 					want = 0
@@ -175,7 +175,7 @@ func TestSourcedShellcheckAliasOrigin(t *testing.T) {
 - shell: bash
   working-directory: .
   run: *script`
-	result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+	result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "SC2086" {
 		t.Fatalf("alias origin crossed intervening declarations: %+v", result.Diagnostics)
 	}
@@ -214,7 +214,7 @@ runs:
 			if err := os.Symlink(filepath.Join(root, "local"), filepath.Join(root, "alias")); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			result := testutil.Composite(t, root, "- uses: ./local\n- uses: ./alias", application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+			result := testutil.Composite(t, root, "- uses: ./local\n- uses: ./alias", application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 			var sourced, policy int
 			for _, diagnostic := range result.Diagnostics {
 				switch diagnostic.Rule {
@@ -271,7 +271,7 @@ runs:
       run: . ./`+name+"\n")
 						steps = "- uses: ./local"
 					}
-					result := testutil.Composite(t, root, steps, application.Options{Tools: (adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}).Registrations()})
+					result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})})
 					if len(result.Diagnostics) != 1 {
 						t.Fatalf("sourced script comment changed diagnostics: %+v", result.Diagnostics)
 					}

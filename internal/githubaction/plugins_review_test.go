@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/testutil"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
@@ -114,7 +114,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			}
 			needed, err := localapp.RequiredToolsSources(t.Context(), application.Options{
 				WorkingDir: plan.workingDir, ConfigFile: plan.configFile, ConfigOverlays: plan.overlays,
-				IgnorePatterns: plan.ignore, Tools: adapters.Options{ShellCheck: plan.shellcheck, Ruff: plan.ruff}.Registrations(),
+				IgnorePatterns: plan.ignore, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: plan.shellcheck}, "ruff": {Command: plan.ruff}}),
 			}, plan.files, selected)
 			if err != nil || needed["ruff"] || needed["shellcheck"] {
 				t.Fatalf("needed=%+v err=%v", needed, err)

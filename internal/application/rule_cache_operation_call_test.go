@@ -11,7 +11,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/workflow/calls"
 	"actionlint.kjanat.dev/v2/internal/workspace"
@@ -175,7 +175,7 @@ jobs:
 		}
 	}
 	project := workspace.Identity(root)
-	request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 	for _, order := range [][]string{{"read.yaml", "write.yaml", "callee.yaml"}, {"callee.yaml", "write.yaml", "read.yaml"}} {
 		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
@@ -263,7 +263,7 @@ jobs:
 					}
 				}
 				project := workspace.Identity(root)
-				request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 				check := func(diagnostics []*findingmodel.Finding, want bool) {
 					t.Helper()
@@ -360,7 +360,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		}
 	}
 	project := workspace.Identity(root)
-	request := analysisRequest{WorkingDir: root, Tools: (adapters.Options{ShellCheck: ""}).Registrations()}
+	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 	var lConfig *repoconfig.Config
 	var err error
 

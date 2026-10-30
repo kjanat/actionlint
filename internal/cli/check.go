@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
@@ -59,10 +59,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 
 		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
 		Debug: c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
-		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: adapters.Options{
-			ShellCheck: c.ShellCheck, ShellcheckOptions: c.ShellcheckOptions,
-			Ruff: c.Ruff, RuffOptions: c.RuffOptions,
-		}.Registrations(),
+		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.toolSelections()),
 	}
 	if c.ResolverCommand != "" {
 		options.Resolver = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}

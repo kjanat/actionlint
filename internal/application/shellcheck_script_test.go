@@ -6,15 +6,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
-	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
 func TestShellcheckScriptSemantics(t *testing.T) {
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, shell, script, env, config string
-		settings                         string
 		args                             []string
 		code                             string
 		line                             int
@@ -51,24 +49,17 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		{name: "flag overrides config", shell: "bash", script: "[[ -n \"$HOME\" ]]", args: []string{"--shell=bash"}, config: "shell: sh"},
 		{name: "environment overrides config", shell: "sh", script: "[[ -n \"$HOME\" ]]", env: "--shell=bash", config: "shell: sh"},
 		{name: "flag overrides environment and config", shell: "bash", script: "[[ -n \"$HOME\" ]]", env: "--shell=sh", args: []string{"--shell=bash"}, config: "shell: sh"},
-		{name: "settings override inferred and project dialect", shell: "sh", script: "[[ -n \"$HOME\" ]]", config: "shell: sh", settings: "bash"},
-		{name: "directive overrides settings", shell: "sh", script: "# shellcheck shell=bash\n[[ -n \"$HOME\" ]]", settings: "sh"},
-		{name: "flag overrides settings", shell: "sh", script: "[[ -n \"$HOME\" ]]", args: []string{"-s", "bash"}, settings: "sh"},
-		{name: "environment overrides settings", shell: "sh", script: "[[ -n \"$HOME\" ]]", env: "--shell=bash", settings: "sh"},
 		{name: "config and user header combine", shell: "bash", script: "#!/bin/bash\n# shellcheck disable=SC2086\necho $HOME\necho $HOME", config: "disable: [SC2016]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("SHELLCHECK_OPTS", tc.env)
 			options := application.Options{WorkingDir: t.TempDir()}
-			optionsTools := adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: tc.args}}
+			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args}}}
 			if tc.config != "" {
 				options.ConfigFile = writeFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")
 			}
-			if tc.settings != "" {
-				optionsTools.ShellcheckSettings = &shellprofile.Settings{Shell: tc.settings}
-			}
 			session := options
-			session.Tools = optionsTools.Registrations()
+			session.Tools = registry.Registrations(optionsTools)
 			var err error
 
 			workflow := `on: push

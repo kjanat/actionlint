@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/render"
-	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -68,7 +68,7 @@ func shellcheck(args []string, stdin string) ([]byte, error) {
 
 func lint(source string, check uint64) {
 	src := []byte(source)
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: "/", Tools: adapters.Options{ShellcheckRunner: shellcheck}.Registrations()}, []workspace.Source{{Path: "test.yaml", Content: src}})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: "/", Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: shellcheck}})}, []workspace.Source{{Path: "test.yaml", Content: src}})
 	if check != latestCheck {
 		return // An edit superseded this worker request.
 	}
