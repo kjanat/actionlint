@@ -64,10 +64,11 @@ Construct invocation overlays with `config.ParseOverlay("config", source)` for a
 `Config.Policy.DisallowSuppressions`; it validates the report mode and selected rules.
 
 `Options.ReadFile` supplies a concurrent-safe file reader for files read by actionlint. It does not sandbox external tools.
-External tools are disabled by default in the library. Enable them explicitly with `Options.ShellCheck` or `Options.Ruff`:
+External tools are disabled by default in the library. Enable them explicitly in `Options.Tools`, keyed by tool id;
+`analysis.Tools()` lists the ids of the bundled tools, and any other key is an error:
 
 ```go
-options.Ruff = analysis.Tool{Process: &analysis.Process{Executable: "ruff"}}
+options.Tools = map[string]analysis.Tool{"ruff": {Process: &analysis.Process{Executable: "ruff"}}}
 ```
 
 `Executable` is a literal executable name or path. `Arguments` supplies separate arguments; no shell command-line parsing

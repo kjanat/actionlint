@@ -425,23 +425,29 @@ syntax is the same as [RE2][re2].
 actionlint -ignore 'label ".+" is unknown' -ignore '".+" is potentially untrusted'
 ```
 
-The `-shellcheck` option accepts a command name, path, or command line with arguments.
-An empty value disables ShellCheck.
+External tools are selected by id. The bundled tools are `shellcheck` and `ruff`;
+plugins may add more. `--tool ID` runs a tool with its own command on `PATH` and
+fails when that command cannot run. `--tool ID=COMMAND` accepts a command name, path,
+or command line with arguments. `--no-tool ID`, `--tool ID=false` and
+`--tool ID=` disable the tool, including plugins that provide it.
 
 ```sh
-actionlint -shellcheck=
-actionlint --shellcheck='shellcheck -e SC2086'
+actionlint --no-tool shellcheck
+actionlint --tool shellcheck='shellcheck -e SC2086'
 ```
 
-Ruff checks Python `run:` steps when `ruff` is installed on `PATH`. A bare
-`--ruff` selects `ruff` on `PATH`. Use `--ruff=COMMAND` for a custom executable or
-command line, and `--no-ruff` to disable it. ShellCheck follows the same pattern:
-`--shellcheck`, `--shellcheck=COMMAND`, and `--no-shellcheck`.
-Use `=` for optional command values; a separate argument is parsed as a workflow path.
-A disable flag wins if both forms are supplied and skips the tool's environment
-settings. Legacy single-dash spellings follow the same rules at the root and after
-subcommands. `=false` and empty values also disable the tool.
+Ruff checks Python `run:` steps when `ruff` is installed on `PATH`.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
+Both flags are repeatable; the last `--tool` or `--no-tool` for an id wins and
+replaces the tool's environment settings. Legacy single-dash spellings follow the
+same rules at the root and after subcommands. An id that names no bundled tool or
+loaded plugin is rejected with the list of valid ids.
+
+The former per-tool flags remain as hidden, deprecated aliases for one release.
+Each bundled tool has `--ID[=COMMAND]` (`--tool ID=COMMAND`) and `--no-ID`
+(`--no-tool ID`), such as `--shellcheck=` and `--no-ruff`; each use prints a
+deprecation warning. Use `=` for their optional command values; a separate argument
+is parsed as a workflow path.
 
 Repository configuration can select native executables through
 `tools.<name>.backend.process`. Authorize these selections with
@@ -449,16 +455,15 @@ Repository configuration can select native executables through
 including inherited files and overrides. Explicit CLI and environment commands
 already authorize their own executable.
 
-The deprecated `-pyflakes COMMAND` option selects Ruff's Pyflakes (`F`) rules
-when no Ruff option is supplied. The command value is never executed.
-An empty value or `false` disables Python linting. Explicit Ruff options take precedence.
+The deprecated `-pyflakes COMMAND` option, which the bundled Ruff tool declares,
+selects Ruff's Pyflakes (`F`) rules when nothing else selects Ruff. The command
+value is never executed. An empty value or `false` disables Ruff.
 
 To configure executables, arguments and child environments separately, use
-`ACTIONLINT_SHELLCHECK_BIN`, `ACTIONLINT_SHELLCHECK_FLAGS`, and
-`ACTIONLINT_SHELLCHECK_ENV`.
-Ruff has matching `ACTIONLINT_RUFF_BIN`, `ACTIONLINT_RUFF_FLAGS`, and
-`ACTIONLINT_RUFF_ENV` settings.
-An explicit tool flag overrides all three environment settings for that tool.
+`ACTIONLINT_TOOL_<ID>_BIN`, `ACTIONLINT_TOOL_<ID>_FLAGS`, and
+`ACTIONLINT_TOOL_<ID>_ENV`, where `<ID>` is the tool id upper-cased with dashes
+replaced by underscores, such as `ACTIONLINT_TOOL_SHELLCHECK_BIN`.
+`--tool` and `--no-tool` override all three environment settings for that tool.
 See [External linter environment settings](env.md#external-linters) for quoting,
 Windows paths and examples.
 
@@ -486,7 +491,7 @@ By default, `--norc` disables rc discovery. Set
 file/directory; an rc path replaces `--norc` with `--rcfile`. Following sourced
 files (`-x`) can be disabled in
 configuration and is disabled when the step's working directory cannot be resolved
-locally. Additional options can use `-shellcheck '<command line>'` or the
+locally. Additional options can use `--tool shellcheck='<command line>'` or the
 [`SHELLCHECK_OPTS` environment variable](checks.md#check-shellcheck-integ).
 
 <a id="format"></a>

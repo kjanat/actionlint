@@ -199,6 +199,9 @@ Check, fix, rules and LSP load declared plugins from their matching locked artif
 - `--no-config` (or `ACTIONLINT_NO_CONFIG`) disables automatic plugin selection; explicit sources/locks still work.
 - Explicit `--config FILE` selects that config's declarations and adjacent lock, with no repository fallback.
 - Otherwise declarations come from the nearest repository's `.github/actionlint.*`, with its adjacent lock.
+- `--no-tool ID` (or the Action's `disable-tools` input) drops plugins that provide the tool `ID`: a locked plugin
+  whose name or alias is `ID` is not downloaded, and any other plugin whose static metadata names `ID` as its engine
+  or one of its rules is not loaded.
 
 Checks spanning repositories with a lock require separate invocations or an explicit invocation-wide selection.
 LSP snapshots the startup selection; restart after installing, updating or removing plugins. Automatic project

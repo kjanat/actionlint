@@ -292,9 +292,9 @@ custom command beginning with either interpreter, including workflow/job shell
 defaults and local composite actions. New configurations and eligible legacy
 migrations declare the `ruff` Wasm plugin; normal checking loads its exact pinned
 artifact. See [plugin installation](plugins.md#install-from-the-registry).
-`--no-ruff` disables Ruff. A bare `--ruff`
-explicitly selects `ruff` on `PATH`, `--ruff=/path/to/ruff` selects a binary, and
-`--ruff='python -m ruff'` uses a Python module launcher. Without a selected plugin
+`--no-tool ruff` disables Ruff. A bare `--tool ruff`
+explicitly selects `ruff` on `PATH`, `--tool ruff=/path/to/ruff` selects a binary, and
+`--tool ruff='python -m ruff'` uses a Python module launcher. Without a selected plugin
 or explicit backend, the CLI searches `PATH` and skips Ruff
 when unavailable. It never executes the Python scripts being checked.
 
@@ -343,12 +343,12 @@ actionlint's workflow checks still run. Templates inside strings and comments
 continue to be sanitized while preserving source positions.
 Explicitly requested Ruff executables and Ruff invocation/configuration failures fail analysis.
 
-The Go library opts in with `analysis.Options.Ruff`, selecting either a
+The Go library opts in with `analysis.Options.Tools["ruff"]`, selecting either a
 `Process` or an `analyzer.ScriptBackend`; a zero `analysis.Tool` disables it.
 See [the library API](api.md#script-engine-backends) for cancellation, configuration
 and backend lifetime requirements.
-The GitHub Action's `ruff` input defaults to `true`.
-It enables the configured Ruff plugin; the Action does not install native Ruff
+The GitHub Action runs Ruff unless its `disable-tools` input lists `ruff`.
+It uses the configured Ruff plugin; the Action does not install native Ruff
 or add it to `PATH`. The default `plugin-cache: true` restores and saves the
 selected Wasm artifact bytes, keyed by operating system and exact digests.
 Restored bytes are verified before execution. See [Action caching](plugins.md#github-action-caching).
@@ -418,7 +418,7 @@ calls default to 64 MiB of guest memory and a 10-second limit; core calls defaul
 to 256 MiB and 10 seconds. Traps and exceeded limits fail that document's analysis.
 Core engines cache compiled code under the user cache directory in
 `actionlint/wazero`; downloaded artifacts use the separate verified artifact cache.
-An explicit `--ruff` command, including an empty one, takes precedence over a
+An explicit `--tool ruff` command, including `--tool ruff=false`, takes precedence over a
 configured `tools.ruff.backend.wasm`. Selecting a Ruff plugin and an explicit
 competing command/backend is rejected; select one execution source.
 See [script engines](plugins.md#script-engines) for lifecycle and Go APIs.
@@ -478,15 +478,15 @@ tools:
 `tools: {shellcheck: false}` disables ShellCheck; `true` enables it. The default is
 enabled for the selected plugin or available native executable. New configurations
 and eligible legacy migrations select the official ShellCheck Wasm plugin. This
-boolean alone does not install a dependency or override an empty CLI ShellCheck
-command or the Action's `shellcheck: false` input.
+boolean alone does not install a dependency or override `--no-tool shellcheck`
+or the Action's `disable-tools: shellcheck` input.
 
 The official registry plugin accepts individual disabled codes and optional check
 names through these settings. Explicit rc files, disabled-code ranges or `all`
 require a native ShellCheck executable. Source access and
 search paths work through the component's read-only host grants described below.
 To select a native process explicitly, use `tools.shellcheck.backend.process` or
-`--shellcheck=/path/to/shellcheck`.
+`--tool shellcheck=/path/to/shellcheck`.
 
 `config` accepts the inline settings below, an rc-file path, or a directory in
 which `.shellcheckrc`, then `shellcheckrc`, is searched. Rc discovery is otherwise

@@ -1,6 +1,6 @@
 // Package plugin loads WebAssembly plugins: components that implement
-// kjanat:actionlint/analyzer, runner-provider or script-engine and core engines that follow the
-// actionlint-plugin-ruff JSON ABI.
+// kjanat:actionlint/analyzer, runner-provider or script-engine, and core modules that
+// speak the wasm-core-json ABI.
 package plugin
 
 import (

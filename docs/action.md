@@ -40,7 +40,7 @@ normal `vX.Y.Z` tag for immutable consumption; major/minor tags move.
 `install-only` exports the selected binary for later steps without reading workflows
 or lint configuration. Keep `add-actionlint-to-path: true`
 (the default). Analysis and reporting inputs do not apply in this mode. This installs only the actionlint binary:
-`shellcheck` and `ruff` do not install plugins or native executables in install-only mode. Provision native tools
+Bundled tools such as ShellCheck and Ruff get no plugins or native executables in install-only mode. Provision native tools
 separately if later steps need them; configure and pin Wasm plugins for later actionlint checks.
 
 Use `version-file: .tool-versions` instead of `version` to read a checked-in pin:
@@ -140,8 +140,8 @@ Unknown inline keys fail with their location. Historically ignored file keys war
 For `lint.rules.correctness.expression-reference.options.variables`, `[]` allows
 no configured variables; `null` restores the default of no variable-name checking.
 
-`shellcheck: false` disables ShellCheck. The deprecated `pyflakes` input is ignored. The default
-`shellcheck: true` permits the tool; it does not override `tools.shellcheck: false`.
+`disable-tools: shellcheck` disables ShellCheck. Leaving ShellCheck out of
+`disable-tools` permits the tool; it does not override `tools.shellcheck: false`.
 Configure plugin options in `tools.shellcheck.config`; see [plugin configuration](plugins.md).
 
 ### Path bases
@@ -273,8 +273,10 @@ steps. `install-only: true` performs only this installation.
 
 Declare ShellCheck and Ruff Wasm plugins in the project's `plugins` list and
 commit the generated lockfile. The Action uses the same pinned artifacts as the
-CLI. `shellcheck: false` or `ruff: false` disables the corresponding checks;
-`true` permits configured checks. Plugin options belong in project configuration.
+CLI. `disable-tools` lists tool ids to turn off, such as `shellcheck` or `ruff`;
+those tools run neither natively nor as plugins, and a locked plugin whose name or
+alias is a listed id is not downloaded. An id that names no bundled tool or loaded
+plugin fails with the list of valid ids. Plugin options belong in project configuration.
 See [installing and configuring plugins](plugins.md).
 
 `plugin-cache: true` restores and saves pinned Wasm artifacts through GitHub
@@ -304,8 +306,9 @@ All inputs are optional. Booleans accept `true`/`false`.
 | `config-file`            | discover       | Explicit config file.                                                                                                                 |
 | `config`                 | inherit        | Inline YAML/JSON overlay.                                                                                                             |
 | `working-directory`      | `.`            | Analysis directory.                                                                                                                   |
-| `shellcheck`             | `true`         | Permit the configured ShellCheck Wasm checks.                                                                                         |
-| `ruff`                   | `true`         | Permit the configured Ruff Wasm checks.                                                                                               |
+| `disable-tools`          | empty          | Tool ids to turn off, separated by newlines or commas, such as `shellcheck` or `ruff`.                                                |
+| `shellcheck`             | `true`         | Deprecated: `false` is the same as listing `shellcheck` in `disable-tools`.                                                           |
+| `ruff`                   | `true`         | Deprecated: `false` is the same as listing `ruff` in `disable-tools`.                                                                 |
 | `add-actionlint-to-path` | `true`         | Export actionlint for later steps.                                                                                                    |
 | `output-file`            | empty          | Workspace-relative legacy-format report.                                                                                              |
 | `fail-on-error`          | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
@@ -330,7 +333,9 @@ All inputs are optional. Booleans accept `true`/`false`.
 
 ## Migration and troubleshooting
 
-The deprecated `pyflakes` input is ignored; use a configured Ruff plugin.
+The per-tool inputs `shellcheck` and `ruff` are deprecated aliases of `disable-tools`
+for one release; `false` prints a deprecation warning. The deprecated `pyflakes` input
+is ignored.
 **JSON and JSON Lines change shape**:
 JSON now returns the versioned result object instead of a diagnostic array; JSON
 Lines uses versioned canonical diagnostics. Update consumers using the

@@ -1175,15 +1175,15 @@ blocks. Other scalar forms, such as folded blocks, fall back to reporting the `r
 actionlint applies ShellCheck to recognized `bash`, `sh`, `dash`, and `ksh` interpreters, including executable paths and
 supported custom shell templates. A leading `# shellcheck shell=...` directive can select a supported dialect explicitly.
 
-By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `-shellcheck`
-option on running `actionlint` command takes a command line: a command name, a file path, or a command with flags such as
-`-shellcheck 'shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so `-f`/`--format`
-and file arguments must not be passed. Setting empty string by `shellcheck=` disables shellcheck integration explicitly.
+By default, actionlint checks if `shellcheck` command exists in your system and uses it when it is found. The `--tool`
+option takes a command line after the tool id: a command name, a file path, or a command with flags such as
+`--tool shellcheck='shellcheck -e SC2086'`. Those arguments are prepended to the ones actionlint appends itself, so
+`-f`/`--format` and file arguments must not be passed. `--no-tool shellcheck` disables shellcheck integration explicitly.
 
 By default, actionlint passes `--norc` to disable rc-file discovery. Set
 [`tools.shellcheck.config`](config.md#shellcheck) to inline settings, an rc-file path, or a directory containing
 `.shellcheckrc` or `shellcheckrc`. Selecting an rc file replaces `--norc` with `--rcfile`; relative config paths resolve from
-the selected actionlint configuration file's directory. Additional options can use `-shellcheck '<command line>'` or the
+the selected actionlint configuration file's directory. Additional options can use `--tool shellcheck='<command line>'` or the
 `SHELLCHECK_OPTS` environment variable described below.
 
 Since both `${{ }}` expression syntax and ShellScript's variable access `$FOO` use `$`, the remaining `${{ }}` confuses
