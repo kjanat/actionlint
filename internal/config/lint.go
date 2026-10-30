@@ -26,9 +26,11 @@ type LintRulesConfig struct {
 	// Concern groups accept a level or a mapping of rule IDs to settings.
 	Correctness Group `yaml:"correctness,omitempty"`
 	Suspicious  Group `yaml:"suspicious,omitempty"`
-	Security    Group `yaml:"security,omitempty"`
-	Policy      Group `yaml:"policy,omitempty"`
-	External    Group `yaml:"external,omitempty"`
+	// Style reports workflows GitHub accepts that do nothing, such as jobs without steps.
+	Style    Group `yaml:"style,omitempty"`
+	Security Group `yaml:"security,omitempty"`
+	Policy   Group `yaml:"policy,omitempty"`
+	External Group `yaml:"external,omitempty"`
 	// Plugins selects registered document analyzers by their unique rule names.
 	Plugins Group `yaml:"plugins,omitempty"`
 	// Nursery contains rules under development, excluded from stable presets.

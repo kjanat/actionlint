@@ -318,7 +318,7 @@ func (p *Parser) parseBool(n *syntax.Node) *workflowlang.Bool {
 }
 
 func (p *Parser) parseInt(n *syntax.Node) *workflowlang.Int {
-	if n.Kind != syntax.ScalarNode || (n.Tag != workflowlang.YamlTagInt && n.Tag != workflowlang.YamlTagStr) {
+	if n.Kind != syntax.ScalarNode || (n.Tag != workflowlang.YamlTagInt && n.Tag != workflowlang.YamlTagFloat && n.Tag != workflowlang.YamlTagStr) {
 		p.typeErrorf(n, "expected scalar node for integer value but found %s node with %q tag", NodeKindName(n.Kind), n.Tag)
 		return nil
 	}
@@ -334,6 +334,20 @@ func (p *Parser) parseInt(n *syntax.Node) *workflowlang.Int {
 		return &workflowlang.Int{
 			Expression: e,
 			Pos:        PosAt(n),
+		}
+	}
+
+	if n.Tag == workflowlang.YamlTagFloat {
+		// GitHub converts a fractional literal by truncating toward zero.
+		f, err := strconv.ParseFloat(n.Value, 64)
+		if err != nil || math.IsNaN(f) || math.Trunc(f) < math.MinInt32 || math.Trunc(f) > math.MaxInt32 {
+			p.errorf(n, CodeInvalidValue, "invalid integer value: %q", n.Value)
+			return nil
+		}
+		return &workflowlang.Int{
+			Value:         int(math.Trunc(f)),
+			TruncatedFrom: n.Value,
+			Pos:           PosAt(n),
 		}
 	}
 
@@ -867,13 +881,17 @@ func (p *Parser) parseEventWithNoConfig(n *syntax.Node) workflowlang.Event {
 func (p *Parser) parseEvents(n *syntax.Node) []workflowlang.Event {
 	switch n.Kind {
 	case syntax.ScalarNode:
+		// GitHub accepts an empty "on"; the empty-triggers rule reports it.
+		if n.Tag == workflowlang.YamlTagNull {
+			return []workflowlang.Event{}
+		}
 		if e := p.parseEventWithNoConfig(n); e != nil {
 			return []workflowlang.Event{e}
 		}
-		return []workflowlang.Event{}
+		return nil
 	case syntax.MappingNode:
 		ret := []workflowlang.Event{}
-		for e := range p.parseSectionMapping("on", n, false, true) {
+		for e := range p.parseSectionMapping("on", n, true, true) {
 			pos := e.key.Pos
 			switch e.id {
 			case "schedule":
@@ -893,23 +911,29 @@ func (p *Parser) parseEvents(n *syntax.Node) []workflowlang.Event {
 			}
 		}
 
-		return ret
+		return declaredEvents(ret, n)
 	case syntax.SequenceNode:
-		l := len(n.Content)
-		p.checkNotEmpty("on", l, n)
-		ret := make([]workflowlang.Event, 0, l)
-
+		ret := make([]workflowlang.Event, 0, len(n.Content))
 		for _, c := range n.Content {
 			if e := p.parseEventWithNoConfig(c); e != nil {
 				ret = append(ret, e)
 			}
 		}
 
-		return ret
+		return declaredEvents(ret, n)
 	case syntax.DocumentNode, syntax.AliasNode:
 	}
 	p.typeErrorf(n, "\"on\" section value is expected to be mapping or sequence but found %s node", NodeKindName(n.Kind))
 	return nil
+}
+
+// declaredEvents keeps an empty result only for an empty collection, which GitHub
+// accepts. When every declared event failed to parse, the error already says so.
+func declaredEvents(events []workflowlang.Event, n *syntax.Node) []workflowlang.Event {
+	if len(events) == 0 && len(n.Content) != 0 {
+		return nil
+	}
+	return events
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
@@ -1275,15 +1299,6 @@ func (p *Parser) ParseMatrixMapping(pos *workflowlang.Pos, n *syntax.Node, allow
 	return ret
 }
 
-// https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel
-func (p *Parser) parseMaxParallel(n *syntax.Node) *workflowlang.Int {
-	i := p.parseInt(n)
-	if i != nil && i.Expression == nil && i.Value <= 0 {
-		p.errorf(n, CodeInvalidValue, "value at \"max-parallel\" must be greater than zero: %v", i.Value)
-	}
-	return i
-}
-
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy
 func (p *Parser) parseStrategy(pos *workflowlang.Pos, n *syntax.Node) *workflowlang.Strategy {
 	ret := &workflowlang.Strategy{Pos: pos}
@@ -1299,7 +1314,7 @@ func (p *Parser) parseStrategy(pos *workflowlang.Pos, n *syntax.Node) *workflowl
 		case "fail-fast":
 			ret.FailFast = p.parseBool(e.val)
 		case "max-parallel":
-			ret.MaxParallel = p.parseMaxParallel(e.val)
+			ret.MaxParallel = p.parseInt(e.val)
 		default:
 			p.unexpectedKey(e.key, "strategy", []string{"matrix", "fail-fast", "max-parallel"})
 		}
@@ -1572,8 +1587,8 @@ func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *workflowlang.
 	for _, e := range entries {
 		switch e.id {
 		case "run":
-			// Empty scripts keep their physical scalar and script occurrence;
-			// ParseSteps diagnoses them for workflow steps only.
+			// Empty scripts keep their physical scalar and script occurrence.
+			// GitHub accepts them; the empty-run rule reports workflow steps.
 			ret.Run = p.parseString(e.val, true)
 			ret.RunPos = e.key.Pos
 			ret.Source = p.ScriptSourceForDeclaration(e.val, e.key.Pos)
@@ -1689,8 +1704,6 @@ func (p *Parser) parseStepExecParallel(entries []workflowMappingEntry) *workflow
 	return ret
 }
 
-// ParseStep parses a workflow or composite-action step.
-// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
 // ParseStepIsolated decodes one step and reports whether it decoded without
 // syntax errors. The step's errors are not retained by the parser.
 func (p *Parser) ParseStepIsolated(n *syntax.Node) (*workflowlang.Step, bool) {
@@ -1701,6 +1714,8 @@ func (p *Parser) ParseStepIsolated(n *syntax.Node) (*workflowlang.Step, bool) {
 	return step, clean
 }
 
+// ParseStep parses a workflow or composite-action step.
+// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
 func (p *Parser) ParseStep(n *syntax.Node) *workflowlang.Step {
 	ret := &workflowlang.Step{Pos: PosAt(n)}
 
@@ -1782,12 +1797,10 @@ func (p *Parser) ParseStep(n *syntax.Node) *workflowlang.Step {
 }
 
 // ParseSteps parses a sequence of workflow steps.
-// An empty "run" script is diagnosed here rather than in ParseStep: composite
-// action steps share ParseStep and treat any parse error as rejecting the
-// step, while their metadata accepts an empty script.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
 func (p *Parser) ParseSteps(n *syntax.Node) []*workflowlang.Step {
-	if ok := p.checkSequence("steps", n, false); !ok {
+	// GitHub accepts an empty steps list; the empty-job rule reports it.
+	if ok := p.checkSequence("steps", n, true); !ok {
 		return nil
 	}
 
@@ -1795,11 +1808,6 @@ func (p *Parser) ParseSteps(n *syntax.Node) []*workflowlang.Step {
 
 	for _, c := range n.Content {
 		if s := p.ParseStep(c); s != nil {
-			// Only a run value that passed CheckString carries a source scalar,
-			// so non-string values are not reported twice.
-			if run, ok := s.Exec.(*workflowlang.ExecRun); ok && run.Run.SourceScalar.HasSource && run.Run.Value == "" {
-				p.errorAt(run.Run.Pos, CodeEmptyValue, "string should not be empty")
-			}
 			ret = append(ret, s)
 		}
 	}
@@ -2015,9 +2023,6 @@ func (p *Parser) parseJob(id *workflowlang.String, n *syntax.Node) *workflowlang
 		}
 	} else {
 		// When not a reusable call
-		if ret.Steps == nil {
-			p.errorfAt(id.Pos, CodeMissingKey, "\"steps\" section is missing in job %q", id.Value)
-		}
 		if ret.RunsOn == nil {
 			p.errorfAt(id.Pos, CodeMissingKey, "\"runs-on\" section is missing in job %q", id.Value)
 		}
@@ -2072,6 +2077,7 @@ func (p *Parser) parse(n *syntax.Node) *workflowlang.Workflow {
 			w.Description = p.parseString(v, true)
 		case "on":
 			w.On = p.parseEvents(v)
+			w.OnPos = k.Pos
 		case "permissions":
 			w.Permissions = p.parsePermissions(k.Pos, v)
 		case "cache-mode":
@@ -2102,7 +2108,7 @@ func (p *Parser) parse(n *syntax.Node) *workflowlang.Workflow {
 		}
 	}
 
-	if w.On == nil {
+	if w.OnPos == nil {
 		p.error(n, CodeMissingKey, "\"on\" section is missing in workflow")
 	}
 	if w.Jobs == nil {

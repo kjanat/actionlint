@@ -32,7 +32,7 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 		t.Fatal(got)
 	}
 	categoryByHeading := map[string]string{
-		"Correctness:": "correctness", "Security:": "security", "Suspicious:": "suspicious",
+		"Correctness:": "correctness", "Security:": "security", "Suspicious:": "suspicious", "Style:": "style",
 		"Policy:": "policy", "External linters:": "external",
 	}
 	var headings []string
@@ -55,7 +55,7 @@ func TestRulesGroupedTextAndStructuredJSON(t *testing.T) {
 		previous = name
 		delete(byName, name)
 	}
-	wantHeadings := []string{"Correctness:", "Security:", "Suspicious:", "Policy:"}
+	wantHeadings := []string{"Correctness:", "Security:", "Suspicious:", "Style:", "Policy:"}
 	if !slices.Equal(headings, wantHeadings) || len(byName) != 0 {
 		t.Fatalf("headings=%v, missing rules=%v", headings, byName)
 	}

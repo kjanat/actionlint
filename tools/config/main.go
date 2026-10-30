@@ -117,7 +117,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
-		for _, category := range []string{"correctness", "suspicious", "security", "policy", "external", "nursery", "plugins"} {
+		for _, category := range []string{"correctness", "suspicious", "style", "security", "policy", "external", "nursery", "plugins"} {
 			group := reflectMapping(struct {
 				Preset actionlint.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
 				Level  actionlint.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`

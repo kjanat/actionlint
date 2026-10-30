@@ -82,6 +82,8 @@ func (check Declaration) Workflow(w declaration.WorkflowView) []Finding {
 		return Events(w)
 	case "glob":
 		return GlobWorkflow(w)
+	case "empty-triggers":
+		return EmptyTriggers(w)
 
 	case "env-var":
 		return environment(w.Env())
@@ -124,6 +126,10 @@ func (check Declaration) Job(job declaration.JobView) []Finding {
 		return GlobJob(job)
 	case "parallel-steps":
 		return ParallelSteps(job)
+	case "empty-job":
+		return EmptyJob(job)
+	case "numeric-values":
+		return NumericValues(job)
 
 	case "env-var":
 		out := environment(job.Env())
@@ -156,6 +162,8 @@ func (check Declaration) Step(step declaration.StepView) []Finding {
 		return environment(step.Env())
 	case "if-cond":
 		return conditional(step.If())
+	case "empty-run":
+		return EmptyRun(step)
 	}
 	return nil
 }

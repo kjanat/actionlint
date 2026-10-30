@@ -1069,6 +1069,13 @@ func (v IntView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+func (v IntView) TruncatedFrom() string {
+	node := v.data()
+	if node == nil {
+		return ""
+	}
+	return node.TruncatedFrom
+}
 func (v IntView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2786,6 +2793,13 @@ func (v WorkflowView) On() iter.Seq[EventView] {
 	}
 }
 func (v WorkflowView) OnPresent() bool { node := v.data(); return node != nil && node.On != nil }
+func (v WorkflowView) OnPos() (workflowlang.Pos, bool) {
+	node := v.data()
+	if node == nil || node.OnPos == nil {
+		return workflowlang.Pos{}, false
+	}
+	return *node.OnPos, true
+}
 func (v WorkflowView) Permissions() PermissionsView {
 	node := v.data()
 	if node == nil {

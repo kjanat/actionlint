@@ -148,7 +148,7 @@ External tool provisioning uses each selected file's effective settings.
 ## Lint rules
 
 The `lint` section owns analysis settings. Rules are grouped by concern:
-`correctness`, `suspicious`, `security`, `policy`, and `external`. The separate
+`correctness`, `suspicious`, `style`, `security`, `policy`, and `external`. The separate
 `nursery` group is reserved for rules under development. Optional stable rules
 belong to their concern groups. The shared
 configuration resolver is used by analysis frontends. Top-level `overrides` provide
@@ -229,6 +229,22 @@ lint:
 Unknown dynamic axes with boolean/numeric filters are also examined. Dynamic
 filter entries and wholly dynamic matrices cannot be checked statically.
 See [expression behavior](expression-behavior.md) for evidence and limitations.
+
+### Style rules
+
+`lint.rules.style` holds recommended rules for declarations GitHub accepts that
+do nothing. They report at warning severity. They used to be syntax errors;
+GitHub's own parser accepts each of these documents.
+
+| Rule             | What it examines                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| `empty-triggers` | An empty `on:` section (`on:`, `on: []` or `on: {}`). No event starts the workflow. |
+| `empty-job`      | A job without steps, or with `steps: []`. Reusable workflow calls are exempt.       |
+| `empty-run`      | A run step whose script is empty.                                                   |
+
+The related `numeric-values` rule belongs to `correctness`. It reports a
+fractional `max-parallel`, which GitHub truncates toward zero (`1.5` runs as `1`),
+and a `max-parallel` that is not greater than zero.
 
 ### Nursery
 

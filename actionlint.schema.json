@@ -153,6 +153,10 @@
                   "script-interpolation",
                   "deprecated-commands",
                   "if-cond",
+                  "numeric-values",
+                  "empty-triggers",
+                  "empty-job",
+                  "empty-run",
                   "require-commit-hash",
                   "require-job-timeout",
                   "require-permissions",
@@ -1760,6 +1764,75 @@
                                 }
                               ]
                             },
+                            "numeric-values": {
+                              "title": "numeric-values",
+                              "description": "Report numeric values GitHub truncates or that cannot take effect",
+                              "markdownDescription": "Report numeric values GitHub truncates or that cannot take effect",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
                             "parallel-steps": {
                               "title": "parallel-steps",
                               "description": "Validate background-step references and restrictions within parallel groups",
@@ -2511,6 +2584,10 @@
                           "script-interpolation",
                           "deprecated-commands",
                           "if-cond",
+                          "numeric-values",
+                          "empty-triggers",
+                          "empty-job",
+                          "empty-run",
                           "require-commit-hash",
                           "require-job-timeout",
                           "require-permissions",
@@ -3101,6 +3178,9 @@
                                                           "credentials",
                                                           "deprecated-commands",
                                                           "disallow-suppressions",
+                                                          "empty-job",
+                                                          "empty-run",
+                                                          "empty-triggers",
                                                           "env-var",
                                                           "event-payload",
                                                           "events",
@@ -3119,6 +3199,7 @@
                                                           "missing-local-action",
                                                           "mixed-type-comparisons",
                                                           "mixed-type-matrix-filters",
+                                                          "numeric-values",
                                                           "parallel-steps",
                                                           "permissions",
                                                           "require-commit-hash",
@@ -3963,6 +4044,285 @@
                                   },
                                   "additionalProperties": false
                                 }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "style": {
+                      "title": "style",
+                      "description": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                      "markdownDescription": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                      "oneOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "default",
+                                "off",
+                                "on",
+                                "info",
+                                "warn",
+                                "error",
+                                "all"
+                              ]
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null",
+                              "doNotSuggest": true
+                            }
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "empty-job": {
+                              "title": "empty-job",
+                              "description": "Report jobs without steps",
+                              "markdownDescription": "Report jobs without steps",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "empty-run": {
+                              "title": "empty-run",
+                              "description": "Report steps with an empty run script",
+                              "markdownDescription": "Report steps with an empty run script",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "empty-triggers": {
+                              "title": "empty-triggers",
+                              "description": "Report workflows that declare no triggers",
+                              "markdownDescription": "Report workflows that declare no triggers",
+                              "oneOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "default",
+                                        "off",
+                                        "on",
+                                        "info",
+                                        "warn",
+                                        "error"
+                                      ]
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null",
+                                      "doNotSuggest": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "level"
+                                  ],
+                                  "properties": {
+                                    "level": {
+                                      "title": "level",
+                                      "description": "Diagnostic level for this rule: default",
+                                      "markdownDescription": "Diagnostic level for this rule: default",
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "default",
+                                            "off",
+                                            "on",
+                                            "info",
+                                            "warn",
+                                            "error"
+                                          ]
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    },
+                                    "options": {
+                                      "title": "options",
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "level": {
+                              "title": "level",
+                              "description": "Default diagnostic level for rules in this group.",
+                              "markdownDescription": "Default diagnostic level for rules in this group.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "default",
+                                    "off",
+                                    "on",
+                                    "info",
+                                    "warn",
+                                    "error"
+                                  ]
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null",
+                                  "doNotSuggest": true
+                                }
+                              ]
+                            },
+                            "preset": {
+                              "title": "preset",
+                              "description": "Baseline selection within this group: recommended",
+                              "markdownDescription": "Baseline selection within this group: recommended",
+                              "type": "string",
+                              "enum": [
+                                "recommended",
+                                "all",
+                                "none"
                               ]
                             }
                           },
@@ -5934,6 +6294,75 @@
                                           }
                                         ]
                                       },
+                                      "numeric-values": {
+                                        "title": "numeric-values",
+                                        "description": "Report numeric values GitHub truncates or that cannot take effect",
+                                        "markdownDescription": "Report numeric values GitHub truncates or that cannot take effect",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
                                       "parallel-steps": {
                                         "title": "parallel-steps",
                                         "description": "Validate background-step references and restrictions within parallel groups",
@@ -6685,6 +7114,10 @@
                                     "script-interpolation",
                                     "deprecated-commands",
                                     "if-cond",
+                                    "numeric-values",
+                                    "empty-triggers",
+                                    "empty-job",
+                                    "empty-run",
                                     "require-commit-hash",
                                     "require-job-timeout",
                                     "require-permissions",
@@ -7275,6 +7708,9 @@
                                                                     "credentials",
                                                                     "deprecated-commands",
                                                                     "disallow-suppressions",
+                                                                    "empty-job",
+                                                                    "empty-run",
+                                                                    "empty-triggers",
                                                                     "env-var",
                                                                     "event-payload",
                                                                     "events",
@@ -7293,6 +7729,7 @@
                                                                     "missing-local-action",
                                                                     "mixed-type-comparisons",
                                                                     "mixed-type-matrix-filters",
+                                                                    "numeric-values",
                                                                     "parallel-steps",
                                                                     "permissions",
                                                                     "require-commit-hash",
@@ -8137,6 +8574,285 @@
                                             },
                                             "additionalProperties": false
                                           }
+                                        ]
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "style": {
+                                "title": "style",
+                                "description": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                                "markdownDescription": "Rules concerning style. Use true/on to enable the group, false/off to disable it, all for its full preset, or a mapping for individual rules. Group settings override the root preset; individual settings override the group.",
+                                "oneOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "default",
+                                          "off",
+                                          "on",
+                                          "info",
+                                          "warn",
+                                          "error",
+                                          "all"
+                                        ]
+                                      },
+                                      {
+                                        "type": "boolean"
+                                      },
+                                      {
+                                        "type": "null",
+                                        "doNotSuggest": true
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "empty-job": {
+                                        "title": "empty-job",
+                                        "description": "Report jobs without steps",
+                                        "markdownDescription": "Report jobs without steps",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "empty-run": {
+                                        "title": "empty-run",
+                                        "description": "Report steps with an empty run script",
+                                        "markdownDescription": "Report steps with an empty run script",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "empty-triggers": {
+                                        "title": "empty-triggers",
+                                        "description": "Report workflows that declare no triggers",
+                                        "markdownDescription": "Report workflows that declare no triggers",
+                                        "oneOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "default",
+                                                  "off",
+                                                  "on",
+                                                  "info",
+                                                  "warn",
+                                                  "error"
+                                                ]
+                                              },
+                                              {
+                                                "type": "boolean"
+                                              },
+                                              {
+                                                "type": "null",
+                                                "doNotSuggest": true
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "level"
+                                            ],
+                                            "properties": {
+                                              "level": {
+                                                "title": "level",
+                                                "description": "Diagnostic level for this rule: default",
+                                                "markdownDescription": "Diagnostic level for this rule: default",
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "default",
+                                                      "off",
+                                                      "on",
+                                                      "info",
+                                                      "warn",
+                                                      "error"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "boolean"
+                                                  },
+                                                  {
+                                                    "type": "null",
+                                                    "doNotSuggest": true
+                                                  }
+                                                ]
+                                              },
+                                              "options": {
+                                                "title": "options",
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "level": {
+                                        "title": "level",
+                                        "description": "Default diagnostic level for rules in this group.",
+                                        "markdownDescription": "Default diagnostic level for rules in this group.",
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "default",
+                                              "off",
+                                              "on",
+                                              "info",
+                                              "warn",
+                                              "error"
+                                            ]
+                                          },
+                                          {
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "type": "null",
+                                            "doNotSuggest": true
+                                          }
+                                        ]
+                                      },
+                                      "preset": {
+                                        "title": "preset",
+                                        "description": "Baseline selection within this group: recommended",
+                                        "markdownDescription": "Baseline selection within this group: recommended",
+                                        "type": "string",
+                                        "enum": [
+                                          "recommended",
+                                          "all",
+                                          "none"
                                         ]
                                       }
                                     },

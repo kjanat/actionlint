@@ -57,7 +57,7 @@ func fromInt(i *wl.Int) *Int {
 	if i == nil {
 		return nil
 	}
-	return &Int{Value: i.Value, Expression: fromString(i.Expression), Pos: fromPos(i.Pos)}
+	return &Int{Value: i.Value, Expression: fromString(i.Expression), TruncatedFrom: i.TruncatedFrom, Pos: fromPos(i.Pos)}
 }
 
 func fromFloat(f *wl.Float) *Float {
@@ -468,7 +468,7 @@ func fromWorkflow(w *wl.Workflow) *Workflow {
 	}
 	return &Workflow{
 		Name: fromString(w.Name), Description: fromString(w.Description), RunName: fromString(w.RunName),
-		On: convertSlice(w.On, fromEvent), Permissions: fromPermissions(w.Permissions),
+		On: convertSlice(w.On, fromEvent), OnPos: fromPos(w.OnPos), Permissions: fromPermissions(w.Permissions),
 		CacheMode: fromCacheMode(w.CacheMode), Env: fromEnv(w.Env), Defaults: fromDefaults(w.Defaults),
 		Concurrency: fromConcurrency(w.Concurrency), Jobs: convertMap(w.Jobs, fromJob), Pos: fromPos(w.Pos),
 	}

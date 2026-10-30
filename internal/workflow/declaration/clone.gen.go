@@ -314,6 +314,7 @@ func (b *builder) cloneInt(in *workflowlang.Int) *workflowlang.Int {
 	out := new(workflowlang.Int)
 	out.Value = in.Value
 	out.Expression = b.cloneString(in.Expression)
+	out.TruncatedFrom = in.TruncatedFrom
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
@@ -776,6 +777,7 @@ func (b *builder) cloneWorkflow(in *workflowlang.Workflow) *workflowlang.Workflo
 			out.On[i37] = b.cloneEvent(in.On[i37])
 		}
 	}
+	out.OnPos = b.clonePos(in.OnPos)
 	out.Permissions = b.clonePermissions(in.Permissions)
 	out.CacheMode = b.cloneCacheMode(in.CacheMode)
 	out.Env = b.cloneEnv(in.Env)

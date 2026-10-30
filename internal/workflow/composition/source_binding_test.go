@@ -83,8 +83,9 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + steps)
 			document := documentparse.Workflow("ci.yml", content)
-			if len(document.Findings) != 1 || document.Findings[0].Message != "string should not be empty" {
-				t.Fatalf("empty workflow script was not diagnosed exactly once: %v", document.Findings)
+			// GitHub accepts an empty script; the empty-run rule reports it after parsing.
+			if len(document.Findings) != 0 {
+				t.Fatalf("empty workflow script was rejected by the parser: %v", document.Findings)
 			}
 			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := registry.Document("ci.yml", content, document)

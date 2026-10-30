@@ -70,6 +70,11 @@ func NewRuleJobNeeds() *declarationRule    { return newDeclarationRule("job-need
 func NewRulePermissions() *declarationRule { return newDeclarationRule("permissions") }
 func NewRuleIfCond() *declarationRule      { return newDeclarationRule("if-cond") }
 
+func NewRuleEmptyTriggers() *declarationRule { return newDeclarationRule("empty-triggers") }
+func NewRuleEmptyJob() *declarationRule      { return newDeclarationRule("empty-job") }
+func NewRuleEmptyRun() *declarationRule      { return newDeclarationRule("empty-run") }
+func NewRuleNumericValues() *declarationRule { return newDeclarationRule("numeric-values") }
+
 func NewRuleCredentials() *declarationRule   { return newDeclarationRule("credentials") }
 func NewRuleEvents() *declarationRule        { return newDeclarationRule("events") }
 func NewRuleGlob() *declarationRule          { return newDeclarationRule("glob") }

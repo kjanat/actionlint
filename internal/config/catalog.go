@@ -95,6 +95,10 @@ func Rules() []Rule {
 
 		{Name: "deprecated-commands", SupportsActions: true, Scope: SourceScope},
 		{Name: "if-cond"},
+		{Name: "numeric-values"},
+		{Name: "empty-triggers"},
+		{Name: "empty-job"},
+		{Name: "empty-run"},
 		{Name: "require-commit-hash", Options: func() any { return &lintconfig.CommitHashOptions{} }, Configure: boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash })},
 		{Name: "require-job-timeout", Options: func() any { return &JobTimeoutPolicy{} }, Configure: configureJobTimeout},
 		{Name: "require-permissions", Options: func() any { return &PermissionsPolicy{} }, Configure: configurePermissions},

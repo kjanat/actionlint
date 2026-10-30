@@ -434,11 +434,11 @@
     ],
     "languageservices/workflow-parser/testdata/reader/concurrency.yml": [
       "<stdin>:9:15: the runtime or service used by \"actions/checkout@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]",
-      "<stdin>:15:3: \"steps\" section is missing in job \"build2\" [syntax-check]",
-      "<stdin>:18:3: \"steps\" section is missing in job \"build3\" [syntax-check]",
-      "<stdin>:21:3: \"steps\" section is missing in job \"build4\" [syntax-check]",
+      "<stdin>:15:3: job \"build2\" has no steps, so it does nothing [empty-job]",
+      "<stdin>:18:3: job \"build3\" has no steps, so it does nothing [empty-job]",
+      "<stdin>:21:3: job \"build4\" has no steps, so it does nothing [empty-job]",
       "<stdin>:25:27: type of expression must be bool but found type string [expression]",
-      "<stdin>:26:3: \"steps\" section is missing in job \"build5\" [syntax-check]"
+      "<stdin>:26:3: job \"build5\" has no steps, so it does nothing [empty-job]"
     ],
     "languageservices/workflow-parser/testdata/reader/errors-job-id-leading-underscores.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-job-runs-on-group-invalid-prefix.yml": [],
@@ -577,14 +577,14 @@
       "<stdin>:6:20: object, array, and null values should not be evaluated in template with ${{ }} but evaluating the value of type {conclusion: string; outcome: string; outputs: {string => string}} [expression]"
     ],
     "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": [
-      "<stdin>:3:3: \"steps\" section is missing in job \"build\" [syntax-check]",
+      "<stdin>:3:3: job \"build\" has no steps, so it does nothing [empty-job]",
       "<stdin>:4:18: property \"os\" is not defined in matrix [expression-reference]",
       "<stdin>:5:28: property \"experimental\" is not defined in matrix [expression-reference]",
       "<stdin>:7:22: type of expression at \"float number value\" must be number but found type string [expression]",
       "<stdin>:15:17: property \"step_id\" is not defined in steps [expression-reference]",
       "<stdin>:18:20: property \"step1\" is not defined in steps [expression-reference]",
       "<stdin>:19:20: property \"step2\" is not defined in steps [expression-reference]",
-      "<stdin>:24:3: \"steps\" section is missing in job \"build2\" [syntax-check]",
+      "<stdin>:24:3: job \"build2\" has no steps, so it does nothing [empty-job]",
       "<stdin>:36:29: property \"number\" is not defined in github.event for the configured workflow events [event-payload]"
     ],
     "languageservices/workflow-parser/testdata/reader/misc-steps.yml": [
@@ -788,7 +788,7 @@
       ":1:1: runtime \"node12\" is no longer bundled with current GitHub Actions runners. update runs.using in local action \"Test JavaScript action\" to a current runtime [action]"
     ],
     "schemastore/src/test/github-workflow/1162.yaml": [
-      "<stdin>:8:3: \"steps\" section is missing in job \"check_run\" [syntax-check]"
+      "<stdin>:8:3: job \"check_run\" has no steps, so it does nothing [empty-job]"
     ],
     "schemastore/src/test/github-workflow/1567.yaml": [
       "<stdin>:17:15: the runtime or service used by \"actions/checkout@v2\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
@@ -799,7 +799,7 @@
       "<stdin>:11:15: the runtime or service used by \"actions/setup-node@v3\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
     ],
     "schemastore/src/test/github-workflow/2579-2.yaml": [
-      "<stdin>:5:3: \"steps\" section is missing in job \"check-bats-version\" [syntax-check]",
+      "<stdin>:5:3: job \"check-bats-version\" has no steps, so it does nothing [empty-job]",
       "<stdin>:8:29: label \"label-1\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
     ],
     "schemastore/src/test/github-workflow/918.yaml": [
@@ -814,9 +814,9 @@
       "<stdin>:12:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
     ],
     "schemastore/src/test/github-workflow/concurrency.yaml": [
-      "<stdin>:7:3: \"steps\" section is missing in job \"build\" [syntax-check]",
-      "<stdin>:10:3: \"steps\" section is missing in job \"test\" [syntax-check]",
-      "<stdin>:21:14: string should not be empty [syntax-check]"
+      "<stdin>:7:3: job \"build\" has no steps, so it does nothing [empty-job]",
+      "<stdin>:10:3: job \"test\" has no steps, so it does nothing [empty-job]",
+      "<stdin>:21:9: step runs an empty script, so it does nothing [empty-run]"
     ],
     "schemastore/src/test/github-workflow/conditions.yaml": [
       "<stdin>:8:9: constant expression \"false\" in condition is always falsy. this step or job will be skipped [if-cond]",
@@ -830,8 +830,8 @@
       "<stdin>:29:9: constant expression \"0\" in condition is always falsy. this step or job will be skipped [if-cond]"
     ],
     "schemastore/src/test/github-workflow/containers.yaml": [
-      "<stdin>:6:3: \"steps\" section is missing in job \"build\" [syntax-check]",
-      "<stdin>:27:3: \"steps\" section is missing in job \"test\" [syntax-check]"
+      "<stdin>:6:3: job \"build\" has no steps, so it does nothing [empty-job]",
+      "<stdin>:27:3: job \"test\" has no steps, so it does nothing [empty-job]"
     ],
     "schemastore/src/test/github-workflow/defaults.yaml": [
       "<stdin>:16:20: property \"shell\" is not defined in matrix [expression-reference]",
@@ -845,8 +845,8 @@
       "<stdin>:15:14: env must be object but found string [expression]"
     ],
     "schemastore/src/test/github-workflow/environments.yaml": [
-      "<stdin>:6:3: \"steps\" section is missing in job \"build\" [syntax-check]",
-      "<stdin>:11:3: \"steps\" section is missing in job \"test\" [syntax-check]"
+      "<stdin>:6:3: job \"build\" has no steps, so it does nothing [empty-job]",
+      "<stdin>:11:3: job \"test\" has no steps, so it does nothing [empty-job]"
     ],
     "schemastore/src/test/github-workflow/event-trigger.yaml": [
       "<stdin>:11:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
@@ -857,11 +857,11 @@
       "<stdin>:22:15: the runtime or service used by \"actions/setup-node@v1\" action is retired on GitHub.com. update the action's version to fix this issue [action]"
     ],
     "schemastore/src/test/github-workflow/fail-fast.yaml": [
-      "<stdin>:6:3: \"steps\" section is missing in job \"boolean\" [syntax-check]",
-      "<stdin>:14:3: \"steps\" section is missing in job \"non-boolean\" [syntax-check]"
+      "<stdin>:6:3: job \"boolean\" has no steps, so it does nothing [empty-job]",
+      "<stdin>:14:3: job \"non-boolean\" has no steps, so it does nothing [empty-job]"
     ],
     "schemastore/src/test/github-workflow/issue-3208.yaml": [
-      "<stdin>:4:3: \"steps\" section is missing in job \"ci\" [syntax-check]",
+      "<stdin>:4:3: job \"ci\" has no steps, so it does nothing [empty-job]",
       "<stdin>:5:14: label \"unknown\" is unknown. available labels are \"windows-latest\", \"windows-latest-8-cores\", \"windows-2025\", \"windows-2025-vs2026\", \"windows-2022\", \"windows-11-arm\", \"windows-11-vs2026-arm\", \"ubuntu-slim\", \"ubuntu-latest\", \"ubuntu-latest-4-cores\", \"ubuntu-latest-8-cores\", \"ubuntu-latest-16-cores\", \"ubuntu-26.04\", \"ubuntu-26.04-arm\", \"ubuntu-24.04\", \"ubuntu-24.04-arm\", \"ubuntu-22.04\", \"ubuntu-22.04-arm\", \"xcode-27\", \"xcode-27-xlarge\", \"macos-latest\", \"macos-latest-xlarge\", \"macos-latest-large\", \"macos-26-intel\", \"macos-26-xlarge\", \"macos-26-large\", \"macos-26\", \"macos-15-intel\", \"macos-15-xlarge\", \"macos-15-large\", \"macos-15\", \"macos-14-xlarge\", \"macos-14-large\", \"macos-14\", \"self-hosted\", \"x64\", \"arm\", \"arm64\", \"linux\", \"macos\", \"windows\". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]"
     ],
     "schemastore/src/test/github-workflow/issue_2463_file_1.yaml": [
@@ -948,7 +948,7 @@
       "<stdin>:19:3: unknown Webhook event \"project_card\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
       "<stdin>:20:3: unknown Webhook event \"project_column\". see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names [events]",
       "<stdin>:33:3: no workflow is configured for \"workflow_run\" event [events]",
-      "<stdin>:39:14: string should not be empty [syntax-check]"
+      "<stdin>:39:9: step runs an empty script, so it does nothing [empty-run]"
     ],
     "schemastore/src/test/github-workflow/parallel-steps.yaml": [
       "<stdin>:21:15: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update the version of action \"actions/checkout@v4\" [action]",

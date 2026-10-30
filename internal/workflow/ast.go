@@ -259,6 +259,9 @@ type Int struct {
 	Value int
 	// Expression is a String when expression syntax ${{ }} is used for this section.
 	Expression *String
+	// TruncatedFrom is the source spelling of a fractional literal GitHub
+	// truncates toward zero to produce Value. It is empty for whole numbers.
+	TruncatedFrom string
 	// Pos is a Position in source.
 	Pos *Pos
 }
@@ -1333,6 +1336,8 @@ type Workflow struct {
 	// On is list of events which can trigger this Workflow.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onpushpull_requestbranchestags
 	On []Event
+	// OnPos is the position of the "on" key. It is nil when the key is absent.
+	OnPos *Pos
 	// Permissions is configuration of Permissions of this Workflow.
 	Permissions *Permissions
 	// CacheMode sets default cache access. Nil leaves the trigger-dependent default in effect.

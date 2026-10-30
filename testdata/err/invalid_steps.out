@@ -3,7 +3,7 @@ test.yaml:11:9: unexpected key "uses" for step to run shell command. expected on
 test.yaml:14:9: unexpected key "shell" for step to execute action. expected one of "background", "continue-on-error", "env", "id", "if", "name", "timeout-minutes", "uses", "with" [syntax-check]
 test.yaml:17:9: element of "steps" section should not be empty. please remove this section if it's unnecessary [syntax-check]
 test.yaml:17:9: step must run script with "run" section or run action with "uses" section [syntax-check]
-test.yaml:18:3: "steps" section is missing in job "test2" [syntax-check]
+test.yaml:18:3: job "test2" has no steps, so it does nothing [empty-job]
 test.yaml:21:11: "steps" section must be sequence node but got scalar node with "!!null" tag [syntax-check]
 test.yaml:25:9: step must run script with "run" section or run action with "uses" section [syntax-check]
 test.yaml:27:8: element of "steps" section should not be empty. please remove this section if it's unnecessary [syntax-check]
