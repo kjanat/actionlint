@@ -1,6 +1,8 @@
 package expressions
 
 import (
+	"fmt"
+
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -23,7 +25,7 @@ type typedExpr struct {
 type Checker struct {
 	options          Options
 	dependencies     Dependencies
-	errs             []*findingmodel.Finding
+	errs             []report
 	matrixTy         *exprlang.ObjectType
 	matrixScriptSafe map[string]scriptValueProof
 	scriptEnv        workflowdecl.EnvView
@@ -69,15 +71,53 @@ func New(dependencies Dependencies, options Options) *Checker {
 // Configure replaces semantic options before checking a document.
 func (rule *Checker) Configure(options Options) { rule.options = options }
 
+// report is the stored form of an expression finding. Expression findings only
+// carry a rule, code, message and source range, so they are held as plain
+// values; every reader receives fresh findings and cannot alter the checker's.
+type report struct {
+	rule, code, message string
+	start, end          workflowlang.Pos
+	// hasEnd records whether the expression mapped an inclusive end position.
+	hasEnd bool
+}
+
+func (r report) finding() *findingmodel.Finding {
+	finding := findingmodel.At(&r.start, r.rule, r.message)
+	finding.Code = r.code
+	if r.hasEnd {
+		end := r.end
+		finding.EndPosition = &end
+	}
+	return finding
+}
+
 // Findings returns diagnostics accumulated during workflow expression checking.
-func (rule *Checker) Findings() []*findingmodel.Finding { return rule.errs }
+// The result is detached from the checker.
+func (rule *Checker) Findings() []*findingmodel.Finding { return rule.FindingsSince(0) }
+
+// FindingCount returns the number of diagnostics accumulated so far. Pass it to
+// FindingsSince to read only the diagnostics reported after this point.
+func (rule *Checker) FindingCount() int { return len(rule.errs) }
+
+// FindingsSince returns diagnostics reported after mark, a prior FindingCount.
+// The result is detached from the checker.
+func (rule *Checker) FindingsSince(mark int) []*findingmodel.Finding {
+	if mark >= len(rule.errs) {
+		return nil
+	}
+	findings := make([]*findingmodel.Finding, 0, len(rule.errs)-mark)
+	for _, r := range rule.errs[mark:] {
+		findings = append(findings, r.finding())
+	}
+	return findings
+}
 
 func (rule *Checker) Error(pos *workflowlang.Pos, message string) {
-	rule.errs = append(rule.errs, findingmodel.At(pos, "expression", message))
+	rule.errs = append(rule.errs, report{rule: "expression", message: message, start: *pos})
 }
 
 func (rule *Checker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
-	rule.errs = append(rule.errs, findingmodel.Errorf(pos, "expression", format, args...))
+	rule.Error(pos, fmt.Sprintf(format, args...))
 }
 
 func (rule *Checker) debug(format string, args ...any) {

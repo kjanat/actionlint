@@ -48,10 +48,9 @@ func (r *RuleExpression) LeaveInvocation(context invocation.Context) error {
 	return nil
 }
 func (r *RuleExpression) collect(visit func() error) error {
-	before := len(r.Findings())
+	before := r.FindingCount()
 	err := visit()
-	added := r.Findings()[before:]
-	r.findings = append(r.findings, added...)
+	r.findings = append(r.findings, r.FindingsSince(before)...)
 	return err
 }
 func (r *RuleExpression) VisitStep(step workflowdecl.StepView) error {

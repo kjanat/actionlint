@@ -7,7 +7,6 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	contextspec "actionlint.kjanat.dev/v2/internal/expression/context"
-	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -60,20 +59,18 @@ func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
 	if rule.compositeScript && err.Rule != "script-injection" && err.Rule != "script-interpolation" {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
-	pos := convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)
-	var end *workflowlang.Pos
-	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
-		pos = mapped
-		end = rule.expressionPosition(rule.expressionOffset+err.EndOffset, true)
-	}
 	kind := err.Rule
 	if kind == "" {
 		kind = "expression"
 	}
-	diagnostic := findingmodel.At(pos, kind, err.Message)
-	diagnostic.Code = err.Code
-	diagnostic.EndPosition = end
-	rule.errs = append(rule.errs, diagnostic)
+	r := report{rule: kind, code: err.Code, message: err.Message, start: convertExprLineColToPos(err.Line, err.Column, lineBase, colBase)}
+	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
+		r.start = *mapped
+		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {
+			r.end, r.hasEnd = *end, true
+		}
+	}
+	rule.errs = append(rule.errs, r)
 }
 
 func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, bool) {
@@ -210,9 +207,9 @@ func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bo
 	return t, l.Offset(), ok
 }
 
-func convertExprLineColToPos(line, col, lineBase, colBase int) *workflowlang.Pos {
+func convertExprLineColToPos(line, col, lineBase, colBase int) workflowlang.Pos {
 	// Line and column in ExprError are 1-based
-	return &workflowlang.Pos{
+	return workflowlang.Pos{
 		Line: line - 1 + lineBase,
 		Col:  col - 1 + colBase,
 	}

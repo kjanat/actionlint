@@ -16,9 +16,9 @@ func (rule *Checker) CheckCompositeScript(step workflowdecl.StepView) {
 	// composite diagnostic, including shape errors reported outside exprError.
 	rule.errs = nil
 	defer func() {
-		for _, finding := range rule.errs {
-			if finding.Rule == "script-injection" || finding.Rule == "script-interpolation" {
-				previous.errs = append(previous.errs, finding)
+		for _, r := range rule.errs {
+			if r.rule == "script-injection" || r.rule == "script-interpolation" {
+				previous.errs = append(previous.errs, r)
 			}
 		}
 		*rule = previous

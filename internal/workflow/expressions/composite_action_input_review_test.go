@@ -30,7 +30,7 @@ func TestCompositeActionInputRestoresCheckerContext(t *testing.T) {
 	originalFinding := rule.errs[0]
 	previous := *rule
 	rule.CheckCompositeScript(testStep(t, job, 0))
-	if len(rule.errs) != 2 || rule.errs[0] != originalFinding || rule.errs[1].Rule != "script-injection" {
+	if len(rule.errs) != 2 || rule.errs[0] != originalFinding || rule.errs[1].rule != "script-injection" {
 		t.Fatalf("script finding lost: %+v", rule.errs)
 	}
 	current := *rule
