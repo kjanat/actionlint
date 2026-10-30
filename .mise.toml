@@ -37,7 +37,7 @@ version = "latest"
 depends = ["rshellcheck"]
 
 [tools."github:kjanat/dprint"]
-version = "0.60.2-kjanat"
+version = "0.60.5-kjanat"
 depends = ["tombi", "go"]
 
 [tool_alias]
