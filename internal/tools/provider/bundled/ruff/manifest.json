@@ -93,6 +93,7 @@
       "TEMP",
       "TMP"
     ],
+    "env_unset": ["RUFF_OUTPUT_FILE"],
     "args": [
       "check",
       "{config:toml-pairs:--config}",

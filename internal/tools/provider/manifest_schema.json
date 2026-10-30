@@ -216,6 +216,12 @@
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
         },
+        "env_unset": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+        },
         "exit_codes": {
           "type": "array",
           "maxItems": 256,

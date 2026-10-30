@@ -187,6 +187,11 @@ type ProcessSpec struct {
 	// EnvPassthrough names ambient variables copied into the scrubbed child
 	// environment.
 	EnvPassthrough []string `json:"env_passthrough,omitempty"`
+	// EnvUnset names variables removed from the child environment whatever
+	// sets them: Env, EnvPassthrough or the command's configured environment.
+	// It keeps settings that redirect or suppress the tool's output away from
+	// the process.
+	EnvUnset []string `json:"env_unset,omitempty"`
 	// ExitCodes are accepted when stdout is non-empty; empty means [0].
 	ExitCodes   []int           `json:"exit_codes,omitempty"`
 	Config      ConfigRendering `json:"config"`
@@ -232,7 +237,9 @@ const (
 	ConfigSearchUpward ConfigSearch = "upward"
 	// ConfigSearchXDG looks in the XDG configuration directory.
 	ConfigSearchXDG ConfigSearch = "xdg"
-	// ConfigSearchHome looks in the user's home directory.
+	// ConfigSearchHome looks in the user's home directory. Windows has no
+	// home-directory dotfile convention, so it is skipped there; per-user
+	// files live in the directory ConfigSearchXDG covers.
 	ConfigSearchHome ConfigSearch = "home"
 )
 

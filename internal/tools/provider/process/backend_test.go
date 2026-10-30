@@ -124,13 +124,16 @@ func runEcho(t *testing.T, backend *Backend, request analyzer.ScriptRequest, var
 func TestBackendInvocation(t *testing.T) {
 	t.Setenv("ACTIONLINT_HOST_ONLY", "leaked")
 	t.Setenv("ACTIONLINT_PASSED", "passed")
-	command := helperCommand(t, "echo", "ACTIONLINT_COMMAND=command")
+	t.Setenv("ACTIONLINT_REDIRECT_AMBIENT", "ambient")
+	// Configured environment cannot restore a variable the manifest unsets.
+	command := helperCommand(t, "echo", "ACTIONLINT_COMMAND=command", "ACTIONLINT_REDIRECT=command")
 	command.Args = []string{"--user", "value"}
 	manifest := helperManifest(provider.ProcessSpec{
 		Entry: "helper", Stdin: provider.StdinSource,
 		Args:           []string{"--", "{user-args}", "{config:toml-pairs:--set}", "--file", "{var:filename}", "{flag:dialect:--shell}", "{list:exclude:,}"},
 		Env:            map[string]string{"ACTIONLINT_MANIFEST": "manifest"},
-		EnvPassthrough: []string{"ACTIONLINT_PASSED"},
+		EnvPassthrough: []string{"ACTIONLINT_PASSED", "ACTIONLINT_REDIRECT_AMBIENT"},
+		EnvUnset:       []string{"ACTIONLINT_REDIRECT", "ACTIONLINT_REDIRECT_AMBIENT"},
 		Config:         provider.ConfigRendering{Render: provider.RenderTOMLPairs},
 		Output:         echoOutput,
 	})
@@ -158,6 +161,9 @@ func TestBackendInvocation(t *testing.T) {
 	}
 	if strings.Contains(env, "ACTIONLINT_HOST_ONLY") {
 		t.Errorf("host environment leaked into the child:\n%s", env)
+	}
+	if strings.Contains(env, "ACTIONLINT_REDIRECT") {
+		t.Errorf("unset variable reached the child:\n%s", env)
 	}
 }
 

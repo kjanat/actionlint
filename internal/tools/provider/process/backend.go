@@ -284,7 +284,7 @@ func (b *Backend) execution(args []string, stdin, directory string) analyzerhost
 	}
 	return analyzerhost.Execution{
 		Args: append(slices.Clone(b.launcher), args...), Stdin: stdin, Dir: directory,
-		Env: slices.Clone(b.env), UnsetEnv: slices.Clone(b.command.UnsetEnv), ExitCodes: exitCodes,
+		Env: slices.Clone(b.env), UnsetEnv: append(slices.Clone(b.command.UnsetEnv), b.spec.EnvUnset...), ExitCodes: exitCodes,
 	}
 }
 

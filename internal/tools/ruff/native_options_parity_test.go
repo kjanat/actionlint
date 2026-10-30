@@ -5,8 +5,36 @@ import (
 	"slices"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 )
+
+// The bundled Ruff manifest must forbid exactly the configuration keys and
+// unset exactly the environment this adapter does, so the manifest route
+// keeps the adapter's read-only boundary when it replaces the adapter. The
+// process package checks that the transport enforces every listed key.
+func TestManifestBoundaryMatchesAdapter(t *testing.T) {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := slices.IndexFunc(manifests, func(m provider.Manifest) bool { return m.Rule.Name == "ruff" })
+	if index < 0 || manifests[index].Process == nil {
+		t.Fatal("no bundled Ruff process manifest")
+	}
+	spec := manifests[index].Process
+	for _, pair := range []struct {
+		field             string
+		manifest, adapter []string
+	}{
+		{"process.config.forbidden", spec.Config.Forbidden, unsupportedConfigOptions()},
+		{"process.env_unset", spec.EnvUnset, UnsetEnvironment()},
+	} {
+		if got, want := slices.Sorted(slices.Values(pair.manifest)), slices.Sorted(slices.Values(pair.adapter)); !slices.Equal(got, want) {
+			t.Errorf("%s %q, adapter %q", pair.field, got, want)
+		}
+	}
+}
 
 // The generic toml-pairs rendering of the bundled Ruff manifest must equal
 // the arguments this adapter builds from the same native options.
