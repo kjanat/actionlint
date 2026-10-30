@@ -29,10 +29,20 @@ to code without a summary, such as the iterator's `yield` function. An iterator
 that only reads its receiver and yields pointer-free values or read-only value
 handles is not reported. An iterator that yields receiver slices, maps or
 pointers to receiver fields is, as is a closure that writes receiver state.
-A range-over-func loop body that stores its loop variables, or another captured
-variable, into a captured variable makes that variable alias what the iterator
-can reach, with an uncertain origin. A loop body that writes the handles it
-receives counts as a possible write to the values the iterator was built from.
+A method value, such as `w.store.Row`, carries its bound receiver as a capture,
+checked against the method's summary like any other closure.
+
+A closure passed to a call may be invoked by the callee, as a range-over-func
+iterator invokes its loop body. Summaries do not record what a callee passes to
+such a closure, so the analyzer assumes it may pass storage reachable from the
+call's other arguments, or from the values they were built from. This holds
+for unknown iterators, local closure literals, functions in this package and
+imported method values alike. A body that stores what it receives into a
+captured variable makes that variable alias that storage, with an uncertain
+origin; storing another captured variable carries that variable's origins. A
+body that writes the values it receives counts as a possible write to that
+storage. The same applies to a closure literal called through a variable that
+may hold one of several literals.
 
 A value receiver whose type holds no storage, such as `struct{}`, is a private
 copy and has no receiver origin. A variable joining fresh allocations, such as

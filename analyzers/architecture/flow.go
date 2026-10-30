@@ -110,20 +110,43 @@ func solve(pass *analysis.Pass, functions []*ssa.Function) map[*ssa.Function]flo
 			return flow{}, false
 		}
 		encoded := facts.Functions[index]
+		// A bound method wrapper (a method value) shares the method's object,
+		// but takes the method's parameters as its own and its receiver as its
+		// only free variable: summary origin 0 is wrapper origin len(Params),
+		// and origin i > 0 is wrapper origin i-1.
+		at := func(origin int) int { return origin }
+		if obj.Signature().Recv() != nil && fn.Signature.Recv() == nil && len(fn.FreeVars) == 1 {
+			at = func(origin int) int {
+				possible := origin < 0
+				if possible {
+					origin = -origin - 1
+				}
+				if origin == 0 {
+					origin = len(fn.Params)
+				} else {
+					origin--
+				}
+				if possible {
+					origin = -origin - 1
+				}
+				return origin
+			}
+		}
 		f := newFlow(len(encoded.Results))
 		for i, values := range encoded.Results {
 			for _, value := range values {
-				f.Results[i][value] = true
+				f.Results[i][at(value)] = true
 			}
 		}
 		for _, value := range encoded.Writes {
-			f.Writes[value] = true
+			f.Writes[at(value)] = true
 		}
 		for _, pair := range encoded.Stores {
-			if f.Stores[pair[0]] == nil {
-				f.Stores[pair[0]] = origins{}
+			destination := at(pair[0])
+			if f.Stores[destination] == nil {
+				f.Stores[destination] = origins{}
 			}
-			f.Stores[pair[0]][pair[1]] = true
+			f.Stores[destination][at(pair[1])] = true
 		}
 		return f, true
 	}
@@ -599,6 +622,87 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 				changed = get(to).add(from) || changed
 			}
 		}
+		// callbacks applies the effects of closure arguments that the callee
+		// may invoke, as a range-over-func iterator calls its loop body. args
+		// includes the called function value when it is not a closure literal,
+		// so a closure called through a variable is covered too. A closure's
+		// parameters may then hold storage reachable from the other arguments,
+		// or from the values those arguments were built from: a closure that
+		// hands out read-only handles does not carry its captures, but code in
+		// this package can still write the handles' private fields. Such
+		// storage is passed with uncertain origins.
+		callbacks := func(args []ssa.Value) {
+			for _, arg := range args {
+				closures := closuresOf(arg, map[ssa.Value]bool{})
+				if len(closures) == 0 {
+					continue
+				}
+				passed := origins{}
+				for _, other := range args {
+					if other == arg {
+						continue
+					}
+					if visible(other.Type()) {
+						passed.add(uncertain(get(other)))
+					}
+					for _, source := range builtFrom(other) {
+						if storage(source.Type()) {
+							passed.add(uncertain(get(source)))
+						}
+					}
+				}
+				for _, closure := range closures {
+					body, _ := closure.Fn.(*ssa.Function)
+					if body == nil {
+						continue
+					}
+					summary, found := lookup(body)
+					if !found {
+						continue
+					}
+					// A body that writes its parameters may write that storage.
+					for index := range summary.Writes {
+						if index < 0 {
+							index = -index - 1
+						}
+						if index < len(body.Params) {
+							result.Writes.add(passed)
+							break
+						}
+					}
+					// Each store the body makes into a captured variable is
+					// applied to the binding: from a parameter it carries the
+					// passed origins, and from another captured variable it
+					// carries that binding's origins.
+					for destination, sources := range summary.Stores {
+						k := destination - len(body.Params)
+						if k < 0 || k >= len(closure.Bindings) {
+							continue
+						}
+						target := closure.Bindings[k]
+						for source := range sources {
+							possible := source < 0
+							if possible {
+								source = -source - 1
+							}
+							aliases := passed
+							if j := source - len(body.Params); j >= 0 {
+								if j >= len(closure.Bindings) {
+									continue
+								}
+								aliases = get(closure.Bindings[j])
+								if possible {
+									aliases = uncertain(aliases)
+								}
+							}
+							storedOrigins(target, aliases)
+							put(target, aliases)
+							put(root(target), aliases)
+						}
+					}
+				}
+			}
+		}
 		for _, block := range fn.Blocks {
 			for _, instruction := range block.Instrs {
 				switch v := instruction.(type) {
@@ -788,6 +892,9 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 									put(root(args[destination]), aliases)
 								}
 							}
+							// The summary does not say what the callee passes to a
+							// closure argument; that is handled as for unknown calls.
+							callbacks(args)
 							if call == nil {
 								continue
 							}
@@ -824,82 +931,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						put(call, uncertain(get(arg)))
 						unknownWrite(arg)
 					}
-					// The unknown callee may invoke a closure argument, as a
-					// range-over-func iterator calls its loop body. The body's
-					// parameters may then hold storage reachable from the other
-					// arguments, or from the values those arguments were built
-					// from: a closure that hands out read-only handles does not
-					// carry its captures, but code in this package can still
-					// write the handles' private fields. Such storage is passed
-					// with uncertain origins.
-					for _, arg := range args {
-						closure, ok := arg.(*ssa.MakeClosure)
-						if !ok {
-							continue
-						}
-						body, _ := closure.Fn.(*ssa.Function)
-						if body == nil {
-							continue
-						}
-						summary, found := lookup(body)
-						if !found {
-							continue
-						}
-						passed := origins{}
-						for _, other := range args {
-							if other == arg {
-								continue
-							}
-							if visible(other.Type()) {
-								passed.add(uncertain(get(other)))
-							}
-							for _, source := range builtFrom(other) {
-								if storage(source.Type()) {
-									passed.add(uncertain(get(source)))
-								}
-							}
-						}
-						// A body that writes its parameters may write that storage.
-						for index := range summary.Writes {
-							if index < 0 {
-								index = -index - 1
-							}
-							if index < len(body.Params) {
-								result.Writes.add(passed)
-								break
-							}
-						}
-						// Each store the body makes into a captured variable is
-						// applied to the binding: from a parameter it carries
-						// the passed origins, and from another captured variable
-						// it carries that binding's origins.
-						for destination, sources := range summary.Stores {
-							k := destination - len(body.Params)
-							if k < 0 || k >= len(closure.Bindings) {
-								continue
-							}
-							target := closure.Bindings[k]
-							for source := range sources {
-								possible := source < 0
-								if possible {
-									source = -source - 1
-								}
-								aliases := passed
-								if j := source - len(body.Params); j >= 0 {
-									if j >= len(closure.Bindings) {
-										continue
-									}
-									aliases = get(closure.Bindings[j])
-									if possible {
-										aliases = uncertain(aliases)
-									}
-								}
-								storedOrigins(target, aliases)
-								put(target, aliases)
-								put(root(target), aliases)
-							}
-						}
-					}
+					callbacks(args)
 				case *ssa.Return:
 					for i, value := range v.Results {
 						if storage(value.Type()) {
@@ -930,6 +962,26 @@ func builtFrom(value ssa.Value) []ssa.Value {
 		return append([]ssa.Value{common.Value}, common.Args...)
 	case *ssa.MakeClosure:
 		return value.Bindings
+	}
+	return nil
+}
+
+// closuresOf lists the closure literals a function value may be: the value
+// itself, or the edges of the phis it joins. Other values yield nothing.
+func closuresOf(value ssa.Value, seen map[ssa.Value]bool) []*ssa.MakeClosure {
+	if seen[value] {
+		return nil
+	}
+	seen[value] = true
+	switch value := value.(type) {
+	case *ssa.MakeClosure:
+		return []*ssa.MakeClosure{value}
+	case *ssa.Phi:
+		var out []*ssa.MakeClosure
+		for _, edge := range value.Edges {
+			out = append(out, closuresOf(edge, seen)...)
+		}
+		return out
 	}
 	return nil
 }
