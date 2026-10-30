@@ -11,9 +11,11 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/plugins/component"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/runner"
 )
 
@@ -21,6 +23,14 @@ type loadedPlugins struct {
 	plugins []*component.Plugin
 	engines []scriptEngineRegistration
 	core    []*corewasm.Engine
+	// providers are local process tool provider manifests.
+	providers []localProvider
+}
+
+// localProvider is a tool provider manifest read from a local path.
+type localProvider struct {
+	manifest provider.Manifest
+	programs provider.Programs
 }
 
 type scriptEngineRegistration struct {
@@ -31,6 +41,15 @@ type scriptEngineRegistration struct {
 func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debug bool) (*loadedPlugins, error) {
 	loaded := &loadedPlugins{}
 	for _, path := range sources.Paths {
+		if provider.IsLocalManifest(path) {
+			// A local manifest names a command found on PATH; nothing is fetched.
+			manifest, programs, err := provider.ReadLocal(fsread.New(ctx, nil, nil), path)
+			if err != nil {
+				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
+			}
+			loaded.providers = append(loaded.providers, localProvider{manifest, programs})
+			continue
+		}
 		if err := pluginartifact.RequireRemotePin(path); err != nil {
 			return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 		}
@@ -114,6 +133,7 @@ func (l *loadedPlugins) close(ctx context.Context) error {
 	l.core = nil
 	l.engines = nil
 	l.plugins = nil
+	l.providers = nil
 	return err
 }
 

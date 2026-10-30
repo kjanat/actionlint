@@ -587,6 +587,41 @@ during allocation cleanup, discards that instance and fails the document's analy
 `plugin.LoadEngine` and set the result as `analysis.Tool.Backend`; library tool settings take precedence over the
 repository configuration.
 
+### Local tool provider manifests
+
+Any native command that checks a snippet on stdin can run as a script tool, described by a tool provider manifest
+instead of code. Pass the manifest with `--plugin`:
+
+```sh
+actionlint --plugin ./tools/mylint/manifest.json
+```
+
+The manifest (`schema_version: 1`, `transport: "process"`) names the rule (`rule.name` is the tool ID used by
+`tools.<id>` and `lint.rules`), the scripts it receives (`selectors.shells`, `selectors.inputs`, `selectors.filename`)
+and how to run the command:
+
+- `process.entry` is a command found on `PATH`. A local manifest declares no `artifacts`.
+- `process.args` holds literal arguments and a closed set of placeholders that are substituted, never
+  evaluated: `{var:NAME}`, `{flag:NAME:--opt}`, `{switch:NAME:--on:--off}`, `{list:NAME:SEP}`,
+  `{config:toml-pairs:--opt}`, `{config:toml-file}`, `{config:json-file}` and `{user-args}`.
+  `{var:filename}` is the snippet's virtual name.
+- `process.stdin` is `source` (the masked snippet) or `request` (the JSON check request).
+- The command runs with a scrubbed environment: only `process.env` and the variables named in
+  `process.env_passthrough` reach it. List `PATH`, `HOME` or `TEMP` there if the command needs them.
+- `process.exit_codes` lists accepted statuses (default `[0]`); a nonzero status needs nonempty stdout.
+- `process.output.format` is `script-diagnostics@1` (the `{ok, diagnostics, errors}` envelope), `sarif@2.1.0`,
+  or `json`/`text` reshaped by a jq transform. `process.output.coordinates` states the tool's row, column and end
+  conventions when they differ from LF rows, character columns and exclusive ends.
+- Transforms are named by `digest` (`sha256:<hex>` of a `.jq` file beside the manifest) or given `inline`.
+  A transform sees stdout as `.` and the argument variables, plus `exit_code`, as `$vars`. It has no environment,
+  modules or `input`, and returns a diagnostics array or `{diagnostics, sources, errors}`.
+- `capabilities.message_template` formats messages from `{code}`, `{severity}`, `{row}`, `{column}` and
+  `{message}`; `capabilities.fixes` and `capabilities.reported_sources` admit suggested edits and findings in files
+  the tool read.
+
+Inline `tools.<id>.config` settings reach the tool through `process.config.render`, after an optional
+`process.config.transform`. The manifest replaces a bundled tool with the same rule name for that invocation.
+
 ## Remote artifacts and static metadata
 
 `--plugin`, `tools.ruff.backend.wasm.path`, `plugin.Load`, and `plugin.LoadEngine`

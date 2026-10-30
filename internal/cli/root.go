@@ -256,7 +256,7 @@ func (a *commandApp) toolFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) pluginFlags(f *pflag.FlagSet) {
-	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or `URI` (repeatable)")
+	f.StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly analyzer or script engine from a path or `URI`, or a local tool provider manifest (.json) (repeatable)")
 	annotateFlag(f, "plugin", "Rule selection")
 }
 

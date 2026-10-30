@@ -1186,7 +1186,8 @@ for version selection, overrides and offline behavior.
 
 `--plugin PATH` accepts document-analyzer components, runner providers or the Ruff core WebAssembly
 engine. The host masks workflow expressions before calling Ruff and maps its
-diagnostics back to YAML positions.
+diagnostics back to YAML positions. A `.json` path loads a
+[local tool provider manifest](plugins.md#local-tool-provider-manifests) that runs a native command.
 
 Remote dependency resolution is opt-in: `--resolve-with EXECUTABLE` selects a
 provider, and repeatable `--resolver-arg VALUE` supplies literal arguments. The

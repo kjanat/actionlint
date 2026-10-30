@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
 
 	"actionlint.kjanat.dev/v2/internal/application"
@@ -132,6 +133,21 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 			}
 			options.Tools = append(options.Tools, registration)
 		}
+	}
+
+	for _, local := range l.providers {
+		name := local.manifest.Rule.Name
+		if seen[name] {
+			return options, &PluginLoadError{fmt.Errorf("multiple plugins provide script engine %q", name)}
+		}
+		seen[name] = true
+		// An explicitly selected manifest replaces the tool's default route.
+		registration, err := backend.RegisterProcess(backend.ProcessProvider{Manifest: local.manifest, Programs: local.programs, Required: true})
+		if err != nil {
+			return options, &PluginLoadError{err}
+		}
+		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing tools.Registration) bool { return existing.Descriptor.Name == name })
+		options.Tools = append(options.Tools, registration)
 	}
 
 	options.Tools = slices.Clone(options.Tools)
