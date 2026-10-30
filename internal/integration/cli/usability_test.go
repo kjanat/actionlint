@@ -248,7 +248,7 @@ func TestReportCreatedDuringAnalysisIsPreserved(t *testing.T) {
 	input := &reportCreatingInput{Reader: strings.NewReader(commandGoodWorkflow), destination: "report.json"}
 	var out, stderr bytes.Buffer
 	command := cli.Command{Stdin: input, Stdout: &out, Stderr: &stderr}
-	status := command.Main([]string{"actionlint", "check", "--json", "--output-file=report.json", "--shellcheck=", "--ruff=", "-"})
+	status := command.Main([]string{"actionlint", "check", "--json", "--output-file=report.json", "--no-tool=shellcheck", "--no-tool=ruff", "-"})
 	data, err := os.ReadFile("report.json")
 	if status != 3 || !strings.Contains(stderr.String(), "already exists") || err != nil || string(data) != "created during analysis" {
 		t.Fatalf("destination replaced: %d, %s, %s, %v", status, &stderr, data, err)

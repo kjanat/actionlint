@@ -26,7 +26,7 @@ func writeEngineConfig(t *testing.T, module string) string {
 func runWithDefaultRuff(input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
 	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout}
-	status := cmd.Main(append([]string{"actionlint", "--shellcheck=", "--no-color", "check", "--summary=false"}, args...))
+	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-color", "check", "--summary=false"}, args...))
 	return commandTranscript{status, out.String(), errout.String()}
 }
 

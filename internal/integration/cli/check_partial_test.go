@@ -25,8 +25,8 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", executable)
-	t.Setenv("ACTIONLINT_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", executable)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
 	for name, content := range map[string]string{
 		"config.yml":     "{}\n",
 		"successful.yml": commandBadWorkflow + "        shell: pwsh\n",
@@ -44,7 +44,7 @@ func TestCheckJSONPartialFindings(t *testing.T) {
 		for _, failingFirst := range []bool{false, true} {
 			for _, outputFile := range []bool{false, true} {
 				t.Run(fmt.Sprintf("modern=%t/failing-first=%t/file=%t", modern, failingFirst, outputFile), func(t *testing.T) {
-					args := []string{"actionlint", "--config", "config.yml", "--no-color", "--pyflakes=", "--json"}
+					args := []string{"actionlint", "--config", "config.yml", "--no-color", "--no-tool=ruff", "--json"}
 					if modern {
 						args = append(args, "check")
 					}
@@ -107,15 +107,15 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", executable)
-	t.Setenv("ACTIONLINT_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", executable)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_FLAGS", `["-test.run=^TestCheckPartialAnalyzerHelper$", "--"]`)
 	workflow := strings.ReplaceAll(commandGoodWorkflow, "echo ok", "FAIL_ANALYZER")
 	if err := os.WriteFile("failing.yml", []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--pyflakes=", "--json"}
+			args := []string{"actionlint", "--no-config", "--no-tool=ruff", "--json"}
 			if modern {
 				args = append(args, "check")
 			}
@@ -154,7 +154,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
-			args := []string{"actionlint", "--no-config", "--shellcheck=", "--ruff=" + filepath.Join(dir, "missing-ruff"), "--json"}
+			args := []string{"actionlint", "--no-config", "--no-tool=shellcheck", "--tool=ruff=" + filepath.Join(dir, "missing-ruff"), "--json"}
 			if modern {
 				args = append(args, "check")
 			}

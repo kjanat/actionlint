@@ -63,7 +63,7 @@ func TestReportOverwriteConfirmation(t *testing.T) {
 				if modern {
 					args = append(args, "check")
 				}
-				args = append(args, "--shellcheck=", "--ruff=", "--json", "--output-file=report.json")
+				args = append(args, "--no-tool=shellcheck", "--no-tool=ruff", "--json", "--output-file=report.json")
 				if tc.flag != "" {
 					args = append(args, tc.flag)
 				}

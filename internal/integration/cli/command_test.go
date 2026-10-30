@@ -88,14 +88,14 @@ func TestModernInformationCommandsDoNotRunAnalysis(t *testing.T) {
 	if got := testRunCommand("", "rules", "nonexistent"); got.Status != 2 {
 		t.Fatal(got)
 	}
-	got := testRunCommand("", "doctor", "--no-config", "--json", "--shellcheck=this-tool-does-not-exist", "--pyflakes=")
+	got := testRunCommand("", "doctor", "--no-config", "--json", "--tool=shellcheck=this-tool-does-not-exist", "--no-tool=ruff")
 	var report struct {
 		Tools []doctorTool `json:"tools"`
 	}
 	if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
-	if len(report.Tools) != 2 || report.Tools[0].Status != "unavailable" || report.Tools[1].Status != "disabled" {
+	if len(report.Tools) != 2 || report.Tools[0].Name != "ruff" || report.Tools[0].Status != "disabled" || report.Tools[1].Status != "unavailable" {
 		t.Fatal(report.Tools)
 	}
 	if got := testRunCommand("", "doctor", "--json"); got.Status != 3 || !json.Valid([]byte(got.Stdout)) {
@@ -169,7 +169,7 @@ func TestCommandMain(t *testing.T) {
 
 	// Run the command end-to-end. Note that given args should contain program name
 	workflow := filepath.Join("testdata", "examples", "main.yaml")
-	status := cmd.Main([]string{"actionlint", "-no-color", "-shellcheck=", "-pyflakes=", "-ignore", `label .+ is unknown\.`, workflow})
+	status := cmd.Main([]string{"actionlint", "-no-color", "-no-tool=shellcheck", "-no-tool=ruff", "-ignore", `label .+ is unknown\.`, workflow})
 
 	if status != 1 {
 		t.Fatal("exit status should be 1 but got", status)

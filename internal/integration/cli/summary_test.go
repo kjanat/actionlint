@@ -35,7 +35,7 @@ func TestSummaryDefaultsAndOverrides(t *testing.T) {
 				}
 				var stdout, stderr bytes.Buffer
 				cmd := cli.Command{Stdin: strings.NewReader(tc.input), Stdout: &stdout, Stderr: &stderr}
-				args := []string{"actionlint", "--shellcheck=", "--ruff=", "--no-config", "--no-color"}
+				args := []string{"actionlint", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--no-color"}
 				if modern {
 					args = append(args, "check")
 				}

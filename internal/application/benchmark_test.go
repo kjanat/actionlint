@@ -140,7 +140,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 	for _, bm := range bms {
 		sc := ""
 		if bm.shellcheck != "" {
-			sc = "-shellcheck"
+			sc = "-tool=shellcheck"
 		}
 		fm := ""
 		if bm.format != "" {

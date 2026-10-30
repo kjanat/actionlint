@@ -16,7 +16,7 @@ import (
 )
 
 func TestEnvironmentDefaults(t *testing.T) {
-	t.Setenv("ACTIONLINT_SHELLCHECK_BIN", "")
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", "")
 	t.Setenv("ACTIONLINT_PYFLAKES_BIN", "")
 	t.Setenv("ACTIONLINT_OUTPUT_FORMAT", "json")
 	t.Setenv("ACTIONLINT_STDIN_FILENAME", "from-env.yml")
@@ -49,29 +49,29 @@ func TestExplicitRuffMissingExecutable(t *testing.T) {
 		return commandTranscript{status, out.String(), stderr.String()}
 	}
 	for _, prefix := range [][]string{nil, {"check"}} {
-		args := append(append([]string{}, prefix...), "--shellcheck=", "-")
+		args := append(append([]string{}, prefix...), "--no-tool=shellcheck", "-")
 		if got := run(commandGoodWorkflow, args...); got.Status != 0 {
 			t.Fatalf("automatic discovery: %+v", got)
 		}
-		args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff=missing-ruff", "-")
+		args = append(append([]string{}, prefix...), "--no-tool=shellcheck", "--tool=ruff=missing-ruff", "-")
 		if got := testRunCommand(commandGoodWorkflow, args...); got.Status == 0 || !strings.Contains(got.Stderr, "could not initialize ruff") {
 			t.Fatalf("explicit checker silently skipped: %+v", got)
 		}
 		for _, disabled := range []string{"", "false", "FALSE"} {
-			args = append(append([]string{}, prefix...), "--shellcheck=", "--ruff="+disabled, "-")
+			args = append(append([]string{}, prefix...), "--no-tool=shellcheck", "--tool=ruff="+disabled, "-")
 			if got := testRunCommand(commandGoodWorkflow, args...); got.Status != 0 {
 				t.Fatalf("disable %q: %+v", disabled, got)
 			}
 		}
 	}
-	t.Setenv("ACTIONLINT_RUFF_BIN", "missing-ruff")
-	if got := run(commandGoodWorkflow, "--shellcheck=", "-"); got.Status == 0 {
+	t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", "missing-ruff")
+	if got := run(commandGoodWorkflow, "--no-tool=shellcheck", "-"); got.Status == 0 {
 		t.Fatalf("environment checker silently skipped: %+v", got)
 	}
-	if got := testRunCommand(commandGoodWorkflow, "--shellcheck=", "--ruff=", "-"); got.Status != 0 {
+	if got := testRunCommand(commandGoodWorkflow, "--no-tool=shellcheck", "--no-tool=ruff", "-"); got.Status != 0 {
 		t.Fatalf("explicit disable: %+v", got)
 	}
-	got := testRunCommand("", "doctor", "--no-config", "--ruff=false", "--shellcheck=false", "--json")
+	got := testRunCommand("", "doctor", "--no-config", "--tool=ruff=false", "--tool=shellcheck=false", "--json")
 	if got.Status != 0 {
 		t.Fatalf("doctor: %+v", got)
 	}
@@ -98,7 +98,7 @@ func TestFalseDisablesExternalCheckers(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, prefix := range [][]string{nil, {"check"}} {
 		for _, disabled := range []string{"", "false", "FALSE"} {
-			args := append(append([]string{}, prefix...), "--shellcheck="+disabled, "--ruff="+disabled, "-")
+			args := append(append([]string{}, prefix...), "--tool=shellcheck="+disabled, "--tool=ruff="+disabled, "-")
 			got := testRunCommand(`on: push
 jobs:
   test:
@@ -168,7 +168,7 @@ func TestEnvironmentValidationByOperation(t *testing.T) {
 	t.Setenv("ACTIONLINT_CONFIG", "does-not-exist.yml")
 	t.Setenv("ACTIONLINT_IGNORE_REGEX", "not JSON")
 	t.Setenv("ACTIONLINT_LOG_LEVEL", "invalid")
-	t.Setenv("ACTIONLINT_SHELLCHECK_FLAGS", `"unterminated`)
+	t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_FLAGS", `"unterminated`)
 	for _, args := range [][]string{{"--help"}, {"version", "--json"}, {"--version", "--json"}, {"completion", "fish"}} {
 		if got := testRunCommand("", args...); got.Status != 0 {
 			t.Fatalf("unrelated environment blocked %v: %+v", args, got)
@@ -273,16 +273,16 @@ func TestEnvironmentExternalTools(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("ACTIONLINT_"+toolName+"_BIN", tool)
-		t.Setenv("ACTIONLINT_"+toolName+"_FLAGS", `["argument with spaces", "", "$LITERAL"]`)
+		t.Setenv("ACTIONLINT_TOOL_"+toolName+"_BIN", tool)
+		t.Setenv("ACTIONLINT_TOOL_"+toolName+"_FLAGS", `["argument with spaces", "", "$LITERAL"]`)
 		if toolName == "RUFF" {
 			flags, err := json.Marshal(ruffArguments)
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Setenv("ACTIONLINT_RUFF_FLAGS", string(flags))
+			t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", string(flags))
 		}
-		t.Setenv("ACTIONLINT_"+toolName+"_ENV", string(env))
+		t.Setenv("ACTIONLINT_TOOL_"+toolName+"_ENV", string(env))
 	}
 	input := commandGoodWorkflow + `      - shell: python
         run: print('ok')

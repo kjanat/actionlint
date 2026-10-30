@@ -43,7 +43,7 @@ func TestGitHubActionsColor(t *testing.T) {
 						previous := color.NoColor
 						t.Cleanup(func() { color.NoColor = previous })
 						color.NoColor = true
-						args := append([]string{"actionlint", "--summary=false", "--shellcheck=", "--pyflakes="}, tc.flags...)
+						args := append([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff"}, tc.flags...)
 						if modern {
 							args = append(args, "check")
 						}
@@ -99,7 +99,7 @@ func TestGitHubActionsPlainOutput(t *testing.T) {
 			color.NoColor = true
 			var out, stderr bytes.Buffer
 			cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: &out, Stderr: &stderr}
-			code := cmd.Main(append([]string{"actionlint", "--summary=false", "--shellcheck=", "--pyflakes="}, args...))
+			code := cmd.Main(append([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff"}, args...))
 			if code > 1 || out.Len()+stderr.Len() == 0 || strings.ContainsRune(out.String()+stderr.String(), '\x1b') {
 				t.Fatalf("exit %d, stdout %q, stderr %q", code, &out, &stderr)
 			}
@@ -138,7 +138,7 @@ func TestGitHubActionsOutputDestination(t *testing.T) {
 					}()
 				}
 				cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: write, Stderr: write}
-				code := cmd.Main(append([]string{"actionlint", "--summary=false", "--shellcheck=", "--pyflakes="}, args...))
+				code := cmd.Main(append([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff"}, args...))
 				if e := write.Close(); e != nil {
 					t.Fatal(e)
 				}

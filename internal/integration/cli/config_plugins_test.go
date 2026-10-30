@@ -57,7 +57,7 @@ func TestConfigInspectionWithoutProjectConfig(t *testing.T) {
 	if err := os.WriteFile(".github/actionlint.yaml", []byte("plugins: invalid\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range [][]string{{"config", "show"}, {"config", "validate"}, {"doctor", "--ruff=false", "--shellcheck=false"}} {
+	for _, command := range [][]string{{"config", "show"}, {"config", "validate"}, {"doctor", "--tool=ruff=false", "--tool=shellcheck=false"}} {
 		got := testRunCommand("", append(command, "--no-config", "--json")...)
 		if got.Status != 0 || got.Stderr != "" {
 			t.Errorf("%v loaded disabled project plugins: %+v", command, got)

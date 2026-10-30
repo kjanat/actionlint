@@ -32,7 +32,7 @@ func TestRuffAutomaticVersionCompatibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin)
-	for _, key := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
+	for _, key := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatal(err)
@@ -71,11 +71,11 @@ jobs:
 				calls := testutil.RuffDiscoveryFixture(t, bin, tc.version)
 				switch tc.environment {
 				case "BIN":
-					t.Setenv("ACTIONLINT_RUFF_BIN", tool)
+					t.Setenv("ACTIONLINT_TOOL_RUFF_BIN", tool)
 				case "FLAGS":
-					t.Setenv("ACTIONLINT_RUFF_FLAGS", `["--select", "F"]`)
+					t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", `["--select", "F"]`)
 				}
-				args := append([]string{"actionlint", "--no-color", "--shellcheck="}, prefix...)
+				args := append([]string{"actionlint", "--no-color", "--no-tool=shellcheck"}, prefix...)
 				if tc.config == "" {
 					args = append(args, "--no-config")
 				} else {
@@ -86,7 +86,7 @@ jobs:
 					args = append(args, "--config-file", config)
 				}
 				if tc.explicit {
-					args = append(args, "--ruff="+tool)
+					args = append(args, "--tool=ruff="+tool)
 				}
 				// Multiple source files must share the version probe and warning.
 				for index := range 2 {
