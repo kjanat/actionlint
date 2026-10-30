@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
-	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // shellcheckAnalyzer owns execution; traversal supplies resolved invocation facts.
@@ -55,10 +55,10 @@ func newShellcheckAnalyzer(c adapterContext) (scriptAnalyzer, error) {
 		if !processconfig.Enabled(c.shellcheck, c.shellcheckOptions) {
 			return shellcheckTransport{}, nil
 		}
-		if err := selection.RequireProcessOptIn("shellcheck", c.shellcheck, c.shellcheckOptions, cfg, c.allowConfigProcesses); err != nil {
+		if err := backend.RequireProcessOptIn("shellcheck", c.shellcheck, c.shellcheckOptions, cfg, c.allowConfigProcesses); err != nil {
 			return shellcheckTransport{}, err
 		}
-		options := selection.ProcessOptions("shellcheck", c.shellcheck, c.shellcheckOptions, cfg, c.workingDir)
+		options := backend.ProcessOptions("shellcheck", c.shellcheck, c.shellcheckOptions, cfg, c.workingDir)
 		cmd, err := c.process.ConfiguredCommandRunner(c.shellcheck, options, false)
 		return shellcheckTransport{cmd: cmd}, err
 	}

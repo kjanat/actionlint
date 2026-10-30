@@ -14,8 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
-	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // withAnalyzer selects a document analyzer or native execution per document,
@@ -48,10 +48,10 @@ func (o Options) withAnalyzer(guest analyzer.Analyzer) (tools.Registration, erro
 		// A referenced composite action can match project overrides that its
 		// workflow does not, so a declined override variant still needs native
 		// ShellCheck. Variants differ by what the guest negotiates, not only by
-		// tool gates as in selection.ConfigCandidates.
+		// tool gates as in backend.ConfigCandidates.
 		if declined == nil && composite && project != nil && len(project.Overrides) != 0 {
 			tool := integrator.ToolIntegration().Tool
-			candidates, err := selection.ConfigVariants(project, func(candidate *config.Config) (string, error) {
+			candidates, err := backend.ConfigVariants(project, func(candidate *config.Config) (string, error) {
 				return negotiationKey(candidate, tool, base.Enabled(tools.Context{Config: candidate}))
 			})
 			if err != nil {

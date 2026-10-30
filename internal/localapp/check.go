@@ -142,7 +142,7 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 		}
 		seen[name] = true
 		// An explicitly selected manifest replaces the tool's default route.
-		registration, err := backend.RegisterProcess(backend.ProcessProvider{Manifest: local.manifest, Programs: local.programs, Required: true})
+		registration, err := backend.RegisterProvider(backend.Provider{Manifest: local.manifest, Programs: local.programs, Selection: backend.Selection{Command: name}})
 		if err != nil {
 			return options, &PluginLoadError{err}
 		}

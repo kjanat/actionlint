@@ -19,6 +19,7 @@
     "fix_availability": "suggested"
   },
   "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
+  "integration": { "tool": "shellcheck", "contract": "kjanat:actionlint/shellcheck-config@0.1.0" },
   "selectors": { "filename": "actionlint.sh" },
   "capabilities": {
     "fixes": true,

@@ -40,7 +40,7 @@ func TestLocalManifestRunsBinaryWithJQ(t *testing.T) {
 	manifest, err := json.Marshal(map[string]any{
 		"schema_version": 1, "id": "example.com/local-tool", "version": "1.0.0", "role": "script", "scope": "source", "transport": "process",
 		"rule":         map[string]any{"name": "local-tool", "description": "A local tool", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "local-tool"},
-		"preparation":  "kjanat:actionlint/shell-preparation@0.2.0",
+		"preparation":  "kjanat:actionlint/expression-mask@0.1.0",
 		"selectors":    map[string]any{"shells": []string{"bash"}, "filename": "actionlint.sh"},
 		"capabilities": map[string]any{"fixes": false, "reported_sources": false, "message_template": "local: {code}: {message}"},
 		"process": map[string]any{

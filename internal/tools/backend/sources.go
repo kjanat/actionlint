@@ -29,12 +29,20 @@ func reader(script tools.Script) *fsread.Reader {
 }
 
 // recordSources records the files an engine read so watchers re-run the
-// check when they change, including symlinks along their paths.
+// check when they change.
 func (r runner) recordSources(script tools.Script, paths []string, directory string) error {
-	files := reader(script)
+	if err := RecordSources(reader(script), paths, directory); err != nil {
+		return fmt.Errorf("tool %s %w", r.descriptor.Name, err)
+	}
+	return nil
+}
+
+// RecordSources records files a tool read, relative to directory, with
+// files, including symlinks along their paths. A nil reader records nothing.
+func RecordSources(files *fsread.Reader, paths []string, directory string) error {
 	for _, path := range paths {
-		if path == "" || path == "-" || strings.ContainsRune(path, '\x00') {
-			return fmt.Errorf("tool %s reported invalid source path %q", r.descriptor.Name, path)
+		if path == "" || path == "-" || strings.ContainsRune(path, 0) {
+			return fmt.Errorf("reported invalid source path %q", path)
 		}
 		if files == nil {
 			continue
@@ -88,14 +96,14 @@ func (r runner) reportedFinding(index int, script tools.Script, d analyzer.Scrip
 		Script: index, Content: file.content, RawScript: true,
 		UnavailableSource: findingmodel.ReportedSourceUnavailable(r.descriptor.Name, sourceName(d.Source, directory), file.readFailed),
 	}
-	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, d.Severity, d.URL
+	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, string(r.severity(d.Severity)), d.URL
 	finding.Message = r.message(d, d.Location.Row, d.Location.Column)
 	finding.Start = diagnostic.Position{Line: d.Location.Row, Column: d.Location.Column}
 	if d.EndLocation.Row >= d.Location.Row && d.EndLocation.Column > 0 {
 		finding.End = diagnostic.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
 	}
 	if key := script.Key; key != nil {
-		origin := &tools.Suppression{First: key.Line, Last: key.Line}
+		origin := &tools.Suppression{Path: script.Path, First: key.Line, Last: key.Line}
 		if value := script.Value; value != nil {
 			origin.Last = max(origin.Last, value.Line)
 		}

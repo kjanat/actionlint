@@ -319,14 +319,14 @@ func TestWorkflowDependencyMetadataDoesNotImportHost(t *testing.T) {
 }
 
 func TestToolIntegrationDependencyDirection(t *testing.T) {
-	for _, name := range []string{"engine", "application", "tools", "tools/adapters", "tools/backend", "tools/ruff", "tools/shellcheck", "tools/selection"} {
+	for _, name := range []string{"engine", "application", "tools", "tools/adapters", "tools/backend", "tools/managed", "tools/registry", "tools/ruff", "tools/shellcheck"} {
 		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/v2/internal/"+name).Output()
 		if err != nil {
 			t.Fatal(err)
 		}
 		for dependency := range strings.SplitSeq(string(output), "\n") {
 			if name == "engine" || name == "application" {
-				if dependency == "actionlint.kjanat.dev/v2/internal/tools/adapters" || dependency == "actionlint.kjanat.dev/v2/internal/tools/ruff" || dependency == "actionlint.kjanat.dev/v2/internal/tools/backend" || dependency == "actionlint.kjanat.dev/v2/internal/tools/shellcheck" || dependency == "actionlint.kjanat.dev/v2/internal/tools/selection" {
+				if dependency == "actionlint.kjanat.dev/v2/internal/tools/adapters" || dependency == "actionlint.kjanat.dev/v2/internal/tools/ruff" || dependency == "actionlint.kjanat.dev/v2/internal/tools/backend" || dependency == "actionlint.kjanat.dev/v2/internal/tools/shellcheck" || dependency == "actionlint.kjanat.dev/v2/internal/tools/managed" || dependency == "actionlint.kjanat.dev/v2/internal/tools/registry" {
 					t.Errorf("%s depends on tool implementation %s", name, dependency)
 				}
 			} else if dependency == "actionlint.kjanat.dev/v2/internal/engine" || dependency == "actionlint.kjanat.dev/v2/internal/application" {
@@ -437,7 +437,8 @@ func TestBuiltinCompositionDoesNotImportHost(t *testing.T) {
 }
 
 // Bundling must not turn the two native integrations into a shared implementation.
-// Both consume the language preparation profiles, which name no tool.
+// Both consume the language preparation profiles, which name no tool, and
+// the shared transport selection in backend.
 func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/v2/internal/tools/"+name).Output()
@@ -447,7 +448,7 @@ func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 		for dependency := range strings.SplitSeq(string(output), "\n") {
 			prefix := "actionlint.kjanat.dev/v2/internal/tools/"
 			profile := dependency == prefix+"profile" || strings.HasPrefix(dependency, prefix+"profile/")
-			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"selection" && !profile && !isProviderData(dependency) {
+			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"backend" && dependency != prefix+"provider" && dependency != prefix+"provider/process" && !profile && !isProviderData(dependency) {
 				t.Errorf("tool %s imports another execution implementation %s", name, dependency)
 			}
 		}

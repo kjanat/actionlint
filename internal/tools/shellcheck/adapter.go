@@ -14,8 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
-	"actionlint.kjanat.dev/v2/internal/tools/selection"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
@@ -119,7 +119,7 @@ type adapterContext struct {
 }
 
 func (c adapterContext) configuredScriptEngine(name, requested string, explicit *ExternalCommandOptions) (analyzer.ScriptBackend, error) {
-	return selection.Load(name, requested, explicit, c.config, c.scriptEngine)
+	return backend.Load(name, requested, explicit, c.config, c.scriptEngine)
 }
 
 type runner struct{ check scriptAnalyzer }

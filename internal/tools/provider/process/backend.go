@@ -428,6 +428,14 @@ func (b *Backend) directory(requested string) (string, error) {
 	if directory == "" {
 		directory = b.command.Dir
 	}
+	if b.command.Runner != nil {
+		// An embedded runner may have no filesystem to check the directory
+		// in, such as in a browser.
+		if directory == "" {
+			directory = "/"
+		}
+		return directory, nil
+	}
 	if directory == "" {
 		directory = "."
 	}

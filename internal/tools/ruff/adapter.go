@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	pythonprofile "actionlint.kjanat.dev/v2/internal/tools/profile/python"
-	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // ruffAnalyzer consumes prepared scripts. It has no traversal or diagnostic state.
@@ -23,8 +23,8 @@ type ruffAnalyzer struct {
 func newRuffAnalyzer(c tools.Context, o Options, compatibility *Compatibility) (*ruffAnalyzer, error) {
 	checker, err := newRuffChecker(c, o, compatibility)
 	if err != nil {
-		options := selection.ProcessOptions("ruff", o.Command, o.Process, c.Config, c.WorkingDir)
-		if options == nil || !options.Optional || selection.Module("ruff", o.Command, o.Process, c.Config) != nil {
+		options := backend.ProcessOptions("ruff", o.Command, o.Process, c.Config, c.WorkingDir)
+		if options == nil || !options.Optional || backend.Module("ruff", o.Command, o.Process, c.Config) != nil {
 			return nil, err
 		}
 	}
@@ -35,8 +35,8 @@ func newRuffAnalyzer(c tools.Context, o Options, compatibility *Compatibility) (
 		invocation := c
 		invocation.Config = cfg
 		checker, err := newRuffChecker(invocation, o, compatibility)
-		options := selection.ProcessOptions("ruff", o.Command, o.Process, cfg, c.WorkingDir)
-		if err != nil && options != nil && options.Optional && selection.Module("ruff", o.Command, o.Process, cfg) == nil {
+		options := backend.ProcessOptions("ruff", o.Command, o.Process, cfg, c.WorkingDir)
+		if err != nil && options != nil && options.Optional && backend.Module("ruff", o.Command, o.Process, cfg) == nil {
 			return nil, nil
 		}
 		return checker, err
@@ -48,7 +48,7 @@ func newRuffChecker(c tools.Context, o Options, compatibility *Compatibility) (*
 	if o.Backend != nil {
 		return NewBackend(c.Processes.Ctx, o.Backend, pythonprofile.TemplateEnd), nil
 	}
-	if engine, err := selection.Load("ruff", o.Command, o.Process, c.Config, engineLoader(c)); engine != nil || err != nil {
+	if engine, err := backend.Load("ruff", o.Command, o.Process, c.Config, engineLoader(c)); engine != nil || err != nil {
 		if err != nil {
 			return nil, fmt.Errorf("could not initialize Ruff: %w", err)
 		}
@@ -57,10 +57,10 @@ func newRuffChecker(c tools.Context, o Options, compatibility *Compatibility) (*
 	if !processconfig.Enabled(o.Command, o.Process) {
 		return nil, nil
 	}
-	if err := selection.RequireProcessOptIn("ruff", o.Command, o.Process, c.Config, c.AllowConfigProcesses); err != nil {
+	if err := backend.RequireProcessOptIn("ruff", o.Command, o.Process, c.Config, c.AllowConfigProcesses); err != nil {
 		return nil, err
 	}
-	o.Process = selection.ProcessOptions("ruff", o.Command, o.Process, c.Config, c.WorkingDir)
+	o.Process = backend.ProcessOptions("ruff", o.Command, o.Process, c.Config, c.WorkingDir)
 	cmd, err := c.Processes.ConfiguredCommandRunner(o.Command, o.Process, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize Ruff: %w", err)

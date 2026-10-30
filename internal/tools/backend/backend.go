@@ -22,6 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/profile"
 	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 	"actionlint.kjanat.dev/v2/rule"
 )
@@ -44,6 +45,11 @@ type engineOptions struct {
 	// prepare replaces expression masking and plugin options for every
 	// selected script.
 	prepare func(tools.Script) (profile.Prepared, error)
+	// batch replaces prepare with a preparation bound to one batch, which
+	// may reject the settings of its scopes once. With it, run scripts
+	// reach the preparation even when no shell selects them; the profile
+	// skips the ones it does not prepare.
+	batch func(tools.Batch) (func(tools.Script) (profile.Prepared, error), error)
 	// filename is the virtual name of run snippets; its extension also names
 	// action-input snippets. Empty keeps "actionlint-script".
 	filename string
@@ -60,6 +66,9 @@ type findingCapabilities struct {
 	// messageTemplate formats messages from {code}, {severity}, {row},
 	// {column} and {message}; empty keeps the engine's message.
 	messageTemplate string
+	// severities maps engine severities to host severities; an unmapped
+	// severity becomes a warning. Empty passes severities through.
+	severities map[string]provider.Severity
 }
 
 func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend, options engineOptions) (tools.Registration, error) {
@@ -70,7 +79,7 @@ func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer
 	if err := analyzer.ValidateScriptInputs(descriptor.ScriptInputs); err != nil {
 		return tools.Registration{}, err
 	}
-	if descriptor.Rule.Name == "" || len(descriptor.Shells)+len(descriptor.ScriptInputs) == 0 {
+	if descriptor.Rule.Name == "" || len(descriptor.Shells)+len(descriptor.ScriptInputs) == 0 && options.batch == nil {
 		return tools.Registration{}, errors.New("script engine requires a rule and script selectors")
 	}
 	selectors, err := shellCatalogue(descriptor.Rule, descriptor.Shells)
@@ -170,6 +179,12 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 	var checks []check
 	var failures error
 	_, reporting := r.backend.(processRunner)
+	prepare := r.options.prepare
+	if r.options.batch != nil {
+		var err error
+		prepare, err = r.options.batch(batch)
+		failures = errors.Join(failures, err)
+	}
 	for i, script := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
 			return checks, failures
@@ -181,7 +196,7 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 			if _, supported := r.inputs[*script.Input]; !supported {
 				continue
 			}
-		} else {
+		} else if len(r.shells) != 0 || r.options.batch == nil {
 			shell := scriptShell(script)
 			if _, supported := r.shells[shell]; !supported {
 				continue
@@ -189,9 +204,9 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 		}
 		var options json.RawMessage
 		var prepared profile.Prepared
-		if r.options.prepare != nil {
+		if prepare != nil {
 			var err error
-			prepared, err = r.options.prepare(script)
+			prepared, err = prepare(script)
 			if err != nil {
 				failures = errors.Join(failures, err)
 				continue
@@ -344,7 +359,7 @@ func (r runner) scriptFinding(c check, script tools.Script, d analyzer.ScriptDia
 		case profile.LineScript:
 			row = start.Line
 		case profile.LineStartup:
-			if d.Severity != "error" {
+			if r.severity(d.Severity) != provider.SeverityError {
 				r.debug("%s: dropped %s on the generated startup line: %s", r.descriptor.Name, d.Code, d.Message)
 				return nil, nil
 			}
@@ -370,7 +385,7 @@ func (r runner) scriptFinding(c check, script tools.Script, d analyzer.ScriptDia
 			r.debug("%s: dropped the unmapped or reversed end of %s at %d:%d", r.descriptor.Name, d.Code, row, d.Location.Column)
 		}
 	}
-	finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: d.Severity, DocumentationURL: d.URL, Start: diagnostic.Position{Line: start.Line, Column: start.Col}, End: end, Script: c.index, Content: script.Content}
+	finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: diagnostic.Position{Line: start.Line, Column: start.Col}, End: end, Script: c.index, Content: script.Content}
 	for _, fix := range d.Fixes {
 		if mapped, ok := scriptFix(script.Source, c.prepared, fix); ok {
 			finding.Fixes = append(finding.Fixes, mapped)
@@ -395,6 +410,16 @@ func (r runner) message(d analyzer.ScriptDiagnostic, row, column int) string {
 		return d.Message
 	}
 	return strings.NewReplacer("{code}", d.Code, "{severity}", d.Severity, "{row}", strconv.Itoa(row), "{column}", strconv.Itoa(column), "{message}", d.Message).Replace(r.options.findings.messageTemplate)
+}
+
+// severity maps an engine severity to a host severity through the
+// manifest's table, logging a severity the table does not list.
+func (r runner) severity(severity string) provider.Severity {
+	mapped, listed := provider.Capabilities{Severities: r.options.findings.severities}.HostSeverity(severity)
+	if !listed {
+		r.debug("%s: mapped unlisted severity %q to %s", r.descriptor.Name, severity, mapped)
+	}
+	return mapped
 }
 
 func (r runner) debug(format string, args ...any) {

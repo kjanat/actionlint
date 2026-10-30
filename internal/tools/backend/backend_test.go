@@ -57,13 +57,12 @@ func TestProcessShellCatalogueIsCapturedBeforeDocumentBuilds(t *testing.T) {
 		t.Fatal(err)
 	}
 	shells := []string{"python"}
-	registration, err := RegisterProcess(ProcessProvider{
+	registration, err := RegisterProvider(Provider{
 		Manifest: envelopeManifest("catalogue", shells),
-		Command: &processconfig.Options{
+		Selection: Selection{Process: &processconfig.Options{
 			Executable: &executable, LauncherArguments: []string{"-test.run=^TestShellSelectorProcessHelper$"},
 			Environment: []string{"ACTIONLINT_SELECTOR_HELPER=1"},
-		},
-		Required: true,
+		}},
 	})
 	if err != nil {
 		t.Fatal(err)

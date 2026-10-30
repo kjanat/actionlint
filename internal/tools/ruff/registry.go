@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/internal/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/selection"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 )
 
 // Options selects Ruff's transport independently of workflow traversal.
@@ -38,12 +38,12 @@ func (o Options) Registration() tools.Registration {
 		PrepareInput: prepareInput,
 		Enabled: func(c tools.Context) bool {
 			possible, err := projectMayEnable(c.Config, c.ProjectConfig, c.ProjectRoot != "")
-			return (o.Backend != nil || selection.AllowsModule("ruff", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (possible || err != nil)
+			return (o.Backend != nil || backend.AllowsModule("ruff", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (possible || err != nil)
 		},
 		Required: func(c tools.Context) bool {
 			o := o.forConfig(c.Config)
-			options := selection.ProcessOptions("ruff", o.Command, o.Process, c.Config, c.WorkingDir)
-			return o.Backend != nil || selection.Module("ruff", o.Command, o.Process, c.Config) != nil || options == nil || !options.Optional
+			options := backend.ProcessOptions("ruff", o.Command, o.Process, c.Config, c.WorkingDir)
+			return o.Backend != nil || backend.Module("ruff", o.Command, o.Process, c.Config) != nil || options == nil || !options.Optional
 		},
 		Build: func(c tools.Context) (tools.Runner, error) {
 			adapter, err := newRuffAnalyzer(c, o, compatibility)
@@ -78,7 +78,7 @@ func (o Options) Registration() tools.Registration {
 		if o.Backend != nil {
 			return o.Backend, nil
 		}
-		return selection.Load("ruff", o.Command, o.Process, c.Config, engineLoader(c))
+		return backend.Load("ruff", o.Command, o.Process, c.Config, engineLoader(c))
 	}
 	return registration
 }

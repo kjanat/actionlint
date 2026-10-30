@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
-	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
 // Options selects ShellCheck's transport and source configuration.
@@ -31,11 +31,11 @@ func (o Options) Registration() tools.Registration {
 	registration := tools.Registration{
 		Descriptor: descriptor, RequiresExecution: true, PrepareInput: prepareInput,
 		Enabled: func(c tools.Context) bool {
-			return config.DiagnosticLevel(c.Config, "shellcheck") != "off" && (o.Backend != nil || o.Runner != nil || selection.AllowsModule("shellcheck", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (c.Config == nil || c.Config.Tools["shellcheck"].Enabled == nil || *c.Config.Tools["shellcheck"].Enabled)
+			return config.DiagnosticLevel(c.Config, "shellcheck") != "off" && (o.Backend != nil || o.Runner != nil || backend.AllowsModule("shellcheck", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (c.Config == nil || c.Config.Tools["shellcheck"].Enabled == nil || *c.Config.Tools["shellcheck"].Enabled)
 		},
 		Required: func(c tools.Context) bool {
-			options := selection.ProcessOptions("shellcheck", o.Command, o.Process, c.Config, c.WorkingDir)
-			return o.Backend != nil || selection.Module("shellcheck", o.Command, o.Process, c.Config) != nil || options != nil && !options.Optional
+			options := backend.ProcessOptions("shellcheck", o.Command, o.Process, c.Config, c.WorkingDir)
+			return o.Backend != nil || backend.Module("shellcheck", o.Command, o.Process, c.Config) != nil || options != nil && !options.Optional
 		},
 		Build: func(c tools.Context) (tools.Runner, error) {
 			var load func(string) (analyzer.ScriptBackend, error)
@@ -57,7 +57,7 @@ func (o Options) Registration() tools.Registration {
 			if o.Backend != nil || o.Runner != nil || config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools["shellcheck"].Enabled != nil && !*cfg.Tools["shellcheck"].Enabled {
 				return false, nil
 			}
-			return selection.ProjectMayNeedProcess("shellcheck", cfg, project, inside, o.Command, o.Process)
+			return backend.ProjectMayNeedProcess("shellcheck", cfg, project, inside, o.Command, o.Process)
 		},
 		Validate: func() error {
 			if o.Backend != nil && (o.Process != nil || o.Command != "" || o.Runner != nil || o.Settings != nil) {
@@ -88,7 +88,7 @@ func (o Options) Registration() tools.Registration {
 		if c.LoadEngine != nil {
 			load = func(path string) (analyzer.ScriptBackend, error) { return c.LoadEngine(c.Processes.Ctx, path) }
 		}
-		return selection.Load("shellcheck", o.Command, o.Process, c.Config, load)
+		return backend.Load("shellcheck", o.Command, o.Process, c.Config, load)
 	}
 	return registration
 }

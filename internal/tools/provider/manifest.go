@@ -81,7 +81,9 @@ type Manifest struct {
 	// Process is present exactly when Transport is TransportProcess.
 	Process *ProcessSpec `json:"process,omitempty"`
 	// Integration names the managed document-analyzer contract a component
-	// provides on the deprecated managed route.
+	// provides on the deprecated managed route. On a process provider it
+	// names the contract of a component that may replace it, falling back
+	// to the process for configurations the component declines.
 	Integration *Integration `json:"integration,omitempty"`
 }
 
@@ -151,6 +153,19 @@ type Capabilities struct {
 	// Severities maps tool severities to host severities. Empty passes tool
 	// severities through.
 	Severities map[string]Severity `json:"severities,omitempty"`
+}
+
+// HostSeverity maps a tool severity through Severities. Without a table
+// the severity passes through; a severity the table does not list maps to
+// SeverityWarning and reports false.
+func (c Capabilities) HostSeverity(severity string) (Severity, bool) {
+	if len(c.Severities) == 0 {
+		return Severity(severity), true
+	}
+	if mapped, ok := c.Severities[severity]; ok {
+		return mapped, true
+	}
+	return SeverityWarning, false
 }
 
 // Stdin selects what a process reads on standard input.

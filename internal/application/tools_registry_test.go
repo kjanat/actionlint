@@ -24,7 +24,7 @@ func TestIndependentProcessTool(t *testing.T) {
 	}
 	register := func(environment ...string) tools.Registration {
 		t.Helper()
-		registration, err := backend.RegisterProcess(backend.ProcessProvider{
+		registration, err := backend.RegisterProvider(backend.Provider{
 			Manifest: provider.Manifest{
 				SchemaVersion: provider.SchemaVersion, ID: "example.com/example-script", Version: "1", Role: provider.RoleScript,
 				Rule: rule.Descriptor{Name: "example-script", Description: "An independent provider"}, Scope: provider.ScopeSource,
@@ -37,8 +37,7 @@ func TestIndependentProcessTool(t *testing.T) {
 					Output:         provider.Output{Format: provider.FormatEnvelope},
 				},
 			},
-			Command:  &processconfig.Options{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment},
-			Required: true,
+			Selection: backend.Selection{Process: &processconfig.Options{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
 		})
 		if err != nil {
 			t.Fatal(err)
