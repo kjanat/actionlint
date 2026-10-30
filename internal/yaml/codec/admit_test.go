@@ -8,15 +8,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
-	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 type admissionLimits struct {
 	counts [][2]int
 	stopAt int
 }
-
-func (*admissionLimits) CheckDepth(int, *upstream.DepthContext) error { return nil }
 
 func (limits *admissionLimits) CheckAlias(aliases, constructions int) error {
 	limits.counts = append(limits.counts, [2]int{aliases, constructions})
