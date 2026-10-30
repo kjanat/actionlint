@@ -62,7 +62,9 @@ variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
 secrets   = ["DEPLOY_TOKEN"]
 
 [lint.message-ignores]
-".github/workflows/**/*.{yml,yaml}" = ["shellcheck reported issue in this script: SC2086:.+"]
+".github/workflows/**/*.{yml,yaml}" = [
+  "shellcheck reported issue in this script: SC2086:.+"
+]
 ```
 
 Errors and warnings name the line and column in the file as written.

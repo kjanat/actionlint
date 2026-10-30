@@ -494,8 +494,7 @@ The example validates declaration facts already present in the contract; other c
 
 ### C
 
-[`examples/plugins/no-sudo`](../examples/plugins/no-sudo) flags `sudo` at the start of a command. `build.sh` generates
-bindings with `wit-bindgen c` and compiles with wasi-sdk:
+[`examples/plugins/no-sudo`](../examples/plugins/no-sudo) flags `sudo` at the start of a command. `build.sh` generates bindings with `wit-bindgen c` and compiles with wasi-sdk:
 
 ```sh
 WASI_SDK_PATH=/opt/wasi-sdk ./build.sh no-sudo.wasm
@@ -513,7 +512,7 @@ contract and TinyGo's bundled WASI definitions, then builds with:
 ```
 
 TinyGo's `cabi_realloc` returns null for a zero-size request, which the canonical ABI allows. wacogo accepts it since
-https://github.com/partite-ai/wacogo/pull/12. The pinned runtime includes this fix.
+https://github.com/partite-ai/wacogo/pull/12. The fork's runtime includes this fix.
 
 ### Other toolchains
 

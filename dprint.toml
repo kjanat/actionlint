@@ -15,7 +15,8 @@ plugins     = [
   "https://plugins.dprint.dev/kjanat/pwsh-0.2.0.wasm",
   "https://plugins.dprint.dev/kjanat/shfmt-1.1.1.wasm",
   "https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
-  "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm"
+  "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm",
+  "https://plugins.dprint.dev/kjanat/tombi-0.1.0.wasm",
 ]
 excludes    = [
   "**/testdata/**",
@@ -32,11 +33,6 @@ excludes    = [
 cwd = "${configDir}"
 
 [[exec.commands]]
-command       = "tombi format - --stdin-filename {{file_path}}"
-exts          = ["toml"]
-cacheKeyFiles = ["tombi.toml"]
-
-[[exec.commands]]
 command = "rustfmt --edition 2024"
 exts    = ["rs"]
 
@@ -45,7 +41,7 @@ command = "gofmt -s"
 exts    = ["go"]
 
 [jsonSchemaSort]
-associations = ["**/schema.json", "**/*.schema.json"]
+associations = ["**/*schema.json", "**/*.schema.json"]
 
 [shfmt]
 useTabs          = true
@@ -108,3 +104,28 @@ svelteDirectiveShorthand   = true
 ignoreCommentDirective     = "dprint-ignore"
 ignoreFileCommentDirective = "dprint-ignore-file"
 associations               = ["!**/*.svg"]
+
+# format rules and formatting-relevant schemas of tombi.toml
+[toml]
+tomlVersion                  = "v1.0.0"
+arrayBracketSpaceWidth       = 0
+arrayCommaSpaceWidth         = 1
+dateTimeDelimiter            = "T"
+indentStyle                  = "space"
+indentSubTables              = false
+indentTableKeyValuePairs     = false
+indentWidth                  = 2
+inlineTableBraceSpaceWidth   = 1
+inlineTableCommaSpaceWidth   = 1
+keyValueEqualsSignAlignment  = true
+keyValueEqualsSignSpaceWidth = 1
+lineEnding                   = "lf"
+lineWidth                    = 140
+stringQuoteStyle             = "double"
+trailingCommentAlignment     = true
+trailingCommentSpaceWidth    = 2
+schemas                      = [
+  { tomlVersion = "v1.0.0", path = "https://www.schemastore.org/cargo.json", include = ["Cargo.toml", "**/Cargo.toml"], strict = false },
+  { path = "https://www.schemastore.org/cargo-config.json", include = ["**/.cargo/config.toml", "**/.config/nightly.toml"] },
+  { path = "https://mise.jdx.dev/schema/mise.json", include = ["mise.toml", ".mise.toml"] },
+]
