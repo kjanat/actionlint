@@ -140,7 +140,7 @@ func TestPostExcludeFallbackRetainsUncertainCandidates(t *testing.T) {
 	}
 	resolution := Resolution{
 		state: value.Literal,
-		axes: []Axis{
+		axes: []matrixAxis{
 			{Name: "os", Values: []value.Value{ubuntu, typo}, Complete: true},
 			{Name: "arch", Values: largeAxis, Complete: true},
 		},
@@ -149,7 +149,7 @@ func TestPostExcludeFallbackRetainsUncertainCandidates(t *testing.T) {
 	if reach := resolution.ReachableAfterExcludes("os"); reach.Complete || len(reach.Values) != 2 {
 		t.Fatalf("bounded fallback dropped possible candidates: %#v", reach)
 	}
-	resolution.axes[1] = Axis{Name: "arch", Values: []value.Value{value.DynamicValue("${{ vars.ARCH }}", value.KindUnknown, value.Origin{})}}
+	resolution.axes[1] = matrixAxis{Name: "arch", Values: []value.Value{value.DynamicValue("${{ vars.ARCH }}", value.KindUnknown, value.Origin{})}}
 	if reach := resolution.ReachableAfterExcludes("os"); reach.Complete || len(reach.Values) != 2 {
 		t.Fatalf("dynamic fallback dropped possible candidates: %#v", reach)
 	}
@@ -164,7 +164,7 @@ func TestPostExcludeProjectionDoesNotNarrowInvalidOrDynamicMatrix(t *testing.T) 
 		os := value.YAMLScalar("ubuntu-lates", "!!str", value.Origin{})
 		resolution := Resolution{
 			state:   state,
-			axes:    []Axis{{Name: "os", Values: []value.Value{os}, Complete: true}},
+			axes:    []matrixAxis{{Name: "os", Values: []value.Value{os}, Complete: true}},
 			exclude: []Combination{(Combination{}).With("os", os)},
 		}
 		if reach := resolution.ReachableAfterExcludes("os"); reach.Complete || len(reach.Values) != 1 || !reach.Values[0].Equal(os) {
@@ -363,7 +363,7 @@ func TestIncludeMergeProofBeyondCombinationBudget(t *testing.T) {
 	}
 	resolution := Resolution{
 		state: value.Literal, excludeKnown: true,
-		axes: []Axis{
+		axes: []matrixAxis{
 			{Name: "os", Values: []value.Value{os}, Complete: true},
 			{Name: "extra", Values: largeAxis, Complete: true},
 		},
@@ -375,7 +375,7 @@ func TestIncludeMergeProofBeyondCombinationBudget(t *testing.T) {
 	if reach := resolution.ReachableAfterExcludes("os"); len(reach.Values) != 1 || !reach.Values[0].Equal(os) {
 		t.Fatalf("proved merged include manufactured an axis alternative: %#v", reach)
 	}
-	resolution.axes[1] = Axis{Name: "extra", Values: []value.Value{value.DynamicValue("${{ fromJSON(vars.EXTRA) }}", value.KindUnknown, value.Origin{})}}
+	resolution.axes[1] = matrixAxis{Name: "extra", Values: []value.Value{value.DynamicValue("${{ fromJSON(vars.EXTRA) }}", value.KindUnknown, value.Origin{})}}
 	if got := resolution.includeApplicability(inclusion); got != matchUncertain {
 		t.Fatalf("unknown axis invented a surviving witness: %v", got)
 	}

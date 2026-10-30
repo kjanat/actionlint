@@ -14,7 +14,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/value"
 )
 
-type Axis struct {
+// matrixAxis is one declared matrix row. Complete is false when a value or the
+// row itself is dynamic, so Values may not enumerate every runtime value.
+type matrixAxis struct {
 	Name     string
 	Values   []value.Value
 	Complete bool
@@ -95,7 +97,7 @@ func (unknownExclusionAxis) exclusionIssue() {}
 
 type Resolution struct {
 	state        value.State
-	axes         []Axis
+	axes         []matrixAxis
 	include      []Combination
 	exclude      []Combination
 	filterKnown  bool
@@ -149,18 +151,6 @@ func (r Resolution) hasExclusionIssues() bool {
 		return true
 	}
 	return false
-}
-
-func (r Resolution) Axes() iter.Seq[Axis] {
-	axes := slices.Clone(r.axes)
-	return func(yield func(Axis) bool) {
-		for _, axis := range axes {
-			axis.Values = slices.Clone(axis.Values)
-			if !yield(axis) {
-				return
-			}
-		}
-	}
 }
 
 // ReachableNames yields base-axis and include-only names in stable order.
@@ -222,7 +212,7 @@ func resolveDeclaration(matrix *workflowlang.Matrix) Resolution {
 			continue
 		}
 		axisName = strings.ToLower(axisName)
-		axis := Axis{Name: axisName, Complete: true, Origin: origin(rowPosition(row), false)}
+		axis := matrixAxis{Name: axisName, Complete: true, Origin: origin(rowPosition(row), false)}
 		if row.Expression != nil {
 			v := expression(row.Expression)
 			if v.Known() && v.Kind() == value.Array {
@@ -337,7 +327,7 @@ func resolveSemanticMatrix(matrix value.Value) Resolution {
 			}
 			continue
 		}
-		axis := Axis{Name: strings.ToLower(name), Complete: row.Known(), Origin: row.Origin()}
+		axis := matrixAxis{Name: strings.ToLower(name), Complete: row.Known(), Origin: row.Origin()}
 		if row.Known() && row.Kind() == value.Array {
 			for item := range row.Items() {
 				axis.Values = append(axis.Values, item)
@@ -347,7 +337,7 @@ func resolveSemanticMatrix(matrix value.Value) Resolution {
 		}
 		r.axes = append(r.axes, axis)
 	}
-	slices.SortFunc(r.axes, func(a, b Axis) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(r.axes, func(a, b matrixAxis) int { return strings.Compare(a.Name, b.Name) })
 	return r
 }
 
@@ -624,7 +614,7 @@ func (r Resolution) includeApplicability(inclusion Combination) matchProof {
 				continue
 			}
 			part := (Combination{}).With(axis.Name, candidate)
-			if includeMatch(part, inclusion, []Axis{axis}) == matchAlways {
+			if includeMatch(part, inclusion, []matrixAxis{axis}) == matchAlways {
 				witness.values[axis.Name] = candidate
 				matched = true
 				break
@@ -902,7 +892,7 @@ func rowPosition(row *workflowlang.MatrixRow) *workflowlang.Pos {
 	return nil
 }
 
-func axisIndex(axes []Axis, name string) int {
+func axisIndex(axes []matrixAxis, name string) int {
 	for i, axis := range axes {
 		if strings.EqualFold(axis.Name, name) {
 			return i
@@ -966,7 +956,7 @@ func exclusionMatch(actual func(string) ([]value.Value, bool), expected Combinat
 	return result
 }
 
-func includeMatch(actual, expected Combination, axes []Axis) matchProof {
+func includeMatch(actual, expected Combination, axes []matrixAxis) matchProof {
 	result := matchAlways
 	for name, filter := range expected.values {
 		if axisIndex(axes, name) < 0 {
