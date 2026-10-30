@@ -1429,7 +1429,7 @@ func (sema *Checker) Check(expr Node) (Type, []*Error) {
 	if sema.condition && sema.checks.StringConditions && conditionStringReference(expr, ty) {
 		sema.ruleError(expr, "string-conditions", "bare string condition is truthy for every non-empty value, including 'false' and '0'; use an explicit string comparison or fromJSON() for a boolean contract")
 	}
-	errs := sema.errs
+	errs := detachErrors(sema.errs)
 	if sema.untrusted != nil {
 		sema.untrusted.OnVisitEnd()
 		errs = append(errs, sema.untrusted.Errs()...)

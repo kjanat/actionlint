@@ -394,11 +394,15 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})
 				args := make([]exprlang.Node, len(n.Args))
 				for i := range args {
-					argument, err := parser.Parse(exprlang.NewLexer("argument}}"))
+					parsed, err := parser.Parse(exprlang.NewLexer("argument}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					*argument.Token() = *n.Args[i].Token()
+					argument, ok := parsed.(*exprlang.VariableNode)
+					if !ok {
+						t.Fatalf("argument placeholder parsed as %T", parsed)
+					}
+					argument.First = n.Args[i].Token()
 					args[i] = argument
 				}
 				call := *n

@@ -95,8 +95,8 @@ func copyEventObject(event *ObjectType) *ObjectType {
 func eventReference(n Node) string {
 	switch n := n.(type) {
 	case *VariableNode:
-		if n.tok != nil {
-			return n.tok.Value
+		if n.First.Value != "" {
+			return n.First.Value
 		}
 		return n.Name
 	case *ArrayDerefNode:
