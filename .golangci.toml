@@ -10,6 +10,7 @@ default = "standard"
 enable  = [
   "actionlintarch",
   "contextcheck",
+  "depguard",
   "exhaustive",
   "dupl",
   "asasalint",
@@ -49,10 +50,84 @@ enable  = [
 ]
 
 [linters.settings.forbidigo]
+analyze-types = true
 forbid = [
   { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through fsread.Reader" },
   { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through fsread.Reader" },
   { pattern = '^fsread\.(Disk|ProbeDir)$', msg = "fsread.Disk and fsread.ProbeDir skip recording; read through fsread.Reader" },
+  { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/workflow/invocation$', msg = "only the invocation owner registers occurrence IDs" },
+]
+
+# Import direction. Each rule applies to every file its globs match, so a
+# file must satisfy all matching rules. Deny entries match import-path prefixes.
+# Rules checking transitive dependencies remain in internal/architecture until
+# a strict layer table makes them redundant.
+
+[linters.settings.depguard.rules.cli]
+files = ["**/internal/cli/**", "!$test"]
+deny  = [
+  { pkg = "actionlint.kjanat.dev/v2/internal/engine", desc = "the terminal adapter consumes application and presentation contracts" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/plugins/component", desc = "the terminal adapter must not construct plugin runtimes" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/plugins/core", desc = "the terminal adapter must not construct plugin runtimes" },
+]
+
+[linters.settings.depguard.rules.entrypoints]
+files = [
+  "**/internal/githubaction/**",
+  "**/analysis/*.go",
+  "**/internal/rulecatalog/check-docs/**",
+  "!$test",
+]
+deny = [{ pkg = "actionlint.kjanat.dev/v2/internal/engine", desc = "entrypoints use the application boundary" }]
+
+[linters.settings.depguard.rules.engine]
+files = ["**/internal/engine/**", "!$test"]
+deny  = [
+  { pkg = "os/exec", desc = "the engine does not own native process execution" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/semantics", desc = "the engine receives semantic checks through built-in composition" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/action/validation", desc = "the engine receives semantic checks through built-in composition" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/workflow/checks", desc = "the engine receives semantic checks through built-in composition" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/workflow/expressions", desc = "the engine receives semantic checks through built-in composition" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/workflow/cachepolicy", desc = "the engine receives semantic checks through built-in composition" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/workflow/matrix", desc = "the engine receives semantic checks through built-in composition" },
+  { pkg = "actionlint.kjanat.dev/v2/internal/workflow/commands", desc = "the engine receives semantic checks through built-in composition" },
+]
+
+[linters.settings.depguard.rules.yaml-types]
+files = [
+  "**/internal/semantics/**",
+  "**/internal/engine/*.go",
+  "**/internal/workflow/*.go",
+  "**/internal/mapping/*.go",
+  "!$test",
+]
+deny = [{ pkg = "github.com/kjanat/go-yaml/v4", desc = "parser types stay behind the YAML codec" }]
+
+[linters.settings.depguard.rules.integration]
+files = ["**/internal/integration/**"]
+deny  = [{ pkg = "actionlint.kjanat.dev/v2/internal/engine", desc = "integration suites exercise the application boundary" }]
+
+[linters.settings.depguard.rules.invocation]
+files = ["**/internal/workflow/invocation/*.go", "!$test"]
+deny  = [
+  { pkg = "os", desc = "the invocation owner has no host capabilities" },
+  { pkg = "io", desc = "the invocation owner has no host capabilities" },
+  { pkg = "net", desc = "the invocation owner has no host capabilities" },
+  { pkg = "syscall", desc = "the invocation owner has no host capabilities" },
+  { pkg = "unsafe", desc = "the invocation owner has no host capabilities" },
+  { pkg = "crypto/rand", desc = "the invocation owner has no host capabilities" },
+  { pkg = "math/rand", desc = "the invocation owner has no host capabilities" },
+]
+
+[linters.settings.depguard.rules.invocationview]
+files     = ["**/internal/invocationview/*.go", "!$test"]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/analyzer",
+  "actionlint.kjanat.dev/v2/diagnostic",
+  "actionlint.kjanat.dev/v2/source",
+  "actionlint.kjanat.dev/v2/internal/workflow/invocation",
 ]
 
 [linters.settings.custom.actionlintarch]
@@ -75,6 +150,12 @@ paths     = [
 
 [[linters.exclusions.rules]]
 path    = '_test\.go$|^(\.github|cmd|fuzz|playground|tools)/|^internal/(cli|githubaction|conformance|fsread)/|^internal/(actioncatalog/(generate|metadata)|expression/context/generate|webhook/generate|rulecatalog/check-docs|documentation/check-readme)/'
+text    = "fsread"
+linters = ["forbidigo"]
+
+[[linters.exclusions.rules]]
+path    = '_test\.go$|^internal/workflow/invocation/'
+text    = "occurrence IDs"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]

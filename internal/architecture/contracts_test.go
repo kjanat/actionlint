@@ -119,20 +119,13 @@ func TestInvocationOwnerDependencyDirection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var pkg struct{ Imports, Deps []string }
+	var pkg struct{ Deps []string }
 	if err := json.Unmarshal(output, &pkg); err != nil {
 		t.Fatal(err)
 	}
 	for _, dependency := range pkg.Deps {
 		if strings.Contains(strings.Split(dependency, "/")[0], ".") && dependency != "actionlint.kjanat.dev/v2/source" {
 			t.Errorf("invocation owner imports implementation dependency %s", dependency)
-		}
-	}
-	for _, dependency := range pkg.Imports {
-		for _, capability := range []string{"os", "io", "net", "syscall", "unsafe", "crypto/rand", "math/rand"} {
-			if dependency == capability || strings.HasPrefix(dependency, capability+"/") {
-				t.Errorf("invocation owner imports host capability %s", dependency)
-			}
 		}
 	}
 }
@@ -146,21 +139,6 @@ func TestEngineDoesNotImportPluginRuntime(t *testing.T) {
 		switch {
 		case dependency == "actionlint.kjanat.dev/v2/internal/plugins/component", strings.HasPrefix(dependency, "github.com/partite-ai/wacogo"), strings.HasPrefix(dependency, "github.com/kjanat/wacogo"), strings.HasPrefix(dependency, "github.com/tetratelabs/wazero"), strings.HasPrefix(dependency, "github.com/kjanat/wazero"):
 			t.Errorf("engine imports plugin runtime %s", dependency)
-		}
-	}
-}
-
-// The terminal adapter must consume application and presentation contracts,
-// never the engine's sessions, traversal objects, or concrete plugin runtimes.
-func TestCLIDoesNotImportEngine(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Imports "\n"}}`, "actionlint.kjanat.dev/v2/internal/cli").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for dependency := range strings.SplitSeq(string(output), "\n") {
-		switch dependency {
-		case "actionlint.kjanat.dev/v2/internal/engine", "actionlint.kjanat.dev/v2/internal/plugins/component", "actionlint.kjanat.dev/v2/internal/plugins/core":
-			t.Errorf("CLI imports implementation %s", dependency)
 		}
 	}
 }
@@ -206,34 +184,27 @@ func TestAnalyzerHostDoesNotImportTraversal(t *testing.T) {
 }
 
 func TestSemanticChecksAndYAMLBoundary(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/semantics/...", "actionlint.kjanat.dev/v2/internal/engine", "actionlint.kjanat.dev/v2/internal/workflow", "actionlint.kjanat.dev/v2/internal/mapping").Output()
+	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/semantics/...").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
 	decoder := json.NewDecoder(strings.NewReader(string(output)))
 	for decoder.More() {
 		var pkg struct {
-			ImportPath                               string
-			Imports, Deps, TestImports, XTestImports []string
+			ImportPath                      string
+			Deps, TestImports, XTestImports []string
 		}
 		if err := decoder.Decode(&pkg); err != nil {
 			t.Fatal(err)
 		}
-		for _, dependency := range pkg.Imports {
-			if dependency == "github.com/kjanat/go-yaml/v4" {
-				t.Errorf("semantic package %s imports parser types", pkg.ImportPath)
+		for _, dependency := range append(append(pkg.Deps, pkg.TestImports...), pkg.XTestImports...) {
+			if strings.HasPrefix(dependency, "go.yaml.in/") || strings.HasPrefix(dependency, "gopkg.in/yaml.") {
+				t.Errorf("semantic check %s depends on YAML decoding %s", pkg.ImportPath, dependency)
 			}
-		}
-		if strings.HasPrefix(pkg.ImportPath, "actionlint.kjanat.dev/v2/internal/semantics") {
-			for _, dependency := range append(append(pkg.Deps, pkg.TestImports...), pkg.XTestImports...) {
-				if strings.HasPrefix(dependency, "go.yaml.in/") || strings.HasPrefix(dependency, "gopkg.in/yaml.") {
-					t.Errorf("semantic check %s depends on YAML decoding %s", pkg.ImportPath, dependency)
-				}
-				for _, domain := range []string{"workflow", "action", "builtin", "engine", "config", "workspace", "analyzerhost", "tools", "render"} {
-					prefix := "actionlint.kjanat.dev/v2/internal/" + domain
-					if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
-						t.Errorf("semantic check %s depends on adapter or host %s", pkg.ImportPath, dependency)
-					}
+			for _, domain := range []string{"workflow", "action", "builtin", "engine", "config", "workspace", "analyzerhost", "tools", "render"} {
+				prefix := "actionlint.kjanat.dev/v2/internal/" + domain
+				if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
+					t.Errorf("semantic check %s depends on adapter or host %s", pkg.ImportPath, dependency)
 				}
 			}
 		}
@@ -344,29 +315,6 @@ func TestWorkflowDependencyMetadataDoesNotImportHost(t *testing.T) {
 		switch dependency {
 		case "actionlint.kjanat.dev/v2/internal/engine", "actionlint.kjanat.dev/v2/internal/application", "actionlint.kjanat.dev/v2/internal/analyzerhost", "actionlint.kjanat.dev/v2/internal/render", "actionlint.kjanat.dev/v2/internal/tools/adapters", "actionlint.kjanat.dev/v2/internal/config", "actionlint.kjanat.dev/v2/internal/workspace":
 			t.Errorf("workflow dependency metadata imports host %s", dependency)
-		}
-	}
-}
-
-func TestEntrypointsUseApplicationBoundary(t *testing.T) {
-	for _, name := range []string{"internal/cli", "internal/githubaction", "analysis", "internal/rulecatalog/check-docs"} {
-		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Imports "\n"}}`, "actionlint.kjanat.dev/v2/"+name).Output()
-		if err != nil {
-			t.Fatal(err)
-		}
-		for dependency := range strings.SplitSeq(string(output), "\n") {
-			if dependency == "actionlint.kjanat.dev/v2/internal/engine" {
-				t.Errorf("%s bypasses application ownership", name)
-			}
-		}
-	}
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Imports "\n"}}`, "actionlint.kjanat.dev/v2/internal/engine").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for dependency := range strings.SplitSeq(string(output), "\n") {
-		if dependency == "os/exec" {
-			t.Error("engine owns native process execution")
 		}
 	}
 }
@@ -483,23 +431,6 @@ func TestBuiltinCompositionDoesNotImportHost(t *testing.T) {
 	}
 }
 
-// The engine consumes registration and visitor contracts instead of constructing
-// semantic implementations. Domain dependencies remain behind composition.
-func TestEngineUsesBuiltinComposition(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Imports "\n"}}`, "actionlint.kjanat.dev/v2/internal/engine").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for dependency := range strings.SplitSeq(string(output), "\n") {
-		for _, domain := range []string{"semantics", "action/validation", "workflow/checks", "workflow/expressions", "workflow/cachepolicy", "workflow/matrix", "workflow/commands"} {
-			prefix := "actionlint.kjanat.dev/v2/internal/" + domain
-			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
-				t.Errorf("engine constructs semantic checks through %s", dependency)
-			}
-		}
-	}
-}
-
 // Bundling must not turn the two native integrations into a shared implementation.
 func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
@@ -511,30 +442,6 @@ func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 			prefix := "actionlint.kjanat.dev/v2/internal/tools/"
 			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"selection" {
 				t.Errorf("tool %s imports another execution implementation %s", name, dependency)
-			}
-		}
-	}
-}
-
-// Integration suites must exercise the application boundary, without reopening
-// the engine's private state through aliases or a replacement test facade.
-func TestIntegrationSuitesUseApplicationBoundary(t *testing.T) {
-	output, err := exec.CommandContext(t.Context(), "go", "list", "-json", "actionlint.kjanat.dev/v2/internal/integration/...").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	decoder := json.NewDecoder(strings.NewReader(string(output)))
-	for decoder.More() {
-		var pkg struct {
-			ImportPath                         string
-			Imports, TestImports, XTestImports []string
-		}
-		if err := decoder.Decode(&pkg); err != nil {
-			t.Fatal(err)
-		}
-		for _, dependency := range append(append(pkg.Imports, pkg.TestImports...), pkg.XTestImports...) {
-			if dependency == "actionlint.kjanat.dev/v2/internal/engine" {
-				t.Errorf("%s bypasses the application boundary", pkg.ImportPath)
 			}
 		}
 	}
