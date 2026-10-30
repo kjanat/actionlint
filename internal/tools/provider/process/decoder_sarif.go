@@ -102,7 +102,7 @@ func (SARIF) Decode(ctx context.Context, stdout []byte, vars map[string]string) 
 	return result, nil
 }
 
-func sarifDiagnostic(rules []sarifRule, entry sarifResult, vars map[string]string) (Diagnostic, error) {
+func sarifDiagnostic(rules []sarifRule, entry sarifResult, vars map[string]string) (analyzer.ScriptDiagnostic, error) {
 	descriptor := sarifResultRule(rules, entry)
 	code := entry.RuleID
 	if code == "" && entry.Rule != nil {
@@ -112,18 +112,18 @@ func sarifDiagnostic(rules []sarifRule, entry sarifResult, vars map[string]strin
 		code = descriptor.ID
 	}
 	if code == "" || entry.Message.Text == "" || len(entry.Locations) == 0 {
-		return Diagnostic{}, errors.New("SARIF result needs a rule id, message text and a location")
+		return analyzer.ScriptDiagnostic{}, errors.New("SARIF result needs a rule id, message text and a location")
 	}
 	location := entry.Locations[0].PhysicalLocation
 	region := location.Region
 	if region.StartLine < 1 {
-		return Diagnostic{}, fmt.Errorf("SARIF result %s has no line region", code)
+		return analyzer.ScriptDiagnostic{}, fmt.Errorf("SARIF result %s has no line region", code)
 	}
 	level := entry.Level
 	if level == "" {
 		level = "warning"
 	}
-	d := Diagnostic{
+	d := analyzer.ScriptDiagnostic{
 		Code: code, Name: descriptor.Name, Message: entry.Message.Text, Severity: level, URL: descriptor.HelpURI,
 		Location: analyzer.ScriptPosition{Row: region.StartLine, Column: max(region.StartColumn, 1)},
 	}

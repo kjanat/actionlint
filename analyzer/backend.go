@@ -114,10 +114,13 @@ func (d ScriptEngineDescriptor) Clone() ScriptEngineDescriptor {
 // ScriptRequest is independent of process arguments and runtime memory layouts.
 // Config contains only engine settings. Filename is a virtual snippet name and
 // grants no filesystem access. Source has already had workflow expressions masked.
+// Directory, when set, is the script's working directory; files an engine
+// reports reading resolve from it. It grants no access by itself.
 type ScriptRequest struct {
-	Source   string          `json:"source"`
-	Filename string          `json:"filename"`
-	Config   json.RawMessage `json:"config,omitempty"`
+	Source    string          `json:"source"`
+	Filename  string          `json:"filename"`
+	Config    json.RawMessage `json:"config,omitempty"`
+	Directory string          `json:"directory,omitempty"`
 }
 
 // ScriptTemplateValidator checks runtime support before template filtering.
@@ -136,6 +139,12 @@ type ScriptPosition struct {
 
 // ScriptDiagnostic is a transport-independent snippet finding. Diagnostics may
 // accompany an error when a backend completes only part of its analysis.
+//
+// Source names a file the engine read besides the snippet, relative to the
+// request directory, when the finding is in that file rather than the
+// snippet; its positions are then that file's. Fixes are suggested edits in
+// snippet coordinates. Hosts accept either only from engines that declare
+// the capability.
 type ScriptDiagnostic struct {
 	Filename       string               `json:"filename"`
 	Code           string               `json:"code"`
@@ -146,4 +155,22 @@ type ScriptDiagnostic struct {
 	EndLocation    ScriptPosition       `json:"end_location"`
 	URL            string               `json:"url,omitempty"`
 	TemplateEffect ScriptTemplateEffect `json:"template_effect,omitempty"`
+	Source         string               `json:"source,omitempty"`
+	Fixes          []ScriptFix          `json:"fixes,omitempty"`
+}
+
+// ScriptFix is one suggested edit made of replacements in snippet coordinates.
+type ScriptFix struct {
+	Description  string              `json:"description,omitempty"`
+	Replacements []ScriptReplacement `json:"replacements"`
+}
+
+// ScriptReplacement replaces the text between two snippet positions. Rows and
+// columns follow ScriptPosition; the end is exclusive.
+type ScriptReplacement struct {
+	Row       int    `json:"row"`
+	EndRow    int    `json:"end_row"`
+	Column    int    `json:"column"`
+	EndColumn int    `json:"end_column"`
+	Text      string `json:"text"`
 }

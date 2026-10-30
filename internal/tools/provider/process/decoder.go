@@ -27,36 +27,14 @@ type Decoder interface {
 
 // Result is one decoded check. Errors are engine-reported failures; they may
 // accompany diagnostics when the engine completed only part of its analysis.
-// Sources are files the engine read besides the snippet.
+// Sources are files the engine read besides the snippet. Directory is where
+// the engine ran, from which relative sources resolve; decoders leave it
+// empty and Backend sets it.
 type Result struct {
-	Diagnostics []Diagnostic `json:"diagnostics"`
-	Sources     []string     `json:"sources,omitempty"`
-	Errors      []string     `json:"errors,omitempty"`
-}
-
-// Diagnostic is an analyzer.ScriptDiagnostic plus the reported source file
-// and suggested fixes, which the snippet contract does not carry yet.
-type Diagnostic struct {
-	analyzer.ScriptDiagnostic
-	// Source is a file the engine read, relative to its working directory,
-	// when the finding is not in the snippet.
-	Source string `json:"source,omitempty"`
-	Fixes  []Fix  `json:"fixes,omitempty"`
-}
-
-// Fix is one suggested edit made of replacements in script coordinates.
-type Fix struct {
-	Description  string        `json:"description,omitempty"`
-	Replacements []Replacement `json:"replacements"`
-}
-
-// Replacement replaces the text between two script positions.
-type Replacement struct {
-	Row       int    `json:"row"`
-	EndRow    int    `json:"end_row"`
-	Column    int    `json:"column"`
-	EndColumn int    `json:"end_column"`
-	Text      string `json:"text"`
+	Diagnostics []analyzer.ScriptDiagnostic `json:"diagnostics"`
+	Sources     []string                    `json:"sources,omitempty"`
+	Errors      []string                    `json:"errors,omitempty"`
+	Directory   string                      `json:"-"`
 }
 
 // checkInput rejects stdout larger than any decoder accepts.

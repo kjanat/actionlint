@@ -36,10 +36,7 @@ func (Envelope) Decode(ctx context.Context, stdout []byte, _ map[string]string) 
 	if err := checkCount(len(envelope.Diagnostics)); err != nil {
 		return Result{}, err
 	}
-	result := Result{Diagnostics: make([]Diagnostic, len(envelope.Diagnostics)), Errors: envelope.Errors}
-	for i, diagnostic := range envelope.Diagnostics {
-		result.Diagnostics[i] = Diagnostic{ScriptDiagnostic: diagnostic}
-	}
+	result := Result{Diagnostics: envelope.Diagnostics, Errors: envelope.Errors}
 	if !*envelope.OK && len(result.Errors) == 0 {
 		result.Errors = []string{"tool reported failure without an explanation"}
 	}

@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 )
 
-func diagnostic(filename, code, message string, row, column int) process.Diagnostic {
-	return process.Diagnostic{Filename: filename, Code: code, Message: message, Location: analyzer.ScriptPosition{Row: row, Column: column}}
+func diagnostic(filename, code, message string, row, column int) analyzer.ScriptDiagnostic {
+	return analyzer.ScriptDiagnostic{Filename: filename, Code: code, Message: message, Location: analyzer.ScriptPosition{Row: row, Column: column}}
 }
 
 func TestEnvelopeDecode(t *testing.T) {
@@ -28,7 +28,7 @@ func TestEnvelopeDecode(t *testing.T) {
 	}
 	want := diagnostic("actionlint.sh", "X1", "m", 2, 3)
 	want.Severity, want.EndLocation, want.TemplateEffect = "warning", analyzer.ScriptPosition{Row: 2, Column: 5}, analyzer.TemplateEffectOpaqueName
-	if diff := cmp.Diff(process.Result{Diagnostics: []process.Diagnostic{want}, Errors: []string{"partial analysis"}}, got); diff != "" {
+	if diff := cmp.Diff(process.Result{Diagnostics: []analyzer.ScriptDiagnostic{want}, Errors: []string{"partial analysis"}}, got); diff != "" {
 		t.Errorf("result (-want +got):\n%s", diff)
 	}
 }
@@ -71,13 +71,13 @@ func TestSARIFDecodeRuffCapture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finding := func(code, message, url string, row, column, endColumn int) process.Diagnostic {
+	finding := func(code, message, url string, row, column, endColumn int) analyzer.ScriptDiagnostic {
 		d := diagnostic("actionlint.py", code, message, row, column)
 		d.Severity, d.URL, d.EndLocation = "error", url, analyzer.ScriptPosition{Row: row, Column: endColumn}
 		return d
 	}
 	const unused = "https://docs.astral.sh/ruff/rules/unused-import"
-	want := process.Result{Diagnostics: []process.Diagnostic{
+	want := process.Result{Diagnostics: []analyzer.ScriptDiagnostic{
 		finding("E401", "Multiple imports on one line", "https://docs.astral.sh/ruff/rules/multiple-imports-on-one-line", 1, 1, 15),
 		finding("F401", "`os` imported but unused", unused, 1, 8, 10),
 		finding("F401", "`sys` imported but unused", unused, 1, 12, 15),
@@ -104,7 +104,7 @@ func TestSARIFDecodeEdges(t *testing.T) {
 	followed := diagnostic("lib/common.sh", "EX1", "finding in a followed file", 4, 3)
 	followed.Name, followed.Severity, followed.URL, followed.Source = "first-rule", "note", "https://example.invalid/EX1", "lib/common.sh"
 	followed.EndLocation = analyzer.ScriptPosition{Row: 4, Column: 9}
-	if diff := cmp.Diff(process.Result{Diagnostics: []process.Diagnostic{byIndex, followed}}, got); diff != "" {
+	if diff := cmp.Diff(process.Result{Diagnostics: []analyzer.ScriptDiagnostic{byIndex, followed}}, got); diff != "" {
 		t.Errorf("result (-want +got):\n%s", diff)
 	}
 }
@@ -141,7 +141,7 @@ func TestJQDecodesBothResultShapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := process.Result{Diagnostics: []process.Diagnostic{diagnostic("actionlint.sh", "X1", "plain text", 1, 1)}}
+	want := process.Result{Diagnostics: []analyzer.ScriptDiagnostic{diagnostic("actionlint.sh", "X1", "plain text", 1, 1)}}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("array result (-want +got):\n%s", diff)
 	}
