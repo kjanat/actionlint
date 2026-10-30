@@ -1,87 +1,367 @@
 {
   "err/alias_content_errors.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/alias_content_errors.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/alias_content_errors.yaml",
+          "digest": "b9a7fc1de9c4ba36c2f0aefaa569e67cddecbf3cff497fafbe9d25a3f2ed3ff1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/alias_type_errors.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/alias_type_errors.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/alias_type_errors.yaml",
+          "digest": "d4f8e0426c6c651836a595c4c6f6847d922c4d3a726c8a23d646d75700c01e60"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/assign_expression.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/assign_expression.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/assign_expression.yaml",
+          "digest": "eb1d1b8ef47223c9c1fbb149f5540cc17792326bf1f8ebded90a017e09030bb1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/case_sensitive_keys.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/case_sensitive_keys.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/case_sensitive_keys.yaml",
+          "digest": "90a3e4ecf941f7922b4adf5f8f6bf344ff540968806ec54b97101745f9f99e7e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/concurrency_queue.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/concurrency_queue.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/concurrency_queue.yaml",
+          "digest": "d9bd9f210f364c22541fd0c6cf2f4a31058a3fcbb6e93c7777611db2b045e064"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/context_availability.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/context_availability.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/context_availability.yaml",
+          "digest": "b17cf72c1f058a40530e76277450d3aeaee41adae4f0999d611503953123e308"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/cron_5minutes_limit.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/cron_5minutes_limit.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/cron_5minutes_limit.yaml",
+          "digest": "f2da369aa2af4b4b1a74eeea06346eb25050717ca232b1fa5df52cd24c69af68"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/dedup_errors.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/dedup_errors.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/dedup_errors.yaml",
+          "digest": "a6dff24d5e1f6161df7167d83f921dec854002f508b89f268e21b625fe28c775"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/deprecated_action_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/deprecated_action_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/deprecated_action_inputs.yaml",
+          "digest": "705da37a134b16ed1897534014ca5a9f64454ec47507deceab3107e929365bb3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/deprecated_workflow_commands.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/deprecated_workflow_commands.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/deprecated_workflow_commands.yaml",
+          "digest": "eb07ca3bc7d3911101bb9d6149484860d93015278289e80644bc554915742773"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/docker_specific_inputs_with_normal_action.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/docker_specific_inputs_with_normal_action.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/docker_specific_inputs_with_normal_action.yaml",
+          "digest": "18f7ee7a1e8f04c6e186e18d2a1cc9520990258edd95578b9174c155fa28814e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/duplicate_keys.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/duplicate_keys.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/duplicate_keys.yaml",
+          "digest": "3a22c574b6514407737a716da2d35a8e2cdd9c32e20a1340ebf56ce616aba917"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/empty.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/empty.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/empty.yaml",
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/empty_image_names_and_versions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/empty_image_names_and_versions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/empty_image_names_and_versions.yaml",
+          "digest": "f1d51ab3f989c1594ce6086f1bff832eb7a5e58d1f3bcb59d91030b9fe7225c9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/empty_on.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/empty_on.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/empty_on.yaml",
+          "digest": "8a0d4011491a5294d6b36ee98fefb4540e9011446855ce99e4ecf56a4ea573e8"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/empty_sequence_or_string.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/empty_sequence_or_string.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/empty_sequence_or_string.yaml",
+          "digest": "b3156897cdba659666bf3d241be73d753d8e1d0d45022532e950288708dd8c35"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/env_context_banned.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/env_context_banned.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/env_context_banned.yaml",
+          "digest": "b30e831caf164e1a77d2a675a7879511c4b21f01afdf3380df9f61e181de8fc3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/errors_in_anchor.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/errors_in_anchor.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/errors_in_anchor.yaml",
+          "digest": "b4217e68685367c80f7547afcd0c75558ce660c22c4a6fa4addb167ee75ee9cf"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/evaluated_template.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/evaluated_template.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/evaluated_template.yaml",
+          "digest": "308626f414f6e45f8c90ca2e7432990787b5da7e15ff8ef5e0a6d73952a42d4c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/exclusive_webhook_filters.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/exclusive_webhook_filters.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/exclusive_webhook_filters.yaml",
+          "digest": "99d1bbdaa2e63e6b880a1ae5ef09a4780d55f6ce937899f847df3290577e9f69"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/expr_check_in_container.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/expr_check_in_container.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/expr_check_in_container.yaml",
+          "digest": "7c9273c07c9618064570820eb312ddae34b542d8d211ac894fda9464751c5927"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/expr_check_in_credentials.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/expr_check_in_credentials.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/expr_check_in_credentials.yaml",
+          "digest": "8ed771c6aea800ded3f9aa535229806e19a886712efe1301e465f2e135979d67"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/expr_check_in_env_var_name.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/expr_check_in_env_var_name.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/expr_check_in_env_var_name.yaml",
+          "digest": "0030fbb3599bb320d202435e07d8ed66b38b237f3077fb76cad8373bdec4e6a2"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/expr_check_in_matrix_row_assign.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/expr_check_in_matrix_row_assign.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/expr_check_in_matrix_row_assign.yaml",
+          "digest": "a59530691c0495e4fd86b0352ca8a7eab19960e9a8eb7161744da7b5a3172313"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/expr_check_in_services.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/expr_check_in_services.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/expr_check_in_services.yaml",
+          "digest": "90703af4890460c7c1acbb5cc5dfbe1327f5cda30f9fd50ae12d0d5e5d361c86"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/expr_in_default_input.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/expr_in_default_input.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/expr_in_default_input.yaml",
+          "digest": "6044cb0b5ff54508d3a4dc5510eea356011eddd51901eef2c9a33723cb69c5da"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/github_script_untrusted_input.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/github_script_untrusted_input.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/github_script_untrusted_input.yaml",
+          "digest": "17ca9857660977ec44872d70fa490ce9c565c3a8d73d7aaea51bbc62df2cd325"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/glob_more.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/glob_more.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/glob_more.yaml",
+          "digest": "fc167b7cdc2cc82e7bd8f58503e678893f6ce72fc982bfe79e43a8b5d4ae8546"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/if_cond_constants.yaml": {
     "findings": [
@@ -97,7 +377,7 @@
         "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
         "rule": "shellcheck",
         "code": "SC2006",
-        "severity": "info",
+        "severity": "style",
         "message": "shellcheck reported issue in this script: SC2006:style:1:15: Use $(...) notation instead of legacy backticks `...`",
         "path": "testdata/err/if_cond_constants.yaml",
         "start": {
@@ -135,70 +415,318 @@
         },
         "snippet": "      - run: echo Constant `true`"
       }
-    ]
+    ],
+    "sources": [
+      {
+        "content": "13e265449770a66f4efad48d1435e3b1435aac8467494fbe311da49c269e85a8"
+      },
+      {
+        "content": "13e265449770a66f4efad48d1435e3b1435aac8467494fbe311da49c269e85a8"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2006",
+        "path": "",
+        "start": {
+          "line": 7,
+          "column": 28
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2046",
+        "path": "",
+        "start": {
+          "line": 7,
+          "column": 28
+        }
+      }
+    ],
+    "captured": {
+      "\u003crepository\u003e/testdata/err/if_cond_constants.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/if_cond_constants.yaml",
+          "digest": "13e265449770a66f4efad48d1435e3b1435aac8467494fbe311da49c269e85a8"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/if_cond_edge_cases_trailing_leading_chars.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/if_cond_edge_cases_trailing_leading_chars.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/if_cond_edge_cases_trailing_leading_chars.yaml",
+          "digest": "2967f4d1d8b7e8d420b44c00ab99efa7824ad1f528c8603a3950354942bdc991"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/inputs_without_workflow_call_event.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/inputs_without_workflow_call_event.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/inputs_without_workflow_call_event.yaml",
+          "digest": "f580be559970dff1f92ad11b766d73a8b044a81ce0fdfb447d0190f49e3ec91f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_comparisons.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_comparisons.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_comparisons.yaml",
+          "digest": "28da21f9f687b102941204d98fd4758418f3c9c2dd08b1c37092af0ea8e95fcd"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_container_syntax.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_container_syntax.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_container_syntax.yaml",
+          "digest": "85e215cde56d3d5c7a66d85930a7409c5808f9c72bbba4e7460c4554b51ddb38"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_event_filters.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_event_filters.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_event_filters.yaml",
+          "digest": "94b0873710a4cc2f9dc42e43c3906d8f669b8b0e9e78837b653656b00ec40a61"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_float_at_timeout_minutes.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_float_at_timeout_minutes.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_float_at_timeout_minutes.yaml",
+          "digest": "b88b0c52725af37fbfa0ea31b4296f3c52cb157173c8f7cc332e20e2054bf014"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_id.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_id.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_id.yaml",
+          "digest": "d0acd9b795bf397de87e27d2fdd728819ebe1395def46a10e1892de713ae2268"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_image_version_event.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_image_version_event.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_image_version_event.yaml",
+          "digest": "59b7192bdcacd5f0173b8a377678fbff9a71e4cfda41ff4501528bf6425cd643"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_int_at_max_parallel.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_int_at_max_parallel.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_int_at_max_parallel.yaml",
+          "digest": "41460175dd1a34f461f13454b311f46696e40caf37d11de864163561df7bc184"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_json_in_fromjson.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_json_in_fromjson.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_json_in_fromjson.yaml",
+          "digest": "81494a4aeaa7b812604148067ce3fe09791e79ca1667b011a970c7f9cca05227"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_permissions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_permissions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_permissions.yaml",
+          "digest": "0747a44c2f3ab2089211eccf9eb594a6b16f0c954a3ebbf1dc26dfc056c49619"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_runner_labels.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_runner_labels.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_runner_labels.yaml",
+          "digest": "5cc0d6a6aab01a1f07454d3b19b1f8c5b07a3e0088fbee53b71706359c62034d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_snapshot.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_snapshot.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_snapshot.yaml",
+          "digest": "a1bf44ee81e5439ea9189f49d7803353487b631c8bbd9b55194a04dd36f00fa8"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/invalid_steps.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/invalid_steps.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/invalid_steps.yaml",
+          "digest": "96f56666c38a38181e68b11688dbcf267fd7e0771fb7731fbc25a974d852d9b3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue-442-download-artifact-v3-workaround.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue-442-download-artifact-v3-workaround.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue-442-download-artifact-v3-workaround.yaml",
+          "digest": "b417786b70fcd839b6bda523fa60db3dfc6cb49168790bac5c0b929b1bd67871"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue-610_recursive_raw_yaml_value.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue-610_recursive_raw_yaml_value.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue-610_recursive_raw_yaml_value.yaml",
+          "digest": "804f08b5e21e308bc59b457f189911e758771ec5ff7a6c8449854cdf9573042f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue102.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue102.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue102.yaml",
+          "digest": "75891b01fc826a4d1ac2b8407d828db178e16e3a320e6c8375ef9c1fac83ca7f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue151_child_of_child_job.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue151_child_of_child_job.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue151_child_of_child_job.yaml",
+          "digest": "47005e51febfabfbca580a3d8e88800784264479a294017d137dc38e5872adca"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue155_env_in_job_level_if.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue155_env_in_job_level_if.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue155_env_in_job_level_if.yaml",
+          "digest": "c6f320745fc7f50e4873da95a80d71649f1bff987bfff724f857e3ad65ce628f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue170_empty_permissions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue170_empty_permissions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue170_empty_permissions.yaml",
+          "digest": "be6d5bbed655b82eee5bf72a76dd7a5a77d797eb5ec55c9cab0febc409108572"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue193.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue193.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue193.yaml",
+          "digest": "74cff1832b0dbc42c10cc43bf1f13c1dde08ac10071cfad524a5165766e67852"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue207_work_dir_with_uses.yaml": {
     "findings": [
@@ -214,7 +742,7 @@
         "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
         "rule": "shellcheck",
         "code": "SC2005",
-        "severity": "info",
+        "severity": "style",
         "message": "shellcheck reported issue in this script: SC2005:style:1:6: Useless echo? Instead of 'echo $(cmd)', just use 'cmd'",
         "path": "testdata/err/issue207_work_dir_with_uses.yaml",
         "start": {
@@ -227,112 +755,488 @@
         },
         "snippet": "      - run: echo \"$(pwd)\""
       }
-    ]
+    ],
+    "sources": [
+      {
+        "content": "2bfa66f512c1a96818bccf25ca673e6af85312a45a5fdca6c8d55abaa41426c5"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2005",
+        "path": "",
+        "start": {
+          "line": 9,
+          "column": 19
+        }
+      }
+    ],
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue207_work_dir_with_uses.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue207_work_dir_with_uses.yaml",
+          "digest": "2bfa66f512c1a96818bccf25ca673e6af85312a45a5fdca6c8d55abaa41426c5"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue280_runs_on.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue280_runs_on.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue280_runs_on.yaml",
+          "digest": "78463db177492bc95d344ca2c8c0e1d6314bf72042e43c4920d14fb1172775ea"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/issue558_read_write_none_are_not_always_valid_permissions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/issue558_read_write_none_are_not_always_valid_permissions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/issue558_read_write_none_are_not_always_valid_permissions.yaml",
+          "digest": "872eb2fbd1dc323f21decc8558fff70184c145b8e605982487a3188b8b7a1b76"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/macos12_runner.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/macos12_runner.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/macos12_runner.yaml",
+          "digest": "c63dea925974695619ca4d7f205edea6c026d679bc4123335d2f61da9dda9e4f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/macos_10.15_removed.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/macos_10.15_removed.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/macos_10.15_removed.yaml",
+          "digest": "966897a7e7b353bbaa0797201f05f9c4a6593c537a7abce61d5ee29b40288187"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/matrix_exclude_mismatch.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/matrix_exclude_mismatch.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/matrix_exclude_mismatch.yaml",
+          "digest": "657d8211b3f0206a0d43ed3ca38ccfa2a783f79d5adfda9bbf70d58e26b35053"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/matrix_exclude_no_match.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/matrix_exclude_no_match.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/matrix_exclude_no_match.yaml",
+          "digest": "653e3790dc9a2fe5d021ff435dba5422bc7f59d5849d255551f7ca9170c19c2f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/matrix_scalar_invalid_yaml_tag.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/matrix_scalar_invalid_yaml_tag.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/matrix_scalar_invalid_yaml_tag.yaml",
+          "digest": "f9e13f6cf7437093368075d809d50be0b4b2050b8d554aa52283cd2e6c5ad114"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/matrix_scalar_yaml_tags.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/matrix_scalar_yaml_tags.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/matrix_scalar_yaml_tags.yaml",
+          "digest": "829174c5350e80d24b88c0de6db56c76a18006fd04f50990d19f9dac173a5fb6"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/merge_group_destroyed.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/merge_group_destroyed.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/merge_group_destroyed.yaml",
+          "digest": "955915abd00fa16c71279c9abb0f664b81486caf03c87eb373b7332f0d6690d1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/merge_key_unsupported.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/merge_key_unsupported.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/merge_key_unsupported.yaml",
+          "digest": "24f25791e16ed1061852d4868426a215b05c6ffbfc0049ed3688a87a8ca6272e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/minimal_cycle_in_needs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/minimal_cycle_in_needs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/minimal_cycle_in_needs.yaml",
+          "digest": "fb42217bc7e07e343acdbcb6b81d9d1ebadb5af5322e2cd4194f2c3db600d04c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/missing_jobs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/missing_jobs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/missing_jobs.yaml",
+          "digest": "fbe5244b295a2bcfcdf3ba4a34fd6a46d5a391b9a4ef55cbf5279ff214d82599"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/missing_on.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/missing_on.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/missing_on.yaml",
+          "digest": "a7d5de3726c97f88f87a5482a503197cdad655e29d4b0be22bf72275bf80a0bd"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/missing_required_keys.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/missing_required_keys.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/missing_required_keys.yaml",
+          "digest": "e9735c5de7c458e40afe279338adb4334769c2f918b830d8c77286592361d759"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/nested_untrusted_input.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/nested_untrusted_input.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/nested_untrusted_input.yaml",
+          "digest": "032b89d17022d9d841e08dfc0f041c328d732eb7e537e3586872330ab21f0d31"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/no_job.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/no_job.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/no_job.yaml",
+          "digest": "392d0d71913dc226dbb4d9a85a2b5bf6f1dcfbe550478fd4557b0dd30e5fb8f7"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/no_local_action_found.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/no_local_action_found.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/no_local_action_found.yaml",
+          "digest": "4627546a9108490e02525abc7f2af5e3c63905c5a1b2d44b6f49363736d5d347"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/object_at_runner_label.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/object_at_runner_label.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/object_at_runner_label.yaml",
+          "digest": "1e41183fa003f1cefc9984c970227adf2f262cffaa2ec11cf81efe51e5b5dda6"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/one_error.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/one_error.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/one_error.yaml",
+          "digest": "4796a7a57068e03e49cdbf6786fa3b858170fd542acf44e3044be3193b0f9ab2"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/outdated_actions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/outdated_actions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/outdated_actions.yaml",
+          "digest": "0e0cc05f56c8e4ec3fcca687d3b8d2285ac95da04cf29be73e4d756f95a6af69"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/outdated_popular_action.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/outdated_popular_action.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/outdated_popular_action.yaml",
+          "digest": "91da790e3e008892a0560b4b773782177073a3abce8f90302f21d62aa699d4b3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/outputs_map_object.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/outputs_map_object.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/outputs_map_object.yaml",
+          "digest": "d23ab34459a3888229b670d2bc1110820d804431f83b311dc4ccf1daa120462d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/outputs_of_action_skipping_inputs_check.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/outputs_of_action_skipping_inputs_check.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/outputs_of_action_skipping_inputs_check.yaml",
+          "digest": "fe06e41b9b1f5c8b0a0925f86f6677dbfc1463ebade03de42d5238fe5f747ab1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/parallel_step_refs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/parallel_step_refs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/parallel_step_refs.yaml",
+          "digest": "b2f8bf64c9150e71321c71c9195893546b1188d3d37da75b3ee4a3c752134181"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/parallel_steps.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/parallel_steps.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/parallel_steps.yaml",
+          "digest": "182a24526674b572eb60c7b2c53c34673fd00538b4ff1d061ea709195e142447"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/random_order_cycle_in_needs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/random_order_cycle_in_needs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/random_order_cycle_in_needs.yaml",
+          "digest": "3903643344648223253b90ac0ec6f14fc37a7faf920c558b94a20d7283dc3e1c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/recursive_anchors.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/recursive_anchors.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/recursive_anchors.yaml",
+          "digest": "f8bfbb5b8e2c319ad76a3fbff339a8a463b75955bc936305032ebfd839875e80"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/reusable_workflow_empty_secrets.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/reusable_workflow_empty_secrets.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/reusable_workflow_empty_secrets.yaml",
+          "digest": "8dcdcf00bb4be1066f3a63d9d589c036f780aad38c050caac4299158591af4b8"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/run_name_check_expr.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/run_name_check_expr.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/run_name_check_expr.yaml",
+          "digest": "16a436db58490165f011caf3af5f6f27e448076d53f800cd82d06dc5ea2722c9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/runner_labels_conflict_matrix.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/runner_labels_conflict_matrix.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/runner_labels_conflict_matrix.yaml",
+          "digest": "08e21d8bb711e96fe42eb5073349bd0fc06d295284a73c0d242a12d58c72612d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/schedule_event_with_no_config_1.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/schedule_event_with_no_config_1.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/schedule_event_with_no_config_1.yaml",
+          "digest": "dc7407efe98b60e087dfcfab88ad0f2dc58d4ea82aa919a26405e404fdbae8a9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/schedule_event_with_no_config_2.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/schedule_event_with_no_config_2.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/schedule_event_with_no_config_2.yaml",
+          "digest": "191e2ef9f5c38edd133a2dd22daf23b406f261f00aef3374f7c77fa3f33562f6"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/schedule_invalid_timezone.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/schedule_invalid_timezone.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/schedule_invalid_timezone.yaml",
+          "digest": "5f5be9422773d6243cc1ba5d9b9536678d75056debf6ba9de6782b7a016b5554"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/self_repository_uses_invalid_path.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/self_repository_uses_invalid_path.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/self_repository_uses_invalid_path.yaml",
+          "digest": "aa0718076a0fc316c123ad7a8b09ee9042f35418f52ce5a0306e00182b582eaa"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/shell_key_context_availability.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/shell_key_context_availability.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/shell_key_context_availability.yaml",
+          "digest": "caea04d9543a9919c85e1a712c7198615f3475710d44652d7fdbd2f313eb5497"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/shellcheck_default_shell_detection.yaml": {
     "findings": [
@@ -636,172 +1540,912 @@
         },
         "snippet": "      - run: $Env:FOO = \"FOO\""
       }
-    ]
+    ],
+    "sources": [
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      },
+      {
+        "content": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 15,
+          "column": 14
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 20,
+          "column": 14
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 30,
+          "column": 14
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 42,
+          "column": 14
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 47,
+          "column": 14
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 53,
+          "column": 14
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "path": "",
+        "start": {
+          "line": 15,
+          "column": 23
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "path": "",
+        "start": {
+          "line": 20,
+          "column": 23
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "path": "",
+        "start": {
+          "line": 30,
+          "column": 23
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "path": "",
+        "start": {
+          "line": 42,
+          "column": 23
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "path": "",
+        "start": {
+          "line": 47,
+          "column": 23
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2283",
+        "path": "",
+        "start": {
+          "line": 53,
+          "column": 23
+        }
+      }
+    ],
+    "captured": {
+      "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/shellcheck_default_shell_detection.yaml",
+          "digest": "e3176cfb3798e78e7001845a34a6f10db6614a19c09548eccdc88c2c560664b8"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/special_function_availability.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/special_function_availability.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/special_function_availability.yaml",
+          "digest": "7a83cbbfe923bfc87eab035526fbc35a6efecba6dbdb6108601d68c5f28156b3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/undefined_anchor.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/undefined_anchor.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/undefined_anchor.yaml",
+          "digest": "cec9676edd2c420dbdabdd11bcdcf3a89d3c92e05595ff996fb38a1da664ceb1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/unexpected_keys.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/unexpected_keys.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/unexpected_keys.yaml",
+          "digest": "75840fcafcf4b021934ab2c036686f3a4533e6117a34446de2abd05005a04420"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/unused_anchors.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/unused_anchors.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/unused_anchors.yaml",
+          "digest": "21d8e7ac30ea402dc0429cd3a32dd5e380353a2aabea9c74535a488983eb3dda"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/upper_case_duplicate_keys.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/upper_case_duplicate_keys.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/upper_case_duplicate_keys.yaml",
+          "digest": "5c70b6961d53814b9f19a440a8723b1da1b8ee777464c357d56aa033ded4f784"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/variables_type_check.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/variables_type_check.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/variables_type_check.yaml",
+          "digest": "5e3a35520a9b49e4f77d01969fcdb20b1534707bdc54e04b56e855bf22c2e6e5"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_call_event.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_call_event.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_call_event.yaml",
+          "digest": "c64acd64b2ca3ee502c3621e53f96ec2c22b7ad370debba73736534aa8b817d2"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_call_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_call_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_call_inputs.yaml",
+          "digest": "888c039a523455e2417b8f5edd120a16e946c157c949b5eb8ebb15757c3e4389"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_call_invalid_secrets.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/.github/workflows/called-workflow.yml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/.github/workflows/called-workflow.yml",
+          "digest": "49b8fe52d719f5c241fa118c9f7cbfeba2065ea292a8c85bc1d541cfda620b6b"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003crepository\u003e/testdata/err/workflow_call_invalid_secrets.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_call_invalid_secrets.yaml",
+          "digest": "8b110ad480ef98957e641a3f86e37eafb1fdb7869310fc0be6a9d06a581b5bc0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_call_job.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_call_job.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_call_job.yaml",
+          "digest": "e9f0452709dd9b343313855b8d37530ead45370178c5084db20638fc8a77d716"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_call_outputs_sema.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_call_outputs_sema.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_call_outputs_sema.yaml",
+          "digest": "df9af8aac3e7c20d2f884cdf57bac41f40c9cbad0177f081c091299061636814"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_call_outputs_syntax.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_call_outputs_syntax.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_call_outputs_syntax.yaml",
+          "digest": "f191fd8f324bd8ecca4492d01239588dade2cb4dfc52d0873f2205b7ceb96857"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_call_secrets.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_call_secrets.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_call_secrets.yaml",
+          "digest": "fd1dbb52bfadf2831394e86ec87d840ed8429d842302c39a44f2c55373906d38"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_dispatch_input_types.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_dispatch_input_types.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_dispatch_input_types.yaml",
+          "digest": "84d18badf45a92b00f1165d722671f37339b78d65c6923c5e4f751e3f3c94e81"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_dispatch_more_than_25_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_dispatch_more_than_25_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_dispatch_more_than_25_inputs.yaml",
+          "digest": "9504754cceff2b7ef3c4076bf9abdd26a1fdff76420e676fcb10e2f4dd68beac"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/workflow_dispatch_type_check_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/workflow_dispatch_type_check_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/workflow_dispatch_type_check_inputs.yaml",
+          "digest": "7169f4a02295ecf60881497624880d8b8724dd9cf0767aa725010af08439cd80"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "err/yaml_syntax_error.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/err/yaml_syntax_error.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/err/yaml_syntax_error.yaml",
+          "digest": "1a643219a2d90a6fac65a5e65a9488ea2498c858bd154c3cfd60496c5c03a5c9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/action_metadata_syntax_validation.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/.github/actions/my-invalid-action/action.yml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/.github/actions/my-invalid-action/action.yml",
+          "digest": "a6b9671d5b54e211b69653eae713b762b016eecc72bfb54f2bc6ad56972f91c5"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003crepository\u003e/testdata/examples/action_metadata_syntax_validation.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/action_metadata_syntax_validation.yaml",
+          "digest": "71891b706677ceded3b5ea41e31ce67609034613c6dc435256218732d7152343"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/broken_yaml.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/broken_yaml.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/broken_yaml.yaml",
+          "digest": "956065e8160d5bb17e63fa46d554120d4880bc8effc07c12da86b8352153028c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/builtin_func_special_checks.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/builtin_func_special_checks.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/builtin_func_special_checks.yaml",
+          "digest": "c585f04cccb11b4c31fd0a9e0849fa70cb60364db5a4ac37ad2c57863b3b58f0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/comparison_strict_checks.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/comparison_strict_checks.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/comparison_strict_checks.yaml",
+          "digest": "2fa07d254fe81c9528c73120e7e1a9fcc53c4e7ab2732b21fdccb8c8986a0b20"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/contexts_and_builtin_funcs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/contexts_and_builtin_funcs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/contexts_and_builtin_funcs.yaml",
+          "digest": "a6e603a07b98df15a8db72505f5f0e7c85225ef6353c6fc162fdda0b8867952c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/contexts_special_functions_availability.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/contexts_special_functions_availability.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/contexts_special_functions_availability.yaml",
+          "digest": "7e4657dc0dacdd47311163be80ea83b0e1a2ab518d8a2cc11e252378f4c66f61"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/contextual_matrix_values.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/contextual_matrix_values.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/contextual_matrix_values.yaml",
+          "digest": "c805f1de86b9005b39f06cf478787e16c740c3271cb55aef6f9eb72c0fb99ad4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/contextual_needs_object.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/contextual_needs_object.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/contextual_needs_object.yaml",
+          "digest": "637af14a2d42e33da2b824b11612b8cea194733ffa403ab4c8a4eddec185072c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/contextual_steps_outputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/contextual_steps_outputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/contextual_steps_outputs.yaml",
+          "digest": "da87ea1e39f5e09f7ea9ca33d45c4127f99a2711b8f600eba0be6991185a2b66"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/cron_schedule_check.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/cron_schedule_check.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/cron_schedule_check.yaml",
+          "digest": "77365e546a4b0c0aeb8faa035fe304dcf677078dfd2748c11a3cccda9f389c0c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/cyclic_deps_needs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/cyclic_deps_needs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/cyclic_deps_needs.yaml",
+          "digest": "b9e9853edae4d9cea4409331b6b771fc1b9ad0791a56a3269a1a0432256adec4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/dangling_alias.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/dangling_alias.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/dangling_alias.yaml",
+          "digest": "24bcafaff1ddf98751ed03933a9d2d9c33ff71b1602f0fd796c7dd1f7dc47039"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/deprecated_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/deprecated_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/deprecated_inputs.yaml",
+          "digest": "6ca045b66624ac5434aa4c0d23b9e7d9f31f34a7a6f70913d84dc70917a3f910"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/deprecated_workflow_commands.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/deprecated_workflow_commands.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/deprecated_workflow_commands.yaml",
+          "digest": "703f30d785f2667050810dfb0be1ee2fe6d58c0b4cd5b498c2fef144b3c7b157"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/detect_outdated_popular_actions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/detect_outdated_popular_actions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/detect_outdated_popular_actions.yaml",
+          "digest": "8c8be2d46fc2ba848d4ac45b0e000a2b047d4ed5c8d08cd9e3715069cfce7d0f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/env_var_names.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/env_var_names.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/env_var_names.yaml",
+          "digest": "157240688b9c111514d0fe51e6295dfab3c051261ed27d9bdf20c99be8dee8b4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/expand_object.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/expand_object.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/expand_object.yaml",
+          "digest": "d5474dfc14e777b79ed5010c2b9a4c4dd9683f56a7889806b99287dd6273ee57"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/expression_syntax_error.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/expression_syntax_error.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/expression_syntax_error.yaml",
+          "digest": "0da46d7cc3c3118876f3a170e223d35baa2ec96ea0267da9fe041c324e6659c6"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/glob.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/glob.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/glob.yaml",
+          "digest": "3ccc1905a742aa8991f0afe8ad90212ef53d42d9a5c34960634b3fe546c6600b"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/hardcoded_credentials.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/hardcoded_credentials.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/hardcoded_credentials.yaml",
+          "digest": "b8da785184d8ef200d8128258db539480643547f77505314246f10bef8f06087"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/id_naming_convention.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/id_naming_convention.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/id_naming_convention.yaml",
+          "digest": "83ea084acddedadc107d1b86646201cefd28ecb8e7b1adaecb2291e6c92c6a67"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/if_cond_always_true.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/if_cond_always_true.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/if_cond_always_true.yaml",
+          "digest": "77990d6a2d8fd804f38e594c15859b62f5ecb8827ac611e9d90c71fd03d93e9d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/invalid_action_format.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/invalid_action_format.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/invalid_action_format.yaml",
+          "digest": "83fea29e544f5b61c7e79c6c654f15a4501d84f473da6f51b941b3201433d4bd"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/invalid_ids_in_needs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/invalid_ids_in_needs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/invalid_ids_in_needs.yaml",
+          "digest": "104f4e037744a074c5dcee8522f805ff2cec6b17efba8e4bb08d7c51ed19bd26"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/job_step_ids_duplicate.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/job_step_ids_duplicate.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/job_step_ids_duplicate.yaml",
+          "digest": "914c3d347f81e721d70026dc73460a06b4ac70fe2b7a4aa018a4efab1f700e95"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/local_action_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/.github/actions/my-action/action.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/.github/actions/my-action/action.yaml",
+          "digest": "f032aea79ac414d3a5de99343152796f79b605a99ccc20f394eab4b2d6458c5f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003crepository\u003e/testdata/examples/local_action_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/local_action_inputs.yaml",
+          "digest": "f1d75886e90d9e149de15fcf0c8fb2f2890e16cbba8f6dfb712d566685bed0db"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/local_action_outputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/.github/actions/my-action-with-output/action.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/.github/actions/my-action-with-output/action.yaml",
+          "digest": "6c59aaf5dd99711e22211f512a6f14aee2acd93811f438fef76bbec3713492b3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003crepository\u003e/testdata/examples/local_action_outputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/local_action_outputs.yaml",
+          "digest": "74e75c0e159b143b3097bb77c1799128903c4676a49bd8eccc05a7b60a73290c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/main.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/main.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/main.yaml",
+          "digest": "b86f64e615f3bb36f567d68d8685c690c56fd9c8a1dcfb75409fe438a5840879"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/matrix_checks.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/matrix_checks.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/matrix_checks.yaml",
+          "digest": "9f0e6cb607276de4cee14ec5bde1fbe1802d0de30d614ad1ee8e2551a2dc7688"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/missing_required_keys.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/missing_required_keys.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/missing_required_keys.yaml",
+          "digest": "6d334d0734aecf8716fe25fe1e6e56c2a62c7e4b14eacf6190a0fa1fe14c1cea"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/not_persistent_matrix_values.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/not_persistent_matrix_values.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/not_persistent_matrix_values.yaml",
+          "digest": "de58cb58eee62f10db78c2bcd5cb2b6d42c26b517eba0dced164ddf1bf1c9376"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/permissions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/permissions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/permissions.yaml",
+          "digest": "9df98e780d1f286a51b92e0f6b8d7c7759a8baca151954d09522fe503d988e72"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/popular_action_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/popular_action_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/popular_action_inputs.yaml",
+          "digest": "074116827314215d1af79f7b786233831bd938c6b617ac69120c6489230e3fcf"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/popular_action_outputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/popular_action_outputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/popular_action_outputs.yaml",
+          "digest": "cc2db696fc9c370b32bff5634c3872a7455b686e85710dcfd875e749c778d889"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/reusable_workflow_outputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/reusable_workflow_outputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/reusable_workflow_outputs.yaml",
+          "digest": "14ebf3188bbe6fa379b789e86987d04554ac2004d40aaea6f9e7be3d3be9ccaf"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/runner_label_check.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/runner_label_check.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/runner_label_check.yaml",
+          "digest": "baf8284e36598011cc7ade335d3c8bee5b2f51f1fc0162771cc16e87f291d0c7"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/runner_label_conflict.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/runner_label_conflict.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/runner_label_conflict.yaml",
+          "digest": "f3a140bc98006f39a75db1f3c12480907dec8ff758336a946bc2eaef60354eef"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/shell_name_validation.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/shell_name_validation.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/shell_name_validation.yaml",
+          "digest": "1a9a2b15384932cc0c2e5c601e38c67f6891ae70a83ff996951a7843d70bdfa1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/shellcheck_integration.yaml": {
     "findings": [
@@ -1050,318 +2694,1472 @@
         },
         "snippet": "          echo \"x\"\t$FOO"
       }
-    ]
+    ],
+    "sources": [
+      {
+        "content": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+      },
+      {
+        "content": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+      },
+      {
+        "content": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+      },
+      {
+        "content": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+      },
+      {
+        "content": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+      },
+      {
+        "content": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+      },
+      {
+        "content": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+      }
+    ],
+    "reported": [
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 10,
+          "column": 21
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 18,
+          "column": 19
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 25,
+          "column": 16
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 30,
+          "column": 16
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 35,
+          "column": 20
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2086",
+        "path": "",
+        "start": {
+          "line": 6,
+          "column": 19
+        }
+      },
+      {
+        "rule": "shellcheck",
+        "code": "SC2291",
+        "path": "",
+        "start": {
+          "line": 35,
+          "column": 11
+        }
+      }
+    ],
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/shellcheck_integration.yaml",
+          "digest": "9ca0fbbf5572c86e59a41c58da67be83b366c86cb25517063fb325c3bc203ae0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/type_checks.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/type_checks.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/type_checks.yaml",
+          "digest": "a085113bbe610814485182d6fc8dae6b9e5d661e41aea787c3cebd909126b8f9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/unexpected_keys.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/unexpected_keys.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/unexpected_keys.yaml",
+          "digest": "e96aa73fa4a332ae0c85cd35c95253e8eac9ead8994bfcbeede8ed1c02b02318"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/unexpected_mapping_values.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/unexpected_mapping_values.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/unexpected_mapping_values.yaml",
+          "digest": "047779a3003d1c35cb424cadb26f6ea46e84ce0438289ba23bde2a0c6759c979"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/untrusted_input.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/untrusted_input.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/untrusted_input.yaml",
+          "digest": "646e8a31db4c5b7205a5aed3f8713bba61f5ba0a7243505447112ec4ecd62b0e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/webhook_checks.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/webhook_checks.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/webhook_checks.yaml",
+          "digest": "f76e8f50fe3a6699c1e394e2160d568a43a6e380700600e72ba10df506c224d8"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/workflow_call_definitions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/workflow_call_definitions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/workflow_call_definitions.yaml",
+          "digest": "3d634f50fc188fb575a35ffe36f1123f390c07267fb869be3fed54ccf0e9c77e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/workflow_call_jobs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/workflow_call_jobs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/workflow_call_jobs.yaml",
+          "digest": "df0d1bfb4d80e3b4d6b657eb640a7df6acf1b1e6e0886fa8c0e1767031bb4d71"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/workflow_dispatch_input_types.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/workflow_dispatch_input_types.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/workflow_dispatch_input_types.yaml",
+          "digest": "4abd30f91fadfb0eac097d09af0b41050f89bac1d3503237f99f44cd1a611bbb"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/workflow_inputs_secrets_types.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/workflow_inputs_secrets_types.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/workflow_inputs_secrets_types.yaml",
+          "digest": "1aeb5cd76ab6f7bc1f157d63756f654e2015c9e5f0dcd3055f284bec39270b43"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/yaml_anchor_usage.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/yaml_anchor_usage.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/yaml_anchor_usage.yaml",
+          "digest": "d1d9bdb934a3bc3b3f3f1f25acb4ba4fed6a129e442265f0ddc020541a466f13"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "examples/yaml_anchors.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/examples/yaml_anchors.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/examples/yaml_anchors.yaml",
+          "digest": "15f1966a8d09c45cd7e497cde248968d24ea4284882102e315afbf2d6f4fd9de"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/alias_source_locations.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/alias_source_locations.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/alias_source_locations.yaml",
+          "digest": "3d2728e5eaa9ce2b0d5544dfeb7180aa9e98a6d8cf84bd7f8d4cf3e999478df0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/allow_any_outputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/allow_any_outputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/allow_any_outputs.yaml",
+          "digest": "a08f0f595e44bba296819132a7ba802562bdce5b0764787234bfb4b58961825d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/anchors.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/anchors.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/anchors.yaml",
+          "digest": "70ca3dba16c343c56f2ef6a784792ad874b1c1b8cd1af8a4ec29f1df273ebb51"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/bool_conversion.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/bool_conversion.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/bool_conversion.yaml",
+          "digest": "5619985f51aea8053bc3cab238220512d3198370a98870e684ccae7e2c462d6f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/concurrency_queue.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/concurrency_queue.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/concurrency_queue.yaml",
+          "digest": "0d912026269acdb010cbbf1e0e3af32fb69d9abc479d618421df0bf1855aec40"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/container_syntax.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/container_syntax.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/container_syntax.yaml",
+          "digest": "0d0cb1a3442e63848c243601230de8e54650d4265b3c1ec070c01e0e7f61e20a"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/custom_images.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/custom_images.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/custom_images.yaml",
+          "digest": "5fac2fb314dac4ab389a254d9edcc02af7581751396d3144d8710e71fd8d8327"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/docker_steps.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/docker_steps.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/docker_steps.yaml",
+          "digest": "14ec49b3508ad9181eb2e435f23a1b174410d88255b7abd7589f6f10561dfe0f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/dynamic_expression_indexes.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/dynamic_expression_indexes.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/dynamic_expression_indexes.yaml",
+          "digest": "b444ee027e98e5d519272fe19629338fa9f68d1a7b5c20e48e379a0de85f2a2d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/dynamic_shell_name.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/dynamic_shell_name.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/dynamic_shell_name.yaml",
+          "digest": "0308e42568e1a3ffd6da01a93b13ea64a8d7ac16700a1ab1fa963af0e6e10ffc"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/events_with_no_config.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/events_with_no_config.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/events_with_no_config.yaml",
+          "digest": "4efa4a2247cdcfcfd2c6f3a1839443c8f87fb91370a9112bd4e99d7b54995d51"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/filters_for_specific_events.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/filters_for_specific_events.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/filters_for_specific_events.yaml",
+          "digest": "4f04998ffec41e21d3b0a21a6cd283ef8f523d5c7a35cd8eb961e4f7cf5b9d17"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/filters_ignore_for_specific_events.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/filters_ignore_for_specific_events.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/filters_ignore_for_specific_events.yaml",
+          "digest": "172f1711f7a7a547356af7ae6b9ccb52622bafa61cd0a62e8b9641bbfce9e144"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/image_version_event.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/image_version_event.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/image_version_event.yaml",
+          "digest": "bcd731b5102d1bd2b4b605e8d32b4a1b65310cd75e6452a058a307eb1f8d21cc"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/image_version_event_names_only.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/image_version_event_names_only.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/image_version_event_names_only.yaml",
+          "digest": "42b1fc99f6c8a35e0c76bdff17ef51968b957af855e09e538cd6f187ebacd6c7"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/image_version_event_versions_only.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/image_version_event_versions_only.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/image_version_event_versions_only.yaml",
+          "digest": "55b8dc6fe0c27756c927e1ce410c9d97ba6cbde5a00ade83b7e267af08ffdfd4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-101.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-101.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-101.yaml",
+          "digest": "3f4aa92fc28f50fdb6c554e1a5dd3bbbb231665f46f55e9869fb8114a75db7f1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-104.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-104.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-104.yaml",
+          "digest": "dc8f44ccfae206751b8ac3ca4f209b574956c1b6126c2e6ac9a4c6354661b25a"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-113.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-113.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-113.yaml",
+          "digest": "08cd467cb16ef3a4bc2592aa574af253b05e80dd93478cacbbc8afa41c30c0b9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-145.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-145.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-145.yaml",
+          "digest": "4e7afb5839932d5e1190731430c231ad90fc5d6ade1202717c51048a3bcd8e05"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-151-child-of-child-job.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-151-child-of-child-job.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-151-child-of-child-job.yaml",
+          "digest": "b00f7ce2cb373e264745dc1317ae4fa46ab58f31b39bbc051cbd3ed9ebe583f2"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-152.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-152.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-152.yaml",
+          "digest": "a75645925acc6400972deb20e36300839770d68070a6809dfa59c0bf63df738e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-164.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-164.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-164.yaml",
+          "digest": "0fd983efbee5c9149a93427f927eb105eb6927c1afbb7a89f214285cd2492777"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-174-secret-description-is-optional.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-174-secret-description-is-optional.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-174-secret-description-is-optional.yaml",
+          "digest": "13e43e2ce61ef4844e42c6c4244ac142ee456139ec016b9814ff28cd952209e7"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-205-closing-braces-in-string.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-205-closing-braces-in-string.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-205-closing-braces-in-string.yaml",
+          "digest": "066a3866ea147253f5c22b350424098a2ba829073c819b70017eaf14fbe50122"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-223.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-223.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-223.yaml",
+          "digest": "464e63b980013b1258e117483ab954d44e08155efc0b06fc780df62bc7dc3b4f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-235-expr-in-input-default-value.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-235-expr-in-input-default-value.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-235-expr-in-input-default-value.yaml",
+          "digest": "718cb12179a25f68ea1c2e688d36ebfeca8c43c715f70e4efeeffcbfcf9e6f62"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-249_matrix_exclude_filter_object_subset.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-249_matrix_exclude_filter_object_subset.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-249_matrix_exclude_filter_object_subset.yaml",
+          "digest": "415f17c2df0437d21769778ec84583cfac352061cd7e30d7031de08d3295c7dc"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-250_quoted_scalar_in_matrix.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-250_quoted_scalar_in_matrix.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-250_quoted_scalar_in_matrix.yaml",
+          "digest": "6ccbeab4984253009b9bb31a8ccbf5ce3324902bf264f1bdc51cd634d5062e4d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-261_matrix_row_item_constructed_with_expr.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-261_matrix_row_item_constructed_with_expr.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-261_matrix_row_item_constructed_with_expr.yaml",
+          "digest": "cdb3b2389acfe5ba5cebc273d69e0f25989ebe2351f41e20404a81d2e894d384"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-263-inputs-shared-by-multiple-events.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-263-inputs-shared-by-multiple-events.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-263-inputs-shared-by-multiple-events.yaml",
+          "digest": "9c68d4bc751d07793c3639120c29829b20c305f2cf99580612f2c3a3228390b7"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-280_runs_on.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-280_runs_on.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-280_runs_on.yaml",
+          "digest": "ab62d8561fb16dfbac19132dbfbb2f88704ce3295ffef41f41e84f518c5d68cb"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-285_expr_assign_at_matrix_row.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-285_expr_assign_at_matrix_row.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-285_expr_assign_at_matrix_row.yaml",
+          "digest": "f3a117f81fa2d3ad102ca1829fc0ce4f8a344a53ba4ed9bcb9f7b6ef517f47d4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-294_matrix_row_array_expression.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-294_matrix_row_array_expression.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-294_matrix_row_array_expression.yaml",
+          "digest": "92500dca10a8d5f7a774e43dad8e7ecf922f175b7bdb16a84e0a60894fc28ec7"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-30.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-30.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-30.yaml",
+          "digest": "5f02906ce02ae771185bd0c3ebbcce4708ca9f345f2971d8612cbcf8761e34ff"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-31.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-31.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-31.yaml",
+          "digest": "ba6f4e9506d1df97aad1c403254e523f6f6321371ad7dd4b5714f8eff6c16dd6"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-312_expression_in_env_var.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-312_expression_in_env_var.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-312_expression_in_env_var.yaml",
+          "digest": "a9496520cf4a4e87ca747c657a3d095d559e299fb60f0d0bfc3182d5aacc01b1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-355-shellcheck-sc2043.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-355-shellcheck-sc2043.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-355-shellcheck-sc2043.yaml",
+          "digest": "0ab9406e6324f217edef0dc2de16613058efdc7a093ae1bd0d18a204a665dc94"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-384_narrow-logical-op.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-384_narrow-logical-op.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-384_narrow-logical-op.yaml",
+          "digest": "ed5d080bdd54ba264f0b1a7bfa88b9cf096a5941b415d4a253e32aec288b60a0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-402-expression-in-services.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-402-expression-in-services.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-402-expression-in-services.yaml",
+          "digest": "8536a580d05285673e28afe91abf89aefa9fa19e90abe1b158b5f2acfbcdf84d"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-409-shellcheck-default-shell.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-409-shellcheck-default-shell.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-409-shellcheck-default-shell.yaml",
+          "digest": "284a0ed77bea4403150efbd7a08dfefa027e16b8721dd774de0acc5c298c05c3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-412_runner_environment_prop.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-412_runner_environment_prop.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-412_runner_environment_prop.yaml",
+          "digest": "874e25ed2691375b23a822ba0b6e578bbe18862fe7974a60a710e9a941dd87bc"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-414_expression_in_matrix_exclude.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-414_expression_in_matrix_exclude.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-414_expression_in_matrix_exclude.yaml",
+          "digest": "853ceb75df064d0875c083ea4f4ac73ed16de0e07a51d61ad7c25b3e9b1ab833"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-45.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-45.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-45.yaml",
+          "digest": "b893b941bbee22dd6a4b27d331b89b15d0d78248e0a75cbe0cb360f97c612689"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-495_with_args.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-495_with_args.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-495_with_args.yaml",
+          "digest": "9c9ef80a27aab14d1dc35143e0757d345987dd9b84add4d493f12e4aa0e7978b"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-523_matrix_superset.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-523_matrix_superset.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-523_matrix_superset.yaml",
+          "digest": "0b5821bdb0a71139181b930a5783b2a85d51b6520b2ceb61e03b1339cc33ecd0"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-53-shellcheck-sc2154.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-53-shellcheck-sc2154.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-53-shellcheck-sc2154.yaml",
+          "digest": "b38661ccd9b5abebeb11b8a97a2fd166ce2a313ef8416a412eb83c23f207b0a4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-573_shellcheck_SC2153.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-573_shellcheck_SC2153.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-573_shellcheck_SC2153.yaml",
+          "digest": "94688e848ff40b26d86caac26e5f9df98e7cb6d9ba28a87b21980a32c3c9cf79"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-590-expression-at-credentials.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-590-expression-at-credentials.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-590-expression-at-credentials.yaml",
+          "digest": "5afa6e7b19d7639343771729fee47f036570e96cc36a78ecfe5e9d3c752a3830"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-66.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-66.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-66.yaml",
+          "digest": "99d9665c2a99702524dfa365abc1741b076f44c101e4dcef972a5bb23740e1ad"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-67.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-67.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-67.yaml",
+          "digest": "6a62e9097c9d50cf730d5dd7bbbf130573c222f9ab38b445db65505960c8500c"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/issue-87.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/issue-87.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/issue-87.yaml",
+          "digest": "17c5169d416af54d288e9cf1d032bd23391e3aac8ffadc1b38b25993eb69f127"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/matrix_exclude_match_to_expr.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/matrix_exclude_match_to_expr.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/matrix_exclude_match_to_expr.yaml",
+          "digest": "137eb35994c19c71605602b8c3d1707f33b6c501491905b38d1c2c342b743b98"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/matrix_expression_in_exclude.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/matrix_expression_in_exclude.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/matrix_expression_in_exclude.yaml",
+          "digest": "de393a922316109556412396b9797996cc87780e217d38a24427e78c94084ed1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/matrix_in_array_at_runs_on.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/matrix_in_array_at_runs_on.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/matrix_in_array_at_runs_on.yaml",
+          "digest": "aadfcbd87842430ff234a012623612e79a5029d744e110afe6963da3a521c3fd"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/minimal.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/minimal.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/minimal.yaml",
+          "digest": "352439ebbfb093be51295f0f59a1666a46d07e4da25f1f12b1f105ecc827eb58"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/mixed_trigger_secrets.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/mixed_trigger_secrets.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/mixed_trigger_secrets.yaml",
+          "digest": "2b656e91b5cc10d60b36dc9cbadc432a721bea400c9132fe1dc76bc266aea209"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/multi_labels_no_conflict.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/multi_labels_no_conflict.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/multi_labels_no_conflict.yaml",
+          "digest": "d1cec35bf41042dcffdcfa09fac930d5a411520fa15f0ff14125a955d32ce2b1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/nested_workflow_call.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/nested_workflow_call.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/nested_workflow_call.yaml",
+          "digest": "01957c67a218ad3beba655846c92e75071c32a0632f56323f7962636c7d1cf1a"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/no_description_workflow_call.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/no_description_workflow_call.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/no_description_workflow_call.yaml",
+          "digest": "83d6adbaf3b82476543f9863b52f93a83f7ee44979e30aa70a783e5a25a81f44"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/no_local_action_found.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/no_local_action_found.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/no_local_action_found.yaml",
+          "digest": "6070a95bc481772928ef7b7a7214901b7415c7ad01da8a54d719be439fd11c10"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/operator_outside_expr.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/operator_outside_expr.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/operator_outside_expr.yaml",
+          "digest": "078d1661f8c4e80e153f8d03b713f6369f92431d238623301314b1b5c641e098"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/outputs_in_environment_url.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/outputs_in_environment_url.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/outputs_in_environment_url.yaml",
+          "digest": "6662a46fa47a6d7ddeb6d194306094d8fe7689f5a9e72009a51bb0d0d415deba"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/parallel_step_refs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/parallel_step_refs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/parallel_step_refs.yaml",
+          "digest": "b4c6856b3866b1df7ea2541fc451d61f7ec6cc4c78e51da2e7a2587ca2d64ca1"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/parallel_steps.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/parallel_steps.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/parallel_steps.yaml",
+          "digest": "3b503154ee4fb0159cb0e9ab130dd6fbae1f129db418b884f3ce3bc272c4e1db"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/permissions.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/permissions.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/permissions.yaml",
+          "digest": "18ba68fd8a8774613d9166b1b68db32d8db39efa5b36669e7a98a7806adc9809"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/pyflakes_python_shell.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/pyflakes_python_shell.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/pyflakes_python_shell.yaml",
+          "digest": "057e777fac7e6388f820435f556274dcfdd1f53d3fd8099436bf49edbb8aed6e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/reusable_workflow_inherit_secrets.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/reusable_workflow_inherit_secrets.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/reusable_workflow_inherit_secrets.yaml",
+          "digest": "73120ca791c1da5481c0ced2c0b7898143c6dc87d24db1c9178277ca5a1b3312"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/run_name.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/run_name.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/run_name.yaml",
+          "digest": "6141978d2157ffb071fe50f0db71b8ec52a799e287d27c076347be9ec1ba5429"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/schedule_timezone.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/schedule_timezone.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/schedule_timezone.yaml",
+          "digest": "b1e7b9f7ce33d74950a3ee2a5c18a3e8089eef0b53f283377f57c4f59d994c68"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/self_repository_uses.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/.github/actions/example/action.yml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/.github/actions/example/action.yml",
+          "digest": "98898b5f88685d37a655037f723c7e90ee60d6b155d00944ba4710d00b118569"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003crepository\u003e/testdata/ok/.github/workflows/reusable.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/.github/workflows/reusable.yaml",
+          "digest": "f1d7297f0e018d4e34de6eaa2d2c74dbda841c0ddc2e064fb8d11f0b0af0cdbe"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      },
+      "\u003crepository\u003e/testdata/ok/self_repository_uses.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/self_repository_uses.yaml",
+          "digest": "1cb9d8741b14ef7c1fded5aac9e2b65c28e63befa25d49ceb12192f0636d9e41"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/shell_name_case_insensitive.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/shell_name_case_insensitive.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/shell_name_case_insensitive.yaml",
+          "digest": "b07453538e5e29deea2ab2f4beb0d686e9361fe7cdda7ea34d86507c7f9764b2"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/shellcheck_detect_shell_from_runner.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/shellcheck_detect_shell_from_runner.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/shellcheck_detect_shell_from_runner.yaml",
+          "digest": "4001d224b7a1b375559f74c1abdca684cdec2269070472a9c2582ba5f2b6d4cd"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/shellcheck_job_default_shell.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/shellcheck_job_default_shell.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/shellcheck_job_default_shell.yaml",
+          "digest": "fb232855ed84444edb9da92603b9c270e305417a1e74d42839f136a3e0f53061"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/shellcheck_step_shell.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/shellcheck_step_shell.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/shellcheck_step_shell.yaml",
+          "digest": "55a5d8673fdbd57d5dc4f9be6c5c38887f27dda3de88e5aa0ead7dff9f0f9368"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/shellcheck_workflow_default_shell.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/shellcheck_workflow_default_shell.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/shellcheck_workflow_default_shell.yaml",
+          "digest": "5a1a4d89cd93084afe72a4fcae0be6468b15664b85ceabfc9a81d79f91a8ed83"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/skip_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/skip_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/skip_inputs.yaml",
+          "digest": "63e95d633e3214a4a73e88b761791ac9890c68ff61c8f4f859c1e94e13f4e8a6"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/snapshot_image_name_only.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/snapshot_image_name_only.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/snapshot_image_name_only.yaml",
+          "digest": "c1aff231157cdf340c19f8c3a2676d68f3fc85d323f15b3440bd6688c4a019cd"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/snapshot_name_and_version.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/snapshot_name_and_version.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/snapshot_name_and_version.yaml",
+          "digest": "ea1068bef78a7c7a4158a9475e642ae6df7577ab473a22577d4365ebff0f2b3f"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/special_function_availability.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/special_function_availability.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/special_function_availability.yaml",
+          "digest": "8a679bd6f5d468481a6897fe621c0221d4bda8e127b9d609f0697b5ce7c5e489"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/untrusted_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/untrusted_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/untrusted_inputs.yaml",
+          "digest": "7814c8d6aa68ca54697cf7ce27450586b1c6c97197e920c12ed591b91da49357"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/using_reusable_workflow_call_outputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/using_reusable_workflow_call_outputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/using_reusable_workflow_call_outputs.yaml",
+          "digest": "ccc51a39180f1442702a7f3a9334c8b14ffdb3138cd994c8a3e00a69e83c0cf3"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/valid_comparisons.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/valid_comparisons.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/valid_comparisons.yaml",
+          "digest": "28851b097e490d914fd0cb92201b877cdc46b39f4e789d010b80b44bd913936e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/variables.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/variables.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/variables.yaml",
+          "digest": "01330980c8fe32568bb5ab631df4d026281bf66f59b59871aa09558c3cb77a88"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_call_event.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_call_event.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_call_event.yaml",
+          "digest": "d37ce693b43db7c4a10f6c1e27f013d3b090d67f2b68be5c6a20526cd2f6b6a9"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_call_job.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_call_job.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_call_job.yaml",
+          "digest": "25363ce091593ffab518d2ed199a14ba5468343d6bfebfc38ca82516a0fd0026"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_call_job_result.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_call_job_result.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_call_job_result.yaml",
+          "digest": "003d030327a41fe98b087b9576210cd20524afe35d89f60a918b0413c53a5b24"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_call_outputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_call_outputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_call_outputs.yaml",
+          "digest": "00a400186e6624e914a85891fc7aced23e967a583fcceceeb36db687065f460e"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_call_outputs_sema.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_call_outputs_sema.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_call_outputs_sema.yaml",
+          "digest": "95218ebeed827a18fd9c1c350cbca21e12d840c67ff56b4f44632191d86d4afc"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_call_with_strategy.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_call_with_strategy.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_call_with_strategy.yaml",
+          "digest": "1f893354707fdc3fc693ae46201c5be637d161fe6da52efdc18ab9ec1a2ed073"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_dispatch_25_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_dispatch_25_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_dispatch_25_inputs.yaml",
+          "digest": "c033a8a1fefe2a5d8d0bc5efd888968171760d7f1ad4970cda56a232565e4f88"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_dispatch_input_types.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_dispatch_input_types.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_dispatch_input_types.yaml",
+          "digest": "f4399cfba84f9ad16e486633b322fbe7b5ccd560be32f109a4f444df9f48bca4"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   },
   "ok/workflow_dispatch_upper_case_inputs.yaml": {
-    "findings": null
+    "findings": null,
+    "captured": {
+      "\u003crepository\u003e/testdata/ok/workflow_dispatch_upper_case_inputs.yaml": {
+        "revision": {
+          "document": "\u003crepository\u003e/testdata/ok/workflow_dispatch_upper_case_inputs.yaml",
+          "digest": "0100bf6dcbdb166e8120110631729faad61868e11955b51f368533196f5ecc67"
+        },
+        "coordinates": "yaml",
+        "coordinates_available": true
+      }
+    }
   }
 }

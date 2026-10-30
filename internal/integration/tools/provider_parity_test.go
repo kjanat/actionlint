@@ -1,11 +1,16 @@
 package tools_test
 
 import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -15,26 +20,121 @@ import (
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // The parity gate compares the bundled manifests, run by the generic process
 // transport, with snapshots captured from the bespoke ShellCheck and Ruff
-// adapters before they were deleted. Severities in the snapshots are mapped
-// through each manifest's severities table, as the adapters passed
-// ShellCheck's style through for renderers to interpret. A deliberate change
-// in findings updates the snapshot by hand.
+// adapters at commit 6be5c7ab, the last commit that has them, with
+// ShellCheck 0.11.0 and Ruff 0.17.0. The snapshots hold the adapters' raw
+// output: ShellCheck's severities such as "style" are mapped through the
+// manifest's severities table when compared, since the adapters left that
+// mapping to renderers. A deliberate change in findings updates the snapshot
+// by hand.
 
 // parityDiagnostics are a route's tool findings and its error, in a stable,
 // machine-independent form.
 type parityDiagnostics struct {
 	Findings []diagnostic.Diagnostic `json:"findings"`
-	Error    string                  `json:"error,omitempty"`
+	// Sources are the result's source evidence for Findings, in the same
+	// order.
+	Sources []paritySource `json:"sources,omitempty"`
+	// Reported are the findings the tool runners returned to the host,
+	// before suppression and policy.
+	Reported []parityReport `json:"reported,omitempty"`
+	// Captured are the result's captured sources keyed by alias.
+	Captured map[string]parityCapture `json:"captured,omitempty"`
+	Error    string                   `json:"error,omitempty"`
 }
 
-// paritySnapshots are captured parity results keyed by case.
-type paritySnapshots map[string]parityDiagnostics
+// paritySource is a report.DiagnosticSource with its content hashed.
+type paritySource struct {
+	Content     string `json:"content,omitempty"`
+	RawScript   bool   `json:"raw_script,omitempty"`
+	Unavailable bool   `json:"unavailable,omitempty"`
+}
+
+// parityReport is the provenance of one runner finding: where the tool
+// reported it, the file content it carries, the unavailable-source marker and
+// the location whose actionlint:ignore comments suppress it.
+type parityReport struct {
+	Rule        string              `json:"rule"`
+	Code        string              `json:"code,omitempty"`
+	Path        string              `json:"path"`
+	Start       diagnostic.Position `json:"start"`
+	Content     string              `json:"content,omitempty"`
+	RawScript   bool                `json:"raw_script,omitempty"`
+	Unavailable *parityUnavailable  `json:"unavailable,omitempty"`
+	Suppression *paritySuppression  `json:"suppression,omitempty"`
+}
+
+// parityUnavailable is a present finding.UnavailableSource.
+type parityUnavailable struct {
+	Reason  string `json:"reason"`
+	Address string `json:"address"`
+}
+
+// paritySuppression is a tools.Suppression.
+type paritySuppression struct {
+	Path        string `json:"path"`
+	First, Last int
+}
+
+// parityCapture is a report.CapturedSource without its content, which the
+// revision identifies.
+type parityCapture struct {
+	Revision             source.Revision    `json:"revision"`
+	Coordinates          source.Coordinates `json:"coordinates"`
+	CoordinatesAvailable bool               `json:"coordinates_available,omitempty"`
+}
+
+// contentHash identifies content in a snapshot; empty content has none.
+func contentHash(content []byte) string {
+	if content == nil {
+		return ""
+	}
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
+}
+
+// parityRecorder collects the findings the tool runners return to the host.
+type parityRecorder struct {
+	mu       sync.Mutex
+	findings []tools.Finding
+}
+
+// wrap returns registrations whose runners record their findings in r.
+func (r *parityRecorder) wrap(registrations []tools.Registration) []tools.Registration {
+	out := slices.Clone(registrations)
+	for i := range out {
+		build := out[i].Build
+		out[i].Build = func(c tools.Context) (tools.Runner, error) {
+			runner, err := build(c)
+			if err != nil || runner == nil {
+				return runner, err
+			}
+			return recordingRunner{runner: runner, recorder: r}, nil
+		}
+	}
+	return out
+}
+
+// recordingRunner passes a batch to runner and records the findings.
+type recordingRunner struct {
+	runner   tools.Runner
+	recorder *parityRecorder
+}
+
+func (r recordingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+	findings, err := r.runner.Analyze(ctx, batch)
+	r.recorder.mu.Lock()
+	r.recorder.findings = append(r.recorder.findings, findings...)
+	r.recorder.mu.Unlock()
+	return findings, err
+}
 
 // loadParitySnapshots reads testdata/provider-parity/<name>.json.
 func loadParitySnapshots(t *testing.T, name string) paritySnapshots {
@@ -50,43 +150,103 @@ func loadParitySnapshots(t *testing.T, name string) paritySnapshots {
 	return snapshots
 }
 
+// paritySnapshots are captured parity results keyed by case.
+type paritySnapshots map[string]parityDiagnostics
+
+// parityRun analyzes a case with registrations and returns its tool
+// findings, recording the runners' findings in recorder.
+type parityRun func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics
+
 // assertParity runs the bundled providers with ShellCheck and Ruff from PATH
 // and compares their findings with the snapshot of key. arguments are added
 // to ShellCheck's command line.
-func (s paritySnapshots) assertParity(t *testing.T, key string, run func([]tools.Registration) parityDiagnostics, shellcheck, ruff string, arguments ...string) {
+func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, shellcheck, ruff string, arguments ...string) {
 	t.Helper()
-	var options *processconfig.Options
-	if len(arguments) != 0 {
-		options = &processconfig.Options{Arguments: arguments}
-	}
-	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}))
 	want, ok := s[key]
 	if !ok {
 		t.Fatalf("no parity snapshot for %q", key)
 	}
+	want = hostSeverities(t, want)
+	var options *processconfig.Options
+	if len(arguments) != 0 {
+		options = &processconfig.Options{Arguments: arguments}
+	}
+	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
+	compareParity(t, want, got)
+	t.Logf("%d identical findings, %d runner findings, error %q", len(got.Findings), len(got.Reported), got.Error)
+}
+
+// hostSeverities maps the snapshot's tool severities through each bundled
+// manifest's severities table, as the manifest route does.
+func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics {
+	t.Helper()
+	manifests, err := provider.Bundled()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot.Findings = slices.Clone(snapshot.Findings)
+	for i, finding := range snapshot.Findings {
+		for _, manifest := range manifests {
+			if manifest.Rule.Name == finding.Rule {
+				severity, _ := manifest.Capabilities.HostSeverity(finding.Severity)
+				snapshot.Findings[i].Severity = string(severity)
+			}
+		}
+	}
+	return snapshot
+}
+
+// compareParity fails t when got differs from want.
+func compareParity(t *testing.T, want, got parityDiagnostics) {
+	t.Helper()
 	wantJSON, _ := json.MarshalIndent(want, "", "  ")
 	gotJSON, _ := json.MarshalIndent(got, "", "  ")
 	if string(wantJSON) != string(gotJSON) {
 		t.Fatalf("manifest route differs from the adapters' snapshot\nadapters:\n%s\nmanifests:\n%s", wantJSON, gotJSON)
 	}
-	t.Logf("%d identical findings, error %q", len(got.Findings), got.Error)
 }
 
-// toolFindings selects a result's tool findings in a stable order and
-// replaces the machine's directories, named by roots, with placeholders.
-func toolFindings(t *testing.T, result *application.Result, err error, roots map[string]string) parityDiagnostics {
+// toolFindings selects a result's tool findings, their source evidence, the
+// runners' findings and the captured sources in a stable order and replaces
+// the machine's directories, named by roots, with placeholders.
+func toolFindings(t *testing.T, result *application.Result, err error, recorder *parityRecorder, roots map[string]string) parityDiagnostics {
 	t.Helper()
 	var out parityDiagnostics
 	if err != nil {
 		out.Error = err.Error()
 	}
 	if result != nil {
-		for _, d := range result.Diagnostics {
+		for i, d := range result.Diagnostics {
 			if d.Rule == "shellcheck" || d.Rule == "ruff" {
 				out.Findings = append(out.Findings, d)
+				if i < len(result.Sources) {
+					evidence := result.Sources[i]
+					out.Sources = append(out.Sources, paritySource{Content: contentHash(evidence.Content), RawScript: evidence.RawScript, Unavailable: evidence.Unavailable})
+				}
 			}
 		}
+		for alias, captured := range result.CapturedSources {
+			if out.Captured == nil {
+				out.Captured = map[string]parityCapture{}
+			}
+			out.Captured[alias] = parityCapture{Revision: captured.Revision, Coordinates: captured.Coordinates, CoordinatesAvailable: captured.CoordinatesAvailable}
+		}
 	}
+	recorder.mu.Lock()
+	for _, finding := range recorder.findings {
+		if finding.UnavailableSource.Present() && finding.UnavailableSource.Provider() != finding.Rule {
+			t.Errorf("unavailable source of a %s finding names provider %q", finding.Rule, finding.UnavailableSource.Provider())
+		}
+		report := parityReport{Rule: finding.Rule, Code: finding.Code, Path: finding.Path, Start: finding.Start, Content: contentHash(finding.Content), RawScript: finding.RawScript}
+		if finding.UnavailableSource.Present() {
+			report.Unavailable = &parityUnavailable{Reason: finding.UnavailableSource.Reason(), Address: finding.UnavailableSource.Address()}
+		}
+		if finding.Suppression != nil {
+			report.Suppression = &paritySuppression{Path: finding.Suppression.Path, First: finding.Suppression.First, Last: finding.Suppression.Last}
+		}
+		out.Reported = append(out.Reported, report)
+	}
+	recorder.mu.Unlock()
 	encoded, err := json.Marshal(out)
 	if err != nil {
 		t.Fatal(err)
@@ -102,12 +262,23 @@ func toolFindings(t *testing.T, result *application.Result, err error, roots map
 	if err := json.Unmarshal([]byte(text), &normalized); err != nil {
 		t.Fatal(err)
 	}
-	for i := range normalized.Findings {
-		finding := &normalized.Findings[i]
+	return normalizeParity(normalized)
+}
+
+// normalizeParity writes paths with forward slashes, drops node identities,
+// which derive from the machine's paths, and sorts findings and runner
+// findings.
+func normalizeParity(snapshot parityDiagnostics) parityDiagnostics {
+	type pair struct {
+		finding diagnostic.Diagnostic
+		source  *paritySource
+	}
+	pairs := make([]pair, len(snapshot.Findings))
+	for i := range snapshot.Findings {
+		finding := snapshot.Findings[i]
 		finding.Path = filepath.ToSlash(finding.Path)
 		if finding.Reference != nil {
 			finding.Reference.Document = filepath.ToSlash(finding.Reference.Document)
-			// Node identities derive from the machine's paths.
 			finding.Reference.Node = ""
 		}
 		for j := range finding.Fixes {
@@ -118,11 +289,43 @@ func toolFindings(t *testing.T, result *application.Result, err error, roots map
 		for j := range finding.Related {
 			finding.Related[j].Path = filepath.ToSlash(finding.Related[j].Path)
 		}
+		pairs[i].finding = finding
+		if i < len(snapshot.Sources) {
+			pairs[i].source = &snapshot.Sources[i]
+		}
 	}
-	slices.SortStableFunc(normalized.Findings, func(a, b diagnostic.Diagnostic) int {
-		return strings.Compare(a.Path+"\x00"+a.Message, b.Path+"\x00"+b.Message)
+	slices.SortStableFunc(pairs, func(a, b pair) int {
+		return strings.Compare(a.finding.Path+"\x00"+a.finding.Message, b.finding.Path+"\x00"+b.finding.Message)
 	})
-	return normalized
+	out := parityDiagnostics{Error: snapshot.Error}
+	for _, p := range pairs {
+		out.Findings = append(out.Findings, p.finding)
+		if p.source != nil {
+			out.Sources = append(out.Sources, *p.source)
+		}
+	}
+	for _, report := range snapshot.Reported {
+		report.Path = filepath.ToSlash(report.Path)
+		if report.Unavailable != nil {
+			report.Unavailable.Address = filepath.ToSlash(report.Unavailable.Address)
+		}
+		if report.Suppression != nil {
+			report.Suppression.Path = filepath.ToSlash(report.Suppression.Path)
+		}
+		out.Reported = append(out.Reported, report)
+	}
+	slices.SortStableFunc(out.Reported, func(a, b parityReport) int {
+		encodedA, _ := json.Marshal(a)
+		encodedB, _ := json.Marshal(b)
+		return bytes.Compare(encodedA, encodedB)
+	})
+	for alias, captured := range snapshot.Captured {
+		if out.Captured == nil {
+			out.Captured = map[string]parityCapture{}
+		}
+		out.Captured[filepath.ToSlash(alias)] = captured
+	}
+	return out
 }
 
 // TestProviderParityFixtures runs every workflow fixture through the
@@ -148,10 +351,10 @@ func TestProviderParityFixtures(t *testing.T) {
 			}
 			path := filepath.Join(dir, name)
 			t.Run(subdir+"/"+name, func(t *testing.T) {
-				snapshots.assertParity(t, subdir+"/"+name, func(registrations []tools.Registration) parityDiagnostics {
+				snapshots.assertParity(t, subdir+"/"+name, func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics {
 					sources := testutil.FixtureSources(t, []string{path}, project, &repoconfig.Config{})
-					result, err := application.Analyze(t.Context(), application.Options{Tools: registrations}, sources)
-					return toolFindings(t, result, err, map[string]string{repository: "<repository>"})
+					result, err := application.Analyze(t.Context(), application.Options{Tools: recorder.wrap(registrations)}, sources)
+					return toolFindings(t, result, err, recorder, map[string]string{repository: "<repository>"})
 				}, shellcheck, ruff)
 			})
 		}
@@ -160,7 +363,8 @@ func TestProviderParityFixtures(t *testing.T) {
 
 // TestProviderParityCases runs repositories that exercise configuration,
 // composite actions, sourced files, fixes and suppression through the
-// manifest route.
+// manifest route. Every case runs again with only Ruff selected and is
+// compared with the snapshot of the Ruff adapter run alone.
 func TestProviderParityCases(t *testing.T) {
 	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
 	snapshots := loadParitySnapshots(t, "cases")
@@ -231,6 +435,15 @@ func TestProviderParityCases(t *testing.T) {
 			arguments: []string{"--check-sourced"},
 		},
 		{
+			name:  "shellcheck sourced file suppressed at another line",
+			steps: "- uses: ./local",
+			files: map[string]string{
+				"app/lib/check.sh": "echo $VALUE\n",
+				"local/action.yml": "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      working-directory: app\n      run: |\n        echo ready # actionlint:ignore shellcheck -- not the source line\n        . ./lib/check.sh\n",
+			},
+			arguments: []string{"--check-sourced"},
+		},
+		{
 			name:   "tools disabled by override",
 			config: "overrides:\n  - includes: ['local/**']\n    tools: {shellcheck: false}\n",
 			steps:  "- uses: ./local\n- shell: bash\n  run: echo $1",
@@ -238,7 +451,7 @@ func TestProviderParityCases(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			snapshots.assertParity(t, tc.name, func(registrations []tools.Registration) parityDiagnostics {
+			run := func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics {
 				// Each route runs in its own repository.
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := "tools: {shellcheck: true, ruff: true}\n"
@@ -253,9 +466,18 @@ func TestProviderParityCases(t *testing.T) {
 					t.Fatal(err)
 				}
 				workflow := testutil.WriteFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    defaults:\n      run:\n        shell: python\n    steps:\n      "+strings.ReplaceAll(tc.steps, "\n", "\n      ")+"\n")
-				result, err := application.Check(t.Context(), application.Options{WorkingDir: root, Tools: registrations}, application.Input{Kind: application.Files, Paths: []string{workflow}})
-				return toolFindings(t, result, err, map[string]string{root: "<root>"})
-			}, shellcheck, ruff, tc.arguments...)
+				result, err := application.Check(t.Context(), application.Options{WorkingDir: root, Tools: recorder.wrap(registrations)}, application.Input{Kind: application.Files, Paths: []string{workflow}})
+				return toolFindings(t, result, err, recorder, map[string]string{root: "<root>"})
+			}
+			snapshots.assertParity(t, tc.name, run, shellcheck, ruff, tc.arguments...)
+			// The Ruff adapter alone ran without execution facts; the
+			// manifest route resolves them for Ruff's selectors.shells
+			// (decision b4).
+			alone, ok := snapshots[tc.name+" (ruff alone)"]
+			if !ok {
+				t.Fatalf("no Ruff-alone parity snapshot for %q", tc.name)
+			}
+			compareParity(t, hostSeverities(t, alone), run(registry.Registrations(registry.Selections{"ruff": {Command: ruff}}), &parityRecorder{}))
 		})
 	}
 }
