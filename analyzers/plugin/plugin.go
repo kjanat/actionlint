@@ -3,7 +3,7 @@ package plugin
 
 import (
 	"actionlint.kjanat.dev/v2/analyzers/architecture"
-	"fmt"
+	"errors"
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 )
@@ -14,7 +14,7 @@ type plugin struct{}
 
 func newPlugin(settings any) (register.LinterPlugin, error) {
 	if settings != nil {
-		return nil, fmt.Errorf("actionlintarch takes no settings or repository policy file")
+		return nil, errors.New("actionlintarch takes no settings or repository policy file")
 	}
 	return plugin{}, nil
 }

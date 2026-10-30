@@ -284,8 +284,8 @@ func mutatingAPI(pass *analysis.Pass, t types.Type, flows map[*ssa.Function]flow
 	if named, ok := t.(*types.Named); ok {
 		methods := types.NewMethodSet(types.NewPointer(named))
 		for method := range methods.Methods() {
-			method := method.Obj().(*types.Func)
-			if !method.Exported() {
+			method, isFunc := method.Obj().(*types.Func)
+			if !isFunc || !method.Exported() {
 				continue
 			}
 			summarized := false
@@ -697,7 +697,9 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 							continue
 						}
 						if tuples[v] == nil {
-							tuples[v] = make([]origins, v.Type().(*types.Tuple).Len())
+							// ssa gives every select a tuple type.
+							slots, _ := v.Type().(*types.Tuple)
+							tuples[v] = make([]origins, slots.Len())
 							for i := range tuples[v] {
 								tuples[v][i] = origins{}
 							}
