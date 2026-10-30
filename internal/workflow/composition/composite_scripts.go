@@ -15,6 +15,7 @@ import (
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -250,20 +251,17 @@ func (analysis *compositeAnalyzer) describeCall(step workflowdecl.StepView) (sou
 }
 
 func invocationOutput(rule workflowvisit.Rule, snapshot *documentparse.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
-	before := len(rule.Errs())
-	defer func() {
-		for _, finding := range rule.Errs()[before:] {
-			if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
-				origin.Path = path
-			}
-			if finding.Path == "" {
-				finding.Path = path
-				finding.Source = snapshot.Content()
-				if finding.Reference == nil {
-					finding.Reference = new(reference)
-				}
+	defer rule.AnnotateSince(rule.FindingCount(), func(finding *findingmodel.Finding) {
+		if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
+			origin.Path = path
+		}
+		if finding.Path == "" {
+			finding.Path = path
+			finding.Source = snapshot.Content()
+			if finding.Reference == nil {
+				finding.Reference = new(reference)
 			}
 		}
-	}()
+	})
 	return visit()
 }

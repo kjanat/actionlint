@@ -24,6 +24,13 @@ type Pass interface {
 // Public analyzers implement analyzer.Analyzer and do not implement this adapter.
 type Rule interface {
 	Pass
+	// Errs returns copies of the reported findings, detached from the rule.
 	Errs() []*findingmodel.Finding
+	// FindingCount returns the number of reported findings; it marks a
+	// position for AnnotateSince.
+	FindingCount() int
+	// AnnotateSince applies annotate to the findings reported after mark, in
+	// place. Callers attach invocation provenance through it.
+	AnnotateSince(mark int, annotate func(*findingmodel.Finding))
 	Name() string
 }

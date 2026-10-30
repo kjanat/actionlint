@@ -266,7 +266,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	*usedRules = append(*usedRules, selected.ScriptInfo...)
 	*usedRules = append(*usedRules, checks.Describe(selected.Rules)...)
 	for _, r := range selected.Rules {
-		s.debug("%s found %d errors", r.Name(), len(r.Errs()))
+		s.debug("%s found %d errors", r.Name(), r.FindingCount())
 	}
 	return result, err
 }

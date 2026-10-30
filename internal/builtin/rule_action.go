@@ -132,8 +132,8 @@ func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 		return errors.New("standalone metadata does not belong to its source snapshot")
 	}
 	rule.Report(actioncheck.Standalone(meta)...)
-	for _, finding := range rule.Errs() {
+	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, snapshot.Reference().Document, finding), Declaration: true}
-	}
+	})
 	return nil
 }

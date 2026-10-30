@@ -14,6 +14,7 @@ import (
 	workflowexpr "actionlint.kjanat.dev/v2/internal/workflow/expressions"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/internal/workflow/runner"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleExpression connects workflow expression checking to host lookups and options.
@@ -22,7 +23,7 @@ type RuleExpression struct {
 	ruleLogger
 	Configuration
 	frames   []expressionInvocation
-	findings []*findingmodel.Finding
+	findings workflowvisit.Findings
 }
 
 type expressionInvocation struct {
@@ -48,9 +49,9 @@ func (r *RuleExpression) LeaveInvocation(context invocation.Context) error {
 	return nil
 }
 func (r *RuleExpression) collect(visit func() error) error {
-	before := r.FindingCount()
+	before := r.Checker.FindingCount()
 	err := visit()
-	r.findings = append(r.findings, r.FindingsSince(before)...)
+	r.findings.Report(r.FindingsSince(before)...)
 	return err
 }
 func (r *RuleExpression) VisitStep(step workflowdecl.StepView) error {
@@ -110,7 +111,14 @@ func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *c
 
 func (r *RuleExpression) Name() string                  { return "expression" }
 func (r *RuleExpression) Description() string           { return builtinRuleDescription("expression") }
-func (r *RuleExpression) Errs() []*findingmodel.Finding { return r.findings }
+func (r *RuleExpression) Errs() []*findingmodel.Finding { return r.findings.Errs() }
+
+// FindingCount counts the findings collected by the rule. It shadows the
+// embedded checker's count, which covers only the current invocation.
+func (r *RuleExpression) FindingCount() int { return r.findings.FindingCount() }
+func (r *RuleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+	r.findings.AnnotateSince(mark, annotate)
+}
 func (r *RuleExpression) SetConfig(config *repoconfig.Config) {
 	r.Configuration.SetConfig(config)
 	r.Configure(workflowExpressionOptions(config))

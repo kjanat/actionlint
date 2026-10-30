@@ -14,14 +14,12 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 	if !ok {
 		return visit()
 	}
-	before := len(rule.Errs())
-	defer func() {
-		for _, finding := range rule.Errs()[before:] {
-			if finding.Owner == nil && finding.Source == nil {
-				finding.Owner = &findingmodel.Owner{Job: origin.Job, Step: origin.StepPosition}
-			}
+	before := rule.FindingCount()
+	defer rule.AnnotateSince(before, func(finding *findingmodel.Finding) {
+		if finding.Owner == nil && finding.Source == nil {
+			finding.Owner = &findingmodel.Owner{Job: origin.Job, Step: origin.StepPosition}
 		}
-	}()
+	})
 	// Metadata can have file-specific ignores even when its caller has none.
 	_, actionRule := rule.(builtin.MetadataParticipant)
 	if !actionRule && !hasIgnores {
@@ -32,11 +30,11 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 		return visit()
 	}
 
-	start := len(rule.Errs())
+	start := rule.FindingCount()
 	err := visit()
-	for _, finding := range rule.Errs()[start:] {
+	rule.AnnotateSince(start, func(finding *findingmodel.Finding) {
 		if !hasIgnores && (finding.MetadataIdentity == nil || finding.Source == nil) {
-			continue
+			return
 		}
 		if finding.Source == nil && finding.IgnoreOrigin == nil {
 			finding.IgnoreOrigin = origin
@@ -46,7 +44,7 @@ func VisitWithOrigin(pass workflowvisit.Pass, origin *findingmodel.IgnoreOrigin,
 			inner.Job = origin.Job
 			finding.IgnoreOrigin = &inner
 		}
-	}
+	})
 	return err
 }
 

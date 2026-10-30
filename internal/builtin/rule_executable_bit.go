@@ -6,6 +6,7 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
 // RuleExecutableBit adapts workflow execution checks to traversal and composite scopes.
@@ -13,7 +14,7 @@ type RuleExecutableBit struct {
 	*execution.ExecutableChecker
 	ruleLogger
 	frames   []executableInvocation
-	findings []*findingmodel.Finding
+	findings workflowvisit.Findings
 }
 
 func newRuleExecutableBit(c Context) *RuleExecutableBit {
@@ -21,7 +22,7 @@ func newRuleExecutableBit(c Context) *RuleExecutableBit {
 	r.ExecutableChecker = execution.NewExecutableChecker(execution.ExecutableContext{
 		Context: c.Context, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
 		Reader: c.Reader, Index: c.Index, Log: r.Debug, Runners: c.Runners,
-		Report: func(finding *findingmodel.Finding) { r.findings = append(r.findings, finding) },
+		Report: func(finding *findingmodel.Finding) { r.findings.Report(finding) },
 	})
 	return r
 }
@@ -30,7 +31,11 @@ func (rule *RuleExecutableBit) Description() string {
 	return builtinRuleDescription("executable-bit")
 }
 
-func (rule *RuleExecutableBit) Errs() []*findingmodel.Finding                     { return rule.findings }
+func (rule *RuleExecutableBit) Errs() []*findingmodel.Finding { return rule.findings.Errs() }
+func (rule *RuleExecutableBit) FindingCount() int             { return rule.findings.FindingCount() }
+func (rule *RuleExecutableBit) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+	rule.findings.AnnotateSince(mark, annotate)
+}
 func (rule *RuleExecutableBit) VisitWorkflowPost(workflowdecl.WorkflowView) error { return nil }
 func (rule *RuleExecutableBit) VisitJobPost(workflowdecl.JobView) error           { return nil }
 func (rule *RuleExecutableBit) ApplyCheckout(actions *actionlocal.Resolver) {
