@@ -187,8 +187,16 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.StepView) e
 	return nil
 }
 
+// visitJobPass attributes what a pass reports while visiting a job to that job.
+func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflowdecl.JobView, visit func() error) error {
+	return checks.VisitWithOrigin(pass, canonicalOrigin(job.Origin()), checks.HasConfiguredIgnores(analysis.scriptConfig), visit)
+}
+
 func canonicalStepOrigin(step workflowdecl.StepView, job string) *findingmodel.IgnoreOrigin {
-	owned := step.Origin(job)
+	return canonicalOrigin(step.Origin(job))
+}
+
+func canonicalOrigin(owned workflowdecl.Origin) *findingmodel.IgnoreOrigin {
 	origin := &findingmodel.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
 	if owned.HasPosition {
 		position := owned.Position

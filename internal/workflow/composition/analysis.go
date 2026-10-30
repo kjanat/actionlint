@@ -12,7 +12,6 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
-	"actionlint.kjanat.dev/v2/internal/checks"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
@@ -77,13 +76,9 @@ func Workflow(options Options, snapshot *documentparse.SourceSnapshot) (Result, 
 		if err := c.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 			return err
 		}
-		passes := make([]workflowvisit.Pass, 0, len(options.Rules))
-		for _, pass := range options.Rules {
-			passes = append(passes, checks.WithOrigins(pass, options.Config))
-		}
 		return engine.Visit(w, engine.Options{
-			Passes: passes,
-			Hooks:  engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
+			Passes: c.passes,
+			Hooks:  engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, JobPass: c.visitJobPass, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
 			Debug:  options.Debug,
 		})
 	})
