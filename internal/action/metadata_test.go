@@ -12,7 +12,7 @@ import (
 
 func testDiffActionMetadata(t *testing.T, want, have *Metadata, opts ...cmp.Option) {
 	t.Helper()
-	opts = append(opts, cmpopts.IgnoreUnexported(Metadata{}), cmpopts.IgnoreFields(Metadata{}, "SourceMapped", "Directory", "Filename", "Source", "Root"))
+	opts = append(opts, cmpopts.IgnoreFields(Metadata{}, "Provenance", "SourceMapped", "Directory", "Filename", "Source", "Root"))
 	if diff := cmp.Diff(want, have, opts...); diff != "" {
 		t.Fatal(diff)
 	}

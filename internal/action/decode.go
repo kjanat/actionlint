@@ -33,7 +33,6 @@ func Decode(root *syntax.Node, metadata *Metadata) error {
 	if !isNull(entered.Node()) {
 		metadata.Root = entered.Node()
 	}
-	metadata.positions = &metadataPositionCache{}
 	return session.Finish(decodeErr)
 }
 

@@ -11,7 +11,6 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/workflow/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/yaml/syntax"
 )
@@ -192,11 +191,13 @@ func Fields(node *syntax.Node) *syntax.Node {
 	return &normalized
 }
 
-// Metadata represents structure of action.yaml.
+// Metadata represents structure of action.yaml. It is a plain record: Parse
+// fills it, and catalogs and JSON build it directly. Source positions come from
+// its Provenance, which never reads the other fields.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 type Metadata struct {
-	// parsedSource is the owned text captured by Parse, independent of legacy views.
-	parsedSource *string
+	// Provenance is set by Parse; it is zero for metadata without parsed source.
+	Provenance Provenance `yaml:"-" json:"-"`
 	// SourceMapped records that repository composition supplied a source override.
 	SourceMapped bool `yaml:"-" json:"-"`
 	// Directory, Filename and Source identify the decoded manifest independently of its caller.
@@ -204,8 +205,7 @@ type Metadata struct {
 	Filename  string `yaml:"-" json:"-"`
 	Source    []byte `yaml:"-" json:"-"`
 	// Root is the original YAML tree used for schema checks and source mapping.
-	Root      *syntax.Node `yaml:"-" json:"-"`
-	positions *metadataPositionCache
+	Root *syntax.Node `yaml:"-" json:"-"`
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -247,7 +247,7 @@ func expectedMapping(where string, n *syntax.Node) error {
 // Partially decoded declarations accompany errors for callers that inspect broken metadata.
 // A fatal decode takes diagnostic precedence when expansion admission also fails.
 func Parse(path string, content []byte) (*Metadata, error) {
-	metadata := &Metadata{positions: &metadataPositionCache{}}
+	metadata := &Metadata{}
 	owned := bytes.Clone(content)
 	root, err := codec.Parse(owned)
 	if err == nil && root.Kind != 0 {
@@ -262,8 +262,7 @@ func Parse(path string, content []byte) (*Metadata, error) {
 			}
 		}
 	}
-	text := string(owned)
-	metadata.parsedSource = &text
+	metadata.Provenance = newProvenance(string(owned))
 	metadata.Directory, metadata.Filename, metadata.Source = filepath.Dir(path), filepath.Base(path), owned
 	return metadata, err
 }
@@ -271,17 +270,8 @@ func Parse(path string, content []byte) (*Metadata, error) {
 // OriginalSource returns the exact text decoded by Parse. Hand-built metadata
 // has no source provenance, even when its exported Source field is populated.
 func (md *Metadata) OriginalSource() (string, bool) {
-	if md == nil || md.parsedSource == nil {
+	if md == nil {
 		return "", false
 	}
-	return *md.parsedSource, true
-}
-
-// ScalarSource resolves a decoded value back to its original YAML scalar.
-// Source-less metadata and values without a verified mapping return nil.
-func (md *Metadata) ScalarSource(value *ExprString) *workflowlang.ScriptSource {
-	if md.positions == nil {
-		return nil
-	}
-	return md.positions.source(md, value)
+	return md.Provenance.Text()
 }
