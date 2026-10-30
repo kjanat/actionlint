@@ -21,6 +21,10 @@ storage. Shallow clones containing exposed references still share storage.
 Fresh byte copies using `make`/`copy` or `append` are also allowed. Value handles
 with only private representation can share their internal storage; their public
 methods are checked separately. A constructor returning fresh storage is allowed.
+`context.Context.Err` only reads its context and returns nil,
+`context.Canceled` or `context.DeadlineExceeded`, as the Context contract
+documents, so a stored context's error aliases nothing. Its other methods have
+no model.
 
 A returned closure, such as an `iter.Seq` iterator, carries a captured variable
 only when its body can expose it: by returning it with a mutable type, by
@@ -75,7 +79,7 @@ fields stored into that local, so writing `w.m` writes no parameter. Other flows
 are flow-insensitive. The analyzer does not implement a whole-program heap
 analysis; reflection and arbitrary unsafe
 memory operations need separate review. Standard-library bodies are not analyzed;
-the clone operations above have explicit models. Diagnostics concern production
+the clone operations and `context.Context.Err` above have explicit models. Diagnostics concern production
 declarations; test code still participates in helper summaries.
 
 The default golangci-lint configuration additionally enables `dupl` for structural

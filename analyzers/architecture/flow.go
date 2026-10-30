@@ -857,6 +857,9 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						}
 						continue
 					}
+					if contextErr(common) {
+						continue
+					}
 					callee := common.StaticCallee()
 					if callee != nil && standardClone(callee) {
 						if call != nil && !detachedClone(callee, call.Type(), visible) && len(args) > 0 {
@@ -997,6 +1000,17 @@ func closuresOf(value ssa.Value, seen map[ssa.Value]bool) []*ssa.MakeClosure {
 		return out
 	}
 	return nil
+}
+
+// contextErr reports a call of Err on a context.Context. Its documented
+// result is nil, context.Canceled or context.DeadlineExceeded: package-level
+// errors that share no storage with the context. Err only reads the context.
+func contextErr(common *ssa.CallCommon) bool {
+	if !common.IsInvoke() || common.Method.Name() != "Err" {
+		return false
+	}
+	named, ok := types.Unalias(common.Value.Type()).(*types.Named)
+	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "context" && named.Obj().Name() == "Context"
 }
 
 func standardClone(fn *ssa.Function) bool {
