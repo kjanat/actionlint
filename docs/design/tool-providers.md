@@ -22,15 +22,15 @@ A *tool provider* is data: a manifest (content-addressed) that names a rule, a t
 
 ### Layers
 
-| Layer | Owns | Today's code that becomes it |
-| --- | --- | --- |
-| L0 **Store** (CAFS) | bytes by sha256; sources `path`, `file`, `https#sha256`, `sha256://`, **`oci://…@sha256:`**; materialization of executables | `internal/plugins/artifact/resolve.go:68-127,188-208,248-335`, `inspect.go:47-96` |
-| L1 **Manifest** | identity, role, rule descriptor, transport, per-platform artifact digests, selectors, capabilities, invocation template, output format + transform, config rendering/schema, version probe, template-effect table | core `Metadata` (`internal/plugins/core/engine.go:79-111`), component static metadata (`internal/plugins/component/script_engine.go:404-464`), `actionlint.plugin` section (`inspect.go:16`), plus everything currently hard-coded in `ruff/{command,native_options,compatibility,template_effects,diagnostic}.go` and `shellcheck/{analysis_shellcheck_run,input_options,shellcheck_paths}.go` |
-| L2 **Transport** → `analyzer.ScriptBackend` | `process` (new, generic), `wasm-core` (`core.Engine`), `wasm-component` (`component.Plugin`), `embedded` (Go callers; Playground) | `backend/process.go:41-71`, `ruff/backend_process.go:88-172`, `shellcheck` `externalCommand` (`analysis_shellcheck_run.go:300-310`), `analyzerhost.EmbeddedCommand` (`internal/analyzerhost/process.go:162-164`) |
-| L3 **Preparation profile** (language, not tool) | masking, dialect/target inference, injected directive/startup lines + line map, template-mask provenance filter, argv variables, resource requests | shell: `shellcheck_shell.go`, `shellcheck_script.go:44-113`, `prepared_plugin.go` (= `schemas/shell-preparation-0.2.0.md:1-35`); python: `ruff/checker.go` sanitize/`templateMasks`/python-shell detection (investigator: 226-340, 369-431, 490-642); generic mask: `backend/backend.go:227-251` |
-| L4 **Runner** | `ScriptDiagnostic -> tools.Finding`: validation, line remap, YAML mapping, fix mapping, reported-source findings, message template, severity passthrough | `backend/backend.go:98-212` + `shellcheck_fixes.go:30-92` + `shellcheck_sources.go` + the two duplicated fallbacks |
-| L5 **Registration/composition** | `provider.Register(manifest, backend, profile, selection) -> tools.Registration`; precedence explicit > repo backend > locked plugin > bundled default | `adapters/registry.go`, `selection/*`, `ruff/registry.go`, `shellcheck/registry.go`, `localapp/check.go:99-144`, `application/tool_integrations.go:18-83` |
-| L6 **Policy** | unchanged, keyed by rule name only (`internal/suppression/inline.go:122`; `diagnosticpolicy` investigator-cited) | unchanged |
+| Layer                                           | Owns                                                                                                                                                                                                              | Today's code that becomes it                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L0 **Store** (CAFS)                             | bytes by sha256; sources `path`, `file`, `https#sha256`, `sha256://`, **`oci://…@sha256:`**; materialization of executables                                                                                       | `internal/plugins/artifact/resolve.go:68-127,188-208,248-335`, `inspect.go:47-96`                                                                                                                                                                                                                                                                                                               |
+| L1 **Manifest**                                 | identity, role, rule descriptor, transport, per-platform artifact digests, selectors, capabilities, invocation template, output format + transform, config rendering/schema, version probe, template-effect table | core `Metadata` (`internal/plugins/core/engine.go:79-111`), component static metadata (`internal/plugins/component/script_engine.go:404-464`), `actionlint.plugin` section (`inspect.go:16`), plus everything currently hard-coded in `ruff/{command,native_options,compatibility,template_effects,diagnostic}.go` and `shellcheck/{analysis_shellcheck_run,input_options,shellcheck_paths}.go` |
+| L2 **Transport** → `analyzer.ScriptBackend`     | `process` (new, generic), `wasm-core` (`core.Engine`), `wasm-component` (`component.Plugin`), `embedded` (Go callers; Playground)                                                                                 | `backend/process.go:41-71`, `ruff/backend_process.go:88-172`, `shellcheck` `externalCommand` (`analysis_shellcheck_run.go:300-310`), `analyzerhost.EmbeddedCommand` (`internal/analyzerhost/process.go:162-164`)                                                                                                                                                                                |
+| L3 **Preparation profile** (language, not tool) | masking, dialect/target inference, injected directive/startup lines + line map, template-mask provenance filter, argv variables, resource requests                                                                | shell: `shellcheck_shell.go`, `shellcheck_script.go:44-113`, `prepared_plugin.go` (= `schemas/shell-preparation-0.2.0.md:1-35`); python: `ruff/checker.go` sanitize/`templateMasks`/python-shell detection (investigator: 226-340, 369-431, 490-642); generic mask: `backend/backend.go:227-251`                                                                                                |
+| L4 **Runner**                                   | `ScriptDiagnostic -> tools.Finding`: validation, line remap, YAML mapping, fix mapping, reported-source findings, message template, severity passthrough                                                          | `backend/backend.go:98-212` + `shellcheck_fixes.go:30-92` + `shellcheck_sources.go` + the two duplicated fallbacks                                                                                                                                                                                                                                                                              |
+| L5 **Registration/composition**                 | `provider.Register(manifest, backend, profile, selection) -> tools.Registration`; precedence explicit > repo backend > locked plugin > bundled default                                                            | `adapters/registry.go`, `selection/*`, `ruff/registry.go`, `shellcheck/registry.go`, `localapp/check.go:99-144`, `application/tool_integrations.go:18-83`                                                                                                                                                                                                                                       |
+| L6 **Policy**                                   | unchanged, keyed by rule name only (`internal/suppression/inline.go:122`; `diagnosticpolicy` investigator-cited)                                                                                                  | unchanged                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ### Manifest (JSON; `schema_version: 1`)
 
@@ -181,23 +181,55 @@ func (s *Store) Materialize(ctx context.Context, digest, filename string) (strin
 
 ```json
 {
-  "schema_version": 1, "id": "actionlint.kjanat.dev/providers/shellcheck", "version": "bundled",
-  "role": "script", "scope": "source", "transport": "process",
-  "rule": { "name": "shellcheck", "description": "Analyze embedded shell scripts with ShellCheck", "category": "correctness",
-            "subcategory": "shell", "maturity": "stable", "provider": "shellcheck", "recommended": true, "fix_availability": "suggested",
-            "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck" },
+  "schema_version": 1,
+  "id": "actionlint.kjanat.dev/providers/shellcheck",
+  "version": "bundled",
+  "role": "script",
+  "scope": "source",
+  "transport": "process",
+  "rule": {
+    "name": "shellcheck",
+    "description": "Analyze embedded shell scripts with ShellCheck",
+    "category": "correctness",
+    "subcategory": "shell",
+    "maturity": "stable",
+    "provider": "shellcheck",
+    "recommended": true,
+    "fix_availability": "suggested",
+    "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck"
+  },
   "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
   "selectors": { "shells": ["bash", "sh", "dash", "ksh"] },
-  "capabilities": { "fixes": true, "reported_sources": true, "resources": ["workspace", "directory"],
-                    "message_template": "shellcheck reported issue in this script: {code}:{severity}:{row}:{column}: {message}" },
+  "capabilities": {
+    "fixes": true,
+    "reported_sources": true,
+    "resources": ["workspace", "directory"],
+    "message_template": "shellcheck reported issue in this script: {code}:{severity}:{row}:{column}: {message}"
+  },
   "process": {
-    "entry": "shellcheck", "stdin": "source", "exit_codes": [0, 1],
-    "args": ["{switch:config_file:--rcfile:--norc}", "{var:config_file}", "{switch:external_sources:-x:}",
-             "-f", "json1", "{flag:dialect:--shell}", "-e", "{list:exclude:,}", "-"],
+    "entry": "shellcheck",
+    "stdin": "source",
+    "exit_codes": [0, 1],
+    "args": [
+      "{switch:config_file:--rcfile:--norc}",
+      "{var:config_file}",
+      "{switch:external_sources:-x:}",
+      "-f",
+      "json1",
+      "{flag:dialect:--shell}",
+      "-e",
+      "{list:exclude:,}",
+      "-"
+    ],
     "config_files": [".shellcheckrc", "shellcheckrc"],
     "config": { "render": "none" },
-    "output": { "format": "json", "transform": { "language": "jq", "inline":
-      "{ diagnostics: [ .comments[] | { filename: (if .file == \"-\" then $vars.filename else \"\" end), source: (if .file == \"-\" then \"\" else .file end), code: \"SC\\(.code)\", message: (.message | rtrimstr(\".\")), severity: .level, location: {row: .line, column: .column}, end_location: {row: .endLine, column: .endColumn}, fixes: (if .fix then [{replacements: [ .fix.replacements[] | {row: .line, end_row: .endLine, column: .column, end_column: .endColumn, text: .replacement} ]}] else [] end) } ], sources: .sources }" } }
+    "output": {
+      "format": "json",
+      "transform": {
+        "language": "jq",
+        "inline": "{ diagnostics: [ .comments[] | { filename: (if .file == \"-\" then $vars.filename else \"\" end), source: (if .file == \"-\" then \"\" else .file end), code: \"SC\\(.code)\", message: (.message | rtrimstr(\".\")), severity: .level, location: {row: .line, column: .column}, end_location: {row: .endLine, column: .endColumn}, fixes: (if .fix then [{replacements: [ .fix.replacements[] | {row: .line, end_row: .endLine, column: .column, end_column: .endColumn, text: .replacement} ]}] else [] end) } ], sources: .sources }"
+      }
+    }
   }
 }
 ```
@@ -206,12 +238,12 @@ This reproduces today's argv (`analysis_shellcheck_run.go:182-207`), json1 decod
 
 ## 2. How the four routes collapse
 
-| Route today | After | Moves | Deleted | Stays generic |
-| --- | --- | --- | --- | --- |
-| **Native process** (bespoke adapters) | `transport: process` provider built from a manifest; bundled manifests under `providers/` (embedded) supply the PATH-discovery defaults | argv/decoding/version/effect tables → manifest data; python & shell preparation → `internal/tools/profile/{python,shell}`; fixes/sources → `backend` runner | `internal/tools/ruff/{command,native_options,backend_process,compatibility,version_probe,diagnostic,template_effects,adapter,registry,requirements,config,input_options}.go`; `internal/tools/shellcheck/{analysis_shellcheck*,shellcheck_paths,shellcheck_options,shellcheck_sources,shellcheck_fixes,input_options,registry,adapter,path_context}.go`; `internal/tools/adapters`; `internal/tools/selection` (ConfigVariants `requirements.go:87-130` moves to `provider/selection.go`); `backend/process.go` | `analyzerhost.Execution/Command/ProcessPool` (`process.go:19-254`), `processconfig.Options` (`options.go:14-75`), `execution.Tool`, `scriptcoords` |
-| **Core-wasm JSON ABI** | `transport: wasm-core`; `core.Metadata` (`engine.go:79-111`) is accepted as a `Manifest` v0 and up-converted (`id`, `engine`, `capabilities.script_shells/inputs`, `template_contract`, `config_schema`) | nothing | the `descriptor.Engine == registration.Descriptor.Name` matching in `localapp/check.go:109-126` and `input_routing.go:128-130,186-189` becomes "manifest rule name == registration rule name", same code path for all transports | `core.Engine` untouched; `analyzerhost.ScriptEngines` cache (`script_engines.go:24-47`) |
-| **WIT component** | `transport: wasm-component`; `role: script` → same registration as above; `role: document` → `analyzer.Registration` as today | ShellCheck managed glue (`document_plugin.go`, `plugin_sources.go`, `prepared_plugin.go`) → `internal/tools/provider/managed`, generic over `Manifest.Integration{Tool, Contract}` instead of the literal at `document_plugin.go:24` | nothing yet (knot 4 sets the retirement) | `component` loader, roles, sandbox |
-| **Auto-added default plugins** | Default **provider references** in the default config: `plugins: [shellcheck, ruff]` resolved by registry alias as today; bundled manifests are the fallback when nothing is declared | `DefaultPluginReferences` (`config_migration.go:30-54`) iterates registered bundled provider ids instead of a literal pair | the `DefaultPluginOptions{Shellcheck, Ruff bool}` fields (`:21-26`) and the pair at `:39-42` | `pluginref`, `pluginregistry`, lock/sync |
+| Route today                           | After                                                                                                                                                                                                    | Moves                                                                                                                                                                                                                                | Deleted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Stays generic                                                                                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Native process** (bespoke adapters) | `transport: process` provider built from a manifest; bundled manifests under `providers/` (embedded) supply the PATH-discovery defaults                                                                  | argv/decoding/version/effect tables → manifest data; python & shell preparation → `internal/tools/profile/{python,shell}`; fixes/sources → `backend` runner                                                                          | `internal/tools/ruff/{command,native_options,backend_process,compatibility,version_probe,diagnostic,template_effects,adapter,registry,requirements,config,input_options}.go`; `internal/tools/shellcheck/{analysis_shellcheck*,shellcheck_paths,shellcheck_options,shellcheck_sources,shellcheck_fixes,input_options,registry,adapter,path_context}.go`; `internal/tools/adapters`; `internal/tools/selection` (ConfigVariants `requirements.go:87-130` moves to `provider/selection.go`); `backend/process.go` | `analyzerhost.Execution/Command/ProcessPool` (`process.go:19-254`), `processconfig.Options` (`options.go:14-75`), `execution.Tool`, `scriptcoords` |
+| **Core-wasm JSON ABI**                | `transport: wasm-core`; `core.Metadata` (`engine.go:79-111`) is accepted as a `Manifest` v0 and up-converted (`id`, `engine`, `capabilities.script_shells/inputs`, `template_contract`, `config_schema`) | nothing                                                                                                                                                                                                                              | the `descriptor.Engine == registration.Descriptor.Name` matching in `localapp/check.go:109-126` and `input_routing.go:128-130,186-189` becomes "manifest rule name == registration rule name", same code path for all transports                                                                                                                                                                                                                                                                                | `core.Engine` untouched; `analyzerhost.ScriptEngines` cache (`script_engines.go:24-47`)                                                            |
+| **WIT component**                     | `transport: wasm-component`; `role: script` → same registration as above; `role: document` → `analyzer.Registration` as today                                                                            | ShellCheck managed glue (`document_plugin.go`, `plugin_sources.go`, `prepared_plugin.go`) → `internal/tools/provider/managed`, generic over `Manifest.Integration{Tool, Contract}` instead of the literal at `document_plugin.go:24` | nothing yet (knot 4 sets the retirement)                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `component` loader, roles, sandbox                                                                                                                 |
+| **Auto-added default plugins**        | Default **provider references** in the default config: `plugins: [shellcheck, ruff]` resolved by registry alias as today; bundled manifests are the fallback when nothing is declared                    | `DefaultPluginReferences` (`config_migration.go:30-54`) iterates registered bundled provider ids instead of a literal pair                                                                                                           | the `DefaultPluginOptions{Shellcheck, Ruff bool}` fields (`:21-26`) and the pair at `:39-42`                                                                                                                                                                                                                                                                                                                                                                                                                    | `pluginref`, `pluginregistry`, lock/sync                                                                                                           |
 
 ### Config surface (YAML)
 
