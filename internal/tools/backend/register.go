@@ -115,8 +115,13 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 		return tools.Registration{}, fmt.Errorf("tool provider %s selects no scripts; declare selectors.shells or selectors.inputs", name)
 	}
 	registration := tools.Registration{
-		Descriptor:        m.Rule.Clone(),
-		ScriptInputs:      slices.Clone(m.Selectors.Inputs),
+		Descriptor:   m.Rule.Clone(),
+		ScriptInputs: slices.Clone(m.Selectors.Inputs),
+		// A run step that sets no shell runs in the runner's default shell,
+		// which only execution resolution knows, so selectors.shells needs
+		// it to match such steps. capabilities.resources needs each step's
+		// working directory. See decision b4 in
+		// docs/design/tool-providers-decisions.md.
 		RequiresExecution: len(m.Selectors.Shells) != 0 || len(m.Capabilities.Resources) != 0,
 		PrepareInput:      newPreparation(m, routeEngine).input,
 		Enabled: func(c tools.Context) bool {

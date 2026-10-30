@@ -259,7 +259,8 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					return &selectedInputBackend{descriptor: analyzer.ScriptEngineDescriptor{Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"}, ScriptInputs: []analyzer.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}}, nil
 				}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
 				// The composite action's own configuration enables the tool
-				// even when the calling workflow disables it.
+				// even when the calling workflow disables it (decision b5 in
+				// docs/design/tool-providers-decisions.md).
 				if mode == "built" || mode == "caller-disabled" {
 					want := "override module missing"
 					if failure == "conflicting" {
@@ -270,10 +271,12 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					}
 					return
 				}
+				// An optional tool whose build failed stays off, even for the
+				// composite action its override configures.
 				if err != nil || loads != 0 || len(activeRuff.requests) != 1 {
-					t.Fatalf("unselected tool revived by composite override: loads=%d ruff=%+v err=%v", loads, activeRuff.requests, err)
+					t.Fatalf("failed optional tool revived by composite override: loads=%d ruff=%+v err=%v", loads, activeRuff.requests, err)
 				}
-				if mode == "failed-optional" && failedBuilds != 1 {
+				if failedBuilds != 1 {
 					t.Fatalf("optional build not exercised once: %d", failedBuilds)
 				}
 			})
