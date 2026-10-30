@@ -3,6 +3,7 @@
 package fsread
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/fs"
@@ -10,6 +11,8 @@ import (
 	"path/filepath"
 )
 
+// Contents supplies file bytes. Providers such as analysis.Options.ReadFile
+// may return storage they retain; Reader.ReadFile detaches it.
 type Contents func(path string) ([]byte, error)
 
 func Disk(path string) ([]byte, error) {
@@ -44,6 +47,7 @@ func (r *Reader) Record(path string) {
 	r.record(path)
 }
 
+// ReadFile returns bytes the caller owns, whatever the provider retains.
 func (r *Reader) ReadFile(path string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
@@ -53,7 +57,7 @@ func (r *Reader) ReadFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	r.record(path)
-	return data, nil
+	return bytes.Clone(data), nil
 }
 
 func (r *Reader) Open(path string) (*os.File, error) {
