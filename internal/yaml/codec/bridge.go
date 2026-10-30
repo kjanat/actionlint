@@ -104,12 +104,12 @@ func translate(err error) error {
 	if list, ok := errors.AsType[*upstream.LoadErrors](err); ok {
 		r := &DecodeError{}
 		for _, e := range list.Errors {
-			r.Errors = append(r.Errors, &LoadError{Message: e.Message, Mark: Mark{e.Mark.Index, e.Mark.Line, e.Mark.Column}, text: e.Error(), cause: e})
+			r.Errors = append(r.Errors, &LoadError{message: e.Message, mark: Mark{e.Mark.Index, e.Mark.Line, e.Mark.Column}, text: e.Error(), cause: e})
 		}
 		return r
 	}
 	if e, ok := errors.AsType[*upstream.LoadError](err); ok {
-		return &LoadError{Message: e.Message, Mark: Mark{e.Mark.Index, e.Mark.Line, e.Mark.Column}, text: e.Error(), cause: e}
+		return &LoadError{message: e.Message, mark: Mark{e.Mark.Index, e.Mark.Line, e.Mark.Column}, text: e.Error(), cause: e}
 	}
 	return err
 }
@@ -146,7 +146,7 @@ func encodeError(err error) error {
 	if _, ok := errors.AsType[*EncodeError](err); ok {
 		return err
 	}
-	return &EncodeError{Message: err.Error(), cause: err}
+	return &EncodeError{message: err.Error(), cause: err}
 }
 
 func representation(value any) (*upstream.Node, error) {

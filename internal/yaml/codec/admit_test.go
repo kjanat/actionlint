@@ -45,7 +45,7 @@ func TestAdmissionCountsSharedOccurrencesAndStopsAtRejection(t *testing.T) {
 			want = want[:stopAt]
 			failure, ok := errors.AsType[*LoadError](err)
 			leaf := root.Content[0].Content[1].Content[0]
-			if !ok || failure.Message != "test expansion limit" || failure.Mark.Line != leaf.Line || failure.Mark.Column != leaf.Column {
+			if !ok || failure.Message() != "test expansion limit" || failure.Mark().Line != leaf.Line || failure.Mark().Column != leaf.Column {
 				t.Fatalf("rejection lost physical mark: %v", err)
 			}
 		} else if err != nil {
@@ -145,8 +145,8 @@ func TestAdmissionErrorZeroValuesAndFatalPrecedence(t *testing.T) {
 			t.Fatal("zero-valued admission rejection is unsafe")
 		}
 	}
-	schema := &DecodeError{Errors: []*LoadError{{Message: "schema"}}}
-	resource := &LoadError{Message: "resource", Mark: Mark{Line: 3, Column: 4}}
+	schema := &DecodeError{Errors: []*LoadError{NewLoadError("schema", Mark{})}}
+	resource := NewLoadError("resource", Mark{Line: 3, Column: 4})
 	joined := errors.Join(schema, NewAdmissionError(resource))
 	if got, fatal := FatalLoadError(joined); !fatal || got != resource {
 		t.Fatal("schema errors hid a joined admission rejection", got)

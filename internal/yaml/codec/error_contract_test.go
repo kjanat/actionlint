@@ -62,11 +62,11 @@ func TestCursorErrorsNameMapAndSliceElementTypes(t *testing.T) {
 func TestSessionFinishJoinedDiagnosticsKeepMarksAndOrder(t *testing.T) {
 	var session codec.Session
 	err := session.Finish(fmt.Errorf("wrapped schema diagnostics: %w", errors.Join(
-		&codec.LoadError{Message: "later", Mark: codec.Mark{Line: 2, Column: 1}},
+		codec.NewLoadError("later", codec.Mark{Line: 2, Column: 1}),
 		&codec.DecodeError{Errors: []*codec.LoadError{
-			{Message: "late same line", Mark: codec.Mark{Line: 1, Column: 8}},
-			{Message: "unknown"},
-			{Message: "early same line", Mark: codec.Mark{Line: 1, Column: 4}},
+			codec.NewLoadError("late same line", codec.Mark{Line: 1, Column: 8}),
+			codec.NewLoadError("unknown", codec.Mark{}),
+			codec.NewLoadError("early same line", codec.Mark{Line: 1, Column: 4}),
 		}},
 	)))
 	decoded, ok := errors.AsType[*codec.DecodeError](err)
@@ -79,8 +79,8 @@ func TestSessionFinishJoinedDiagnosticsKeepMarksAndOrder(t *testing.T) {
 		t.Fatalf("diagnostics = %#v, want %d original errors", decoded.Errors, len(wantMarks))
 	}
 	for i, item := range decoded.Errors {
-		if item.Mark != wantMarks[i] || item.Message != wantMessages[i] {
-			t.Errorf("diagnostic %d = (%+v, %q), want (%+v, %q)", i, item.Mark, item.Message, wantMarks[i], wantMessages[i])
+		if item.Mark() != wantMarks[i] || item.Message() != wantMessages[i] {
+			t.Errorf("diagnostic %d = (%+v, %q), want (%+v, %q)", i, item.Mark(), item.Message(), wantMarks[i], wantMessages[i])
 		}
 	}
 	const wantText = "yaml: construct errors: <unknown position>: unknown; line 1: early same line; line 1: late same line; line 2: later"
@@ -99,13 +99,13 @@ func TestParserErrorMatchesPinnedUpstreamGolden(t *testing.T) {
 	if !gotOK || !wantOK {
 		t.Fatalf("codec parser error = %T %v; upstream parser error = %T %v", codecErr, codecErr, upstreamErr, upstreamErr)
 	}
-	if gotLoad.Error() != wantLoad.Error() || gotLoad.Mark.Index != wantLoad.Mark.Index || gotLoad.Mark.Line != wantLoad.Mark.Line || gotLoad.Mark.Column != wantLoad.Mark.Column {
-		t.Errorf("codec parser error (%q, %+v) differs from upstream (%q, %+v)", gotLoad.Error(), gotLoad.Mark, wantLoad.Error(), wantLoad.Mark)
+	if gotLoad.Error() != wantLoad.Error() || gotLoad.Mark().Index != wantLoad.Mark.Index || gotLoad.Mark().Line != wantLoad.Mark.Line || gotLoad.Mark().Column != wantLoad.Mark.Column {
+		t.Errorf("codec parser error (%q, %+v) differs from upstream (%q, %+v)", gotLoad.Error(), gotLoad.Mark(), wantLoad.Error(), wantLoad.Mark)
 	}
 	const wantError = "go-yaml load error in parser (while parsing a flow node) at L2.C1: did not find expected node content"
 	wantMark := codec.Mark{Index: 9, Line: 2, Column: 1}
-	if gotLoad.Error() != wantError || gotLoad.Mark != wantMark {
-		t.Errorf("parser error = (%q, %+v), want (%q, %+v)", gotLoad.Error(), gotLoad.Mark, wantError, wantMark)
+	if gotLoad.Error() != wantError || gotLoad.Mark() != wantMark {
+		t.Errorf("parser error = (%q, %+v), want (%q, %+v)", gotLoad.Error(), gotLoad.Mark(), wantError, wantMark)
 	}
 }
 
@@ -173,10 +173,10 @@ func TestSelectWrappedJoinedDiagnosticsKeepMarksOrderTextAndCauses(t *testing.T)
 		t.Fatal(err)
 	}
 	defer session.Close()
-	later := &codec.LoadError{Message: "later", Mark: codec.Mark{Line: 2, Column: 1}}
-	late := &codec.LoadError{Message: "late same line", Mark: codec.Mark{Line: 1, Column: 8}}
-	unknown := &codec.LoadError{Message: "unknown"}
-	early := &codec.LoadError{Message: "early same line", Mark: codec.Mark{Line: 1, Column: 4}}
+	later := codec.NewLoadError("later", codec.Mark{Line: 2, Column: 1})
+	late := codec.NewLoadError("late same line", codec.Mark{Line: 1, Column: 8})
+	unknown := codec.NewLoadError("unknown", codec.Mark{})
+	early := codec.NewLoadError("early same line", codec.Mark{Line: 1, Column: 4})
 	joined := &codec.DecodeError{Errors: []*codec.LoadError{late, unknown, early}}
 	wrapped := fmt.Errorf("wrapped schema diagnostics: %w", errors.Join(later, joined))
 	var target namedSelectedRoot
@@ -193,7 +193,7 @@ func TestSelectWrappedJoinedDiagnosticsKeepMarksOrderTextAndCauses(t *testing.T)
 	wantMarks := []codec.Mark{{Line: 1, Column: 4}, {Line: 1, Column: 8}, {Line: 2, Column: 1}, {Line: 3, Column: 7}}
 	wantMessages := []string{"early same line", "late same line", "later", "unknown"}
 	for i, item := range decoded.Errors {
-		if item.Mark != wantMarks[i] || item.Message != "wrapped schema diagnostics: "+wantMessages[i] {
+		if item.Mark() != wantMarks[i] || item.Message() != "wrapped schema diagnostics: "+wantMessages[i] {
 			t.Errorf("diagnostic %d=%+v", i, item)
 		}
 	}
@@ -206,7 +206,7 @@ func TestSelectWrappedJoinedDiagnosticsKeepMarksOrderTextAndCauses(t *testing.T)
 			t.Errorf("lost original cause %v", cause)
 		}
 	}
-	if unknown.Mark != (codec.Mark{}) || unknown.Message != "unknown" {
+	if unknown.Mark() != (codec.Mark{}) || unknown.Message() != "unknown" {
 		t.Error("Wrap mutated original unknown diagnostic")
 	}
 }

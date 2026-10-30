@@ -112,7 +112,7 @@ func (c Cursor) check() error {
 
 func (s *Session) fail(n *syntax.Node, stage upstream.Stage, err error) error {
 	raw := upstream.NewLoadError(stage, err.Error(), upstream.Mark{Line: n.Line, Column: n.Column}, err)
-	s.fatal = &LoadError{Message: raw.Message, Mark: Mark{Line: n.Line, Column: n.Column}, text: raw.Error(), cause: raw}
+	s.fatal = &LoadError{message: raw.Message, mark: Mark{Line: n.Line, Column: n.Column}, text: raw.Error(), cause: raw}
 	return s.fatal
 }
 

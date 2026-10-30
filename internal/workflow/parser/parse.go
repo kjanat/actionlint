@@ -2130,9 +2130,9 @@ func HandleYAMLUnmarshalError(err error) []*SyntaxError {
 	findings := make([]*SyntaxError, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
 		findings = append(findings, &SyntaxError{
-			Message: "could not parse as YAML: " + diagnostic.Message,
-			Line:    diagnostic.Mark.Line,
-			Column:  diagnostic.Mark.Column,
+			Message: "could not parse as YAML: " + diagnostic.Message(),
+			Line:    diagnostic.Mark().Line,
+			Column:  diagnostic.Mark().Column,
 			Kind:    "syntax-check",
 			Code:    CodeYAML,
 		})

@@ -169,7 +169,7 @@ func assertConstructErrorsMatchUpstream(t *testing.T, got, want error) {
 	}
 	for i, item := range decoded.Errors {
 		other := baseline.Errors[i]
-		if item.Message != other.Message || item.Mark.Line != other.Mark.Line || item.Mark.Column != other.Mark.Column {
+		if item.Message() != other.Message || item.Mark().Line != other.Mark.Line || item.Mark().Column != other.Mark.Column {
 			t.Errorf("diagnostic %d=%+v upstream=%+v", i, item, other)
 		}
 	}

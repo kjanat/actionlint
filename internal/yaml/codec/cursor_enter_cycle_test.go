@@ -32,7 +32,7 @@ func TestCursorEnterCycleMatchesUpstreamAndRemainsFatal(t *testing.T) {
 		})
 	})
 	fatal, ok := FatalLoadError(err)
-	if !ok || visits != 2 || fatal.Message != want.Message || fatal.Mark.Index != want.Mark.Index || fatal.Mark.Line != want.Mark.Line || fatal.Mark.Column != want.Mark.Column || fatal.Error() != want.Error() {
+	if !ok || visits != 2 || fatal.Message() != want.Message || fatal.Mark().Index != want.Mark.Index || fatal.Mark().Line != want.Mark.Line || fatal.Mark().Column != want.Mark.Column || fatal.Error() != want.Error() {
 		t.Fatalf("entered cycle=%v visits=%d, upstream=%v", err, visits, want)
 	}
 	if cause, ok := errors.AsType[*upstream.LoadError](fatal); !ok || cause.Stage != want.Stage {
