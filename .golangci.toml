@@ -51,7 +51,7 @@ enable  = [
 
 [linters.settings.forbidigo]
 analyze-types = true
-forbid = [
+forbid        = [
   { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through fsread.Reader" },
   { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through fsread.Reader" },
   { pattern = '^fsread\.(Disk|ProbeDir)$', msg = "fsread.Disk and fsread.ProbeDir skip recording; read through fsread.Reader" },
@@ -78,7 +78,7 @@ files = [
   "**/internal/rulecatalog/check-docs/**",
   "!$test",
 ]
-deny = [{ pkg = "actionlint.kjanat.dev/v2/internal/engine", desc = "entrypoints use the application boundary" }]
+deny  = [{ pkg = "actionlint.kjanat.dev/v2/internal/engine", desc = "entrypoints use the application boundary" }]
 
 [linters.settings.depguard.rules.engine]
 files = ["**/internal/engine/**", "!$test"]
@@ -101,7 +101,7 @@ files = [
   "**/internal/mapping/*.go",
   "!$test",
 ]
-deny = [{ pkg = "github.com/kjanat/go-yaml/v4", desc = "parser types stay behind the YAML codec" }]
+deny  = [{ pkg = "github.com/kjanat/go-yaml/v4", desc = "parser types stay behind the YAML codec" }]
 
 [linters.settings.depguard.rules.integration]
 files = ["**/internal/integration/**"]
