@@ -28,6 +28,14 @@ no model. Locking or unlocking a `sync.Mutex` or `sync.RWMutex` changes only
 the lock, so a method that locks only to read its storage stays read-only.
 Whether locks are balanced is not checked.
 
+`maps.Keys`, `maps.Values`, `maps.All`, `slices.All` and `slices.Values` write
+nothing and return an iterator that only reads its argument. The iterator
+carries the argument's storage only when it yields storage, such as pointer
+values; one yielding string keys exposes none. `slices.Sorted` and
+`slices.Collect` applied directly to such an iterator write nothing and return
+a new slice holding what it yields. A range loop over the iterator is a call
+through a function value and stays unresolved.
+
 A returned closure, such as an `iter.Seq` iterator, carries a captured variable
 only when its body can expose it: by returning it with a mutable type, by
 writing it, by storing it into a parameter, or by passing it with a mutable type
@@ -81,7 +89,7 @@ fields stored into that local, so writing `w.m` writes no parameter. Other flows
 are flow-insensitive. The analyzer does not implement a whole-program heap
 analysis; reflection and arbitrary unsafe
 memory operations need separate review. Standard-library bodies are not analyzed;
-the clone operations, `context.Context.Err` and the mutex lock calls above have
+the clone, iterator, `context.Context.Err` and mutex lock calls above have
 explicit models. Diagnostics concern production declarations; test code still
 participates in helper summaries.
 

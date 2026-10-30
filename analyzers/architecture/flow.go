@@ -867,6 +867,16 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						}
 						continue
 					}
+					if callee != nil && readSequence(callee) {
+						if call != nil && len(args) == 1 && yieldsStorage(call.Type(), visible) {
+							put(call, get(args[0]))
+						}
+						continue
+					}
+					if callee != nil && collectsSequence(callee) && len(args) == 1 && fromReadSequence(args[0]) {
+						put(call, get(args[0]))
+						continue
+					}
 					if closure, ok := common.Value.(*ssa.MakeClosure); ok {
 						args = append(slices.Clone(args), closure.Bindings...)
 					} else if callee == nil && !common.IsInvoke() {
@@ -1033,6 +1043,62 @@ func lockState(common *ssa.CallCommon) bool {
 	switch obj.Name() {
 	case "Lock", "Unlock", "TryLock", "RLock", "RUnlock", "TryRLock":
 		return true
+	}
+	return false
+}
+
+// readSequence reports maps.Keys, maps.Values, maps.All, slices.All or
+// slices.Values. Each returns an iterator over its argument. The call writes
+// nothing, and calling the iterator only reads the argument.
+func readSequence(fn *ssa.Function) bool {
+	obj, _ := fn.Object().(*types.Func)
+	if obj == nil || obj.Pkg() == nil || obj.Signature().Recv() != nil {
+		return false
+	}
+	switch obj.Pkg().Path() {
+	case "maps":
+		return obj.Name() == "Keys" || obj.Name() == "Values" || obj.Name() == "All"
+	case "slices":
+		return obj.Name() == "All" || obj.Name() == "Values"
+	}
+	return false
+}
+
+// collectsSequence reports slices.Collect or slices.Sorted. Each calls its
+// iterator and returns a new slice of the values it yields.
+func collectsSequence(fn *ssa.Function) bool {
+	obj, _ := fn.Object().(*types.Func)
+	return obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == "slices" && obj.Signature().Recv() == nil &&
+		(obj.Name() == "Collect" || obj.Name() == "Sorted")
+}
+
+// fromReadSequence reports an iterator returned directly by a readSequence
+// call. Collecting it writes nothing.
+func fromReadSequence(value ssa.Value) bool {
+	call, ok := value.(*ssa.Call)
+	if !ok {
+		return false
+	}
+	callee := call.Common().StaticCallee()
+	return callee != nil && readSequence(callee)
+}
+
+// yieldsStorage reports whether an iterator of type seq can yield storage. An
+// iterator that yields only plain values, such as the string keys of a map,
+// exposes none of the storage it reads.
+func yieldsStorage(seq types.Type, visible func(types.Type) bool) bool {
+	signature, ok := seq.Underlying().(*types.Signature)
+	if !ok || signature.Params().Len() != 1 {
+		return true
+	}
+	yield, ok := signature.Params().At(0).Type().Underlying().(*types.Signature)
+	if !ok {
+		return true
+	}
+	for v := range yield.Params().Variables() {
+		if visible(v.Type()) {
+			return true
+		}
 	}
 	return false
 }
