@@ -116,7 +116,7 @@ func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
 	if len(analysis.scripts) != 0 {
 		t.Fatal("foreign declaration produced a script fact")
 	}
-	analysis.sourceSnapshot = nil
+	analysis.sourceSnapshot = documentparse.SourceSnapshot{}
 	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
 		t.Fatal("accepted a script without a source snapshot")
 	}

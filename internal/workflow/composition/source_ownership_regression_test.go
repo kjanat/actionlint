@@ -48,7 +48,7 @@ func (r *sourceMutationRule) ForMetadata(*actionlocal.Resolver) workflowvisit.Ru
 	r.metadata++
 	return r
 }
-func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error {
+func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error {
 	return nil
 }
 
@@ -57,8 +57,8 @@ var _ builtin.InvocationParticipant = (*sourceMutationRule)(nil)
 
 type canonicalFactObserver struct {
 	workflowvisit.Base
-	source     *documentparse.SourceSnapshot
-	parents    []*documentparse.SourceSnapshot
+	source     documentparse.SourceSnapshot
+	parents    []documentparse.SourceSnapshot
 	uses       *[]string
 	runs       *[]string
 	conditions *[]string
@@ -66,7 +66,7 @@ type canonicalFactObserver struct {
 	valid      *bool
 }
 
-func newCanonicalFactObserver(snapshot *documentparse.SourceSnapshot) *canonicalFactObserver {
+func newCanonicalFactObserver(snapshot documentparse.SourceSnapshot) *canonicalFactObserver {
 	uses := []string{}
 	runs := []string{}
 	conditions := []string{}

@@ -40,7 +40,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 			}
 			for _, documentFirst := range []bool{false, true} {
 				snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-				bind := func(fromDocument bool) (*SourceSnapshot, error) {
+				bind := func(fromDocument bool) (SourceSnapshot, error) {
 					if fromDocument {
 						return snapshots.Document("action.yml", content, document)
 					}
@@ -48,7 +48,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				}
 				first, firstErr := bind(documentFirst)
 				second, secondErr := bind(!documentFirst)
-				if firstErr != nil || secondErr != nil || first == nil || first != second {
+				if firstErr != nil || secondErr != nil || !first.Present() || first != second {
 					t.Fatalf("source-only snapshot depends on entry order: first=%p/%v second=%p/%v", first, firstErr, second, secondErr)
 				}
 				if body, ok := first.ActionView(); ok {
@@ -162,7 +162,7 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 		}
 		for _, documentFirst := range []bool{false, true} {
 			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-			bind := func(fromDocument bool) (*SourceSnapshot, error) {
+			bind := func(fromDocument bool) (SourceSnapshot, error) {
 				if fromDocument {
 					return snapshots.Document("action.yml", content, document)
 				}
@@ -170,7 +170,7 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 			}
 			first, firstErr := bind(documentFirst)
 			second, secondErr := bind(!documentFirst)
-			if firstErr != nil || secondErr != nil || first == nil || first != second {
+			if firstErr != nil || secondErr != nil || !first.Present() || first != second {
 				t.Fatal("recovered snapshot depends on entry order", firstErr, secondErr)
 			}
 			steps := snapshotActionSteps(t, first)
@@ -193,7 +193,7 @@ func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
 	}
 	for _, documentFirst := range []bool{false, true} {
 		snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-		bind := func(fromDocument bool) (*SourceSnapshot, error) {
+		bind := func(fromDocument bool) (SourceSnapshot, error) {
 			if fromDocument {
 				return snapshots.Document("action.yml", content, document)
 			}
@@ -201,7 +201,7 @@ func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
 		}
 		first, firstErr := bind(documentFirst)
 		second, secondErr := bind(!documentFirst)
-		if firstErr != nil || secondErr != nil || first == nil || first != second {
+		if firstErr != nil || secondErr != nil || !first.Present() || first != second {
 			t.Fatal("schema-error declaration binding depends on entry order", firstErr, secondErr)
 		}
 		steps := snapshotActionSteps(t, first)

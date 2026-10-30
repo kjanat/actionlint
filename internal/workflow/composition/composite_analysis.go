@@ -53,7 +53,7 @@ type compositionSession struct {
 type compositeAnalyzer struct {
 	*compositionSession
 	actions                           *actionlocal.Resolver
-	sourceSnapshot                    *documentparse.SourceSnapshot
+	sourceSnapshot                    documentparse.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope
 	scriptConfig                      *repoconfig.Config
 	context                           invocation.Context
@@ -77,7 +77,7 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workfl
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("workflow source snapshot is unavailable")
 	}
 	analysis.beginEntryScope(scriptexecution.Deployment{})
@@ -90,7 +90,7 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workfl
 }
 
 func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deployment) error {
-	if analysis.sourceSnapshot == nil || analysis.sourceSnapshot.Kind() != documentparse.KindAction {
+	if analysis.sourceSnapshot.Kind() != documentparse.KindAction {
 		return errors.New("action source snapshot is unavailable")
 	}
 	validated, err := scriptexecution.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
@@ -148,7 +148,7 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.StepView) error {
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("step source snapshot is unavailable")
 	}
 	declaration := step
@@ -173,7 +173,7 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.StepView) e
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("step source snapshot is unavailable")
 	}
 	declaration := step

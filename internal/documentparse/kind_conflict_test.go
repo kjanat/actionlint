@@ -33,7 +33,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if order == "action-first" {
 				documents[0], documents[1] = documents[1], documents[0]
 			}
-			var snapshots [2]*SourceSnapshot
+			var snapshots [2]SourceSnapshot
 			var failures [2]error
 			var earlierView workflowdecl.StepView
 			var earlierReference source.Reference
@@ -65,7 +65,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				}
 				bind(1)
 			}
-			var previous *SourceSnapshot
+			var previous SourceSnapshot
 			for index, failure := range failures {
 				if failure == nil {
 					previous = snapshots[index]
@@ -73,7 +73,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 					t.Fatalf("kind mismatch returned untyped error: %v", failure)
 				}
 			}
-			if previous == nil {
+			if !previous.Present() {
 				t.Fatal("neither declaration was initially admitted")
 			}
 			for _, document := range documents {

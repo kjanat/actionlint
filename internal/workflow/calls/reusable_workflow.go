@@ -336,11 +336,11 @@ func (c *Cache) store(key string, result reusableWorkflowMetadataResult) {
 
 // Seed indexes reusable metadata only from this result's admitted workflow.
 // Mutable visitor ASTs never supply independent source bytes or declarations.
-func (c *Cache) Seed(snapshot *documentparse.SourceSnapshot) error {
+func (c *Cache) Seed(snapshot documentparse.SourceSnapshot) error {
 	if c == nil || c.root == "" {
 		return nil
 	}
-	if c.captures == nil || snapshot == nil || c.ctx == nil {
+	if c.captures == nil || !snapshot.Present() || c.ctx == nil {
 		return errors.New("reusable workflow metadata requires a captured workflow")
 	}
 	captured := snapshot.Capture()

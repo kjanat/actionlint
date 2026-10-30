@@ -7,7 +7,7 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
-func matrixTestWorkflow(t *testing.T, source string) (*workflowlang.Workflow, *documentparse.SourceSnapshot) {
+func matrixTestWorkflow(t *testing.T, source string) (*workflowlang.Workflow, documentparse.SourceSnapshot) {
 	t.Helper()
 	content := []byte(source)
 	document := documentparse.Workflow("test.yml", content)

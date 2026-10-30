@@ -212,7 +212,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 	const workers = 24
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	type result struct {
-		snapshot *SourceSnapshot
+		snapshot SourceSnapshot
 		err      error
 	}
 	results := make(chan result, workers)
@@ -229,13 +229,13 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 	}
 	ready.Wait()
 	close(start)
-	var canonical *SourceSnapshot
+	var canonical SourceSnapshot
 	for range workers {
 		result := <-results
 		if result.err != nil {
 			t.Fatal(result.err)
 		}
-		if canonical == nil {
+		if !canonical.Present() {
 			canonical = result.snapshot
 		} else if canonical != result.snapshot {
 			t.Fatal("concurrent bind returned a noncanonical snapshot")

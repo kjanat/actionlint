@@ -124,8 +124,8 @@ func (rule *RuleAction) ForMetadata(actions *actionlocal.Resolver) workflowvisit
 	return child
 }
 
-func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snapshot *documentparse.SourceSnapshot) error {
-	if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snapshot documentparse.SourceSnapshot) error {
+	if snapshot.Kind() != documentparse.KindAction {
 		return errors.New("standalone metadata has no admitted source snapshot")
 	}
 	if original, parsed := meta.OriginalSource(); !parsed || original != string(snapshot.Content()) {

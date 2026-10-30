@@ -183,7 +183,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	return all, outline, analysisErr
 }
 
-func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot *documentparse.SourceSnapshot, action bool,
+func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document documentparse.Document, snapshot documentparse.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *repoconfig.Config, processes *analyzerhost.ProcessPool,
 	actions *actionlocal.Cache, workflows *calls.Cache, registrations []analyzer.Registration, usedRules *[]rule.Descriptor,
 ) (result composition.Result, resultErr error) {

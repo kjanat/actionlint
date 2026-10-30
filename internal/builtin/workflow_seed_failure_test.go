@@ -50,7 +50,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			}
 			cache := calls.NewCache(root, root, nil)
 			cache.SetSources(t.Context(), registry.Sources.Store, root)
-			visit := func(snapshot *documentparse.SourceSnapshot) (int, int) {
+			visit := func(snapshot documentparse.SourceSnapshot) (int, int) {
 				t.Helper()
 				workflow, available := snapshot.WorkflowView()
 				if !available {

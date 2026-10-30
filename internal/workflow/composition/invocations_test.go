@@ -24,7 +24,7 @@ import (
 
 type invocationFixture struct {
 	options         Options
-	root            *documentparse.SourceSnapshot
+	root            documentparse.SourceSnapshot
 	original        *workflowlang.Workflow
 	snapshots       *capturedSnapshots
 	cache           *actionlocal.Cache
@@ -72,7 +72,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 	return f
 }
 
-func (f *invocationFixture) actionSnapshot(t *testing.T, spec string) *documentparse.SourceSnapshot {
+func (f *invocationFixture) actionSnapshot(t *testing.T, spec string) documentparse.SourceSnapshot {
 	t.Helper()
 	result, _ := f.cache.LookupMetadata(spec)
 	if result.Metadata() == nil {

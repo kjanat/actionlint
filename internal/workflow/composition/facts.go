@@ -17,7 +17,7 @@ func AnalyzerInput(result Result, path, pathAbs string, content []byte, document
 	if !document.CanAnalyze() {
 		return input, nil
 	}
-	if !result.Batch.Valid() || result.EntrySnapshot == nil {
+	if !result.Batch.Valid() || !result.EntrySnapshot.Present() {
 		return input, scriptexecution.ErrInvalidBatch
 	}
 	input.CallGraph = result.Batch.CallGraph()

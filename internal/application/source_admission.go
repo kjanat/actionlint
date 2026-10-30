@@ -73,7 +73,7 @@ func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entr
 		if path == "" || path == entryPath || path == sourcePath {
 			return true
 		}
-		if composed.EntrySnapshot == nil {
+		if !composed.EntrySnapshot.Present() {
 			return false
 		}
 		entry := composed.EntrySnapshot.Reference()
@@ -124,7 +124,7 @@ func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entr
 			finding.Reference, finding.Fixes = nil, nil
 		} else if !entryOwns(finding.Path) {
 			foreignEvidence := finding.Reference != nil
-			if foreignEvidence && composed.EntrySnapshot != nil {
+			if foreignEvidence && composed.EntrySnapshot.Present() {
 				foreignEvidence = finding.Reference.Document != composed.EntrySnapshot.Reference().Document
 			}
 			if !foreignEvidence {

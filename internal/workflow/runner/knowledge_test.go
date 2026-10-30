@@ -30,7 +30,7 @@ func (p *testProvider) ResolveRunners(_ context.Context, r runnerapi.Request) ([
 
 type runnerFixture struct {
 	Jobs     map[string]*workflowlang.Job
-	Snapshot *documentparse.SourceSnapshot
+	Snapshot documentparse.SourceSnapshot
 	Views    map[string]workflowdecl.JobView
 }
 

@@ -113,7 +113,7 @@ jobs:
 	}
 }
 
-func productionRunnerRule(t *testing.T, snapshot *documentparse.SourceSnapshot, knowledge *runnerlang.Knowledge) workflowvisit.Rule {
+func productionRunnerRule(t *testing.T, snapshot documentparse.SourceSnapshot, knowledge *runnerlang.Knowledge) workflowvisit.Rule {
 	t.Helper()
 	for _, descriptor := range builtin.Descriptors() {
 		if descriptor.Name == "runner-label" {

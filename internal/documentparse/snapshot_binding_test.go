@@ -29,11 +29,11 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	}
 	ref := step.Reference()
 
-	if got, ok := snapshots.Lookup(source.Reference{}); ok || got != nil {
+	if got, ok := snapshots.Lookup(source.Reference{}); ok || got.Present() {
 		t.Fatal("lookup accepted a zero reference")
 	}
 	var nilSnapshots *SourceSnapshots
-	if got, ok := nilSnapshots.Lookup(ref); ok || got != nil {
+	if got, ok := nilSnapshots.Lookup(ref); ok || got.Present() {
 		t.Fatal("lookup accepted a nil snapshot set")
 	}
 	if _, ok := snapshots.Lookup(source.Reference{Document: ref.Document}); ok {
@@ -61,7 +61,7 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 			mutate(&modified)
 			documentRef := snapshot.Reference()
 			mutate(&documentRef)
-			if got, ok := snapshots.Lookup(documentRef); ok || got != nil {
+			if got, ok := snapshots.Lookup(documentRef); ok || got.Present() {
 				t.Fatalf("lookup accepted modified document reference: %+v", documentRef)
 			}
 			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflowdecl.StepView{}) {

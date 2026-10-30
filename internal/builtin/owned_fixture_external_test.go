@@ -24,7 +24,7 @@ func ownedStepFixture(step *workflowlang.Step) workflowdecl.StepView {
 	return workflowdecl.StepView{}
 }
 
-func matrixJob(t testing.TB, snapshot *documentparse.SourceSnapshot, key string) workflowdecl.JobView {
+func matrixJob(t testing.TB, snapshot documentparse.SourceSnapshot, key string) workflowdecl.JobView {
 	t.Helper()
 	workflow, present := snapshot.WorkflowView()
 	if !present {

@@ -22,7 +22,7 @@ import (
 // It contains no process pool, application session or engine implementation.
 // Context is the analysis lifetime; rules that read the filesystem require it.
 type Context struct {
-	SourceSnapshot                *documentparse.SourceSnapshot
+	SourceSnapshot                documentparse.SourceSnapshot
 	Runners                       *runnerlang.Knowledge
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string

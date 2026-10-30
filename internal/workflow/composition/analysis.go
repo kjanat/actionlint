@@ -52,7 +52,7 @@ type Options struct {
 // its own; AnalyzerInput validates its batch against the entry snapshot.
 type Result struct {
 	Findings         []*findingmodel.Finding
-	EntrySnapshot    *documentparse.SourceSnapshot
+	EntrySnapshot    documentparse.SourceSnapshot
 	Batch            scriptexecution.Batch
 	ResolveExecution bool
 	Sources          map[string][]byte
@@ -64,9 +64,9 @@ type Result struct {
 // Workflow runs one workflow composition with the caller's collaborators.
 // It enters the workflow pass lifecycle; Action never uses this path.
 // Options.Join runs exactly once per call.
-func Workflow(options Options, snapshot *documentparse.SourceSnapshot) (Result, error) {
+func Workflow(options Options, snapshot documentparse.SourceSnapshot) (Result, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
-		if snapshot == nil {
+		if !snapshot.Present() {
 			return errors.New("workflow source snapshot is unavailable")
 		}
 		w, available := snapshot.WorkflowView()
@@ -86,9 +86,9 @@ func Workflow(options Options, snapshot *documentparse.SourceSnapshot) (Result, 
 
 // Action runs one standalone action composition with the caller's collaborators.
 // Options.Join runs exactly once per call.
-func Action(options Options, snapshot *documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
+func Action(options Options, snapshot documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
-		if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
+		if snapshot.Kind() != documentparse.KindAction {
 			return errors.New("action source snapshot is unavailable")
 		}
 		if metadata == nil {

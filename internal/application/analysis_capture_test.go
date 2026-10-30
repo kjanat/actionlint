@@ -150,7 +150,7 @@ func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 type sharedCompositeObserver struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
-	snapshots *[]*documentparse.SourceSnapshot
+	snapshots *[]documentparse.SourceSnapshot
 	steps     *[]workflowdecl.StepView
 }
 
@@ -180,7 +180,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	}
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 	var mu sync.Mutex
-	var snapshots []*documentparse.SourceSnapshot
+	var snapshots []documentparse.SourceSnapshot
 	var steps []workflowdecl.StepView
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
@@ -197,7 +197,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	if err != nil || result == nil {
 		t.Fatalf("shared composite analysis failed: %v", err)
 	}
-	if len(snapshots) != 2 || snapshots[0] != snapshots[1] || snapshots[0] == nil || len(steps) != 2 || steps[0] != steps[1] {
+	if len(snapshots) != 2 || snapshots[0] != snapshots[1] || !snapshots[0].Present() || len(steps) != 2 || steps[0] != steps[1] {
 		t.Fatalf("default rules did not traverse one shared composite AST: snapshots=%p steps=%p", snapshots, steps)
 	}
 	if toolCalls.Load() != 2 {

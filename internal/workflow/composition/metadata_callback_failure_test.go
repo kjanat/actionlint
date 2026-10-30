@@ -18,7 +18,7 @@ type failingMetadataParticipant struct {
 	failure error
 }
 
-func (p *failingMetadataParticipant) CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error {
+func (p *failingMetadataParticipant) CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error {
 	return nil
 }
 

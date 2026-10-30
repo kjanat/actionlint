@@ -45,7 +45,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 	run := func(t *testing.T, cache *calls.Cache) []string {
 		t.Helper()
-		r := builtin.NewRuleWorkflowCall(nil, cache)
+		r := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, cache)
 		if err := r.VisitWorkflowPre(ownedWorkflowFixture(&workflowlang.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
@@ -309,7 +309,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
-			r := builtin.NewRuleWorkflowCall(nil, cache)
+			r := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, cache)
 			if tc.cfg != nil {
 				r.SetConfig(tc.cfg)
 			}

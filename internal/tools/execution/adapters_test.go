@@ -67,7 +67,7 @@ func (a sourceTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Findi
 	return findings, nil
 }
 
-func nestedActionBatch(t *testing.T, collection Collection, snapshot *documentparse.SourceSnapshot, deployments ...Deployment) (invocation.Graph, Collection) {
+func nestedActionBatch(t *testing.T, collection Collection, snapshot documentparse.SourceSnapshot, deployments ...Deployment) (invocation.Graph, Collection) {
 	t.Helper()
 	if len(deployments) == 0 {
 		deployments = []Deployment{collection.Scopes[0].Deployment}

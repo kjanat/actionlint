@@ -98,7 +98,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	rule := NewRuleAction(nil)
-	if err := rule.CheckStandaloneMetadata(metadata, nil); err == nil {
+	if err := rule.CheckStandaloneMetadata(metadata, documentparse.SourceSnapshot{}); err == nil {
 		t.Fatal("missing source was accepted")
 	}
 	other, err := actionmeta.Parse(path, append([]byte("# another revision\n"), content...))

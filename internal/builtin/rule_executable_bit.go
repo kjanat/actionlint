@@ -60,7 +60,7 @@ func (rule *RuleExecutableBit) VisitOpaqueAction(step workflowdecl.StepView) err
 	return rule.VisitInvocationStep(step)
 }
 func (rule *RuleExecutableBit) EnterInvocation(scope Invocation) error {
-	if !scope.Context.Valid() || scope.Source == nil {
+	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
 	rule.frames = append(rule.frames, executableInvocation{scope: scope, parent: rule.ExecutableChecker})

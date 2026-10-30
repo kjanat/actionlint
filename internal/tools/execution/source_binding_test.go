@@ -19,12 +19,12 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, *documentparse.SourceSnapshot, string) {
+func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, documentparse.SourceSnapshot, string) {
 	graph, collection, snapshot, path, _ := actionBatchFixtureWithDocument(t, mapped)
 	return graph, collection, snapshot, path
 }
 
-func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph, Collection, *documentparse.SourceSnapshot, string, documentparse.Document) {
+func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph, Collection, documentparse.SourceSnapshot, string, documentparse.Document) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "source", "action.yml")
 	content := []byte("name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo first\n    - shell: sh\n      run: echo second\n")
@@ -132,7 +132,7 @@ func TestDeploymentRejectsForeignSources(t *testing.T) {
 	_, actionCollection, action, path := actionBatchFixture(t, false)
 	graph, workflow := batchFixture(t, false)
 	root, _ := workflow.Declarations.Lookup(graph.Entry().Reference)
-	for name, snapshot := range map[string]*documentparse.SourceSnapshot{"nil": nil, "workflow": root, "zero": {}} {
+	for name, snapshot := range map[string]documentparse.SourceSnapshot{"workflow": root, "zero": {}} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := NewDeployment(actionCollection.Declarations, snapshot, path, path, false); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("foreign deployment accepted: %v", err)

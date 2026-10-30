@@ -21,11 +21,11 @@ type RuleWorkflowCall struct {
 	workflowPermissions workflowdecl.PermissionsView
 	workflowCacheMode   workflowdecl.CacheModeView
 	cache               *calls.Cache
-	source              *documentparse.SourceSnapshot
+	source              documentparse.SourceSnapshot
 }
 
 // NewRuleWorkflowCall checks calls using captured reusable-workflow metadata.
-func NewRuleWorkflowCall(source *documentparse.SourceSnapshot, cache *calls.Cache) *RuleWorkflowCall {
+func NewRuleWorkflowCall(source documentparse.SourceSnapshot, cache *calls.Cache) *RuleWorkflowCall {
 	return &RuleWorkflowCall{
 		Base: builtinRuleBase("workflow-call"), tag: "workflow-call",
 		cache:  cache,
@@ -39,11 +39,11 @@ func (rule *RuleWorkflowCall) VisitWorkflowPre(n workflowdecl.WorkflowView) erro
 	rule.workflowCacheMode = n.CacheMode()
 	for event := range n.On() {
 		if _, reusable := event.WorkflowCallEvent(); reusable {
-			if rule.source == nil {
-				return rule.cache.Seed(nil)
-			}
-			if err := rule.source.ValidateWorkflow(n); err != nil {
-				return err
+			// Seed rejects an absent snapshot itself.
+			if rule.source.Present() {
+				if err := rule.source.ValidateWorkflow(n); err != nil {
+					return err
+				}
 			}
 			return rule.cache.Seed(rule.source)
 		}

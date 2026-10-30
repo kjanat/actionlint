@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 )
 
-func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot *documentparse.SourceSnapshot) error {
-	if snapshot == nil {
+func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot documentparse.SourceSnapshot) error {
+	if !snapshot.Present() {
 		return errors.New("entry source snapshot is unavailable")
 	}
 	if analysis.sourceSnapshots == nil {
@@ -106,7 +106,7 @@ func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionV
 		return nil, actionlocal.SourceDocument{}, invocation.Outcome{}, err
 	}
 	sourceDocument, hasSource := analysis.actions.SourceDocument(lookup)
-	var snapshot *documentparse.SourceSnapshot
+	var snapshot documentparse.SourceSnapshot
 	if hasSource {
 		admitted, err := analysis.sourceSnapshots.Document(sourceDocument.Capture(), documentparse.Document{Provenance: sourceDocument.Provenance()})
 		if err != nil {
@@ -122,7 +122,7 @@ func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionV
 	if meta == nil {
 		return nil, sourceDocument, invocation.Outcome{}, errors.New("resolved action metadata is unavailable")
 	}
-	if snapshot == nil {
+	if !snapshot.Present() {
 		return nil, sourceDocument, invocation.Outcome{}, errors.New("resolved action source document is unavailable")
 	}
 	actionView, available := snapshot.ActionView()

@@ -29,7 +29,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 	if err := analysis.cancelled(); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("action call source snapshot is unavailable")
 	}
 	declaration := call
@@ -114,7 +114,7 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call workflowdecl.StepView,
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted *documentparse.SourceSnapshot, address string, callContext invocation.Context, parents []builtin.InvocationParticipant) (err error) {
+func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadata, admitted documentparse.SourceSnapshot, address string, callContext invocation.Context, parents []builtin.InvocationParticipant) (err error) {
 	if !analysis.invocations.Owns(callContext) {
 		return invocation.ErrForeignContext
 	}
@@ -215,7 +215,7 @@ func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepVi
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return errors.New("metadata step source snapshot is unavailable")
 	}
 	declaration := step
@@ -241,7 +241,7 @@ func compositeCheckoutPaths(rule workflowvisit.Pass, actions *actionlocal.Resolv
 }
 
 func (analysis *compositeAnalyzer) describeCall(step workflowdecl.StepView) (source.Reference, invocation.Facts, error) {
-	if analysis.sourceSnapshot == nil {
+	if !analysis.sourceSnapshot.Present() {
 		return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
 	}
 	site := step.Reference()
@@ -250,7 +250,7 @@ func (analysis *compositeAnalyzer) describeCall(step workflowdecl.StepView) (sou
 	return site, facts, err
 }
 
-func invocationOutput(rule workflowvisit.Rule, snapshot *documentparse.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
+func invocationOutput(rule workflowvisit.Rule, snapshot documentparse.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
 	defer rule.AnnotateSince(rule.FindingCount(), func(finding *findingmodel.Finding) {
 		if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
 			origin.Path = path

@@ -19,8 +19,8 @@ type Deployment struct {
 
 // NewDeployment requires snapshot to be admitted by snapshots and address to
 // resolve to its captured revision.
-func NewDeployment(snapshots *documentparse.SourceSnapshots, snapshot *documentparse.SourceSnapshot, address, displayPath string, mapped bool) (Deployment, error) {
-	if snapshot == nil || address == "" || displayPath == "" {
+func NewDeployment(snapshots *documentparse.SourceSnapshots, snapshot documentparse.SourceSnapshot, address, displayPath string, mapped bool) (Deployment, error) {
+	if !snapshot.Present() || address == "" || displayPath == "" {
 		return Deployment{}, fmt.Errorf("%w: action deployment needs a source and path", ErrInvalidBatch)
 	}
 	if !snapshots.OwnsSnapshot(snapshot) {

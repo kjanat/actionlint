@@ -106,9 +106,9 @@ func detachResolution(resolution runnerapi.Resolution) runnerapi.Resolution {
 
 // Prepare resolves a document against the session's selected, immutable evidence.
 // Failed resolution leaves unknown facts while independent checks can continue.
-func Prepare(ctx context.Context, snapshot *documentparse.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
+func Prepare(ctx context.Context, snapshot documentparse.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
 	k := &Knowledge{jobs: make(map[workflowdecl.JobView]jobRecord)}
-	if snapshot == nil {
+	if !snapshot.Present() {
 		return k, nil
 	}
 	workflow, available := snapshot.WorkflowView()

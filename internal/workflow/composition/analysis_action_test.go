@@ -33,7 +33,7 @@ func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta
 	}
 	bytes := []byte(content)
 	document := documentparse.Action(metadata.Path(), metadata.Path(), bytes)
-	var snapshot *documentparse.SourceSnapshot
+	var snapshot documentparse.SourceSnapshot
 	var err error
 	if fixture != nil {
 		snapshot, err = fixture.Document(metadata.Path(), bytes, document)
@@ -62,7 +62,7 @@ type mutatingStandaloneMetadata struct {
 	workflowvisit.Base
 }
 
-func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ *documentparse.SourceSnapshot) error {
+func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.Metadata, _ documentparse.SourceSnapshot) error {
 	metadata.Runs.Using = "node24"
 	metadata.Source[0] = 'x'
 	return nil

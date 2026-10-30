@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func workflowView(t testing.TB, snapshot *documentparse.SourceSnapshot) workflowdecl.WorkflowView {
+func workflowView(t testing.TB, snapshot documentparse.SourceSnapshot) workflowdecl.WorkflowView {
 	t.Helper()
 	view, available := snapshot.WorkflowView()
 	if !available {
@@ -35,7 +35,7 @@ func workflowStepViews(t testing.TB, workflow workflowdecl.WorkflowView, key str
 	return slices.Collect(workflowJob(t, workflow, key).Steps())
 }
 
-func actionStepViews(t testing.TB, snapshot *documentparse.SourceSnapshot) []workflowdecl.StepView {
+func actionStepViews(t testing.TB, snapshot documentparse.SourceSnapshot) []workflowdecl.StepView {
 	t.Helper()
 	action, available := snapshot.ActionView()
 	if !available {
@@ -44,7 +44,7 @@ func actionStepViews(t testing.TB, snapshot *documentparse.SourceSnapshot) []wor
 	return slices.Collect(action.Steps())
 }
 
-func stepReference(t testing.TB, snapshot *documentparse.SourceSnapshot, step workflowdecl.StepView) source.Reference {
+func stepReference(t testing.TB, snapshot documentparse.SourceSnapshot, step workflowdecl.StepView) source.Reference {
 	t.Helper()
 	if err := snapshot.ValidateStep(step); err != nil {
 		t.Fatal(err)

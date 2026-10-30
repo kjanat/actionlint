@@ -32,7 +32,7 @@ type expressionInvocation struct {
 }
 
 func (r *RuleExpression) EnterInvocation(scope Invocation) error {
-	if !scope.Context.Valid() || scope.Source == nil {
+	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
 	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})

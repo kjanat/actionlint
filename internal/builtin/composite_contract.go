@@ -17,7 +17,7 @@ type Invocation struct {
 	ActionPath string
 	Config     *repoconfig.Config
 	Path       string
-	Source     *documentparse.SourceSnapshot
+	Source     documentparse.SourceSnapshot
 }
 
 // InvocationParticipant observes resolved action execution without producing child rules.
@@ -36,7 +36,7 @@ type CheckoutParticipant interface{ ApplyCheckout(*actionlocal.Resolver) }
 type (
 	MetadataParticipant interface {
 		workflowvisit.Rule
-		CheckStandaloneMetadata(*actionmeta.Metadata, *documentparse.SourceSnapshot) error
+		CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error
 		ForMetadata(*actionlocal.Resolver) workflowvisit.Rule
 	}
 )
