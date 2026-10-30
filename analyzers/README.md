@@ -22,6 +22,23 @@ Fresh byte copies using `make`/`copy` or `append` are also allowed. Value handle
 with only private representation can share their internal storage; their public
 methods are checked separately. A constructor returning fresh storage is allowed.
 
+A returned closure, such as an `iter.Seq` iterator, carries a captured variable
+only when its body can expose it: by returning it with a mutable type, by
+writing it, by storing it into a parameter, or by passing it with a mutable type
+to code without a summary, such as the iterator's `yield` function. An iterator
+that only reads its receiver and yields pointer-free values or read-only value
+handles is not reported. An iterator that yields receiver slices, maps or
+pointers to receiver fields is, as is a closure that writes receiver state.
+A range-over-func loop body that stores its loop variables, or another captured
+variable, into a captured variable makes that variable alias what the iterator
+can reach, with an uncertain origin. A loop body that writes the handles it
+receives counts as a possible write to the values the iterator was built from.
+
+A value receiver whose type holds no storage, such as `struct{}`, is a private
+copy and has no receiver origin. A variable joining fresh allocations, such as
+`maps.Clone` on one branch and a map literal on the other, is fresh storage:
+writing it changes no parameter.
+
 These checks enforce structural properties.
 Alias findings are conservative: complex deep copies through loops can need
 review even when the resulting value is detached. ARC003 identifies a possible
@@ -30,7 +47,18 @@ They cannot establish whether two differently represented algorithms implement
 the same responsibility. They do not infer which packages should perform I/O,
 prove concurrency safety or verify Go/WIT equivalence. Unknown/interface calls
 produce ARC004 for unresolved alias and mutation effects. This includes standard-library
-calls whose bodies are unavailable, even when they only read their arguments. Aggregate value copies use
+calls whose bodies are unavailable, even when they only read their arguments.
+Calls through a function value are unknown calls too, including a closure
+returned by a summarized function: what such an iterator hands its loop body is
+not summarized. Passing a read-only value handle to an unknown call is not a
+possible write. The analyzer assumes that code changes a handle only through its
+exported methods, so an interface implementation in the same package that
+writes a handle's private fields is missed. So is code in the same package that
+writes the private fields of handles collected by `append`, a clone or an
+unknown call, or of handles a helper function receives through an iterator
+parameter. A write into a container whose freshness cannot be proven, such as a
+slice element, also counts the values stored into that container as written.
+Aggregate value copies use
 dominating field stores to recognize detachment before publication. Other flows
 are flow-insensitive. The analyzer does not implement a whole-program heap
 analysis; reflection and arbitrary unsafe

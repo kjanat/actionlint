@@ -129,10 +129,20 @@ func solve(pass *analysis.Pass, functions []*ssa.Function) map[*ssa.Function]flo
 	}
 	for changed := true; changed; {
 		changed = false
+		// Visibility grows with the summaries. A round may use a stale answer:
+		// any summary change forces another round with a fresh cache, so the
+		// final round agrees with the final summaries.
+		visibility := map[types.Type]bool{}
+		visible := func(t types.Type) bool {
+			known, found := visibility[t]
+			if !found {
+				known = mutable(t) || storage(t) && mutatingAPI(pass, t, flows, map[types.Type]bool{}) != apiReadOnly
+				visibility[t] = known
+			}
+			return known
+		}
 		for _, fn := range functions {
-			changed = flows[fn].add(analyzeFlow(fn, lookup, func(t types.Type) bool {
-				return mutable(t) || storage(t) && mutatingAPI(pass, t, flows, map[types.Type]bool{}) != apiReadOnly
-			})) || changed
+			changed = flows[fn].add(analyzeFlow(fn, lookup, visible)) || changed
 		}
 	}
 	facts := flowFact{}
@@ -331,8 +341,10 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		}
 		return values[value]
 	}
+	// A receiver is a parameter like any other: a value receiver whose type
+	// holds no storage is a private copy and cannot alias the caller's value.
 	for i, p := range fn.Params {
-		if storage(p.Type()) || (i == 0 && fn.Signature.Recv() != nil) {
+		if storage(p.Type()) {
 			get(p)[i] = true
 		}
 	}
@@ -403,14 +415,28 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		}
 		return value, value != nil
 	}
+	// freshOuter reports outer storage allocated by this call. A value already
+	// in seen is being decided by an enclosing query; a phi is fresh when every
+	// edge is, so a revisited value (a loop back edge or a shared edge) defers
+	// to the remaining edges instead of deciding the result.
 	var freshOuter func(ssa.Value, map[ssa.Value]bool) bool
 	freshOuter = func(value ssa.Value, seen map[ssa.Value]bool) bool {
 		if seen[value] {
-			return false
+			return true
 		}
 		seen[value] = true
 		switch value := root(value).(type) {
 		case *ssa.Alloc, *ssa.MakeMap, *ssa.MakeSlice:
+			return true
+		case *ssa.Const:
+			// A nil slice or map shares no storage; writing a nil map panics.
+			return true
+		case *ssa.Phi:
+			for _, edge := range value.Edges {
+				if !freshOuter(edge, seen) {
+					return false
+				}
+			}
 			return true
 		case *ssa.UnOp:
 			if stored, ok := storedField(value); ok {
@@ -437,15 +463,56 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 			result.Writes.add(uncertain(get(address)))
 		}
 	}
-	// stored records that value's origins entered storage reached through
-	// destination, keyed by the destination's parameter origins.
-	stored := func(destination, value ssa.Value) {
+	// unknownWrite records that code without a summary may write argument.
+	// An argument whose type is a read-only value handle is not recorded: the
+	// analyzer assumes such code changes an argument only through its exported
+	// fields and methods. A loop body in this package that writes the handles
+	// it receives is handled separately at the call.
+	unknownWrite := func(argument ssa.Value) {
+		if visible(argument.Type()) {
+			result.Writes.add(uncertain(get(argument)))
+		}
+	}
+	// captures reports whether a closure built from fn exposes its binding k
+	// to code that calls the closure. It does when the binding reaches a
+	// result of a visible type, when the closure writes it (passing it with a
+	// visible type to code without a summary, such as an iterator's yield
+	// function, counts as a write), or when the closure stores it into a
+	// parameter. A binding the closure only reads, or passes on inside a
+	// read-only value handle, is not exposed.
+	captures := func(fn *ssa.Function, summary flow, k int) bool {
+		index := len(fn.Params) + k
+		reaches := func(from origins) bool { return from[index] || from[-index-1] }
+		for i, results := range summary.Results {
+			if reaches(results) && visible(fn.Signature.Results().At(i).Type()) {
+				return true
+			}
+		}
+		if reaches(summary.Writes) {
+			return true
+		}
+		for _, sources := range summary.Stores {
+			if reaches(sources) {
+				return true
+			}
+		}
+		return false
+	}
+	// storedOrigins records in result.Stores that the origins in from were
+	// stored into storage reached through destination. The entries are keyed
+	// by the destination's parameter origins. Like a write, a store into a
+	// fresh aggregate changes no parameter's storage, even when the aggregate
+	// already holds parameter aliases.
+	storedOrigins := func(destination ssa.Value, from origins) {
+		if freshOuter(destination, map[ssa.Value]bool{}) {
+			return
+		}
 		for target := range get(root(destination)) {
 			if target < 0 {
 				continue
 			}
 			sources := origins{}
-			for source := range get(value) {
+			for source := range from {
 				if source != target {
 					sources[source] = true
 				}
@@ -459,6 +526,9 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 			result.Stores[target].add(sources)
 		}
 	}
+	// stored records that value's origins entered storage reached through
+	// destination.
+	stored := func(destination, value ssa.Value) { storedOrigins(destination, get(value)) }
 
 	// A value copy can detach its reference fields before publication. Its
 	// origins come from the field stores dominating the load.
@@ -574,8 +644,17 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						put(v, get(edge))
 					}
 				case *ssa.MakeClosure:
-					for _, binding := range v.Bindings {
-						put(v, get(binding))
+					// A closure value carries only the captured storage its body
+					// can expose. Without a summary every binding is carried.
+					closure, _ := v.Fn.(*ssa.Function)
+					summary, found := flow{}, false
+					if closure != nil {
+						summary, found = lookup(closure)
+					}
+					for k, binding := range v.Bindings {
+						if !found || captures(closure, summary, k) {
+							put(v, get(binding))
+						}
 					}
 				case *ssa.Extract:
 					if slots, found := tuples[v.Tuple]; found && v.Index < len(slots) {
@@ -741,7 +820,83 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					// No purity or ownership is inferred from a function's name.
 					for _, arg := range args {
 						put(call, uncertain(get(arg)))
-						possibleWrite(arg)
+						unknownWrite(arg)
+					}
+					// The unknown callee may invoke a closure argument, as a
+					// range-over-func iterator calls its loop body. The body's
+					// parameters may then hold storage reachable from the other
+					// arguments, or from the values those arguments were built
+					// from: a closure that hands out read-only handles does not
+					// carry its captures, but code in this package can still
+					// write the handles' private fields. Such storage is passed
+					// with uncertain origins.
+					for _, arg := range args {
+						closure, ok := arg.(*ssa.MakeClosure)
+						if !ok {
+							continue
+						}
+						body, _ := closure.Fn.(*ssa.Function)
+						if body == nil {
+							continue
+						}
+						summary, found := lookup(body)
+						if !found {
+							continue
+						}
+						passed := origins{}
+						for _, other := range args {
+							if other == arg {
+								continue
+							}
+							if visible(other.Type()) {
+								passed.add(uncertain(get(other)))
+							}
+							for _, source := range builtFrom(other) {
+								if storage(source.Type()) {
+									passed.add(uncertain(get(source)))
+								}
+							}
+						}
+						// A body that writes its parameters may write that storage.
+						for index := range summary.Writes {
+							if index < 0 {
+								index = -index - 1
+							}
+							if index < len(body.Params) {
+								result.Writes.add(passed)
+								break
+							}
+						}
+						// Each store the body makes into a captured variable is
+						// applied to the binding: from a parameter it carries
+						// the passed origins, and from another captured variable
+						// it carries that binding's origins.
+						for destination, sources := range summary.Stores {
+							k := destination - len(body.Params)
+							if k < 0 || k >= len(closure.Bindings) {
+								continue
+							}
+							target := closure.Bindings[k]
+							for source := range sources {
+								possible := source < 0
+								if possible {
+									source = -source - 1
+								}
+								aliases := passed
+								if j := source - len(body.Params); j >= 0 {
+									if j >= len(closure.Bindings) {
+										continue
+									}
+									aliases = get(closure.Bindings[j])
+									if possible {
+										aliases = uncertain(aliases)
+									}
+								}
+								storedOrigins(target, aliases)
+								put(target, aliases)
+								put(root(target), aliases)
+							}
+						}
 					}
 				case *ssa.Return:
 					for i, value := range v.Results {
@@ -754,6 +909,27 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		}
 	}
 	return result
+}
+
+// builtFrom lists the values a function value was built from: the arguments
+// of the call that returned it, plus the called closure's bindings, function
+// value or interface receiver, or the bindings of a closure literal. It
+// returns nil for any other value.
+func builtFrom(value ssa.Value) []ssa.Value {
+	switch value := value.(type) {
+	case *ssa.Call:
+		common := value.Common()
+		if closure, ok := common.Value.(*ssa.MakeClosure); ok {
+			return append(slices.Clone(common.Args), closure.Bindings...)
+		}
+		if common.StaticCallee() != nil {
+			return common.Args
+		}
+		return append([]ssa.Value{common.Value}, common.Args...)
+	case *ssa.MakeClosure:
+		return value.Bindings
+	}
+	return nil
 }
 
 func standardClone(fn *ssa.Function) bool {
