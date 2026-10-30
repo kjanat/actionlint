@@ -22,10 +22,13 @@ type Options struct {
 }
 
 // Hooks lets a caller observe document/job entry and own step expansion.
+// JobPass, when set, runs each pass's VisitJobPre and VisitJobPost call through
+// visit so the caller can attribute what the pass reports to the job.
 // ParallelBoundary invalidates caller-owned assumptions between parallel branches.
 type Hooks struct {
 	Workflow         func(declaration.WorkflowView) error
 	Job              func(declaration.JobView) error
+	JobPass          func(pass workflowvisit.Pass, job declaration.JobView, visit func() error) error
 	Step             func(declaration.StepView) error
 	ParallelBoundary func()
 }
@@ -132,7 +135,7 @@ func (v *visitor) visitJob(n declaration.JobView) error {
 	}
 
 	for _, p := range v.passes {
-		if err := p.VisitJobPre(n); err != nil {
+		if err := v.visitJobPass(p, n, func() error { return p.VisitJobPre(n) }); err != nil {
 			return err
 		}
 	}
@@ -156,7 +159,7 @@ func (v *visitor) visitJob(n declaration.JobView) error {
 	}
 
 	for _, p := range v.passes {
-		if err := p.VisitJobPost(n); err != nil {
+		if err := v.visitJobPass(p, n, func() error { return p.VisitJobPost(n) }); err != nil {
 			return err
 		}
 	}
@@ -166,6 +169,13 @@ func (v *visitor) visitJob(n declaration.JobView) error {
 	}
 
 	return nil
+}
+
+func (v *visitor) visitJobPass(p workflowvisit.Pass, n declaration.JobView, visit func() error) error {
+	if v.hooks.JobPass != nil {
+		return v.hooks.JobPass(p, n, visit)
+	}
+	return visit()
 }
 
 func (v *visitor) visitStep(n declaration.StepView) error {
