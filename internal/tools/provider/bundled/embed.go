@@ -2,19 +2,20 @@
 // directory is one provider: manifest.json and the transform programs the
 // manifest references by sha256 digest. The directory name is the provider's
 // rule name.
+//
+// The package is data only and imports no actionlint package, so the rule
+// catalog and configuration decoding can read the manifests without
+// depending on any tool host. provider.Bundled parses and validates them.
 package bundled
 
 import (
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
-	"fmt"
 	"io/fs"
 	"path"
 	"strings"
 	"sync"
-
-	"actionlint.kjanat.dev/v2/internal/tools/provider"
 )
 
 //go:embed */manifest.json */*.jq
@@ -23,38 +24,28 @@ var files embed.FS
 // FS returns the bundled provider directories.
 func FS() fs.FS { return files }
 
-// Manifests parses every bundled manifest in directory order. Each manifest's
-// rule name must equal its directory and each transform digest must name a
-// bundled program.
-func Manifests() ([]provider.Manifest, error) {
+// Names lists the bundled providers' rule names in directory order.
+func Names() []string {
 	entries, err := files.ReadDir(".")
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	manifests := make([]provider.Manifest, 0, len(entries))
+	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		data, err := files.ReadFile(path.Join(entry.Name(), "manifest.json"))
-		if err != nil {
-			return nil, err
+		if entry.IsDir() {
+			names = append(names, entry.Name())
 		}
-		manifest, err := provider.Parse(data)
-		if err != nil {
-			return nil, fmt.Errorf("bundled provider %s: %w", entry.Name(), err)
-		}
-		if manifest.Rule.Name != entry.Name() {
-			return nil, fmt.Errorf("bundled provider %s declares rule %q", entry.Name(), manifest.Rule.Name)
-		}
-		for _, transform := range transforms(manifest) {
-			if transform.Digest == "" {
-				continue
-			}
-			if _, ok := Program(transform.Digest); !ok {
-				return nil, fmt.Errorf("bundled provider %s references missing program %s", entry.Name(), transform.Digest)
-			}
-		}
-		manifests = append(manifests, manifest)
 	}
-	return manifests, nil
+	return names
+}
+
+// Manifest returns the unparsed manifest of the provider named name.
+func Manifest(name string) ([]byte, bool) {
+	if !fs.ValidPath(name) || strings.Contains(name, "/") {
+		return nil, false
+	}
+	data, err := files.ReadFile(path.Join(name, "manifest.json"))
+	return data, err == nil
 }
 
 // Program returns the bundled transform program whose content has the digest
@@ -67,20 +58,16 @@ func Program(digest string) ([]byte, bool) {
 // programs indexes every bundled program by content digest.
 var programs = sync.OnceValue(func() map[string][]byte {
 	index := make(map[string][]byte)
-	entries, err := files.ReadDir(".")
-	if err != nil {
-		return index
-	}
-	for _, entry := range entries {
-		names, err := files.ReadDir(entry.Name())
+	for _, name := range Names() {
+		entries, err := files.ReadDir(name)
 		if err != nil {
 			continue
 		}
-		for _, name := range names {
-			if !strings.HasSuffix(name.Name(), ".jq") {
+		for _, entry := range entries {
+			if !strings.HasSuffix(entry.Name(), ".jq") {
 				continue
 			}
-			data, err := files.ReadFile(path.Join(entry.Name(), name.Name()))
+			data, err := files.ReadFile(path.Join(name, entry.Name()))
 			if err != nil {
 				continue
 			}
@@ -90,17 +77,3 @@ var programs = sync.OnceValue(func() map[string][]byte {
 	}
 	return index
 })
-
-// transforms lists the transforms a manifest references.
-func transforms(manifest provider.Manifest) []*provider.Transform {
-	if manifest.Process == nil {
-		return nil
-	}
-	var found []*provider.Transform
-	for _, transform := range []*provider.Transform{manifest.Process.Config.Transform, manifest.Process.Output.Transform} {
-		if transform != nil {
-			found = append(found, transform)
-		}
-	}
-	return found
-}

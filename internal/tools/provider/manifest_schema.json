@@ -33,6 +33,12 @@
     "selectors": { "$ref": "#/$defs/selectors" },
     "capabilities": { "$ref": "#/$defs/capabilities" },
     "config_schema": { "type": ["object", "boolean"] },
+    "config_shorthands": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/token" }
+    },
     "process": { "$ref": "#/$defs/process" },
     "integration": {
       "type": "object",

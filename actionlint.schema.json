@@ -120,7 +120,6 @@
                 "examples": [
                   "workflow-run-names",
                   "unsound-ternary",
-                  "ruff",
                   "syntax-check",
                   "inline-suppression",
                   "missing-local-action",
@@ -164,6 +163,7 @@
                   "cache-write-untrusted",
                   "cache-call-unrestricted",
                   "cache-operation",
+                  "ruff",
                   "shellcheck"
                 ],
                 "type": "string",
@@ -2550,7 +2550,6 @@
                         "examples": [
                           "workflow-run-names",
                           "unsound-ternary",
-                          "ruff",
                           "syntax-check",
                           "inline-suppression",
                           "missing-local-action",
@@ -2595,6 +2594,7 @@
                           "cache-write-untrusted",
                           "cache-call-unrestricted",
                           "cache-operation",
+                          "ruff",
                           "shellcheck"
                         ],
                         "type": "string",
@@ -7080,7 +7080,6 @@
                                   "examples": [
                                     "workflow-run-names",
                                     "unsound-ternary",
-                                    "ruff",
                                     "syntax-check",
                                     "inline-suppression",
                                     "missing-local-action",
@@ -7125,6 +7124,7 @@
                                     "cache-write-untrusted",
                                     "cache-call-unrestricted",
                                     "cache-operation",
+                                    "ruff",
                                     "shellcheck"
                                   ],
                                   "type": "string",
@@ -9250,13 +9250,13 @@
                     "properties": {
                       "ruff": {
                         "title": "ruff",
-                        "description": "Configures checking of embedded Python scripts.",
-                        "markdownDescription": "Configures checking of embedded Python scripts.",
+                        "description": "Analyze embedded Python scripts with Ruff.",
+                        "markdownDescription": "Analyze embedded Python scripts with Ruff.",
                         "properties": {
                           "backend": {
                             "title": "backend",
-                            "description": "Choose how Ruff runs. Process settings only apply to the native adapter.",
-                            "markdownDescription": "Choose how Ruff runs. Process settings only apply to the native adapter.",
+                            "description": "Select the execution backend. Process settings apply only to the native adapter.",
+                            "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                             "type": "object",
                             "properties": {
                               "process": {
@@ -9342,11 +9342,101 @@
                           },
                           "config": {
                             "title": "config",
-                            "description": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
-                            "markdownDescription": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
+                            "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                            "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                            "if": {
+                              "type": "object"
+                            },
+                            "then": {
+                              "allOf": [
+                                {
+                                  "title": "config",
+                                  "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                                  "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
+                                },
+                                {
+                                  "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
+                                  "type": "object",
+                                  "properties": {
+                                    "ignore": {
+                                      "title": "ignore",
+                                      "description": "Rule codes or prefixes to skip, such as F401.",
+                                      "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
+                                      "items": {
+                                        "examples": [
+                                          "F",
+                                          "F821"
+                                        ],
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "oneOf": [
+                                        {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "select": {
+                                      "title": "select",
+                                      "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                                      "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+                                      "items": {
+                                        "examples": [
+                                          "F",
+                                          "F821"
+                                        ],
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "oneOf": [
+                                        {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "target-version": {
+                                      "title": "target-version",
+                                      "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                                      "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                                      "oneOf": [
+                                        {
+                                          "examples": [
+                                            "py314"
+                                          ],
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        {
+                                          "type": "null",
+                                          "doNotSuggest": true
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
+                            },
                             "anyOf": [
                               {
-                                "type": "object"
+                                "type": "object",
+                                "defaultSnippets": [
+                                  {
+                                    "bodyText": "{}",
+                                    "label": "Inline settings"
+                                  }
+                                ]
                               },
                               {
                                 "type": "null"
@@ -9355,8 +9445,8 @@
                           },
                           "enabled": {
                             "title": "enabled",
-                            "description": "Enable Ruff analysis.",
-                            "markdownDescription": "Enable Ruff analysis.",
+                            "description": "Enable this tool. Omission or null keeps it enabled.",
+                            "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                             "oneOf": [
                               {
                                 "default": true,
@@ -9449,8 +9539,8 @@
                       },
                       "shellcheck": {
                         "title": "shellcheck",
-                        "description": "Configures checking of embedded shell scripts.",
-                        "markdownDescription": "Configures checking of embedded shell scripts.",
+                        "description": "Analyze embedded shell scripts with ShellCheck.",
+                        "markdownDescription": "Analyze embedded shell scripts with ShellCheck.",
                         "properties": {
                           "backend": {
                             "title": "backend",
@@ -9541,8 +9631,8 @@
                           },
                           "config": {
                             "title": "config",
-                            "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                            "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
+                            "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                            "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
                             "minLength": 1,
                             "if": {
                               "type": "object"
@@ -9551,8 +9641,8 @@
                               "allOf": [
                                 {
                                   "title": "config",
-                                  "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                                  "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+                                  "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                                  "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
                                 },
                                 {
                                   "$ref": "schemas/shellcheck/0.11.0.schema.json"
@@ -9565,7 +9655,7 @@
                                 "defaultSnippets": [
                                   {
                                     "body": "${1:.shellcheckrc}",
-                                    "label": "ShellCheck rc file or directory"
+                                    "label": "Configuration file or directory"
                                   }
                                 ]
                               },
@@ -9574,7 +9664,7 @@
                                 "defaultSnippets": [
                                   {
                                     "bodyText": "{}",
-                                    "label": "Inline ShellCheck directives"
+                                    "label": "Inline settings"
                                   }
                                 ]
                               },
@@ -9589,8 +9679,8 @@
                           },
                           "enabled": {
                             "title": "enabled",
-                            "description": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
-                            "markdownDescription": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                            "description": "Enable this tool. Omission or null keeps it enabled.",
+                            "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                             "oneOf": [
                               {
                                 "default": true,
@@ -9693,21 +9783,21 @@
     },
     "tools": {
       "title": "tools",
-      "description": "Configures external linters for both the CLI and GitHub Action.",
-      "markdownDescription": "Configures external linters for both the CLI and GitHub Action.",
+      "description": "Configures external linters for both the CLI and GitHub Action, keyed by the rule name of each tool provider, such as ruff or shellcheck.",
+      "markdownDescription": "Configures external linters for both the CLI and GitHub Action, keyed by the rule name of each tool provider, such as ruff or shellcheck.",
       "oneOf": [
         {
           "type": "object",
           "properties": {
             "ruff": {
               "title": "ruff",
-              "description": "Configures checking of embedded Python scripts.",
-              "markdownDescription": "Configures checking of embedded Python scripts.",
+              "description": "Analyze embedded Python scripts with Ruff.",
+              "markdownDescription": "Analyze embedded Python scripts with Ruff.",
               "properties": {
                 "backend": {
                   "title": "backend",
-                  "description": "Choose how Ruff runs. Process settings only apply to the native adapter.",
-                  "markdownDescription": "Choose how Ruff runs. Process settings only apply to the native adapter.",
+                  "description": "Select the execution backend. Process settings apply only to the native adapter.",
+                  "markdownDescription": "Select the execution backend. Process settings apply only to the native adapter.",
                   "type": "object",
                   "properties": {
                     "process": {
@@ -9793,11 +9883,101 @@
                 },
                 "config": {
                   "title": "config",
-                  "description": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
-                  "markdownDescription": "Options validated by the selected Ruff engine. Omission or null uses engine defaults.",
+                  "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                  "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                  "if": {
+                    "type": "object"
+                  },
+                  "then": {
+                    "allOf": [
+                      {
+                        "title": "config",
+                        "description": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults.",
+                        "markdownDescription": "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
+                      },
+                      {
+                        "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
+                        "type": "object",
+                        "properties": {
+                          "ignore": {
+                            "title": "ignore",
+                            "description": "Rule codes or prefixes to skip, such as F401.",
+                            "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
+                            "items": {
+                              "examples": [
+                                "F",
+                                "F821"
+                              ],
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "select": {
+                            "title": "select",
+                            "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                            "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+                            "items": {
+                              "examples": [
+                                "F",
+                                "F821"
+                              ],
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "target-version": {
+                            "title": "target-version",
+                            "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                            "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+                            "oneOf": [
+                              {
+                                "examples": [
+                                  "py314"
+                                ],
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "null",
+                                "doNotSuggest": true
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
                   "anyOf": [
                     {
-                      "type": "object"
+                      "type": "object",
+                      "defaultSnippets": [
+                        {
+                          "bodyText": "{}",
+                          "label": "Inline settings"
+                        }
+                      ]
                     },
                     {
                       "type": "null"
@@ -9806,8 +9986,8 @@
                 },
                 "enabled": {
                   "title": "enabled",
-                  "description": "Enable Ruff analysis.",
-                  "markdownDescription": "Enable Ruff analysis.",
+                  "description": "Enable this tool. Omission or null keeps it enabled.",
+                  "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                   "oneOf": [
                     {
                       "default": true,
@@ -9900,8 +10080,8 @@
             },
             "shellcheck": {
               "title": "shellcheck",
-              "description": "Configures checking of embedded shell scripts.",
-              "markdownDescription": "Configures checking of embedded shell scripts.",
+              "description": "Analyze embedded shell scripts with ShellCheck.",
+              "markdownDescription": "Analyze embedded shell scripts with ShellCheck.",
               "properties": {
                 "backend": {
                   "title": "backend",
@@ -9992,8 +10172,8 @@
                 },
                 "config": {
                   "title": "config",
-                  "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                  "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
+                  "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                  "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known.",
                   "minLength": 1,
                   "if": {
                     "type": "object"
@@ -10002,8 +10182,8 @@
                     "allOf": [
                       {
                         "title": "config",
-                        "description": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
-                        "markdownDescription": "Inline directives or an rc file/directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
+                        "description": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. ${{ configdir }} explicitly selects the configuration directory; ${{ gitdir }} selects the repository root.\n\n${{ github.workspace }} and ${{ github.action_path }} resolve when their context is known.",
+                        "markdownDescription": "Inline settings or a configuration file or directory.\n\nRelative paths use the configuration file's directory, or the analysis working directory when supplied by an overlay. `${{ configdir }}` explicitly selects the configuration directory; `${{ gitdir }}` selects the repository root.\n\n`${{ github.workspace }}` and `${{ github.action_path }}` resolve when their context is known."
                       },
                       {
                         "$ref": "schemas/shellcheck/0.11.0.schema.json"
@@ -10016,7 +10196,7 @@
                       "defaultSnippets": [
                         {
                           "body": "${1:.shellcheckrc}",
-                          "label": "ShellCheck rc file or directory"
+                          "label": "Configuration file or directory"
                         }
                       ]
                     },
@@ -10025,7 +10205,7 @@
                       "defaultSnippets": [
                         {
                           "bodyText": "{}",
-                          "label": "Inline ShellCheck directives"
+                          "label": "Inline settings"
                         }
                       ]
                     },
@@ -10040,8 +10220,8 @@
                 },
                 "enabled": {
                   "title": "enabled",
-                  "description": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
-                  "markdownDescription": "Enable ShellCheck analysis. Omission or null keeps it enabled.",
+                  "description": "Enable this tool. Omission or null keeps it enabled.",
+                  "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
                   "oneOf": [
                     {
                       "default": true,

@@ -110,9 +110,10 @@ func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 		if config.DiagnosticLevel(script.Config, "ruff") == "off" {
 			continue
 		}
-		settings := Config{}
-		if script.Config != nil {
-			settings = script.Config.Tools.Ruff
+		settings, err := configFor(script.Config)
+		if err != nil {
+			failure = errors.Join(failure, err)
+			continue
 		}
 		if settings.Enabled != nil && !*settings.Enabled {
 			continue
@@ -122,7 +123,6 @@ func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 			var ok bool
 			checker, ok = checkers[script.Config]
 			if !ok {
-				var err error
 				checker, err = r.forConfig(script.Config)
 				if err != nil {
 					failure = errors.Join(failure, err)
@@ -137,7 +137,7 @@ func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 		if checker == nil {
 			continue
 		}
-		err := checker.Check(script.Text, script.Shell, script.Key.String(), settings, func(d Diagnostic) {
+		err = checker.Check(script.Text, script.Shell, script.Key.String(), settings, func(d Diagnostic) {
 			pos, mapped := script.Source.Position(d.Location.Row, d.Location.Column)
 			end, endMapped := script.Source.EndPos(d.EndLocation.Row, d.EndLocation.Column)
 			if !mapped || !endMapped || (end.Line < pos.Line || end.Line == pos.Line && end.Col < pos.Col) {

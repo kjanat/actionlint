@@ -35,7 +35,7 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 					t.Fatal(err)
 				}
 				context := repoconfig.PathContext{ConfigDir: filepath.Dir(leaf)}
-				got, err := context.Resolve(effective.Tools.Shellcheck.Config.Path())
+				got, err := context.Resolve(effective.Tools["shellcheck"].Config.Path())
 				want := filepath.Join(filepath.Dir(base), ".shellcheckrc")
 				if err != nil || got != want {
 					t.Fatalf("inherited rc path = %q, %v; want %q", got, err, want)

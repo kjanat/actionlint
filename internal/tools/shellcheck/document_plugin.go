@@ -106,7 +106,10 @@ func declinedConfiguration(ctx context.Context, guest analyzer.ToolIntegrator, c
 // negotiationKey identifies everything about cfg that the guest's negotiation
 // can depend on before a script is known.
 func negotiationKey(cfg *config.Config, tool string, enabled bool) (string, error) {
-	options := configuredDocumentOptions(cfg)
+	options, err := configuredDocumentOptions(cfg)
+	if err != nil {
+		return "", err
+	}
 	var pluginOptions any
 	if cfg != nil {
 		pluginOptions = cfg.Lint.Rules.Plugins.Rules[tool].Options
@@ -116,30 +119,37 @@ func negotiationKey(cfg *config.Config, tool string, enabled bool) (string, erro
 		Backend bool                  `json:"backend"`
 		Options documentPluginOptions `json:"options"`
 		Plugin  any                   `json:"plugin"`
-	}{enabled, cfg != nil && cfg.Tools.Shellcheck.Backend != nil, options, pluginOptions})
+	}{enabled, cfg != nil && cfg.Tools["shellcheck"].Backend != nil, options, pluginOptions})
 	return string(data), err
 }
 
 // configuredDocumentOptions reads the ShellCheck settings sent to the guest,
 // before script-relative source paths are expanded.
-func configuredDocumentOptions(cfg *config.Config) documentPluginOptions {
+func configuredDocumentOptions(cfg *config.Config) (documentPluginOptions, error) {
 	options := documentPluginOptions{}
 	if cfg == nil {
-		return options
+		return options, nil
 	}
-	options.RCFile = cfg.Tools.Shellcheck.Config.Path()
-	if inline := cfg.Tools.Shellcheck.Config.Inline(); inline != nil {
+	options.RCFile = cfg.Tools["shellcheck"].Config.Path()
+	inline, err := inlineConfig(cfg)
+	if err != nil {
+		return documentPluginOptions{}, err
+	}
+	if inline != nil {
 		options.Shell, options.Disable, options.Enable = inline.Shell, inline.Disable, inline.Enable
 		options.ExtendedAnalysis, options.ExternalSources, options.SourcePath = inline.ExtendedAnalysis, inline.ExternalSources, inline.SourcePath
 	}
-	return options
+	return options, nil
 }
 
 func negotiateDocument(ctx context.Context, guest analyzer.ToolIntegrator, cfg *config.Config, script *tools.Script) (*analyzer.ToolNegotiation, error) {
-	if cfg != nil && cfg.Tools.Shellcheck.Backend != nil {
+	if cfg != nil && cfg.Tools["shellcheck"].Backend != nil {
 		return nil, &analyzer.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
 	}
-	options := configuredDocumentOptions(cfg)
+	options, err := configuredDocumentOptions(cfg)
+	if err != nil {
+		return nil, err
+	}
 	if script != nil && script.Scope != nil && len(options.SourcePath) != 0 {
 		options.SourcePath = slices.Clone(options.SourcePath)
 		run := &shellcheckRun{actionPath: script.Scope.ActionPath, paths: runPaths{analysis: script.Scope.AnalysisDir, workspace: script.Scope.Workspace}}
@@ -209,7 +219,7 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 			continue
 		}
 		cfg := script.Config
-		if config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools.Shellcheck.Enabled != nil && !*cfg.Tools.Shellcheck.Enabled {
+		if config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools["shellcheck"].Enabled != nil && !*cfg.Tools["shellcheck"].Enabled {
 			continue
 		}
 		prepared, err := preparePluginScript(script.Fact, nil)
@@ -266,7 +276,7 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		if err := ctx.Err(); err != nil {
 			return findings, errors.Join(failure, err)
 		}
-		if scope == nil || negotiatedScopes[scope] || config.DiagnosticLevel(scope.Config, "shellcheck") == "off" || scope.Config != nil && scope.Config.Tools.Shellcheck.Enabled != nil && !*scope.Config.Tools.Shellcheck.Enabled {
+		if scope == nil || negotiatedScopes[scope] || config.DiagnosticLevel(scope.Config, "shellcheck") == "off" || scope.Config != nil && scope.Config.Tools["shellcheck"].Enabled != nil && !*scope.Config.Tools["shellcheck"].Enabled {
 			continue
 		}
 		negotiatedScopes[scope] = true

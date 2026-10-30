@@ -66,10 +66,7 @@ func configEnabled(name string, config *repoconfig.Config) bool {
 	if config == nil {
 		return true
 	}
-	enabled := config.Tools.Shellcheck.Enabled
-	if name == "ruff" {
-		enabled = config.Tools.Ruff.Enabled
-	}
+	enabled := config.Tools[name].Enabled
 	return repoconfig.DiagnosticLevel(config, name) != "off" && (enabled == nil || *enabled)
 }
 
@@ -146,10 +143,7 @@ type toolGateState struct {
 }
 
 func toolGateConfig(name string, config *repoconfig.Config) toolGateState {
-	enabled, backend := config.Tools.Shellcheck.Enabled, config.Tools.Shellcheck.Backend
-	if name == "ruff" {
-		enabled, backend = config.Tools.Ruff.Enabled, config.Tools.Ruff.Backend
-	}
+	enabled, backend := config.Tools[name].Enabled, config.Tools[name].Backend
 	kind := backendDefault
 	if backend != nil {
 		if backend.Process != nil {

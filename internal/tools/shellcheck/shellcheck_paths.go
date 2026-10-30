@@ -30,9 +30,9 @@ func (run *shellcheckRun) prepareConfigPath() error {
 		selection = run.config.Config
 		base = ""
 	} else if config := run.cfg; config != nil {
-		if path := config.Tools.Shellcheck.Config.Path(); path != "" {
+		if path := config.Tools["shellcheck"].Config.Path(); path != "" {
 			selection = ShellcheckRCFile(path)
-			if config.Tools.Shellcheck.Config.FromInput() {
+			if config.Tools["shellcheck"].Config.FromInput() {
 				base = run.paths.analysis
 			}
 		}
@@ -79,9 +79,9 @@ func (run *shellcheckRun) prepareInlineConfig() error {
 	if config == nil {
 		return nil
 	}
-	inline := config.Tools.Shellcheck.Config.Inline()
-	if inline == nil {
-		return nil
+	inline, err := inlineConfig(config)
+	if err != nil || inline == nil {
+		return err
 	}
 	resolved := *inline
 	resolved.SourcePath = make([]string, len(inline.SourcePath))

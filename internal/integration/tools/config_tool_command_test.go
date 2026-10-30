@@ -67,10 +67,10 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			var requestSources []workspace.Source
 			shell := "python"
 			if name == "ruff" {
-				cfg.Tools.Ruff.Backend = process
+				cfg.Tools = repoconfig.ToolsConfig{"ruff": {Backend: process}}
 				request.Tools = (adapters.Options{Ruff: "ruff"}).Registrations()
 			} else {
-				cfg.Tools.Shellcheck.Backend = process
+				cfg.Tools = repoconfig.ToolsConfig{"shellcheck": {Backend: process}}
 				request.Tools = (adapters.Options{ShellCheck: "shellcheck"}).Registrations()
 				shell = "bash"
 			}

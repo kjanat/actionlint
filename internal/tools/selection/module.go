@@ -19,10 +19,7 @@ func Module(name, requested string, explicit *processconfig.Options, cfg *config
 	if cfg == nil || !AllowsModule(name, requested, explicit) {
 		return nil
 	}
-	backend := cfg.Tools.Shellcheck.Backend
-	if name == "ruff" {
-		backend = cfg.Tools.Ruff.Backend
-	}
+	backend := cfg.Tools[name].Backend
 	if backend == nil {
 		return nil
 	}

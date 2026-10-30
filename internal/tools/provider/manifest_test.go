@@ -1,10 +1,12 @@
 package provider_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/configschema"
 )
 
 // minimal is the smallest valid process manifest; cases below patch it.
@@ -66,6 +68,12 @@ func TestParseRejects(t *testing.T) {
 			`"config": {"render": "none"}, "version": {"args": ["--version"], "pattern": "^lint (\\d+)\\.(\\d+)"}`),
 		"external config schema ref": replace(`"capabilities"`,
 			`"config_schema": {"$ref": "https://example.invalid/schema.json"}, "capabilities"`),
+		"shorthand without schema": replace(`"capabilities"`,
+			`"config_shorthands": ["level"], "capabilities"`),
+		"shorthand not declared": replace(`"capabilities"`,
+			`"config_schema": {"properties": {"level": {}}}, "config_shorthands": ["mode"], "capabilities"`),
+		"shorthand shadows host key": replace(`"capabilities"`,
+			`"config_schema": {"properties": {"enabled": {}}}, "config_shorthands": ["enabled"], "capabilities"`),
 		"arg rule with two kinds": replace(`"config": {"render": "none"}`,
 			`"config": {"render": "none"}, "user_args": {"operands": false, "forbidden": [{"flag": "--fix", "prefix": "@", "reason": "no"}]}`),
 	} {
@@ -97,5 +105,27 @@ func TestParseTemplateEffects(t *testing.T) {
 func TestParseRejectsOversizedManifest(t *testing.T) {
 	if _, err := provider.Parse([]byte(strings.Repeat(" ", 1<<20+1))); err == nil {
 		t.Error("accepted manifest over the size limit")
+	}
+}
+
+func TestParseConfigShorthands(t *testing.T) {
+	document := strings.Replace(minimal, `"capabilities"`,
+		`"config_schema": {"type": "object", "properties": {"level": {"type": "integer"}}}, "config_shorthands": ["level"], "capabilities"`, 1)
+	m, err := provider.Parse([]byte(document))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(m.ConfigShorthands, []string{"level"}) {
+		t.Fatalf("shorthands = %v", m.ConfigShorthands)
+	}
+	schema, err := configschema.Compile(m.ConfigSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := schema.Validate([]byte(`{"level": 2}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := schema.Validate([]byte(`{"level": "high"}`)); err == nil || !strings.Contains(err.Error(), "at /level:") {
+		t.Fatalf("got %v", err)
 	}
 }

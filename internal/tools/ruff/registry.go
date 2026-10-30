@@ -21,7 +21,7 @@ type Options struct {
 }
 
 func (o Options) forConfig(cfg *config.Config) Options {
-	if o.pluginFallback && cfg != nil && cfg.Tools.Ruff.Backend != nil {
+	if o.pluginFallback && cfg != nil && cfg.Tools["ruff"].Backend != nil {
 		o.Backend = nil
 		o.Command = "ruff"
 		o.Process = &processconfig.Options{Optional: true}

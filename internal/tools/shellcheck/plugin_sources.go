@@ -68,7 +68,10 @@ func sourceAuthorities(script tools.Script, run *shellcheckRun, workspace, direc
 	if script.Config == nil {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}
-	inline := script.Config.Tools.Shellcheck.Config.Inline()
+	inline, err := inlineConfig(script.Config)
+	if err != nil {
+		return nil, err
+	}
 	if inline == nil || inline.ExternalSources != nil && !*inline.ExternalSources || inline.ExternalSources == nil && len(inline.SourcePath) == 0 {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}

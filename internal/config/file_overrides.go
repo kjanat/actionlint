@@ -243,7 +243,7 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error) {
 	var node, overlay yaml.Node
 	if err := node.Encode(map[string]any{"tools": base}); err != nil {
-		return ToolsConfig{}, err
+		return nil, err
 	}
 	var value any
 	if override.toolsNode != nil {
@@ -252,26 +252,33 @@ func mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error
 		var err error
 		value, err = programmaticToolsNode(override.Tools)
 		if err != nil {
-			return ToolsConfig{}, err
+			return nil, err
 		}
 	}
 	if err := overlay.Encode(map[string]any{"tools": value}); err != nil {
-		return ToolsConfig{}, err
+		return nil, err
 	}
 	merged := configtree.Merge(normalizeToolSwitch(&node), normalizeToolSwitch(&overlay), map[*yaml.Node]Input{})
 	var decoded struct {
 		Tools ToolsConfig `yaml:"tools"`
 	}
 	if err := merged.Decode(&decoded); err != nil {
-		return ToolsConfig{}, err
+		return nil, err
 	}
-	if decoded.Tools.Shellcheck.Config != nil {
-		source := base.Shellcheck.Config
-		if override.Tools != nil && override.Tools.Shellcheck.Config != nil {
-			source = override.Tools.Shellcheck.Config
+	// Re-decoding loses the overlay origin of each config selection; restore it
+	// from the setting that supplied the merged value.
+	for name, tool := range decoded.Tools {
+		if tool.Config == nil {
+			continue
+		}
+		source := base[name].Config
+		if override.Tools != nil {
+			if selected := (*override.Tools)[name].Config; selected != nil {
+				source = selected
+			}
 		}
 		if source != nil {
-			decoded.Tools.Shellcheck.Config.fromInput = source.fromInput
+			tool.Config.fromInput = source.fromInput
 		}
 	}
 	return decoded.Tools, nil

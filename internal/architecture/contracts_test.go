@@ -19,7 +19,6 @@ func TestIndependentPackagesDoNotImportHost(t *testing.T) {
 		"actionlint.kjanat.dev/v2/config",
 		"actionlint.kjanat.dev/v2/config/report",
 		"actionlint.kjanat.dev/v2/internal/config",
-		"actionlint.kjanat.dev/v2/internal/config/tools/ruff",
 		"actionlint.kjanat.dev/v2/internal/render",
 		"actionlint.kjanat.dev/v2/internal/plugins/component",
 		"actionlint.kjanat.dev/v2/internal/plugins/core",
@@ -402,6 +401,9 @@ func TestDiagnosticPolicyDoesNotImportHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
+		if isProviderData(dependency) {
+			continue
+		}
 		for _, forbidden := range []string{"engine", "application", "cli", "workspace", "analyzerhost", "tools", "render"} {
 			prefix := "actionlint.kjanat.dev/v2/internal/" + forbidden
 			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
@@ -419,6 +421,9 @@ func TestBuiltinCompositionDoesNotImportHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	for dependency := range strings.SplitSeq(string(output), "\n") {
+		if isProviderData(dependency) {
+			continue
+		}
 		for _, forbidden := range []string{"engine", "application", "cli", "workspace", "analyzerhost", "tools", "render"} {
 			prefix := "actionlint.kjanat.dev/v2/internal/" + forbidden
 			if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {
@@ -440,7 +445,7 @@ func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 		}
 		for dependency := range strings.SplitSeq(string(output), "\n") {
 			prefix := "actionlint.kjanat.dev/v2/internal/tools/"
-			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"selection" {
+			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"selection" && !isProviderData(dependency) {
 				t.Errorf("tool %s imports another execution implementation %s", name, dependency)
 			}
 		}

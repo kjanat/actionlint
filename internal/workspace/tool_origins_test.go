@@ -29,7 +29,7 @@ func TestFileOverrideToolConfigOrigins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.Tools.Shellcheck.Config == nil || !got.Tools.Shellcheck.Config.FromInput() {
+			if got.Tools["shellcheck"].Config == nil || !got.Tools["shellcheck"].Config.FromInput() {
 				t.Fatal("lost working-directory origin for input-supplied tool configuration")
 			}
 		})

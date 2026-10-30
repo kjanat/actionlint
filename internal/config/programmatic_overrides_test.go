@@ -30,7 +30,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 					t.Fatal(err)
 				}
 				if !reflect.DeepEqual(got.Tools, want.Tools) {
-					t.Fatalf("programmatic tools differ: got %#v, want %#v", got.Tools.Shellcheck, want.Tools.Shellcheck)
+					t.Fatalf("programmatic tools differ: got %#v, want %#v", got.Tools["shellcheck"], want.Tools["shellcheck"])
 				}
 				encoded, err := yaml.Marshal(config)
 				if err != nil {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
@@ -28,25 +29,25 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.Tools.Shellcheck.Enabled == nil || *got.Tools.Shellcheck.Enabled {
+		if got.Tools["shellcheck"].Enabled == nil || *got.Tools["shellcheck"].Enabled {
 			t.Fatalf("switch was lost: %+v", got.Tools)
 		}
 		encoded, err := codec.Marshal(got.Tools)
 		if err != nil {
 			t.Fatal(err)
 		}
-		rc := got.Tools.Shellcheck.Config.Inline()
-		if rc == nil || len(rc.Disable) != 1 || rc.Disable[0] != "SC2086" || len(rc.Enable) != 1 || rc.Enable[0] != "all" {
+		rc, err := toolconfig.ParseShellcheckConfig(got.Tools["shellcheck"].Config.Inline())
+		if err != nil || rc == nil || len(rc.Disable) != 1 || rc.Disable[0] != "SC2086" || len(rc.Enable) != 1 || rc.Enable[0] != "all" {
 			t.Fatalf("settings lost: %s", encoded)
 		}
 		reset, err := repoconfig.ForFile(config, "reset.yml", "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if reset.Tools.Shellcheck.Enabled != nil || reset.Tools.Shellcheck.Config != nil {
+		if reset.Tools["shellcheck"].Enabled != nil || reset.Tools["shellcheck"].Config != nil {
 			t.Fatalf("reset lost: %+v", reset.Tools)
 		}
-		if config.Tools.Shellcheck.Enabled == nil || !*config.Tools.Shellcheck.Enabled {
+		if config.Tools["shellcheck"].Enabled == nil || !*config.Tools["shellcheck"].Enabled {
 			t.Fatal("mutated parent tool config")
 		}
 		encoded, err = codec.Marshal(config)
@@ -72,8 +73,8 @@ func TestFileOverrideInheritedToolConfigPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(root, "base", ".shellcheckrc"); got.Tools.Shellcheck.Config.Path() != want {
-		t.Fatalf("got %q; want declaring-config-relative %q", got.Tools.Shellcheck.Config.Path(), want)
+	if want := filepath.Join(root, "base", ".shellcheckrc"); got.Tools["shellcheck"].Config.Path() != want {
+		t.Fatalf("got %q; want declaring-config-relative %q", got.Tools["shellcheck"].Config.Path(), want)
 	}
 }
 

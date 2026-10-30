@@ -2,7 +2,6 @@ package provider
 
 import (
 	_ "embed"
-	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -63,6 +62,9 @@ func validate(m Manifest) error {
 	if err := validateConfigSchema("config_schema", m.ConfigSchema); err != nil {
 		return err
 	}
+	if err := validateConfigShorthands(m); err != nil {
+		return err
+	}
 	if m.Process == nil {
 		return nil
 	}
@@ -92,18 +94,6 @@ func validate(m Manifest) error {
 		if !effect.Valid() {
 			return fmt.Errorf("process.template_effects.%s: unknown template effect %q", code, effect)
 		}
-	}
-	return nil
-}
-
-// validateConfigSchema compiles an engine configuration schema without
-// granting it filesystem or network reads.
-func validateConfigSchema(field string, schema json.RawMessage) error {
-	if len(schema) == 0 {
-		return nil
-	}
-	if _, err := compileSchema("https://actionlint.invalid/provider-config.json", schema); err != nil {
-		return fmt.Errorf("%s: %w", field, err)
 	}
 	return nil
 }

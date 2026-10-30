@@ -45,7 +45,7 @@ func TestPluginFallbackRespectsDocumentBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := &config.Config{}
-	cfg.Tools.Ruff.Backend = &toolconfig.Backend{Wasm: &toolconfig.Module{Path: "configured.wasm"}}
+	cfg.Tools = config.ToolsConfig{"ruff": {Backend: &toolconfig.Backend{Wasm: &toolconfig.Module{Path: "configured.wasm"}}}}
 	pos, python := &workflowlang.Pos{Line: 1, Col: 1}, "python"
 	for _, settings := range []*config.Config{nil, cfg, nil} {
 		_, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Config: settings, Text: "print(1)", Key: pos, Value: pos, Shell: &python}}})
@@ -56,7 +56,7 @@ func TestPluginFallbackRespectsDocumentBackend(t *testing.T) {
 	if fallbackCalls != 2 || configuredCalls != 1 {
 		t.Fatalf("fallback=%d configured=%d", fallbackCalls, configuredCalls)
 	}
-	cfg.Tools.Ruff.Backend = &toolconfig.Backend{Process: &toolconfig.Command{Executable: filepath.Join(t.TempDir(), "missing-ruff")}}
+	cfg.Tools = config.ToolsConfig{"ruff": {Backend: &toolconfig.Backend{Process: &toolconfig.Command{Executable: filepath.Join(t.TempDir(), "missing-ruff")}}}}
 	ctx.Config = cfg
 	if needed, err := registration.NeedsProcess(t.Context(), cfg, nil, false); err != nil || !needed || !registration.Required(ctx) {
 		t.Fatalf("explicit process must be required: needed=%t err=%v", needed, err)

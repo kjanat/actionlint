@@ -73,6 +73,9 @@ type Manifest struct {
 	Capabilities Capabilities `json:"capabilities"`
 	// ConfigSchema validates tools.<name>.config for every transport.
 	ConfigSchema json.RawMessage `json:"config_schema,omitempty"`
+	// ConfigShorthands lists ConfigSchema properties users may also write
+	// directly under tools.<name>; the host folds them into tools.<name>.config.
+	ConfigShorthands []string `json:"config_shorthands,omitempty"`
 	// Process is present exactly when Transport is TransportProcess.
 	Process *ProcessSpec `json:"process,omitempty"`
 	// Integration names the managed document-analyzer contract a component

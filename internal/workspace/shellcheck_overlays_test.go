@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
@@ -48,7 +49,7 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if cfg.Tools.Shellcheck.Enabled == nil || *cfg.Tools.Shellcheck.Enabled != tc.enabled || cfg.Tools.Shellcheck.Config.Path() != "./.shellcheckrc" || cfg.Path() != path {
+			if cfg.Tools["shellcheck"].Enabled == nil || *cfg.Tools["shellcheck"].Enabled != tc.enabled || cfg.Tools["shellcheck"].Config.Path() != "./.shellcheckrc" || cfg.Path() != path {
 				t.Fatalf("lost enabled, config or config file: %+v", cfg)
 			}
 			origin := report.Inspection.Origins["/tools/shellcheck/enabled"]
@@ -87,8 +88,12 @@ func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Tools.Shellcheck.Enabled != nil || len(cfg.Tools.Shellcheck.Config.Inline().Disable) != 0 || len(cfg.Tools.Shellcheck.Config.Inline().Enable) != 1 {
-		t.Fatalf("incorrect overlay: %+v", cfg.Tools.Shellcheck)
+	inline, err := toolconfig.ParseShellcheckConfig(cfg.Tools["shellcheck"].Config.Inline())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Tools["shellcheck"].Enabled != nil || len(inline.Disable) != 0 || len(inline.Enable) != 1 {
+		t.Fatalf("incorrect overlay: %+v", cfg.Tools["shellcheck"])
 	}
 	for _, pointer := range []string{"/tools/shellcheck/enabled", "/tools/shellcheck/config/disable"} {
 		origin := report.Inspection.Origins[pointer]

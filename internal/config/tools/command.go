@@ -84,8 +84,9 @@ func (c *Command) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// NormalizePaths binds configured executable paths to their declaring file,
-// including overrides, before independently declared configs are merged.
+// NormalizePaths binds every tool's configured executable and module paths to
+// their declaring file, including overrides, before independently declared
+// configs are merged.
 func NormalizePaths(node *yaml.Node, directory string) {
 	if node == nil {
 		return
@@ -107,8 +108,14 @@ func NormalizePaths(node *yaml.Node, directory string) {
 		}
 		return nil
 	}
-	for _, name := range []string{"ruff", "shellcheck"} {
-		backend := field(field(field(node, "tools"), name), "backend")
+	var entries []*yaml.Node
+	if tools := field(node, "tools"); tools != nil && tools.Kind == yaml.MappingNode {
+		for i := 1; i < len(tools.Content); i += 2 {
+			entries = append(entries, tools.Content[i])
+		}
+	}
+	for _, entry := range entries {
+		backend := field(entry, "backend")
 		executable := field(field(backend, "process"), "executable")
 		if executable != nil && executable.Tag == "!!str" && strings.ContainsAny(executable.Value, `/\`) && !filepath.IsAbs(executable.Value) {
 			executable.Value = filepath.Join(directory, executable.Value)

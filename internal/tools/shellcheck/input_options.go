@@ -33,13 +33,12 @@ func prepareInput(script tools.Script) (tools.PreparedInput, error) {
 			dialect = script.Input.Language
 		}
 	}
-	var inline *ShellcheckConfig
-	if script.Config != nil {
-		selection := script.Config.Tools.Shellcheck.Config
-		if selection.Path() != "" {
-			return tools.PreparedInput{}, errors.New("ShellCheck backend needs inline configuration; rc-file access requires a process backend")
-		}
-		inline = selection.Inline()
+	if script.Config != nil && script.Config.Tools["shellcheck"].Config.Path() != "" {
+		return tools.PreparedInput{}, errors.New("ShellCheck backend needs inline configuration; rc-file access requires a process backend")
+	}
+	inline, err := inlineConfig(script.Config)
+	if err != nil {
+		return tools.PreparedInput{}, err
 	}
 	if inline != nil {
 		if len(inline.SourcePath) != 0 || inline.ExternalSources != nil && *inline.ExternalSources {

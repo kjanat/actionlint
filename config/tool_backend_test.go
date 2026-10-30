@@ -12,7 +12,7 @@ func TestPublicToolBackendsCanBeConstructed(t *testing.T) {
 		Executable: "launcher", Args: []string{"--isolated"}, Env: map[string]string{"MODE": "strict"},
 	}}
 	constructed := config.Config{Tools: config.ToolsConfig{
-		Ruff: config.RuffToolConfig{Backend: backend}, Shellcheck: config.ShellcheckToolConfig{Backend: backend},
+		"ruff": {Backend: backend}, "shellcheck": {Backend: backend},
 	}}
 	parsed, err := config.Parse([]byte(`tools:
   ruff:
@@ -23,8 +23,8 @@ func TestPublicToolBackendsCanBeConstructed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(constructed.Tools.Ruff.Backend, parsed.Tools.Ruff.Backend) ||
-		!reflect.DeepEqual(constructed.Tools.Shellcheck.Backend, parsed.Tools.Shellcheck.Backend) {
+	if !reflect.DeepEqual(constructed.Tools["ruff"].Backend, parsed.Tools["ruff"].Backend) ||
+		!reflect.DeepEqual(constructed.Tools["shellcheck"].Backend, parsed.Tools["shellcheck"].Backend) {
 		t.Fatal("public construction differs from the equivalent parsed configuration")
 	}
 }

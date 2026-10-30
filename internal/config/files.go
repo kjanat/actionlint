@@ -55,7 +55,8 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 		resolved.Warnings[i].File = path
 	}
 	toolconfig.NormalizePaths(node, filepath.Dir(path))
-	// Preserve the declaring origin of inherited relative ShellCheck rc paths.
+	// Preserve the declaring origin of inherited relative tool configuration
+	// paths. A "*" key matches every entry of a mapping.
 	var visit func(*yaml.Node, []string)
 	visit = func(n *yaml.Node, keys []string) {
 		if len(keys) == 0 {
@@ -70,19 +71,19 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 		}
 		if n.Kind == yaml.MappingNode {
 			for i := 0; i < len(n.Content); i += 2 {
-				if n.Content[i].Value == keys[0] {
+				if keys[0] == "*" || n.Content[i].Value == keys[0] {
 					visit(n.Content[i+1], keys[1:])
 				}
 			}
 		}
 	}
 	if inherited {
-		visit(node, []string{"tools", "shellcheck", "config"})
+		visit(node, []string{"tools", "*", "config"})
 		if node.Kind == yaml.MappingNode {
 			for i := 0; i < len(node.Content); i += 2 {
 				if node.Content[i].Value == "overrides" {
 					for _, override := range node.Content[i+1].Content {
-						visit(override, []string{"tools", "shellcheck", "config"})
+						visit(override, []string{"tools", "*", "config"})
 					}
 				}
 			}

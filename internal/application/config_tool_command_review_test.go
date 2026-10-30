@@ -42,14 +42,14 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := cfg.Tools.Ruff.Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "ruff") {
+	if got := cfg.Tools["ruff"].Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "ruff") {
 		t.Fatal(got)
 	}
 	effective, err := config.ForFile(cfg, filepath.Join(root, "ci.yml"), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := effective.Tools.Shellcheck.Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "shellcheck") {
+	if got := effective.Tools["shellcheck"].Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "shellcheck") {
 		t.Fatal(got)
 	}
 }
@@ -117,10 +117,10 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			options := adapters.Options{}
 			shell := "python"
 			if name == "ruff" {
-				cfg.Tools.Ruff.Backend = process
+				cfg.Tools = config.ToolsConfig{"ruff": {Backend: process}}
 				options.Ruff = "ruff"
 			} else {
-				cfg.Tools.Shellcheck.Backend = process
+				cfg.Tools = config.ToolsConfig{"shellcheck": {Backend: process}}
 				options.ShellCheck = "shellcheck"
 				shell = "bash"
 			}

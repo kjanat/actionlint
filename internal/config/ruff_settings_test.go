@@ -27,13 +27,14 @@ func TestRuffConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.Tools.Ruff.Select != nil && again.Tools.Ruff.Select == nil {
+		before, after := cfg.Tools["ruff"].Config.Inline(), again.Tools["ruff"].Config.Inline()
+		if before["select"] != nil && after["select"] == nil {
 			t.Fatal("empty selection was lost")
 		}
-		if cfg.Tools.Ruff.Select == nil && again.Tools.Ruff.Select != nil {
+		if before["select"] == nil && after["select"] != nil {
 			t.Fatal("default selection became empty selection")
 		}
-		if (cfg.Tools.Ruff.Ignore == nil) != (again.Tools.Ruff.Ignore == nil) {
+		if (before["ignore"] == nil) != (after["ignore"] == nil) {
 			t.Fatal("ignore selection changed between omitted and explicit empty")
 		}
 	}
@@ -107,7 +108,7 @@ func TestRuffSelectorConfiguration(t *testing.T) {
 				setting := "ruff: {" + key + ": ['" + tc.selector + "']}"
 				for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
 					_, err := repoconfig.Parse([]byte(text))
-					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "rule selector must not be empty")) {
+					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.config: at /"+key+"/0: minLength")) {
 						t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 					}
 				}

@@ -55,12 +55,12 @@ type Rule struct {
 // Nursery reports whether the rule is excluded from stable presets.
 func (r Rule) Nursery() bool { return r.Maturity == "nursery" }
 
-// Rules lists the built-in checks in registration order.
+// Rules lists the built-in checks in registration order, then the bundled
+// tool providers' rules.
 func Rules() []Rule {
-	rules := []Rule{
+	rules := slices.Concat([]Rule{
 		{Name: "workflow-run-names"},
 		{Name: "unsound-ternary"},
-		{Name: "ruff", SupportsActions: true, Scope: CompositeScope},
 		{Name: "syntax-check", SupportsActions: true},
 		{Name: "inline-suppression", Scope: SourceScope},
 		{Name: "missing-local-action"},
@@ -106,8 +106,7 @@ func Rules() []Rule {
 		{Name: "cache-write-untrusted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted })},
 		{Name: "cache-call-unrestricted", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted })},
 		{Name: "cache-operation", Configure: boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation })},
-		{Name: "shellcheck", SupportsActions: true, Scope: SourceScope},
-	}
+	}, providerRules())
 	for i := range rules {
 		metadata, ok := rulecatalog.Find(rules[i].Name)
 		if !ok {
@@ -115,6 +114,18 @@ func Rules() []Rule {
 		}
 		rules[i].Descriptor = metadata
 		rules[i].Group = rulecatalog.ConfigGroup(metadata.Name)
+	}
+	return rules
+}
+
+// providerRules lists the bundled tool providers' rules. Providers check
+// scripts in workflows and actions alike; their manifests choose which
+// document's configuration applies.
+func providerRules() []Rule {
+	names := toolProviderNames()
+	rules := make([]Rule, 0, len(names))
+	for _, name := range names {
+		rules = append(rules, Rule{Name: name, SupportsActions: true, Scope: toolProviders()[name].scope})
 	}
 	return rules
 }

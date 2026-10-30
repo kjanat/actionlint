@@ -111,9 +111,9 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 			options := adapters.Options{}
 			shell := "python"
 			if tool == "ruff" {
-				cfg.Tools.Ruff.Backend, options.Ruff = backend, "ruff"
+				cfg.Tools, options.Ruff = config.ToolsConfig{"ruff": {Backend: backend}}, "ruff"
 			} else {
-				cfg.Tools.Shellcheck.Backend, options.ShellCheck = backend, "shellcheck"
+				cfg.Tools, options.ShellCheck = config.ToolsConfig{"shellcheck": {Backend: backend}}, "shellcheck"
 				shell = "bash"
 			}
 			request := analysisRequest{WorkingDir: root, Tools: options.Registrations(), Sources: []sourceUnit{{Path: "ci.yml", Config: cfg,

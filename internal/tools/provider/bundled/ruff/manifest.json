@@ -26,6 +26,42 @@
     "reported_sources": false,
     "message_template": "Ruff reported issue in this script: {code}: {message}"
   },
+  "config_schema": {
+    "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
+    "type": "object",
+    "properties": {
+      "target-version": {
+        "title": "target-version",
+        "description": "Python version to check against, such as py312. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+        "markdownDescription": "Python version to check against, such as `py312`. Leave this unset to use the version in the step's shell, or the selected engine's default if the shell doesn't specify one.",
+        "oneOf": [
+          { "type": "string", "minLength": 1, "examples": ["py314"] },
+          { "type": "null", "doNotSuggest": true }
+        ]
+      },
+      "select": {
+        "title": "select",
+        "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+        "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+        "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
+        "oneOf": [
+          { "type": "array", "items": { "type": "string" } },
+          { "type": "null" }
+        ]
+      },
+      "ignore": {
+        "title": "ignore",
+        "description": "Rule codes or prefixes to skip, such as F401.",
+        "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
+        "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
+        "oneOf": [
+          { "type": "array", "items": { "type": "string" } },
+          { "type": "null" }
+        ]
+      }
+    }
+  },
+  "config_shorthands": ["target-version", "select", "ignore"],
   "process": {
     "entry": "ruff",
     "stdin": "source",

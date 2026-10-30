@@ -36,14 +36,14 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := cfg.Tools.Ruff.Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "ruff") {
+	if got := cfg.Tools["ruff"].Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "ruff") {
 		t.Fatal(got)
 	}
 	effective, err := repoconfig.ForFile(cfg, filepath.Join(root, "ci.yml"), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := effective.Tools.Shellcheck.Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "shellcheck") {
+	if got := effective.Tools["shellcheck"].Backend.Process.Executable; got != filepath.Join(parentDir, "bin", "shellcheck") {
 		t.Fatal(got)
 	}
 }

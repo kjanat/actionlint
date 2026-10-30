@@ -11,12 +11,12 @@ import (
 
 func TestProjectToolBackendPrecedence(t *testing.T) {
 	cfg := &config.Config{}
-	cfg.Tools.Ruff.Backend = &toolconfig.Backend{Process: &toolconfig.Command{
+	cfg.Tools = config.ToolsConfig{"ruff": {Backend: &toolconfig.Backend{Process: &toolconfig.Command{
 		Executable: "mise", Args: []string{"exec", "ruff", "--", "ruff"}, Env: map[string]string{"CUSTOM": "literal $value"},
-	}}
+	}}}}
 	automatic := &processconfig.Options{Optional: true, Arguments: []string{"--select", "F"}}
 	selected := ProcessOptions("ruff", "ruff", automatic, cfg, "/analysis")
-	if selected.Executable == nil || *selected.Executable != "mise" || !reflect.DeepEqual(selected.LauncherArguments, cfg.Tools.Ruff.Backend.Process.Args) || !reflect.DeepEqual(selected.Arguments, automatic.Arguments) || !reflect.DeepEqual(selected.Environment, []string{"CUSTOM=literal $value"}) {
+	if selected.Executable == nil || *selected.Executable != "mise" || !reflect.DeepEqual(selected.LauncherArguments, cfg.Tools["ruff"].Backend.Process.Args) || !reflect.DeepEqual(selected.Arguments, automatic.Arguments) || !reflect.DeepEqual(selected.Environment, []string{"CUSTOM=literal $value"}) {
 		t.Fatalf("wrong projection: %+v", selected)
 	}
 	explicit := &processconfig.Options{IgnoreConfig: true}
@@ -34,9 +34,9 @@ func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
 			cfg := &config.Config{}
 			backend := &toolconfig.Backend{Wasm: &toolconfig.Module{Path: "selected.wasm"}}
 			if name == "ruff" {
-				cfg.Tools.Ruff.Backend = backend
+				cfg.Tools = config.ToolsConfig{"ruff": {Backend: backend}}
 			} else {
-				cfg.Tools.Shellcheck.Backend = backend
+				cfg.Tools = config.ToolsConfig{"shellcheck": {Backend: backend}}
 			}
 			for _, tc := range []struct {
 				name    string

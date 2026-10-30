@@ -1,6 +1,7 @@
 package config
 
 import (
+	"maps"
 	"strings"
 
 	"github.com/kjanat/go-yaml/v4"
@@ -96,11 +97,16 @@ func configDefaultOrigins(values map[string]any, prefix string, origins map[stri
 // EffectiveValues serializes the configuration schema after resolving defaults.
 func EffectiveValues(cfg *Config) (map[string]any, error) {
 	resolved := *cfg
-	if resolved.Tools.Ruff.Enabled == nil {
-		resolved.Tools.Ruff.Enabled = new(true)
+	resolved.Tools = maps.Clone(cfg.Tools)
+	if resolved.Tools == nil {
+		resolved.Tools = ToolsConfig{}
 	}
-	if resolved.Tools.Shellcheck.Enabled == nil {
-		resolved.Tools.Shellcheck.Enabled = new(true)
+	for _, name := range toolProviderNames() {
+		tool := resolved.Tools[name]
+		if tool.Enabled == nil {
+			tool.Enabled = new(true)
+		}
+		resolved.Tools[name] = tool
 	}
 	var document yaml.Node
 	if err := document.Encode(&resolved); err != nil {

@@ -25,7 +25,7 @@ import (
 var update = flag.Bool("update", false, "rewrite testdata/*/diagnostics.json from the decoders")
 
 func TestBundledManifestsValidate(t *testing.T) {
-	manifests, err := bundled.Manifests()
+	manifests, err := provider.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestBundledManifestsValidate(t *testing.T) {
 // Every program file is referenced by its manifest, so an edited program
 // without an updated digest fails here with the digest to record.
 func TestBundledProgramsAreReferenced(t *testing.T) {
-	manifests, err := bundled.Manifests()
+	manifests, err := provider.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 // accept both (internal/application/shellcheck_sources_test.go,
 // internal/tools/ruff/diagnostic_test.go).
 func TestBundledGoldenDecode(t *testing.T) {
-	manifests, err := bundled.Manifests()
+	manifests, err := provider.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestBundledGoldenDecode(t *testing.T) {
 }
 
 func TestRuffConfigTransform(t *testing.T) {
-	manifests, err := bundled.Manifests()
+	manifests, err := provider.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}

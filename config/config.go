@@ -33,7 +33,6 @@ type (
 	PluginReference              = pluginref.Reference
 	PermissionsPolicy            = repoconfig.PermissionsPolicy
 	Policy                       = repoconfig.Policy
-	RuffToolConfig               = repoconfig.RuffToolConfig
 	RuleGroupConfig              = repoconfig.Group
 	RuleLevel                    = repoconfig.Level
 	RulePreset                   = repoconfig.Preset
@@ -44,14 +43,18 @@ type (
 	// CommitHashOptions selects exceptions to immutable action references.
 	CommitHashOptions      = lintconfig.CommitHashOptions
 	SelfHostedRunnerConfig = repoconfig.SelfHostedRunnerConfig
-	ShellcheckConfig       = repoconfig.ShellcheckConfig
-	ShellcheckConfigSource = repoconfig.ShellcheckConfigSource
-	ShellcheckToolConfig   = repoconfig.ShellcheckToolConfig
-	SuppressionsPolicy     = repoconfig.SuppressionsPolicy
-	ToolsConfig            = repoconfig.ToolsConfig
-	ToolModule             = toolconfig.Module
-	ToolBackend            = toolconfig.Backend
-	ToolCommand            = toolconfig.Command
+	// ShellcheckConfig is the typed form of inline tools.shellcheck.config settings.
+	ShellcheckConfig   = toolconfig.ShellcheckConfig
+	SuppressionsPolicy = repoconfig.SuppressionsPolicy
+	// ToolsConfig configures tool providers keyed by rule name, such as ruff or shellcheck.
+	ToolsConfig = repoconfig.ToolsConfig
+	// ToolConfig configures one tool provider.
+	ToolConfig = repoconfig.ToolConfig
+	// ToolSettings is a tool's own configuration: inline settings or a configuration file path.
+	ToolSettings = repoconfig.ToolSettings
+	ToolModule   = toolconfig.Module
+	ToolBackend  = toolconfig.Backend
+	ToolCommand  = toolconfig.Command
 )
 
 const (
@@ -101,12 +104,21 @@ func DisallowSuppressions(report string, rules ...string) (*SuppressionsPolicy, 
 	return repoconfig.DisallowSuppressions(report, rules...)
 }
 
-// ShellcheckConfigPath selects a nonempty, single-line rc file or directory path.
-func ShellcheckConfigPath(path string) (*ShellcheckConfigSource, error) {
-	return repoconfig.ShellcheckConfigPath(path)
+// ToolConfigPath selects a nonempty, single-line configuration file or directory path.
+func ToolConfigPath(path string) (*ToolSettings, error) {
+	return repoconfig.ToolConfigPath(path)
 }
 
-// ShellcheckConfigInline validates inline settings and owns a copy of their values.
-func ShellcheckConfigInline(settings ShellcheckConfig) (*ShellcheckConfigSource, error) {
-	return repoconfig.ShellcheckConfigInline(settings)
+// ToolConfigInline selects inline tool settings and owns a copy of their values.
+func ToolConfigInline(values map[string]any) (*ToolSettings, error) {
+	return repoconfig.ToolConfigInline(values)
+}
+
+// ShellcheckConfigInline validates typed ShellCheck settings and selects them inline.
+func ShellcheckConfigInline(settings ShellcheckConfig) (*ToolSettings, error) {
+	values, err := settings.Values()
+	if err != nil {
+		return nil, err
+	}
+	return repoconfig.ToolConfigInline(values)
 }

@@ -40,6 +40,9 @@ func TestAnalysisOwnership(t *testing.T) {
 			forbidden = []string{"engine", "application", "config", "analyzerhost", "workspace", "tools", "report", "documentparse"}
 		}
 		for _, dependency := range pkg.Deps {
+			if isProviderData(dependency) {
+				continue
+			}
 			for _, domain := range forbidden {
 				prefix := "actionlint.kjanat.dev/v2/internal/" + domain
 				if dependency == prefix || strings.HasPrefix(dependency, prefix+"/") {

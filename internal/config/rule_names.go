@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 )
 
@@ -31,9 +32,20 @@ func ValidateRuleNames(config *Config, additional ...string) error {
 		return err
 	}
 	lints := []*LintConfig{&config.Lint}
+	tools := []ToolsConfig{config.Tools}
 	for _, override := range config.Overrides {
 		if override.Lint != nil {
 			lints = append(lints, override.Lint)
+		}
+		if override.Tools != nil {
+			tools = append(tools, *override.Tools)
+		}
+	}
+	for _, entries := range tools {
+		for _, name := range slices.Sorted(maps.Keys(entries)) {
+			if _, bundled := toolProviders()[name]; !bundled && !slices.Contains(additional, name) {
+				return fmt.Errorf("yaml: unknown tool %q in tools; it names no bundled or registered tool provider", name)
+			}
 		}
 	}
 	for _, lint := range lints {

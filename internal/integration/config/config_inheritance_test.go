@@ -52,7 +52,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if cfg.IncludesFile(".github/workflows/skip.yml", root) || !cfg.IncludesFile(".github/workflows/ci.yml", root) {
 		t.Fatal(cfg.Files)
 	}
-	encoded, err := codec.Marshal(cfg.Tools.Shellcheck.Config)
+	encoded, err := codec.Marshal(cfg.Tools["shellcheck"].Config)
 	if err != nil {
 		t.Fatal(err)
 	}

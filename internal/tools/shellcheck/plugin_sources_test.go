@@ -38,7 +38,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	var inputs []string
 	reader := fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
 	script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, AnalysisDir: root, Reader: reader}, Execution: tools.Execution{Directory: root, DirectoryKnown: true}, Key: &workflowlang.Pos{Line: 6}, Value: &workflowlang.Pos{Line: 6}}
-	sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
+	sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	if err := os.WriteFile(file, []byte("VALUE=changed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
+	fresh, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			var inputs []string
 			reader := fsread.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
 			script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: reader}, Execution: tools.Execution{Directory: tc.directory, DirectoryKnown: true}, Key: &workflowlang.Pos{Line: 1}, Value: &workflowlang.Pos{Line: 1}}
-			sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config))
+			sources, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -193,7 +193,7 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: fsread.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: outside, DirectoryKnown: true}}
-	if _, err := (documentPluginRunner{}).sourceFiles(context.Background(), script, requestedSourceGrants(script.Config)); err == nil || !strings.Contains(err.Error(), "outside its source grants") {
+	if _, err := (documentPluginRunner{}).sourceFiles(context.Background(), script, requestedSourceGrants(t, script.Config)); err == nil || !strings.Contains(err.Error(), "outside its source grants") {
 		t.Fatalf("outside cwd granted: %v", err)
 	}
 	cfg, err = config.Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside)))
@@ -201,14 +201,19 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	script.Config = cfg
-	if files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(script.Config)); err == nil || files != nil || !strings.Contains(err.Error(), "outside workspace root") {
+	if files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config)); err == nil || files != nil || !strings.Contains(err.Error(), "outside workspace root") {
 		t.Fatalf("configured outside cwd granted: files=%v error=%v", files, err)
 	}
 }
 
-func requestedSourceGrants(cfg *config.Config) []analyzer.ToolResourceRequest {
+func requestedSourceGrants(t *testing.T, cfg *config.Config) []analyzer.ToolResourceRequest {
+	t.Helper()
 	resources := []analyzer.ToolResourceRequest{{Kind: analyzer.ToolWorkspace}}
-	for _, path := range cfg.Tools.Shellcheck.Config.Inline().SourcePath {
+	inline, err := inlineConfig(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range inline.SourcePath {
 		resources = append(resources, analyzer.ToolResourceRequest{Kind: analyzer.ToolDirectory, Path: path})
 	}
 	return resources
@@ -299,7 +304,7 @@ func TestMissingPluginSourcePathCannotGrantEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := tools.Script{Config: cfg, Scope: &tools.Scope{Workspace: workspace, Reader: fsread.New(t.Context(), nil, nil)}, Execution: tools.Execution{Directory: workspace, DirectoryKnown: true}}
-	files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(cfg))
+	files, err := (documentPluginRunner{}).sourceFiles(t.Context(), script, requestedSourceGrants(t, cfg))
 	if err != nil {
 		t.Fatal(err)
 	}

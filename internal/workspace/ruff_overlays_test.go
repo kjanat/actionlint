@@ -1,6 +1,7 @@
 package workspace_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -21,7 +22,7 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 			setting := "ruff: {target-version: " + tc.value + "}"
 			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
 				_, err := repoconfig.Parse([]byte(text))
-				if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.target-version")) {
+				if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.config: at /target-version")) {
 					t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 				}
 			}
@@ -52,7 +53,8 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		if strings.Contains(overlayText, "null") {
 			want = nil
 		}
-		if got := resolved["tools"].(map[string]any)["ruff"].(map[string]any)["target-version"]; got != want {
+		// The flat target-version key is folded into the tool's config.
+		if got := resolved["tools"].(map[string]any)["ruff"].(map[string]any)["config"].(map[string]any)["target-version"]; got != want {
 			t.Fatalf("overlay %q resolved to %v, want %v", overlayText, got, want)
 		}
 	}
@@ -81,8 +83,9 @@ func TestRuffShorthandOverlay(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ruff := cfg.Tools.Ruff
-			if ruff.Enabled == nil || *ruff.Enabled != tc.enabled || ruff.TargetVersion != "py312" || len(ruff.Select) != 1 || ruff.Select[0] != "F821" || len(ruff.Ignore) != 1 || ruff.Ignore[0] != "F401" {
+			ruff := cfg.Tools["ruff"]
+			settings := ruff.Config.Inline()
+			if ruff.Enabled == nil || *ruff.Enabled != tc.enabled || settings["target-version"] != "py312" || !reflect.DeepEqual(settings["select"], []any{"F821"}) || !reflect.DeepEqual(settings["ignore"], []any{"F401"}) {
 				t.Fatalf("lost Ruff settings: %+v", ruff)
 			}
 		})

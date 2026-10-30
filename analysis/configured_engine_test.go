@@ -260,7 +260,7 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				t.Fatal(err)
 			}
 			if constructed {
-				cfg.Tools.Ruff.Backend.Wasm = &config.ToolModule{Path: "engines/../first.wasm"}
+				cfg.Tools["ruff"].Backend.Wasm = &config.ToolModule{Path: "engines/../first.wasm"}
 			}
 			other, err := config.Parse([]byte("tools: {ruff: {backend: {wasm: {path: first.wasm}}}}"))
 			if err != nil {
@@ -299,7 +299,7 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 			if moduleInputs != 1 {
 				t.Errorf("module inputs=%d, want 1", moduleInputs)
 			}
-			if cfg.Tools.Ruff.Backend.Wasm.Path != "engines/../first.wasm" || other.Tools.Ruff.Backend.Wasm.Path != "first.wasm" {
+			if cfg.Tools["ruff"].Backend.Wasm.Path != "engines/../first.wasm" || other.Tools["ruff"].Backend.Wasm.Path != "first.wasm" {
 				t.Fatal("analysis mutated caller configuration")
 			}
 		})

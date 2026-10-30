@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kjanat/go-yaml/v4"
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func TestNativeConfiguration(t *testing.T) {
@@ -16,16 +16,22 @@ func TestNativeConfiguration(t *testing.T) {
 	if err != nil {
 		t.Skip("Ruff is not installed")
 	}
-	var config Config
-	if err := yaml.Unmarshal([]byte(`config:
-  target-version: py312
-  lint:
-    select: [F]
-    extend-select: [B]
-    ignore: [F401]
-    flake8-bugbear:
-      extend-immutable-calls: [custom.Immutable]
-`), &config); err != nil {
+	cfg, err := repoconfig.Parse([]byte(`tools:
+  ruff:
+    config:
+      target-version: py312
+      lint:
+        select: [F]
+        extend-select: [B]
+        ignore: [F401]
+        flake8-bugbear:
+          extend-immutable-calls: [custom.Immutable]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := configFor(cfg)
+	if err != nil {
 		t.Fatal(err)
 	}
 	native, err := nativeArguments(config)

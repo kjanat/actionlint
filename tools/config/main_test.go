@@ -62,13 +62,47 @@ func TestPluginRuleSelectors(t *testing.T) {
 	}
 }
 
-func TestRuffTargetVersionSuggestions(t *testing.T) {
-	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
-	target, ok := schema.Properties.Get("target-version")
+// ruffShorthand returns the generated schema of a key written directly under
+// tools.ruff, as a JSON value.
+func ruffShorthand(t *testing.T, key string) map[string]any {
+	t.Helper()
+	tools := mapYAMLType(reflect.TypeFor[actionlint.ToolsConfig](), nil)
+	ruff, ok := tools.Properties.Get("ruff")
 	if !ok {
-		t.Fatal("missing Ruff target-version schema")
+		t.Fatal("missing Ruff tool schema")
 	}
-	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || target.OneOf[1].Extras["doNotSuggest"] != true {
+	property, ok := ruff.Properties.Get(key)
+	if !ok {
+		t.Fatalf("missing Ruff %s schema", key)
+	}
+	data, err := json.Marshal(property)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(data, &schema); err != nil {
+		t.Fatal(err)
+	}
+	return schema
+}
+
+func TestRuffTargetVersionSuggestions(t *testing.T) {
+	var target struct {
+		OneOf []struct {
+			Type         string `json:"type"`
+			Enum         []any  `json:"enum"`
+			Ref          string `json:"$ref"`
+			DoNotSuggest bool   `json:"doNotSuggest"`
+		} `json:"oneOf"`
+	}
+	data, err := json.Marshal(ruffShorthand(t, "target-version"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &target); err != nil {
+		t.Fatal(err)
+	}
+	if len(target.OneOf) != 2 || target.OneOf[1].Type != "null" || !target.OneOf[1].DoNotSuggest {
 		t.Fatal("expected version choices and a hidden reset branch")
 	}
 	if target.OneOf[0].Type != "string" || len(target.OneOf[0].Enum) != 0 || target.OneOf[0].Ref != "" {
@@ -77,10 +111,24 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 }
 
 func TestRuffSelectorSuggestions(t *testing.T) {
-	schema := mapYAMLType(reflect.TypeFor[actionlint.RuffToolConfig](), nil)
 	for _, key := range []string{"select", "ignore"} {
-		property, ok := schema.Properties.Get(key)
-		if !ok || property.Items == nil {
+		var property struct {
+			Not   any `json:"not"`
+			Items *struct {
+				Ref       string `json:"$ref"`
+				Enum      []any  `json:"enum"`
+				Examples  []any  `json:"examples"`
+				MinLength *int   `json:"minLength"`
+			} `json:"items"`
+		}
+		data, err := json.Marshal(ruffShorthand(t, key))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &property); err != nil {
+			t.Fatal(err)
+		}
+		if property.Items == nil {
 			t.Fatalf("missing Ruff %s schema", key)
 		}
 		if property.Items.Ref != "" || len(property.Items.Enum) != 0 || !reflect.DeepEqual(property.Items.Examples, []any{"F", "F821"}) {

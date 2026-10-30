@@ -23,15 +23,15 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 		return &toolconfig.Backend{Wasm: &toolconfig.Module{Path: path}}
 	}
 	tools := config.ToolsConfig{
-		Ruff:       config.RuffToolConfig{Backend: backend("sha256://" + b)},
-		Shellcheck: config.ShellcheckToolConfig{Backend: backend("https://127.0.0.1:1/shell.wasm#sha256=" + c)},
+		"ruff":       {Backend: backend("sha256://" + b)},
+		"shellcheck": {Backend: backend("https://127.0.0.1:1/shell.wasm#sha256=" + c)},
 	}
 	sources := PluginSources{
 		Paths: []string{"sha256://" + a, "sha256://" + a, "https://127.0.0.1:1/plugin.wasm#sha256=" + strings.ToUpper(a), "local.wasm"},
 		configs: []*config.Config{{
 			Tools: tools,
 			Overrides: []config.Override{{Tools: &config.ToolsConfig{
-				Ruff: config.RuffToolConfig{Backend: backend("sha256://" + c)},
+				"ruff": {Backend: backend("sha256://" + c)},
 			}}},
 		}},
 	}

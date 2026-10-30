@@ -31,7 +31,7 @@ func (o Options) Registration() tools.Registration {
 	registration := tools.Registration{
 		Descriptor: descriptor, RequiresExecution: true, PrepareInput: prepareInput,
 		Enabled: func(c tools.Context) bool {
-			return config.DiagnosticLevel(c.Config, "shellcheck") != "off" && (o.Backend != nil || o.Runner != nil || selection.AllowsModule("shellcheck", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (c.Config == nil || c.Config.Tools.Shellcheck.Enabled == nil || *c.Config.Tools.Shellcheck.Enabled)
+			return config.DiagnosticLevel(c.Config, "shellcheck") != "off" && (o.Backend != nil || o.Runner != nil || selection.AllowsModule("shellcheck", o.Command, o.Process) || processconfig.Enabled(o.Command, o.Process)) && (c.Config == nil || c.Config.Tools["shellcheck"].Enabled == nil || *c.Config.Tools["shellcheck"].Enabled)
 		},
 		Required: func(c tools.Context) bool {
 			options := selection.ProcessOptions("shellcheck", o.Command, o.Process, c.Config, c.WorkingDir)
@@ -54,7 +54,7 @@ func (o Options) Registration() tools.Registration {
 		},
 		NeedsProcess: func(_ context.Context, cfg, project *config.Config, inside bool) (bool, error) {
 			// ShellCheck skips the caller's composites when its rule or tool is off.
-			if o.Backend != nil || o.Runner != nil || config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools.Shellcheck.Enabled != nil && !*cfg.Tools.Shellcheck.Enabled {
+			if o.Backend != nil || o.Runner != nil || config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools["shellcheck"].Enabled != nil && !*cfg.Tools["shellcheck"].Enabled {
 				return false, nil
 			}
 			return selection.ProjectMayNeedProcess("shellcheck", cfg, project, inside, o.Command, o.Process)

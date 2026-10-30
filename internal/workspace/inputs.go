@@ -1,11 +1,11 @@
 package workspace
 
 import (
+	"maps"
 	"slices"
 	"sync"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
@@ -39,8 +39,8 @@ func (f *Inputs) List() []string {
 
 func (f *Inputs) AddConfig(config *repoconfig.Config, project *Project, workingDir string) {
 	if config != nil {
-		for _, backend := range []*toolconfig.Backend{config.Tools.Ruff.Backend, config.Tools.Shellcheck.Backend} {
-			if backend != nil && backend.Wasm != nil {
+		for _, name := range slices.Sorted(maps.Keys(config.Tools)) {
+			if backend := config.Tools[name].Backend; backend != nil && backend.Wasm != nil {
 				_, local, err := pluginartifact.NormalizeSource(backend.Wasm.Path, workingDir)
 				if err == nil {
 					f.Add(local)

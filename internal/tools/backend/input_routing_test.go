@@ -30,7 +30,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 			if c.ProjectRoot != "" || c.ProjectConfig != nil || len(c.Config.Overrides) != 0 {
 				t.Fatal("input eligibility used project planning instead of resolved script configuration")
 			}
-			return c.Config.Tools.Ruff.Enabled == nil
+			return c.Config.Tools["ruff"].Enabled == nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
 			return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -41,7 +41,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 			}), nil
 		},
 	}
-	disabled.Tools.Ruff.Enabled = new(false)
+	disabled.Tools = config.ToolsConfig{"ruff": {Enabled: new(false)}}
 	calls := 0
 	backend := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		calls++

@@ -25,9 +25,9 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 			}
 			var hasDefault, hasProcess, hasWasm bool
 			for _, candidate := range candidates {
-				backend := candidate.Tools.Shellcheck.Backend
+				backend := candidate.Tools["shellcheck"].Backend
 				if name == "ruff" {
-					backend = candidate.Tools.Ruff.Backend
+					backend = candidate.Tools["ruff"].Backend
 				}
 				switch {
 				case backend == nil:
@@ -42,9 +42,9 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 				t.Fatalf("transport candidates lost: default=%t process=%t wasm=%t", hasDefault, hasProcess, hasWasm)
 			}
 			needed, err := ProjectMayNeedProcessFor(name, cfg, nil, false, func(candidate *config.Config) bool {
-				backend := candidate.Tools.Shellcheck.Backend
+				backend := candidate.Tools["shellcheck"].Backend
 				if name == "ruff" {
-					backend = candidate.Tools.Ruff.Backend
+					backend = candidate.Tools["ruff"].Backend
 				}
 				return backend != nil && backend.Process != nil
 			})

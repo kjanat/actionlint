@@ -54,8 +54,9 @@ with its owning subsystem.
 an injected WASM backend. `internal/tools/ruff` and `internal/tools/shellcheck` each own registration, native CLI
 protocols, snippet preparation and diagnostic conversion. `internal/tools/selection` shares the precedence rules
 for explicit and repository-configured transports. `internal/tools/adapters` only bundles registrations for callers.
-Tool configuration lives under `internal/config/tools`, including Ruff's schema and selector generation under
-`internal/config/tools/ruff`; decoding configuration never imports tool execution.
+Tool configuration is a map keyed by provider rule name; each bundled provider manifest under
+`internal/tools/provider/bundled` supplies its configuration schema and shorthands, and
+`internal/config/tools` holds invocation settings. Decoding configuration never imports tool execution.
 The engine and application depend on registrations, not these implementations.
 
 `internal/analyzerhost` owns process capacity and completion. `internal/localapp`

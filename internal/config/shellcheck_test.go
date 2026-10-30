@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 )
 
 func TestShellcheckConfigValidation(t *testing.T) {
@@ -43,11 +45,14 @@ func TestShellcheckOptionalCheckShorthand(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", value, err)
 		}
-		tool := cfg.Tools.Shellcheck
+		tool := cfg.Tools["shellcheck"]
 		if tool.Enabled == nil || *tool.Enabled {
 			t.Fatalf("%s enabled tool", value)
 		}
-		inline := tool.Config.Inline()
+		inline, err := toolconfig.ParseShellcheckConfig(tool.Config.Inline())
+		if err != nil {
+			t.Fatalf("%s: %v", value, err)
+		}
 		if !slices.Equal(inline.Enable, []string{"all"}) {
 			t.Fatalf("%s: %v", value, inline.Enable)
 		}
@@ -73,12 +78,18 @@ func TestShellcheckShorthandFormatsAndInheritance(t *testing.T) {
 			dir := t.TempDir()
 			base := writeConfig(t, dir, filename, source)
 			cfg, err := Load(base)
-			if err != nil || !slices.Equal(cfg.Tools.Shellcheck.Config.Inline().Enable, []string{"all"}) {
+			if err != nil {
+				t.Fatal(err)
+			}
+			if inline, err := toolconfig.ParseShellcheckConfig(cfg.Tools["shellcheck"].Config.Inline()); err != nil || !slices.Equal(inline.Enable, []string{"all"}) {
 				t.Fatalf("%s: %+v, %v", filename, cfg, err)
 			}
 			child := writeConfig(t, dir, "child.yaml", "extends: ["+filename+"]\ntools: {shellcheck: {config: {enable: []}}}")
 			cfg, err = Load(child)
-			if err != nil || len(cfg.Tools.Shellcheck.Config.Inline().Enable) != 0 {
+			if err != nil {
+				t.Fatal(err)
+			}
+			if inline, err := toolconfig.ParseShellcheckConfig(cfg.Tools["shellcheck"].Config.Inline()); err != nil || len(inline.Enable) != 0 {
 				t.Fatalf("list did not clear inherited checks: %+v, %v", cfg, err)
 			}
 		})

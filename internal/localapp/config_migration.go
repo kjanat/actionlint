@@ -36,12 +36,11 @@ func DefaultPluginReferences(cfg *config.Config, options DefaultPluginOptions) (
 		name    string
 		enabled bool
 	}{
-		{"shellcheck", options.Shellcheck && cfg.Tools.Shellcheck.Backend == nil &&
-			(cfg.Tools.Shellcheck.Enabled == nil || *cfg.Tools.Shellcheck.Enabled) && config.DiagnosticLevel(cfg, "shellcheck") != "off"},
-		{"ruff", options.Ruff && cfg.Tools.Ruff.Backend == nil &&
-			(cfg.Tools.Ruff.Enabled == nil || *cfg.Tools.Ruff.Enabled) && config.DiagnosticLevel(cfg, "ruff") != "off"},
+		{"shellcheck", options.Shellcheck},
+		{"ruff", options.Ruff},
 	} {
-		if !selected.enabled {
+		tool := cfg.Tools[selected.name]
+		if !selected.enabled || tool.Backend != nil || tool.Enabled != nil && !*tool.Enabled || config.DiagnosticLevel(cfg, selected.name) == "off" {
 			continue
 		}
 		ref, err := pluginref.Parse(selected.name)

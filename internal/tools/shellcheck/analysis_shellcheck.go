@@ -85,7 +85,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 			failure = errors.Join(failure, err)
 			break
 		}
-		if scope.config != nil && (diagnosticLevel(scope.config, "shellcheck") == "off" || scope.config.Tools.Shellcheck.Enabled != nil && !*scope.config.Tools.Shellcheck.Enabled) {
+		if scope.config != nil && (diagnosticLevel(scope.config, "shellcheck") == "off" || scope.config.Tools["shellcheck"].Enabled != nil && !*scope.config.Tools["shellcheck"].Enabled) {
 			continue
 		}
 		selected := shellcheckTransport{backend: analyzer.backend, cmd: analyzer.cmd}
@@ -110,7 +110,7 @@ func (analyzer *shellcheckAnalyzer) AnalyzeScripts(ctx context.Context, batch sc
 		}
 		if selected.backend != nil {
 			run := &shellcheckRun{backend: selected.backend, cfg: scope.config, paths: scope.paths, actionPath: scope.actionPath, debug: analyzer.debug, rcArgs: []string{}}
-			if scope.config != nil && scope.config.Tools.Shellcheck.Config.Path() != "" {
+			if scope.config != nil && scope.config.Tools["shellcheck"].Config.Path() != "" {
 				failure = errors.Join(failure, errors.New("ShellCheck backend needs inline configuration; rc-file access requires a process backend"))
 				continue
 			}

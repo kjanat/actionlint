@@ -3,6 +3,7 @@ package localapp
 import (
 	"encoding/hex"
 	"errors"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -38,8 +39,9 @@ func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 		}
 	}
 	addTools := func(tools config.ToolsConfig) {
-		add(tools.Ruff.Backend)
-		add(tools.Shellcheck.Backend)
+		for _, name := range slices.Sorted(maps.Keys(tools)) {
+			add(tools[name].Backend)
+		}
 	}
 	for _, cfg := range s.configs {
 		addTools(cfg.Tools)
