@@ -27,22 +27,29 @@ type metadataSource struct {
 	document documentparse.Document
 }
 
+// ParseError reports an action manifest that was read but could not be parsed.
+// It is immutable once created: the cache stores it and reports the same value
+// to every lookup of the manifest.
 type ParseError struct {
-	Path      string
-	Cause     error
-	directory string
+	path  string
+	cause error
 }
 
-func (e *ParseError) Error() string {
-	if e.Cause == nil {
-		return fmt.Sprintf("could not parse action metadata in %q", e.Path)
-	}
-	if e.directory == "" {
-		return e.Cause.Error()
-	}
-	return fmt.Sprintf("could not parse action metadata in %q: %s", e.directory, codec.FormatLoadError(e.Cause))
+// NewParseError records that the manifest at path failed to parse with cause.
+func NewParseError(path string, cause error) *ParseError {
+	return &ParseError{path: path, cause: cause}
 }
-func (e *ParseError) Unwrap() error { return e.Cause }
+
+// Path is the manifest file that failed to parse.
+func (e *ParseError) Path() string { return e.path }
+
+func (e *ParseError) Error() string {
+	if e.cause == nil {
+		return fmt.Sprintf("could not parse action metadata in %q", e.path)
+	}
+	return fmt.Sprintf("could not parse action metadata in %q: %s", filepath.Dir(e.path), codec.FormatLoadError(e.cause))
+}
+func (e *ParseError) Unwrap() error { return e.cause }
 
 // Cache shares parsed manifests and raw source snapshots for one repository.
 // Configure it before concurrent analysis; callers use separate Resolver instances.
@@ -223,7 +230,7 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 	meta, parseErr := document.Metadata, document.ActionParseError()
 	loaded := MetadataResult{status: MetadataResolved, metadata: meta}
 	if err := parseErr; err != nil {
-		cause := &ParseError{Path: filepath.Join(dir, f), Cause: err, directory: dir}
+		cause := NewParseError(loadedSource.path, err)
 		loaded = MetadataResult{status: MetadataParseFailed, cause: cause}
 	} else {
 		c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)

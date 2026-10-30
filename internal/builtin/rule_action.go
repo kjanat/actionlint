@@ -96,7 +96,7 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action w
 			if parseError, ok := errors.AsType[*actionlocal.ParseError](err); ok {
 				finding.MetadataParseSource = source.Capture().Revision()
 				if !finding.MetadataParseSource.Valid() {
-					return fmt.Errorf("metadata parse source %q has no captured revision: %w", parseError.Path, err)
+					return fmt.Errorf("metadata parse source %q has no captured revision: %w", parseError.Path(), err)
 				}
 			}
 			rule.Report(finding)

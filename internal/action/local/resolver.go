@@ -195,10 +195,12 @@ type UnresolvedError string
 
 func (e UnresolvedError) Error() string { return string(e) }
 
-type MappingError struct{ Cause error }
+// MappingError reports a source mapping that cannot be applied to a local
+// action reference. Only this package creates it.
+type MappingError struct{ cause error }
 
-func (e MappingError) Error() string { return e.Cause.Error() }
-func (e MappingError) Unwrap() error { return e.Cause }
+func (e MappingError) Error() string { return e.cause.Error() }
+func (e MappingError) Unwrap() error { return e.cause }
 
 func missingLocalActionMetadata(spec string) error {
 	return UnresolvedError(fmt.Sprintf("local action %q has no action.yml, action.yaml, Dockerfile or dockerfile; check the path and ensure the action is available when linting", spec))

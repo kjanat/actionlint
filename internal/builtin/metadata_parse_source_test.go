@@ -53,7 +53,7 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 type metadataParseFailureLookup struct{ cause error }
 
 func (lookup metadataParseFailureLookup) FindMetadataDocument(string) (*actionmeta.Metadata, bool, actionlocal.SourceDocument, error) {
-	return nil, false, actionlocal.SourceDocument{}, &actionlocal.ParseError{Path: "broken/action.yml", Cause: lookup.cause}
+	return nil, false, actionlocal.SourceDocument{}, actionlocal.NewParseError("broken/action.yml", lookup.cause)
 }
 
 func TestMetadataParseFindingRejectsMissingCaptureAndInterruption(t *testing.T) {
