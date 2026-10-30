@@ -26,14 +26,14 @@ func bundledManifest(t *testing.T, name string) provider.Manifest {
 }
 
 func TestRenderArgs(t *testing.T) {
-	templates := []string{"literal", "{var:path}", "{var:unset}", "{flag:dialect:--shell}", "{flag:unset:--opt}", "{switch:on:-x:}", "{switch:off:-x:--no-x}", "{switch:false:--yes:--no}", "{list:exclude:,}", "{list:unset:,}", "{config:toml-pairs:--config}", "{user-args}", "{config:toml-file}", "-"}
+	templates := []string{"literal", "{var:path}", "{var:unset}", "{flag:dialect:--shell}", "{flag:unset:--opt}", "{option:dialect:--shell}", "{option:unset:--opt}", "{switch:on:-x:}", "{switch:off:-x:--no-x}", "{switch:false:--yes:--no}", "{list:exclude:,}", "{list:unset:,}", "{config:toml-pairs:--config}", "{user-args}", "{config:toml-file}", "-"}
 	got, err := renderArgs(templates, argInputs{
 		vars:       map[string]string{"path": "a b", "dialect": "bash", "on": "1", "false": "false", "exclude": "SC1\nSC2"},
 		user:       []string{"--user", "value"},
 		tomlPairs:  []string{"--config", `"k" = 1`},
 		configFile: "/tmp/config.toml",
 	})
-	want := []string{"literal", "a b", "--shell", "bash", "-x", "--no-x", "--no", "SC1,SC2", "--config", `"k" = 1`, "--user", "value", "/tmp/config.toml", "-"}
+	want := []string{"literal", "a b", "--shell", "bash", "--shell=bash", "-x", "--no-x", "--no", "SC1,SC2", "--config", `"k" = 1`, "--user", "value", "/tmp/config.toml", "-"}
 	if err != nil || !slices.Equal(got, want) {
 		t.Fatalf("got %q, %v; want %q", got, err, want)
 	}

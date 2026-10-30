@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"sync"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
@@ -157,8 +158,9 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 		next.Selection = Selection{Backend: backend, ManagedOnly: sel.ManagedOnly}
 		return register(next, selection{Selection: next.Selection, fallback: true})
 	}
+	probes := &versionProbes{}
 	registration.Build = func(c tools.Context) (tools.Runner, error) {
-		transports := &transports{provider: p, selection: sel, registration: registration, context: c, built: map[string]tools.Runner{}}
+		transports := &transports{provider: p, selection: sel, registration: registration, context: c, built: map[string]tools.Runner{}, probes: probes}
 		if _, err := transports.forConfig(c.Config); err != nil {
 			return nil, err
 		}
@@ -188,6 +190,28 @@ type transports struct {
 	context      tools.Context
 	built        map[string]tools.Runner
 	selected     map[*config.Config]string
+	probes       *versionProbes
+}
+
+// versionProbes keeps one version probe per process transport key for every
+// runner a registration builds, so each command is probed, and a failed
+// probe warned about, once per registration.
+type versionProbes struct {
+	mu    sync.Mutex
+	byKey map[string]*process.VersionProbe
+}
+
+// get returns the probe of the transport with key, creating it when absent.
+func (p *versionProbes) get(key string) *process.VersionProbe {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.byKey == nil {
+		p.byKey = map[string]*process.VersionProbe{}
+	}
+	if p.byKey[key] == nil {
+		p.byKey[key] = &process.VersionProbe{}
+	}
+	return p.byKey[key]
 }
 
 // forConfig returns the key of the runner cfg selects, building it once;
@@ -277,7 +301,7 @@ func (t *transports) build(cfg *config.Config) (string, error) {
 // process builds the runner of a process transport.
 func (t *transports) process(key string, command *analyzerhost.Command, via route, required bool) (string, error) {
 	m := t.provider.Manifest
-	backend, err := process.NewBackend(m, command, process.Options{Programs: t.provider.Programs, Required: required, Warn: t.context.Warn, Debug: t.context.Debug})
+	backend, err := process.NewBackend(m, command, process.Options{Programs: t.provider.Programs, Required: required, Probe: t.probes.get(key), Warn: t.context.Warn, Debug: t.context.Debug})
 	if err != nil {
 		return "", err
 	}

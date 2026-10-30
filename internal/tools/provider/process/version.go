@@ -11,10 +11,12 @@ import (
 	"sync"
 )
 
-// probe shares one completed version discovery while keeping cancellation
-// local to each caller: an interrupted probe leaves discovery retryable. A
-// completed failure is kept as text, so every caller gets its own error.
-type probe struct {
+// VersionProbe holds the result of one version probe for every backend that
+// shares it, so a command is probed and its failure warned about once. Each
+// caller keeps its own cancellation: an interrupted probe leaves the next
+// caller to run it again. A completed failure is kept as text, so every
+// caller gets its own error. The zero value is ready to use.
+type VersionProbe struct {
 	mu      sync.Mutex
 	pending chan struct{}
 	ready   bool
@@ -25,7 +27,7 @@ type probe struct {
 
 // run returns the shared result, running execute when no probe completed. A
 // completed failure is passed to warning once.
-func (p *probe) run(ctx context.Context, execute func() (string, error), warning func(error)) (string, error) {
+func (p *VersionProbe) run(ctx context.Context, execute func() (string, error), warning func(error)) (string, error) {
 	for {
 		if err := ctx.Err(); err != nil {
 			return "", err

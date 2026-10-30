@@ -193,7 +193,8 @@ type ProcessSpec struct {
 	// Entry is an artifact filename or a bare command discovered on PATH.
 	Entry string `json:"entry"`
 	// Args are literal tokens and closed-grammar placeholders: {var:NAME},
-	// {flag:NAME:--opt}, {switch:NAME:--on:--off}, {list:NAME:SEP},
+	// {flag:NAME:--opt} (two arguments), {option:NAME:--opt} (one argument,
+	// --opt=VALUE), {switch:NAME:--on:--off}, {list:NAME:SEP},
 	// {config:toml-pairs:--opt}, {config:toml-file}, {config:json-file} and
 	// {user-args}. Placeholders are substituted, never evaluated.
 	Args  []string          `json:"args"`

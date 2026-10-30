@@ -53,15 +53,15 @@ func TestRuffConfigTransform(t *testing.T) {
 		t.Fatal(err)
 	}
 	transform := configTransform{program: compiled}
-	py312 := "py312"
+	py312, py311, all, selectF := "py312", "py311", "ALL", "F"
 	for _, tc := range []struct {
 		config, want string
 		vars         map[string]*string
 	}{
 		{``, `{}`, nil},
-		{`{"lint": {"select": []}}`, `{"lint": {"select": ["ALL"], "ignore": ["ALL"]}}`, nil},
-		{`{"lint": {"select": ["F"]}, "line-length": 100}`, `{"lint": {"select": ["F"]}, "line-length": 100}`, nil},
-		{`{"target-version": "py312"}`, `{"target-version": "py312"}`, map[string]*string{"target_version": nil}},
+		{`{"lint": {"select": []}}`, `{}`, map[string]*string{"select": &all, "ignore": &all}},
+		{`{"lint": {"select": ["F"]}, "line-length": 100}`, `{"line-length": 100}`, map[string]*string{"select": &selectF}},
+		{`{"target-version": "py311"}`, `{}`, map[string]*string{"target_version": &py311}},
 	} {
 		config, err := decodeConfig([]byte(tc.config))
 		if err != nil {

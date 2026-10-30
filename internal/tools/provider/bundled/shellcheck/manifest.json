@@ -184,7 +184,18 @@
       "{list:exclude:,}",
       "-"
     ],
-    "env_passthrough": ["SHELLCHECK_OPTS"],
+    "env_passthrough": [
+      "SHELLCHECK_OPTS",
+      "PATH",
+      "PATHEXT",
+      "HOME",
+      "USERPROFILE",
+      "APPDATA",
+      "LOCALAPPDATA",
+      "TMPDIR",
+      "TEMP",
+      "TMP"
+    ],
     "config": { "render": "none" },
     "config_files": {
       "names": [".shellcheckrc", "shellcheckrc"],
@@ -194,7 +205,7 @@
       "format": "json",
       "transform": {
         "language": "jq",
-        "digest": "sha256:33dbe00a92acbfd6ac8ff4e1dfa0b2b5a925d9e62a91de2b9769da92e9c2b596"
+        "digest": "sha256:f7b02f7a638d7b66773552fd5933f8515d24f59b06ce2431af865e8897e19142"
       },
       "coordinates": { "rows": "lf", "columns": "chars", "end": "exclusive" }
     },

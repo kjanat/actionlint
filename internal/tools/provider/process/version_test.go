@@ -65,7 +65,7 @@ func TestRuffVersionProbe(t *testing.T) {
 }
 
 func TestProbeSharesCompletedResult(t *testing.T) {
-	var p probe
+	var p VersionProbe
 	var runs, warnings atomic.Int32
 	failure := errors.New("unavailable")
 	var group sync.WaitGroup
@@ -87,7 +87,7 @@ func TestProbeSharesCompletedResult(t *testing.T) {
 }
 
 func TestProbeRetriesAfterCancellation(t *testing.T) {
-	var p probe
+	var p VersionProbe
 	ctx, cancel := context.WithCancel(t.Context())
 	if _, err := p.run(ctx, func() (string, error) {
 		cancel()

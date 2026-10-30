@@ -1,73 +1,155 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://actionlint.kjanat.dev/schemas/tool-provider-transform-result-1.json",
-  "title": "actionlint tool provider transform result",
-  "oneOf": [
-    { "$ref": "#/$defs/diagnostics" },
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["diagnostics"],
-      "properties": {
-        "diagnostics": { "$ref": "#/$defs/diagnostics" },
-        "sources": { "type": "array", "items": { "$ref": "#/$defs/nonempty" } },
-        "errors": { "type": "array", "items": { "$ref": "#/$defs/nonempty" } }
-      }
-    }
-  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "nonempty": { "type": "string", "minLength": 1 },
-    "line": { "type": "integer", "minimum": 1 },
-    "position": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["row", "column"],
-      "properties": {
-        "row": { "$ref": "#/$defs/line" },
-        "column": { "$ref": "#/$defs/line" }
-      }
-    },
-    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
     "diagnostic": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["filename", "code", "message", "location"],
+      "required": [
+        "code",
+        "filename",
+        "location",
+        "message"
+      ],
       "properties": {
-        "filename": { "$ref": "#/$defs/nonempty" },
-        "code": { "$ref": "#/$defs/nonempty" },
-        "name": { "type": "string" },
-        "message": { "$ref": "#/$defs/nonempty" },
-        "severity": { "$ref": "#/$defs/nonempty" },
-        "location": { "$ref": "#/$defs/position" },
-        "end_location": { "$ref": "#/$defs/position" },
-        "url": { "type": "string" },
-        "source": { "$ref": "#/$defs/nonempty" },
-        "fixes": { "type": "array", "items": { "$ref": "#/$defs/fix" } }
+        "code": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "end_location": {
+          "$ref": "#/$defs/position"
+        },
+        "filename": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "fixes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fix"
+          }
+        },
+        "location": {
+          "$ref": "#/$defs/position"
+        },
+        "message": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "name": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "source": {
+          "$ref": "#/$defs/nonempty"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
       }
     },
     "fix": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["replacements"],
+      "required": [
+        "replacements"
+      ],
       "properties": {
-        "description": { "type": "string" },
+        "description": {
+          "type": "string"
+        },
         "replacements": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "object",
-            "additionalProperties": false,
-            "required": ["row", "end_row", "column", "end_column", "text"],
+            "required": [
+              "column",
+              "end_column",
+              "end_row",
+              "row",
+              "text"
+            ],
             "properties": {
-              "row": { "$ref": "#/$defs/line" },
-              "end_row": { "$ref": "#/$defs/line" },
-              "column": { "$ref": "#/$defs/line" },
-              "end_column": { "$ref": "#/$defs/line" },
-              "text": { "type": "string" }
-            }
+              "column": {
+                "$ref": "#/$defs/line"
+              },
+              "end_column": {
+                "$ref": "#/$defs/line"
+              },
+              "end_row": {
+                "$ref": "#/$defs/line"
+              },
+              "row": {
+                "$ref": "#/$defs/line"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonempty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "position": {
+      "type": "object",
+      "required": [
+        "column",
+        "row"
+      ],
+      "properties": {
+        "column": {
+          "$ref": "#/$defs/line"
+        },
+        "row": {
+          "$ref": "#/$defs/line"
+        }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "title": "actionlint tool provider transform result",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/diagnostics"
+    },
+    {
+      "type": "object",
+      "required": [
+        "diagnostics"
+      ],
+      "properties": {
+        "diagnostics": {
+          "$ref": "#/$defs/diagnostics"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonempty"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonempty"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
 }

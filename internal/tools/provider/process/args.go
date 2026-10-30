@@ -45,6 +45,13 @@ func renderArgs(templates []string, in argInputs) ([]string, error) {
 			if value := in.vars[name]; value != "" {
 				args = append(args, option, value)
 			}
+		case "option":
+			// The value is attached, so a value beginning with "-" cannot
+			// become an option of its own.
+			name, option, _ := strings.Cut(rest, ":")
+			if value := in.vars[name]; value != "" {
+				args = append(args, option+"="+value)
+			}
 		case "switch":
 			parts := strings.SplitN(rest, ":", 3)
 			if len(parts) != 3 {

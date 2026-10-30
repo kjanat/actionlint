@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/profile"
 	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
@@ -299,8 +300,12 @@ func (p shellPreparation) scope(scope *tools.Scope) (scopeSettings, error) {
 			base = paths.analysis
 		}
 		file, err := paths.context(cfg).ResolveFrom(path, base)
-		if err == nil && scope != nil && scope.Reader != nil {
-			file, err = process.ConfigFile(scope.Reader, p.files, file, "")
+		if err == nil {
+			var files *fsread.Reader
+			if scope != nil {
+				files = scope.Reader
+			}
+			file, err = process.ConfigFile(files, p.files, file, "")
 		}
 		if err != nil {
 			return scopeSettings{}, fmt.Errorf("tools.%s.config: %w", p.name, err)

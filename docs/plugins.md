@@ -601,8 +601,9 @@ and how to run the command:
 
 - `process.entry` is a command found on `PATH`. A local manifest declares no `artifacts`.
 - `process.args` holds literal arguments and a closed set of placeholders that are substituted, never
-  evaluated: `{var:NAME}`, `{flag:NAME:--opt}`, `{switch:NAME:--on:--off}`, `{list:NAME:SEP}`,
-  `{config:toml-pairs:--opt}`, `{config:toml-file}`, `{config:json-file}` and `{user-args}`.
+  evaluated: `{var:NAME}`, `{flag:NAME:--opt}` (`--opt VALUE`), `{option:NAME:--opt}` (`--opt=VALUE`),
+  `{switch:NAME:--on:--off}`, `{list:NAME:SEP}`, `{config:toml-pairs:--opt}`, `{config:toml-file}`,
+  `{config:json-file}` and `{user-args}`.
   `{var:filename}` is the snippet's virtual name.
 - `process.stdin` is `source` (the masked snippet) or `request` (the JSON check request).
 - The command runs with a scrubbed environment: only `process.env` and the variables named in

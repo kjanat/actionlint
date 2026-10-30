@@ -15,12 +15,17 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/configschema"
 )
+
+// canceledDecodeLimit bounds decoding the output of a process that completed
+// after its check was canceled.
+const canceledDecodeLimit = 5 * time.Second
 
 // Options configure a Backend beyond its manifest.
 type Options struct {
@@ -30,8 +35,11 @@ type Options struct {
 	// Required makes a failed version probe an error. Without it a provider
 	// whose version cannot be established is skipped with one warning.
 	Required bool
-	Warn     func(error)
-	Debug    func(string, ...any)
+	// Probe holds the version probe result shared with other backends of
+	// the same command. Nil gives the backend a probe of its own.
+	Probe *VersionProbe
+	Warn  func(error)
+	Debug func(string, ...any)
 }
 
 // Backend runs one native process per check as a process manifest describes:
@@ -56,7 +64,7 @@ type Backend struct {
 	// commandProblem rejects every check of a command the manifest cannot
 	// run; each check reports it as its own error.
 	commandProblem string
-	probe          probe
+	probe          *VersionProbe
 	templates      sync.Once
 }
 
@@ -71,7 +79,10 @@ func NewBackend(manifest provider.Manifest, command *analyzerhost.Command, optio
 		return nil, fmt.Errorf("tool provider %s has no command", manifest.Rule.Name)
 	}
 	spec := *manifest.Process
-	b := &Backend{name: manifest.Rule.Name, spec: spec, capabilities: manifest.Capabilities, command: command, options: options}
+	b := &Backend{name: manifest.Rule.Name, spec: spec, capabilities: manifest.Capabilities, command: command, options: options, probe: options.Probe}
+	if b.probe == nil {
+		b.probe = &VersionProbe{}
+	}
 	var err error
 	if b.decoder, err = newDecoder(spec.Output, options.Programs); err != nil {
 		return nil, err
@@ -114,6 +125,12 @@ func NewBackend(manifest provider.Manifest, command *analyzerhost.Command, optio
 		b.commandProblem = fmt.Sprintf("tools.%s: %v", b.name, err)
 	case len(user) > 0 && !slices.Contains(spec.Args, "{user-args}"):
 		b.commandProblem = fmt.Sprintf("tools.%s: %v", b.name, errNoUserArgs)
+	default:
+		// Reject forbidden user arguments before the version probe runs
+		// anything. Each check repeats the test in its own directory.
+		if err := checkUserArgs(b.name, spec.UserArgs, user, command.Dir); err != nil {
+			b.commandProblem = err.Error()
+		}
 	}
 	b.launcher, b.user = slices.Concat(command.LauncherArgs, prefix), user
 	for _, name := range slices.Sorted(maps.Keys(spec.Env)) {
@@ -239,7 +256,7 @@ func (b *Backend) available(ctx context.Context) (bool, error) {
 	}
 	_, err := b.probe.run(ctx, func() (string, error) { return b.identify(ctx) }, func(err error) {
 		if !b.options.Required {
-			b.warn(err)
+			b.warn(fmt.Errorf("skipping automatically discovered %s: %w", b.name, err))
 		}
 	})
 	switch {
@@ -250,6 +267,19 @@ func (b *Backend) available(ctx context.Context) (bool, error) {
 	default:
 		return false, nil
 	}
+}
+
+// ProbeVersion runs the manifest's version probe now and checks the
+// minimum version. A manifest without a probe reports "".
+func (b *Backend) ProbeVersion(ctx context.Context) (string, error) {
+	if b.version == nil {
+		return "", nil
+	}
+	if b.commandProblem != "" {
+		return "", errors.New(b.commandProblem)
+	}
+	version, err := b.identify(ctx)
+	return version, owned(ctx, err)
 }
 
 // identify runs the version probe.
@@ -390,7 +420,15 @@ func (b *Backend) run(ctx context.Context, request analyzer.ScriptRequest, vars 
 		return Result{}, err
 	}
 	values["exit_code"] = strconv.Itoa(code)
-	result, err := b.decoder.Decode(ctx, stdout, values)
+	decoding := ctx
+	if ctx.Err() != nil {
+		// The process completed before the check was canceled; keep its
+		// findings, bounding the transform instead.
+		var cancel context.CancelFunc
+		decoding, cancel = context.WithTimeout(context.WithoutCancel(ctx), canceledDecodeLimit)
+		defer cancel()
+	}
+	result, err := b.decoder.Decode(decoding, stdout, values)
 	if err != nil {
 		return Result{}, fmt.Errorf("tools.%s: %w", b.name, err)
 	}

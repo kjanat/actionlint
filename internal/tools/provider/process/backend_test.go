@@ -278,7 +278,9 @@ func ruffOutput(t *testing.T, directory, filename string) string {
 }
 
 // Configuration values never become options: each rendered setting is one
-// --config argument. Ported from the Ruff adapter's native options tests.
+// --config argument, and the rule selection one --select=VALUE or
+// --ignore=VALUE argument. Ported from the Ruff adapter's native options
+// tests.
 func TestRuffConfigCannotBecomeCommandOptions(t *testing.T) {
 	for _, config := range []string{`{"target-version": "--fix"}`, `{"lint": {"select": ["--fix"]}}`, `{"lint": {"ignore": ["--fix"]}}`} {
 		directory := t.TempDir()
@@ -288,7 +290,7 @@ func TestRuffConfigCannotBecomeCommandOptions(t *testing.T) {
 			t.Fatal(err)
 		}
 		checks := runner.checks()
-		if len(checks) != 1 || slices.Contains(checks[0], "--fix") || !slices.Contains(checks[0], "--no-fix") || !slices.Contains(checks[0], "--config") {
+		if len(checks) != 1 || slices.Contains(checks[0], "--fix") || !slices.Contains(checks[0], "--no-fix") || !slices.ContainsFunc(checks[0], func(arg string) bool { return arg == "--config" || strings.HasSuffix(arg, "=--fix") }) {
 			t.Fatalf("%s changed command options: %q", config, checks)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 )
 
 // ConfigFile resolves a tool's native configuration file and records it with
-// reader. A path naming a directory selects the first of files.Names in it.
+// reader, unless reader is nil. A path naming a directory selects the first of files.Names in it.
 // Without a path it searches the places files.Search lists, in order:
 // "upward" walks from start to the filesystem root, "home" looks in the
 // user's home directory except on Windows, and "xdg" in the XDG
@@ -134,12 +134,14 @@ func configFile(reader *fsread.Reader, names []string, path string) (string, err
 	} else if !info.Mode().IsRegular() {
 		return "", fmt.Errorf("%q is not a regular configuration file", path)
 	}
-	file, err := reader.Open(path)
-	if err != nil {
-		return "", err
-	}
-	if err := file.Close(); err != nil {
-		return "", err
+	if reader != nil {
+		file, err := reader.Open(path)
+		if err != nil {
+			return "", err
+		}
+		if err := file.Close(); err != nil {
+			return "", err
+		}
 	}
 	return filepath.Abs(path)
 }

@@ -108,14 +108,16 @@
       "{var:filename}",
       "--extension",
       "py:python",
-      "{flag:target_version:--target-version}",
+      "{option:target_version:--target-version}",
+      "{option:select:--select}",
+      "{option:ignore:--ignore}",
       "-"
     ],
     "config": {
       "render": "toml-pairs",
       "transform": {
         "language": "jq",
-        "digest": "sha256:4c58012b90f86b03b20462b15eb5c5332f06042ee5dd02dcbf98e6e4e67049b9"
+        "digest": "sha256:2f5a6a1279ca714ddd800a324868509d2a0e47947ec45fa6b17dd02cde892bf9"
       },
       "forbidden": [
         "extend",

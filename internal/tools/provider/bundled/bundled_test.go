@@ -155,10 +155,12 @@ func TestRuffConfigTransform(t *testing.T) {
 	for _, tc := range []struct{ name, input, want string }{
 		{"absent", `null`, `{"config":{},"vars":{}}`},
 		{"native options pass through", `{"line-length":100,"lint":{"extend-select":["B"]}}`, `{"config":{"line-length":100,"lint":{"extend-select":["B"]}},"vars":{}}`},
-		{"top-level native selection passes through", `{"select":["E"],"lint":{"select":["F"]}}`, `{"config":{"lint":{"select":["F"]},"select":["E"]},"vars":{}}`},
-		{"empty selection disables lint codes", `{"lint":{"select":[],"ignore":["E501"]}}`, `{"config":{"lint":{"ignore":["ALL"],"select":["ALL"]}},"vars":{}}`},
-		{"null selection is unset", `{"lint":{"select":null}}`, `{"config":{"lint":{"select":null}},"vars":{}}`},
-		{"configured target drops the inferred one", `{"target-version":"py311"}`, `{"config":{"target-version":"py311"},"vars":{"target_version":null}}`},
+		{"top-level native selection passes through", `{"select":["E"],"lint":{"select":["F"]}}`, `{"config":{"select":["E"]},"vars":{"select":"F"}}`},
+		{"selection becomes flags", `{"lint":{"select":["F","E501"],"ignore":[],"per-file-ignores":{}}}`, `{"config":{"lint":{"per-file-ignores":{}}},"vars":{"select":"F,E501"}}`},
+		{"ignore without selection", `{"lint":{"ignore":["F401"]}}`, `{"config":{},"vars":{"ignore":"F401"}}`},
+		{"empty selection disables lint codes", `{"lint":{"select":[],"ignore":["E501"]}}`, `{"config":{},"vars":{"ignore":"ALL","select":"ALL"}}`},
+		{"null selection is unset", `{"lint":{"select":null}}`, `{"config":{},"vars":{}}`},
+		{"configured target replaces the inferred one", `{"target-version":"py311"}`, `{"config":{},"vars":{"target_version":"py311"}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var input any
