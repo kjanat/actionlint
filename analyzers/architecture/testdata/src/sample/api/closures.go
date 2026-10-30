@@ -34,9 +34,9 @@ func (t *Tally) Adder() func(int) { return func(n int) { t.total += n } } // wan
 
 func (s *Owner) Exporter() func(*Box) { return func(b *Box) { b.Data = s.private } } // want "ARC003: Exporter result 1"
 
-// Collecting what an exposing iterator yields keeps the aliases, though the
-// iterator call itself is unresolved.
-func (s *Owner) Collected() [][]byte { // want "ARC004: Collected result 1"
+// The loop body receives what Chunks yields, the receiver's bytes, so the
+// collected slice exposes them.
+func (s *Owner) Collected() [][]byte { // want "ARC003: Collected result 1"
 	var out [][]byte
 	for chunk := range s.Chunks() {
 		out = append(out, chunk)
@@ -95,11 +95,11 @@ func (x *Index) Refs() iter.Seq[Ref] {
 	}
 }
 
-// Code in the package can write the private fields of a yielded handle. A
-// loop body that does so writes storage reachable from the arguments the
-// iterator was built from, as writing a returned handle does.
+// Code in the package can write the private fields of a yielded handle.
+// Handles yields a handle on its receiver, so a loop body that writes the
+// handle writes p.Owner, as writing a returned handle does.
 type Poker struct {
-	Owner *Owner // want "ARC004: type Poker exposes writable field Owner"
+	Owner *Owner // want "ARC002: state-owning type Poker exposes writable field Owner"
 }
 
 func (p Poker) Poke() {
@@ -118,9 +118,9 @@ func (p DirectPoker) Poke() {
 }
 
 // A loop body that keeps a yielded handle in a captured variable makes that
-// variable alias the iterator's sources.
+// variable alias what the iterator yields.
 type Keeper struct {
-	Owner *Owner // want "ARC004: type Keeper exposes writable field Owner"
+	Owner *Owner // want "ARC002: state-owning type Keeper exposes writable field Owner"
 }
 
 func (k Keeper) Poke() {

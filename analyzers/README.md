@@ -33,8 +33,18 @@ nothing and return an iterator that only reads its argument. The iterator
 carries the argument's storage only when it yields storage, such as pointer
 values; one yielding string keys exposes none. `slices.Sorted` and
 `slices.Collect` applied directly to such an iterator write nothing and return
-a new slice holding what it yields. A range loop over the iterator is a call
-through a function value and stays unresolved.
+a new slice holding what it yields.
+
+Summaries record what a function passes to its function-typed parameters, such
+as an iterator's `yield`, as long as it only calls them. For a returned
+function value, such as an `iter.Seq`, they record what that function will
+pass when called. A range loop over an iterator from a closure literal, a
+source function, a summarized call or one of the iterators above hands the
+loop body only what the iterator yields. An iterator that writes its receiver
+to report diagnostics but yields fresh values therefore does not make the loop
+body alias the receiver; `slices.Collect` and `slices.Sorted` over it return a
+new slice of those values. When a `yield` parameter is stored or passed on,
+what it receives is unknown and the loop falls back to the rule below.
 
 A returned closure, such as an `iter.Seq` iterator, carries a captured variable
 only when its body can expose it: by returning it with a mutable type, by
@@ -47,11 +57,13 @@ A method value, such as `w.store.Row`, carries its bound receiver as a capture,
 checked against the method's summary like any other closure.
 
 A closure passed to a call may be invoked by the callee, as a range-over-func
-iterator invokes its loop body. Summaries do not record what a callee passes to
-such a closure, so the analyzer assumes it may pass storage reachable from the
-call's other arguments, or from the values they were built from. This holds
-for unknown iterators, local closure literals, functions in this package and
-imported method values alike. A body that stores what it receives into a
+iterator invokes its loop body. Except for the range loops and collections
+above, the analyzer does not use what a callee passes to such a closure. It
+assumes the callee may pass storage reachable from the call's other arguments,
+or from the values they were built from. This holds for unknown iterators,
+iterators that pass their `yield` on, a closure literal called directly,
+functions in this package called with a closure argument and imported method
+values alike. A body that stores what it receives into a
 captured variable makes that variable alias that storage, with an uncertain
 origin; storing another captured variable carries that variable's origins. A
 body that writes the values it receives counts as a possible write to that
@@ -73,8 +85,8 @@ prove concurrency safety or verify Go/WIT equivalence. Unknown/interface calls
 produce ARC004 for unresolved alias and mutation effects. This includes standard-library
 calls whose bodies are unavailable, even when they only read their arguments.
 Calls through a function value are unknown calls too, including a closure
-returned by a summarized function: what such an iterator hands its loop body is
-not summarized. Passing a read-only value handle to an unknown call is not a
+returned by a summarized function: its writes and results are not summarized,
+only what it hands its loop body. Passing a read-only value handle to an unknown call is not a
 possible write. The analyzer assumes that code changes a handle only through its
 exported methods, so an interface implementation in the same package that
 writes a handle's private fields is missed. So is code in the same package that

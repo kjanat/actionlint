@@ -36,12 +36,39 @@ func (to origins) add(from origins) bool {
 	return changed
 }
 
+// yields records what a function passes to its function-typed parameters, such
+// as an iterator's yield function. Opaque is set when one of those parameters
+// is used other than by calling it, for example stored or passed on: what it
+// receives is then unknown.
+type yields struct {
+	From   origins
+	Opaque bool
+}
+
+func (y *yields) add(other yields) bool {
+	changed := y.From.add(other.From)
+	if other.Opaque && !y.Opaque {
+		y.Opaque = true
+		changed = true
+	}
+	return changed
+}
+
 type flow struct {
 	Results []origins
 	Writes  origins
 	// Stores maps a destination parameter to the origins stored into its
 	// storage, so a caller can carry a source's aliases into the destination.
 	Stores map[int]origins
+	// Yields is what this function passes to its function-typed parameters.
+	// It is a pointer so that merging into a summary held in a map by value
+	// keeps its Opaque flag.
+	Yields *yields
+	// ResultYields is, for each function-typed result, what that function
+	// passes to its own function-typed parameters when it is called, in this
+	// function's origins. An iterator returned by a method yields the entries
+	// listed here to the loop body that ranges over it.
+	ResultYields []yields
 }
 
 type functionFlow struct {
@@ -49,7 +76,11 @@ type functionFlow struct {
 	Results [][]int
 	Writes  []int
 	// Stores pairs a destination parameter with one stored origin.
-	Stores [][2]int
+	Stores             [][2]int
+	Yields             []int
+	YieldsOpaque       bool
+	ResultYields       [][]int
+	ResultYieldsOpaque []bool
 }
 
 // Imported helpers carry parameter-to-result and write effects. Renaming or
@@ -60,15 +91,26 @@ func (*flowFact) AFact()         {}
 func (*flowFact) String() string { return "function flow summaries" }
 
 func newFlow(results int) flow {
-	f := flow{Results: make([]origins, results), Writes: origins{}, Stores: map[int]origins{}}
+	f := flow{
+		Results:      make([]origins, results),
+		Writes:       origins{},
+		Stores:       map[int]origins{},
+		Yields:       &yields{From: origins{}},
+		ResultYields: make([]yields, results),
+	}
 	for i := range f.Results {
 		f.Results[i] = origins{}
+		f.ResultYields[i] = yields{From: origins{}}
 	}
 	return f
 }
 
 func (f flow) add(other flow) bool {
 	changed := f.Writes.add(other.Writes)
+	changed = f.Yields.add(*other.Yields) || changed
+	for i := range f.ResultYields {
+		changed = f.ResultYields[i].add(other.ResultYields[i]) || changed
+	}
 	for destination, sources := range other.Stores {
 		if f.Stores[destination] == nil {
 			f.Stores[destination] = origins{}
@@ -148,6 +190,16 @@ func solve(pass *analysis.Pass, functions []*ssa.Function) map[*ssa.Function]flo
 			}
 			f.Stores[destination][at(pair[1])] = true
 		}
+		for _, value := range encoded.Yields {
+			f.Yields.From[at(value)] = true
+		}
+		f.Yields.Opaque = encoded.YieldsOpaque
+		for i, values := range encoded.ResultYields {
+			for _, value := range values {
+				f.ResultYields[i].From[at(value)] = true
+			}
+			f.ResultYields[i].Opaque = encoded.ResultYieldsOpaque[i]
+		}
 		return f, true
 	}
 	for changed := true; changed; {
@@ -196,11 +248,26 @@ func solve(pass *analysis.Pass, functions []*ssa.Function) map[*ssa.Function]flo
 			}
 			return a[1] - b[1]
 		})
+		encoded.Yields = sortedOrigins(f.Yields.From)
+		encoded.YieldsOpaque = f.Yields.Opaque
+		for _, y := range f.ResultYields {
+			encoded.ResultYields = append(encoded.ResultYields, sortedOrigins(y.From))
+			encoded.ResultYieldsOpaque = append(encoded.ResultYieldsOpaque, y.Opaque)
+		}
 		facts.Functions = append(facts.Functions, encoded)
 	}
 	slices.SortFunc(facts.Functions, func(a, b functionFlow) int { return strings.Compare(a.Name, b.Name) })
 	pass.ExportPackageFact(&facts)
 	return flows
+}
+
+func sortedOrigins(from origins) []int {
+	out := make([]int, 0, len(from))
+	for origin := range from {
+		out = append(out, origin)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // mutable reports storage a caller can modify through a value. Private fields
@@ -376,6 +443,25 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 			get(p)[len(fn.Params)+i] = true
 		}
 	}
+	// A function-typed parameter that is only ever called receives exactly the
+	// arguments of those calls, recorded below. Any other use, such as storing
+	// it or passing it on, hides what it receives.
+	callbackParams := map[ssa.Value]bool{}
+	for _, p := range fn.Params {
+		if _, ok := p.Type().Underlying().(*types.Signature); !ok {
+			continue
+		}
+		callbackParams[p] = true
+		for _, referrer := range *p.Referrers() {
+			if _, debug := referrer.(*ssa.DebugRef); debug {
+				continue
+			}
+			call, ok := referrer.(ssa.CallInstruction)
+			if !ok || call.Common().Value != p || slices.Contains(call.Common().Args, ssa.Value(p)) {
+				result.Yields.Opaque = true
+			}
+		}
+	}
 	tuples := map[ssa.Value][]origins{}
 	var root func(ssa.Value) ssa.Value
 	root = func(v ssa.Value) ssa.Value {
@@ -534,6 +620,104 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		}
 		return false
 	}
+	// yieldsOf reports what calling the function value passes to its
+	// function-typed parameters, in this function's origins. ok is false when
+	// that is unknown: the value is not a closure literal, a source function or
+	// the result of a summarized call, or it may also pass storage that came
+	// from its own parameters.
+	var yieldsOf func(value ssa.Value, seen map[ssa.Value]bool) (origins, bool)
+	yieldsOf = func(value ssa.Value, seen map[ssa.Value]bool) (origins, bool) {
+		if seen[value] {
+			return origins{}, true
+		}
+		seen[value] = true
+		// remap translates callee origins to this function's values: indices
+		// below len(params) name params, the rest name bindings.
+		remap := func(from origins, params []ssa.Value, bindings []ssa.Value) (origins, bool) {
+			out := origins{}
+			for index := range from {
+				possible := index < 0
+				if possible {
+					index = -index - 1
+				}
+				var source ssa.Value
+				switch {
+				case index < len(params):
+					source = params[index]
+				case index-len(params) < len(bindings):
+					source = bindings[index-len(params)]
+				default:
+					return nil, false
+				}
+				if source == nil {
+					return nil, false
+				}
+				aliases := get(source)
+				if possible {
+					aliases = uncertain(aliases)
+				}
+				out.add(aliases)
+			}
+			return out, true
+		}
+		switch value := value.(type) {
+		case *ssa.MakeClosure:
+			body, _ := value.Fn.(*ssa.Function)
+			if body == nil {
+				return nil, false
+			}
+			summary, found := lookup(body)
+			if !found || summary.Yields.Opaque {
+				return nil, false
+			}
+			// The closure's own parameters are supplied by whoever calls it,
+			// so a yield of one of them is unknown here.
+			return remap(summary.Yields.From, make([]ssa.Value, len(body.Params)), value.Bindings)
+		case *ssa.Function:
+			summary, found := lookup(value)
+			if !found || summary.Yields.Opaque {
+				return nil, false
+			}
+			return remap(summary.Yields.From, make([]ssa.Value, len(value.Params)), nil)
+		case *ssa.Call:
+			common := value.Common()
+			callee := common.StaticCallee()
+			if callee == nil {
+				return nil, false
+			}
+			// maps.Keys and the like yield their argument's storage only when
+			// their element types hold storage.
+			if readSequence(callee) && len(common.Args) == 1 {
+				if yieldsStorage(value.Type(), visible) {
+					return get(common.Args[0]), true
+				}
+				return origins{}, true
+			}
+			summary, found := lookup(callee)
+			if !found || len(summary.ResultYields) != 1 || summary.ResultYields[0].Opaque {
+				return nil, false
+			}
+			var bindings []ssa.Value
+			if closure, ok := common.Value.(*ssa.MakeClosure); ok {
+				bindings = closure.Bindings
+			}
+			return remap(summary.ResultYields[0].From, common.Args, bindings)
+		case *ssa.ChangeType:
+			// Converting a function literal to iter.Seq keeps the function.
+			return yieldsOf(value.X, seen)
+		case *ssa.Phi:
+			out := origins{}
+			for _, edge := range value.Edges {
+				from, ok := yieldsOf(edge, seen)
+				if !ok {
+					return nil, false
+				}
+				out.add(from)
+			}
+			return out, true
+		}
+		return nil, false
+	}
 	// storedOrigins records in result.Stores that the origins in from were
 	// stored into storage reached through destination. The entries are keyed
 	// by the destination's parameter origins. Like a write, a store into a
@@ -644,74 +828,98 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		// hands out read-only handles does not carry its captures, but code in
 		// this package can still write the handles' private fields. Such
 		// storage is passed with uncertain origins.
-		callbacks := func(args []ssa.Value) {
-			for _, arg := range args {
-				closures := closuresOf(arg, map[ssa.Value]bool{})
-				if len(closures) == 0 {
+		var invoke func(closures []*ssa.MakeClosure, passed origins)
+		// passedBy lists, with uncertain origins, the storage reachable from
+		// args other than skip and from the values they were built from.
+		passedBy := func(args []ssa.Value, skip ssa.Value) origins {
+			passed := origins{}
+			for _, other := range args {
+				if other == skip {
 					continue
 				}
-				passed := origins{}
-				for _, other := range args {
-					if other == arg {
-						continue
-					}
-					if visible(other.Type()) {
-						passed.add(uncertain(get(other)))
-					}
-					for _, source := range builtFrom(other) {
-						if storage(source.Type()) {
-							passed.add(uncertain(get(source)))
-						}
+				if visible(other.Type()) {
+					passed.add(uncertain(get(other)))
+				}
+				for _, source := range builtFrom(other) {
+					if storage(source.Type()) {
+						passed.add(uncertain(get(source)))
 					}
 				}
-				for _, closure := range closures {
-					body, _ := closure.Fn.(*ssa.Function)
-					if body == nil {
+			}
+			return passed
+		}
+		callbacks := func(args []ssa.Value) {
+			for _, arg := range args {
+				if closures := closuresOf(arg, map[ssa.Value]bool{}); len(closures) > 0 {
+					invoke(closures, passedBy(args, arg))
+				}
+			}
+		}
+		// yieldTo applies the effects of calling a function value whose yields
+		// are known, as a range-over-func loop calls its iterator with the loop
+		// body. A closure argument receives only what the function value yields,
+		// not everything the function value captured. A closure called through
+		// the value receives the arguments as usual.
+		yieldTo := func(common *ssa.CallCommon, yielded origins) {
+			for _, arg := range common.Args {
+				if closures := closuresOf(arg, map[ssa.Value]bool{}); len(closures) > 0 {
+					invoke(closures, yielded)
+				}
+			}
+			if closures := closuresOf(common.Value, map[ssa.Value]bool{}); len(closures) > 0 {
+				invoke(closures, passedBy(common.Args, nil))
+			}
+		}
+		// invoke applies the effects of calling closures with parameters that
+		// hold the passed storage.
+		invoke = func(closures []*ssa.MakeClosure, passed origins) {
+			for _, closure := range closures {
+				body, _ := closure.Fn.(*ssa.Function)
+				if body == nil {
+					continue
+				}
+				summary, found := lookup(body)
+				if !found {
+					continue
+				}
+				// A body that writes its parameters may write that storage.
+				for index := range summary.Writes {
+					if index < 0 {
+						index = -index - 1
+					}
+					if index < len(body.Params) {
+						result.Writes.add(passed)
+						break
+					}
+				}
+				// Each store the body makes into a captured variable is
+				// applied to the binding: from a parameter it carries the
+				// passed origins, and from another captured variable it
+				// carries that binding's origins.
+				for destination, sources := range summary.Stores {
+					k := destination - len(body.Params)
+					if k < 0 || k >= len(closure.Bindings) {
 						continue
 					}
-					summary, found := lookup(body)
-					if !found {
-						continue
-					}
-					// A body that writes its parameters may write that storage.
-					for index := range summary.Writes {
-						if index < 0 {
-							index = -index - 1
+					target := closure.Bindings[k]
+					for source := range sources {
+						possible := source < 0
+						if possible {
+							source = -source - 1
 						}
-						if index < len(body.Params) {
-							result.Writes.add(passed)
-							break
-						}
-					}
-					// Each store the body makes into a captured variable is
-					// applied to the binding: from a parameter it carries the
-					// passed origins, and from another captured variable it
-					// carries that binding's origins.
-					for destination, sources := range summary.Stores {
-						k := destination - len(body.Params)
-						if k < 0 || k >= len(closure.Bindings) {
-							continue
-						}
-						target := closure.Bindings[k]
-						for source := range sources {
-							possible := source < 0
+						aliases := passed
+						if j := source - len(body.Params); j >= 0 {
+							if j >= len(closure.Bindings) {
+								continue
+							}
+							aliases = get(closure.Bindings[j])
 							if possible {
-								source = -source - 1
+								aliases = uncertain(aliases)
 							}
-							aliases := passed
-							if j := source - len(body.Params); j >= 0 {
-								if j >= len(closure.Bindings) {
-									continue
-								}
-								aliases = get(closure.Bindings[j])
-								if possible {
-									aliases = uncertain(aliases)
-								}
-							}
-							storedOrigins(target, aliases)
-							put(target, aliases)
-							put(root(target), aliases)
 						}
+						storedOrigins(target, aliases)
+						put(target, aliases)
+						put(root(target), aliases)
 					}
 				}
 			}
@@ -860,6 +1068,13 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					if contextErr(common) || lockState(common) {
 						continue
 					}
+					if callbackParams[common.Value] {
+						for _, arg := range common.Args {
+							if storage(arg.Type()) {
+								result.Yields.From.add(get(arg))
+							}
+						}
+					}
 					callee := common.StaticCallee()
 					if callee != nil && standardClone(callee) {
 						if call != nil && !detachedClone(callee, call.Type(), visible) && len(args) > 0 {
@@ -876,6 +1091,18 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 					if callee != nil && collectsSequence(callee) && len(args) == 1 && fromReadSequence(args[0]) {
 						put(call, get(args[0]))
 						continue
+					}
+					// Collecting an iterator whose yields are known returns a new
+					// slice of those values. Running the iterator may still write
+					// what it captured, and an iterator literal still applies its
+					// stores; the yield function it receives holds nothing of ours.
+					if callee != nil && collectsSequence(callee) && len(args) == 1 {
+						if yielded, known := yieldsOf(args[0], map[ssa.Value]bool{}); known {
+							put(call, yielded)
+							unknownWrite(args[0])
+							invoke(closuresOf(args[0], map[ssa.Value]bool{}), origins{})
+							continue
+						}
 					}
 					if closure, ok := common.Value.(*ssa.MakeClosure); ok {
 						args = append(slices.Clone(args), closure.Bindings...)
@@ -957,11 +1184,24 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						put(call, uncertain(get(arg)))
 						unknownWrite(arg)
 					}
-					callbacks(args)
+					if callee != nil || common.IsInvoke() {
+						callbacks(args)
+					} else if yielded, known := yieldsOf(common.Value, map[ssa.Value]bool{}); known {
+						yieldTo(common, yielded)
+					} else {
+						callbacks(args)
+					}
 				case *ssa.Return:
 					for i, value := range v.Results {
 						if storage(value.Type()) {
 							result.Results[i].add(returned(value))
+						}
+						if _, function := value.Type().Underlying().(*types.Signature); function {
+							if yielded, known := yieldsOf(value, map[ssa.Value]bool{}); known {
+								result.ResultYields[i].From.add(yielded)
+							} else {
+								result.ResultYields[i].Opaque = true
+							}
 						}
 					}
 				}
@@ -993,7 +1233,8 @@ func builtFrom(value ssa.Value) []ssa.Value {
 }
 
 // closuresOf lists the closure literals a function value may be: the value
-// itself, or the edges of the phis it joins. Other values yield nothing.
+// itself, a literal converted to a named function type such as iter.Seq, or
+// the edges of the phis it joins. Other values yield nothing.
 func closuresOf(value ssa.Value, seen map[ssa.Value]bool) []*ssa.MakeClosure {
 	if seen[value] {
 		return nil
@@ -1002,6 +1243,8 @@ func closuresOf(value ssa.Value, seen map[ssa.Value]bool) []*ssa.MakeClosure {
 	switch value := value.(type) {
 	case *ssa.MakeClosure:
 		return []*ssa.MakeClosure{value}
+	case *ssa.ChangeType:
+		return closuresOf(value.X, seen)
 	case *ssa.Phi:
 		var out []*ssa.MakeClosure
 		for _, edge := range value.Edges {
