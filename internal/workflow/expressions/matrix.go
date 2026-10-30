@@ -104,7 +104,9 @@ func matrixTypeFromResolutionWithInferredRows(resolution matrixcheck.Resolution,
 		}
 		object.Props[name] = ty
 	}
-	if resolution.Open() {
+	// Rows from an include expression are only known at runtime and may add
+	// any property, as with include: ${{ fromJSON(inputs.targets) }}.
+	if resolution.Open() || !resolution.IncludesComplete() {
 		object.Loose()
 	}
 	return object

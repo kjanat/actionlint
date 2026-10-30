@@ -45,3 +45,30 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 		})
 	}
 }
+
+// A matrix whose rows all come from an include expression has properties that
+// are only known at runtime.
+func TestIncludeExpressionMatrixAcceptsAnyProperty(t *testing.T) {
+	source := `on: {workflow_call: {inputs: {targets: {type: string, required: true}}}}
+jobs:
+  test:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include: ${{ fromJSON(inputs.targets) }}
+    steps:
+      - run: echo ${{ matrix.target }}
+`
+	rule, workflow := newTestCheckerForSource(t, source)
+	job := testJob(t, workflow, "test")
+	for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0))} {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, finding := range rule.Findings() {
+		if finding.Rule == "expression-reference" {
+			t.Fatalf("include expression rows reported as undefined: %v", finding)
+		}
+	}
+}
