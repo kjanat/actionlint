@@ -822,6 +822,25 @@
         "$ref": "#/$defs/token"
       }
     },
+    "deprecated_flags": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "arguments": {
+            "$ref": "#/$defs/strings"
+          },
+          "name": {
+            "$ref": "#/$defs/name"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "id": {
       "$ref": "#/$defs/token"
     },

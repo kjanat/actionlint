@@ -19,6 +19,7 @@
     "fix_availability": "none"
   },
   "preparation": "kjanat:actionlint/python-preparation@0.1.0",
+  "deprecated_flags": [{ "name": "pyflakes", "arguments": ["--select", "F"] }],
   "selectors": { "filename": "actionlint.py" },
   "capabilities": {
     "template_contract": "kjanat:actionlint/template-effects@0.1.0",

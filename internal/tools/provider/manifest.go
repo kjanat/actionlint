@@ -85,6 +85,20 @@ type Manifest struct {
 	// names the contract of a component that may replace it, falling back
 	// to the process for configurations the component declines.
 	Integration *Integration `json:"integration,omitempty"`
+	// DeprecatedFlags are retired command-line flags that still select this
+	// provider. The command line accepts each one, hidden, for one release.
+	DeprecatedFlags []DeprecatedFlag `json:"deprecated_flags,omitempty"`
+}
+
+// DeprecatedFlag is a retired command-line flag that selects a provider.
+// --NAME= and --NAME=false disable the provider. Any other value runs the
+// provider's default command with Arguments added. Either way, --tool,
+// --no-tool and the provider's environment variables take precedence.
+type DeprecatedFlag struct {
+	// Name is the flag without leading dashes.
+	Name string `json:"name"`
+	// Arguments are added to the default command line.
+	Arguments []string `json:"arguments,omitempty"`
 }
 
 // ConfigShorthand is a key written directly under tools.<name> that sets one

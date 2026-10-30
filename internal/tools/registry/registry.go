@@ -59,6 +59,20 @@ func bundledRegistrations(selections Selections) ([]tools.Registration, error) {
 	return registrations, nil
 }
 
+// IDs returns the rule names of the bundled providers in directory order.
+// It panics if the bundled data is invalid.
+func IDs() []string {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		panic(err)
+	}
+	ids := make([]string, len(manifests))
+	for i, manifest := range manifests {
+		ids[i] = manifest.Rule.Name
+	}
+	return ids
+}
+
 // Defaults returns a selection for every bundled provider that runs the
 // provider's own command from PATH and skips the provider, with a warning,
 // when that command cannot run. It panics if the bundled data is invalid.
