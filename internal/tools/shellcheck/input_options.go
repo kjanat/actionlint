@@ -63,5 +63,17 @@ func prepareInput(script tools.Script) (tools.PreparedInput, error) {
 		return tools.PreparedInput{Source: script.Text, Config: options}, nil
 	}
 	prepared := prepareShellcheckScript(script.Text, directives, "")
-	return tools.PreparedInput{Source: prepared.text, Config: options, OriginalLine: prepared.originalLine}, nil
+	return tools.PreparedInput{Source: prepared.text, Config: options, LineMap: prepared.preparedLine}, nil
+}
+
+// preparedLine maps a row of the prepared script to the run block row it
+// holds, or to the generated directive or startup line it is.
+func (script shellcheckScript) preparedLine(line int) tools.PreparedLine {
+	if original := script.originalLine(line); original != 0 {
+		return tools.PreparedLine{Line: original, Origin: tools.LineScript}
+	}
+	if script.startupLine != 0 && line == script.startupLine {
+		return tools.PreparedLine{Origin: tools.LineStartup}
+	}
+	return tools.PreparedLine{Origin: tools.LineDirective}
 }

@@ -18,15 +18,18 @@ type unavailableProducer uint8
 const (
 	nativeShellcheck unavailableProducer = iota + 1
 	pluginShellcheck
+	reportingProvider
 )
 
-// UnavailableSource is temporary provenance for ShellCheck's reported foreign
-// files. Its snippet is display-only, never revision evidence. E7/M07 delete
-// this marker, legacy source snippets and CompleteDiagnostic's allowance when
-// reported-source admission replaces them. The static gate permits two producers.
+// UnavailableSource is temporary provenance for files script tools report
+// findings in. Its snippet is display-only, never revision evidence. E7/M07
+// delete this marker, legacy source snippets and CompleteDiagnostic's
+// allowance when reported-source admission replaces them. Producers are the
+// two ShellCheck routes and tool providers, named by rule.
 type UnavailableSource struct {
 	state    unavailableState
 	producer unavailableProducer
+	provider string
 	address  string
 	document string
 }
@@ -47,9 +50,25 @@ func PluginShellcheckUnavailable(address string) UnavailableSource {
 	return UnavailableSource{state: sourceNotCaptured, producer: pluginShellcheck, address: address}
 }
 
-func (s UnavailableSource) Present() bool {
-	return (s.state == sourceNotCaptured || s.state == sourceReadFailed) && (s.producer == nativeShellcheck || s.producer == pluginShellcheck) && s.address != "" && !strings.ContainsRune(s.address, 0)
+// ReportedSourceUnavailable records a file the tool provider named provider
+// reported a finding in, and whether the optional display reread failed.
+// Neither state is evidence of the revision the tool analyzed.
+func ReportedSourceUnavailable(provider, address string, readFailed bool) UnavailableSource {
+	state := sourceNotCaptured
+	if readFailed {
+		state = sourceReadFailed
+	}
+	return UnavailableSource{state: state, producer: reportingProvider, provider: provider, address: address}
 }
+
+func (s UnavailableSource) Present() bool {
+	producer := s.producer == nativeShellcheck || s.producer == pluginShellcheck || s.producer == reportingProvider && s.provider != ""
+	return (s.state == sourceNotCaptured || s.state == sourceReadFailed) && producer && s.address != "" && !strings.ContainsRune(s.address, 0)
+}
+
+// Provider names the tool provider that reported the file, or "" for the
+// ShellCheck routes.
+func (s UnavailableSource) Provider() string { return s.provider }
 
 func (s UnavailableSource) Reason() string {
 	switch s.state {

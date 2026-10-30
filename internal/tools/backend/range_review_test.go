@@ -3,10 +3,10 @@ package backend
 import (
 	"context"
 	"slices"
-	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	workflow "actionlint.kjanat.dev/v2/internal/workflow"
@@ -22,7 +22,9 @@ func (b rangeReviewBackend) Check(context.Context, analyzer.ScriptRequest) ([]an
 	}, nil
 }
 
-func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
+// A reversed end is dropped and its finding kept at the mapped start, as an
+// unmapped end is; neither fails the check.
+func TestBackendDropsReversedEnds(t *testing.T) {
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo first\n          echo second\n")
 	document := documentparse.Workflow("ci.yml", content)
 	parsed, failures := document.Workflow, document.Findings
@@ -52,8 +54,9 @@ func TestBackendRejectsReversedRangesWithoutLosingValidFindings(t *testing.T) {
 			t.Fatal(err)
 		}
 		findings, err := checker.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: ownedRun.Source(), Key: run.RunPos, Path: "ci.yml", Content: content, Execution: tools.Execution{Shell: "bash"}}}})
-		if err == nil || !strings.Contains(err.Error(), "reversed range") || len(findings) != 1 || findings[0].Message != "valid" {
-			t.Fatalf("invalid backend span escaped: findings=%+v err=%v", findings, err)
+		if err != nil || len(findings) != 2 || findings[0].Message != "valid" || findings[1].Message != "reversed" ||
+			findings[1].Start != (diagnostic.Position{Line: 8, Column: 15}) || findings[1].End != (diagnostic.Position{}) {
+			t.Fatalf("reversed end kept or finding lost: findings=%+v err=%v", findings, err)
 		}
 	}
 }

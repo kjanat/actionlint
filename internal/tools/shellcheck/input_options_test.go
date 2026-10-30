@@ -46,7 +46,8 @@ func TestInputOptionsKeepLanguageAndDirectiveCoordinates(t *testing.T) {
 	if options.Shell != "ksh" || !strings.HasPrefix(prepared.Source, "#!/bin/sh\n# shellcheck disable=SC2086\n") || strings.Contains(prepared.Source, "set -e") {
 		t.Fatalf("input acquired runner semantics or lost directives: %+v", prepared)
 	}
-	if prepared.OriginalLine == nil || prepared.OriginalLine(1) != 1 || prepared.OriginalLine(2) != 0 || prepared.OriginalLine(3) != 2 || prepared.OriginalLine(4) != 3 {
+	script := func(line int) tools.PreparedLine { return tools.PreparedLine{Line: line, Origin: tools.LineScript} }
+	if prepared.LineMap == nil || prepared.LineMap(1) != script(1) || prepared.LineMap(2) != (tools.PreparedLine{Origin: tools.LineDirective}) || prepared.LineMap(3) != script(2) || prepared.LineMap(4) != script(3) {
 		t.Fatal("directive prefix changed source line ownership")
 	}
 	plain, err := prepareInput(tools.Script{Input: site, Text: "echo input", Execution: tools.Execution{Shell: "bash"}})
@@ -56,7 +57,7 @@ func TestInputOptionsKeepLanguageAndDirectiveCoordinates(t *testing.T) {
 	if err := json.Unmarshal(plain.Config, &options); err != nil {
 		t.Fatal(err)
 	}
-	if options.Shell != "sh" || plain.Source != "echo input" || plain.OriginalLine != nil {
+	if options.Shell != "sh" || plain.Source != "echo input" || plain.LineMap != nil {
 		t.Fatalf("input inherited runner shell or changed its unconfigured source: %+v", plain)
 	}
 }

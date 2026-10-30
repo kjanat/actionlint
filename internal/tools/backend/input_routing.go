@@ -25,7 +25,7 @@ func WithScriptInputs(registration tools.Registration, descriptor analyzer.Scrip
 	descriptor.Shells = nil
 	inputs := tools.Registration{Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 	if len(descriptor.ScriptInputs) != 0 {
-		inputs, err = registerEngine(descriptor, backend, registration.Enabled, registration.PrepareInput)
+		inputs, err = registerEngine(descriptor, backend, engineOptions{enabled: registration.Enabled, prepare: registration.PrepareInput})
 	}
 	if err != nil {
 		return tools.Registration{}, err
@@ -203,7 +203,7 @@ func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]to
 		}
 		descriptor.Rule = r.registration.Descriptor
 		descriptor.Shells = nil
-		registration, err := registerEngine(descriptor, engine, r.registration.Enabled, r.registration.PrepareInput)
+		registration, err := registerEngine(descriptor, engine, engineOptions{enabled: r.registration.Enabled, prepare: r.registration.PrepareInput})
 		if err != nil {
 			failures = errors.Join(failures, err)
 			continue

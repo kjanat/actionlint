@@ -52,14 +52,39 @@ type Registration struct {
 }
 
 // PreparedInput preserves the original scalar's coordinates when an adapter
-// inserts configuration directives. A nil OriginalLine leaves rows unchanged.
+// inserts configuration directives. A nil LineMap leaves rows unchanged.
 type PreparedInput struct {
 	TemplateContract string
 	Source           string
 	Config           json.RawMessage
-	OriginalLine     func(int) int
+	// LineMap maps a row of Source to the script row it holds and to what
+	// produced it.
+	LineMap          func(int) PreparedLine
 	AcceptDiagnostic func(analyzer.ScriptDiagnostic) bool
-	Skip             bool
+	// Vars are preparation variables for process argument placeholders.
+	Vars map[string]string
+	Skip bool
+}
+
+// LineOrigin states what produced a row of prepared source.
+type LineOrigin uint8
+
+const (
+	// LineScript is a row of the original script.
+	LineScript LineOrigin = iota
+	// LineDirective is a configuration directive preparation inserted. A
+	// finding on it reports a configuration error.
+	LineDirective
+	// LineStartup is a runtime startup command preparation inserted. A
+	// finding on it is dropped unless its severity is error.
+	LineStartup
+)
+
+// PreparedLine is the script row a prepared row holds. Line is set only when
+// Origin is LineScript.
+type PreparedLine struct {
+	Line   int
+	Origin LineOrigin
 }
 
 type Runner interface {

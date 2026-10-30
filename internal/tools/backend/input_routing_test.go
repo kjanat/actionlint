@@ -82,11 +82,11 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	registration := tools.Registration{
 		Descriptor: rule.Descriptor{Name: "tool"},
 		PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-			return tools.PreparedInput{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), OriginalLine: func(line int) int {
+			return tools.PreparedInput{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), LineMap: func(line int) tools.PreparedLine {
 				if line < 2 {
-					return 0
+					return tools.PreparedLine{Origin: tools.LineDirective}
 				}
-				return line - 1
+				return tools.PreparedLine{Line: line - 1, Origin: tools.LineScript}
 			}}, nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
@@ -114,7 +114,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Col: 7}}, {Text: "run", Execution: tools.Execution{Shell: "bash"}}}})
-	if err == nil || !strings.Contains(err.Error(), "configuration diagnostic: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (diagnostic.Position{Line: 11, Column: 7}) {
+	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (diagnostic.Position{Line: 11, Column: 7}) {
 		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
 	}
 }
@@ -135,7 +135,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 	}}
 	engine := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		inputCalls++
-		if request.Source != "input" || request.Filename != inputFilename(site) {
+		if request.Source != "input" || request.Filename != inputFilename(site, "") {
 			t.Fatalf("input route analyzed a native run: %+v", request)
 		}
 		return []analyzer.ScriptDiagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 2}}}, inputFailure
