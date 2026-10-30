@@ -3,6 +3,7 @@ package process
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 
@@ -37,8 +38,13 @@ func TestConfigFile(t *testing.T) {
 		t.Fatalf("upward: %q %v recorded=%q", found, err, recorded)
 	}
 	files.Search = []provider.ConfigSearch{provider.ConfigSearchHome}
-	if found, err := ConfigFile(reader, files, "", nested); err != nil || found != homeFile {
-		t.Fatalf("home: %q %v", found, err)
+	// Windows tools keep per-user files in the configuration directory.
+	wantHome := homeFile
+	if runtime.GOOS == "windows" {
+		wantHome = ""
+	}
+	if found, err := ConfigFile(reader, files, "", nested); err != nil || found != wantHome {
+		t.Fatalf("home: %q %v, want %q", found, err, wantHome)
 	}
 	files.Search = nil
 	if found, err := ConfigFile(reader, files, "", nested); err != nil || found != "" {

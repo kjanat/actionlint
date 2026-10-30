@@ -15,9 +15,11 @@ import (
 // reader. A path naming a directory selects the first of files.Names in it.
 // Without a path it searches the places files.Search lists, in order:
 // "upward" walks from start to the filesystem root, "home" looks in the
-// user's home directory and "xdg" in the XDG configuration directory (the
-// user configuration directory on Windows). It returns an absolute path, or
-// "" when the search finds nothing.
+// user's home directory except on Windows, and "xdg" in the XDG
+// configuration directory (the user configuration directory on Windows).
+// This is where native tools such as ShellCheck look: Windows keeps per-user
+// files in the configuration directory, not the home directory. It returns
+// an absolute path, or "" when the search finds nothing.
 func ConfigFile(reader *fsread.Reader, files provider.ConfigFiles, path, start string) (string, error) {
 	if path != "" {
 		return configFile(reader, files.Names, path)
@@ -29,11 +31,8 @@ func ConfigFile(reader *fsread.Reader, files provider.ConfigFiles, path, start s
 		case provider.ConfigSearchUpward:
 			found, err = searchUpward(files.Names, start)
 		case provider.ConfigSearchHome:
-			var home string
-			if home, err = os.UserHomeDir(); err == nil {
+			if home := homeDirectory(); home != "" {
 				found, err = configInDirectory(files.Names, home)
-			} else {
-				err = nil
 			}
 		case provider.ConfigSearchXDG:
 			if directory := xdgConfigHome(); directory != "" {
@@ -62,6 +61,19 @@ func searchUpward(names []string, start string) (string, error) {
 			return "", nil
 		}
 	}
+}
+
+// homeDirectory is the home directory searched for configuration; "" on
+// Windows or when it is unknown.
+func homeDirectory() string {
+	if runtime.GOOS == "windows" {
+		return ""
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return home
 }
 
 // xdgConfigHome is the XDG configuration directory, or the user
