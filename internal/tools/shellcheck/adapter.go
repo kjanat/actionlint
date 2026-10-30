@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/config/rules"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
@@ -22,7 +21,6 @@ import (
 
 type (
 	Config                 = config.Config
-	ShellcheckConfig       = toolconfig.ShellcheckConfig
 	ExternalCommandOptions = processconfig.Options
 	externalCommand        = analyzerhost.Command
 	DiagnosticPosition     = diagnostic.Position

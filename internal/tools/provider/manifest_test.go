@@ -69,11 +69,17 @@ func TestParseRejects(t *testing.T) {
 		"external config schema ref": replace(`"capabilities"`,
 			`"config_schema": {"$ref": "https://example.invalid/schema.json"}, "capabilities"`),
 		"shorthand without schema": replace(`"capabilities"`,
-			`"config_shorthands": ["level"], "capabilities"`),
+			`"config_shorthands": {"level": {"path": ["level"], "precedence": "config"}}, "capabilities"`),
 		"shorthand not declared": replace(`"capabilities"`,
-			`"config_schema": {"properties": {"level": {}}}, "config_shorthands": ["mode"], "capabilities"`),
+			`"config_schema": {"properties": {"level": {}}}, "config_shorthands": {"mode": {"path": ["mode"], "precedence": "config"}}, "capabilities"`),
+		"shorthand nested property not declared": replace(`"capabilities"`,
+			`"config_schema": {"properties": {"lint": {"properties": {"level": {}}}}}, "config_shorthands": {"mode": {"path": ["lint", "mode"], "precedence": "config"}}, "capabilities"`),
 		"shorthand shadows host key": replace(`"capabilities"`,
-			`"config_schema": {"properties": {"enabled": {}}}, "config_shorthands": ["enabled"], "capabilities"`),
+			`"config_schema": {"properties": {"enabled": {}}}, "config_shorthands": {"enabled": {"path": ["enabled"], "precedence": "config"}}, "capabilities"`),
+		"shorthand without precedence": replace(`"capabilities"`,
+			`"config_schema": {"properties": {"level": {}}}, "config_shorthands": {"level": {"path": ["level"]}}, "capabilities"`),
+		"shorthand with empty path": replace(`"capabilities"`,
+			`"config_schema": {"properties": {"level": {}}}, "config_shorthands": {"level": {"path": [], "precedence": "config"}}, "capabilities"`),
 		"arg rule with two kinds": replace(`"config": {"render": "none"}`,
 			`"config": {"render": "none"}, "user_args": {"operands": false, "forbidden": [{"flag": "--fix", "prefix": "@", "reason": "no"}]}`),
 	} {
@@ -110,22 +116,42 @@ func TestParseRejectsOversizedManifest(t *testing.T) {
 
 func TestParseConfigShorthands(t *testing.T) {
 	document := strings.Replace(minimal, `"capabilities"`,
-		`"config_schema": {"type": "object", "properties": {"level": {"type": "integer"}}}, "config_shorthands": ["level"], "capabilities"`, 1)
+		`"config_schema": {"type": "object", "properties": {"lint": {"type": "object", "properties": {"level": {"type": "integer"}}}}},
+		"config_shorthands": {"level": {"path": ["lint", "level"], "precedence": "shorthand"}}, "capabilities"`, 1)
 	m, err := provider.Parse([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(m.ConfigShorthands, []string{"level"}) {
-		t.Fatalf("shorthands = %v", m.ConfigShorthands)
+	level, ok := m.ConfigShorthands["level"]
+	if !ok || len(m.ConfigShorthands) != 1 || !slices.Equal(level.Path, []string{"lint", "level"}) || level.Precedence != configschema.PrecedenceShorthand {
+		t.Fatalf("shorthands = %+v", m.ConfigShorthands)
 	}
 	schema, err := configschema.Compile(m.ConfigSchema)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := schema.Validate([]byte(`{"level": 2}`)); err != nil {
+	if err := schema.Validate([]byte(`{"lint": {"level": 2}}`)); err != nil {
 		t.Fatal(err)
 	}
-	if err := schema.Validate([]byte(`{"level": "high"}`)); err == nil || !strings.Contains(err.Error(), "at /level:") {
+	if err := schema.Validate([]byte(`{"lint": {"level": "high"}}`)); err == nil || !strings.Contains(err.Error(), "at /lint/level:") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestReadsConfigFiles(t *testing.T) {
+	m, err := provider.Parse([]byte(minimal))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.ReadsConfigFiles() {
+		t.Fatal("manifest without config_files reads configuration files")
+	}
+	m, err = provider.Parse([]byte(strings.Replace(minimal, `"config": {"render": "none"}`,
+		`"config": {"render": "none"}, "config_files": {"names": [".lintrc"]}`, 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.ReadsConfigFiles() {
+		t.Fatal("manifest naming config files reads none")
 	}
 }

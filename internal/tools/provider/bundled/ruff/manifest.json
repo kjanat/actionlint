@@ -39,29 +39,44 @@
           { "type": "null", "doNotSuggest": true }
         ]
       },
-      "select": {
-        "title": "select",
-        "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
-        "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
-        "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
+      "lint": {
+        "title": "lint",
+        "description": "Ruff's lint options, such as select, ignore and extend-select.",
+        "markdownDescription": "Ruff's lint options, such as `select`, `ignore` and `extend-select`.",
         "oneOf": [
-          { "type": "array", "items": { "type": "string" } },
+          { "type": "object" },
           { "type": "null" }
-        ]
-      },
-      "ignore": {
-        "title": "ignore",
-        "description": "Rule codes or prefixes to skip, such as F401.",
-        "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
-        "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
-        "oneOf": [
-          { "type": "array", "items": { "type": "string" } },
-          { "type": "null" }
-        ]
+        ],
+        "properties": {
+          "select": {
+            "title": "select",
+            "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+            "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+            "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
+            "oneOf": [
+              { "type": "array", "items": { "type": "string" } },
+              { "type": "null" }
+            ]
+          },
+          "ignore": {
+            "title": "ignore",
+            "description": "Rule codes or prefixes to skip, such as F401.",
+            "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
+            "items": { "type": "string", "minLength": 1, "examples": ["F", "F821"] },
+            "oneOf": [
+              { "type": "array", "items": { "type": "string" } },
+              { "type": "null" }
+            ]
+          }
+        }
       }
     }
   },
-  "config_shorthands": ["target-version", "select", "ignore"],
+  "config_shorthands": {
+    "target-version": { "path": ["target-version"], "precedence": "config" },
+    "select": { "path": ["lint", "select"], "precedence": "shorthand" },
+    "ignore": { "path": ["lint", "ignore"], "precedence": "shorthand" }
+  },
   "process": {
     "entry": "ruff",
     "stdin": "source",
@@ -87,7 +102,7 @@
       "render": "toml-pairs",
       "transform": {
         "language": "jq",
-        "digest": "sha256:b22609a84ed842712fa31a25d354f453e9fe2e41034a15b4cbb15455389b7f0e"
+        "digest": "sha256:4c58012b90f86b03b20462b15eb5c5332f06042ee5dd02dcbf98e6e4e67049b9"
       },
       "forbidden": [
         "extend",

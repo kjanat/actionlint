@@ -10,11 +10,7 @@ import (
 )
 
 func prepareInput(script tools.Script) (tools.PreparedInput, error) {
-	settings, err := configFor(script.Config)
-	if err != nil {
-		return tools.PreparedInput{}, err
-	}
-	options, err := engineOptions(settings)
+	options, err := engineOptions(configFor(script.Config))
 	if err != nil {
 		return tools.PreparedInput{}, err
 	}

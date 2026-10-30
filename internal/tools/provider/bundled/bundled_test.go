@@ -155,11 +155,9 @@ func TestRuffConfigTransform(t *testing.T) {
 	for _, tc := range []struct{ name, input, want string }{
 		{"absent", `null`, `{"config":{},"vars":{}}`},
 		{"native options pass through", `{"line-length":100,"lint":{"extend-select":["B"]}}`, `{"config":{"line-length":100,"lint":{"extend-select":["B"]}},"vars":{}}`},
-		{"flat lists fold into lint", `{"select":["E","F"],"ignore":["E501"]}`, `{"config":{"lint":{"ignore":["E501"],"select":["E","F"]}},"vars":{}}`},
-		{"flat list replaces native list", `{"select":["F"],"lint":{"select":["E"],"preview":true}}`, `{"config":{"lint":{"preview":true,"select":["F"]}},"vars":{}}`},
-		{"empty selection disables lint codes", `{"select":[],"ignore":["E501"]}`, `{"config":{"lint":{"ignore":["ALL"],"select":["ALL"]}},"vars":{}}`},
-		{"empty native selection disables lint codes", `{"lint":{"select":[]}}`, `{"config":{"lint":{"ignore":["ALL"],"select":["ALL"]}},"vars":{}}`},
-		{"null flat list is unset", `{"select":null}`, `{"config":{},"vars":{}}`},
+		{"top-level native selection passes through", `{"select":["E"],"lint":{"select":["F"]}}`, `{"config":{"lint":{"select":["F"]},"select":["E"]},"vars":{}}`},
+		{"empty selection disables lint codes", `{"lint":{"select":[],"ignore":["E501"]}}`, `{"config":{"lint":{"ignore":["ALL"],"select":["ALL"]}},"vars":{}}`},
+		{"null selection is unset", `{"lint":{"select":null}}`, `{"config":{"lint":{"select":null}},"vars":{}}`},
 		{"configured target drops the inferred one", `{"target-version":"py311"}`, `{"config":{"target-version":"py311"},"vars":{"target_version":null}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,8 +1,6 @@
 package ruff
 
 import (
-	"fmt"
-
 	"actionlint.kjanat.dev/v2/internal/config"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 )
@@ -23,37 +21,14 @@ type Config struct {
 }
 
 // configFor reads the tools.ruff entry of cfg. Configuration decoding folds
-// the flat target-version, select and ignore keys into the inline settings.
-// A target-version stays a native option, which already wins over the target
-// inferred from the step's shell. Select and ignore are split back out, so an
-// explicit empty selection stays distinct from the default one.
-func configFor(cfg *config.Config) (Config, error) {
+// the flat target-version, select and ignore keys into target-version,
+// lint.select and lint.ignore of the inline settings, so every option reaches
+// Ruff natively. A native target-version already wins over the target
+// inferred from the step's shell.
+func configFor(cfg *config.Config) Config {
 	if cfg == nil {
-		return Config{}, nil
+		return Config{}
 	}
 	tool := cfg.Tools["ruff"]
-	settings := Config{Enabled: tool.Enabled, Backend: tool.Backend, Native: tool.Config.Inline()}
-	for key, selection := range map[string]*[]string{"select": &settings.Select, "ignore": &settings.Ignore} {
-		value, exists := settings.Native[key]
-		if !exists {
-			continue
-		}
-		delete(settings.Native, key)
-		if value == nil {
-			continue
-		}
-		entries, ok := value.([]any)
-		if !ok {
-			return Config{}, fmt.Errorf("tools.ruff.config.%s must be a list of rule selectors", key)
-		}
-		*selection = make([]string, len(entries))
-		for i, entry := range entries {
-			selector, ok := entry.(string)
-			if !ok || selector == "" {
-				return Config{}, fmt.Errorf("tools.ruff.config.%s: rule selector must be a nonempty string", key)
-			}
-			(*selection)[i] = selector
-		}
-	}
-	return settings, nil
+	return Config{Enabled: tool.Enabled, Backend: tool.Backend, Native: tool.Config.Inline()}
 }

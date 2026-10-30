@@ -18,17 +18,20 @@ type toolProvider struct {
 	// schema validates inline tools.<name>.config settings; nil accepts any.
 	schema *configschema.Schema
 	// shorthands may be written directly under tools.<name>.
-	shorthands []string
+	shorthands map[string]configschema.Shorthand
 	// configFiles permits a path in tools.<name>.config.
 	configFiles bool
 }
 
 // providerManifest is the part of a provider manifest configuration reads.
-// The provider package validates complete bundled manifests.
+// The manifest model in package provider imports the analyzer contract, which
+// configuration must not depend on, so configuration reads these fields from
+// the bundled data directly. TestToolProvidersMatchManifests keeps this view
+// equal to provider.Bundled.
 type providerManifest struct {
-	Scope            string          `json:"scope"`
-	ConfigSchema     json.RawMessage `json:"config_schema"`
-	ConfigShorthands []string        `json:"config_shorthands"`
+	Scope            string                            `json:"scope"`
+	ConfigSchema     json.RawMessage                   `json:"config_schema"`
+	ConfigShorthands map[string]configschema.Shorthand `json:"config_shorthands"`
 	Process          *struct {
 		ConfigFiles *struct {
 			Names []string `json:"names"`

@@ -85,7 +85,8 @@ func TestRuffShorthandOverlay(t *testing.T) {
 			}
 			ruff := cfg.Tools["ruff"]
 			settings := ruff.Config.Inline()
-			if ruff.Enabled == nil || *ruff.Enabled != tc.enabled || settings["target-version"] != "py312" || !reflect.DeepEqual(settings["select"], []any{"F821"}) || !reflect.DeepEqual(settings["ignore"], []any{"F401"}) {
+			want := map[string]any{"target-version": "py312", "lint": map[string]any{"select": []any{"F821"}, "ignore": []any{"F401"}}}
+			if ruff.Enabled == nil || *ruff.Enabled != tc.enabled || !reflect.DeepEqual(settings, want) {
 				t.Fatalf("lost Ruff settings: %+v", ruff)
 			}
 		})

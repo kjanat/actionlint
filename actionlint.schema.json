@@ -9358,48 +9358,63 @@
                                   "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
                                   "type": "object",
                                   "properties": {
-                                    "ignore": {
-                                      "title": "ignore",
-                                      "description": "Rule codes or prefixes to skip, such as F401.",
-                                      "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
-                                      "items": {
-                                        "examples": [
-                                          "F",
-                                          "F821"
-                                        ],
-                                        "type": "string",
-                                        "minLength": 1
-                                      },
-                                      "oneOf": [
-                                        {
-                                          "type": "array",
+                                    "lint": {
+                                      "title": "lint",
+                                      "description": "Ruff's lint options, such as select, ignore and extend-select.",
+                                      "markdownDescription": "Ruff's lint options, such as `select`, `ignore` and `extend-select`.",
+                                      "properties": {
+                                        "ignore": {
+                                          "title": "ignore",
+                                          "description": "Rule codes or prefixes to skip, such as F401.",
+                                          "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
                                           "items": {
-                                            "type": "string"
-                                          }
+                                            "examples": [
+                                              "F",
+                                              "F821"
+                                            ],
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "oneOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
                                         },
-                                        {
-                                          "type": "null"
+                                        "select": {
+                                          "title": "select",
+                                          "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                                          "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+                                          "items": {
+                                            "examples": [
+                                              "F",
+                                              "F821"
+                                            ],
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "oneOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
                                         }
-                                      ]
-                                    },
-                                    "select": {
-                                      "title": "select",
-                                      "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
-                                      "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
-                                      "items": {
-                                        "examples": [
-                                          "F",
-                                          "F821"
-                                        ],
-                                        "type": "string",
-                                        "minLength": 1
                                       },
                                       "oneOf": [
                                         {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "string"
-                                          }
+                                          "type": "object"
                                         },
                                         {
                                           "type": "null"
@@ -9706,7 +9721,67 @@
                         ]
                       }
                     },
-                    "additionalProperties": false
+                    "additionalProperties": {
+                      "description": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+                      "markdownDescription": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+                      "oneOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "backend": {
+                              "title": "backend",
+                              "description": "Select the execution backend.",
+                              "markdownDescription": "Select the execution backend.",
+                              "oneOf": [
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "config": {
+                              "title": "config",
+                              "description": "The tool's own settings, or a configuration file path for tools that read one.",
+                              "markdownDescription": "The tool's own settings, or a configuration file path for tools that read one.",
+                              "oneOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "enabled": {
+                              "title": "enabled",
+                              "description": "Enable this tool. Omission or null keeps it enabled.",
+                              "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
+                              "oneOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
                   },
                   {
                     "type": "null"
@@ -9899,48 +9974,63 @@
                         "description": "Ruff options in Ruff's own configuration layout, such as target-version and lint. The selected Ruff engine validates them; null values reset defaults.",
                         "type": "object",
                         "properties": {
-                          "ignore": {
-                            "title": "ignore",
-                            "description": "Rule codes or prefixes to skip, such as F401.",
-                            "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
-                            "items": {
-                              "examples": [
-                                "F",
-                                "F821"
-                              ],
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "oneOf": [
-                              {
-                                "type": "array",
+                          "lint": {
+                            "title": "lint",
+                            "description": "Ruff's lint options, such as select, ignore and extend-select.",
+                            "markdownDescription": "Ruff's lint options, such as `select`, `ignore` and `extend-select`.",
+                            "properties": {
+                              "ignore": {
+                                "title": "ignore",
+                                "description": "Rule codes or prefixes to skip, such as F401.",
+                                "markdownDescription": "Rule codes or prefixes to skip, such as `F401`.",
                                 "items": {
-                                  "type": "string"
-                                }
+                                  "examples": [
+                                    "F",
+                                    "F821"
+                                  ],
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "oneOf": [
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
-                              {
-                                "type": "null"
+                              "select": {
+                                "title": "select",
+                                "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
+                                "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
+                                "items": {
+                                  "examples": [
+                                    "F",
+                                    "F821"
+                                  ],
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "oneOf": [
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
-                            ]
-                          },
-                          "select": {
-                            "title": "select",
-                            "description": "Rule codes or prefixes to check, such as F or F821. Leave this unset to use Ruff's default selection.",
-                            "markdownDescription": "Rule codes or prefixes to check, such as `F` or `F821`. Leave this unset to use Ruff's default selection.",
-                            "items": {
-                              "examples": [
-                                "F",
-                                "F821"
-                              ],
-                              "type": "string",
-                              "minLength": 1
                             },
                             "oneOf": [
                               {
-                                "type": "array",
-                                "items": {
-                                  "type": "string"
-                                }
+                                "type": "object"
                               },
                               {
                                 "type": "null"
@@ -10247,7 +10337,67 @@
               ]
             }
           },
-          "additionalProperties": false
+          "additionalProperties": {
+            "description": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+            "markdownDescription": "A tool provider registered by a plugin, named by its rule. Unknown names are rejected when checking.",
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "backend": {
+                    "title": "backend",
+                    "description": "Select the execution backend.",
+                    "markdownDescription": "Select the execution backend.",
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "config": {
+                    "title": "config",
+                    "description": "The tool's own settings, or a configuration file path for tools that read one.",
+                    "markdownDescription": "The tool's own settings, or a configuration file path for tools that read one.",
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "enabled": {
+                    "title": "enabled",
+                    "description": "Enable this tool. Omission or null keeps it enabled.",
+                    "markdownDescription": "Enable this tool. Omission or null keeps it enabled.",
+                    "oneOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
         },
         {
           "type": "null"

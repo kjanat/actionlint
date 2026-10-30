@@ -74,9 +74,7 @@ func TestFlatRuffKeysFoldIntoConfig(t *testing.T) {
 	}
 	want := map[string]any{
 		"target-version": "py312",
-		"select":         []any{"F", "B"},
-		"ignore":         []any{},
-		"lint":           map[string]any{"extend-select": []any{"S"}},
+		"lint":           map[string]any{"extend-select": []any{"S"}, "select": []any{"F", "B"}, "ignore": []any{}},
 	}
 	if got := cfg.Tools["ruff"].Config.Inline(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
@@ -85,15 +83,59 @@ func TestFlatRuffKeysFoldIntoConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(encoded), "\n  select:") || !strings.Contains(string(encoded), "config:") {
+	if strings.Contains(string(encoded), "\n    select:") || !strings.Contains(string(encoded), "config:") {
 		t.Fatalf("folded keys must serialize under config:\n%s", encoded)
 	}
-	for _, text := range []string{
-		"tools: {ruff: {select: [F], config: {select: [B]}}}",
-		"tools: {ruff: {target-version: py312, config: {target-version: py313}}}",
+}
+
+// A flat key and the property it sets may both be written: the shorthand's
+// declared precedence keeps flat select and ignore and the configured
+// target-version, as the separate settings did before folding. Ruff's own
+// top-level select stays a native option.
+func TestFlatRuffKeysPrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want map[string]any
+	}{
+		{
+			"tools: {ruff: {select: [E], config: {lint: {select: [F], extend-select: [B]}}}}",
+			map[string]any{"lint": map[string]any{"select": []any{"E"}, "extend-select": []any{"B"}}},
+		},
+		{
+			"tools: {ruff: {target-version: py311, config: {target-version: py312}}}",
+			map[string]any{"target-version": "py312"},
+		},
+		{
+			"tools: {ruff: {target-version: py311, config: {target-version: null}}}",
+			map[string]any{"target-version": "py311"},
+		},
+		{
+			"tools: {ruff: {select: null, config: {lint: {select: [F]}}}}",
+			map[string]any{"lint": map[string]any{"select": []any{"F"}}},
+		},
+		{
+			"tools: {ruff: {ignore: [F401], config: {lint: null}}}",
+			map[string]any{"lint": map[string]any{"ignore": []any{"F401"}}},
+		},
+		{
+			"tools: {ruff: {config: {select: [E], lint: {select: [F]}}}}",
+			map[string]any{"select": []any{"E"}, "lint": map[string]any{"select": []any{"F"}}},
+		},
 	} {
-		if _, err := repoconfig.Parse([]byte(text)); err == nil || !strings.Contains(err.Error(), "duplicates tools.ruff.config.") {
-			t.Fatalf("%s: %v", text, err)
+		cfg, err := repoconfig.Parse([]byte(tc.text))
+		if err != nil {
+			t.Fatalf("%s: %v", tc.text, err)
+		}
+		if got := cfg.Tools["ruff"].Config.Inline(); !reflect.DeepEqual(got, tc.want) {
+			t.Fatalf("%s: got %#v, want %#v", tc.text, got, tc.want)
+		}
+	}
+	for text, want := range map[string]string{
+		"tools: {ruff: {select: [F], config: {lint: true}}}": "config.lint must be a mapping",
+		"tools: {ruff: {select: [F], config: ./ruff.toml}}":  "cannot be combined with a configuration file path",
+	} {
+		if _, err := repoconfig.Parse([]byte(text)); err == nil || !strings.Contains(err.Error(), want) {
+			t.Fatalf("%s: %v, want %q", text, err, want)
 		}
 	}
 }
@@ -112,7 +154,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]any{"select": []any{"F"}, "ignore": []any{"F401"}, "target-version": nil}
+	want := map[string]any{"lint": map[string]any{"select": []any{"F"}, "ignore": []any{"F401"}}, "target-version": nil}
 	if got := effective.Tools["ruff"].Config.Inline(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
@@ -138,9 +180,21 @@ func TestUnknownToolNames(t *testing.T) {
 		if _, err := repoconfig.Parse([]byte(text)); err == nil || !strings.Contains(err.Error(), "unknown tool") {
 			t.Fatalf("%s: %v", text, err)
 		}
-		if _, err := repoconfig.Parse([]byte(text), "pyflakes", "expression"); err != nil {
+		// Loading binds names to registered rules of any kind; the composition
+		// layer then binds them to tool providers only.
+		cfg, err := repoconfig.Parse([]byte(text), "pyflakes", "expression")
+		if err != nil {
+			t.Fatalf("registered rule rejected while loading %s: %v", text, err)
+		}
+		if err := repoconfig.ValidateToolNames(cfg); err == nil || !strings.Contains(err.Error(), "unknown tool") {
+			t.Fatalf("%s: analyzer name accepted as a tool: %v", text, err)
+		}
+		if err := repoconfig.ValidateToolNames(cfg, "pyflakes", "expression"); err != nil {
 			t.Fatalf("registered provider rejected in %s: %v", text, err)
 		}
+	}
+	if err := repoconfig.ValidateToolNames(&repoconfig.Config{Tools: repoconfig.ToolsConfig{"ruff": {}, "shellcheck": {}}}); err != nil {
+		t.Fatalf("bundled providers need no registration: %v", err)
 	}
 	// Input structure is validated before plugins load; names bind afterwards.
 	overlay, err := repoconfig.ParseOverlayBeforePlugins("tools", []byte("{pyflakes: false}"))

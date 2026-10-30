@@ -86,10 +86,9 @@ func TestShellcheckSourcesCanBeConstructed(t *testing.T) {
 	if err != nil || file.Path() != "./.shellcheckrc" || file.Inline() != nil {
 		t.Fatalf("path source: %#v: %v", file, err)
 	}
-	shell := "bash"
-	extended, external := true, false
-	settings := config.ShellcheckConfig{Disable: []string{"SC2086"}, Enable: []string{"all"}, Shell: &shell, ExtendedAnalysis: &extended, ExternalSources: &external, SourcePath: []string{"scripts"}}
-	inline, err := config.ShellcheckConfigInline(settings)
+	disable, enable, sourcePath := []string{"SC2086"}, []string{"all"}, []string{"scripts"}
+	settings := map[string]any{"disable": disable, "enable": enable, "shell": "bash", "extended-analysis": true, "external-sources": false, "source-path": sourcePath}
+	inline, err := config.ToolConfigInline("shellcheck", settings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,8 +96,8 @@ func TestShellcheckSourcesCanBeConstructed(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(inline.Inline(), parsed.Tools["shellcheck"].Config.Inline()) || inline.Path() != "" {
 		t.Fatalf("inline constructor differs from parsed settings: %#v: %v", inline, err)
 	}
-	settings.Disable[0], settings.Enable[0], settings.SourcePath[0], shell = "SC2154", "check-set-e-suppressed", "other", "sh"
-	extended, external = false, true
+	disable[0], enable[0], sourcePath[0] = "SC2154", "check-set-e-suppressed", "other"
+	settings["shell"], settings["extended-analysis"] = "sh", false
 	if !reflect.DeepEqual(inline.Inline(), parsed.Tools["shellcheck"].Config.Inline()) {
 		t.Fatal("constructor stored mutable caller settings")
 	}
@@ -107,12 +106,14 @@ func TestShellcheckSourcesCanBeConstructed(t *testing.T) {
 			t.Errorf("accepted invalid rc path %q", path)
 		}
 	}
-	invalidShell := "python"
-	for _, settings := range []config.ShellcheckConfig{
-		{Disable: []string{"SC2086\nenable=all"}}, {Enable: []string{"some_check"}}, {Shell: &invalidShell}, {SourcePath: []string{""}},
+	for _, settings := range []map[string]any{
+		{"disable": []string{"SC2086\nenable=all"}}, {"enable": []string{"some_check"}}, {"shell": "python"}, {"source-path": []string{""}}, {"typo": true},
 	} {
-		if _, err := config.ShellcheckConfigInline(settings); err == nil {
+		if _, err := config.ToolConfigInline("shellcheck", settings); err == nil {
 			t.Errorf("accepted invalid inline settings %#v", settings)
 		}
+	}
+	if _, err := config.ToolConfigInline("plugin-tool", map[string]any{"level": 2}); err != nil {
+		t.Errorf("a plugin's provider validates its own settings: %v", err)
 	}
 }

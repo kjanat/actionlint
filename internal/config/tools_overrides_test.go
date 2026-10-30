@@ -3,10 +3,10 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
 
@@ -36,8 +36,7 @@ overrides:
 		if err != nil {
 			t.Fatal(err)
 		}
-		rc, err := toolconfig.ParseShellcheckConfig(got.Tools["shellcheck"].Config.Inline())
-		if err != nil || rc == nil || len(rc.Disable) != 1 || rc.Disable[0] != "SC2086" || len(rc.Enable) != 1 || rc.Enable[0] != "all" {
+		if rc := got.Tools["shellcheck"].Config.Inline(); !reflect.DeepEqual(rc, map[string]any{"disable": []any{"SC2086"}, "enable": []any{"all"}}) {
 			t.Fatalf("settings lost: %s", encoded)
 		}
 		reset, err := repoconfig.ForFile(config, "reset.yml", "")

@@ -1,28 +1,34 @@
 package rulecatalog
 
 import (
-	"encoding/json"
+	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
 // Bundled provider rules come from their manifests and are configured in the
 // external group; built-in rules never are.
 func TestProviderRulesComeFromManifests(t *testing.T) {
-	names := bundled.Names()
-	if len(names) == 0 {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifests) == 0 {
 		t.Fatal("no bundled providers")
 	}
-	for _, name := range names {
-		data, _ := bundled.Manifest(name)
-		var manifest struct {
-			Rule rule.Descriptor `json:"rule"`
-		}
-		if err := json.Unmarshal(data, &manifest); err != nil {
-			t.Fatal(err)
-		}
+	var names []string
+	var rules []rule.Descriptor
+	for _, manifest := range manifests {
+		names = append(names, manifest.Rule.Name)
+		rules = append(rules, manifest.Rule)
+	}
+	if !reflect.DeepEqual(providerRules(), rules) {
+		t.Fatalf("catalog provider rules %+v, validated manifests %+v", providerRules(), rules)
+	}
+	for _, manifest := range manifests {
+		name := manifest.Rule.Name
 		found, ok := Find(name)
 		if !ok || found.Description != manifest.Rule.Description || found.FixAvailability != manifest.Rule.FixAvailability {
 			t.Fatalf("%s: catalog %+v, manifest %+v", name, found, manifest.Rule)

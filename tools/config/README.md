@@ -5,7 +5,9 @@ Run `go generate -run generate-config-schema` from the repository root to update
 of a configuration path and inline settings. `tools` lists one entry per bundled
 provider manifest under `internal/tools/provider/bundled`; each manifest's
 `config_schema` describes inline `config` settings and its `config_shorthands`
-appear beside the host keys. A `config_schema` equal to a snapshot under
+appear beside the host keys with the schema of the property each one sets.
+Any other `tools` name may belong to a plugin's provider, so it is described
+by the host keys alone. A `config_schema` equal to a snapshot under
 `schemas/<name>/` is referenced with a `$ref` relative to the main schema's
 location, as the ShellCheck directives reference `schemas/shellcheck/0.11.0.schema.json`;
 any other schema is embedded.

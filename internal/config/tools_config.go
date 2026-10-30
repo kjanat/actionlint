@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/configschema"
 
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -86,12 +87,32 @@ func ToolConfigPath(path string) (*ToolSettings, error) {
 	return &ToolSettings{value: toolSettingsPath(path)}, nil
 }
 
-// ToolConfigInline selects inline settings and owns a copy of them. Values
-// must be representable in JSON, as configuration documents produce them.
-func ToolConfigInline(values map[string]any) (*ToolSettings, error) {
+// ToolConfigInline selects inline settings for the tool provider named tool
+// and owns a copy of them. Values must be representable in JSON, as
+// configuration documents produce them. A bundled provider's configuration
+// schema validates them, as it validates tools.<tool>.config.
+func ToolConfigInline(tool string, values map[string]any) (*ToolSettings, error) {
+	return validatedToolSettings(tool, toolProviders()[tool], values)
+}
+
+// validatedToolSettings validates inline settings against the provider's
+// configuration schema, when it declares one, and selects them.
+func validatedToolSettings(name string, known toolProvider, values map[string]any) (*ToolSettings, error) {
+	if values == nil {
+		values = map[string]any{}
+	}
+	document, err := json.Marshal(values)
+	if err != nil {
+		return nil, fmt.Errorf("tools.%s.config: %w", name, err)
+	}
+	if known.schema != nil {
+		if err := known.schema.Validate(document); err != nil {
+			return nil, fmt.Errorf("tools.%s.config: %w", name, err)
+		}
+	}
 	inline, err := inlineSettings(values)
 	if err != nil {
-		return nil, fmt.Errorf("inline tool settings: %w", err)
+		return nil, fmt.Errorf("tools.%s.config: %w", name, err)
 	}
 	return &ToolSettings{value: inline}, nil
 }
@@ -182,8 +203,8 @@ func decodeToolConfig(name string, node *yaml.Node) (ToolConfig, error) {
 	if node.Kind != yaml.MappingNode {
 		return ToolConfig{}, fmt.Errorf("tools.%s must be a boolean or a mapping at line %d", name, node.Line)
 	}
-	provider, bundled := toolProviders()[name]
-	node, err := foldToolShorthands(name, node, provider.shorthands)
+	known, bundled := toolProviders()[name]
+	node, err := foldToolShorthands(name, node, known.shorthands)
 	if err != nil {
 		return ToolConfig{}, err
 	}
@@ -204,7 +225,7 @@ func decodeToolConfig(name string, node *yaml.Node) (ToolConfig, error) {
 		case "backend":
 			err = value.Decode(&tool.Backend)
 		case "config":
-			tool.Config, err = decodeToolSettings(name, value, provider, bundled)
+			tool.Config, err = decodeToolSettings(name, value, known, bundled)
 		default:
 			return ToolConfig{}, fmt.Errorf("yaml: unknown key %q in tools.%s at line %d", key, name, value.Line)
 		}
@@ -219,12 +240,12 @@ func decodeToolConfig(name string, node *yaml.Node) (ToolConfig, error) {
 // validates inline settings, and a path is accepted only for providers that
 // read configuration files. Other providers validate their settings when the
 // engine loads.
-func decodeToolSettings(name string, node *yaml.Node, provider toolProvider, bundled bool) (*ToolSettings, error) {
+func decodeToolSettings(name string, node *yaml.Node, known toolProvider, bundled bool) (*ToolSettings, error) {
 	switch {
 	case node.Kind == yaml.ScalarNode && node.ShortTag() == "!!null":
 		return nil, nil
 	case node.Kind == yaml.ScalarNode && node.ShortTag() == "!!str":
-		if bundled && !provider.configFiles {
+		if bundled && !known.configFiles {
 			return nil, fmt.Errorf("tools.%s.config must be a mapping; this tool reads no configuration files", name)
 		}
 		settings, err := ToolConfigPath(node.Value)
@@ -237,39 +258,26 @@ func decodeToolSettings(name string, node *yaml.Node, provider toolProvider, bun
 		if err := node.Decode(&values); err != nil {
 			return nil, err
 		}
-		if values == nil {
-			values = map[string]any{}
-		}
-		document, err := json.Marshal(values)
-		if err != nil {
-			return nil, fmt.Errorf("tools.%s.config: %w", name, err)
-		}
-		if provider.schema != nil {
-			if err := provider.schema.Validate(document); err != nil {
-				return nil, fmt.Errorf("tools.%s.config: %w", name, err)
-			}
-		}
-		inline, err := inlineSettings(values)
-		if err != nil {
-			return nil, fmt.Errorf("tools.%s.config: %w", name, err)
-		}
-		return &ToolSettings{value: inline}, nil
+		return validatedToolSettings(name, known, values)
 	default:
 		return nil, fmt.Errorf("tools.%s.config must be a path or mapping at line %d", name, node.Line)
 	}
 }
 
 // foldToolShorthands moves provider shorthand keys of a tools.<name> mapping
-// into its config mapping. It returns node itself when there is nothing to
-// fold, and an error when a shorthand meets a path or repeats a config key.
-func foldToolShorthands(name string, node *yaml.Node, shorthands []string) (*yaml.Node, error) {
+// to the config properties they set. When the mapping also sets a property
+// under config, the shorthand's precedence picks the value kept. It returns
+// node itself when there is nothing to fold, and an error when a shorthand
+// meets a configuration file path or a property path through a non-mapping.
+func foldToolShorthands(name string, node *yaml.Node, shorthands map[string]configschema.Shorthand) (*yaml.Node, error) {
 	var folded []*yaml.Node
 	rest := make([]*yaml.Node, 0, len(node.Content))
 	var config *yaml.Node
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key, value := node.Content[i], node.Content[i+1]
+		_, shorthand := shorthands[key.Value]
 		switch {
-		case slices.Contains(shorthands, key.Value):
+		case shorthand:
 			folded = append(folded, key, value)
 		case key.Value == "config":
 			config = dealias(value)
@@ -285,19 +293,19 @@ func foldToolShorthands(name string, node *yaml.Node, shorthands []string) (*yam
 	if config != nil {
 		switch {
 		case config.Kind == yaml.MappingNode:
-			merged.Content = slices.Clone(config.Content)
-			merged.Line, merged.Column = config.Line, config.Column
-		case config.Kind != yaml.ScalarNode || config.ShortTag() != "!!null":
+			merged = config
+		case !isNull(config):
 			return nil, fmt.Errorf("tools.%s.%s cannot be combined with a configuration file path at line %d", name, folded[0].Value, folded[0].Line)
 		}
 	}
 	for i := 0; i < len(folded); i += 2 {
-		for j := 0; j+1 < len(merged.Content); j += 2 {
-			if merged.Content[j].Value == folded[i].Value {
-				return nil, fmt.Errorf("tools.%s.%s duplicates tools.%s.config.%s at line %d", name, folded[i].Value, name, folded[i].Value, folded[i].Line)
-			}
+		key, value := folded[i], folded[i+1]
+		shorthand := shorthands[key.Value]
+		replace := shorthand.Precedence == configschema.PrecedenceShorthand && !isNull(dealias(value))
+		var err error
+		if merged, err = foldShorthand(merged, shorthand.Path, 0, value, replace); err != nil {
+			return nil, fmt.Errorf("tools.%s.%s at line %d: %w", name, key.Value, key.Line, err)
 		}
-		merged.Content = append(merged.Content, folded[i], folded[i+1])
 	}
 	normalized := *node
 	normalized.Content = rest
@@ -311,6 +319,58 @@ func foldToolShorthands(name string, node *yaml.Node, shorthands []string) (*yam
 		}
 	}
 	return &normalized, nil
+}
+
+func isNull(node *yaml.Node) bool {
+	return node.Kind == yaml.ScalarNode && node.ShortTag() == "!!null"
+}
+
+// foldShorthand returns a copy of mapping with the property at path[depth:]
+// set to value. An absent or null property is always set; an existing value
+// is replaced only when replace is true. Missing mappings along the path are
+// created, and mapping itself is never modified.
+func foldShorthand(mapping *yaml.Node, path []string, depth int, value *yaml.Node, replace bool) (*yaml.Node, error) {
+	folded := *mapping
+	folded.Content = slices.Clone(mapping.Content)
+	for i := 0; i+1 < len(folded.Content); i += 2 {
+		if folded.Content[i].Value != path[depth] {
+			continue
+		}
+		existing := dealias(folded.Content[i+1])
+		switch {
+		case depth == len(path)-1:
+			if replace || isNull(existing) {
+				folded.Content[i+1] = value
+			}
+		case isNull(existing):
+			folded.Content[i+1] = shorthandMapping(path[depth+1:], value)
+		case existing.Kind == yaml.MappingNode:
+			nested, err := foldShorthand(existing, path, depth+1, value, replace)
+			if err != nil {
+				return nil, err
+			}
+			folded.Content[i+1] = nested
+		default:
+			return nil, fmt.Errorf("config.%s must be a mapping to hold it", strings.Join(path[:depth+1], "."))
+		}
+		return &folded, nil
+	}
+	folded.Content = append(folded.Content, shorthandKey(path[depth], value), shorthandMapping(path[depth+1:], value))
+	return &folded, nil
+}
+
+// shorthandMapping nests value under path, one mapping per property name.
+func shorthandMapping(path []string, value *yaml.Node) *yaml.Node {
+	if len(path) == 0 {
+		return value
+	}
+	return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Line: value.Line, Column: value.Column, Content: []*yaml.Node{
+		shorthandKey(path[0], value), shorthandMapping(path[1:], value),
+	}}
+}
+
+func shorthandKey(name string, value *yaml.Node) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name, Line: value.Line, Column: value.Column}
 }
 
 // normalizeToolSwitch rewrites every tools.<name> entry before merging, so a

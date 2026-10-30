@@ -31,21 +31,16 @@ func ValidateRuleNames(config *Config, additional ...string) error {
 	if err := validate(config.Policy.DisallowSuppressions); err != nil {
 		return err
 	}
+	// Loading knows only the combined rule names, so a tool entry must at least
+	// name a registered rule. The composition layer, which knows which
+	// registrations are tool providers, binds entries with ValidateToolNames.
+	if err := ValidateToolNames(config, additional...); err != nil {
+		return err
+	}
 	lints := []*LintConfig{&config.Lint}
-	tools := []ToolsConfig{config.Tools}
 	for _, override := range config.Overrides {
 		if override.Lint != nil {
 			lints = append(lints, override.Lint)
-		}
-		if override.Tools != nil {
-			tools = append(tools, *override.Tools)
-		}
-	}
-	for _, entries := range tools {
-		for _, name := range slices.Sorted(maps.Keys(entries)) {
-			if _, bundled := toolProviders()[name]; !bundled && !slices.Contains(additional, name) {
-				return fmt.Errorf("yaml: unknown tool %q in tools; it names no bundled or registered tool provider", name)
-			}
 		}
 	}
 	for _, lint := range lints {
@@ -66,6 +61,29 @@ func ValidateRuleNames(config *Config, additional ...string) error {
 						return err
 					}
 				}
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateToolNames binds every tools.<name> entry, including those of file
+// overrides, to a bundled tool provider or to one of providers, the rule
+// names of the tool providers registered by this invocation.
+func ValidateToolNames(config *Config, providers ...string) error {
+	if config == nil {
+		return nil
+	}
+	tools := []ToolsConfig{config.Tools}
+	for _, override := range config.Overrides {
+		if override.Tools != nil {
+			tools = append(tools, *override.Tools)
+		}
+	}
+	for _, entries := range tools {
+		for _, name := range slices.Sorted(maps.Keys(entries)) {
+			if _, bundled := toolProviders()[name]; !bundled && !slices.Contains(providers, name) {
+				return fmt.Errorf("yaml: unknown tool %q in tools; it names no bundled or registered tool provider", name)
 			}
 		}
 	}

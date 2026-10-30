@@ -1,12 +1,6 @@
 package config
 
-import (
-	"slices"
-	"strings"
-	"testing"
-
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
-)
+import "testing"
 
 func TestShellcheckConfigValidation(t *testing.T) {
 	for _, value := range []string{
@@ -32,66 +26,5 @@ func TestShellcheckConfigValidation(t *testing.T) {
 		if _, err := Parse([]byte("tools: {shellcheck: " + value + "}")); err == nil {
 			t.Errorf("accepted %s", value)
 		}
-	}
-}
-
-func TestShellcheckOptionalCheckShorthand(t *testing.T) {
-	for _, value := range []string{"all", "true", "True", "TRUE", "[all]", "'all'", "&all all", "{<<: {enable: true}}"} {
-		settings := "{enable: " + value + "}"
-		if strings.HasPrefix(value, "{") {
-			settings = value
-		}
-		cfg, err := Parse([]byte("tools: {shellcheck: {enabled: false, config: " + settings + "}}"))
-		if err != nil {
-			t.Fatalf("%s: %v", value, err)
-		}
-		tool := cfg.Tools["shellcheck"]
-		if tool.Enabled == nil || *tool.Enabled {
-			t.Fatalf("%s enabled tool", value)
-		}
-		inline, err := toolconfig.ParseShellcheckConfig(tool.Config.Inline())
-		if err != nil {
-			t.Fatalf("%s: %v", value, err)
-		}
-		if !slices.Equal(inline.Enable, []string{"all"}) {
-			t.Fatalf("%s: %v", value, inline.Enable)
-		}
-		directives, err := inline.Directives()
-		if err != nil || directives != "# shellcheck enable=all\n" {
-			t.Fatalf("%s: %q, %v", value, directives, err)
-		}
-	}
-	for _, value := range []string{"false", "'true'", "quote-safe-variables", "42"} {
-		if _, err := Parse([]byte("tools: {shellcheck: {config: {enable: " + value + "}}}")); err == nil {
-			t.Fatalf("accepted %s", value)
-		}
-	}
-}
-
-func TestShellcheckShorthandFormatsAndInheritance(t *testing.T) {
-	for filename, source := range map[string]string{
-		"actionlint.yaml": "tools: {shellcheck: {config: {enable: true}}}",
-		"actionlint.json": `{"tools":{"shellcheck":{"config":{"enable":"all"}}}}`,
-		"actionlint.toml": "tools.shellcheck.config.enable = true",
-	} {
-		t.Run(filename, func(t *testing.T) {
-			dir := t.TempDir()
-			base := writeConfig(t, dir, filename, source)
-			cfg, err := Load(base)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if inline, err := toolconfig.ParseShellcheckConfig(cfg.Tools["shellcheck"].Config.Inline()); err != nil || !slices.Equal(inline.Enable, []string{"all"}) {
-				t.Fatalf("%s: %+v, %v", filename, cfg, err)
-			}
-			child := writeConfig(t, dir, "child.yaml", "extends: ["+filename+"]\ntools: {shellcheck: {config: {enable: []}}}")
-			cfg, err = Load(child)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if inline, err := toolconfig.ParseShellcheckConfig(cfg.Tools["shellcheck"].Config.Inline()); err != nil || len(inline.Enable) != 0 {
-				t.Fatalf("list did not clear inherited checks: %+v, %v", cfg, err)
-			}
-		})
 	}
 }

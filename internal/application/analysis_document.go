@@ -99,6 +99,9 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err := repoconfig.ValidateRuleNames(cfg, names...); err != nil {
 		return nil, nil, err
 	}
+	if err := repoconfig.ValidateToolNames(projectConfig, toolNames(s.tools)...); err != nil {
+		return nil, nil, err
+	}
 	cfg = repoconfig.ResolveRules(s.rulePresets, cfg, s.toolDescriptors...)
 	registrations, err := checks.ConfigureAnalyzers(cfg, s.analyzers)
 	if err != nil {

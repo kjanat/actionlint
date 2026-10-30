@@ -313,12 +313,13 @@ lint:
 
 Ruff validates `config` using its native options, including nested `lint` settings and rule-specific options. Omission or null selects the engine's default for an option.
 
-The legacy flat `target-version`, `select` and `ignore` keys are shorthands for the
-same keys under `config`; setting one both ways is an error. `select` and `ignore`
+The legacy flat `target-version`, `select` and `ignore` keys are shorthands for
+`config.target-version`, `config.lint.select` and `config.lint.ignore`. `select` and `ignore`
 accept Ruff codes or prefixes. The selected
 engine validates them, including preview selectors when `config.preview` is enabled.
-Lists replace inherited lists. `select` and `ignore` replace the corresponding lists in
-`config.lint`.
+Lists replace inherited lists. Flat `select` and `ignore` replace the corresponding lists in
+`config.lint`. For Python targets, `config.target-version` takes precedence over the flat setting.
+Ruff's own top-level `config.select` and `config.ignore` stay native Ruff options.
 `select: []` selects no lint rules (Python syntax errors can still be reported).
 If no target is configured, actionlint infers it from a versioned interpreter such as
 `python3.9`. The selected engine checks whether it supports that version. Without a
@@ -354,7 +355,8 @@ The browser playground cannot run external tools.
 ## Tool execution backends
 
 Each `tools` key is the rule name of a tool provider: the bundled `ruff` and
-`shellcheck`, or a provider a plugin registers. Other names are rejected. Every
+`shellcheck`, or a tool provider a plugin registers. Other names, including those of
+plugin document analyzers, are rejected. Every
 entry accepts `enabled`, `backend` and `config`, and `true` or `false` as a shorthand
 for `enabled`. A bundled provider's schema validates inline `config` settings; a
 string `config` selects a configuration file and is accepted only by tools that

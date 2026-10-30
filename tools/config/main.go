@@ -13,8 +13,8 @@ import (
 	"unicode"
 
 	actionlint "actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/genfile"
+	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
 
 	"github.com/invopop/jsonschema"
 )
@@ -282,8 +282,8 @@ func documentedReflector() (*jsonschema.Reflector, error) {
 	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
-	for _, file := range []string{"command.go", "shellcheck.go"} {
-		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "config", "tools", file), jsonschema.WithFullComment()); err != nil {
+	for _, file := range []string{filepath.Join("internal", "config", "tools", "command.go"), filepath.Join("internal", "tools", "shellcheck", "config.go")} {
+		if err := r.AddGoComments("actionlint.kjanat.dev/v2", file, jsonschema.WithFullComment()); err != nil {
 			return nil, err
 		}
 	}
@@ -344,7 +344,7 @@ func generateShellcheckSchema() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := r.Reflect(toolconfig.ShellcheckConfig{})
+	s := r.Reflect(shellcheck.ShellcheckConfig{})
 	enable, _ := s.Properties.Get("enable")
 	enable.OneOf = append(enable.OneOf, &jsonschema.Schema{Type: "string", Enum: []any{"all"}}, &jsonschema.Schema{Type: "boolean", Enum: []any{true}})
 	enable.Description = enable.OneOf[0].Description

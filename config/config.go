@@ -43,9 +43,7 @@ type (
 	// CommitHashOptions selects exceptions to immutable action references.
 	CommitHashOptions      = lintconfig.CommitHashOptions
 	SelfHostedRunnerConfig = repoconfig.SelfHostedRunnerConfig
-	// ShellcheckConfig is the typed form of inline tools.shellcheck.config settings.
-	ShellcheckConfig   = toolconfig.ShellcheckConfig
-	SuppressionsPolicy = repoconfig.SuppressionsPolicy
+	SuppressionsPolicy     = repoconfig.SuppressionsPolicy
 	// ToolsConfig configures tool providers keyed by rule name, such as ruff or shellcheck.
 	ToolsConfig = repoconfig.ToolsConfig
 	// ToolConfig configures one tool provider.
@@ -109,16 +107,9 @@ func ToolConfigPath(path string) (*ToolSettings, error) {
 	return repoconfig.ToolConfigPath(path)
 }
 
-// ToolConfigInline selects inline tool settings and owns a copy of their values.
-func ToolConfigInline(values map[string]any) (*ToolSettings, error) {
-	return repoconfig.ToolConfigInline(values)
-}
-
-// ShellcheckConfigInline validates typed ShellCheck settings and selects them inline.
-func ShellcheckConfigInline(settings ShellcheckConfig) (*ToolSettings, error) {
-	values, err := settings.Values()
-	if err != nil {
-		return nil, err
-	}
-	return repoconfig.ToolConfigInline(values)
+// ToolConfigInline selects inline settings for the tool provider named tool
+// and owns a copy of their values. A bundled provider's configuration schema
+// validates them, as it validates tools.<tool>.config.
+func ToolConfigInline(tool string, values map[string]any) (*ToolSettings, error) {
+	return repoconfig.ToolConfigInline(tool, values)
 }

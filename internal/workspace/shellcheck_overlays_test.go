@@ -3,11 +3,11 @@ package workspace_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
@@ -88,11 +88,8 @@ func TestShellcheckConfigOverlayOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inline, err := toolconfig.ParseShellcheckConfig(cfg.Tools["shellcheck"].Config.Inline())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Tools["shellcheck"].Enabled != nil || len(inline.Disable) != 0 || len(inline.Enable) != 1 {
+	inline := cfg.Tools["shellcheck"].Config.Inline()
+	if cfg.Tools["shellcheck"].Enabled != nil || !reflect.DeepEqual(inline, map[string]any{"disable": []any{}, "enable": []any{"all"}}) {
 		t.Fatalf("incorrect overlay: %+v", cfg.Tools["shellcheck"])
 	}
 	for _, pointer := range []string{"/tools/shellcheck/enabled", "/tools/shellcheck/config/disable"} {

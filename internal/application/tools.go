@@ -6,11 +6,23 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
+	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
 type ToolRequirements = workspace.ExternalToolRequirements
+
+// toolNames lists the rule names of registered tool providers. Unlike the
+// rule names configuration loading binds, it holds no document analyzer, so
+// tools.<name> entries bind to tool providers only.
+func toolNames(registrations []tools.Registration) []string {
+	names := make([]string, 0, len(registrations))
+	for _, registration := range registrations {
+		names = append(names, registration.Descriptor.Name)
+	}
+	return names
+}
 
 // RequiredTools resolves configuration without parsing sources or loading runtimes.
 func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRequirements, error) {
@@ -39,7 +51,11 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	if err != nil {
 		return ToolRequirements{}, err
 	}
+	providers := toolNames(options.Tools)
 	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Descriptors: descriptors, Required: func(cfg, project *repoconfig.Config, inside bool) ([]string, error) {
+		if err := repoconfig.ValidateToolNames(project, providers...); err != nil {
+			return nil, err
+		}
 		var names []string
 		for _, r := range options.Tools {
 			if r.NeedsProcess == nil {

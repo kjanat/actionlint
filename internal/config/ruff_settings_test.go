@@ -27,7 +27,12 @@ func TestRuffConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		before, after := cfg.Tools["ruff"].Config.Inline(), again.Tools["ruff"].Config.Inline()
+		// Flat select and ignore fold into lint.select and lint.ignore.
+		before, _ := cfg.Tools["ruff"].Config.Inline()["lint"].(map[string]any)
+		after, _ := again.Tools["ruff"].Config.Inline()["lint"].(map[string]any)
+		if (before == nil) != (after == nil) {
+			t.Fatal("lint settings changed in a round trip")
+		}
 		if before["select"] != nil && after["select"] == nil {
 			t.Fatal("empty selection was lost")
 		}
@@ -108,7 +113,7 @@ func TestRuffSelectorConfiguration(t *testing.T) {
 				setting := "ruff: {" + key + ": ['" + tc.selector + "']}"
 				for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
 					_, err := repoconfig.Parse([]byte(text))
-					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.config: at /"+key+"/0: minLength")) {
+					if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.config: at /lint/"+key+"/0: minLength")) {
 						t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 					}
 				}

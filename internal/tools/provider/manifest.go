@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/tools/provider/configschema"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -73,14 +74,26 @@ type Manifest struct {
 	Capabilities Capabilities `json:"capabilities"`
 	// ConfigSchema validates tools.<name>.config for every transport.
 	ConfigSchema json.RawMessage `json:"config_schema,omitempty"`
-	// ConfigShorthands lists ConfigSchema properties users may also write
-	// directly under tools.<name>; the host folds them into tools.<name>.config.
-	ConfigShorthands []string `json:"config_shorthands,omitempty"`
+	// ConfigShorthands maps keys users may also write directly under
+	// tools.<name> to the ConfigSchema property they set. The host folds them
+	// into tools.<name>.config while decoding.
+	ConfigShorthands map[string]ConfigShorthand `json:"config_shorthands,omitempty"`
 	// Process is present exactly when Transport is TransportProcess.
 	Process *ProcessSpec `json:"process,omitempty"`
 	// Integration names the managed document-analyzer contract a component
 	// provides on the deprecated managed route.
 	Integration *Integration `json:"integration,omitempty"`
+}
+
+// ConfigShorthand is a key written directly under tools.<name> that sets one
+// property of the provider's configuration. Its type lives in the leaf
+// configschema package, which configuration decoding shares.
+type ConfigShorthand = configschema.Shorthand
+
+// ReadsConfigFiles reports whether the provider reads native configuration
+// files, so tools.<name>.config may name a path instead of inline settings.
+func (m Manifest) ReadsConfigFiles() bool {
+	return m.Process != nil && m.Process.ConfigFiles != nil && len(m.Process.ConfigFiles.Names) > 0
 }
 
 // Artifact is one content-addressed file for one platform.

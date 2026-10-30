@@ -110,15 +110,12 @@ func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 		if config.DiagnosticLevel(script.Config, "ruff") == "off" {
 			continue
 		}
-		settings, err := configFor(script.Config)
-		if err != nil {
-			failure = errors.Join(failure, err)
-			continue
-		}
+		settings := configFor(script.Config)
 		if settings.Enabled != nil && !*settings.Enabled {
 			continue
 		}
 		checker := r.checker
+		var err error
 		if r.forConfig != nil {
 			var ok bool
 			checker, ok = checkers[script.Config]

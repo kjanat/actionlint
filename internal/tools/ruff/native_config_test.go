@@ -30,10 +30,7 @@ func TestNativeConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	config, err := configFor(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	config := configFor(cfg)
 	native, err := nativeArguments(config)
 	if err != nil {
 		t.Fatal(err)
