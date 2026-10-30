@@ -21,6 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 	"github.com/fatih/color"
@@ -45,7 +46,7 @@ func Actionlint(src []byte) ([]byte, error) {
 		}
 	}
 	root = project.RootDir()
-	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
+	result, err := application.Analyze(context.Background(), application.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}})}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err
 	}

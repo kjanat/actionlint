@@ -12,8 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/ruff"
-	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -27,8 +26,8 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 		name         string
 		registration tools.Registration
 	}{
-		{"ruff", (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()},
-		{"shellcheck", (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()},
+		{"ruff", providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})},
+		{"shellcheck", providerRegistration(t, "shellcheck", backend.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -81,8 +80,8 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 		name, shell, source, filename string
 		registration                  tools.Registration
 	}{
-		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()},
-		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()},
+		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})},
+		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", backend.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			backend := &inputReplacementBackend{}

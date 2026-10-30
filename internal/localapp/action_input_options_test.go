@@ -15,8 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
-	"actionlint.kjanat.dev/v2/internal/tools/ruff"
-	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
+	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	"actionlint.kjanat.dev/v2/rule"
 )
 
@@ -66,8 +65,8 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 		name, shell, base, nested string
 		registration              tools.Registration
 	}{
-		{"ruff", "python", "target-version: py312\n      select: [F]\n      config: {line-length: 99}", "target-version: py313\n          select: [E4]\n          config: {line-length: 120}", (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()},
-		{"shellcheck", "bash", "config: {shell: dash, disable: [SC2086], enable: [check-unassigned-uppercase]}", "config: {shell: bash, disable: [SC2046], enable: [check-unassigned-uppercase]}", (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()},
+		{"ruff", "python", "target-version: py312\n      select: [F]\n      config: {line-length: 99}", "target-version: py313\n          select: [E4]\n          config: {line-length: 120}", providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})},
+		{"shellcheck", "bash", "config: {shell: dash, disable: [SC2086], enable: [check-unassigned-uppercase]}", "config: {shell: bash, disable: [SC2046], enable: [check-unassigned-uppercase]}", providerRegistration(t, "shellcheck", backend.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()

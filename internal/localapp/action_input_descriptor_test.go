@@ -16,18 +16,30 @@ import (
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
-	"actionlint.kjanat.dev/v2/internal/tools/ruff"
-	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
+	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/rule"
 )
+
+// providerRegistration returns the registration of the bundled provider
+// named name, run as selection says.
+func providerRegistration(t *testing.T, name string, selection backend.Selection) tools.Registration {
+	t.Helper()
+	for _, registration := range registry.Registrations(registry.Selections{name: selection}) {
+		if registration.Descriptor.Name == name {
+			return registration
+		}
+	}
+	t.Fatalf("no bundled provider %s", name)
+	return tools.Registration{}
+}
 
 func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 	for _, tc := range []struct {
 		name, shell  string
 		registration tools.Registration
 	}{
-		{"ruff", "python", (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()},
-		{"shellcheck", "bash", (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()},
+		{"ruff", "python", providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})},
+		{"shellcheck", "bash", providerRegistration(t, "shellcheck", backend.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			engine := &inputReplacementBackend{}
@@ -74,7 +86,7 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	registration := (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()
+	registration := providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})
 	result, err := Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -117,9 +129,9 @@ func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			registration := (ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()
+			registration := providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})
 			if name == "shellcheck" {
-				registration = (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()
+				registration = providerRegistration(t, "shellcheck", backend.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})
 			}
 			_, err = Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
 			if err == nil || !strings.Contains(err.Error(), `does not match tool "`+name+`"`) {
@@ -175,7 +187,7 @@ func (pythonInputBackend) Check(_ context.Context, request analyzer.ScriptReques
 }
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
 	plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: pythonInputBackend{}, descriptor: analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: analyzer.TemplateEffectsContract, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
-	options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{(ruff.Options{Command: "ruff", Process: &processconfig.Options{Optional: true}}).Registration()}})
+	options, err := plugins.configure(application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +241,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					}
 				}
 				activeRuff := &inputReplacementBackend{}
-				shell := (shellcheck.Options{Command: "shellcheck", Process: &processconfig.Options{Optional: true}}).Registration()
+				shell := providerRegistration(t, "shellcheck", backend.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})
 				failedBuilds := 0
 				if mode == "failed-optional" {
 					shell.Build = func(tools.Context) (tools.Runner, error) {
@@ -239,14 +251,16 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					shell.Required = func(tools.Context) bool { return false }
 				}
 				loads := 0
-				_, err := application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{backend.Configure((ruff.Options{Backend: activeRuff}).Registration()), backend.Configure(shell)}, LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
+				_, err := application.Check(t.Context(), application.Options{WorkingDir: root, Tools: []tools.Registration{providerRegistration(t, "ruff", backend.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) {
 					loads++
 					if failure == "missing" {
 						return nil, errors.New("override module missing")
 					}
 					return &selectedInputBackend{descriptor: analyzer.ScriptEngineDescriptor{Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"}, ScriptInputs: []analyzer.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}}, nil
 				}}, application.Input{Kind: application.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
-				if mode == "built" {
+				// The composite action's own configuration enables the tool
+				// even when the calling workflow disables it.
+				if mode == "built" || mode == "caller-disabled" {
 					want := "override module missing"
 					if failure == "conflicting" {
 						want = "conflicting languages"

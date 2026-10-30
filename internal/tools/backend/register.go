@@ -340,8 +340,13 @@ func (t *transports) register(key string, descriptor analyzer.ScriptEngineDescri
 	return key, nil
 }
 
-// templateContract is the template-effects contract an engine declares.
+// templateContract is the template-effects contract an engine declares: the
+// result of its TemplateContract method, as embedding programs' backends
+// declare it, or the contract in its script descriptor.
 func templateContract(engine analyzer.ScriptBackend) string {
+	if declared, ok := engine.(interface{ TemplateContract() string }); ok {
+		return declared.TemplateContract()
+	}
 	if described, ok := engine.(analyzer.DescribedScriptBackend); ok {
 		return described.ScriptDescriptor().TemplateContract
 	}

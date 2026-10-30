@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	"actionlint.kjanat.dev/v2/internal/tools/managed"
@@ -59,8 +60,8 @@ func bundledRegistrations(selections Selections) ([]tools.Registration, error) {
 }
 
 // Defaults returns a selection for every bundled provider that runs the
-// provider's own command from PATH. It panics if the bundled data is
-// invalid.
+// provider's own command from PATH and skips the provider, with a warning,
+// when that command cannot run. It panics if the bundled data is invalid.
 func Defaults() Selections {
 	manifests, err := provider.Bundled()
 	if err != nil {
@@ -68,7 +69,7 @@ func Defaults() Selections {
 	}
 	selections := make(Selections, len(manifests))
 	for _, manifest := range manifests {
-		selections[manifest.Rule.Name] = backend.Selection{Command: manifest.Rule.Name}
+		selections[manifest.Rule.Name] = backend.Selection{Command: manifest.Rule.Name, Process: &processconfig.Options{Optional: true}}
 	}
 	return selections
 }
