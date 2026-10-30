@@ -8,6 +8,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/expression"
 )
 
+// ID names the generic profile in tool provider manifests: it masks
+// templates and passes inline settings through, for tools of any language.
+const ID = "kjanat:actionlint/expression-mask@0.1.0"
+
 // Expressions replaces each ${{ }} template with underscores of the same rune
 // count, keeping its line breaks. Spaces would change the script's syntax,
 // for example `if ${{ contains(xs, s) }}; then`.
