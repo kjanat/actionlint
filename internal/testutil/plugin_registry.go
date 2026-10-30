@@ -128,21 +128,24 @@ func (r *PluginRegistry) Publish(t *testing.T, versions ...string) {
 	r.Files[r.BaseURL+manifestPath] = fmt.Appendf(nil, `{"plugin":{"schema_version":1,"issuer":"https://token.actions.githubusercontent.com","repository_id":"%d","owner_id":"5","provider":"github","repository":%q,"plugin_id":%q},"versions":%s}`, r.RepositoryID, strings.TrimPrefix(r.Name, "github.com/"), r.PluginID, data)
 }
 
-// NewDefaultPluginRegistry provides both official identities without network or
-// guest execution. The minimal component envelopes test installation, not linting.
-func NewDefaultPluginRegistry(t *testing.T) *PluginRegistry {
+// NewDefaultPluginRegistry serves an official plugin identity for each of
+// aliases, in order, without network or guest execution. The minimal component
+// envelopes test installation, not linting.
+func NewDefaultPluginRegistry(t *testing.T, aliases ...string) *PluginRegistry {
 	t.Helper()
-	return NewDefaultPluginRegistryWithArtifact(t, []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	return NewDefaultPluginRegistryWithArtifact(t, []byte{0, 97, 115, 109, 13, 0, 1, 0}, aliases...)
 }
 
-// NewDefaultPluginRegistryWithArtifact serves both default identities with the
-// supplied component, allowing config inspection to load its rule descriptors.
-func NewDefaultPluginRegistryWithArtifact(t *testing.T, wasm []byte) *PluginRegistry {
+// NewDefaultPluginRegistryWithArtifact serves an official plugin identity for
+// each of aliases, in order, with the supplied component, allowing config
+// inspection to load its rule descriptors. The identity at index i has
+// repository ID 10+i.
+func NewDefaultPluginRegistryWithArtifact(t *testing.T, wasm []byte, aliases ...string) *PluginRegistry {
 	t.Helper()
 	r := NewPluginRegistry(t)
 	const base = "https://plugins.actionlint.kjanat.dev/"
-	entries := make([]json.RawMessage, 0, 2)
-	for i, name := range []string{"shellcheck", "ruff"} {
+	entries := make([]json.RawMessage, 0, len(aliases))
+	for i, name := range aliases {
 		part := &PluginRegistry{
 			Files: map[string][]byte{}, BaseURL: base,
 			Name: "github.com/kjanat/actionlint-plugin-" + name, Aliases: []string{name}, RepositoryID: 10 + i, PluginID: name,

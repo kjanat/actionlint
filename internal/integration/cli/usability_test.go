@@ -25,7 +25,7 @@ func TestConfigInitAliases(t *testing.T) {
 		{"config", "--init-config"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			testutil.NewDefaultPluginRegistry(t)
+			testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			commandTestRepo(t)
 			t.Setenv("NO_HYPERLINKS", "1")
 			got := testRunCommand("", args...)
@@ -49,7 +49,7 @@ func TestConfigInitAliases(t *testing.T) {
 func TestConfigInitRelativeHyperlink(t *testing.T) {
 	for _, mode := range []string{"always", "never"} {
 		t.Run(mode, func(t *testing.T) {
-			testutil.NewDefaultPluginRegistry(t)
+			testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			commandTestRepo(t)
 			if err := os.Mkdir("nested", 0700); err != nil {
 				t.Fatal(err)
@@ -79,7 +79,7 @@ func TestConfigInitRelativeHyperlink(t *testing.T) {
 }
 
 func TestConfigInitThroughRepositoryAlias(t *testing.T) {
-	testutil.NewDefaultPluginRegistry(t)
+	testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := t.TempDir()
 	gitRepository(t, root)
 	alias := filepath.Join(t.TempDir(), "checkout")

@@ -15,7 +15,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 	for _, input := range []string{"plugins: []", "plugins: null", "tools: {shellcheck: false, ruff: false}"} {
 		for _, explicit := range []bool{false, true} {
 			t.Run(input+map[bool]string{false: "/discovered", true: "/explicit"}[explicit], func(t *testing.T) {
-				registry := testutil.NewDefaultPluginRegistry(t)
+				registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 				registry.Offline = true
 				root := pluginRepository(t)
 				path := filepath.Join(root, ".github", "actionlint.yaml")

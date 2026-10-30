@@ -12,8 +12,8 @@ import (
 )
 
 func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	path := testutil.WriteFixture(t, root, "app/lib/check.sh", "echo $VALUE\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: test
@@ -40,8 +40,8 @@ runs:
 }
 
 func TestCompositeShellcheckSiblingWorkingDirectory(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, filepath.Dir(root), "shared/value.sh", "VALUE=42\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: test

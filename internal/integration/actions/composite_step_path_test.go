@@ -10,7 +10,7 @@ import (
 )
 
 func TestCompositeDiagnosticStepPaths(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo first\n    - run: echo second\n")
 	result := testutil.Composite(t, root, "- uses: ./local", application.Options{})
 	if len(result.Diagnostics) != 2 {

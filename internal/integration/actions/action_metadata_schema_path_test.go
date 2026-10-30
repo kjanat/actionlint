@@ -29,7 +29,7 @@ func TestActionSchemaQuotedMemberPaths(t *testing.T) {
 		{"case-preserved", "outputs:\n  MixedCase:\n    value: [invalid]\nruns: {using: composite, steps: []}\n", `outputs.MixedCase.value`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			testutil.WriteFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)
 			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
@@ -62,7 +62,7 @@ func TestActionSchemaExpressionPaths(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			testutil.WriteFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\n"+tc.body)
 			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})

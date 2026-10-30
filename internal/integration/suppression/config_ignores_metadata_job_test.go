@@ -31,7 +31,7 @@ runs:
       timeout-minutes: wrong
 `,
 	} {
-		root, _ := testutil.ExecutableFixture(t)
+		root, _ := testutil.ExecutableFixture(t, "shellcheck")
 		testutil.WriteFixture(t, root, "inner/action.yml", metadata)
 		const source = `on: push
 jobs:

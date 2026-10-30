@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
@@ -34,7 +36,10 @@ func WriteFixture(t *testing.T, root, name, content string) string {
 	return path
 }
 
-func ExecutableFixture(t *testing.T) (string, func(...string)) {
+// ExecutableFixture creates a Git repository holding shell scripts with and
+// without the executable bit, and returns its root and a function that runs
+// git there. Its configuration disables the tools named by disabled.
+func ExecutableFixture(t *testing.T, disabled ...string) (string, func(...string)) {
 	t.Helper()
 	git, err := exec.LookPath("git")
 	if err != nil {
@@ -61,25 +66,37 @@ func ExecutableFixture(t *testing.T) (string, func(...string)) {
 	WriteFixture(t, root, "untracked.sh", "#!/bin/sh\n")
 	WriteFixture(t, root, "intent.sh", "#!/bin/sh\n")
 	command("add", "-N", "intent.sh")
-	WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false}\n")
+	config := make([]string, 0, len(disabled))
+	for _, name := range disabled {
+		config = append(config, name+": false")
+	}
+	WriteFixture(t, root, ".github/actionlint.yaml", "tools: {"+strings.Join(config, ", ")+"}\n")
 	return root, command
 }
 
-func RequireShellcheck(t *testing.T) string {
+// RequireTool skips the test unless the command of the bundled provider
+// named name is on PATH, and returns the command's path. It empties the
+// environment variables the provider reads extra options from, such as
+// SHELLCHECK_OPTS, so the host's settings cannot change the test.
+func RequireTool(t *testing.T, name string) string {
 	t.Helper()
-	command, err := exec.LookPath("shellcheck")
+	manifests, err := provider.Bundled()
 	if err != nil {
-		t.Skip("ShellCheck required")
+		t.Fatal(err)
 	}
-	t.Setenv("SHELLCHECK_OPTS", "")
-	return command
-}
-
-func RequireRuff(t *testing.T) string {
-	t.Helper()
-	path, err := exec.LookPath("ruff")
+	index := slices.IndexFunc(manifests, func(m provider.Manifest) bool { return m.Rule.Name == name })
+	if index < 0 || manifests[index].Process == nil {
+		t.Fatalf("no bundled process provider %s", name)
+	}
+	spec := manifests[index].Process
+	path, err := exec.LookPath(spec.Entry)
 	if err != nil {
-		t.Skip("Ruff is not installed")
+		t.Skipf("%s is not installed", spec.Entry)
+	}
+	if spec.UserArgs != nil {
+		for _, variable := range spec.UserArgs.EnvOptions {
+			t.Setenv(variable, "")
+		}
 	}
 	return path
 }

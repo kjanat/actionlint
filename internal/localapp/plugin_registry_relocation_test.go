@@ -12,7 +12,7 @@ import (
 func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 	for _, repositoryID := range []int{11, 99} {
 		t.Run(map[int]string{11: "same publisher", 99: "changed publisher"}[repositoryID], func(t *testing.T) {
-			registry := testutil.NewDefaultPluginRegistry(t)
+			registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			project, err := OpenPluginProject(t.Context(), pluginRepository(t), "", "")
 			if err != nil {
 				t.Fatal(err)

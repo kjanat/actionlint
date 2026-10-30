@@ -57,7 +57,7 @@ func templateDiagnosticLines(script string, firstLine int) []int {
 }
 
 func TestRuffPatternCaptureSkipsOnlyItsScript(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, pattern := range []string{`{"x": x, **${{ 'rest' }}}`, `[*${{ 'rest' }}]`, `${{ 'Widget' }}()`, `Outer(${{ 'Widget' }}())`} {
 		source := `on: push
 jobs:
@@ -83,7 +83,7 @@ jobs:
 }
 
 func TestRuffStatisticsRejected(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -99,7 +99,7 @@ jobs:
 }
 
 func TestRuffFromTemplatePreservesFindings(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, script := range []string{
 		"def generate():\n    yield from ${{ '[]' }}",
 		"def generate():\n    raise (yield from ${{ '[]' }}) from ${{ 'None' }}",
@@ -139,7 +139,7 @@ jobs:
 }
 
 func TestRuffSilentRejected(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, flag := range []string{"--silent", "-s", "-qs"} {
 		source := `on: push
 jobs:
@@ -157,7 +157,7 @@ jobs:
 }
 
 func TestRuffOperatorTemplateSkipsOnlyItsScript(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -180,7 +180,7 @@ jobs:
 }
 
 func TestRuffVersionedShellGrammar(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		config     string
 		wantSyntax bool
@@ -218,7 +218,7 @@ jobs:
 }
 
 func TestRuffOutputRedirectionDoesNotWrite(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, option := range []string{"--output-file", "--output-file=", "-o", "-o=", "-oattached", "-qoattached"} {
 		t.Run(option, func(t *testing.T) {
 			root := t.TempDir()

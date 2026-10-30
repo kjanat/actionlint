@@ -11,7 +11,7 @@ import (
 )
 
 func TestShellcheckRelativeProjectPaths(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("GITHUB_WORKSPACE", "")

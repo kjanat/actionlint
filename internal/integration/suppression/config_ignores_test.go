@@ -72,7 +72,7 @@ func TestReusableIgnoreDisabledRulePolicy(t *testing.T) {
 func TestReusableIgnoreDisabledCompositeRule(t *testing.T) {
 	for _, level := range []string{"off", "error"} {
 		t.Run(level, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "lint: {rules: {correctness: {action: "+level+"}}}\nignores: [{rule: action, file: inner/action.yml, step: validate}]\npolicy: {disallow-suppressions: {report: suppression}}\n")
 			testutil.WriteFixture(t, root, "inner/action.yml", "name: Inner\ndescription: Inner\nruns:\n  using: composite\n  steps:\n    - id: validate\n      shell: bash\n      run: echo '${{ invalid }}'\n")
 			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
@@ -88,7 +88,7 @@ func TestReusableIgnoreDisabledCompositeRule(t *testing.T) {
 }
 
 func TestReusableIgnoreLiteralMissingAction(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "ignores: [{rule: missing-local-action, uses: ./generated}]\n")
 	result := testutil.Composite(t, root, "- uses: ${{ './generated' }}\n  id: generated", application.Options{})
 	if len(result.Diagnostics) != 0 {
@@ -106,7 +106,7 @@ func TestReusableIgnoreMetadataScope(t *testing.T) {
 		{`file: '.github/workflows/**', step: validate`, 1},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nignores: [{rule: action, "+tc.selector+"}]")
 			testutil.WriteFixture(t, root, "inner/action.yml", `name: inner
 description: test

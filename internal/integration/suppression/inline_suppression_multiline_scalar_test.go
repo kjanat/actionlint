@@ -17,7 +17,7 @@ func TestCompositeMultilineScalarSuppression(t *testing.T) {
 		"!!str &script\n        \"echo first\n        ${{ github_repository }}\"",
 	} {
 		t.Run(value, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			metadata := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      # actionlint:ignore-next-line action\n      run: " + value + "\n    - shell: bash\n      run: echo ${{ github_repository }}\n"
 			testutil.WriteFixture(t, root, "inner/action.yml", metadata)
@@ -32,7 +32,7 @@ func TestCompositeMultilineScalarSuppression(t *testing.T) {
 func TestInlineSuppressionRunFirstKey(t *testing.T) {
 	for _, value := range []string{"echo first\n        ${{ github_repository }}", "\"echo first\n        ${{ github_repository }}\""} {
 		t.Run(value, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			metadata := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    # actionlint:ignore-next-line action\n    - run: " + value + "\n      shell: bash\n    - run: echo ${{ github_repository }}\n      shell: bash\n"
 			testutil.WriteFixture(t, root, "inner/action.yml", metadata)
@@ -42,10 +42,10 @@ func TestInlineSuppressionRunFirstKey(t *testing.T) {
 			}
 		})
 	}
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, value := range []string{"echo first\n    $VALUE", "\"echo first\n    $VALUE\""} {
 		t.Run("shellcheck/"+value, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {ruff: false}\n")
 			steps := "# actionlint:ignore-next-line shellcheck\n- run: " + value + "\n  shell: bash\n- run: echo $VALUE\n  shell: bash"
 			result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
@@ -57,10 +57,10 @@ func TestInlineSuppressionRunFirstKey(t *testing.T) {
 }
 
 func TestWorkflowMultilineScalarShellcheckSuppression(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, value := range []string{"echo first\n    $VALUE", "\"echo first\n    $VALUE\"", "'echo first\n    $VALUE'"} {
 		t.Run(value, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {ruff: false}\n")
 			steps := "- shell: bash\n  # actionlint:ignore-next-line shellcheck\n  run: " + value + "\n- shell: bash\n  run: echo $VALUE"
 			result := testutil.Composite(t, root, steps, application.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})

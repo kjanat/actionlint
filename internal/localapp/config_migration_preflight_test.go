@@ -71,7 +71,7 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 }
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	registry.Offline = true
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
@@ -99,7 +99,7 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 }
 
 func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-secrets: []\n")
 	input := application.Input{Kind: application.Files, Paths: []string{
@@ -174,7 +174,7 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 }
 
 func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	registry.Offline = true
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	legacyPath := filepath.Join(root, ".github", "actionlint.yaml")
@@ -200,7 +200,7 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 }
 
 func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	alias := filepath.Join(t.TempDir(), "repo-alias")
 	if err := os.Symlink(root, alias); err != nil {

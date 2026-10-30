@@ -18,7 +18,7 @@ import (
 )
 
 func TestRuffPythonScripts(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		name, defaults, job, shell, script, config, runner string
 		count                                              int
@@ -118,7 +118,7 @@ func TestRuffPythonScripts(t *testing.T) {
 }
 
 func TestRuffSourceMappingAndIsolation(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	testutil.WriteFixture(t, root, "ruff.toml", "[lint]\nignore = ['F821']\n")
 	for _, script := range []string{"|\n          print('é', missing)", "print('é', missing)", `"print('é', missing)"`, "'print(''é'', missing)'"} {
@@ -207,7 +207,7 @@ jobs:
 }
 
 func TestRuffSuppressionAndOverride(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	src := `on: push
 jobs:
   test:
@@ -247,7 +247,7 @@ jobs:
 			source = strings.Replace(source, "value = ${{ github.run_number }}.0", script, 1)
 			result, err := application.Analyze(t.Context(), application.Options{
 				WorkingDir: t.TempDir(),
-				Tools:      registry.Registrations(registry.Selections{"ruff": {Command: testutil.RequireRuff(t)}}),
+				Tools:      registry.Registrations(registry.Selections{"ruff": {Command: testutil.RequireTool(t, "ruff")}}),
 			}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}},
 			)
 			if err != nil {
@@ -278,7 +278,7 @@ jobs:
 			source = strings.ReplaceAll(source, "\n", ending)
 			result, err := application.Analyze(t.Context(), application.Options{
 				WorkingDir: t.TempDir(),
-				Tools:      registry.Registrations(registry.Selections{"ruff": {Command: testutil.RequireRuff(t)}}),
+				Tools:      registry.Registrations(registry.Selections{"ruff": {Command: testutil.RequireTool(t, "ruff")}}),
 			}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}},
 			)
 			if err != nil {
@@ -362,7 +362,7 @@ jobs:
 }
 
 func TestRuffPreviewAndAmbientOutputFile(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	output := testutil.WriteFixture(t, root, "output.json", "keep this content")
 	t.Setenv("RUFF_OUTPUT_FILE", output)
@@ -392,7 +392,7 @@ jobs:
 }
 
 func TestRuffInlineConfigCannotChangeSourceType(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -414,7 +414,7 @@ jobs:
 }
 
 func TestRuffComposite(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	testutil.WriteFixture(t, root, ".github/workflows/ci.yml", testutil.GoodWorkflow)
 	testutil.WriteFixture(t, root, "python-action/action.yml", `name: Python

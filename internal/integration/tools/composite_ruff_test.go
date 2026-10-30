@@ -14,7 +14,7 @@ import (
 )
 
 func TestRuffCompositeAliasConfiguration(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	testutil.WriteFixture(t, root, "python-action/action.yml", `name: Python
 description: test
@@ -66,7 +66,7 @@ runs:
 }
 
 func TestRuffCompositeFileConfiguration(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		name, base, override, script, code string
 	}{

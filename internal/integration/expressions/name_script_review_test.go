@@ -25,7 +25,7 @@ func TestCompositeNameAndScalarDiagnostics(t *testing.T) {
 		{"unknown output", "echo '${{ steps.build.outputs.text }}'", "script-interpolation", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			testutil.WriteFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        "+tc.script+"\n")
 			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
@@ -49,7 +49,7 @@ func TestCompositeInterpolationIndependentOfActionValidation(t *testing.T) {
 	for _, standalone := range []bool{false, true} {
 		for _, level := range []string{"error", "off"} {
 			t.Run(fmt.Sprintf("standalone=%t/%s", standalone, level), func(t *testing.T) {
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {action: off, expression: off, script-interpolation: " + level + "}}}\n"
 				body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ${{ true }}\n"
 				testutil.WriteFixture(t, root, ".github/actionlint.yaml", config)
@@ -82,7 +82,7 @@ func TestCompositeInvalidNamePreservesIndependentScriptFinding(t *testing.T) {
 		"echo '${{ github.ref_name }}' '${{ githbu.ref }}'",
 		"echo '${{ githbu.ref }}' '${{ github.ref_name }}'",
 	} {
-		root, _ := testutil.ExecutableFixture(t)
+		root, _ := testutil.ExecutableFixture(t, "shellcheck")
 		testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 		testutil.WriteFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        "+script+"\n")
 		result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})

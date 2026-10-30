@@ -14,7 +14,7 @@ import (
 )
 
 func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := pluginRepository(t)
 	path := filepath.Join(root, ".github", "actionlint.yaml")
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
@@ -365,7 +365,7 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 }
 
 func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
-	registry := testutil.NewDefaultPluginRegistry(t)
+	registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := pluginRepository(t)
 	path, err := InitializeConfig(t.Context(), root, "2.0.0")
 	if err != nil {
@@ -384,7 +384,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 	for _, name := range []string{testutil.FixturePluginName, "ruff"} {
 		t.Run(name, func(t *testing.T) {
-			registry := testutil.NewDefaultPluginRegistry(t)
+			registry := testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			url := testutil.FixtureRegistryURL
 			if name == "ruff" {

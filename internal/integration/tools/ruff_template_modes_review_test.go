@@ -15,7 +15,7 @@ import (
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, B018]}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ jobs:
 }
 
 func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {target-version: py314}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ jobs:
 }
 
 func TestRuffAPINonDiagnosticModes(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:

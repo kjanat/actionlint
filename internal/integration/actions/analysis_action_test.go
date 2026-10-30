@@ -132,7 +132,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 }
 
 func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	manifest := strings.Replace(testutil.CompositeAction, "echo ok", "./bad.sh", 1)
 	testutil.WriteFixture(t, root, "action.yml", manifest)
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: ./\n"

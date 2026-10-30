@@ -15,7 +15,7 @@ import (
 )
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -84,8 +84,8 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 }
 
 func TestCompositeCheckoutAlternateRefMetadata(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test

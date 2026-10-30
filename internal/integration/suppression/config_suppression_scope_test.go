@@ -10,7 +10,7 @@ import (
 )
 
 func TestMetadataSuppressionAliasConfigurations(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "inner/index.js", "console.log('ok');\n")
 	testutil.WriteFixture(t, root, "inner/action.yml", `name: inner # actionlint:ignore action --
 description: test
@@ -47,7 +47,7 @@ func TestMetadataSuppressionIgnoresWorkflowOptions(t *testing.T) {
       run: echo ok`} {
 		for _, directive := range []string{"# actionlint:ignore action --", "# actionlint:ignore action -- reviewed"} {
 			t.Run(runtime+directive, func(t *testing.T) {
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := `lint:
   rules:
     policy:

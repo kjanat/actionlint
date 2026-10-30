@@ -12,7 +12,7 @@ import (
 )
 
 func TestReusableIgnoreSourcedFile(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, composite := range []bool{false, true} {
 		for _, tc := range []struct {
 			selector string
@@ -26,7 +26,7 @@ func TestReusableIgnoreSourcedFile(t *testing.T) {
 			{"file: local/action.yml", 1},
 		} {
 			t.Run(fmt.Sprintf("composite=%t/%s", composite, tc.selector), func(t *testing.T) {
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\nignores: [{rule: shellcheck, "+tc.selector+"}]\n")
 				testutil.WriteFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
 				steps := "- run: . ./scripts/check.sh\n  id: lint\n  shell: bash\n  working-directory: ."

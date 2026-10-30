@@ -29,7 +29,7 @@ runs:
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, `did you mean "github.repository"?`) || findings[0].Path != "action.yml" || findings[0].Start.Line != 6 {
 		t.Fatalf("metadata suggestion lost diagnostic or position: %v", findings)
 	}
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "inner/action.yml", source)
 	testutil.WriteFixture(t, root, "outer/action.yml", "name: outer\ndescription: outer\nruns:\n  using: composite\n  steps:\n    - uses: ./inner\n")
 	result := testutil.Composite(t, root, "- uses: ./outer", application.Options{})
@@ -46,7 +46,7 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 		{"${{ runner_os }}", `did you mean "runner.os"?`},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\ninputs:\n  github_repository:\n    description: repository\nruns:\n  using: composite\n  steps:\n    - run: echo '"+tc.expression+"'\n      shell: bash\n")
 			result := testutil.Composite(t, root, "- uses: ./inner", application.Options{})
 			if tc.want == "" {
@@ -66,7 +66,7 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 }
 
 func TestCompositeInjectionSurvivesExpressionError(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "inner/action.yml", `name: inner
 description: test
 runs:

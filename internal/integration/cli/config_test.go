@@ -64,7 +64,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testutil.NewDefaultPluginRegistryWithArtifact(t, wasm)
+	testutil.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
 	commandTestRepo(t)
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
 		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)
@@ -181,7 +181,7 @@ lint:
 }
 
 func TestCommandConfigAndEmptyArgs(t *testing.T) {
-	testutil.NewDefaultPluginRegistry(t)
+	testutil.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	t.Setenv("NO_COLOR", "1")
 	t.Chdir(t.TempDir())
 	gitRepository(t, ".")

@@ -27,8 +27,8 @@ jobs:
 }
 
 func TestReusableIgnoresAliasedSourcedShellcheck(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "scripts/check.sh", "echo $VALUE\n")
 	const source = `on: push
 jobs:

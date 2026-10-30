@@ -34,7 +34,7 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				metadata := "name: inner\ndescription: test\ninputs:\n  custom_name:\n    description: custom\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      " + tc.declaration + "\n"
 				testutil.WriteFixture(t, root, "inner/action.yml", strings.ReplaceAll(metadata, "\n", ending))

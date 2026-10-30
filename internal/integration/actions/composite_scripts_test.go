@@ -13,10 +13,10 @@ import (
 )
 
 func TestCompositeShellcheck(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, filename := range []string{"action.yml", "action.yaml"} {
 		t.Run(filename, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 			metadata := testutil.WriteFixture(t, root, ".github/actions/lint/"+filename, `name: lint
 description: test
@@ -45,7 +45,7 @@ runs:
 }
 
 func TestCompositeShellcheckActionPaths(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
+	command := testutil.RequireTool(t, "shellcheck")
 	t.Setenv("GITHUB_WORKSPACE", "")
 	foreign := t.TempDir()
 	t.Setenv("GITHUB_ACTION_PATH", foreign)
@@ -56,7 +56,7 @@ func TestCompositeShellcheckActionPaths(t *testing.T) {
 		`{source-path: ["${{ github.action_path }}/lib"]}`,
 	} {
 		t.Run(selection, func(t *testing.T) {
-			root, _ := testutil.ExecutableFixture(t)
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: "+selection+"}}\n")
 			outerRC := testutil.WriteFixture(t, root, "outer/.shellcheckrc", "disable=SC2086\n")
 			innerRC := testutil.WriteFixture(t, root, "inner/.shellcheckrc", "# Inner action keeps SC2086 enabled.\n")
@@ -105,8 +105,8 @@ runs:
 }
 
 func TestCompositeSyntaxAndNestedActions(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "outer/action.yml", `name: outer
 description: test
@@ -140,7 +140,7 @@ runs:
 }
 
 func TestCompositeExecutableBit(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -223,8 +223,8 @@ runs:
 }
 
 func TestConditionalCompositeRetainsStaticChecks(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	inner := testutil.WriteFixture(t, root, "inner/action.yml", `name: inner
 description: test
@@ -274,8 +274,8 @@ runs:
 }
 
 func TestCompositeScriptConfig(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -297,8 +297,8 @@ runs:
 }
 
 func TestCompositeShellcheckWorkingDirectory(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "scripts/lib.sh", "if then\n")
 	testutil.WriteFixture(t, root, "lib.sh", "echo ok\n")
@@ -321,8 +321,8 @@ runs:
 }
 
 func TestCompositeActionPathWorkingDirectory(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "lib.sh", "echo ok\n")
 	testutil.WriteFixture(t, root, "outer/lib.sh", "echo ok\n")
@@ -360,7 +360,7 @@ runs:
 }
 
 func TestCompositeNestedMetadataErrors(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	outer := testutil.WriteFixture(t, root, "outer/action.yml", `name: outer
 description: test
 runs:
@@ -386,7 +386,7 @@ runs:
 }
 
 func TestCompositeExecutionState(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	for _, tc := range []struct {
 		name, actionSteps, workflowSteps string
 		want                             bool
@@ -504,7 +504,7 @@ runs:
 }
 
 func TestCompositeToleratedFailureState(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	for _, setting := range []string{"true", "${{ github.event_name == 'push' }}", "false", "${{ false }}"} {
 		t.Run(setting, func(t *testing.T) {
 			metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
@@ -560,7 +560,7 @@ runs:
 }
 
 func TestCompositeCheckoutEmptyExpressions(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -596,7 +596,7 @@ runs:
 }
 
 func TestCompositeCheckoutActionOutputs(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 outputs:
@@ -626,7 +626,7 @@ runs:
 }
 
 func TestCompositeParallelCheckoutPlacement(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -663,8 +663,8 @@ runs:
 }
 
 func TestCompositeShellcheckRelocatedCheckout(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -688,8 +688,8 @@ runs:
 }
 
 func TestCompositeShellcheckCallerCheckoutState(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -761,7 +761,7 @@ runs:
 }
 
 func TestCompositeCheckoutEmptyPath(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -781,8 +781,8 @@ runs:
 }
 
 func TestCompositeShellcheckUnknownCheckout(t *testing.T) {
-	command := testutil.RequireShellcheck(t)
-	root, _ := testutil.ExecutableFixture(t)
+	command := testutil.RequireTool(t, "shellcheck")
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	testutil.WriteFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test

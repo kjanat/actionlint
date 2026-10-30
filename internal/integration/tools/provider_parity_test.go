@@ -128,7 +128,7 @@ func toolFindings(t *testing.T, result *application.Result, err error, roots map
 // TestProviderParityFixtures runs every workflow fixture through the
 // manifest route.
 func TestProviderParityFixtures(t *testing.T) {
-	shellcheck, ruff := testutil.RequireShellcheck(t), testutil.RequireRuff(t)
+	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
 	snapshots := loadParitySnapshots(t, "fixtures")
 	repository, err := os.Getwd()
 	if err != nil {
@@ -162,7 +162,7 @@ func TestProviderParityFixtures(t *testing.T) {
 // composite actions, sourced files, fixes and suppression through the
 // manifest route.
 func TestProviderParityCases(t *testing.T) {
-	shellcheck, ruff := testutil.RequireShellcheck(t), testutil.RequireRuff(t)
+	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
 	snapshots := loadParitySnapshots(t, "cases")
 	for _, tc := range []struct {
 		name, config, steps string
@@ -240,7 +240,7 @@ func TestProviderParityCases(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			snapshots.assertParity(t, tc.name, func(registrations []tools.Registration) parityDiagnostics {
 				// Each route runs in its own repository.
-				root, _ := testutil.ExecutableFixture(t)
+				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := "tools: {shellcheck: true, ruff: true}\n"
 				if tc.config != "" {
 					config = tc.config

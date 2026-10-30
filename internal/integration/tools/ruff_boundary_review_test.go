@@ -16,7 +16,7 @@ import (
 )
 
 func TestRuffTemplateParenthesisFindings(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, UP034]}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ jobs:
 }
 
 func TestRuffStdinUsesCommandDirectory(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F, INP001]}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -124,7 +124,7 @@ jobs:
 }
 
 func TestRuffAPIIntegrationFlags(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
   test:
@@ -144,7 +144,7 @@ jobs:
 }
 
 func TestRuffRepeatableSelectionFlags(t *testing.T) {
-	command := testutil.RequireRuff(t)
+	command := testutil.RequireTool(t, "ruff")
 	config, err := repoconfig.Parse([]byte("tools: {ruff: {select: [F], ignore: [F401]}}"))
 	if err != nil {
 		t.Fatal(err)

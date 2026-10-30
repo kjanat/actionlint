@@ -12,7 +12,7 @@ import (
 )
 
 func TestCompositeCheckoutModeIsolation(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	for _, tc := range []struct {
 		name, steps string
 		finding     bool
@@ -68,7 +68,7 @@ func TestCompositeCheckoutModeIsolation(t *testing.T) {
 }
 
 func TestCompositeConditionalSelfRecheckoutPlacement(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t)
+	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := testutil.WriteFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
