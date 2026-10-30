@@ -69,7 +69,9 @@ unknown call, or of handles a helper function receives through an iterator
 parameter. A write into a container whose freshness cannot be proven, such as a
 slice element, also counts the values stored into that container as written.
 Aggregate value copies use
-dominating field stores to recognize detachment before publication. Other flows
+dominating field stores to recognize detachment before publication. A local
+struct copied from another local, such as `w := T{m: map[K]V{}}`, keeps the
+fields stored into that local, so writing `w.m` writes no parameter. Other flows
 are flow-insensitive. The analyzer does not implement a whole-program heap
 analysis; reflection and arbitrary unsafe
 memory operations need separate review. Standard-library bodies are not analyzed;

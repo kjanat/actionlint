@@ -394,23 +394,20 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 			return v
 		}
 	}
-	storedField := func(load *ssa.UnOp) (ssa.Value, bool) {
-		field, ok := load.X.(*ssa.FieldAddr)
-		if !ok {
-			return nil, false
-		}
-		allocation, ok := field.X.(*ssa.Alloc)
-		if !ok {
-			return nil, false
-		}
+	// fieldValue finds the value that field index of allocation holds at
+	// instruction at, from stores in blocks dominating it. A store of the whole
+	// aggregate copied from another local allocation, as SSA emits for
+	// `v := T{f: make(...)}`, takes that allocation's field at the copy.
+	var fieldValue func(allocation *ssa.Alloc, index int, at ssa.Instruction) (ssa.Value, bool)
+	fieldValue = func(allocation *ssa.Alloc, index int, at ssa.Instruction) (ssa.Value, bool) {
 		var blocks []*ssa.BasicBlock
-		for block := load.Block(); block != nil; block = block.Idom() {
+		for block := at.Block(); block != nil; block = block.Idom() {
 			blocks = append(blocks, block)
 		}
 		slices.Reverse(blocks)
 		var value ssa.Value
 		for _, block := range fn.Blocks {
-			if block.Dominates(load.Block()) {
+			if block.Dominates(at.Block()) {
 				continue
 			}
 			for _, instruction := range block.Instrs {
@@ -421,7 +418,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 		}
 		for _, block := range blocks {
 			for _, instruction := range block.Instrs {
-				if instruction == load {
+				if instruction == at {
 					break
 				}
 				store, ok := instruction.(*ssa.Store)
@@ -430,13 +427,29 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 				}
 				if store.Addr == allocation {
 					value = nil
+					if copied, ok := store.Val.(*ssa.UnOp); ok && copied.Op == token.MUL {
+						if source, ok := copied.X.(*ssa.Alloc); ok {
+							value, _ = fieldValue(source, index, copied)
+						}
+					}
 				}
-				if address, ok := store.Addr.(*ssa.FieldAddr); ok && address.X == allocation && address.Field == field.Field {
+				if address, ok := store.Addr.(*ssa.FieldAddr); ok && address.X == allocation && address.Field == index {
 					value = store.Val
 				}
 			}
 		}
 		return value, value != nil
+	}
+	storedField := func(load *ssa.UnOp) (ssa.Value, bool) {
+		field, ok := load.X.(*ssa.FieldAddr)
+		if !ok {
+			return nil, false
+		}
+		allocation, ok := field.X.(*ssa.Alloc)
+		if !ok {
+			return nil, false
+		}
+		return fieldValue(allocation, field.Field, load)
 	}
 	// freshOuter reports outer storage allocated by this call. A value already
 	// in seen is being decided by an enclosing query; a phi is fresh when every

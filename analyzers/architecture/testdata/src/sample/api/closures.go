@@ -218,3 +218,36 @@ func (c SharedCombo) Into(name string, item []byte) SharedCombo { // want "ARC00
 	values[name] = item
 	return SharedCombo{values: values}
 }
+
+// witness := gridWitness{values: map...} builds the literal in a temporary
+// and copies it into witness. The copied map is still the fresh one, so
+// filling it writes no parameter and Grid stays a read-only value handle.
+type Grid struct{ rows [][]byte }
+
+type gridWitness struct{ values map[int][]byte }
+
+func (g Grid) Covers(row []byte) bool {
+	witness := gridWitness{values: map[int][]byte{}}
+	for i, candidate := range g.rows {
+		witness.values[i] = candidate
+	}
+	return len(witness.values[0]) == len(row)
+}
+
+type GridOwner struct{ grid Grid }
+
+func (o *GridOwner) Grid() Grid { return o.grid }
+
+// A variable copied from the receiver shares the receiver's map, so filling
+// it writes the receiver.
+type SharedGrid struct{ values map[int][]byte }
+
+func (g SharedGrid) Fill(item []byte) bool {
+	copied := g
+	copied.values[0] = item
+	return len(copied.values) > 0
+}
+
+type SharedGridOwner struct{ grid SharedGrid }
+
+func (o *SharedGridOwner) Grid() SharedGrid { return o.grid } // want "ARC003: Grid result 1"
