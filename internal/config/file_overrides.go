@@ -112,7 +112,7 @@ func (o Override) MarshalYAML() (any, error) {
 }
 
 func (o Override) matches(path string) bool {
-	return (filefilter.Selection{Includes: o.Includes, Excludes: o.Excludes}).Match(path)
+	return filefilter.MatchPatterns(o.Includes, o.Excludes, path)
 }
 
 func lintConfigNode(config LintConfig) (*yaml.Node, error) {

@@ -39,7 +39,7 @@ func FilterConfigured(path, root string, source []byte, findings []*findingmodel
 				if finding.Rule != ignore.Rule || ignore.Validate(additional...) != nil {
 					continue
 				}
-				if ignore.File != "" && !(filefilter.Selection{Includes: []string{ignore.File}}).Match(file) {
+				if ignore.File != "" && !filefilter.MatchPatterns([]string{ignore.File}, nil, file) {
 					continue
 				}
 				matches := contexts.Match(line, column, ignore.Job, ignore.Step, ignore.Uses)
