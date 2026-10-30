@@ -3,9 +3,11 @@ package application
 import (
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/sourceid"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
@@ -103,10 +105,11 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 		WorkingDir: root,
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			rule := workflowvisit.NewBase("expression-reference", "dependency finding")
-			rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "dependency finding")
-			rule.Errs()[0].Path, rule.Errs()[0].Source = path, dependencySource.Bytes()
-			rule.Errs()[0].Reference = &reference
-			rule.Errs()[0].RawScriptSource = coordinates == source.RawLF
+			finding := findingmodel.At(&workflowlang.Pos{Line: 1, Col: 1}, rule.Name(), "dependency finding")
+			finding.Path, finding.Source = path, dependencySource.Bytes()
+			finding.Reference = &reference
+			finding.RawScriptSource = coordinates == source.RawLF
+			rule.Report(finding)
 			return []workflowvisit.Rule{&rule}
 		},
 	}, workflow, nil, nil, cache)
@@ -132,6 +135,11 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 		return result, err
 	}
 	result.collectDiagnostics()
+	for _, diagnostic := range result.Diagnostics {
+		if !strings.HasSuffix(filepath.ToSlash(diagnostic.Path), dependency) {
+			t.Fatalf("synthetic finding reported at %q, not dependency %q", diagnostic.Path, dependency)
+		}
+	}
 	return result, nil
 }
 
