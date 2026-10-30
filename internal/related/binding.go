@@ -9,13 +9,22 @@ import (
 )
 
 // RejectedError counts withheld related locations, never primary diagnostics.
+// The count is fixed at creation; read it with Count.
 type RejectedError struct {
-	Withheld int
+	withheld int
 	cause    error
 }
 
+// NewRejectedError reports withheld related locations; nil when none were withheld.
+func NewRejectedError(withheld int) error {
+	if withheld <= 0 {
+		return nil
+	}
+	return &RejectedError{withheld: withheld}
+}
+
 func (e *RejectedError) Error() string {
-	message := fmt.Sprintf("admission-rejected: withheld %d related location(s)", e.Withheld)
+	message := fmt.Sprintf("admission-rejected: withheld %d related location(s)", e.withheld)
 	if e.cause != nil {
 		return message + ": " + e.cause.Error()
 	}
@@ -23,8 +32,8 @@ func (e *RejectedError) Error() string {
 }
 func (e *RejectedError) Unwrap() error     { return e.cause }
 func (*RejectedError) Code() string        { return "admission-rejected" }
-func (e *RejectedError) Count() int        { return e.Withheld }
-func (e *RejectedError) relatedCount() int { return e.Withheld }
+func (e *RejectedError) Count() int        { return e.withheld }
+func (e *RejectedError) relatedCount() int { return e.withheld }
 
 // Consolidate exposes the complete count across request bridges and sealed
 // admission while retaining every original operational cause for errors.Is/As.
@@ -54,7 +63,7 @@ func Consolidate(prior error, withheld int) error {
 	if total == 0 {
 		return prior
 	}
-	return &RejectedError{Withheld: total, cause: prior}
+	return &RejectedError{withheld: total, cause: prior}
 }
 
 // Bind applies only the trusted exact-request-path grant. Explicit bindings are
@@ -79,7 +88,7 @@ func Bind(locations []diagnostic.Related, path string, revision source.Revision,
 		kept = append(kept, location)
 	}
 	if count != 0 {
-		return kept, &RejectedError{Withheld: count}
+		return kept, &RejectedError{withheld: count}
 	}
 	return kept, nil
 }
@@ -97,7 +106,7 @@ func BindDiagnostics(findings []diagnostic.Diagnostic, path string, revision sou
 		}
 	}
 	if count != 0 {
-		return &RejectedError{Withheld: count}
+		return &RejectedError{withheld: count}
 	}
 	return nil
 }

@@ -398,7 +398,7 @@ func liftDiagnostic(v wacogo.Val) (diagnostic.Diagnostic, error) {
 		return diagnostic.Diagnostic{}, err
 	}
 	if withheld != 0 {
-		return d, &related.RejectedError{Withheld: withheld}
+		return d, related.NewRejectedError(withheld)
 	}
 	return d, nil
 }
@@ -452,7 +452,7 @@ func liftAnalysisForInput(v wacogo.Val, input *analyzer.Input) ([]diagnostic.Dia
 		diagnostics = append(diagnostics, d)
 	}
 	if withheld != 0 {
-		analysisErr = errors.Join(analysisErr, &related.RejectedError{Withheld: withheld})
+		analysisErr = errors.Join(analysisErr, related.NewRejectedError(withheld))
 	}
 	return diagnostics, analysisErr
 }
