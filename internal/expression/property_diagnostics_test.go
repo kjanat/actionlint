@@ -18,10 +18,10 @@ func TestPropertyDiagnostics(t *testing.T) {
 		t.Run(tc.source, func(t *testing.T) {
 			checker := NewChecker(false, nil)
 			// displayNme is equally close to two declared names: never guess.
-			author := newNamedObjectType(map[string]Type{"displayName": StringType{}, "displayNme2": StringType{}})
-			gh := BuiltinGlobalVariableTypes["github"].DeepCopy().(*ObjectType)
-			gh.Props["event"] = &ArrayType{Elem: NewStrictObjectType(map[string]Type{"author": author})}
-			checker.SetContextTypes(map[string]Type{"github": gh, "env": NewMapObjectType(StringType{})})
+			author := newNamedObjectType(map[string]Type{"displayName": StringType(), "displayNme2": StringType()})
+			gh, _ := BuiltinGlobalVariableTypes["github"].Object()
+			gh = gh.With("event", NewArrayType(NewStrictObjectType(map[string]Type{"author": author.Type()}).Type()).Type())
+			checker.SetContextTypes(map[string]Type{"github": gh.Type(), "env": NewMapObjectType(StringType()).Type()})
 			checker.SetContextAvailability([]string{"github", "env"})
 			node, err := NewParser().Parse(NewLexer(tc.source + "}}"))
 			if err != nil {
@@ -40,17 +40,20 @@ func TestPropertyDiagnostics(t *testing.T) {
 }
 
 func TestCanonicalPropertyNamesSurviveCopies(t *testing.T) {
-	original := newNamedObjectType(map[string]Type{"displayName": StringType{}})
-	for _, object := range []*ObjectType{
-		original.DeepCopy().(*ObjectType),
-		copyEventObject(original),
-		original.Merge(newNamedObjectType(map[string]Type{"otherField": BoolType{}})).(*ObjectType),
+	original := newNamedObjectType(map[string]Type{"displayName": StringType()})
+	merged, _ := original.Type().Merge(newNamedObjectType(map[string]Type{"otherField": BoolType()}).Type()).Object()
+	for _, object := range []ObjectType{
+		original.With("other", BoolType()),
+		original.WithMapped(StringType()),
+		merged,
 	} {
 		if object.PropertyName("displayname") != "displayName" {
-			t.Fatal(object.PropertyNames)
+			t.Fatal(object)
 		}
-		object.SetProperty("DISPLAYNAME", BoolType{})
-		if original.PropertyName("displayname") != "displayName" {
+		if renamed := object.WithProperty("DISPLAYNAME", BoolType()); renamed.PropertyName("displayname") != "DISPLAYNAME" {
+			t.Fatal(renamed)
+		}
+		if original.PropertyName("displayname") != "displayName" || object.PropertyName("displayname") != "displayName" {
 			t.Fatal("copy mutated original spelling")
 		}
 	}

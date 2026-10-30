@@ -140,52 +140,52 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 	"contains": {
 		{
 			Name: "contains",
-			Ret:  BoolType{},
+			Ret:  BoolType(),
 			Params: []Type{
-				StringType{},
-				StringType{},
+				StringType(),
+				StringType(),
 			},
 			IsConstFunc: true,
 		},
 		{
 			Name: "contains",
-			Ret:  BoolType{},
+			Ret:  BoolType(),
 			Params: []Type{
-				&ArrayType{Elem: AnyType{}},
-				AnyType{},
+				NewArrayType(AnyType()).Type(),
+				AnyType(),
 			},
 			IsConstFunc: true,
 		},
 	},
 	"startswith": {{
 		Name: "startsWith",
-		Ret:  BoolType{},
+		Ret:  BoolType(),
 		Params: []Type{
-			StringType{},
-			StringType{},
+			StringType(),
+			StringType(),
 		},
 		IsConstFunc: true,
 	}},
 	"endswith": {{
 		Name: "endsWith",
-		Ret:  BoolType{},
+		Ret:  BoolType(),
 		Params: []Type{
-			StringType{},
-			StringType{},
+			StringType(),
+			StringType(),
 		},
 		IsConstFunc: true,
 	}},
 	"format": {{
 		Name:        "format",
-		Ret:         StringType{},
-		Params:      []Type{StringType{}},
+		Ret:         StringType(),
+		Params:      []Type{StringType()},
 		IsConstFunc: true,
 	}, {
 		Name: "format",
-		Ret:  StringType{},
+		Ret:  StringType(),
 		Params: []Type{
-			StringType{},
-			AnyType{}, // variable length
+			StringType(),
+			AnyType(), // variable length
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
@@ -193,86 +193,86 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 	"join": {
 		{
 			Name:        "join",
-			Ret:         StringType{},
-			Params:      []Type{StringType{}},
+			Ret:         StringType(),
+			Params:      []Type{StringType()},
 			IsConstFunc: true,
 		},
 		{
 			Name:        "join",
-			Ret:         StringType{},
-			Params:      []Type{StringType{}, StringType{}},
+			Ret:         StringType(),
+			Params:      []Type{StringType(), StringType()},
 			IsConstFunc: true,
 		},
 		{
 			Name: "join",
-			Ret:  StringType{},
+			Ret:  StringType(),
 			Params: []Type{
-				&ArrayType{Elem: StringType{}},
-				StringType{},
+				NewArrayType(StringType()).Type(),
+				StringType(),
 			},
 			IsConstFunc: true,
 		},
 		// When the second parameter is omitted, values are concatenated with ','.
 		{
 			Name: "join",
-			Ret:  StringType{},
+			Ret:  StringType(),
 			Params: []Type{
-				&ArrayType{Elem: StringType{}},
+				NewArrayType(StringType()).Type(),
 			},
 			IsConstFunc: true,
 		},
 	},
 	"tojson": {{
 		Name: "toJSON",
-		Ret:  StringType{},
+		Ret:  StringType(),
 		Params: []Type{
-			AnyType{},
+			AnyType(),
 		},
 		IsConstFunc: true,
 	}},
 	"fromjson": {{
 		Name: "fromJSON",
-		Ret:  AnyType{},
+		Ret:  AnyType(),
 		Params: []Type{
-			StringType{},
+			StringType(),
 		},
 		IsConstFunc: true,
 	}},
 	"hashfiles": {{
 		Name: "hashFiles",
-		Ret:  StringType{},
+		Ret:  StringType(),
 		Params: []Type{
-			StringType{},
+			StringType(),
 		},
 		VariableLengthParams: true,
 	}},
 	"success": {{
 		Name:   "success",
-		Ret:    BoolType{},
+		Ret:    BoolType(),
 		Params: []Type{},
 	}},
 	"always": {{
 		Name:   "always",
-		Ret:    BoolType{},
+		Ret:    BoolType(),
 		Params: []Type{},
 	}},
 	"cancelled": {{
 		Name:   "cancelled",
-		Ret:    BoolType{},
+		Ret:    BoolType(),
 		Params: []Type{},
 	}},
 	"failure": {{
 		Name:   "failure",
-		Ret:    BoolType{},
+		Ret:    BoolType(),
 		Params: []Type{},
 	}},
 	"case": {{
 		Name: "case",
-		Ret:  AnyType{},
+		Ret:  AnyType(),
 		Params: []Type{
-			BoolType{},
-			AnyType{},
-			AnyType{},
+			BoolType(),
+			AnyType(),
+			AnyType(),
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
@@ -284,9 +284,9 @@ var BuiltinFuncSignatures = map[string][]*FuncSignature{
 // builtinSecretProps are the secrets which GitHub Actions always provides to a workflow.
 // ACTIONS_STEP_DEBUG and ACTIONS_RUNNER_DEBUG seem supplied from caller of the workflow (#130).
 var builtinSecretProps = map[string]Type{
-	"github_token":         StringType{},
-	"actions_step_debug":   StringType{},
-	"actions_runner_debug": StringType{},
+	"github_token":         StringType(),
+	"actions_step_debug":   StringType(),
+	"actions_runner_debug": StringType(),
 }
 
 // BuiltinGlobalVariableTypes defines types of all global variables. All context variables are
@@ -295,108 +295,105 @@ var BuiltinGlobalVariableTypes = map[string]Type{
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#github-context
 	// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/contexts
 	"github": newNamedObjectType(map[string]Type{
-		"action":                    StringType{},
-		"action_path":               StringType{}, // Note: Composite actions only
-		"action_ref":                StringType{},
-		"action_repository":         StringType{},
-		"action_status":             StringType{}, // Note: Composite actions only
-		"actor":                     StringType{},
-		"actor_id":                  StringType{},
-		"api_url":                   StringType{},
-		"artifact_cache_size_limit": NumberType{}, // Note: Missing from the context reference
-		"artifacts":                 StringType{},
-		"artifacts_list":            StringType{},
-		"base_ref":                  StringType{},
-		"env":                       StringType{},
-		"event":                     NewEmptyObjectType(), // Note: Stricter type check for this payload would be possible
-		"event_name":                StringType{},
-		"event_path":                StringType{},
-		"graphql_url":               StringType{},
-		"head_ref":                  StringType{},
-		"job":                       StringType{},
-		"output":                    StringType{}, // Note: Runner-provided file command path missing from the context reference
-		"path":                      StringType{},
-		"ref":                       StringType{},
-		"ref_name":                  StringType{},
-		"ref_protected":             BoolType{},
-		"ref_type":                  StringType{},
-		"repository":                StringType{},
-		"repository_id":             StringType{},
-		"repository_owner":          StringType{},
-		"repository_owner_id":       StringType{},
-		"repository_visibility":     StringType{}, // Note: Missing from the context reference; documented as an OIDC claim
-		"repositoryUrl":             StringType{},
-		"retention_days":            StringType{},
-		"run_attempt":               StringType{},
-		"run_id":                    StringType{},
-		"run_number":                StringType{},
-		"secret_source":             StringType{},
-		"server_url":                StringType{},
-		"sha":                       StringType{},
-		"state":                     StringType{}, // Note: Runner-provided file command path missing from the context reference
-		"step_summary":              StringType{}, // Note: Runner-provided file command path missing from the context reference
-		"token":                     StringType{},
-		"triggering_actor":          StringType{},
-		"workflow":                  StringType{},
-		"workflow_ref":              StringType{},
-		"workflow_sha":              StringType{},
-		"workspace":                 StringType{},
-	}),
+		"action":                    StringType(),
+		"action_path":               StringType(), // Note: Composite actions only
+		"action_ref":                StringType(),
+		"action_repository":         StringType(),
+		"action_status":             StringType(), // Note: Composite actions only
+		"actor":                     StringType(),
+		"actor_id":                  StringType(),
+		"api_url":                   StringType(),
+		"artifact_cache_size_limit": NumberType(), // Note: Missing from the context reference
+		"artifacts":                 StringType(),
+		"artifacts_list":            StringType(),
+		"base_ref":                  StringType(),
+		"env":                       StringType(),
+		"event":                     NewEmptyObjectType().Type(), // Note: Stricter type check for this payload would be possible
+		"event_name":                StringType(),
+		"event_path":                StringType(),
+		"graphql_url":               StringType(),
+		"head_ref":                  StringType(),
+		"job":                       StringType(),
+		"output":                    StringType(), // Note: Runner-provided file command path missing from the context reference
+		"path":                      StringType(),
+		"ref":                       StringType(),
+		"ref_name":                  StringType(),
+		"ref_protected":             BoolType(),
+		"ref_type":                  StringType(),
+		"repository":                StringType(),
+		"repository_id":             StringType(),
+		"repository_owner":          StringType(),
+		"repository_owner_id":       StringType(),
+		"repository_visibility":     StringType(), // Note: Missing from the context reference; documented as an OIDC claim
+		"repositoryUrl":             StringType(),
+		"retention_days":            StringType(),
+		"run_attempt":               StringType(),
+		"run_id":                    StringType(),
+		"run_number":                StringType(),
+		"secret_source":             StringType(),
+		"server_url":                StringType(),
+		"sha":                       StringType(),
+		"state":                     StringType(), // Note: Runner-provided file command path missing from the context reference
+		"step_summary":              StringType(), // Note: Runner-provided file command path missing from the context reference
+		"token":                     StringType(),
+		"triggering_actor":          StringType(),
+		"workflow":                  StringType(),
+		"workflow_ref":              StringType(),
+		"workflow_sha":              StringType(),
+		"workspace":                 StringType(),
+	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#env-context
-	"env": NewMapObjectType(StringType{}), // env.<env_name>
+	"env": NewMapObjectType(StringType()).Type(), // env.<env_name>
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#job-context
 	"job": NewStrictObjectType(map[string]Type{
-		"check_run_id": NumberType{},
+		"check_run_id": NumberType(),
 		"container": NewStrictObjectType(map[string]Type{
-			"id":      StringType{},
-			"network": StringType{},
-		}),
+			"id":      StringType(),
+			"network": StringType(),
+		}).Type(),
 		"services": NewMapObjectType(
 			NewStrictObjectType(map[string]Type{
-				"id":      StringType{}, // job.services.<service id>.id
-				"network": StringType{},
-				"ports":   NewMapObjectType(StringType{}),
-			}),
-		),
-		"status":              StringType{},
-		"workflow_file_path":  StringType{}, // https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
-		"workflow_ref":        StringType{},
-		"workflow_repository": StringType{},
-		"workflow_sha":        StringType{},
-	}),
+				"id":      StringType(), // job.services.<service id>.id
+				"network": StringType(),
+				"ports":   NewMapObjectType(StringType()).Type(),
+			}).Type(),
+		).Type(),
+		"status":              StringType(),
+		"workflow_file_path":  StringType(), // https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
+		"workflow_ref":        StringType(),
+		"workflow_repository": StringType(),
+		"workflow_sha":        StringType(),
+	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context
-	"steps": NewEmptyStrictObjectType(), // This value will be updated contextually
+	"steps": NewEmptyStrictObjectType().Type(), // This value will be updated contextually
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#runner-context
 	"runner": NewStrictObjectType(map[string]Type{
-		"name":        StringType{},
-		"os":          StringType{},
-		"arch":        StringType{},
-		"temp":        StringType{},
-		"tool_cache":  StringType{},
-		"debug":       StringType{},
-		"environment": StringType{}, // https://github.com/github/docs/issues/32443
-	}),
+		"name":        StringType(),
+		"os":          StringType(),
+		"arch":        StringType(),
+		"temp":        StringType(),
+		"tool_cache":  StringType(),
+		"debug":       StringType(),
+		"environment": StringType(), // https://github.com/github/docs/issues/32443
+	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#secrets-context
-	"secrets": &ObjectType{
-		Props:  maps.Clone(builtinSecretProps),
-		Mapped: StringType{},
-	},
+	"secrets": NewStrictObjectType(builtinSecretProps).WithMapped(StringType()).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#strategy-context
 	"strategy": NewObjectType(map[string]Type{
-		"fail-fast":    BoolType{},
-		"job-index":    NumberType{},
-		"job-total":    NumberType{},
-		"max-parallel": NumberType{},
-	}),
+		"fail-fast":    BoolType(),
+		"job-index":    NumberType(),
+		"job-total":    NumberType(),
+		"max-parallel": NumberType(),
+	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#matrix-context
-	"matrix": NewEmptyStrictObjectType(), // This value will be updated contextually
+	"matrix": NewEmptyStrictObjectType().Type(), // This value will be updated contextually
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#needs-context
-	"needs": NewEmptyStrictObjectType(), // This value will be updated contextually
+	"needs": NewEmptyStrictObjectType().Type(), // This value will be updated contextually
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context
 	// https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
-	"inputs": NewEmptyStrictObjectType(),
+	"inputs": NewEmptyStrictObjectType().Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#vars-context
-	"vars": NewMapObjectType(StringType{}), // vars.<var_name>
+	"vars": NewMapObjectType(StringType()).Type(), // vars.<var_name>
 }
 
 // Semantics Checker
@@ -413,7 +410,6 @@ type Checker struct {
 	vars                  map[string]Type
 	errs                  []*Error
 	varsCopied            bool
-	githubVarCopied       bool
 	untrusted             *UntrustedInputChecker
 	availableContexts     []string
 	availableSpecialFuncs []string
@@ -429,10 +425,9 @@ type Checker struct {
 // selected names and optional checks for this analysis. It may be nil.
 func NewChecker(checkUntrustedInput bool, cfg *Options) *Checker {
 	c := &Checker{
-		funcs:           BuiltinFuncSignatures,
-		vars:            BuiltinGlobalVariableTypes,
-		varsCopied:      false,
-		githubVarCopied: false,
+		funcs:      BuiltinFuncSignatures,
+		vars:       BuiltinGlobalVariableTypes,
+		varsCopied: false,
 	}
 	if cfg != nil {
 		c.checks = cfg.Checks
@@ -485,109 +480,106 @@ func (sema *Checker) ensureVarsCopied() {
 	sema.varsCopied = true
 }
 
-func (sema *Checker) ensureGithubVarCopied() {
-	if sema.githubVarCopied {
-		return
-	}
-	sema.ensureVarsCopied()
-
-	if github := sema.vars["github"]; github != nil {
-		sema.vars["github"] = github.DeepCopy()
-	}
-	sema.githubVarCopied = true
-}
-
 // SetContextTypes replaces the expression's context names and types with a caller-supplied scope.
-// Names are case-insensitive. The Checker copies the map; referenced types follow the same ownership as UpdateMatrix.
+// Names are case-insensitive. The Checker copies the map.
 func (sema *Checker) SetContextTypes(contexts map[string]Type) {
 	sema.vars = make(map[string]Type, len(contexts))
 	for name, ty := range contexts {
 		sema.vars[strings.ToLower(name)] = ty
 	}
 	sema.varsCopied = true
-	sema.githubVarCopied = false
 }
 
 // UpdateMatrix updates matrix object to given object type. Since matrix values change according to
 // 'matrix' section of job configuration, the type needs to be updated.
-func (sema *Checker) UpdateMatrix(ty *ObjectType) {
+func (sema *Checker) UpdateMatrix(ty ObjectType) {
 	sema.ensureVarsCopied()
-	sema.vars["matrix"] = ty
+	sema.vars["matrix"] = ty.Type()
 }
 
 // UpdateSteps updates 'steps' context object to given object type.
-func (sema *Checker) UpdateSteps(ty *ObjectType) {
+func (sema *Checker) UpdateSteps(ty ObjectType) {
 	sema.ensureVarsCopied()
-	sema.vars["steps"] = ty
+	sema.vars["steps"] = ty.Type()
 }
 
 // UpdateNeeds updates 'needs' context object to given object type.
-func (sema *Checker) UpdateNeeds(ty *ObjectType) {
+func (sema *Checker) UpdateNeeds(ty ObjectType) {
 	sema.ensureVarsCopied()
-	sema.vars["needs"] = ty
+	sema.vars["needs"] = ty.Type()
 }
 
 // UpdateSecrets updates 'secrets' context object to given object type. The strictness of the
 // given type is preserved, so an open type keeps allowing unknown secret names.
-func (sema *Checker) UpdateSecrets(ty *ObjectType) {
+func (sema *Checker) UpdateSecrets(ty ObjectType) {
 	sema.ensureVarsCopied()
 
 	// Merges automatically supplied secrets with manually defined secrets.
-	copied := &ObjectType{Props: maps.Clone(builtinSecretProps), Mapped: ty.Mapped, PropertyNames: maps.Clone(ty.PropertyNames)}
-	maps.Copy(copied.Props, ty.Props)
-	sema.vars["secrets"] = copied
+	declared := ty.rep()
+	props := maps.Clone(builtinSecretProps)
+	maps.Copy(props, declared.props)
+	sema.vars["secrets"] = ObjectType{&objectData{props: props, mapped: declared.mapped, names: maps.Clone(declared.names)}}.Type()
 }
 
 // UpdateInputs updates 'inputs' context object to given object type.
-func (sema *Checker) UpdateInputs(ty *ObjectType) {
+func (sema *Checker) UpdateInputs(ty ObjectType) {
 	sema.ensureVarsCopied()
-	o, ok := sema.vars["inputs"].(*ObjectType)
-	if !ok || len(o.Props) == 0 && o.IsStrict() {
-		sema.vars["inputs"] = ty
+	o, ok := sema.vars["inputs"].Object()
+	if !ok || o.Len() == 0 && o.IsStrict() {
+		sema.vars["inputs"] = ty.Type()
 		return
 	}
 	// When both `workflow_call` and `workflow_dispatch` are the triggers of the workflow, `inputs` context can be used
 	// by both events. To cover both cases, merge `inputs` contexts into one object type. (#263)
-	sema.vars["inputs"] = o.Merge(ty)
+	sema.vars["inputs"] = o.Type().Merge(ty.Type())
 }
 
 // UpdateDispatchInputs updates 'github.event.inputs' and 'inputs' objects to given object type.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
-func (sema *Checker) UpdateDispatchInputs(ty *ObjectType) {
+func (sema *Checker) UpdateDispatchInputs(ty ObjectType) {
 	sema.UpdateInputs(ty)
 
 	// Update `github.event.inputs`.
 	// Unlike `inputs.*`, type of `github.event.inputs.*` is always String unlike `inputs.*`. We need
 	// to create a new type from `ty` (e.g. {foo: boolean, bar: number} -> {foo: String, bar: String})
 
-	p := make(map[string]Type, len(ty.Props))
-	for n := range ty.Props {
-		p[n] = StringType{}
+	declared := ty.rep()
+	p := make(map[string]Type, len(declared.props))
+	for n := range declared.props {
+		p[n] = StringType()
 	}
-	ty = &ObjectType{Props: p, PropertyNames: maps.Clone(ty.PropertyNames)}
+	inputs := ObjectType{&objectData{props: p, names: maps.Clone(declared.names)}}.Type()
 
-	sema.ensureGithubVarCopied()
-	if gh, ok := sema.vars["github"].(*ObjectType); ok {
-		if ev, ok := gh.Props["event"].(*ObjectType); ok {
-			ev = copyEventObject(ev)
-			ev.Props["inputs"] = ty
-			ev.EventVariants = slices.Clone(ev.EventVariants)
-			for i, variant := range ev.EventVariants {
-				if variant.Event == "workflow_dispatch" {
-					updated := copyEventObject(variant.Payload)
-					updated.Props["inputs"] = ty
-					ev.EventVariants[i].Payload = updated
-				}
-			}
-			gh.Props["event"] = ev
+	gh, ok := sema.vars["github"].Object()
+	if !ok {
+		return
+	}
+	ev, ok := gh.rep().props["event"].Object()
+	if !ok {
+		return
+	}
+	// Payload variants for workflow_dispatch receive the same inputs, so
+	// narrowing github.event by event name keeps them.
+	variants := slices.Clone(ev.rep().variants)
+	for i, variant := range variants {
+		if variant.Event == "workflow_dispatch" {
+			variants[i].Payload = variant.Payload.With("inputs", inputs)
 		}
 	}
+	event := ev.rep()
+	props := maps.Clone(event.props)
+	if props == nil {
+		props = map[string]Type{}
+	}
+	props["inputs"] = inputs
+	updated := ObjectType{&objectData{displayName: event.displayName, props: props, names: event.names, variants: variants, mapped: event.mapped}}
+	sema.vars["github"] = gh.With("event", updated.Type()).Type()
 }
 
 // UpdateJobs updates 'jobs' context object to given object type.
-func (sema *Checker) UpdateJobs(ty *ObjectType) {
+func (sema *Checker) UpdateJobs(ty ObjectType) {
 	sema.ensureVarsCopied()
-	sema.vars["jobs"] = ty
+	sema.vars["jobs"] = ty.Type()
 }
 
 // SetContextAvailability sets available context names while semantics checks. Some contexts limit
@@ -693,21 +685,21 @@ func (sema *Checker) checkVariable(n *VariableNode) Type {
 			for _, sig := range sigs {
 				if len(sig.Params) == 0 {
 					sema.errorf(missingCall, n, "function %q must be called with parentheses; did you mean %q?", name, name+"()")
-					return AnyType{}
+					return AnyType()
 				}
 			}
 			sema.errorf(missingCall, n, "function %q must be called with parentheses and arguments", name)
-			return AnyType{}
+			return AnyType()
 		}
-		if inputs, ok := sema.vars["inputs"].(*ObjectType); ok && inputs.IsStrict() && slices.Contains(sema.availableContexts, "inputs") {
-			if _, declared := inputs.Props[n.Name]; declared {
+		if inputs, ok := sema.vars["inputs"].Object(); ok && inputs.IsStrict() && slices.Contains(sema.availableContexts, "inputs") {
+			if _, declared := inputs.Property(n.Name); declared {
 				sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, "inputs."+n.Name)
-				return AnyType{}
+				return AnyType()
 			}
 		}
 		if suggestion := sema.contextPropertySuggestion(n.Name); suggestion != "" {
 			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
-			return AnyType{}
+			return AnyType()
 		}
 		available := make([]string, 0, len(sema.availableContexts))
 		for _, name := range sema.availableContexts {
@@ -717,14 +709,14 @@ func (sema *Checker) checkVariable(n *VariableNode) Type {
 		}
 		if suggestion := CloseName(n.Name, available); suggestion != "" {
 			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
-			return AnyType{}
+			return AnyType()
 		}
 		ss := make([]string, 0, len(sema.vars))
 		for n := range sema.vars {
 			ss = append(ss, n)
 		}
 		sema.errorf(unknownVariable, n, "undefined variable %q. available variables are %s", n.Token().Value, stringutil.SortedQuotes(ss))
-		return AnyType{}
+		return AnyType()
 	}
 
 	sema.checkAvailableContext(n)
@@ -732,14 +724,16 @@ func (sema *Checker) checkVariable(n *VariableNode) Type {
 }
 
 func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
-	switch ty := sema.check(n.Receiver).(type) {
-	case AnyType:
-		return AnyType{}
-	case *ObjectType:
-		if t, ok := ty.Props[n.Property]; ok {
+	ty := sema.check(n.Receiver)
+	switch ty.Kind() {
+	case KindAny:
+		return AnyType()
+	case KindObject:
+		object, _ := ty.Object()
+		if t, ok := object.Property(n.Property); ok {
 			return t
 		}
-		if ty.Mapped != nil {
+		if mapped, ok := object.Mapped(); ok {
 			if v, ok := n.Receiver.(*VariableNode); ok {
 				switch v.Name {
 				case "vars":
@@ -748,56 +742,56 @@ func (sema *Checker) checkObjectDeref(n *ObjectDerefNode) Type {
 					sema.checkConfigSecrets(n, n.Property)
 				}
 			}
-			return ty.Mapped
+			return mapped
 		}
-		if ty.IsStrict() {
-			if receiver, ok := n.Receiver.(*VariableNode); ok {
-				// User-defined properties can resemble context names without referring
-				// to them, such as inputs.github_token or matrix.runner_os.
-				switch receiver.Name {
-				case "github", "job", "runner", "strategy":
-					if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
-						sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.PropertyName(), suggestion)
-						return AnyType{}
-					}
+		if receiver, ok := n.Receiver.(*VariableNode); ok {
+			// User-defined properties can resemble context names without referring
+			// to them, such as inputs.github_token or matrix.runner_os.
+			switch receiver.Name {
+			case "github", "job", "runner", "strategy":
+				if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
+					sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.PropertyName(), suggestion)
+					return AnyType()
 				}
 			}
-			sema.missingProperty(n, n.Receiver, n.PropertyName(), ty)
 		}
-		return AnyType{}
-	case *ArrayType:
-		if !ty.Deref {
+		sema.missingProperty(n, n.Receiver, n.PropertyName(), object)
+		return AnyType()
+	case KindArray:
+		array, _ := ty.Array()
+		if !array.Deref() {
 			sema.errorf(operandType, n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
-			return AnyType{}
+			return AnyType()
 		}
-		switch et := ty.Elem.(type) {
-		case AnyType:
+		elem := array.Elem()
+		if elem.Kind() == KindAny {
 			// When element type is any, map the any type to any. Reuse `ty`
 			return ty
-		case *ObjectType:
-			// Map element type of delererenced array
-			var elem Type = AnyType{}
-			if t, ok := et.Props[n.Property]; ok {
-				elem = t
-			} else if et.Mapped != nil {
-				elem = et.Mapped
-			} else if et.IsStrict() {
-				sema.missingProperty(n, n.Receiver, n.PropertyName(), et)
-			}
-			return &ArrayType{elem, true}
-		default:
+		}
+		et, ok := elem.Object()
+		if !ok {
 			sema.errorf(operandType,
 				n,
 				"property filtered by %q at object filtering must be type of object but got %q",
 				n.Property,
-				ty.Elem.String(),
+				elem.String(),
 			)
-			return AnyType{}
+			return AnyType()
 		}
-	default:
-		sema.errorf(operandType, n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
-		return AnyType{}
+		// Map element type of delererenced array
+		mappedElem := AnyType()
+		if t, ok := et.Property(n.Property); ok {
+			mappedElem = t
+		} else if mapped, ok := et.Mapped(); ok {
+			mappedElem = mapped
+		} else {
+			sema.missingProperty(n, n.Receiver, n.PropertyName(), et)
+		}
+		return newFilteredArrayType(mappedElem).Type()
+	case KindNull, KindNumber, KindBool, KindString:
 	}
+	sema.errorf(operandType, n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
+	return AnyType()
 }
 
 // Suggest only explicit properties in contexts available at this expression.
@@ -814,11 +808,11 @@ func ContextPropertySuggestion(name string, contexts []string, variables map[str
 		if !ok {
 			continue
 		}
-		object, ok := variables[context].(*ObjectType)
+		object, ok := variables[context].Object()
 		if !ok {
 			continue
 		}
-		if _, exists := object.Props[property]; !exists {
+		if _, exists := object.Property(property); !exists {
 			continue
 		}
 		if suggestion != "" {
@@ -905,49 +899,50 @@ func (sema *Checker) checkConfigSecrets(n Node, prop string) {
 }
 
 func (sema *Checker) checkArrayDeref(n *ArrayDerefNode) Type {
-	switch ty := sema.check(n.Receiver).(type) {
-	case AnyType:
-		return &ArrayType{AnyType{}, true}
-	case *ArrayType:
-		return &ArrayType{Elem: ty.Elem, Deref: true}
-	case *ObjectType:
+	ty := sema.check(n.Receiver)
+	switch ty.Kind() {
+	case KindAny:
+		return newFilteredArrayType(AnyType()).Type()
+	case KindArray:
+		array, _ := ty.Array()
+		return newFilteredArrayType(array.Elem()).Type()
+	case KindObject:
 		// Object filtering is available for objects, not only arrays (#66)
+		object, _ := ty.Object()
 
-		if ty.Mapped != nil {
+		if mapped, ok := object.Mapped(); ok {
 			// For map object or loose object at receiver of .*
-			switch mty := ty.Mapped.(type) {
-			case AnyType:
-				return &ArrayType{AnyType{}, true}
-			case *ObjectType:
-				return &ArrayType{mty, true}
-			default:
-				sema.errorf(operandType, n, "elements of object at receiver of object filtering `.*` must be type of object but got %q. the type of receiver was %q", mty.String(), ty.String())
-				return AnyType{}
+			switch mapped.Kind() {
+			case KindAny, KindObject:
+				return newFilteredArrayType(mapped).Type()
+			case KindNull, KindNumber, KindBool, KindString, KindArray:
 			}
+			sema.errorf(operandType, n, "elements of object at receiver of object filtering `.*` must be type of object but got %q. the type of receiver was %q", mapped.String(), ty.String())
+			return AnyType()
 		}
 
 		// Payload object filters select scalar members as well as object members.
 		if path := strings.ToLower(eventReference(n.Receiver)); path == "github.event" || strings.HasPrefix(path, "github.event.") || strings.HasPrefix(path, "github.event[") {
-			return &ArrayType{Elem: AnyType{}, Deref: true}
+			return newFilteredArrayType(AnyType()).Type()
 		}
 		// For strict object at receiver of .*
 		found := false
-		for _, t := range ty.Props {
-			if _, ok := t.(*ObjectType); ok {
+		for _, t := range object.Properties() {
+			if t.Kind() == KindObject {
 				found = true
 				break
 			}
 		}
 		if !found {
 			sema.errorf(operandType, n, "object type %q cannot be filtered by object filtering `.*` since it has no object element", ty.String())
-			return AnyType{}
+			return AnyType()
 		}
 
-		return &ArrayType{AnyType{}, true}
-	default:
-		sema.errorf(operandType, n, "receiver of object filtering `.*` must be type of array or object but got %q", ty.String())
-		return AnyType{}
+		return newFilteredArrayType(AnyType()).Type()
+	case KindNull, KindNumber, KindBool, KindString:
 	}
+	sema.errorf(operandType, n, "receiver of object filtering `.*` must be type of array or object but got %q", ty.String())
+	return AnyType()
 }
 
 func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
@@ -957,28 +952,29 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 	// index nodes before visiting operand, the index is recursively checked first.
 	idx := sema.check(n.Index)
 
-	switch ty := sema.check(n.Operand).(type) {
-	case AnyType:
-		return AnyType{}
-	case *ArrayType:
-		switch idx.(type) {
-		case AnyType, NumberType:
-			return ty.Elem
-		default:
-			sema.errorf(operandType, n.Index, "index access of array must be type of number but got %q", idx.String())
-			return AnyType{}
+	ty := sema.check(n.Operand)
+	switch ty.Kind() {
+	case KindAny:
+		return AnyType()
+	case KindArray:
+		array, _ := ty.Array()
+		if k := idx.Kind(); k == KindAny || k == KindNumber {
+			return array.Elem()
 		}
-	case *ObjectType:
-		switch idx.(type) {
-		case AnyType:
-			return AnyType{}
-		case StringType:
+		sema.errorf(operandType, n.Index, "index access of array must be type of number but got %q", idx.String())
+		return AnyType()
+	case KindObject:
+		object, _ := ty.Object()
+		switch idx.Kind() {
+		case KindAny:
+			return AnyType()
+		case KindString:
 			// Index access with String literal like foo['bar']
 			if lit, ok := n.Index.(*StringNode); ok {
-				if prop, ok := ty.Props[strings.ToLower(lit.Value)]; ok {
+				if prop, ok := object.Property(strings.ToLower(lit.Value)); ok {
 					return prop
 				}
-				if ty.Mapped != nil {
+				if mapped, ok := object.Mapped(); ok {
 					if v, ok := n.Operand.(*VariableNode); ok {
 						prop := strings.ToLower(lit.Value)
 						switch v.Name {
@@ -988,24 +984,22 @@ func (sema *Checker) checkIndexAccess(n *IndexAccessNode) Type {
 							sema.checkConfigSecrets(n, prop)
 						}
 					}
-					return ty.Mapped
+					return mapped
 				}
-				if ty.IsStrict() {
-					sema.missingProperty(n, n.Operand, lit.Value, ty)
-				}
+				sema.missingProperty(n, n.Operand, lit.Value, object)
 			}
-			if ty.Mapped != nil {
-				return ty.Mapped
+			if mapped, ok := object.Mapped(); ok {
+				return mapped
 			}
-			return AnyType{} // Fallback
-		default:
-			sema.errorf(operandType, n.Index, "property access of object must be type of string but got %q", idx.String())
-			return AnyType{}
+			return AnyType() // Fallback
+		case KindNull, KindNumber, KindBool, KindObject, KindArray:
 		}
-	default:
-		sema.errorf(operandType, n, "index access operand must be type of object or array but got %q", ty.String())
-		return AnyType{}
+		sema.errorf(operandType, n.Index, "property access of object must be type of string but got %q", idx.String())
+		return AnyType()
+	case KindNull, KindNumber, KindBool, KindString:
 	}
+	sema.errorf(operandType, n, "index access operand must be type of object or array but got %q", ty.String())
+	return AnyType()
 }
 
 func checkFuncSignature(n *FuncCallNode, sig *FuncSignature, args []Type) *Error {
@@ -1148,12 +1142,8 @@ func (sema *Checker) checkCaseBranches(args []Node, remaining bool) (Type, bool)
 		return sema.checkExpressionBranch(args[0], !remaining), remaining
 	}
 	ty := sema.checkExpressionBranch(args[0], !remaining)
-	if remaining && !sema.skipEvaluation {
-		switch ty.(type) {
-		case BoolType, AnyType:
-		default:
-			sema.errorf(operandType, args[0], "case() predicate must be boolean but found %s", ty.String())
-		}
+	if k := ty.Kind(); remaining && !sema.skipEvaluation && k != KindBool && k != KindAny {
+		sema.errorf(operandType, args[0], "case() predicate must be boolean but found %s", ty.String())
 	}
 	value, known := ConditionConstantValue(args[0])
 	predicate, boolean := value.(bool)
@@ -1198,14 +1188,14 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 		}
 		if suggestion := CloseName(callee, candidates); suggestion != "" {
 			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
-			return AnyType{}
+			return AnyType()
 		}
 		ss := make([]string, 0, len(sema.funcs))
 		for n := range sema.funcs {
 			ss = append(ss, n)
 		}
 		sema.calleeErrorf(unknownFunction, n, "undefined function %q. available functions are %s", n.Callee, stringutil.SortedQuotes(ss))
-		return AnyType{}
+		return AnyType()
 	}
 
 	// The runner's expression parser limits these variadic functions to 255 arguments.
@@ -1216,8 +1206,8 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 	if sema.jobCondition && (callee == "success" || callee == "failure") && len(n.Args) > 0 {
 		sigs = []*FuncSignature{{
 			Name:                 callee,
-			Ret:                  BoolType{},
-			Params:               []Type{StringType{}},
+			Ret:                  BoolType(),
+			Params:               []Type{StringType()},
 			VariableLengthParams: true,
 		}}
 	}
@@ -1244,66 +1234,50 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 	// All candidates failed
 	sema.errs = append(sema.errs, errs...)
 
-	return AnyType{}
+	return AnyType()
 }
 
 func (sema *Checker) checkNotOp(n *NotOpNode) Type {
 	ty := sema.check(n.Operand)
-	if !(BoolType{}).Assignable(ty) {
+	if !(BoolType()).Assignable(ty) {
 		sema.errorf(operandType, n, "type of operand of ! operator %q is not assignable to type \"bool\"", ty.String())
 	}
-	return BoolType{}
+	return BoolType()
 }
 
 func validateCompareOpOperands(op CompareOpNodeKind, l, r Type) bool {
 	// Comparison behavior: https://docs.github.com/en/actions/learn-github-actions/expressions#operators
 	switch op {
 	case CompareOpNodeKindEq, CompareOpNodeKindNotEq:
-		switch l := l.(type) {
-		case AnyType, NullType:
+		switch l.Kind() {
+		case KindAny, KindNull:
 			return true
-		case NumberType, BoolType, StringType:
-			switch r.(type) {
-			case *ObjectType, *ArrayType:
-				// These are coerced to NaN hence the comparison result is always false
-				return false
-			default:
-				return true
+		case KindNumber, KindBool, KindString:
+			// Objects and arrays are coerced to NaN hence the comparison result is always false
+			return r.Kind() != KindObject && r.Kind() != KindArray
+		case KindObject:
+			k := r.Kind()
+			return k == KindObject || k == KindNull || k == KindAny
+		case KindArray:
+			if la, ok := l.Array(); ok {
+				if ra, ok := r.Array(); ok {
+					return validateCompareOpOperands(op, la.Elem(), ra.Elem())
+				}
 			}
-		case *ObjectType:
-			switch r.(type) {
-			case *ObjectType, NullType, AnyType:
-				return true
-			default:
-				return false
-			}
-		case *ArrayType:
-			switch r := r.(type) {
-			case *ArrayType:
-				return validateCompareOpOperands(op, l.Elem, r.Elem)
-			case NullType, AnyType:
-				return true
-			default:
-				return false
-			}
-		default:
-			panic("unreachable")
+			k := r.Kind()
+			return k == KindNull || k == KindAny
 		}
+		panic("unreachable")
 	case CompareOpNodeKindLess, CompareOpNodeKindLessEq, CompareOpNodeKindGreater, CompareOpNodeKindGreaterEq:
 		// null, bool, array, and object cannot be compared with these operators
-		switch l.(type) {
-		case AnyType, NumberType, StringType:
-			switch r.(type) {
-			case NullType, BoolType, *ObjectType, *ArrayType:
-				return false
-			default:
-				return true
-			}
-		case NullType, BoolType, *ObjectType, *ArrayType:
+		switch l.Kind() {
+		case KindAny, KindNumber, KindString:
+			k := r.Kind()
+			return k != KindNull && k != KindBool && k != KindObject && k != KindArray
+		case KindNull, KindBool, KindObject, KindArray:
 			return false
-		default:
-			panic("unreachable")
 		}
+		panic("unreachable")
 	case CompareOpNodeKindInvalid:
 		// Invalid operators are not rejected here.
 		fallthrough
@@ -1321,7 +1295,7 @@ func (sema *Checker) checkCompareOp(n *CompareOpNode) Type {
 		sema.errorf(operandType, n, "%q value cannot be compared to %q value with %q operator", l.String(), r.String(), n.Kind.String())
 	}
 
-	return BoolType{}
+	return BoolType()
 }
 
 // checkWithNarrowing checks type of given expression with type narrowing. Type narrowing narrows
@@ -1379,7 +1353,7 @@ func (sema *Checker) checkLogicalOp(n *LogicalOpNode) Type {
 	default:
 		sema.check(n.Left)
 		sema.check(n.Right)
-		return AnyType{}
+		return AnyType()
 	}
 }
 
@@ -1391,13 +1365,13 @@ func (sema *Checker) check(expr Node) Type {
 	case *VariableNode:
 		return sema.checkVariable(e)
 	case *NullNode:
-		return NullType{}
+		return NullType()
 	case *BoolNode:
-		return BoolType{}
+		return BoolType()
 	case *StringNode:
-		return StringType{}
+		return StringType()
 	case *IntNode, *FloatNode:
-		return NumberType{}
+		return NumberType()
 	case *ObjectDerefNode:
 		return sema.checkObjectDeref(e)
 	case *ArrayDerefNode:

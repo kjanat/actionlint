@@ -52,14 +52,14 @@ const (
 func (t InputType) ExprType() exprlang.Type {
 	switch t {
 	case InputTypeBoolean:
-		return exprlang.BoolType{}
+		return exprlang.BoolType()
 	case InputTypeNumber:
-		return exprlang.NumberType{}
+		return exprlang.NumberType()
 	case InputTypeString:
-		return exprlang.StringType{}
+		return exprlang.StringType()
 	case InputTypeAny:
 	}
-	return exprlang.AnyType{}
+	return exprlang.AnyType()
 }
 
 // String returns the expression type's spelling, as used in diagnostics.

@@ -3,9 +3,9 @@ package expression
 import "testing"
 
 func TestEventGuardNarrowing(t *testing.T) {
-	opened := NewStrictObjectType(map[string]Type{"action": StringType{}, "title": StringType{}})
-	labeled := NewStrictObjectType(map[string]Type{"action": StringType{}, "label": StringType{}})
-	push := NewStrictObjectType(map[string]Type{"commits": &ArrayType{Elem: StringType{}}})
+	opened := NewStrictObjectType(map[string]Type{"action": StringType(), "title": StringType()})
+	labeled := NewStrictObjectType(map[string]Type{"action": StringType(), "label": StringType()})
+	push := NewStrictObjectType(map[string]Type{"commits": NewArrayType(StringType()).Type()})
 	event := NewEventType([]EventVariant{
 		{Event: "issues", Action: "opened", Payload: opened},
 		{Event: "issues", Action: "labeled", Payload: labeled},
@@ -67,7 +67,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 			if _, findings := checker.Check(node); len(findings) != 0 {
 				t.Fatal(findings)
 			}
-			if len(event.EventVariants) != 3 {
+			if len(event.EventVariants()) != 3 {
 				t.Fatal("shared alternatives were mutated")
 			}
 		})
@@ -75,7 +75,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 }
 
 func TestEventGuardEliminatedBranches(t *testing.T) {
-	push := NewStrictObjectType(map[string]Type{"commits": &ArrayType{Elem: StringType{}}})
+	push := NewStrictObjectType(map[string]Type{"commits": NewArrayType(StringType()).Type()})
 	event := NewEventType([]EventVariant{{Event: "push", Payload: push}})
 	for _, source := range []string{
 		"github.event_name == 'issues' && github.event.issue.title",
@@ -103,7 +103,7 @@ func TestEventGuardEliminatedBranches(t *testing.T) {
 			if _, findings := checker.Check(node); len(findings) != 1 {
 				t.Fatalf("guard leaked to next expression: %v", findings)
 			}
-			if len(event.EventVariants) != 1 {
+			if len(event.EventVariants()) != 1 {
 				t.Fatal("shared event variants mutated")
 			}
 		})

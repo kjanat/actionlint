@@ -27,9 +27,9 @@ func (rule *Checker) CheckCompositeScript(step workflowdecl.StepView) {
 	rule.workflow = workflowdecl.WorkflowView{}
 	rule.scriptSources = map[workflowlang.Pos]workflowdecl.ScriptSourceView{}
 	// Caller inputs and previous step outputs have no supplied value/type snapshot.
-	rule.inputsTy = exprlang.NewMapObjectType(exprlang.StringType{})
-	rule.stepsTy = exprlang.NewMapObjectType(exprlang.AnyType{})
-	rule.matrixTy = exprlang.NewMapObjectType(exprlang.AnyType{})
+	rule.inputsTy = new(exprlang.NewMapObjectType(exprlang.StringType()))
+	rule.stepsTy = new(exprlang.NewMapObjectType(exprlang.AnyType()))
+	rule.matrixTy = new(exprlang.NewMapObjectType(exprlang.AnyType()))
 	rule.matrixScriptSafe = nil
 	rule.jobEnv, rule.scriptJob = workflowdecl.EnvView{}, workflowdecl.JobView{}
 	rule.scriptEnv = step.Env()

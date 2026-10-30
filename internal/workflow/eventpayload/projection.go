@@ -17,7 +17,7 @@ type Trigger struct {
 }
 
 // FromTriggers builds a payload type from the selected events and activities.
-func FromTriggers(triggers []Trigger) *expr.ObjectType {
+func FromTriggers(triggers []Trigger) expr.ObjectType {
 	b := builder{cache: map[int]expr.Type{}, active: map[int]bool{}}
 	var selected []expr.EventVariant
 	for _, trigger := range triggers {
@@ -26,19 +26,18 @@ func FromTriggers(triggers []Trigger) *expr.ObjectType {
 			name = "pull_request"
 		}
 		variants, known := payload.Variants(name)
-		var dispatch *expr.ObjectType
+		var dispatch expr.ObjectType
+		hasDispatch := false
 		if trigger.Name == "repository_dispatch" {
 			// OpenAPI indexes this shared schema by an example event_type. That
 			// example is not a restriction on user-defined dispatch activities.
-			var combined expr.Type
+			var combined member
 			for _, action := range slices.Sorted(maps.Keys(variants)) {
 				combined = combine(combined, b.build(variants[action]))
 			}
-			if object, ok := combined.(*expr.ObjectType); ok {
-				copyObject := *object
-				copyObject.Props = maps.Clone(object.Props)
-				copyObject.Props["client_payload"] = expr.NewEmptyObjectType()
-				dispatch = &copyObject
+			if object, ok := combined.ty.Object(); ok {
+				dispatch = object.With("client_payload", expr.NewEmptyObjectType().Type())
+				hasDispatch = true
 			}
 		}
 		actions := trigger.Actions
@@ -59,10 +58,10 @@ func FromTriggers(triggers []Trigger) *expr.ObjectType {
 		for _, action := range actions {
 			id, ok := variants[action]
 			object := expr.NewEmptyObjectType()
-			if dispatch != nil {
+			if hasDispatch {
 				object = dispatch
 			} else if known && ok {
-				if projected, ok := b.build(id).(*expr.ObjectType); ok {
+				if projected, ok := b.build(id).ty.Object(); ok {
 					object = projected
 				}
 			}
@@ -81,131 +80,158 @@ func FromTriggers(triggers []Trigger) *expr.ObjectType {
 }
 
 // Keep the established Actions repository metadata overlay on each alternative,
-// so narrowing cannot discard it. Clone only the path being changed.
-func workflowRunPayload(object *expr.ObjectType) *expr.ObjectType {
-	run, ok := object.Props["workflow_run"].(*expr.ObjectType)
+// so narrowing cannot discard it. Copy only the path being changed.
+func workflowRunPayload(object expr.ObjectType) expr.ObjectType {
+	runType, _ := object.Property("workflow_run")
+	run, ok := runType.Object()
 	if !ok {
 		return object
 	}
-	repository, ok := run.Props["head_repository"].(*expr.ObjectType)
+	repositoryType, _ := run.Property("head_repository")
+	repository, ok := repositoryType.Object()
 	if !ok {
 		return object
 	}
-	copyRepository := *repository
-	copyRepository.Props = maps.Clone(repository.Props)
-	copyRepository.Props["homepage"] = expr.StringType{}
-	copyRun := *run
-	copyRun.Props = maps.Clone(run.Props)
-	copyRun.Props["head_repository"] = &copyRepository
-	copyObject := *object
-	copyObject.Props = maps.Clone(object.Props)
-	copyObject.Props["workflow_run"] = &copyRun
-	return &copyObject
+	repository = repository.With("homepage", expr.StringType())
+	run = run.With("head_repository", repository.Type())
+	return object.With("workflow_run", run.Type())
 }
+
+// member is a payload type that may be absent, as for "absent" and "null"
+// schema nodes and for a strict object's undeclared properties. When present
+// is false, ty is the zero Type.
+type member struct {
+	ty      expr.Type
+	present bool
+}
+
+func present(t expr.Type) member { return member{t, true} }
 
 type builder struct {
 	cache  map[int]expr.Type
 	active map[int]bool
 }
 
-func (b *builder) build(id int) expr.Type {
+func (b *builder) build(id int) member {
 	if t, ok := b.cache[id]; ok {
-		return t
+		return present(t)
 	}
 	// Recursive payloads are finite at runtime but have unbounded schema depth.
 	// Keep the recursive edge open instead of expanding or rejecting it.
 	if b.active[id] {
-		return expr.AnyType{}
+		return present(expr.AnyType())
 	}
 	b.active[id] = true
 	defer delete(b.active, id)
 	n := payload.Node(id)
-	var t expr.Type
+	var m member
 	switch n.Kind {
 	case "absent", "null":
-		return nil
+		return member{}
 	case "string":
-		t = expr.StringType{}
+		m = present(expr.StringType())
 	case "number":
-		t = expr.NumberType{}
+		m = present(expr.NumberType())
 	case "boolean":
-		t = expr.BoolType{}
+		m = present(expr.BoolType())
 	case "array":
-		t = &expr.ArrayType{Elem: known(b.build(n.Element))}
+		m = present(expr.NewArrayType(known(b.build(n.Element))).Type())
 	case "union", "intersection":
 		for _, alternative := range n.Alternatives {
-			t = combine(t, b.build(alternative))
+			m = combine(m, b.build(alternative))
 		}
 	case "object":
-		o := expr.NewEmptyStrictObjectType()
-		o.DisplayName = "object"
+		var o expr.ObjectBuilder
+		o.SetDisplayName("object")
 		for _, name := range slices.Sorted(maps.Keys(n.Properties)) {
 			o.SetProperty(name, known(b.build(n.Properties[name].Type)))
 		}
 		if n.Mapped != nil {
-			o.Mapped = known(b.build(*n.Mapped))
+			o.SetMapped(known(b.build(*n.Mapped)))
 		}
-		t = o
+		m = present(o.Build().Type())
 	default:
-		t = expr.AnyType{}
+		m = present(expr.AnyType())
 	}
-	t = known(t)
+	t := known(m)
 	b.cache[id] = t
-	return t
+	return present(t)
 }
 
-func known(t expr.Type) expr.Type {
-	if t == nil {
-		return expr.AnyType{}
+// known types an absent member as any.
+func known(m member) expr.Type {
+	if !m.present {
+		return expr.AnyType()
 	}
-	return t
+	return m.ty
+}
+
+func mappedMember(o expr.ObjectType) member {
+	t, ok := o.Mapped()
+	return member{t, ok}
 }
 
 // combine preserves all properties offered by any possible event. Missing and
 // null variants are not a reason to erase a known property's type.
-func combine(a, b expr.Type) expr.Type {
-	if a == nil {
+func combine(a, b member) member {
+	if !a.present {
 		return b
 	}
-	if b == nil || a == b {
+	if !b.present || a.ty == b.ty {
 		return a
 	}
-	if x, ok := a.(*expr.ObjectType); ok {
-		if y, ok := b.(*expr.ObjectType); ok {
-			o := expr.NewStrictObjectType(maps.Clone(x.Props))
-			o.PropertyNames = maps.Clone(x.PropertyNames)
-			o.DisplayName = "object"
-			o.Mapped = combine(x.Mapped, y.Mapped)
-			for name, t := range y.Props {
-				o.Props[name] = combine(o.Props[name], t)
-				if original, ok := y.PropertyNames[name]; ok {
-					if o.PropertyNames == nil {
-						o.PropertyNames = map[string]string{}
-					}
-					o.PropertyNames[name] = original
-				}
-			}
-			return o
+	if x, ok := a.ty.Object(); ok {
+		if y, ok := b.ty.Object(); ok {
+			return present(combineObjects(x, y))
 		}
 	}
-	if x, ok := a.(*expr.ArrayType); ok {
-		if y, ok := b.(*expr.ArrayType); ok {
-			return &expr.ArrayType{Elem: combine(x.Elem, y.Elem)}
+	if x, ok := a.ty.Array(); ok {
+		if y, ok := b.ty.Array(); ok {
+			return present(expr.NewArrayType(combine(present(x.Elem()), present(y.Elem())).ty).Type())
 		}
 	}
-	switch a.(type) {
-	case expr.StringType:
-		if _, ok := b.(expr.StringType); ok {
+	if a.ty.Kind() == b.ty.Kind() {
+		switch a.ty.Kind() {
+		case expr.KindString, expr.KindNumber, expr.KindBool:
 			return a
-		}
-	case expr.NumberType:
-		if _, ok := b.(expr.NumberType); ok {
-			return a
-		}
-	case expr.BoolType:
-		if _, ok := b.(expr.BoolType); ok {
-			return a
+		case expr.KindAny, expr.KindNull, expr.KindObject, expr.KindArray:
 		}
 	}
-	return expr.AnyType{}
+	return present(expr.AnyType())
+}
+
+// combineObjects returns a strict object holding the properties of x and y.
+// A property in both has the combined type. The declared spelling from y wins
+// over the one from x.
+func combineObjects(x, y expr.ObjectType) expr.Type {
+	var o expr.ObjectBuilder
+	o.SetDisplayName("object")
+	for name, t := range x.Properties() {
+		setMember(&o, x, name, t)
+	}
+	if mapped := combine(mappedMember(x), mappedMember(y)); mapped.present {
+		o.SetMapped(mapped.ty)
+	}
+	for name, t := range y.Properties() {
+		current, ok := x.Property(name)
+		combined := combine(member{current, ok}, present(t)).ty
+		if spelling := y.PropertyName(name); spelling != name {
+			o.SetProperty(spelling, combined)
+		} else {
+			// Set keeps the spelling x declared for name, if any.
+			o.Set(name, combined)
+		}
+	}
+	return o.Build().Type()
+}
+
+// setMember stores t under key in o and keeps the spelling that from declared
+// for key. A declared spelling always lower-cases to its key, so SetProperty
+// stores it under the same key.
+func setMember(o *expr.ObjectBuilder, from expr.ObjectType, key string, t expr.Type) {
+	if spelling := from.PropertyName(key); spelling != key {
+		o.SetProperty(spelling, t)
+		return
+	}
+	o.Set(key, t)
 }

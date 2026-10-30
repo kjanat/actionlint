@@ -30,7 +30,7 @@ func conditionStringReference(expr Node, ty Type) bool {
 	if path == "" {
 		return false
 	}
-	if _, ok := ty.(StringType); ok {
+	if ty.Kind() == KindString {
 		return true
 	}
 	// Webhook payloads are otherwise open objects; these documented text fields

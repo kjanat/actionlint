@@ -23,9 +23,10 @@ type typedExpr struct {
 // - https://docs.github.com/en/actions/learn-github-actions/contexts
 // - https://docs.github.com/en/actions/learn-github-actions/expressions
 type Checker struct {
-	options          Options
-	dependencies     Dependencies
-	errs             []report
+	options      Options
+	dependencies Dependencies
+	errs         []report
+	// The *Ty context types are nil while the context keeps its built-in type.
 	matrixTy         *exprlang.ObjectType
 	matrixScriptSafe map[string]scriptValueProof
 	scriptEnv        workflowdecl.EnvView

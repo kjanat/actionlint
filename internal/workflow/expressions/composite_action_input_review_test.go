@@ -24,7 +24,7 @@ func TestCompositeActionInputRestoresCheckerContext(t *testing.T) {
 	if err := rule.VisitJobPre(job); err != nil {
 		t.Fatal(err)
 	}
-	rule.inputsTy = exprlang.NewMapObjectType(exprlang.BoolType{})
+	rule.inputsTy = new(exprlang.NewMapObjectType(exprlang.BoolType()))
 	rule.scriptEnv = testStep(t, job, 0).Env()
 	rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "existing finding")
 	originalFinding := rule.errs[0]

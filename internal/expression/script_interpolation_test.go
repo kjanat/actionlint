@@ -4,7 +4,7 @@ import "testing"
 
 func TestScriptSafeScalarReferences(t *testing.T) {
 	checker := NewChecker(false, nil)
-	checker.UpdateInputs(NewStrictObjectType(map[string]Type{"enabled": BoolType{}, "count": NumberType{}, "text": StringType{}}))
+	checker.UpdateInputs(NewStrictObjectType(map[string]Type{"enabled": BoolType(), "count": NumberType(), "text": StringType()}))
 	for _, tc := range []struct {
 		input string
 		safe  bool
@@ -39,55 +39,55 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 		typeOf     Type
 		finding    bool
 	}{
-		{"env.ARGUMENT", StringType{}, true},
-		{"inputs.value", StringType{}, true},
-		{"steps.build.outputs.value", AnyType{}, true},
-		{"vars.ARGUMENT", StringType{}, true},
-		{"matrix.target", StringType{}, false},
-		{"matrix.unknown", StringType{}, true},
-		{"inputs.count", NumberType{}, false},
-		{"inputs.enabled", BoolType{}, false},
-		{"github", &ObjectType{}, false},
-		{"fromJSON('[1,2]')", &ArrayType{Elem: NumberType{}}, false},
-		{"github.repositoryUrl", StringType{}, false},
-		{"github['repositoryUrl']", StringType{}, false},
-		{"github.sha", StringType{}, false},
-		{"github.run_id", StringType{}, false},
-		{"runner.os", StringType{}, false},
-		{"job.status", StringType{}, false},
-		{"steps.test.conclusion", StringType{}, false},
-		{"steps.test.outcome", StringType{}, false},
-		{"steps['TEST']['CONCLUSION']", StringType{}, false},
-		{"steps[inputs.id].outcome", StringType{}, false},
-		{"steps['missing'].outcome", StringType{}, false},
-		{"needs.build.result", StringType{}, false},
-		{"needs['BUILD']['RESULT']", StringType{}, false},
-		{"needs[inputs.job].result", StringType{}, false},
-		{"needs['missing'].result", StringType{}, false},
-		{"steps.test.outputs.conclusion", StringType{}, true},
-		{"needs.build.outputs.result", StringType{}, true},
-		{"steps.test[inputs.property]", AnyType{}, true},
-		{"needs.build.conclusion", StringType{}, true},
-		{"steps.test.result", StringType{}, true},
-		{"github.ref_name", StringType{}, true},
-		{"github.workflow", StringType{}, true},
-		{"github.actor", StringType{}, true},
-		{"'linux-x64'", StringType{}, false},
-		{"'argument with spaces'", StringType{}, true},
-		{"'$(command)'", StringType{}, true},
-		{"'safe; command'", StringType{}, true},
-		{"'safe\"command'", StringType{}, true},
-		{"inputs.enabled && 'linux' || 'darwin'", StringType{}, false},
-		{"inputs.enabled && env.ARGUMENT || 'darwin'", StringType{}, true},
-		{"true && matrix.target", StringType{}, false},
-		{"false && env.ARGUMENT", BoolType{}, false},
-		{"case(inputs.enabled, 'linux', 'darwin')", StringType{}, false},
-		{"case(inputs.enabled, 'linux', env.ARGUMENT)", StringType{}, true},
-		{"case(true, 'linux', env.ARGUMENT)", StringType{}, false},
-		{"hashFiles('**/go.sum')", StringType{}, false},
-		{"toJSON(github.repository == null)", StringType{}, false},
-		{"toJSON(!github.repository)", StringType{}, false},
-		{"toJSON('safe')", StringType{}, true},
+		{"env.ARGUMENT", StringType(), true},
+		{"inputs.value", StringType(), true},
+		{"steps.build.outputs.value", AnyType(), true},
+		{"vars.ARGUMENT", StringType(), true},
+		{"matrix.target", StringType(), false},
+		{"matrix.unknown", StringType(), true},
+		{"inputs.count", NumberType(), false},
+		{"inputs.enabled", BoolType(), false},
+		{"github", ObjectType{}.Type(), false},
+		{"fromJSON('[1,2]')", NewArrayType(NumberType()).Type(), false},
+		{"github.repositoryUrl", StringType(), false},
+		{"github['repositoryUrl']", StringType(), false},
+		{"github.sha", StringType(), false},
+		{"github.run_id", StringType(), false},
+		{"runner.os", StringType(), false},
+		{"job.status", StringType(), false},
+		{"steps.test.conclusion", StringType(), false},
+		{"steps.test.outcome", StringType(), false},
+		{"steps['TEST']['CONCLUSION']", StringType(), false},
+		{"steps[inputs.id].outcome", StringType(), false},
+		{"steps['missing'].outcome", StringType(), false},
+		{"needs.build.result", StringType(), false},
+		{"needs['BUILD']['RESULT']", StringType(), false},
+		{"needs[inputs.job].result", StringType(), false},
+		{"needs['missing'].result", StringType(), false},
+		{"steps.test.outputs.conclusion", StringType(), true},
+		{"needs.build.outputs.result", StringType(), true},
+		{"steps.test[inputs.property]", AnyType(), true},
+		{"needs.build.conclusion", StringType(), true},
+		{"steps.test.result", StringType(), true},
+		{"github.ref_name", StringType(), true},
+		{"github.workflow", StringType(), true},
+		{"github.actor", StringType(), true},
+		{"'linux-x64'", StringType(), false},
+		{"'argument with spaces'", StringType(), true},
+		{"'$(command)'", StringType(), true},
+		{"'safe; command'", StringType(), true},
+		{"'safe\"command'", StringType(), true},
+		{"inputs.enabled && 'linux' || 'darwin'", StringType(), false},
+		{"inputs.enabled && env.ARGUMENT || 'darwin'", StringType(), true},
+		{"true && matrix.target", StringType(), false},
+		{"false && env.ARGUMENT", BoolType(), false},
+		{"case(inputs.enabled, 'linux', 'darwin')", StringType(), false},
+		{"case(inputs.enabled, 'linux', env.ARGUMENT)", StringType(), true},
+		{"case(true, 'linux', env.ARGUMENT)", StringType(), false},
+		{"hashFiles('**/go.sum')", StringType(), false},
+		{"toJSON(github.repository == null)", StringType(), false},
+		{"toJSON(!github.repository)", StringType(), false},
+		{"toJSON('safe')", StringType(), true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			node, err := NewParser().Parse(NewLexer(tc.expression + "}}"))
@@ -127,7 +127,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := NewChecker(false, nil).CheckScriptInterpolation(node, StringType{}, ScriptShellWord, func(ref Node) bool {
+			findings := NewChecker(false, nil).CheckScriptInterpolation(node, StringType(), ScriptShellWord, func(ref Node) bool {
 				name := StaticReference(ref)
 				return tc.known && (name == "steps.test" || name == "needs.build")
 			})
@@ -141,7 +141,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings := NewChecker(false, nil).CheckScriptInterpolation(node, StringType{}, ScriptShellArgument, nil)
+		findings := NewChecker(false, nil).CheckScriptInterpolation(node, StringType(), ScriptShellArgument, nil)
 		if len(findings) != 0 {
 			t.Errorf("data argument rejected for %s: %v", expression, findings)
 		}

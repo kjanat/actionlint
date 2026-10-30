@@ -1,21 +1,18 @@
 package expression
 
-import (
-	"maps"
-	"strings"
-)
+import "strings"
 
-// UpdateEvent installs a caller-owned payload projection without copying its
-// potentially large schema graph. It is treated as immutable by the checker.
-func (sema *Checker) UpdateEvent(event *ObjectType) {
-	sema.ensureGithubVarCopied()
-	if gh, ok := sema.vars["github"].(*ObjectType); ok {
-		gh.Props["event"] = event
+// UpdateEvent installs a payload projection as github.event. Types are
+// immutable, so the potentially large schema graph is shared, not copied.
+func (sema *Checker) UpdateEvent(event ObjectType) {
+	sema.ensureVarsCopied()
+	if gh, ok := sema.vars["github"].Object(); ok {
+		sema.vars["github"] = gh.With("event", event.Type()).Type()
 	}
 }
 
 // missingProperty gives a bounded diagnostic for dot, literal bracket and filtered access.
-func (sema *Checker) missingProperty(node, receiver Node, name string, object *ObjectType) {
+func (sema *Checker) missingProperty(node, receiver Node, name string, object ObjectType) {
 	path := eventReference(receiver)
 	kind := unknownProperty
 	suffix := ""
@@ -28,7 +25,7 @@ func (sema *Checker) missingProperty(node, receiver Node, name string, object *O
 		path = "this object"
 	}
 	suggestion := ""
-	for candidate := range object.Props {
+	for candidate := range object.Properties() {
 		if adjacentTypo(strings.ToLower(name), candidate) {
 			if suggestion != "" {
 				suggestion = ""
@@ -83,11 +80,6 @@ func CloseName(name string, candidates []string) string {
 		suggestion = candidate
 	}
 	return suggestion
-}
-
-// copyEventObject isolates dispatch-input updates from shared payload shapes.
-func copyEventObject(event *ObjectType) *ObjectType {
-	return &ObjectType{Props: maps.Clone(event.Props), Mapped: event.Mapped, DisplayName: event.DisplayName, PropertyNames: maps.Clone(event.PropertyNames), EventVariants: event.EventVariants}
 }
 
 // eventReference formats a payload access path for diagnostics, using [] for

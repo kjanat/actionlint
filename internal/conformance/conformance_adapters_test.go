@@ -127,7 +127,7 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 
 func TestUpstreamConformanceContextScope(t *testing.T) {
 	checker := exprlang.NewChecker(false, nil)
-	contexts := map[string]exprlang.Type{"CUSTOM": exprlang.AnyType{}}
+	contexts := map[string]exprlang.Type{"CUSTOM": exprlang.AnyType()}
 	checker.SetContextTypes(contexts)
 	checker.SetContextAvailability([]string{"custom"})
 	delete(contexts, "CUSTOM")

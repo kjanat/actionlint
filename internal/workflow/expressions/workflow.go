@@ -10,7 +10,7 @@ import (
 
 func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 	rule.workflow = n
-	rule.eventTy = eventpayload.Type(n)
+	rule.eventTy = new(eventpayload.Type(n))
 	rule.checkString(n.Name(), "")
 	rule.checkString(n.Description(), "")
 	triggerCount := 0
@@ -31,20 +31,20 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 				rule.checkString(schedule.Timezone(), "")
 			}
 		} else if e, ok := event.WorkflowDispatchEvent(); ok {
-			inputs := exprlang.NewEmptyStrictObjectType()
+			var inputs exprlang.ObjectBuilder
 			for id, input := range e.Inputs() {
 				rule.checkString(input.Description(), "")
 				rule.checkString(input.Default(), "")
 				rule.checkBool(input.Required(), "")
 				rule.checkStrings(input.Options(), "")
-				var ty exprlang.Type = exprlang.AnyType{}
+				ty := exprlang.AnyType()
 				switch input.Type() {
 				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
-					ty = exprlang.BoolType{}
+					ty = exprlang.BoolType()
 				case workflowlang.WorkflowDispatchEventInputTypeNumber:
-					ty = exprlang.NumberType{}
+					ty = exprlang.NumberType()
 				case workflowlang.WorkflowDispatchEventInputTypeString, workflowlang.WorkflowDispatchEventInputTypeChoice, workflowlang.WorkflowDispatchEventInputTypeEnvironment:
-					ty = exprlang.StringType{}
+					ty = exprlang.StringType()
 				case workflowlang.WorkflowDispatchEventInputTypeNone:
 				}
 				name := id
@@ -53,56 +53,54 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 				}
 				inputs.SetProperty(name, ty)
 			}
-			rule.dispatchInputsTy = inputs
+			rule.dispatchInputsTy = new(inputs.Build())
 		} else if e, ok := event.RepositoryDispatchEvent(); ok {
 			rule.checkStrings(e.Types(), "")
 		} else if e, ok := event.WorkflowCallEvent(); ok {
-			inputs := exprlang.NewEmptyStrictObjectType()
-			// Defaults can use earlier inputs, but cannot refer to their own definition.
-			rule.inputsTy = inputs
+			var inputs exprlang.ObjectBuilder
+			// Defaults can use earlier inputs, but cannot refer to their own
+			// definition, so rule.inputsTy is rebuilt after each input is added.
+			rule.inputsTy = new(inputs.Build())
 			for input := range e.Inputs() {
 				rule.checkString(input.Description(), "")
 				expressions := rule.checkString(input.Default(), "on.workflow_call.inputs.<inputs_id>.default")
-				var ty exprlang.Type = exprlang.AnyType{}
+				ty := exprlang.AnyType()
 				switch input.Type() {
 				case workflowlang.WorkflowCallEventInputTypeString:
-					ty = exprlang.StringType{}
+					ty = exprlang.StringType()
 				case workflowlang.WorkflowCallEventInputTypeBoolean:
-					ty = exprlang.BoolType{}
+					ty = exprlang.BoolType()
 					if len(expressions) == 1 && input.Default().IsExpressionAssigned() {
-						switch expressions[0].ty.(type) {
-						case exprlang.BoolType, exprlang.AnyType:
-						default:
+						if k := expressions[0].ty.Kind(); k != exprlang.KindBool && k != exprlang.KindAny {
 							rule.Errorf(viewPosition(input.Default()), "type of input %q must be bool but found type %s", input.Name().Value(), expressions[0].ty.String())
 						}
 					}
 				case workflowlang.WorkflowCallEventInputTypeNumber:
-					ty = exprlang.NumberType{}
+					ty = exprlang.NumberType()
 					if len(expressions) == 1 && input.Default().IsExpressionAssigned() {
-						switch expressions[0].ty.(type) {
-						case exprlang.NumberType, exprlang.AnyType:
-						default:
+						if k := expressions[0].ty.Kind(); k != exprlang.KindNumber && k != exprlang.KindAny {
 							rule.Errorf(viewPosition(input.Default()), "type of input %q must be number but found type %s", input.Name().Value(), expressions[0].ty.String())
 						}
 					}
 				case workflowlang.WorkflowCallEventInputTypeInvalid:
 				}
 				inputs.SetProperty(input.Name().Value(), ty)
+				rule.inputsTy = new(inputs.Build())
 			}
 			// Distinguish absent secrets (inheritance) from a declared empty mapping.
 			if e.SecretsPresent() {
-				secrets := exprlang.NewEmptyStrictObjectType()
+				var secrets exprlang.ObjectBuilder
 				for id, secret := range e.Secrets() {
 					name := id
 					if secret.Name().Present() {
 						name = secret.Name().Value()
 					}
-					secrets.SetProperty(name, exprlang.StringType{})
+					secrets.SetProperty(name, exprlang.StringType())
 				}
 				if hasNonWorkflowCallTrigger {
-					secrets.Mapped = exprlang.StringType{}
+					secrets.SetMapped(exprlang.StringType())
 				}
-				rule.secretsTy = secrets
+				rule.secretsTy = new(secrets.Build())
 			}
 			for _, secret := range e.Secrets() {
 				rule.checkString(secret.Description(), "")
@@ -138,16 +136,16 @@ func (rule *Checker) VisitJobPre(n workflowdecl.JobView) error {
 	rule.jobEnv, rule.scriptJob = n.Env(), n
 	rule.matrixScriptSafe = nil
 	// Needs must be available before matrix expressions are evaluated.
-	rule.needsTy = rule.calcNeedsType(n)
+	rule.needsTy = new(rule.calcNeedsType(n))
 	strategy := n.Strategy()
 	if strategy.Present() {
 		resolution := rule.matrixResolution(strategy)
 		if strategy.Expression().Present() {
 			rule.checkWorkflowExpression(strategy.Expression(), "strategy", "jobs.<job_id>.strategy", schema.Strategy)
-			rule.matrixTy = matrixTypeFromResolution(resolution)
+			rule.matrixTy = new(matrixTypeFromResolution(resolution))
 			rule.matrixScriptSafe = safeMatrixScriptReferences(resolution)
 		} else if strategy.Matrix().Present() {
-			rule.matrixTy = rule.checkMatrix(strategy.Matrix(), resolution)
+			rule.matrixTy = new(rule.checkMatrix(strategy.Matrix(), resolution))
 			rule.matrixScriptSafe = safeMatrixScriptReferences(resolution)
 		}
 	}
@@ -157,15 +155,15 @@ func (rule *Checker) VisitJobPre(n workflowdecl.JobView) error {
 	if runner.Present() {
 		rule.checkWorkflowExpression(runner.Expression(), "runs-on", "jobs.<job_id>.runs-on", schema.Runner)
 		if runner.LabelsExpr().Present() {
-			if ty := rule.checkOneExpression(runner.LabelsExpr(), "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ty != nil {
-				switch ty.(type) {
-				case *exprlang.ArrayType, exprlang.StringType, exprlang.AnyType:
+			if ty, ok := rule.checkOneExpression(runner.LabelsExpr(), "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ok {
+				switch ty.Kind() {
+				case exprlang.KindArray, exprlang.KindString, exprlang.KindAny:
 					if literal, known := expressionLiteral(runner.LabelsExpr().Value()); known {
 						if labels, ok := literal.([]any); ok && len(labels) == 0 {
 							rule.Error(viewPosition(runner.LabelsExpr()), "runs-on.labels must contain at least one value")
 						}
 					}
-				default:
+				case exprlang.KindNull, exprlang.KindNumber, exprlang.KindBool, exprlang.KindObject:
 					rule.Errorf(viewPosition(runner.LabelsExpr()), "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
 				}
 			}
@@ -194,7 +192,7 @@ func (rule *Checker) VisitJobPre(n workflowdecl.JobView) error {
 		}
 	}
 	rule.checkWorkflowCall(n.WorkflowCall())
-	rule.stepsTy = exprlang.NewEmptyStrictObjectType()
+	rule.stepsTy = new(exprlang.NewEmptyStrictObjectType())
 	return nil
 }
 
@@ -244,11 +242,14 @@ func (rule *Checker) VisitStep(n workflowdecl.StepView) error {
 	rule.checkBool(n.Background(), "jobs.<job_id>.steps.continue-on-error")
 	rule.checkFloat(n.TimeoutMinutes(), "jobs.<job_id>.steps.timeout-minutes")
 	if n.ID().Present() {
+		steps := *rule.stepsTy
 		if n.ID().ContainsExpression() {
 			rule.checkString(n.ID(), "")
-			rule.stepsTy.Loose()
+			// An evaluated step ID can name any step, so steps.<id> stays open.
+			steps = steps.WithMapped(exprlang.AnyType())
 		}
-		rule.stepsTy.SetProperty(n.ID().Value(), exprlang.NewStrictObjectType(map[string]exprlang.Type{"outputs": rule.getActionOutputsType(spec), "conclusion": exprlang.StringType{}, "outcome": exprlang.StringType{}}))
+		step := exprlang.NewStrictObjectType(map[string]exprlang.Type{"outputs": rule.getActionOutputsType(spec).Type(), "conclusion": exprlang.StringType(), "outcome": exprlang.StringType()})
+		rule.stepsTy = new(steps.WithProperty(n.ID().Value(), step.Type()))
 	}
 	return nil
 }

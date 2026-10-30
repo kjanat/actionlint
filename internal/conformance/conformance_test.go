@@ -373,7 +373,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		checker := exprlang.NewChecker(false, nil)
 		contexts := map[string]exprlang.Type{}
 		for name := range c.Contexts {
-			contexts[strings.ToLower(name)] = exprlang.AnyType{}
+			contexts[strings.ToLower(name)] = exprlang.AnyType()
 		}
 		checker.SetContextTypes(contexts)
 		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
@@ -389,7 +389,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				diagnostics = append(diagnostics, errs...)
 			case *exprlang.FuncCallNode:
 				callChecker := exprlang.NewChecker(false, nil)
-				callChecker.SetContextTypes(map[string]exprlang.Type{"argument": exprlang.AnyType{}})
+				callChecker.SetContextTypes(map[string]exprlang.Type{"argument": exprlang.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
 				callChecker.SetSpecialFunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"})
 				args := make([]exprlang.Node, len(n.Args))
