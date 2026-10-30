@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analyzer"
@@ -50,10 +51,10 @@ func TestCheckValidatesDiagnosticRanges(t *testing.T) {
 			engine.idle = []api.Module{responseModule{Module: module, pointer: pointer, length: uint32(len(payload)), read: &read}}
 			findings, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "fixture"})
 			if test.valid {
-				if err != nil || len(findings) != 3 || findings[1] != candidate {
+				if err != nil || len(findings) != 3 || !reflect.DeepEqual(findings[1], candidate) {
 					t.Fatalf("valid range: findings=%+v err=%v", findings, err)
 				}
-			} else if err == nil || len(findings) != 2 || findings[0] != good || findings[1] != good {
+			} else if err == nil || len(findings) != 2 || !reflect.DeepEqual(findings[0], good) || !reflect.DeepEqual(findings[1], good) {
 				t.Fatalf("invalid range: findings=%+v err=%v", findings, err)
 			}
 		})

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -56,7 +57,7 @@ func TestEchoEngineChecksAndValidates(t *testing.T) {
 		Location: analyzer.ScriptPosition{Row: 1, Column: 21}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 28},
 		URL: "https://docs.astral.sh/ruff/rules/undefined-name/",
 	}
-	if len(diagnostics) != 1 || diagnostics[0] != want {
+	if len(diagnostics) != 1 || !reflect.DeepEqual(diagnostics[0], want) {
 		t.Fatalf("diagnostics=%+v", diagnostics)
 	}
 	clean, err := engine.Check(t.Context(), analyzer.ScriptRequest{Source: "print('ok')\n", Filename: "step.py"})
