@@ -385,7 +385,7 @@ func projectAliasTestGraph(root *syntax.Node, report func(*syntax.Node, YamlAlia
 
 // Leaf-parser fixtures opt into projection; production construction belongs to parseDocument.
 func projectAliasTestInput(parser *Parser, root *syntax.Node) *syntax.Node {
-	projected, aliases := projectAliasTestGraph(root, func(node *syntax.Node, _ YamlAliasDiagnostic, message string) { parser.error(node, message) })
+	projected, aliases := projectAliasTestGraph(root, func(node *syntax.Node, _ YamlAliasDiagnostic, message string) { parser.error(node, CodeAlias, message) })
 	parser.aliases = aliases
 	return projected
 }

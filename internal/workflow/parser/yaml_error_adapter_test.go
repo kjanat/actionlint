@@ -21,7 +21,7 @@ func TestYAMLErrorAdapterPreservesLocatedWrappersAndJoinedAdmission(t *testing.T
 	defer session.Close()
 	inner := &codec.DecodeError{Errors: []*codec.LoadError{{Message: "first", Mark: codec.Mark{Line: 3, Column: 4}}, {Message: "second", Mark: codec.Mark{Line: 5, Column: 6}}}}
 	located := session.Wrap(root, fmt.Errorf("outer: %w", inner))
-	want := []*SyntaxError{{Message: "could not parse as YAML: outer: first", Line: 3, Column: 4, Kind: "syntax-check"}, {Message: "could not parse as YAML: outer: second", Line: 5, Column: 6, Kind: "syntax-check"}}
+	want := []*SyntaxError{{Message: "could not parse as YAML: outer: first", Line: 3, Column: 4, Kind: "syntax-check", Code: CodeYAML}, {Message: "could not parse as YAML: outer: second", Line: 5, Column: 6, Kind: "syntax-check", Code: CodeYAML}}
 	if got := HandleYAMLUnmarshalError(located); !reflect.DeepEqual(got, want) {
 		t.Fatalf("located wrapper context changed: got %v, want %v", got, want)
 	}
@@ -29,7 +29,7 @@ func TestYAMLErrorAdapterPreservesLocatedWrappersAndJoinedAdmission(t *testing.T
 		t.Fatalf("single wrapper lost its diagnostic context: got %v, want %v", got, want)
 	}
 	admission := codec.NewAdmissionError(&codec.LoadError{Message: "document contains excessive aliasing", Mark: codec.Mark{Line: 7, Column: 8}})
-	wantAdmission := &SyntaxError{Message: "could not parse as YAML: document contains excessive aliasing", Line: 7, Column: 8, Kind: "syntax-check"}
+	wantAdmission := &SyntaxError{Message: "could not parse as YAML: document contains excessive aliasing", Line: 7, Column: 8, Kind: "syntax-check", Code: CodeYAML}
 	if got := HandleYAMLUnmarshalError(admission); !reflect.DeepEqual(got, []*SyntaxError{wantAdmission}) {
 		t.Fatalf("bare admission error changed: %v", got)
 	}

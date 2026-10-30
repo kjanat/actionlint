@@ -120,31 +120,36 @@ func NewSourceParser(source []byte) *Parser {
 	return &Parser{sourceLines: document.Lines(), scalarDocument: document}
 }
 
-func (p *Parser) error(n *syntax.Node, m string) {
-	p.errs = append(p.errs, &SyntaxError{Message: m, Line: n.Line, Column: n.Column, Kind: "syntax-check"})
+func (p *Parser) error(n *syntax.Node, code Code, m string) {
+	p.errs = append(p.errs, &SyntaxError{Message: m, Line: n.Line, Column: n.Column, Kind: "syntax-check", Code: code})
 }
 
-func (p *Parser) errorAt(pos *workflowlang.Pos, m string) {
-	p.errs = append(p.errs, &SyntaxError{Message: m, Line: pos.Line, Column: pos.Col, Kind: "syntax-check"})
+func (p *Parser) errorAt(pos *workflowlang.Pos, code Code, m string) {
+	p.errs = append(p.errs, &SyntaxError{Message: m, Line: pos.Line, Column: pos.Col, Kind: "syntax-check", Code: code})
 }
 
-func (p *Parser) errorfAt(pos *workflowlang.Pos, format string, args ...any) {
+func (p *Parser) errorfAt(pos *workflowlang.Pos, code Code, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	p.errorAt(pos, m)
+	p.errorAt(pos, code, m)
 }
 
-func (p *Parser) errorf(n *syntax.Node, format string, args ...any) {
+func (p *Parser) errorf(n *syntax.Node, code Code, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
-	p.error(n, m)
+	p.error(n, code, m)
 }
 
 func (p *Parser) typeErrorf(n *syntax.Node, format string, args ...any) {
+	p.kindErrorf(n, CodeTypeMismatch, format, args...)
+}
+
+// kindErrorf reports a node of the wrong kind and points an aliased node back at its anchor.
+func (p *Parser) kindErrorf(n *syntax.Node, code Code, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	if alias, ok := p.aliases[n]; ok {
 		m += fmt.Sprintf(". alias %q refers to the anchor at line:%d, column:%d", alias.Value, n.Line, n.Column)
 		n = alias
 	}
-	p.error(n, m)
+	p.error(n, code, m)
 }
 
 func (p *Parser) unexpectedKey(s *workflowlang.String, sec string, expected []string) {
@@ -160,12 +165,12 @@ func (p *Parser) unexpectedKey(s *workflowlang.String, sec string, expected []st
 	default:
 		m = fmt.Sprintf("unexpected key %q for %s", s.Value, sec)
 	}
-	p.errorAt(s.Pos, m)
+	p.errorAt(s.Pos, CodeUnknownKey, m)
 }
 
 func (p *Parser) checkNotEmpty(sec string, count int, n *syntax.Node) bool {
 	if count == 0 {
-		p.errorf(n, "%q section should not be empty", sec)
+		p.errorf(n, CodeEmptyValue, "%q section should not be empty", sec)
 		return false
 	}
 	return true
@@ -190,14 +195,14 @@ func (p *Parser) CheckString(n *syntax.Node, allowEmpty bool) bool {
 		return false
 	}
 	if !allowEmpty && n.Value == "" {
-		p.error(n, "string should not be empty")
+		p.error(n, CodeEmptyValue, "string should not be empty")
 		return false
 	}
 	return true
 }
 
 func (p *Parser) missingExpression(n *syntax.Node, expecting string) {
-	p.typeErrorf(n, "expecting a single ${{...}} expression or %s, but found plain text node", expecting)
+	p.kindErrorf(n, CodeExpressionForm, "expecting a single ${{...}} expression or %s, but found plain text node", expecting)
 }
 
 func (p *Parser) parseExpression(n *syntax.Node, expecting string) *workflowlang.String {
@@ -333,7 +338,7 @@ func (p *Parser) parseInt(n *syntax.Node) *workflowlang.Int {
 
 	i, err := parseYAMLInteger(n.Value)
 	if err != nil {
-		p.errorf(n, "invalid integer value: %q: %s", n.Value, err.Error())
+		p.errorf(n, CodeInvalidValue, "invalid integer value: %q: %s", n.Value, err.Error())
 		return nil
 	}
 
@@ -400,11 +405,11 @@ func (p *Parser) parseFloat(n *syntax.Node) *workflowlang.Float {
 		f, err = strconv.ParseFloat(n.Value, 64)
 	}
 	if err != nil {
-		p.errorf(n, "invalid float value: %q: %s", n.Value, err.Error())
+		p.errorf(n, CodeInvalidValue, "invalid float value: %q: %s", n.Value, err.Error())
 		return nil
 	}
 	if math.IsNaN(f) {
-		p.errorf(n, "invalid float value: %q: NaN is not a finite number", n.Value)
+		p.errorf(n, CodeInvalidValue, "invalid float value: %q: NaN is not a finite number", n.Value)
 		return nil
 	}
 
@@ -422,7 +427,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 	return func(yield func(workflowMappingEntry) bool) {
 		if n.Kind == syntax.ScalarNode && n.Tag == workflowlang.YamlTagNull {
 			if !allowEmpty {
-				p.errorf(n, "%s should not be empty. please remove this section if it's unnecessary", where.String())
+				p.errorf(n, CodeEmptyValue, "%s should not be empty. please remove this section if it's unnecessary", where.String())
 			}
 			return
 		}
@@ -450,14 +455,14 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 			}
 			k := newString(n.Content[i])
 			if insertions && emptyResolvedMappingKey(workflowlang.SemanticValue(k)) {
-				p.errorAt(k.Pos, "string should not be empty")
+				p.errorAt(k.Pos, CodeEmptyValue, "string should not be empty")
 				p.checkRawYAMLTags(n.Content[i+1])
 				empty = false
 				continue
 			}
 
 			if k.Value == "<<" {
-				p.errorAt(k.Pos, "GitHub Actions does not support YAML merge key \"<<\"")
+				p.errorAt(k.Pos, CodeMergeKey, "GitHub Actions does not support YAML merge key \"<<\"")
 				continue
 			}
 
@@ -492,7 +497,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 							if origin.Line == 0 || origin.Column == 0 {
 								pos = PosAt(n.Content[i+1])
 							}
-							p.errorAt(pos, "string should not be empty")
+							p.errorAt(pos, CodeEmptyValue, "string should not be empty")
 						}
 					case mapping.UnknownKey:
 					}
@@ -500,7 +505,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 				for _, name := range slices.Sorted(maps.Keys(insertedKeys)) {
 					inserted := insertedKeys[name]
 					if previous, duplicate := keys[name]; duplicate {
-						p.errorfAt(inserted.Pos, "key %q is duplicated in %s. previously defined at %s. note that this key is case insensitive", inserted.Value, where.String(), previous.String())
+						p.errorfAt(inserted.Pos, CodeDuplicateKey, "key %q is duplicated in %s. previously defined at %s. note that this key is case insensitive", inserted.Value, where.String(), previous.String())
 					} else {
 						keys[name] = inserted.Pos
 					}
@@ -513,7 +518,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 				if !caseSensitive {
 					note = ". note that this key is case insensitive"
 				}
-				p.errorfAt(k.Pos, "key %q is duplicated in %s. previously defined at %s%s", k.Value, where.String(), pos.String(), note)
+				p.errorfAt(k.Pos, CodeDuplicateKey, "key %q is duplicated in %s. previously defined at %s%s", k.Value, where.String(), pos.String(), note)
 				continue
 			}
 
@@ -526,7 +531,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *syntax.Node, allow
 		}
 
 		if !allowEmpty && empty {
-			p.errorf(n, "%s should not be empty. please remove this section if it's unnecessary", where.String())
+			p.errorf(n, CodeEmptyValue, "%s should not be empty. please remove this section if it's unnecessary", where.String())
 		}
 	}
 }
@@ -566,7 +571,7 @@ func (p *Parser) parseScheduleEvent(pos *workflowlang.Pos, n *syntax.Node) *work
 		if entry.Cron != nil {
 			schedules = append(schedules, entry)
 		} else if !cronGiven && c.Kind == syntax.MappingNode && len(c.Content) != 0 {
-			p.error(c, "\"cron\" is missing in element of \"schedule\" section")
+			p.error(c, CodeMissingKey, "\"cron\" is missing in element of \"schedule\" section")
 		}
 	}
 
@@ -601,7 +606,7 @@ func (p *Parser) parseWorkflowDispatchEventInput(name *workflowlang.String, n *s
 			case "environment":
 				ret.Type = workflowlang.WorkflowDispatchEventInputTypeEnvironment
 			default:
-				p.errorf(e.val, `input type of workflow_dispatch event must be one of "string", "number", "boolean", "choice", "environment" but got %q`, e.val.Value)
+				p.errorf(e.val, CodeInvalidValue, `input type of workflow_dispatch event must be one of "string", "number", "boolean", "choice", "environment" but got %q`, e.val.Value)
 			}
 		case "options":
 			if p.checkSequence("options", e.val, false) {
@@ -733,7 +738,7 @@ func (p *Parser) parseWorkflowCallEventInput(id string, name *workflowlang.Strin
 			case "string":
 				ret.Type = workflowlang.WorkflowCallEventInputTypeString
 			default:
-				p.errorf(e.val, "invalid value %q for input type of workflow_call event. it must be one of \"boolean\", \"number\", or \"string\"", e.val.Value)
+				p.errorf(e.val, CodeInvalidValue, "invalid value %q for input type of workflow_call event. it must be one of \"boolean\", \"number\", or \"string\"", e.val.Value)
 			}
 		default:
 			p.unexpectedKey(e.key, "inputs at workflow_call event", []string{"description", "required", "default", "type"})
@@ -741,7 +746,7 @@ func (p *Parser) parseWorkflowCallEventInput(id string, name *workflowlang.Strin
 	}
 
 	if !typed {
-		p.errorfAt(name.Pos, "\"type\" is missing at %q input of workflow_call event", name.Value)
+		p.errorfAt(name.Pos, CodeMissingKey, "\"type\" is missing at %q input of workflow_call event", name.Value)
 	}
 
 	return ret
@@ -781,7 +786,7 @@ func (p *Parser) parseWorkflowCallEventOutput(name *workflowlang.String, n *synt
 	}
 
 	if output.Value == nil {
-		p.errorfAt(name.Pos, "\"value\" is missing at %q output of workflow_call event", name.Value)
+		p.errorfAt(name.Pos, CodeMissingKey, "\"value\" is missing at %q output of workflow_call event", name.Value)
 	}
 
 	return output
@@ -843,7 +848,7 @@ func (p *Parser) parseEventWithNoConfig(n *syntax.Node) workflowlang.Event {
 	case "":
 		return nil
 	case "schedule":
-		p.error(n, "schedule event must be configured with mapping")
+		p.error(n, CodeTypeMismatch, "schedule event must be configured with mapping")
 		return nil
 	case "repository_dispatch":
 		return &workflowlang.RepositoryDispatchEvent{Pos: PosAt(n)}
@@ -982,7 +987,7 @@ func (p *Parser) parseDefaults(pos *workflowlang.Pos, n *syntax.Node) *workflowl
 	}
 
 	if ret.Run == nil {
-		p.error(n, "\"defaults\" section should have \"run\" section")
+		p.error(n, CodeMissingKey, "\"defaults\" section should have \"run\" section")
 	}
 
 	return ret
@@ -1019,17 +1024,17 @@ func (p *Parser) parseConcurrency(pos *workflowlang.Pos, n *syntax.Node) *workfl
 			case "single", "max":
 				// ok
 			default:
-				p.errorf(e.val, "invalid value %q for \"queue\" in \"concurrency\" section. valid values are \"single\" and \"max\"", ret.Queue.Value)
+				p.errorf(e.val, CodeInvalidValue, "invalid value %q for \"queue\" in \"concurrency\" section. valid values are \"single\" and \"max\"", ret.Queue.Value)
 			}
 		default:
 			p.unexpectedKey(e.key, "concurrency", []string{"cancel-in-progress", "group", "queue"})
 		}
 	}
 	if ret.Group == nil {
-		p.errorAt(pos, "group name is missing in \"concurrency\" section")
+		p.errorAt(pos, CodeMissingKey, "group name is missing in \"concurrency\" section")
 	}
 	if ret.Queue != nil && ret.CancelInProgress != nil && ret.Queue.Value == "max" && ret.CancelInProgress.Expression == nil && ret.CancelInProgress.Value {
-		p.errorfAt(ret.Queue.Pos, "\"queue: max\" cannot be combined with \"cancel-in-progress: true\" in \"concurrency\" section")
+		p.errorfAt(ret.Queue.Pos, CodeConflictingKeys, "\"queue: max\" cannot be combined with \"cancel-in-progress: true\" in \"concurrency\" section")
 	}
 	return ret
 }
@@ -1060,7 +1065,7 @@ func (p *Parser) parseEnvironment(pos *workflowlang.Pos, n *syntax.Node) *workfl
 		}
 	}
 	if ret.Name == nil {
-		p.errorAt(pos, "name is missing in \"environment\" section")
+		p.errorAt(pos, CodeMissingKey, "name is missing in \"environment\" section")
 	}
 	return ret
 }
@@ -1082,8 +1087,8 @@ func (p *Parser) parseOutputs(n *syntax.Node) map[string]*workflowlang.Output {
 // does not accept, as well as any tag other than "!!str" on a quoted or block scalar.
 // https://github.com/actions/runner/blob/258d6c857db3519913f7deb6004b60172f8043ae/src/Sdk/WorkflowParser/Conversion/YamlObjectReader.cs#L36-L105
 func (p *Parser) checkRawYAMLTag(n *syntax.Node) bool {
-	if message := RawYAMLTagError(n); message != "" {
-		p.error(n, message)
+	if code, message := rawYAMLTagProblem(n); message != "" {
+		p.error(n, code, message)
 		return false
 	}
 	return true
@@ -1098,11 +1103,16 @@ func (p *Parser) checkRawYAMLTags(n *syntax.Node) {
 }
 
 func RawYAMLTagError(n *syntax.Node) string {
+	_, message := rawYAMLTagProblem(n)
+	return message
+}
+
+func rawYAMLTagProblem(n *syntax.Node) (Code, string) {
 	if n.Kind != syntax.ScalarNode || n.Style&syntax.TaggedStyle == 0 || n.Tag == workflowlang.YamlTagStr {
-		return ""
+		return "", ""
 	}
 	if n.Style&(syntax.DoubleQuotedStyle|syntax.SingleQuotedStyle|syntax.LiteralStyle|syntax.FoldedStyle) != 0 {
-		return fmt.Sprintf("tag of a quoted or block scalar must be \"!!str\" but got %q", n.Tag)
+		return CodeUnknownTag, fmt.Sprintf("tag of a quoted or block scalar must be \"!!str\" but got %q", n.Tag)
 	}
 	var ok bool
 	switch n.Tag {
@@ -1115,12 +1125,12 @@ func RawYAMLTagError(n *syntax.Node) string {
 	case workflowlang.YamlTagFloat:
 		ok = schema.IsCoreSchemaFloat(n.Value)
 	default:
-		return fmt.Sprintf("tag of a YAML scalar must be one of \"!!str\", \"!!bool\", \"!!int\", \"!!float\", \"!!null\" but got %q", n.Tag)
+		return CodeUnknownTag, fmt.Sprintf("tag of a YAML scalar must be one of \"!!str\", \"!!bool\", \"!!int\", \"!!float\", \"!!null\" but got %q", n.Tag)
 	}
 	if !ok {
-		return fmt.Sprintf("invalid value %q for %q tag", n.Value, n.Tag)
+		return CodeTagValue, fmt.Sprintf("invalid value %q for %q tag", n.Value, n.Tag)
 	}
-	return ""
+	return "", ""
 }
 
 func (p *Parser) ParseRawYAMLValue(n *syntax.Node) workflowlang.RawYAMLValue {
@@ -1264,7 +1274,7 @@ func (p *Parser) ParseMatrixMapping(pos *workflowlang.Pos, n *syntax.Node, allow
 func (p *Parser) parseMaxParallel(n *syntax.Node) *workflowlang.Int {
 	i := p.parseInt(n)
 	if i != nil && i.Expression == nil && i.Value <= 0 {
-		p.errorf(n, "value at \"max-parallel\" must be greater than zero: %v", i.Value)
+		p.errorf(n, CodeInvalidValue, "value at \"max-parallel\" must be greater than zero: %v", i.Value)
 	}
 	return i
 }
@@ -1313,7 +1323,7 @@ func (p *Parser) parseCredentials(pos *workflowlang.Pos, n *syntax.Node) *workfl
 	}
 
 	if ret.Username == nil || ret.Password == nil {
-		p.errorAt(pos, "both \"username\" and \"password\" must be specified in \"credentials\" section")
+		p.errorAt(pos, CodeMissingKey, "both \"username\" and \"password\" must be specified in \"credentials\" section")
 		return nil
 	}
 
@@ -1386,7 +1396,7 @@ func (p *Parser) parseContainer(sec string, pos *workflowlang.Pos, n *syntax.Nod
 	}
 
 	if ret.Image == nil {
-		p.errorfAt(pos, "\"image\" is missing in %q section", sec)
+		p.errorfAt(pos, CodeMissingKey, "\"image\" is missing in %q section", sec)
 	}
 
 	return ret
@@ -1414,7 +1424,7 @@ func (p *Parser) parseServices(n *syntax.Node) *workflowlang.Services {
 func (p *Parser) parseTimeoutMinutes(n *syntax.Node) *workflowlang.Float {
 	f := p.parseFloat(n)
 	if f != nil && f.Expression == nil && f.Value <= 0.0 {
-		p.errorf(n, "value at \"timeout-minutes\" must be greater than zero: %v", f.Value)
+		p.errorf(n, CodeInvalidValue, "value at \"timeout-minutes\" must be greater than zero: %v", f.Value)
 	}
 	return f
 }
@@ -1481,7 +1491,7 @@ func (p *Parser) parseDockerInputExpression(n *syntax.Node, expression *workflow
 			continue
 		}
 		if key == "entrypoint" && value == "" {
-			p.error(n, "string should not be empty")
+			p.error(n, CodeEmptyValue, "string should not be empty")
 			continue
 		}
 		resolved := &workflowlang.String{Value: value, Pos: expression.Pos}
@@ -1603,7 +1613,7 @@ func (p *Parser) parseStepExecWait(entries []workflowMappingEntry) *workflowlang
 			// The schema allows null or a static boolean; false is diagnosed as a no-op.
 			if e.val.Tag != workflowlang.YamlTagNull {
 				if b := p.parseLiteralBool(e.val); b != nil && !b.Value {
-					p.error(e.val, "the value of \"wait-all\" must be true or omitted")
+					p.error(e.val, CodeInvalidValue, "the value of \"wait-all\" must be true or omitted")
 				}
 			}
 			ret.All = true
@@ -1624,7 +1634,7 @@ func (p *Parser) parseStepExecWait(entries []workflowMappingEntry) *workflowlang
 	// 'wait' and 'wait-all' are mutually exclusive: 'wait' targets specific
 	// background steps while 'wait-all' waits for all of them.
 	if waitGiven && ret.All {
-		p.errorAt(ret.AllPos, "\"wait\" and \"wait-all\" cannot be specified in the same step")
+		p.errorAt(ret.AllPos, CodeConflictingKeys, "\"wait\" and \"wait-all\" cannot be specified in the same step")
 	}
 
 	return ret
@@ -1760,7 +1770,7 @@ func (p *Parser) ParseStep(n *syntax.Node) *workflowlang.Step {
 	case isParallel:
 		ret.Exec = p.parseStepExecParallel(entries)
 	default:
-		p.error(n, "step must run script with \"run\" section or run action with \"uses\" section")
+		p.error(n, CodeMissingKey, "step must run script with \"run\" section or run action with \"uses\" section")
 	}
 
 	return ret
@@ -1783,7 +1793,7 @@ func (p *Parser) ParseSteps(n *syntax.Node) []*workflowlang.Step {
 			// Only a run value that passed CheckString carries a source scalar,
 			// so non-string values are not reported twice.
 			if run, ok := s.Exec.(*workflowlang.ExecRun); ok && run.Run.SourceScalar.HasSource && run.Run.Value == "" {
-				p.errorAt(run.Run.Pos, "string should not be empty")
+				p.errorAt(run.Run.Pos, CodeEmptyValue, "string should not be empty")
 			}
 			ret = append(ret, s)
 		}
@@ -1844,7 +1854,7 @@ func (p *Parser) parseSnapshot(pos *workflowlang.Pos, n *syntax.Node) *workflowl
 			}
 		}
 		if ret.ImageName == nil {
-			p.errorAt(pos, "\"snapshot\" section must have \"image-name\" configuration")
+			p.errorAt(pos, CodeMissingKey, "\"snapshot\" section must have \"image-name\" configuration")
 		}
 		return ret
 	case syntax.DocumentNode, syntax.SequenceNode, syntax.AliasNode:
@@ -1941,7 +1951,7 @@ func (p *Parser) parseJob(id *workflowlang.String, n *syntax.Node) *workflowlang
 				if e.val.Value == "inherit" {
 					call.InheritSecrets = true
 				} else {
-					p.errorf(e.val, "expected mapping node for secrets or \"inherit\" string node but found %q node", e.val.Value)
+					p.errorf(e.val, CodeTypeMismatch, "expected mapping node for secrets or \"inherit\" string node but found %q node", e.val.Value)
 				}
 			} else {
 				call.Secrets = map[string]*workflowlang.WorkflowCallSecret{}
@@ -1956,6 +1966,9 @@ func (p *Parser) parseJob(id *workflowlang.String, n *syntax.Node) *workflowlang
 		case "snapshot":
 			ret.Snapshot = p.parseSnapshot(k.Pos, v)
 		default:
+			// this is inelegant as fuck
+			// TODO: refactor this to use a map of valid keys instead of a switch statement
+			// or summit'
 			p.unexpectedKey(e.key, "job", []string{
 				"name",
 				"needs",
@@ -1987,7 +2000,7 @@ func (p *Parser) parseJob(id *workflowlang.String, n *syntax.Node) *workflowlang
 		if stepsOnlyKey != nil {
 			ret.DeclaredUses = call.Uses
 			p.errorfAt(
-				stepsOnlyKey.Pos,
+				stepsOnlyKey.Pos, CodeUnknownKey,
 				"when a reusable workflow is called with \"uses\", %q is not available. only following keys are allowed: \"name\", \"uses\", \"with\", \"secrets\", \"needs\", \"if\", \"permissions\", \"cache-mode\", \"strategy\", and \"concurrency\" in job %q",
 				stepsOnlyKey.Value,
 				id.Value,
@@ -1998,14 +2011,14 @@ func (p *Parser) parseJob(id *workflowlang.String, n *syntax.Node) *workflowlang
 	} else {
 		// When not a reusable call
 		if ret.Steps == nil {
-			p.errorfAt(id.Pos, "\"steps\" section is missing in job %q", id.Value)
+			p.errorfAt(id.Pos, CodeMissingKey, "\"steps\" section is missing in job %q", id.Value)
 		}
 		if ret.RunsOn == nil {
-			p.errorfAt(id.Pos, "\"runs-on\" section is missing in job %q", id.Value)
+			p.errorfAt(id.Pos, CodeMissingKey, "\"runs-on\" section is missing in job %q", id.Value)
 		}
 		if callOnlyKey != nil {
 			p.errorfAt(
-				callOnlyKey.Pos,
+				callOnlyKey.Pos, CodeUnknownKey,
 				"%q is only available for a reusable workflow call with \"uses\" but \"uses\" is not found in job %q",
 				callOnlyKey.Value,
 				id.Value,
@@ -2038,7 +2051,7 @@ func (p *Parser) parse(n *syntax.Node) *workflowlang.Workflow {
 		if position.Col == 0 {
 			position.Col = 1
 		}
-		p.errorAt(position, "workflow is empty")
+		p.errorAt(position, CodeEmptyValue, "workflow is empty")
 		return w
 	}
 	if root := n.Content[0]; root.Kind == syntax.MappingNode && len(root.Content) != 0 {
@@ -2085,10 +2098,10 @@ func (p *Parser) parse(n *syntax.Node) *workflowlang.Workflow {
 	}
 
 	if w.On == nil {
-		p.error(n, "\"on\" section is missing in workflow")
+		p.error(n, CodeMissingKey, "\"on\" section is missing in workflow")
 	}
 	if w.Jobs == nil {
-		p.error(n, "\"jobs\" section is missing in workflow")
+		p.error(n, CodeMissingKey, "\"jobs\" section is missing in workflow")
 	}
 
 	return w
@@ -2110,6 +2123,7 @@ func HandleYAMLUnmarshalError(err error) []*SyntaxError {
 			Line:    diagnostic.Mark.Line,
 			Column:  diagnostic.Mark.Column,
 			Kind:    "syntax-check",
+			Code:    CodeYAML,
 		})
 	}
 	return findings
@@ -2132,7 +2146,7 @@ func parseDocument(source []byte, root *syntax.Node) (*workflowlang.Workflow, []
 	p.IndexScalarSources(root)
 	p.checkFlowMappingNulls(root, false)
 	uses := inspectYAMLAliases(root, func(node *syntax.Node, _ YamlAliasDiagnostic, message string) {
-		p.error(node, message)
+		p.error(node, CodeAlias, message)
 	})
 	if err := admitYAMLAliasUses(root, uses); err != nil {
 		return nil, append(p.errs, HandleYAMLUnmarshalError(err)...)

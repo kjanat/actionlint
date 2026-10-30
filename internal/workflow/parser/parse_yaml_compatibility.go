@@ -17,7 +17,7 @@ func (p *Parser) checkFlowMappingNulls(node *syntax.Node, flow bool) {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key, value := node.Content[i], node.Content[i+1]
 			if p.compactFlowNull(key, value) {
-				p.error(key, "GitHub Actions requires a space after ':' before an empty flow-mapping value; insert a space or write an explicit null")
+				p.error(key, CodeFlowNull, "GitHub Actions requires a space after ':' before an empty flow-mapping value; insert a space or write an explicit null")
 			}
 		}
 	}

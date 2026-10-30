@@ -16,6 +16,8 @@ type SyntaxError struct {
 	Line    int
 	Column  int
 	Kind    string
+	// Code names why GitHub rejects the document; empty outside the workflow parser.
+	Code Code
 }
 
 func (e *SyntaxError) Error() string {
@@ -26,7 +28,7 @@ func (e *SyntaxError) Error() string {
 func (e *SyntaxError) Diagnostic(source []byte) diagnostic.Diagnostic {
 	snippet, _ := sourcemap.SourceLine(string(source), e.Line)
 	return diagnostic.Diagnostic{
-		Rule: e.Kind, Message: e.Message,
+		Rule: e.Kind, Code: string(e.Code), Message: e.Message,
 		Start:   diagnostic.Position{Line: e.Line, Column: e.Column},
 		End:     diagnostic.Position{Line: e.Line, Column: text.TokenEndColumn(snippet, e.Column)},
 		Snippet: snippet,
