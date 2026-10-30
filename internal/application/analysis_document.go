@@ -244,7 +244,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		ScriptInputsForConfig: func(cfg *repoconfig.Config) ([]analyzer.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, cfg)
 		},
-		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir, Reader: s.reader}, Config: cfg,
+		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader, Config: cfg,
 		ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			config, err := repoconfig.ForAction(projectConfig, path, root)
 			if err != nil {

@@ -21,7 +21,7 @@ type executablePathsProbe struct {
 func (p *executablePathsProbe) checkPaths() {
 	p.t.Helper()
 	got := p.Paths()
-	if got.Platform != p.want.Platform || got.Workspace != p.want.Workspace || got.Analysis != p.want.Analysis || got.Reader != p.want.Reader {
+	if got.Platform != p.want.Platform || got.Workspace != p.want.Workspace || got.Analysis != p.want.Analysis {
 		p.t.Fatalf("invocation replaced job paths: got %+v, wanted %+v", got, p.want)
 	}
 }
@@ -53,7 +53,7 @@ func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inside}]}\n",
 	}, nil)
 	reader := &fsread.Reader{}
-	want := execution.Paths{Workspace: f.service.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux, Reader: reader}
+	want := execution.Paths{Workspace: f.service.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
 	p := &executablePathsProbe{RuleExecutableBit: &builtin.RuleExecutableBit{ExecutableChecker: execution.NewExecutableChecker(execution.ExecutableContext{
 		Context: t.Context(), ProjectRoot: want.Workspace, WorkingDir: want.Analysis, Reader: reader,
 	})}, t: t, want: want}

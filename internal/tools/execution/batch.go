@@ -10,6 +10,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/invocationview"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/workflow/execution"
@@ -60,6 +61,7 @@ type Collection struct {
 // whether it contains scripts, so configuration failures are still observable.
 type Scope struct {
 	Paths      workflowexecution.Paths
+	Reader     *fsread.Reader // records the filesystem reads tools make in this scope
 	Config     *repoconfig.Config
 	Deployment Deployment
 	Composite  bool

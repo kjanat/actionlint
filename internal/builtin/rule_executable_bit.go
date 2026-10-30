@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
@@ -20,6 +21,7 @@ func newRuleExecutableBit(c Context) *RuleExecutableBit {
 	r.ExecutableChecker = execution.NewExecutableChecker(execution.ExecutableContext{
 		Context: c.Context, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
 		Reader: c.Reader, Index: c.Index, Log: r.Debug, Runners: c.Runners,
+		Report: func(finding *findingmodel.Finding) { r.findings = append(r.findings, finding) },
 	})
 	return r
 }
@@ -31,7 +33,9 @@ func (rule *RuleExecutableBit) Description() string {
 func (rule *RuleExecutableBit) Errs() []*findingmodel.Finding                     { return rule.findings }
 func (rule *RuleExecutableBit) VisitWorkflowPost(workflowdecl.WorkflowView) error { return nil }
 func (rule *RuleExecutableBit) VisitJobPost(workflowdecl.JobView) error           { return nil }
-func (rule *RuleExecutableBit) CheckoutPaths() *execution.Paths                   { return rule.Paths() }
+func (rule *RuleExecutableBit) ApplyCheckout(actions *actionlocal.Resolver) {
+	rule.SetPaths(actions.ApplyCheckout(rule.Paths()))
+}
 
 type executableInvocation struct {
 	scope  Invocation
@@ -45,11 +49,7 @@ func (rule *RuleExecutableBit) VisitStep(step workflowdecl.StepView) error {
 	return rule.VisitInvocationStep(step)
 }
 func (rule *RuleExecutableBit) VisitInvocationStep(step workflowdecl.StepView) error {
-	before := len(rule.Findings())
-	err := rule.ExecutableChecker.VisitStep(step)
-	added := rule.Findings()[before:]
-	rule.findings = append(rule.findings, added...)
-	return err
+	return rule.ExecutableChecker.VisitStep(step)
 }
 func (rule *RuleExecutableBit) VisitOpaqueAction(step workflowdecl.StepView) error {
 	return rule.VisitInvocationStep(step)
@@ -59,7 +59,7 @@ func (rule *RuleExecutableBit) EnterInvocation(scope Invocation) error {
 		return invocation.ErrForeignContext
 	}
 	rule.frames = append(rule.frames, executableInvocation{scope: scope, parent: rule.ExecutableChecker})
-	rule.ExecutableChecker = rule.ForkComposite(scope.Context, scope.ActionPath, *rule.Paths())
+	rule.ExecutableChecker = rule.ForkComposite(scope.Context, scope.ActionPath, rule.Paths())
 	return nil
 }
 func (rule *RuleExecutableBit) LeaveInvocation(context invocation.Context) error {

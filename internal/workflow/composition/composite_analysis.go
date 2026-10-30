@@ -15,6 +15,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/mapping"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
@@ -35,6 +36,7 @@ type compositionSession struct {
 	scripts                []scriptexecution.ScriptRequest
 	scriptScopes           []*scriptexecution.Scope
 	scriptPaths            execution.Paths
+	reader                 *fsread.Reader
 	collectScripts         bool
 	ctx                    context.Context
 	passes                 []workflowvisit.Pass
@@ -101,7 +103,7 @@ func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deploy
 
 func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.Deployment) {
 	analysis.scriptScope = &scriptexecution.Scope{
-		Paths: analysis.scriptPaths, Config: analysis.scriptConfig,
+		Paths: analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig,
 		Deployment: deployment, Context: analysis.context,
 	}
 	execution.ActionOrigin(&analysis.scriptScope.Paths, analysis.context, deployment.ActionPath())

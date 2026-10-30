@@ -24,7 +24,6 @@ import (
 // ExecutableChecker checks direct script calls against the Git index, independently
 // of host filesystem permissions and of ShellCheck availability.
 type ExecutableChecker struct {
-	errs []*findingmodel.Finding
 	executableState
 	context                             ExecutableContext
 	workflowDir, jobDir                 Directory
@@ -45,6 +44,8 @@ type ExecutableChecker struct {
 
 // ExecutableContext supplies repository observations and paths to script analysis.
 // Index loads a shared immutable snapshot; all shell interpretation stays local.
+// Report receives each direct-execution finding; composite forks share it, so
+// the owner collects findings without reading checker state.
 type ExecutableContext struct {
 	Runners                 *runnerlang.Knowledge
 	Context                 context.Context
@@ -52,6 +53,7 @@ type ExecutableContext struct {
 	Reader                  *fsread.Reader
 	Index                   func(context.Context, string) *IndexSnapshot
 	Log                     func(string, ...any)
+	Report                  func(*findingmodel.Finding)
 }
 
 // NewExecutableChecker creates isolated state for one workflow's script execution.
@@ -59,14 +61,16 @@ func NewExecutableChecker(context ExecutableContext) *ExecutableChecker {
 	return &ExecutableChecker{context: context}
 }
 
-// Findings returns direct-execution diagnostics accumulated while checking steps.
-func (rule *ExecutableChecker) Findings() []*findingmodel.Finding { return rule.errs }
+// Paths returns the resolved checkout scope for composite invocation adaptation.
+func (rule *ExecutableChecker) Paths() Paths { return rule.paths }
 
-// Paths provides the resolved checkout scope for composite invocation adaptation.
-func (rule *ExecutableChecker) Paths() *Paths { return &rule.paths }
+// SetPaths replaces the checkout scope after a composite checkout moved it.
+func (rule *ExecutableChecker) SetPaths(paths Paths) { rule.paths = paths }
 
 func (rule *ExecutableChecker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
-	rule.errs = append(rule.errs, findingmodel.Errorf(pos, "executable-bit", format, args...))
+	if rule.context.Report != nil {
+		rule.context.Report(findingmodel.Errorf(pos, "executable-bit", format, args...))
+	}
 }
 
 func (rule *ExecutableChecker) debug(format string, args ...any) {
@@ -128,7 +132,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflowdecl.JobView) err
 		rule.unix = false
 	}
 	rule.executableState = newExecutableState(knowledge.Ephemeral, rule.callerRepositoryUnknown)
-	rule.paths = Paths{Workspace: rule.context.ProjectRoot, Analysis: rule.context.WorkingDir, Platform: platform, Reader: rule.context.Reader}
+	rule.paths = Paths{Workspace: rule.context.ProjectRoot, Analysis: rule.context.WorkingDir, Platform: platform}
 	return nil
 }
 
@@ -589,7 +593,7 @@ func (rule *ExecutableChecker) scriptPath(directory Directory, script string) (e
 	if !ok {
 		return executableLocation{}, false
 	}
-	file, ok := paths.Local(runnerPath)
+	file, ok := paths.Local(runnerPath, rule.context.Reader)
 	if !ok {
 		return executableLocation{}, false
 	}
@@ -674,7 +678,7 @@ func (rule *ExecutableChecker) index() *IndexSnapshot {
 	if err := snapshot.Err(); err != nil {
 		rule.debug("Git index unavailable: %v", err)
 	} else {
-		rule.paths.Reader.Record(snapshot.Path())
+		rule.context.Reader.Record(snapshot.Path())
 	}
 	return snapshot
 }

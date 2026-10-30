@@ -67,7 +67,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 		}
 		request.Execution = scriptexecution.Execution{
 			Shell:     execution.ResolveShell(run.Shell().Semantic(), jobShell, workflowShell, runnerShell),
-			Directory: paths.Resolve(paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir)),
+			Directory: paths.Resolve(paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir), analysis.reader),
 		}
 	}
 	analysis.scripts = append(analysis.scripts, request)

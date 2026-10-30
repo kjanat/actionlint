@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/engine"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/tools/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/execution"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
@@ -37,6 +38,7 @@ type Options struct {
 	Rules                 []workflowvisit.Rule
 	Scripts               scriptexecution.Service
 	Paths                 execution.Paths
+	Reader                *fsread.Reader // records reads made while resolving script paths
 	Config                *repoconfig.Config
 	// ConfigForFile resolves each logical manifest path once, including no-script scopes.
 	ConfigForFile func(string) (*repoconfig.Config, error)
@@ -131,6 +133,7 @@ func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, 
 			ctx: options.Context, passes: passes,
 			runners:        options.Runners,
 			scriptPaths:    options.Paths,
+			reader:         options.Reader,
 			collectScripts: options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
 			budget:                invocation.DefaultBudget(),
 			scriptInputs:          scriptInputs,
