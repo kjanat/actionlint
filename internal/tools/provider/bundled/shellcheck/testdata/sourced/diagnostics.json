@@ -1,0 +1,36 @@
+{
+  "diagnostics": [
+    {
+      "filename": "actionlint.sh",
+      "code": "SC1094",
+      "message": "Parsing of sourced file failed. Ignoring it",
+      "severity": "warning",
+      "location": {
+        "row": 1,
+        "column": 3
+      },
+      "end_location": {
+        "row": 1,
+        "column": 13
+      }
+    },
+    {
+      "filename": "scripts/lib.sh",
+      "code": "SC2086",
+      "message": "reported source",
+      "severity": "info",
+      "location": {
+        "row": 1,
+        "column": 6
+      },
+      "end_location": {
+        "row": 1,
+        "column": 10
+      },
+      "source": "scripts/lib.sh"
+    }
+  ],
+  "sources": [
+    "scripts/lib.sh"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "id": "actionlint.kjanat.dev/providers/shellcheck",
+  "version": "bundled",
+  "role": "script",
+  "scope": "source",
+  "transport": "process",
+  "rule": {
+    "name": "shellcheck",
+    "description": "Analyze embedded shell scripts with ShellCheck",
+    "category": "correctness",
+    "subcategory": "shell",
+    "maturity": "stable",
+    "provider": "shellcheck",
+    "recommended": true,
+    "explanation": "Analyze embedded shell scripts with ShellCheck.",
+    "help": "Correct the reported shell construct; inspect suggested edits before applying them.",
+    "documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#shellcheck",
+    "fix_availability": "suggested"
+  },
+  "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
+  "selectors": { "filename": "actionlint.sh" },
+  "capabilities": {
+    "fixes": true,
+    "reported_sources": true,
+    "resources": ["workspace", "directory"],
+    "message_template": "shellcheck reported issue in this script: {code}:{severity}:{row}:{column}: {message}",
+    "severities": { "error": "error", "warning": "warning", "info": "info", "style": "info" }
+  },
+  "process": {
+    "entry": "shellcheck",
+    "stdin": "source",
+    "exit_codes": [0, 1],
+    "args": [
+      "{user-args}",
+      "{switch:config_file:--rcfile:--norc}",
+      "{var:config_file}",
+      "{switch:external_sources:-x:}",
+      "-f",
+      "json1",
+      "{flag:dialect:--shell}",
+      "-e",
+      "{list:exclude:,}",
+      "-"
+    ],
+    "env_passthrough": ["SHELLCHECK_OPTS"],
+    "config": { "render": "none" },
+    "config_files": {
+      "names": [".shellcheckrc", "shellcheckrc"],
+      "search": ["upward", "xdg", "home"]
+    },
+    "output": {
+      "format": "json",
+      "transform": {
+        "language": "jq",
+        "digest": "sha256:33dbe00a92acbfd6ac8ff4e1dfa0b2b5a925d9e62a91de2b9769da92e9c2b596"
+      },
+      "coordinates": { "rows": "lf", "columns": "chars", "end": "exclusive" }
+    },
+    "user_args": {
+      "operands": true,
+      "value_options": [
+        "--shell",
+        "--include",
+        "--exclude",
+        "--extended-analysis",
+        "--format",
+        "--rcfile",
+        "--enable",
+        "--source-path",
+        "--severity",
+        "--wiki-link-count"
+      ],
+      "value_shorts": "iefosPSW",
+      "overrides": [{ "flag": "--shell", "short": "s", "drops": "dialect" }],
+      "env_options": ["SHELLCHECK_OPTS"]
+    },
+    "concurrency": "pool"
+  }
+}

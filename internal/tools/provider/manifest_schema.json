@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://actionlint.kjanat.dev/schemas/tool-provider-manifest-1.json",
+  "title": "actionlint tool provider manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "role",
+    "rule",
+    "scope",
+    "transport",
+    "preparation",
+    "selectors",
+    "capabilities"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "$ref": "#/$defs/token" },
+    "version": { "$ref": "#/$defs/token" },
+    "role": { "enum": ["script", "document", "runner"] },
+    "rule": { "$ref": "#/$defs/rule" },
+    "scope": { "enum": ["source", "composite"] },
+    "transport": { "enum": ["process", "wasm-core", "wasm-component", "embedded"] },
+    "artifacts": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "preparation": { "$ref": "#/$defs/token" },
+    "selectors": { "$ref": "#/$defs/selectors" },
+    "capabilities": { "$ref": "#/$defs/capabilities" },
+    "config_schema": { "type": ["object", "boolean"] },
+    "process": { "$ref": "#/$defs/process" },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "contract"],
+      "properties": {
+        "tool": { "$ref": "#/$defs/name" },
+        "contract": { "$ref": "#/$defs/token" }
+      }
+    }
+  },
+  "if": { "properties": { "transport": { "const": "process" } } },
+  "then": { "required": ["process"] },
+  "else": { "not": { "required": ["process"] } },
+  "$defs": {
+    "token": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\s\\x00-\\x1f]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "text": { "type": "string", "maxLength": 4096 },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "strings": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/token" }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "category", "subcategory", "maturity", "provider"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "description": { "$ref": "#/$defs/text", "minLength": 1 },
+        "category": { "$ref": "#/$defs/name" },
+        "subcategory": { "$ref": "#/$defs/name" },
+        "maturity": { "$ref": "#/$defs/name" },
+        "provider": { "$ref": "#/$defs/token" },
+        "recommended": { "type": "boolean" },
+        "explanation": { "$ref": "#/$defs/text" },
+        "help": { "$ref": "#/$defs/text" },
+        "documentation_url": { "type": "string", "maxLength": 2048, "pattern": "^https://" },
+        "fix_availability": { "$ref": "#/$defs/name" },
+        "options_schema": { "type": ["object", "boolean"] },
+        "examples": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["description", "before", "after"],
+            "properties": {
+              "description": { "$ref": "#/$defs/text" },
+              "before": { "type": "string", "maxLength": 65536 },
+              "after": { "type": "string", "maxLength": 65536 }
+            }
+          }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "digest", "filename", "size"],
+      "properties": {
+        "platform": { "type": "string", "pattern": "^[a-z0-9]+/[a-z0-9]+$" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "filename": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,255}$", "not": { "enum": [".", ".."] } },
+        "size": { "type": "integer", "minimum": 1 },
+        "media_type": { "$ref": "#/$defs/token" }
+      }
+    },
+    "selectors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shells": { "$ref": "#/$defs/strings" },
+        "inputs": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "input", "language"],
+            "properties": {
+              "action": { "type": "string" },
+              "input": { "type": "string" },
+              "language": { "type": "string" }
+            }
+          }
+        },
+        "filename": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,255}$", "not": { "enum": [".", ".."] } }
+      }
+    },
+    "severity": { "enum": ["error", "warning", "info"] },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixes", "reported_sources"],
+      "properties": {
+        "template_contract": { "$ref": "#/$defs/token" },
+        "fixes": { "type": "boolean" },
+        "reported_sources": { "type": "boolean" },
+        "resources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["workspace", "directory"] }
+        },
+        "message_template": { "$ref": "#/$defs/text", "minLength": 1 },
+        "severities": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": { "$ref": "#/$defs/token" },
+          "additionalProperties": { "$ref": "#/$defs/severity" }
+        }
+      }
+    },
+    "placeholder": {
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^(?:[^{}]*|\\{var:[a-z][a-z0-9_]*\\}|\\{flag:[a-z][a-z0-9_]*:-[^:{}]+\\}|\\{switch:[a-z][a-z0-9_]*:(?:-[^:{}]+)?:(?:-[^:{}]+)?\\}|\\{list:[a-z][a-z0-9_]*:[^{}]+\\}|\\{config:toml-pairs:-[^:{}]+\\}|\\{config:(?:toml|json)-file\\}|\\{user-args\\})$"
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language"],
+      "properties": {
+        "language": { "const": "jq" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "inline": { "type": "string", "minLength": 1, "maxLength": 65536 }
+      },
+      "oneOf": [{ "required": ["digest"] }, { "required": ["inline"] }]
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry", "args", "stdin", "config", "output"],
+      "properties": {
+        "entry": { "$ref": "#/$defs/token" },
+        "args": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/placeholder" }
+        },
+        "stdin": { "enum": ["source", "request"] },
+        "env": {
+          "type": "object",
+          "maxProperties": 256,
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "additionalProperties": { "type": "string", "maxLength": 4096 }
+        },
+        "env_passthrough": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+        },
+        "exit_codes": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "maximum": 255 }
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["render"],
+          "properties": {
+            "transform": { "$ref": "#/$defs/transform" },
+            "render": { "enum": ["none", "json-file", "toml-file", "toml-pairs", "json-stdin"] },
+            "forbidden": { "$ref": "#/$defs/strings" }
+          }
+        },
+        "config_files": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["names"],
+          "properties": {
+            "names": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,255}$", "not": { "enum": [".", ".."] } }
+            },
+            "search": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "enum": ["upward", "xdg", "home"] }
+            }
+          }
+        },
+        "config_schema": { "type": ["object", "boolean"] },
+        "version": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["args", "pattern"],
+          "properties": {
+            "args": { "$ref": "#/$defs/strings" },
+            "pattern": { "type": "string", "minLength": 1, "maxLength": 1024 },
+            "minimum": { "$ref": "#/$defs/token" },
+            "template_effects": { "$ref": "#/$defs/token" }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format"],
+          "properties": {
+            "format": { "enum": ["script-diagnostics@1", "sarif@2.1.0", "json", "text"] },
+            "transform": { "$ref": "#/$defs/transform" },
+            "coordinates": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["rows", "columns", "end"],
+              "properties": {
+                "rows": { "enum": ["lf", "source"] },
+                "columns": { "enum": ["chars", "bytes", "utf16"] },
+                "end": { "enum": ["exclusive", "inclusive"] }
+              }
+            }
+          },
+          "if": { "properties": { "format": { "enum": ["json", "text"] } } },
+          "then": { "required": ["transform"] },
+          "else": { "not": { "required": ["transform"] } }
+        },
+        "template_effects": {
+          "type": "object",
+          "maxProperties": 4096,
+          "propertyNames": { "$ref": "#/$defs/token" },
+          "additionalProperties": { "type": "string" }
+        },
+        "user_args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operands"],
+          "properties": {
+            "operands": { "type": "boolean" },
+            "value_options": {
+              "type": "array",
+              "maxItems": 256,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/long_option" }
+            },
+            "value_shorts": { "type": "string", "pattern": "^[A-Za-z0-9]*$" },
+            "forbidden": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["reason"],
+                "properties": {
+                  "flag": { "$ref": "#/$defs/long_option" },
+                  "prefix": { "type": "string", "minLength": 1, "maxLength": 64 },
+                  "short_letter": { "$ref": "#/$defs/short_letter" },
+                  "reason": { "$ref": "#/$defs/text", "minLength": 1 }
+                },
+                "oneOf": [
+                  { "required": ["flag"] },
+                  { "required": ["prefix"] },
+                  { "required": ["short_letter"] }
+                ]
+              }
+            },
+            "overrides": {
+              "type": "array",
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["flag", "drops"],
+                "properties": {
+                  "flag": { "$ref": "#/$defs/long_option" },
+                  "short": { "$ref": "#/$defs/short_letter" },
+                  "drops": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+                }
+              }
+            },
+            "env_options": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+            }
+          }
+        },
+        "concurrency": { "enum": ["pool", "serial"] }
+      }
+    },
+    "long_option": { "type": "string", "pattern": "^--[A-Za-z0-9][A-Za-z0-9-]*$" },
+    "short_letter": { "type": "string", "pattern": "^[A-Za-z0-9]$" }
+  }
+}
