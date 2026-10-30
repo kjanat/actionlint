@@ -163,7 +163,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
 	analysisErr = errors.Join(analysisErr, err)
 	policy := diagnosticpolicy.Policy{RuleDescriptors: s.toolDescriptors, Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, ProjectConfig: projectConfig, Metadata: document.Metadata, Presets: s.rulePresets, AdditionalRules: names, IgnorePatterns: s.ignorePats}
-	all, err = policy.Apply(all, composed.Sources, composed.Configs)
+	all, err = diagnosticpolicy.Apply(policy, all, composed.Sources, composed.Configs)
 	if err != nil {
 		return nil, outline, errors.Join(analysisErr, err)
 	}

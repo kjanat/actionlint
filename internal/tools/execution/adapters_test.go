@@ -179,7 +179,7 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 								cfg.Lint.Rules.Disable = []string{"shellcheck"}
 							}
 							policy := diagnosticpolicy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), ProjectConfig: cfg}
-							filtered, err := policy.Apply(findings, map[string][]byte{path: content}, map[string]*repoconfig.Config{path: cfg})
+							filtered, err := diagnosticpolicy.Apply(policy, findings, map[string][]byte{path: content}, map[string]*repoconfig.Config{path: cfg})
 							want := 2
 							if disabled {
 								want = 0
