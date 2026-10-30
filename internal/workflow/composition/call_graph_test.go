@@ -17,13 +17,13 @@ func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
 		f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}, {uses: $/child}]}}\n", map[string]string{
 			"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 		}, nil)
-		f.service.options.CollectScripts = collect
-		result, err := f.service.Workflow(f.root)
+		f.options.CollectScripts = collect
+		result, err := Workflow(f.options, f.root)
 		if err != nil {
 			t.Fatal(err)
 		}
 		content := f.root.Content()
-		input, err := result.AnalyzerInput("ci.yml", "ci.yml", content, documentparse.Workflow("ci.yml", content), nil)
+		input, err := AnalyzerInput(result, "ci.yml", "ci.yml", content, documentparse.Workflow("ci.yml", content), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,7 +46,7 @@ func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
 
 func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}]}}\n", nil, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			refs := map[string]workflowfacts.SourceIndex{"ci.yml": {Document: test.reference}}
-			input, err := result.AnalyzerInput("ci.yml", "ci.yml", content, document, refs)
+			input, err := AnalyzerInput(result, "ci.yml", "ci.yml", content, document, refs)
 			if !test.valid {
 				if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 					t.Fatalf("mismatched identity accepted: %v", err)
@@ -87,18 +87,18 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 func TestAnalyzerEmptyCollectedGraphAndUnavailableGraph(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n")
 	f := newInvocationFixture(t, t.Context(), string(content), nil, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := result.AnalyzerInput("ci.yml", "ci.yml", content, documentparse.Workflow("ci.yml", content), nil)
+	input, err := AnalyzerInput(result, "ci.yml", "ci.yml", content, documentparse.Workflow("ci.yml", content), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Contains(input.Available, analyzer.Scripts) || !slices.Contains(input.Available, analyzer.Invocations) || !input.CallGraph.Valid() || input.CallGraph.ScriptCount() != 0 {
 		t.Fatal("empty collected graph was treated as unavailable")
 	}
-	input, err = (Result{}).AnalyzerInput("bad.yml", "bad.yml", nil, documentparse.Document{}, nil)
+	input, err = AnalyzerInput(Result{}, "bad.yml", "bad.yml", nil, documentparse.Document{}, nil)
 	if err != nil || input.CallGraph.Valid() || slices.Contains(input.Available, analyzer.Invocations) {
 		t.Fatalf("unavailable graph: %+v %v", input, err)
 	}

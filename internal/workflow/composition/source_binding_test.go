@@ -23,12 +23,12 @@ func TestWorkflowRegistersNestedDeclarationsInConfiguredRegistry(t *testing.T) {
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
 	registry := f.snapshots.SourceSnapshots
-	f.service.options.SourceSnapshots = nil
-	if _, err := f.service.Workflow(f.root); err == nil {
+	f.options.SourceSnapshots = nil
+	if _, err := Workflow(f.options, f.root); err == nil {
 		t.Fatal("workflow analysis derived a registry from its entry snapshot")
 	}
-	f.service.options.SourceSnapshots = registry
-	result, err := f.service.Workflow(f.root)
+	f.options.SourceSnapshots = registry
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,8 +64,8 @@ func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New(Options{Context: t.Context(), SourceSnapshots: firstRegistry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil)})
-	if _, err := service.Workflow(secondSnapshot); err == nil || !strings.Contains(err.Error(), "different registry") {
+	options := Options{Context: t.Context(), SourceSnapshots: firstRegistry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil)}
+	if _, err := Workflow(options, secondSnapshot); err == nil || !strings.Contains(err.Error(), "different registry") {
 		t.Fatalf("different source registry was accepted: %v", err)
 	}
 }
@@ -96,8 +96,8 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
-			result, err := service.Workflow(snapshot)
+			options := Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+			result, err := Workflow(options, snapshot)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -115,9 +115,9 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 	innerSource := "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": outerSource, "inner/action.yml": innerSource}, nil)
 	outerConfig, innerConfig := &repoconfig.Config{}, &repoconfig.Config{}
-	outerPath := filepath.Join(f.service.options.Paths.Workspace, "outer", "action.yml")
-	innerPath := filepath.Join(f.service.options.Paths.Workspace, "inner", "action.yml")
-	f.service.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
+	outerPath := filepath.Join(f.options.Paths.Workspace, "outer", "action.yml")
+	innerPath := filepath.Join(f.options.Paths.Workspace, "inner", "action.yml")
+	f.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
 		if path == outerPath {
 			return outerConfig, nil
 		}
@@ -128,7 +128,7 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 	if metadata == nil {
 		t.Fatal("fixture inner metadata absent")
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestStandaloneNestedScriptHasNoJobIdentity(t *testing.T) {
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
 	lookup, _ := f.cache.LookupMetadata("$/outer")
-	result, err := standaloneActionForTest(t, f.service, lookup.Metadata())
+	result, err := standaloneActionForTest(t, f.options, lookup.Metadata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 	analysis := &compositeAnalyzer{compositionSession: &compositionSession{
 		ctx: t.Context(), sourceSnapshots: f.snapshots.SourceSnapshots,
 		collectScripts: true,
-	}, actions: f.service.options.Actions}
+	}, actions: f.options.Actions}
 	analysis.budget = invocation.DefaultBudget()
 	if err := analysis.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 		t.Fatal(err)
@@ -334,8 +334,8 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New(Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true})
-	result, err := service.Workflow(snapshot)
+	options := Options{Context: t.Context(), SourceSnapshots: registry.SourceSnapshots, Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}
+	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}

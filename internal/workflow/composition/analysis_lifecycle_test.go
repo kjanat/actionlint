@@ -31,14 +31,14 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			pass := &phaseRule{Base: workflowvisit.NewBase("phase", ""), visited: &visited, joined: &joined}
 			script := &phaseScriptAnalyzer{t: t, visited: &visited}
 			joinFailure := errors.New("join failure")
-			f.service.options.Rules = []workflowvisit.Rule{pass}
-			f.service.options.Scripts = scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}
-			f.service.options.Join = func() error {
+			f.options.Rules = []workflowvisit.Rule{pass}
+			f.options.Scripts = scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}
+			f.options.Join = func() error {
 				joined = true
 				pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "reported finding")
 				return joinFailure
 			}
-			result, err := f.service.analyze(func(c *compositeAnalyzer) error {
+			result, err := analyze(f.options, func(c *compositeAnalyzer) error {
 				if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 					return err
 				}
@@ -65,7 +65,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 	for _, content := range []string{"on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", "jobs: ["} {
 		parsed := documentparse.Workflow("ci.yml", []byte(content))
-		input, err := (Result{}).AnalyzerInput("ci.yml", "ci.yml", []byte(content), parsed, nil)
+		input, err := AnalyzerInput(Result{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 		if parsed.Facts != nil {
 			if !errors.Is(err, scriptexecution.ErrInvalidBatch) || len(input.Available) != 1 || input.Content != content {
 				t.Fatalf("unprepared workflow projected: %v", err)
@@ -87,7 +87,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := standaloneActionForTest(t, New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}), meta)
+			result, err := standaloneActionForTest(t, Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), CollectScripts: true}, meta)
 			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes()) != 1 || len(result.Batch.Scripts()) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}
@@ -124,21 +124,21 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 				pass.failure = visitFailure
 			}
 			script := &phaseScriptAnalyzer{t: t, visited: &visited, failure: scriptFailure}
-			service := New(Options{
+			options := Options{
 				Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
 				CollectScripts: true, Scripts: scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}, Join: func() error {
 					joined = true
 					pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "joined finding")
 					return nil
 				},
-			})
+			}
 			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 			snapshot, err := snapshots.Document("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"), parsed)
 			if err != nil {
 				t.Fatal(err)
 			}
-			service.options.SourceSnapshots = snapshots.SourceSnapshots
-			result, err := service.Workflow(snapshot)
+			options.SourceSnapshots = snapshots.SourceSnapshots
+			result, err := Workflow(options, snapshot)
 			if !errors.Is(err, scriptFailure) || errors.Is(err, visitFailure) != failVisit || !joined || script.calls != 1 || len(result.Batch.Scripts()) != 1 || len(result.Findings) != 1 || result.Findings[0].Message != "joined finding" {
 				t.Fatalf("error=%v joined=%v calls=%d result=%+v", err, joined, script.calls, result)
 			}

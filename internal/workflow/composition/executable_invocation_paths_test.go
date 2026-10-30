@@ -53,12 +53,12 @@ func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inside}]}\n",
 	}, nil)
 	reader := &fsread.Reader{}
-	want := execution.Paths{Workspace: f.service.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
+	want := execution.Paths{Workspace: f.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
 	p := &executablePathsProbe{RuleExecutableBit: &builtin.RuleExecutableBit{ExecutableChecker: execution.NewExecutableChecker(execution.ExecutableContext{
 		Context: t.Context(), ProjectRoot: want.Workspace, WorkingDir: want.Analysis, Reader: reader,
 	})}, t: t, want: want}
-	f.service.options.Rules = []workflowvisit.Rule{p}
-	_, err := f.service.Workflow(f.root)
+	f.options.Rules = []workflowvisit.Rule{p}
+	_, err := Workflow(f.options, f.root)
 	if err != nil || p.entered != 2 {
 		t.Fatalf("error=%v, invocations=%d", err, p.entered)
 	}

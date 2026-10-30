@@ -49,6 +49,8 @@ type Options struct {
 	Debug                            io.Writer
 }
 
+// Result is a plain record of one composition run. It holds no invariants of
+// its own; AnalyzerInput validates its batch against the entry snapshot.
 type Result struct {
 	Findings         []*findingmodel.Finding
 	EntrySnapshot    *documentparse.SourceSnapshot
@@ -60,13 +62,11 @@ type Result struct {
 	Configs map[string]*repoconfig.Config
 }
 
-type Service struct{ options Options }
-
-func New(options Options) *Service { return &Service{options: options} }
-
-// Workflow enters the workflow pass lifecycle. Action never uses this path.
-func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, error) {
-	return s.analyze(func(c *compositeAnalyzer) error {
+// Workflow runs one workflow composition with the caller's collaborators.
+// It enters the workflow pass lifecycle; Action never uses this path.
+// Options.Join runs exactly once per call.
+func Workflow(options Options, snapshot *documentparse.SourceSnapshot) (Result, error) {
+	return analyze(options, func(c *compositeAnalyzer) error {
 		if snapshot == nil {
 			return errors.New("workflow source snapshot is unavailable")
 		}
@@ -79,16 +79,18 @@ func (s *Service) Workflow(snapshot *documentparse.SourceSnapshot) (Result, erro
 		}
 		v := engine.NewVisitor()
 		v.Hooks = engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout}
-		for _, pass := range s.options.Rules {
-			v.AddPass(checks.WithOrigins(pass, s.options.Config))
+		for _, pass := range options.Rules {
+			v.AddPass(checks.WithOrigins(pass, options.Config))
 		}
-		v.EnableDebug(s.options.Debug)
+		v.EnableDebug(options.Debug)
 		return v.Visit(w)
 	})
 }
 
-func (s *Service) Action(snapshot *documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
-	return s.analyze(func(c *compositeAnalyzer) error {
+// Action runs one standalone action composition with the caller's collaborators.
+// Options.Join runs exactly once per call.
+func Action(options Options, snapshot *documentparse.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
+	return analyze(options, func(c *compositeAnalyzer) error {
 		if snapshot == nil || snapshot.Kind() != documentparse.KindAction {
 			return errors.New("action source snapshot is unavailable")
 		}
@@ -98,12 +100,11 @@ func (s *Service) Action(snapshot *documentparse.SourceSnapshot, deployment scri
 		if err := c.startEntry(invocation.EntryAction, snapshot); err != nil {
 			return err
 		}
-		return visitStandaloneAction(metadata, deployment, s.options.Rules, c)
+		return visitStandaloneAction(metadata, deployment, options.Rules, c)
 	})
 }
 
-func (s *Service) analyze(visit func(*compositeAnalyzer) error) (result Result, err error) {
-	options := s.options
+func analyze(options Options, visit func(*compositeAnalyzer) error) (result Result, err error) {
 	// Join even when a visit fails. Collection happens only after all started work ends.
 	joined := false
 	join := func() error {

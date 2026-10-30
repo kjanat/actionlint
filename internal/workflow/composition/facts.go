@@ -8,7 +8,9 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func (result Result) AnalyzerInput(path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.SourceIndex) (analyzer.Input, error) {
+// AnalyzerInput projects a composition result onto the analyzer input of its
+// entry document. A batch that disagrees with the entry snapshot is rejected.
+func AnalyzerInput(result Result, path, pathAbs string, content []byte, document documentparse.Document, references map[string]workflowfacts.SourceIndex) (analyzer.Input, error) {
 	units := result.Batch.Scripts()
 	refs := references[pathAbs]
 	input := document.AnalyzerSource(path, content, refs.Document)

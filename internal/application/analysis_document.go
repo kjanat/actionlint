@@ -146,7 +146,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	rejected, sourceErr := s.admitSourceDocuments(composed, references)
 	analysisErr = errors.Join(analysisErr, sourceErr)
 	if len(registrations) != 0 {
-		input, inputErr := composed.AnalyzerInput(path, sourcePath, content, document, references)
+		input, inputErr := composition.AnalyzerInput(composed, path, sourcePath, content, document, references)
 		input.Revision, input.Coordinates = captured.Revision(), captured.Coordinates()
 		analysisErr = errors.Join(analysisErr, inputErr)
 		external, err := runDocumentAnalyzers(s.ctx, registrations, input, composed.Sources, usedRules)
@@ -237,7 +237,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		}
 	}
 	requires := checks.RequiredFacts(registrations)
-	service := composition.New(composition.Options{
+	options := composition.Options{
 		SourceSnapshots: s.snapshots,
 		Context:         s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
@@ -254,15 +254,15 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		},
 		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[analyzer.Scripts] || requires[analyzer.Invocations] || requires[analyzer.Execution],
 		ResolveExecution: selected.resolveExecution || requires[analyzer.Execution], Join: join, Debug: s.debugWriter(),
-	})
+	}
 	if action {
 		deployment, deploymentErr := scriptexecution.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
 		if deploymentErr != nil {
 			return result, deploymentErr
 		}
-		result, err = service.Action(snapshot, deployment, document.Metadata)
+		result, err = composition.Action(options, snapshot, deployment, document.Metadata)
 	} else {
-		result, err = service.Workflow(snapshot)
+		result, err = composition.Workflow(options, snapshot)
 	}
 	*usedRules = append(*usedRules, selected.ScriptInfo...)
 	*usedRules = append(*usedRules, checks.Describe(selected.Rules)...)

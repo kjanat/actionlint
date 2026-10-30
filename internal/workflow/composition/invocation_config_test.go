@@ -38,11 +38,11 @@ func TestManifestConfigCacheKeepsLogicalPaths(t *testing.T) {
 	for _, paths := range [][]string{{first, second, first}, {second, first, second}} {
 		configs := map[string]*repoconfig.Config{first: {}, second: {}}
 		loads := map[string]int{}
-		service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(path string) (*repoconfig.Config, error) {
+		options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(path string) (*repoconfig.Config, error) {
 			loads[path]++
 			return configs[path], nil
-		}})
-		result, err := service.analyze(func(analysis *compositeAnalyzer) error {
+		}}
+		result, err := analyze(options, func(analysis *compositeAnalyzer) error {
 			for _, path := range paths {
 				got, err := analysis.configForFile(path)
 				if err != nil {
@@ -72,14 +72,14 @@ type configVisitProbe struct {
 func TestManifestConfigCacheRetriesFailuresAndCachesNil(t *testing.T) {
 	failure := errors.New("configuration unavailable")
 	loads := 0
-	service := New(Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(string) (*repoconfig.Config, error) {
+	options := Options{Context: t.Context(), Actions: actionlocal.NewResolver(nil, nil), ConfigForFile: func(string) (*repoconfig.Config, error) {
 		loads++
 		if loads == 1 {
 			return nil, failure
 		}
 		return nil, nil
-	}})
-	result, err := service.analyze(func(analysis *compositeAnalyzer) error {
+	}}
+	result, err := analyze(options, func(analysis *compositeAnalyzer) error {
 		if _, err := analysis.configForFile("action.yml"); !errors.Is(err, failure) {
 			t.Fatalf("configuration failure lost its cause: %v", err)
 		}
@@ -116,16 +116,16 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - {id: before, run: echo before}\n      - {id: broken, uses: $/outer}\n      - {id: after, run: echo after}\n  later:\n    runs-on: ubuntu-latest\n    steps: [{id: later-job, run: echo later}]\n"
 			f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: []}\n"}, nil)
 			probe := &configVisitProbe{Base: workflowvisit.NewBase("config-visits", "")}
-			f.service.options.Rules = append(f.service.options.Rules, probe)
+			f.options.Rules = append(f.options.Rules, probe)
 			failure := errors.New("invalid action configuration")
 			loads := 0
-			f.service.options.CollectScripts = collect
-			f.service.options.ConfigForFile = func(string) (*repoconfig.Config, error) {
+			f.options.CollectScripts = collect
+			f.options.ConfigForFile = func(string) (*repoconfig.Config, error) {
 				loads++
 				return nil, failure
 			}
-			result, err := f.service.Workflow(f.root)
-			want := fmt.Sprintf("load configuration for action %q: %s", filepath.Join(f.service.options.Paths.Workspace, "outer", "action.yml"), failure)
+			result, err := Workflow(f.options, f.root)
+			want := fmt.Sprintf("load configuration for action %q: %s", filepath.Join(f.options.Paths.Workspace, "outer", "action.yml"), failure)
 			if !errors.Is(err, failure) || err.Error() != want || loads != 1 || !result.Batch.Invocations().Incomplete() || len(result.Sources) != 1 {
 				t.Fatalf("configuration failure lost or hidden: error=%v loads=%d result=%+v", err, loads, result)
 			}
@@ -152,13 +152,13 @@ func TestRepeatedCompositeConfigIsResolvedOnceWithoutScripts(t *testing.T) {
 	childConfig := &repoconfig.Config{}
 	loads := 0
 	var loadedPath string
-	f.service.options.CollectScripts = false
-	f.service.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
+	f.options.CollectScripts = false
+	f.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
 		loads++
 		loadedPath = path
 		return childConfig, nil
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,11 +172,11 @@ func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
 	action := "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: owner/child@v1\n      with: {script: 'child()'}\n    - uses: owner/shared@v1\n      with: {script: 'shared()'}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": action}, nil)
 	rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
-	f.service.options.Config = rootConfig
-	f.service.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
-	f.service.options.ScriptInputs = []analyzer.ScriptInput{{Action: "owner/shared", Input: "script", Language: "javascript"}}
+	f.options.Config = rootConfig
+	f.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
+	f.options.ScriptInputs = []analyzer.ScriptInput{{Action: "owner/shared", Input: "script", Language: "javascript"}}
 	loads := map[*repoconfig.Config]int{}
-	f.service.options.ScriptInputsForConfig = func(config *repoconfig.Config) ([]analyzer.ScriptInput, error) {
+	f.options.ScriptInputsForConfig = func(config *repoconfig.Config) ([]analyzer.ScriptInput, error) {
 		loads[config]++
 		name := "owner/root"
 		if config == childConfig {
@@ -184,7 +184,7 @@ func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
 		}
 		return []analyzer.ScriptInput{{Action: name, Input: "script", Language: "javascript"}}, nil
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,15 +205,15 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(1)'}\n      - uses: $/outer\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(3)'}\n"
 			f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with: {script: 'console.log(2)'}\n"}, nil)
 			rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
-			f.service.options.Config = rootConfig
-			f.service.options.CollectScripts = collect
-			f.service.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
+			f.options.Config = rootConfig
+			f.options.CollectScripts = collect
+			f.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
 			var seen []*repoconfig.Config
-			f.service.options.ScriptInputsForConfig = func(config *repoconfig.Config) ([]analyzer.ScriptInput, error) {
+			f.options.ScriptInputsForConfig = func(config *repoconfig.Config) ([]analyzer.ScriptInput, error) {
 				seen = append(seen, config)
 				return nil, nil
 			}
-			result, err := f.service.Workflow(f.root)
+			result, err := Workflow(f.options, f.root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -282,11 +282,11 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 					if ignores.child {
 						childConfig.Ignores = repoconfig.IgnoreConfigs{{Rule: "probe", Step: "nested"}}
 					}
-					f.service.options.Config = rootConfig
-					f.service.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
-					f.service.options.CollectScripts = collect
-					f.service.options.Rules = append(f.service.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
-					result, err := f.service.Workflow(f.root)
+					f.options.Config = rootConfig
+					f.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
+					f.options.CollectScripts = collect
+					f.options.Rules = append(f.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
+					result, err := Workflow(f.options, f.root)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -324,14 +324,14 @@ func TestRootOpaqueCallUsesEntryConfig(t *testing.T) {
 				if ignores {
 					config.Ignores = repoconfig.IgnoreConfigs{{Rule: "probe", Step: "remote"}}
 				}
-				f.service.options.Config = config
-				f.service.options.CollectScripts = collect
-				f.service.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
+				f.options.Config = config
+				f.options.CollectScripts = collect
+				f.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
 					t.Errorf("opaque call loaded an action config: %s", path)
 					return &repoconfig.Config{}, nil
 				}
-				f.service.options.Rules = append(f.service.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
-				result, err := f.service.Workflow(f.root)
+				f.options.Rules = append(f.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
+				result, err := Workflow(f.options, f.root)
 				if err != nil {
 					t.Fatal(err)
 				}

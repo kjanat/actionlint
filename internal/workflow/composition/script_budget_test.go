@@ -16,12 +16,12 @@ func TestSelectorFailurePreservesRegisteredFacts(t *testing.T) {
 	for _, collect := range []bool{false, true} {
 		t.Run(fmt.Sprintf("collect=%t", collect), func(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {run: echo later}]}}\n", nil, nil)
-			f.service.options.CollectScripts = collect
+			f.options.CollectScripts = collect
 			failure := errors.New("selector configuration failed")
-			f.service.options.ScriptInputsForConfig = func(*repoconfig.Config) ([]analyzer.ScriptInput, error) {
+			f.options.ScriptInputsForConfig = func(*repoconfig.Config) ([]analyzer.ScriptInput, error) {
 				return nil, failure
 			}
-			result, err := f.service.Workflow(f.root)
+			result, err := Workflow(f.options, f.root)
 			graph := result.Batch.Invocations()
 			interruption, stopped := graph.EntryInterruption()
 			wantUnits := 0
@@ -38,8 +38,8 @@ func TestSelectorFailurePreservesRegisteredFacts(t *testing.T) {
 func TestParallelScriptsRegisterWithoutCollection(t *testing.T) {
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - run: echo child\n          - uses: actions/github-script@v7\n            with: {script: console.log(1)}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, nil, nil)
-	f.service.options.CollectScripts = false
-	result, err := f.service.Workflow(f.root)
+	f.options.CollectScripts = false
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +62,8 @@ func TestCompositionExactlyAtScriptLimit(t *testing.T) {
 				f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}, {uses: $/child}]}}\n", map[string]string{
 					"child/action.yml": "name: child\ndescription: limit\nruns: {using: composite, steps: [{shell: bash, run: echo child}, " + lastStep + "]}\n",
 				}, &budget)
-				f.service.options.CollectScripts = collect
-				result, err := f.service.Workflow(f.root)
+				f.options.CollectScripts = collect
+				result, err := Workflow(f.options, f.root)
 				graph := result.Batch.Invocations()
 				_, stopped := graph.Stop()
 				wantUnits := 0
@@ -93,11 +93,11 @@ func TestNestedBudgetStopRetainsConcurrentCancellation(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: cancellation\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: cancellation\nruns: {using: composite, steps: [{shell: bash, run: echo initial}, {uses: actions/github-script@v7, with: {script: console.log(1)}}]}\n",
 	}, &budget)
-	f.service.options.ScriptInputsForConfig = func(*repoconfig.Config) ([]analyzer.ScriptInput, error) {
+	f.options.ScriptInputsForConfig = func(*repoconfig.Config) ([]analyzer.ScriptInput, error) {
 		cancel()
 		return nil, nil
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if !errors.Is(err, invocation.ErrScriptBudget) || !errors.Is(err, context.Canceled) || errors.Is(err, invocation.ErrUnfinished) {
 		t.Fatalf("nested unwind lost a simultaneous failure: %v", err)
 	}
@@ -113,8 +113,8 @@ func TestCallVisitPreservesExistingScriptStop(t *testing.T) {
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 1
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {run: echo second}, {uses: $/later}]}}\n", nil, &budget)
-	f.service.options.CollectScripts = false
-	result, err := f.service.analyze(func(c *compositeAnalyzer) error {
+	f.options.CollectScripts = false
+	result, err := analyze(f.options, func(c *compositeAnalyzer) error {
 		if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 			return err
 		}
@@ -148,8 +148,8 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", nil, &budget)
 			var scriptID invocation.ID
 			var owner invocation.Context
-			f.service.options.CollectScripts = false
-			result, err := f.service.analyze(func(c *compositeAnalyzer) error {
+			f.options.CollectScripts = false
+			result, err := analyze(f.options, func(c *compositeAnalyzer) error {
 				if err := c.startEntry(invocation.EntryWorkflow, f.root); err != nil {
 					return err
 				}
@@ -229,16 +229,16 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 					"inner/action.yml": "name: inner\ndescription: budget\nruns: {using: composite, steps: " + innerSteps + "}\n",
 					"later/action.yml": "name: later\ndescription: unreachable\nruns: {using: composite, steps: []}\n",
 				}, &budget)
-				f.service.options.CollectScripts = collect
+				f.options.CollectScripts = collect
 				var result Result
 				var err error
 				wantCalls, wantDocuments := 0, 0
 				if mode == "standalone" {
 					metadata, _ := f.cache.LookupMetadata("$/inner")
-					result, err = standaloneActionForTest(t, f.service, metadata.Metadata())
+					result, err = standaloneActionForTest(t, f.options, metadata.Metadata())
 					wantDocuments = 1
 				} else {
-					result, err = f.service.Workflow(f.root)
+					result, err = Workflow(f.options, f.root)
 					if mode == "nested" || mode == "nested-input" {
 						wantCalls, wantDocuments = 2, 2
 					}

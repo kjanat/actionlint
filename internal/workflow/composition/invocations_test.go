@@ -23,7 +23,7 @@ import (
 )
 
 type invocationFixture struct {
-	service         *Service
+	options         Options
 	root            *documentparse.SourceSnapshot
 	original        *workflowlang.Workflow
 	snapshots       *capturedSnapshots
@@ -68,7 +68,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		}
 	}})
 	resolver := actionlocal.NewResolver(f.cache, nil)
-	f.service = New(Options{Context: ctx, SourceSnapshots: f.snapshots.SourceSnapshots, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}})
+	f.options = Options{Context: ctx, SourceSnapshots: f.snapshots.SourceSnapshots, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{builtin.NewRuleAction(resolver)}}
 	return f
 }
 
@@ -115,7 +115,7 @@ jobs:
 				actions["middle/action.yml"] = aliased
 			}
 			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
-			result, err := f.service.Workflow(f.root)
+			result, err := Workflow(f.options, f.root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -188,7 +188,7 @@ jobs:
 func TestStandaloneEntryCycleHasNoSyntheticCall(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo unused}]}}\n", map[string]string{"self/action.yml": "name: self\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo root\n    - uses: $/self\n"}, nil)
 	metadata, _ := f.cache.LookupMetadata("$/self")
-	result, err := standaloneActionForTest(t, f.service, metadata.Metadata())
+	result, err := standaloneActionForTest(t, f.options, metadata.Metadata())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 				"outer/action.yml":  "name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo initial\n    - uses: $/nested\n",
 				"nested/action.yml": "name: nested\ndescription: identity\nruns: {using: composite, steps: []}\n",
 			}, &tc.budget)
-			result, err := f.service.Workflow(f.root)
+			result, err := Workflow(f.options, f.root)
 			if errors.Is(err, invocation.ErrCallBudget) != tc.total || err != nil && !tc.total {
 				t.Fatal(err)
 			}
@@ -241,7 +241,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 
 func TestRepeatedMetadataFailuresRemainUnresolvedCalls(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/broken}, {uses: $/broken}]}}\n", map[string]string{"broken/action.yml": "runs: [\n"}, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ jobs:
       - uses: $/source@v1
       - uses: ${{ inputs.action }}
 `, nil, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestCompositionCancellationRetainsEntryOrPendingCall(t *testing.T) {
 			} else {
 				cancel()
 			}
-			result, err := f.service.Workflow(f.root)
+			result, err := Workflow(f.options, f.root)
 			if !errors.Is(err, context.Canceled) || !result.Batch.Invocations().Incomplete() {
 				t.Fatalf("cancellation lost: %v", err)
 			}

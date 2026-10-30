@@ -16,7 +16,7 @@ func TestResolvedNonCompositeActionIsAdmittedToSourceSnapshots(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{
 		"node/action.yml": "name: node\ndescription: node action\nruns: {using: node20, main: index.js}\n",
 	}, nil)
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestActionRunKindIgnoresMetadataCallbackMutation(t *testing.T) {
 		metadata.Runs.Using = "composite"
 		metadata.Source[0] = 'X'
 	}
-	result, err := f.service.Workflow(f.root)
+	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
