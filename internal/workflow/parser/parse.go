@@ -226,10 +226,15 @@ func (p *Parser) parseString(n *syntax.Node, allowEmpty bool) *workflowlang.Stri
 }
 
 // parseCondition preserves the distinction between YAML null and the String "null".
+// GitHub normalises plain YAML booleans such as True or FALSE before compiling the
+// condition, so they read as the expression literals true and false.
 func (p *Parser) parseCondition(n *syntax.Node) *workflowlang.String {
 	s := p.parseString(n, true)
-	if n.Tag == "!!null" {
+	switch n.Tag {
+	case workflowlang.YamlTagNull:
 		s.Value = ""
+	case workflowlang.YamlTagBool:
+		s.Value = strings.ToLower(s.Value)
 	}
 	if strings.TrimSpace(s.Value) == "" {
 		s.Value = "success()"
