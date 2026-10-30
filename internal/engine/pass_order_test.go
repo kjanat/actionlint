@@ -26,9 +26,8 @@ func TestVisitorJobSourceOrder(t *testing.T) {
 	missingA, missingZ := &workflowlang.Job{}, &workflowlang.Job{}
 	for range 10 {
 		pass := &jobOrderPass{}
-		visitor := NewVisitor()
-		visitor.AddPass(pass)
-		if err := visitor.Visit(declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}, false, "").Bind("order").Workflow()); err != nil {
+		workflow := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"z": first, "b": second, "missing-a": missingA, "missing-z": missingZ}}, false, "").Bind("order").Workflow()
+		if err := Visit(workflow, Options{Passes: []workflowvisit.Pass{pass}}); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(pass.jobs, []string{"z", "b", "missing-a", "missing-z"}) {

@@ -77,13 +77,15 @@ func Workflow(options Options, snapshot *documentparse.SourceSnapshot) (Result, 
 		if err := c.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 			return err
 		}
-		v := engine.NewVisitor()
-		v.Hooks = engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout}
+		passes := make([]workflowvisit.Pass, 0, len(options.Rules))
 		for _, pass := range options.Rules {
-			v.AddPass(checks.WithOrigins(pass, options.Config))
+			passes = append(passes, checks.WithOrigins(pass, options.Config))
 		}
-		v.EnableDebug(options.Debug)
-		return v.Visit(w)
+		return engine.Visit(w, engine.Options{
+			Passes: passes,
+			Hooks:  engine.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
+			Debug:  options.Debug,
+		})
 	})
 }
 
