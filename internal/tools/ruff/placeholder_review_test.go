@@ -191,3 +191,16 @@ func newRuffBinaryChecker(t *testing.T, binary string) *Checker {
 		return end + 2, end >= 0
 	})
 }
+
+// advancePosition moves position past text in Ruff's one-based Unicode
+// scalar coordinates.
+func advancePosition(position *Position, text string) {
+	for _, r := range text {
+		if r == '\n' {
+			position.Row++
+			position.Column = 1
+		} else {
+			position.Column++
+		}
+	}
+}

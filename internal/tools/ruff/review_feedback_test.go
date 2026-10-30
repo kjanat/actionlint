@@ -8,13 +8,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	pythonprofile "actionlint.kjanat.dev/v2/internal/tools/profile/python"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func TestRetainsInitializationAndCheckFailures(t *testing.T) {
 	initial := errors.New("first configuration failed")
 	missing := filepath.Join(t.TempDir(), "missing-directory")
-	checker := New(func([]string, string, func([]byte, error) error) { t.Fatal("unexpected execution") }, func() error { return nil }, ruffExpressionEnd)
+	checker := New(func([]string, string, func([]byte, error) error) { t.Fatal("unexpected execution") }, func() error { return nil }, pythonprofile.TemplateEnd)
 	checker.WorkingDirectory(missing)
 	first := &config.Config{}
 	r := &ruffAnalyzer{checker: checker, forConfig: func(cfg *config.Config) (*Checker, error) {

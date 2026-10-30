@@ -10,7 +10,7 @@ import (
 func TestPreparedInputSharesPythonTemplateMasks(t *testing.T) {
 	for _, source := range []string{"print(${{ inputs.value }})\nprint(missing)", "print('${{ inputs.value }}')\nprint(missing)"} {
 		prepared, err := prepareInput(tools.Script{Text: source})
-		if err != nil || prepared.Skip || prepared.AcceptDiagnostic == nil {
+		if err != nil || prepared.Skip != "" || prepared.AcceptDiagnostic == nil {
 			t.Fatalf("preparation failed: %+v %v", prepared, err)
 		}
 		if strings.Contains(prepared.Source, "${{") {

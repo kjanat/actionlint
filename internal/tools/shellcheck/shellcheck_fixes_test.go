@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
 )
@@ -44,7 +46,7 @@ func TestShellcheckFixLiteralMapping(t *testing.T) {
 		t.Run("newline="+newline, func(t *testing.T) {
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			source := shellcheckFixSource(t, input)
-			script := prepareShellcheckScript(source.Value(), "# shellcheck disable=SC2154\n", "set -e -o pipefail")
+			script := shellprofile.Prepare(source.Value(), "# shellcheck disable=SC2154\n", "set -e -o pipefail")
 			fix := &shellcheckFix{Replacements: []shellcheckReplacement{
 				{Line: 4, EndLine: 4, Column: 10, EndColumn: 10, Replacement: `"`},
 				{Line: 4, EndLine: 4, Column: 16, EndColumn: 16, Replacement: `"`},
@@ -120,6 +122,12 @@ func TestShellcheckFixRejectsAmbiguousChanges(t *testing.T) {
 		{"expression", `run: |
   echo ${{ env.VALUE }} $OTHER
 `, []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}}},
+		// A closing marker inside the template's string literal does not end
+		// it, so the second row is still template text.
+		{"template continued past quoted marker", `run: |
+  echo ${{ '}}' ==
+    'x' }} $VALUE
+`, []shellcheckReplacement{{Line: 4, EndLine: 4, Column: 10, EndColumn: 10, Replacement: `"`}}},
 		{"partial fix", input, []shellcheckReplacement{{Line: 3, EndLine: 3, Column: 6, EndColumn: 6, Replacement: `"`}, {Line: 1, EndLine: 1, Column: 1, EndColumn: 1, Replacement: "#"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -128,7 +136,7 @@ func TestShellcheckFixRejectsAmbiguousChanges(t *testing.T) {
 			if source.Present() {
 				value = source.Value()
 			}
-			script := prepareShellcheckScript(sanitizeExpressionsInScript(value), "# shellcheck disable=SC2154\n", "set -e")
+			script := shellprofile.Prepare(mask.Expressions(value), "# shellcheck disable=SC2154\n", "set -e")
 			if fixes := shellcheckDiagnosticFixes(source, script, &shellcheckFix{tc.replacements}, "Fix"); len(fixes) != 0 {
 				t.Fatalf("unsafe fix exposed: %+v", fixes)
 			}

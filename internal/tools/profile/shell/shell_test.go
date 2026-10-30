@@ -1,10 +1,10 @@
-package shellcheck
+package shell
 
 import (
 	"testing"
 )
 
-func TestShellcheckShellStartup(t *testing.T) {
+func TestShellStartup(t *testing.T) {
 	for _, tc := range []struct {
 		name, setup string
 		implicit    bool
@@ -36,7 +36,7 @@ func TestShellcheckShellStartup(t *testing.T) {
 		{"bash {0} -e", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dialect, setup := (shellcheckShell{name: tc.name, implicit: tc.implicit}).analysis()
+			dialect, setup := (Shell{Name: tc.name, Implicit: tc.implicit}).Analysis()
 			if dialect == "" || setup != tc.setup {
 				t.Fatalf("got %q / %q, want setup %q", dialect, setup, tc.setup)
 			}
@@ -44,17 +44,37 @@ func TestShellcheckShellStartup(t *testing.T) {
 	}
 }
 
-func TestShellcheckUnknownScriptLanguage(t *testing.T) {
+func TestUnknownScriptLanguage(t *testing.T) {
 	for _, shell := range []string{
 		"bash -c 'python {0}'", "bash -ec 'python {0}'", "bash -s {0}",
 		`bash "-c" "python {0}"`, "python {0}", "pwsh {0}",
 		"actions-shell python {0}", "wrapper bash {0}", "bash other-script {0}", "bash -- other-script {0}",
 	} {
 		t.Run(shell, func(t *testing.T) {
-			dialect, setup := (shellcheckShell{name: shell}).analysis()
+			dialect, setup := (Shell{Name: shell}).Analysis()
 			if dialect != "" || setup != "" {
 				t.Fatalf("unknown script language inferred as %q / %q", dialect, setup)
 			}
 		})
+	}
+}
+
+func TestHeaderSelection(t *testing.T) {
+	for _, tc := range []struct {
+		script string
+		want   bool
+	}{
+		{"# shellcheck shell=bash\necho ok\n", true},
+		{"# shellcheck disable=SC2086 shell='sh'\necho ok\n", true},
+		{"# shellcheck source-path=\"directory with spaces\" shell=bash\n", true},
+		{"# shellcheck source-path=\"directory shell=bash\"\n", false},
+		{"# shellcheck disable=SC2086 # shell=bash\n", false},
+		{"echo ok\n# shellcheck shell=bash\n", false},
+		{"# Example: shellcheck shell=bash\n", false},
+	} {
+		_, _, selected := Header(tc.script)
+		if selected != tc.want {
+			t.Errorf("%q: selected=%t, want %t", tc.script, selected, tc.want)
+		}
 	}
 }

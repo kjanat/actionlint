@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	"actionlint.kjanat.dev/v2/internal/tools/selection"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
@@ -82,7 +83,7 @@ type scriptScope struct {
 	composite  bool
 }
 type scriptExecution struct {
-	shell     shellcheckShell
+	shell     shellprofile.Shell
 	directory runDirectory
 }
 type scriptUnit struct {
@@ -114,7 +115,7 @@ type adapterContext struct {
 	shellcheckOptions    *ExternalCommandOptions
 	shellcheckBackend    analyzer.ScriptBackend
 	shellcheckRunner     func([]string, string) ([]byte, error)
-	shellcheckSettings   *ShellcheckSettings
+	shellcheckSettings   *shellprofile.Settings
 }
 
 func (c adapterContext) configuredScriptEngine(name, requested string, explicit *ExternalCommandOptions) (analyzer.ScriptBackend, error) {
@@ -141,7 +142,7 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 		if s.Execution.DirectoryKnown {
 			kind = directoryKnown
 		}
-		private.scripts = append(private.scripts, scriptUnit{text: s.Text, source: s.Source, key: s.Key, value: s.Value, shell: s.Shell, config: s.Config, path: s.Path, content: s.Content, scope: scopes[s.Scope], execution: scriptExecution{shell: shellcheckShell{name: s.Execution.Shell, implicit: s.Execution.ImplicitShell}, directory: runDirectory{kind: kind, path: s.Execution.Directory}}})
+		private.scripts = append(private.scripts, scriptUnit{text: s.Text, source: s.Source, key: s.Key, value: s.Value, shell: s.Shell, config: s.Config, path: s.Path, content: s.Content, scope: scopes[s.Scope], execution: scriptExecution{shell: shellprofile.Shell{Name: s.Execution.Shell, Implicit: s.Execution.ImplicitShell}, directory: runDirectory{kind: kind, path: s.Execution.Directory}}})
 	}
 	findings, err := r.check.AnalyzeScripts(ctx, private)
 	result := make([]tools.Finding, 0, len(findings))

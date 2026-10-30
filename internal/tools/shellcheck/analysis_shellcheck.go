@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
@@ -17,7 +18,7 @@ import (
 type shellcheckAnalyzer struct {
 	backend   analyzer.ScriptBackend
 	cmd       *externalCommand
-	settings  *ShellcheckSettings
+	settings  *shellprofile.Settings
 	debug     func(string, ...any)
 	embedded  bool
 	forConfig func(*Config) (shellcheckTransport, error)
@@ -38,7 +39,7 @@ func newShellcheckAnalyzer(c adapterContext) (scriptAnalyzer, error) {
 		cmd.Env = []string{"SHELLCHECK_OPTS="}
 		return &shellcheckAnalyzer{
 			cmd:      cmd,
-			settings: &ShellcheckSettings{Config: ShellcheckRCDisabled, ExternalSources: &externalSources},
+			settings: &shellprofile.Settings{Config: shellprofile.RCDisabled, ExternalSources: &externalSources},
 			debug:    c.debug, embedded: true,
 		}, nil
 	}

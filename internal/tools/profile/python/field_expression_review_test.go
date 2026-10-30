@@ -1,4 +1,4 @@
-package ruff
+package python
 
 import (
 	"strings"

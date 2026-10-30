@@ -19,8 +19,9 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	config "actionlint.kjanat.dev/v2/internal/config"
-	"actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/profile"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 	"actionlint.kjanat.dev/v2/rule"
 )
@@ -42,7 +43,7 @@ type engineOptions struct {
 	enabled func(tools.Context) bool
 	// prepare replaces expression masking and plugin options for every
 	// selected script.
-	prepare func(tools.Script) (tools.PreparedInput, error)
+	prepare func(tools.Script) (profile.Prepared, error)
 	// filename is the virtual name of run snippets; its extension also names
 	// action-input snippets. Empty keeps "actionlint-script".
 	filename string
@@ -135,7 +136,7 @@ func (r runner) scriptEnabled(cfg *config.Config) bool {
 // check is one prepared request for the batch script at index.
 type check struct {
 	index    int
-	prepared tools.PreparedInput
+	prepared profile.Prepared
 	request  analyzer.ScriptRequest
 }
 
@@ -187,7 +188,7 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 			}
 		}
 		var options json.RawMessage
-		var prepared tools.PreparedInput
+		var prepared profile.Prepared
 		if r.options.prepare != nil {
 			var err error
 			prepared, err = r.options.prepare(script)
@@ -197,7 +198,7 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 			}
 			options = prepared.Config
 		} else {
-			prepared.Source = maskExpressions(script.Text)
+			prepared.Source = mask.Expressions(script.Text)
 			if script.Config != nil {
 				settings := script.Config.Lint.Rules.Plugins.Rules[r.descriptor.Name].Options
 				if settings != nil {
@@ -209,7 +210,8 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 				}
 			}
 		}
-		if prepared.Skip {
+		if prepared.Skip != "" {
+			r.debug("%s: skipped a script in %s: %s", r.descriptor.Name, script.Path, prepared.Skip)
 			continue
 		}
 		if prepared.TemplateContract != "" && prepared.TemplateContract != r.templateContract {
@@ -339,20 +341,20 @@ func (r runner) scriptFinding(c check, script tools.Script, d analyzer.ScriptDia
 	if lines := c.prepared.LineMap; lines != nil {
 		start := lines(d.Location.Row)
 		switch start.Origin {
-		case tools.LineScript:
+		case profile.LineScript:
 			row = start.Line
-		case tools.LineStartup:
+		case profile.LineStartup:
 			if d.Severity != "error" {
 				r.debug("%s: dropped %s on the generated startup line: %s", r.descriptor.Name, d.Code, d.Message)
 				return nil, nil
 			}
 			return nil, r.configurationError(d)
-		case tools.LineDirective:
+		case profile.LineDirective:
 			return nil, r.configurationError(d)
 		}
 		if hasEnd {
 			end := lines(d.EndLocation.Row)
-			endRow, hasEnd = end.Line, end.Origin == tools.LineScript
+			endRow, hasEnd = end.Line, end.Origin == profile.LineScript
 		}
 	}
 	start, ok := script.Source.Position(row, d.Location.Column)
@@ -427,32 +429,6 @@ func inputFilename(site analyzer.ScriptInput, extension string) string {
 		}
 	}
 	return "actionlint-input/" + site.Language + "/" + site.Action + "/" + site.Input + "." + extension
-}
-
-func maskExpressions(text string) string {
-	var out strings.Builder
-	for {
-		start := strings.Index(text, "${{")
-		if start < 0 {
-			out.WriteString(text)
-			return out.String()
-		}
-		lexer := expression.NewLexer(text[start+3:])
-		if _, err := expression.NewParser().Parse(lexer); err != nil {
-			out.WriteString(text)
-			return out.String()
-		}
-		end := start + 3 + lexer.Offset()
-		out.WriteString(text[:start])
-		for _, r := range text[start:end] {
-			if r == '\n' || r == '\r' {
-				out.WriteRune(r)
-			} else {
-				out.WriteByte('_')
-			}
-		}
-		text = text[end:]
-	}
 }
 
 func scriptShell(script tools.Script) string {

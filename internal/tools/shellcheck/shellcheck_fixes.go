@@ -6,6 +6,8 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/source/text"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
@@ -27,14 +29,14 @@ type shellcheckReplacement struct {
 // Each replacement must stay on one unchanged source line; a fix can edit several
 // lines, but generated lines, expressions, indentation changes, and overlapping
 // replacements make the entire fix unavailable.
-func shellcheckDiagnosticFixes(source workflowdecl.ScriptSourceView, script shellcheckScript, fix *shellcheckFix, description string) []DiagnosticFix {
+func shellcheckDiagnosticFixes(source workflowdecl.ScriptSourceView, script shellprofile.Script, fix *shellcheckFix, description string) []DiagnosticFix {
 	if !source.Present() || !source.Literal() || fix == nil || len(fix.Replacements) == 0 {
 		return nil
 	}
-	sanitized := strings.Split(sanitizeExpressionsInScript(source.Value()), "\n")
+	sanitized := strings.Split(mask.Expressions(source.Value()), "\n")
 	edits := make([]DiagnosticEdit, 0, len(fix.Replacements))
 	for _, replacement := range fix.Replacements {
-		line := script.originalLine(replacement.Line)
+		line := script.OriginalLine(replacement.Line)
 		if replacement.Line != replacement.EndLine || line < 1 || line > source.LinesLen() ||
 			strings.ContainsAny(replacement.Replacement, "\x00\r\n") || !utf8.ValidString(replacement.Replacement) {
 			return nil

@@ -32,23 +32,3 @@ func TestShellcheckDialectEnvironmentOverride(t *testing.T) {
 		t.Fatalf("empty child override inherited parent dialect %q", dialect)
 	}
 }
-
-func TestShellcheckHeaderSelection(t *testing.T) {
-	for _, tc := range []struct {
-		script string
-		want   bool
-	}{
-		{"# shellcheck shell=bash\necho ok\n", true},
-		{"# shellcheck disable=SC2086 shell='sh'\necho ok\n", true},
-		{"# shellcheck source-path=\"directory with spaces\" shell=bash\n", true},
-		{"# shellcheck source-path=\"directory shell=bash\"\n", false},
-		{"# shellcheck disable=SC2086 # shell=bash\n", false},
-		{"echo ok\n# shellcheck shell=bash\n", false},
-		{"# Example: shellcheck shell=bash\n", false},
-	} {
-		_, _, selected := shellcheckHeader(tc.script)
-		if selected != tc.want {
-			t.Errorf("%q: selected=%t, want %t", tc.script, selected, tc.want)
-		}
-	}
-}

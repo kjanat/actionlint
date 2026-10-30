@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -57,7 +58,7 @@ func TestShellcheckFallsBackWhenEitherEndpointIsUnmapped(t *testing.T) {
 				return fmt.Appendf(nil, `{"comments":[{"line":1,"column":%d,"endLine":%d,"endColumn":2,"code":9999,"level":"warning","message":"range"}]}`, endpoints.start, endpoints.end), nil
 			})
 			invocation := &shellcheckRun{cmd: cmd, rcArgs: []string{"--norc"}}
-			if err := invocation.runShellcheck(run.Run.Value, ownedRun.Source(), shellcheckShell{name: "bash {0}"}, runDirectory{directoryKnown, t.TempDir()}, run.RunPos, run.Run.Pos); err != nil {
+			if err := invocation.runShellcheck(run.Run.Value, ownedRun.Source(), shellprofile.Shell{Name: "bash {0}"}, runDirectory{directoryKnown, t.TempDir()}, run.RunPos, run.Run.Pos); err != nil {
 				t.Fatal(err)
 			}
 			if err := cmd.Wait(); err != nil {
@@ -88,7 +89,7 @@ func TestShellcheckRetainsFindingsWhenAnotherScopeHasInvalidConfig(t *testing.T)
 	invalidScope := &scriptScope{paths: validScope.paths, config: invalid, composite: true}
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	makeScript := func(scope *scriptScope) scriptUnit {
-		return scriptUnit{scope: scope, text: "echo test", key: pos, value: pos, execution: scriptExecution{shell: shellcheckShell{name: "bash {0}"}, directory: runDirectory{directoryKnown, root}}}
+		return scriptUnit{scope: scope, text: "echo test", key: pos, value: pos, execution: scriptExecution{shell: shellprofile.Shell{Name: "bash {0}"}, directory: runDirectory{directoryKnown, root}}}
 	}
 	checker := &shellcheckAnalyzer{cmd: analyzerhost.NewProcessPool(t.Context(), 1).EmbeddedCommand("shellcheck", func([]string, string) ([]byte, error) {
 		return []byte(`{"comments":[{"line":1,"endLine":1,"column":1,"endColumn":2,"code":9999,"level":"warning","message":"reported"}]}`), nil

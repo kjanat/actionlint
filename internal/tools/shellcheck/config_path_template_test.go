@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 )
 
 func TestShellcheckPathContext(t *testing.T) {
@@ -45,7 +46,7 @@ func TestShellcheckApplicationPathOrigin(t *testing.T) {
 			t.Fatal(err)
 		}
 		rule.cfg = loaded
-		rule.config = &ShellcheckSettings{Config: ShellcheckRCFile(tc.selected)}
+		rule.config = &shellprofile.Settings{Config: shellprofile.RCFile(tc.selected)}
 		if err := rule.prepareConfigPath(); err != nil {
 			t.Fatal(err)
 		}

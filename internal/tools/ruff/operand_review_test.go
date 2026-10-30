@@ -36,23 +36,3 @@ func TestExtraOptionValuesPreserved(t *testing.T) {
 		}
 	}
 }
-
-func TestQuotedPythonShells(t *testing.T) {
-	for _, tc := range []struct{ shell, target string }{
-		{`"python" {0}`, ""},
-		{`'python' {0}`, ""},
-		{`"C:\Program Files\Python\python.exe" {0}`, ""},
-		{`"/opt/Python Tools/python3.9" -u {0}`, "py39"},
-		{`"C:\Program Files\Python\py.exe" -V:3.10 {0}`, "py310"},
-		{`"actions-shells" py -3.9 {0}`, "py39"},
-	} {
-		if !isPythonShell(tc.shell) || pythonShellTarget(tc.shell) != tc.target {
-			t.Errorf("quoted shell %q skipped or target changed: %q", tc.shell, pythonShellTarget(tc.shell))
-		}
-	}
-	for _, shell := range []string{`"python {0}`, `"python"suffix {0}`, `"/opt/python folder/bash" {0}`, `"" {0}`, `"python.exe.other" {0}`} {
-		if isPythonShell(shell) {
-			t.Errorf("invalid shell accepted: %q", shell)
-		}
-	}
-}

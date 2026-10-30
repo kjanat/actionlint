@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/application"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 )
 
 func TestShellcheckScriptSemantics(t *testing.T) {
@@ -65,7 +65,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 				options.ConfigFile = writeFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")
 			}
 			if tc.settings != "" {
-				optionsTools.ShellcheckSettings = &toolconfig.ShellcheckSettings{Shell: tc.settings}
+				optionsTools.ShellcheckSettings = &shellprofile.Settings{Shell: tc.settings}
 			}
 			session := options
 			session.Tools = optionsTools.Registrations()

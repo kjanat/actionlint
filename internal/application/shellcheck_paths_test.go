@@ -12,9 +12,9 @@ import (
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 )
 
 func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
@@ -436,7 +436,7 @@ jobs:
 			options := application.Options{ConfigFile: config, WorkingDir: root}
 			optionsTools := adapters.Options{ShellCheck: command}
 			if tc.disabled {
-				optionsTools.ShellcheckSettings = &toolconfig.ShellcheckSettings{Config: toolconfig.ShellcheckRCDisabled}
+				optionsTools.ShellcheckSettings = &shellprofile.Settings{Config: shellprofile.RCDisabled}
 			}
 			session := options
 			session.Tools = optionsTools.Registrations()
@@ -468,14 +468,14 @@ jobs:
     steps:
       - run: echo $VALUE
 `)
-			settings := &toolconfig.ShellcheckSettings{}
+			settings := &shellprofile.Settings{}
 			switch selection {
 			case "file":
-				settings.Config = toolconfig.ShellcheckRCFile(rc)
+				settings.Config = shellprofile.RCFile(rc)
 			case "discover":
-				settings.Config = toolconfig.ShellcheckRCDiscover
+				settings.Config = shellprofile.RCDiscover
 			case "disabled":
-				settings.Config = toolconfig.ShellcheckRCDisabled
+				settings.Config = shellprofile.RCDisabled
 			}
 			session := application.Options{ConfigFile: config, WorkingDir: root, Tools: (adapters.Options{ShellCheck: command, ShellcheckSettings: settings}).Registrations()}
 			var err error

@@ -4,10 +4,10 @@ package adapters
 
 import (
 	"actionlint.kjanat.dev/v2/analyzer"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	"actionlint.kjanat.dev/v2/internal/tools/ruff"
 	"actionlint.kjanat.dev/v2/internal/tools/shellcheck"
 	"slices"
@@ -19,7 +19,7 @@ type Options struct {
 	ShellcheckOptions, RuffOptions *processconfig.Options
 	ShellcheckBackend, RuffBackend analyzer.ScriptBackend
 	ShellcheckRunner               func([]string, string) ([]byte, error)
-	ShellcheckSettings             *toolconfig.ShellcheckSettings
+	ShellcheckSettings             *shellprofile.Settings
 }
 
 func (o Options) Registrations() []tools.Registration {

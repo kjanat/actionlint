@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	pythonprofile "actionlint.kjanat.dev/v2/internal/tools/profile/python"
 )
 
 func TestArguments(t *testing.T) {
@@ -344,56 +346,6 @@ func TestCheckFailureAndAtomicDiagnostics(t *testing.T) {
 	}
 }
 
-func TestSanitize(t *testing.T) {
-	source := "print(${{\n 'é'\n}}, missing)"
-	got, valid, err := Sanitize(source, func(string) (int, bool) { return len("\n 'é'\n}}"), true })
-	if err != nil || !valid || len([]rune(got)) != len([]rune(source)) || strings.Contains(got, "${{") {
-		t.Fatalf("%q %v", got, valid)
-	}
-	for i, r := range []rune(source) {
-		if r == '\n' && []rune(got)[i] != r {
-			t.Fatal("line break moved")
-		}
-	}
-	for _, end := range []int{-1, 0, 1, len(source) + 1} {
-		if _, valid, _ := Sanitize(source, func(string) (int, bool) { return end, true }); valid {
-			t.Fatalf("accepted end %d", end)
-		}
-	}
-}
-
-func TestSanitizeTemplateContexts(t *testing.T) {
-	end := func(source string) (int, bool) {
-		index := strings.Index(source, "}}")
-		return index + 2, index >= 0
-	}
-	for _, source := range []string{
-		"# ${{\n\n value\n}} trailing\nprint(missing)",
-		"print(${{\n\n value\n}})\nprint(missing)",
-		"print('''${{\n\n value\n}}''')\nprint(missing)",
-		"print(\"# ${{\n value\n}}\")\nprint(missing)",
-		"print('${{ value }}') # ${{\n value\n}}\nprint(missing)",
-	} {
-		for _, ending := range []string{"\n", "\r\n"} {
-			source := strings.ReplaceAll(source, "\n", ending)
-			t.Run(source, func(t *testing.T) {
-				got, valid, err := Sanitize(source, end)
-				if err != nil || !valid || len([]rune(got)) != len([]rune(source)) {
-					t.Fatalf("got %q, valid %v, error %v", got, valid, err)
-				}
-				for i, r := range []rune(source) {
-					if (r == '\n' || r == '\r') && []rune(got)[i] != r {
-						t.Fatal("line ending moved")
-					}
-				}
-				if !strings.HasSuffix(got, "print(missing)") {
-					t.Fatal("unrelated code changed")
-				}
-			})
-		}
-	}
-}
-
 func TestQuotedEmptyTemplateLineSkipsScript(t *testing.T) {
 	for _, quote := range []string{"'", "\""} {
 		for _, ending := range []string{"\n", "\r\n"} {
@@ -436,7 +388,7 @@ func TestSanitizeAdjacentPythonTokens(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(source, "\n", ending)
 			t.Run(source, func(t *testing.T) {
-				if got, valid, err := Sanitize(source, end); err != nil || valid || got != "" {
+				if got, valid, err := pythonprofile.Sanitize(source, end); err != nil || valid || got != "" {
 					t.Fatalf("got %q, valid %v, error %v", got, valid, err)
 				}
 				checker := New(func([]string, string, func([]byte, error) error) {
@@ -450,31 +402,5 @@ func TestSanitizeAdjacentPythonTokens(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestSanitizeAdjacentPythonDelimiters(t *testing.T) {
-	end := func(source string) (int, bool) { return strings.Index(source, "}}") + 2, true }
-	for _, source := range []string{
-		"value=${{ number }}+1",
-		"value=[${{ number }},2]",
-		"value={${{ number }}:2}",
-		"value=(${{ number }})",
-		"value=${{\n number\n}}+1",
-		"value='item_${{ name }}.0'",
-		"value=\"item_${{ name }}.0\"",
-		"# item_${{ name }}.0\nvalue=1",
-	} {
-		t.Run(source, func(t *testing.T) {
-			got, valid, err := Sanitize(source, end)
-			if err != nil || !valid || len([]rune(got)) != len([]rune(source)) {
-				t.Fatalf("got %q, valid %v, error %v", got, valid, err)
-			}
-			for i, r := range []rune(source) {
-				if (r == '\n' || r == '\r') && []rune(got)[i] != r {
-					t.Fatal("line ending moved")
-				}
-			}
-		})
 	}
 }

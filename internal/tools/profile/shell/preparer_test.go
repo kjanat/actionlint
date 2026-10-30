@@ -1,4 +1,4 @@
-package shellcheck
+package shell
 
 import (
 	"context"
@@ -11,14 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/source"
 )
 
-func TestScriptPreparerSelectsExactOccurrence(t *testing.T) {
+func TestPreparerSelectsExactOccurrence(t *testing.T) {
 	reference := source.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
 	bashID, shID := analyzer.OccurrenceID(strings.Repeat("a", 64)), analyzer.OccurrenceID(strings.Repeat("b", 64))
 	scripts := []analyzer.Script{
 		{Reference: reference, Occurrence: analyzer.ScriptOccurrence{ID: bashID}, Text: "echo same", Runtime: &analyzer.Runtime{Shell: "bash", ShellKnown: true}},
 		{Reference: reference, Occurrence: analyzer.ScriptOccurrence{ID: shID}, Text: "echo same", Runtime: &analyzer.Runtime{Shell: "sh", ShellKnown: true}},
 	}
-	prepare := scriptPreparer(scripts)
+	prepare := Preparer(scripts)
 	bash, err := prepare(t.Context(), bashID, nil)
 	if err != nil || bash == nil || bash.Shell != "bash" || bash.Startup != "set -e -o pipefail" {
 		t.Fatalf("bash occurrence preparation: %+v, %v", bash, err)
@@ -29,10 +29,10 @@ func TestScriptPreparerSelectsExactOccurrence(t *testing.T) {
 	}
 }
 
-func TestScriptPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
+func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 	const id analyzer.OccurrenceID = "known"
 	script := analyzer.Script{Occurrence: analyzer.ScriptOccurrence{ID: id}, Text: "echo hi", Runtime: &analyzer.Runtime{Shell: "bash", ShellKnown: true}}
-	prepare := scriptPreparer([]analyzer.Script{script})
+	prepare := Preparer([]analyzer.Script{script})
 	for name, occurrence := range map[string]analyzer.OccurrenceID{"empty": "", "unknown": "foreign"} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := prepare(t.Context(), occurrence, nil); err == nil {
@@ -40,7 +40,7 @@ func TestScriptPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing
 			}
 		})
 	}
-	duplicate := scriptPreparer([]analyzer.Script{script, script})
+	duplicate := Preparer([]analyzer.Script{script, script})
 	if _, err := duplicate(t.Context(), id, nil); err == nil {
 		t.Fatal("ambiguous duplicate occurrence accepted")
 	}
@@ -53,7 +53,7 @@ func TestScriptPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing
 
 func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 	script := analyzer.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Runtime: &analyzer.Runtime{Shell: "bash", ShellKnown: true}, Comments: []analyzer.SourceComment{{Text: "# shellcheck disable=SC2086", Start: diagnostic.Position{Line: 4, Column: 7}}}}
-	prepared, err := preparePluginScript(script, nil)
+	prepared, err := PrepareScript(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)
 	}
@@ -73,14 +73,27 @@ func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 
 func TestPluginPreparationUsesDeclaredDialectWithoutRuntimeFlags(t *testing.T) {
 	script := analyzer.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &analyzer.Runtime{Shell: "bash", ShellKnown: true}}
-	prepared, err := preparePluginScript(script, nil)
+	prepared, err := PrepareScript(script, nil)
 	if err != nil || prepared == nil || prepared.Dialect != nil || prepared.Startup != "" {
 		t.Fatalf("prepared=%+v err=%v", prepared, err)
 	}
 	script.Text = "echo hi"
 	script.Runtime.Shell = "python"
-	prepared, err = preparePluginScript(script, nil)
+	prepared, err = PrepareScript(script, nil)
 	if err != nil || prepared != nil {
 		t.Fatalf("unsupported shell: %+v %v", prepared, err)
+	}
+}
+
+// A closing marker inside a template's string literal does not end the
+// template, so no part of it reaches the plugin.
+func TestPluginPreparationMasksWholeTemplates(t *testing.T) {
+	script := analyzer.Script{Text: "echo ${{ '}}' }}\n", Runtime: &analyzer.Runtime{Shell: "bash", ShellKnown: true}}
+	prepared, err := PrepareScript(script, nil)
+	if err != nil || prepared == nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if prepared.Sanitized != "echo ___________\n" || strings.ContainsAny(prepared.Text, "'}") {
+		t.Fatalf("template partially exposed: %q / %q", prepared.Sanitized, prepared.Text)
 	}
 }

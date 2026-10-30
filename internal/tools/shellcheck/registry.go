@@ -7,10 +7,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/config"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/rulecatalog"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
@@ -22,7 +22,7 @@ type Options struct {
 	Process     *processconfig.Options
 	Backend     analyzer.ScriptBackend
 	Runner      func([]string, string) ([]byte, error)
-	Settings    *toolconfig.ShellcheckSettings
+	Settings    *shellprofile.Settings
 }
 
 // Registration owns ShellCheck selection, transport construction and plugin replacement.

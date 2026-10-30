@@ -1,4 +1,4 @@
-package shellcheck
+package shell
 
 import (
 	"context"
@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
 )
 
-// scriptPreparer exposes the same shell interpretation, expression masking and
-// source preparation used by the native adapter through the public WIT import.
-func scriptPreparer(scripts []analyzer.Script) analyzer.ScriptPreparer {
+// Preparer exposes the profile's shell interpretation, template masking and
+// source preparation to plugins through the public WIT import. It prepares
+// only scripts whose occurrence is unique among scripts.
+func Preparer(scripts []analyzer.Script) analyzer.ScriptPreparer {
 	byOccurrence := make(map[analyzer.OccurrenceID]analyzer.Script, len(scripts))
 	duplicates := make(map[analyzer.OccurrenceID]struct{})
 	for _, script := range scripts {
@@ -36,16 +38,20 @@ func scriptPreparer(scripts []analyzer.Script) analyzer.ScriptPreparer {
 		if !exists {
 			return nil, errors.New("unknown script occurrence")
 		}
-		return preparePluginScript(script, override)
+		return PrepareScript(script, override)
 	}
 }
 
-func preparePluginScript(script analyzer.Script, override *string) (*analyzer.PreparedScript, error) {
-	shell := shellcheckShell{name: script.Shell}
+// PrepareScript prepares a run block for a plugin. Directive comments the
+// workflow attaches to the step precede the script; override replaces an
+// inferred dialect. It returns nil when the script is not a supported shell
+// script and no directive selects one.
+func PrepareScript(script analyzer.Script, override *string) (*analyzer.PreparedScript, error) {
+	shell := Shell{Name: script.Shell}
 	if script.Runtime != nil && script.Runtime.ShellKnown {
-		shell = shellcheckShell{name: script.Runtime.Shell, implicit: script.Runtime.ShellImplicit}
+		shell = Shell{Name: script.Runtime.Shell, Implicit: script.Runtime.ShellImplicit}
 	}
-	dialect, setup := shell.analysis()
+	dialect, setup := shell.Analysis()
 	var comments []analyzer.SourceComment
 	var prefix strings.Builder
 	for _, comment := range script.Comments {
@@ -56,23 +62,23 @@ func preparePluginScript(script analyzer.Script, override *string) (*analyzer.Pr
 			prefix.WriteByte('\n')
 		}
 	}
-	header, _, _ := shellcheckHeader(script.Text)
-	combined, _, selected := shellcheckHeader(prefix.String() + header)
+	header, _, _ := Header(script.Text)
+	combined, _, selected := Header(prefix.String() + header)
 	if dialect == "" && !selected {
 		return nil, nil
 	}
 	inferred := dialect
 	if selected {
-		dialect = shellcheckHeaderDialect(combined)
+		dialect = HeaderDialect(combined)
 	} else if override != nil {
 		dialect = *override
 	}
 	if dialect != inferred {
 		setup = ""
 	}
-	sanitized := sanitizeExpressionsInScript(script.Text)
-	prepared := prepareShellcheckScript(sanitized, prefix.String(), setup)
-	result := &analyzer.PreparedScript{Text: prepared.text, Sanitized: sanitized, Shell: shell.name, Startup: setup}
+	masked := mask.Expressions(script.Text)
+	prepared := Prepare(masked, prefix.String(), setup)
+	result := &analyzer.PreparedScript{Text: prepared.Text(), Sanitized: masked, Shell: shell.Name, Startup: setup}
 	if !selected {
 		result.Dialect = &dialect
 	}
@@ -90,7 +96,7 @@ func preparePluginScript(script analyzer.Script, override *string) (*analyzer.Pr
 			result.Lines = append(result.Lines, analyzer.PreparedLine{Kind: analyzer.PreparedStartupLine})
 		}
 	}
-	for _, code := range excludedChecks(nil) {
+	for _, code := range Excluded(nil) {
 		number, err := strconv.ParseUint(strings.TrimPrefix(code, "SC"), 10, 32)
 		if err != nil {
 			return nil, err

@@ -3,6 +3,8 @@ package ruff
 import (
 	"fmt"
 	"strings"
+
+	pythonprofile "actionlint.kjanat.dev/v2/internal/tools/profile/python"
 )
 
 type commandPolicy struct {
@@ -32,7 +34,7 @@ func (c *commandPolicy) CommandArguments(executable string, args []string) []str
 
 func commandArguments(executable string, args []string) (prefix, flags []string, err error) {
 	name := commandBase(executable)
-	if isPythonCommand(executable) {
+	if pythonprofile.IsCommand(executable) {
 		return pythonModuleArguments(name, args)
 	}
 	if name != "env" && name != "uvx" {

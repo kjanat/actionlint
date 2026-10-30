@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/source/text"
-	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/profile"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
@@ -19,7 +19,7 @@ import (
 // unchanged: a row preparation generated, or one whose expressions it
 // masked, makes the whole fix unavailable, as do indentation changes and
 // overlapping replacements. A fix may edit several rows.
-func scriptFix(source workflowdecl.ScriptSourceView, prepared tools.PreparedInput, fix analyzer.ScriptFix) (diagnostic.Fix, bool) {
+func scriptFix(source workflowdecl.ScriptSourceView, prepared profile.Prepared, fix analyzer.ScriptFix) (diagnostic.Fix, bool) {
 	if !source.Present() || !source.Literal() || len(fix.Replacements) == 0 {
 		return diagnostic.Fix{}, false
 	}
@@ -29,7 +29,7 @@ func scriptFix(source workflowdecl.ScriptSourceView, prepared tools.PreparedInpu
 		line := replacement.Row
 		if prepared.LineMap != nil {
 			mapped := prepared.LineMap(replacement.Row)
-			if mapped.Origin != tools.LineScript {
+			if mapped.Origin != profile.LineScript {
 				return diagnostic.Fix{}, false
 			}
 			line = mapped.Line

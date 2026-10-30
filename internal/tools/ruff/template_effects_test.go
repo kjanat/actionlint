@@ -12,31 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/analyzer"
 )
 
-func TestTemplateEffectsIgnorePresentation(t *testing.T) {
-	start := Position{Row: 1, Column: 3}
-	masks := templateMasks{quoted: map[Position]string{start: "_0"}}
-	finding := Diagnostic{
-		Code: "renamed-rule", Message: "entirely different wording",
-		Location: Position{Row: 1, Column: 1}, EndLocation: Position{Row: 1, Column: 8},
-		TemplateEffect: analyzer.TemplateEffectExportedName,
-	}
-	if masks.accept(finding) {
-		t.Fatal("semantic export finding was emitted for mask")
-	}
-	finding.TemplateEffect = analyzer.TemplateEffectNone
-	finding.Code = "F822"
-	finding.Message = "Undefined name `_0`"
-	if !masks.accept(finding) {
-		t.Fatal("presentation text overrode explicit independent effect")
-	}
-	finding.TemplateEffect = analyzer.TemplateEffectExportedName
-	finding.Location = Position{Row: 2, Column: 1}
-	finding.EndLocation = Position{Row: 2, Column: 8}
-	if !masks.accept(finding) {
-		t.Fatal("static export outside the mask was dropped")
-	}
-}
-
 func TestNativeTemplateCoordinatesUseDecodedSource(t *testing.T) {
 	directory := t.TempDir()
 	backend, _ := NewProcessBackend(func(_ context.Context, args []string, _ string) ([]byte, error) {
@@ -183,13 +158,6 @@ func TestNativeVersionProbeRetriesAfterCancellation(t *testing.T) {
 				t.Fatalf("probes=%d checks=%d warnings=%d", probes, checks, warnings)
 			}
 		})
-	}
-}
-
-func TestPercentMaskIsValidConversion(t *testing.T) {
-	source, valid, err := Sanitize(`print("%03${{ inputs.kind }}" % 1)`, reviewExpressionEnd)
-	if err != nil || !valid || !strings.Contains(source, "%03s") {
-		t.Fatalf("mask manufactured an unsupported conversion: %q valid=%v err=%v", source, valid, err)
 	}
 }
 

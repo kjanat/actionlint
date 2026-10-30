@@ -11,7 +11,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/profile"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
@@ -33,25 +35,13 @@ type shellcheckResult struct {
 	Sources  []string          `json:"sources"`
 }
 
-type (
-	ShellcheckSettings        = toolconfig.ShellcheckSettings
-	ShellcheckConfigSelection = toolconfig.ShellcheckConfigSelection
-	ShellcheckRCFile          = toolconfig.ShellcheckRCFile
-	ShellcheckRCMode          = toolconfig.ShellcheckRCMode
-)
-
-const (
-	ShellcheckRCDisabled = toolconfig.ShellcheckRCDisabled
-	ShellcheckRCDiscover = toolconfig.ShellcheckRCDiscover
-)
-
 // shellcheckRun owns one prepared script and its callback result. It has no
 // visitor lifecycle; its owner must join cmd before reading errs.
 type shellcheckRun struct {
 	backend      analyzer.ScriptBackend
 	pending      analyzerhost.Task[*Error]
 	cmd          *externalCommand
-	config       *ShellcheckSettings
+	config       *shellprofile.Settings
 	cfg          *Config
 	paths        runPaths
 	rcArgs       []string
@@ -77,52 +67,11 @@ func (run *shellcheckRun) addFinding(start, end *workflowlang.Pos, format string
 	run.errs = append(run.errs, finding)
 }
 
-// Replace ${{ ... }} with underscores like __________
-// Note: replacing with spaces sometimes causes syntax error. For example,
-//
-//	if ${{ contains(xs, s) }}; then
-//	  echo 'hello'
-//	fi
-func sanitizeExpressionsInScript(src string) string {
-	b := strings.Builder{}
-	for {
-		s := strings.Index(src, "${{")
-		if s == -1 {
-			if b.Len() == 0 {
-				return src
-			}
-			b.WriteString(src)
-			return b.String()
-		}
-
-		e := strings.Index(src[s:], "}}")
-		if e == -1 {
-			if b.Len() == 0 {
-				return src
-			}
-			b.WriteString(src)
-			return b.String()
-		}
-		e += s + 2 // 2 is offset for len("}}")
-
-		b.WriteString(src[:s])
-		for _, r := range src[s:e] {
-			if r == '\n' || r == '\r' {
-				b.WriteRune(r)
-			} else {
-				b.WriteByte('_')
-			}
-		}
-
-		src = src[e:]
-	}
-}
-
-func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSourceView, shell shellcheckShell, directory runDirectory, pos, valuePos *workflowlang.Pos) error {
-	dialect, setup := shell.analysis()
-	header, _, directiveShell := shellcheckHeader(src)
+func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSourceView, shell shellprofile.Shell, directory runDirectory, pos, valuePos *workflowlang.Pos) error {
+	dialect, setup := shell.Analysis()
+	header, _, directiveShell := shellprofile.Header(src)
 	if dialect == "" && !directiveShell {
-		run.Debug("%s: Skip ShellCheck: cannot infer a supported script dialect from shell %q; a leading # shellcheck shell=bash (or another supported dialect) selects it explicitly", pos, shell.name)
+		run.Debug("%s: Skip ShellCheck: cannot infer a supported script dialect from shell %q; a leading # shellcheck shell=bash (or another supported dialect) selects it explicitly", pos, shell.Name)
 		return nil
 	}
 	if run.rcArgs == nil {
@@ -143,7 +92,7 @@ func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSo
 		dialect = flagShell
 		dialectOrigin = "explicit flags"
 	} else if directiveShell {
-		dialect = shellcheckHeaderDialect(header)
+		dialect = shellprofile.HeaderDialect(header)
 		dialectOrigin = "script directive"
 	}
 	inline := run.inlineConfig
@@ -161,24 +110,10 @@ func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSo
 		setup = "" // Runtime options may not exist in an explicitly selected dialect.
 	}
 
-	src = sanitizeExpressionsInScript(src)
-	run.Debug("%s: Run ShellCheck: shell=%q, dialect=%q (%s), native shell directive=%t, startup=%q:\n%s", pos, shell.name, dialect, dialectOrigin, directiveShell, setup, src)
+	src = mask.Expressions(src)
+	run.Debug("%s: Run ShellCheck: shell=%q, dialect=%q (%s), native shell directive=%t, startup=%q:\n%s", pos, shell.Name, dialect, dialectOrigin, directiveShell, setup, src)
 
-	// Reasons to exclude the rules:
-	//
-	// - SC1091: File not found. Scripts are for CI environment. Not suitable for checking this in current local
-	//           environment
-	// - SC2194: The word is constant. This sometimes happens at constants by replacing ${{ }} with underscores.
-	//           For example, `if ${{ matrix.foo }}; then ...` -> `if _________________; then ...`
-	// - SC2050: The expression is constant. This sometimes happens at `if` condition by replacing ${{ }} with
-	//           underscores (#45). For example, `if [ "${{ matrix.foo }}" = "x" ]` -> `if [ "_________________" = "x" ]`
-	// - SC2153: Same as SC2154.
-	// - SC2154: The var is referenced but not assigned. Script at `run:` can refer variables defined in `env:` section
-	//           so this rule can cause false positives (#53).
-	// - SC2157: Argument to -z is always false due to literal strings. When the argument of -z is replaced from ${{ }},
-	//           this can happen. For example, `if [ -z ${{ env.FOO }} ]` -> `if [ -z ______________ ]` (#113).
-	// - SC2043: Loop can be detected as only running once when the target of iteration is a placeholder. (#355)
-	//           e.g. `for foo in ${{ inputs.foo }}; do`
+	// The shell profile excludes checks masked templates make false positives.
 	args := append([]string(nil), run.rcArgs...)
 	excluded := excludedChecks(run.config)
 	externalSources := true
@@ -222,7 +157,7 @@ func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSo
 	if prefix != "" {
 		run.Debug("%s: Applied inline ShellCheck directives:\n%s", pos, prefix)
 	}
-	script := prepareShellcheckScript(src, prefix, setup)
+	script := shellprofile.Prepare(src, prefix, setup)
 	origin := &suppressionOrigin{first: pos.Line, last: pos.Line}
 	if valuePos != nil {
 		origin.last = max(origin.last, valuePos.Line)
@@ -249,17 +184,22 @@ func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSo
 				run.errs = append(run.errs, finding)
 				continue
 			}
-			// Dialect overrides can make generated startup options non-portable.
-			line := script.originalLine(err.Line)
-			if line == 0 {
-				if err.Line != script.startupLine || err.Level == "error" {
-					return fmt.Errorf("tools.shellcheck.config: SC%d: %s", err.Code, err.Message)
+			prepared := script.Line(err.Line)
+			switch prepared.Origin {
+			case profile.LineScript:
+			case profile.LineStartup:
+				// Dialect overrides can make generated startup options non-portable.
+				if err.Level != "error" {
+					continue
 				}
-				continue
+				return fmt.Errorf("tools.shellcheck.config: SC%d: %s", err.Code, err.Message)
+			case profile.LineDirective:
+				return fmt.Errorf("tools.shellcheck.config: SC%d: %s", err.Code, err.Message)
 			}
+			line := prepared.Line
 			msg := strings.TrimSuffix(err.Message, ".") // Trim period aligning style of error message
 			start, startOK := source.Position(line, err.Column)
-			end, endOK := source.EndPos(script.originalLine(err.EndLine), err.EndColumn)
+			end, endOK := source.EndPos(script.OriginalLine(err.EndLine), err.EndColumn)
 			if startOK && endOK {
 				run.addFinding(&start, &end, "shellcheck reported issue in this script: SC%d:%s:%d:%d: %s", err.Code, err.Level, line, err.Column, msg)
 			} else {
@@ -278,7 +218,7 @@ func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSo
 		if err != nil {
 			return err
 		}
-		request := analyzer.ScriptRequest{Source: script.text, Filename: "actionlint.sh", Config: options}
+		request := analyzer.ScriptRequest{Source: script.Text(), Filename: "actionlint.sh", Config: options}
 		run.pending = func(ctx context.Context) ([]*Error, error) {
 			if validator, ok := run.backend.(analyzer.ScriptConfigValidator); ok {
 				if err := validator.ValidateConfig(ctx, options); err != nil {
@@ -297,7 +237,7 @@ func (run *shellcheckRun) runShellcheck(src string, source workflowdecl.ScriptSo
 			return nil, errors.Join(failure, deliver(converted))
 		}
 	} else {
-		run.cmd.RunInDirectory(args, script.text, directory.path, func(stdout []byte, err error) error {
+		run.cmd.RunInDirectory(args, script.Text(), directory.path, func(stdout []byte, err error) error {
 			if err != nil {
 				return fmt.Errorf("`%s %s` did not run successfully while checking script at %s: %w", run.cmd.Exe, strings.Join(args, " "), pos, err)
 			}

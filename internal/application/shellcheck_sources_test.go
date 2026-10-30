@@ -14,10 +14,10 @@ import (
 
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
-	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/tools/adapters"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 )
 
 func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
@@ -94,7 +94,7 @@ jobs:
 			optionsTools := adapters.Options{ShellCheck: command, ShellcheckOptions: &processconfig.Options{Arguments: []string{"--check-sourced"}}}
 			if tc.rc {
 				rc := writeFixture(t, root, ".shellcheckrc", "shell=bash\n")
-				optionsTools.ShellcheckSettings = &toolconfig.ShellcheckSettings{Config: toolconfig.ShellcheckRCFile(rc)}
+				optionsTools.ShellcheckSettings = &shellprofile.Settings{Config: shellprofile.RCFile(rc)}
 			}
 			session := options
 			session.Tools = optionsTools.Registrations()

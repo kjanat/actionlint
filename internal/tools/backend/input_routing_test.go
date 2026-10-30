@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/profile"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/rule"
 )
@@ -81,12 +82,12 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
 	registration := tools.Registration{
 		Descriptor: rule.Descriptor{Name: "tool"},
-		PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-			return tools.PreparedInput{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), LineMap: func(line int) tools.PreparedLine {
+		PrepareInput: func(script tools.Script) (profile.Prepared, error) {
+			return profile.Prepared{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), LineMap: func(line int) profile.Line {
 				if line < 2 {
-					return tools.PreparedLine{Origin: tools.LineDirective}
+					return profile.Line{Origin: profile.LineDirective}
 				}
-				return tools.PreparedLine{Line: line - 1, Origin: tools.LineScript}
+				return profile.Line{Line: line - 1, Origin: profile.LineScript}
 			}}, nil
 		},
 		Build: func(tools.Context) (tools.Runner, error) {
@@ -167,8 +168,8 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 
 func TestInputFilterCannotHideForeignSource(t *testing.T) {
 	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
-	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-		return tools.PreparedInput{Source: script.Text, AcceptDiagnostic: func(analyzer.ScriptDiagnostic) bool { return false }}, nil
+	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (profile.Prepared, error) {
+		return profile.Prepared{Source: script.Text, AcceptDiagnostic: func(analyzer.ScriptDiagnostic) bool { return false }}, nil
 	}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 	engine := routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		return []analyzer.ScriptDiagnostic{{Filename: "foreign.py", Code: "F821", Message: "synthetic"}}, nil
@@ -191,8 +192,8 @@ func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 	site := analyzer.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	for _, contract := range []string{"", "unknown", analyzer.TemplateEffectsContract} {
 		calls := 0
-		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (tools.PreparedInput, error) {
-			return tools.PreparedInput{Source: script.Text, TemplateContract: analyzer.TemplateEffectsContract}, nil
+		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(script tools.Script) (profile.Prepared, error) {
+			return profile.Prepared{Source: script.Text, TemplateContract: analyzer.TemplateEffectsContract}, nil
 		}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 		engine := routingBackend(func(context.Context, analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 			calls++

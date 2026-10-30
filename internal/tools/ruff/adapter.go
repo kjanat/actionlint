@@ -8,9 +8,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/config"
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	pythonprofile "actionlint.kjanat.dev/v2/internal/tools/profile/python"
 	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
@@ -46,13 +46,13 @@ func newRuffAnalyzer(c tools.Context, o Options, compatibility *Compatibility) (
 func newRuffChecker(c tools.Context, o Options, compatibility *Compatibility) (*Checker, error) {
 	o = o.forConfig(c.Config)
 	if o.Backend != nil {
-		return NewBackend(c.Processes.Ctx, o.Backend, ruffExpressionEnd), nil
+		return NewBackend(c.Processes.Ctx, o.Backend, pythonprofile.TemplateEnd), nil
 	}
 	if engine, err := selection.Load("ruff", o.Command, o.Process, c.Config, engineLoader(c)); engine != nil || err != nil {
 		if err != nil {
 			return nil, fmt.Errorf("could not initialize Ruff: %w", err)
 		}
-		return NewBackend(c.Processes.Ctx, engine, ruffExpressionEnd), nil
+		return NewBackend(c.Processes.Ctx, engine, pythonprofile.TemplateEnd), nil
 	}
 	if !processconfig.Enabled(o.Command, o.Process) {
 		return nil, nil
@@ -82,14 +82,8 @@ func newRuffChecker(c tools.Context, o Options, compatibility *Compatibility) (*
 		}
 		backend.OptionalVersion(compatibility, warning)
 	}
-	checker := NewBackend(c.Processes.Ctx, backend, ruffExpressionEnd)
+	checker := NewBackend(c.Processes.Ctx, backend, pythonprofile.TemplateEnd)
 	return checker, nil
-}
-
-func ruffExpressionEnd(src string) (int, bool) {
-	lexer := exprlang.NewLexer(src)
-	_, err := exprlang.NewParser().Parse(lexer)
-	return lexer.Offset(), err == nil
 }
 
 func (r *ruffAnalyzer) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {

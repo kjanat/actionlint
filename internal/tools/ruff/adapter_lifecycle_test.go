@@ -17,6 +17,7 @@ import (
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	pythonprofile "actionlint.kjanat.dev/v2/internal/tools/profile/python"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -83,7 +84,7 @@ func TestRuffAnalyzerCompletesBeforeReturning(t *testing.T) {
 				t.Error(err)
 			}
 		})
-	}, func() error { workers.Wait(); return failure }, ruffExpressionEnd)
+	}, func() error { workers.Wait(); return failure }, pythonprofile.TemplateEnd)
 	analyzer := &ruffAnalyzer{checker: checker}
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	python := "python"
@@ -135,7 +136,7 @@ func TestRuffAdapterMapsBothEndpoints(t *testing.T) {
 					start, end = Position{Row: 1, Column: 10}, Position{Row: 1, Column: 7}
 				}
 				return []analyzer.ScriptDiagnostic{{Filename: stdinFilename, Code: "F821", Message: "undefined name", Severity: "warning", URL: "https://docs.astral.sh/ruff/rules/undefined-name/", Location: start, EndLocation: end}}, nil
-			}), ruffExpressionEnd)
+			}), pythonprofile.TemplateEnd)
 			adapter := &ruffAnalyzer{checker: checker}
 			findings, err := adapter.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: ownedRun.Source(), Key: run.RunPos, Value: run.Run.Pos, Shell: &python, Path: "workflow.yml", Content: source}}})
 			if err != nil {

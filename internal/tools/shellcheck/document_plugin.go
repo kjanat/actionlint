@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	"actionlint.kjanat.dev/v2/internal/tools/selection"
 )
 
@@ -222,7 +223,7 @@ func (r documentPluginRunner) Analyze(ctx context.Context, batch tools.Batch) ([
 		if config.DiagnosticLevel(cfg, "shellcheck") == "off" || cfg != nil && cfg.Tools["shellcheck"].Enabled != nil && !*cfg.Tools["shellcheck"].Enabled {
 			continue
 		}
-		prepared, err := preparePluginScript(script.Fact, nil)
+		prepared, err := shellprofile.PrepareScript(script.Fact, nil)
 		if err != nil {
 			failure = errors.Join(failure, err)
 			continue
@@ -342,6 +343,6 @@ func (r documentPluginRunner) input(script tools.Script, graph analyzer.CallGrap
 	} else {
 		input.Invoked = []analyzer.Script{script.Fact}
 	}
-	input.PrepareScript = scriptPreparer([]analyzer.Script{script.Fact})
+	input.PrepareScript = shellprofile.Preparer([]analyzer.Script{script.Fact})
 	return input
 }

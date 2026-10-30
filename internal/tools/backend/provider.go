@@ -11,6 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/profile"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 	"actionlint.kjanat.dev/v2/internal/tools/selection"
@@ -55,7 +57,7 @@ func RegisterProcess(p ProcessProvider) (tools.Registration, error) {
 	enabled := func(c tools.Context) bool { return toolEnabled(c.Config, name) }
 	options := engineOptions{
 		enabled:  enabled,
-		prepare:  func(script tools.Script) (tools.PreparedInput, error) { return configuredInput(name, script) },
+		prepare:  func(script tools.Script) (profile.Prepared, error) { return configuredInput(name, script) },
 		filename: m.Selectors.Filename,
 		findings: findingCapabilities{fixes: m.Capabilities.Fixes, reportedSources: m.Capabilities.ReportedSources, messageTemplate: m.Capabilities.MessageTemplate},
 	}
@@ -114,19 +116,19 @@ func toolEnabled(cfg *config.Config, name string) bool {
 
 // configuredInput masks expressions and passes inline tools.<name>.config
 // settings to the engine.
-func configuredInput(name string, script tools.Script) (tools.PreparedInput, error) {
-	prepared := tools.PreparedInput{Source: maskExpressions(script.Text)}
+func configuredInput(name string, script tools.Script) (profile.Prepared, error) {
+	prepared := profile.Prepared{Source: mask.Expressions(script.Text)}
 	if script.Config == nil {
 		return prepared, nil
 	}
 	settings := script.Config.Tools[name].Config
 	if settings.Path() != "" {
-		return tools.PreparedInput{}, fmt.Errorf("tools.%s.config: %w", name, errConfigFilePath)
+		return profile.Prepared{}, fmt.Errorf("tools.%s.config: %w", name, errConfigFilePath)
 	}
 	if values := settings.Inline(); values != nil {
 		data, err := json.Marshal(values)
 		if err != nil {
-			return tools.PreparedInput{}, fmt.Errorf("tools.%s.config: %w", name, err)
+			return profile.Prepared{}, fmt.Errorf("tools.%s.config: %w", name, err)
 		}
 		prepared.Config = data
 	}

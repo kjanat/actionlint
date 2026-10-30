@@ -1,18 +1,31 @@
-package shellcheck
+// Package shell is the shell preparation profile: it infers a run block's
+// dialect and runtime startup options from the step shell, honours a leading
+// `# shellcheck shell=` directive, masks templates, inserts directive and
+// startup lines and maps the prepared rows back to the run block. Settings
+// arrive as typed values; the profile never reads configuration files.
+package shell
 
 import (
 	"path"
 	"strings"
 )
 
-type shellcheckShell struct {
-	name     string
-	implicit bool
+// ID names this profile in tool provider manifests.
+const ID = "kjanat:actionlint/shell-preparation@0.2.0"
+
+// Shell is the shell command a run block executes under. Implicit marks the
+// runner's default shell, which omits pipefail.
+type Shell struct {
+	Name     string
+	Implicit bool
 }
 
-func (shell shellcheckShell) analysis() (dialect, setup string) {
+// Analysis infers the script dialect and the startup command that reproduces
+// the runner's shell options. An empty dialect means the run block is not a
+// supported shell script; an empty startup means no options are known.
+func (s Shell) Analysis() (dialect, startup string) {
 	// Split at the first space to match the runner's executable/argument boundary.
-	command, arguments, _ := strings.Cut(shell.name, " ")
+	command, arguments, _ := strings.Cut(s.Name, " ")
 	dialect = strings.TrimSuffix(strings.ToLower(path.Base(strings.ReplaceAll(command, `\`, "/"))), ".exe")
 	switch dialect {
 	case "bash", "sh", "dash", "ksh":
@@ -24,7 +37,7 @@ func (shell shellcheckShell) analysis() (dialect, setup string) {
 		if !strings.EqualFold(command, "bash") && !strings.EqualFold(command, "sh") {
 			return dialect, ""
 		}
-		if dialect == "bash" && !shell.implicit {
+		if dialect == "bash" && !s.Implicit {
 			return dialect, "set -e -o pipefail"
 		}
 		return dialect, "set -e"
@@ -54,7 +67,7 @@ func (shell shellcheckShell) analysis() (dialect, setup string) {
 			if arg == "--" && (i+1 >= len(args) || args[i+1] != "{0}") {
 				return "", ""
 			}
-			return dialect, shellcheckStartupOptions(options)
+			return dialect, startupOptions(options)
 		case dialect == "bash" && (arg == "--noprofile" || arg == "--norc"):
 			continue
 		case len(arg) > 1 && (arg[0] == '-' || arg[0] == '+'):
@@ -62,7 +75,7 @@ func (shell shellcheckShell) analysis() (dialect, setup string) {
 			if before, ok := strings.CutSuffix(flags, "o"); ok {
 				flags = before
 				i++
-				if i >= len(args) || !shellcheckSetOption(args[i]) {
+				if i >= len(args) || !setOption(args[i]) {
 					return dialect, ""
 				}
 				if strings.Trim(flags, "abefhkmnptuvxBCEHPT") != "" {
@@ -88,7 +101,7 @@ func (shell shellcheckShell) analysis() (dialect, setup string) {
 
 // ShellCheck's hasSetE/hasPipefail checks ignore later +e/+o overrides,
 // so startup options must describe the final enabled state.
-func shellcheckStartupOptions(options []string) string {
+func startupOptions(options []string) string {
 	aliases := map[string]string{
 		"allexport": "a", "errexit": "e", "errtrace": "E", "functrace": "T",
 		"noclobber": "C", "noexec": "n", "noglob": "f", "nounset": "u",
@@ -140,11 +153,22 @@ func shellcheckStartupOptions(options []string) string {
 	return "set " + strings.Join(args, " ")
 }
 
-func shellcheckSetOption(option string) bool {
+func setOption(option string) bool {
 	switch option {
 	case "allexport", "errexit", "errtrace", "functrace", "noclobber", "noexec", "noglob", "nounset", "pipefail", "posix", "verbose", "xtrace":
 		return true
 	default:
 		return false
+	}
+}
+
+// LanguageDialect is the dialect of an action input declared in language;
+// empty when the language is not a supported shell.
+func LanguageDialect(language string) string {
+	switch language {
+	case "bash", "sh", "dash", "ksh", "busybox":
+		return language
+	default:
+		return ""
 	}
 }

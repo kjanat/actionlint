@@ -437,6 +437,7 @@ func TestBuiltinCompositionDoesNotImportHost(t *testing.T) {
 }
 
 // Bundling must not turn the two native integrations into a shared implementation.
+// Both consume the language preparation profiles, which name no tool.
 func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		output, err := exec.CommandContext(t.Context(), "go", "list", "-f", `{{join .Deps "\n"}}`, "actionlint.kjanat.dev/v2/internal/tools/"+name).Output()
@@ -445,7 +446,8 @@ func TestBundledToolsHaveIndependentImplementations(t *testing.T) {
 		}
 		for dependency := range strings.SplitSeq(string(output), "\n") {
 			prefix := "actionlint.kjanat.dev/v2/internal/tools/"
-			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"selection" && !isProviderData(dependency) {
+			profile := dependency == prefix+"profile" || strings.HasPrefix(dependency, prefix+"profile/")
+			if strings.HasPrefix(dependency, prefix) && dependency != prefix+"selection" && !profile && !isProviderData(dependency) {
 				t.Errorf("tool %s imports another execution implementation %s", name, dependency)
 			}
 		}

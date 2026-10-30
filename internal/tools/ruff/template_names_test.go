@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	pythonprofile "actionlint.kjanat.dev/v2/internal/tools/profile/python"
 )
 
 func TestSanitizeNameRequiredTemplates(t *testing.T) {
@@ -64,7 +66,7 @@ func TestSanitizeNameRequiredTemplates(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			script := strings.ReplaceAll(script, "\n", ending)
 			t.Run(script, func(t *testing.T) {
-				if source, valid, err := Sanitize(script, end); err != nil || valid || source != "" {
+				if source, valid, err := pythonprofile.Sanitize(script, end); err != nil || valid || source != "" {
 					t.Fatalf("name template became Python: %q, valid=%v, err=%v", source, valid, err)
 				}
 				checker := New(func([]string, string, func([]byte, error) error) {
@@ -118,7 +120,7 @@ func TestSanitizeNameRequiredTemplates(t *testing.T) {
 		"match value:\n    case {\"${{ inputs.type }}()\": value}: pass",
 	} {
 		t.Run(script, func(t *testing.T) {
-			if _, valid, err := Sanitize(script, end); err != nil || !valid {
+			if _, valid, err := pythonprofile.Sanitize(script, end); err != nil || !valid {
 				t.Fatalf("ordinary value template skipped: valid=%v, err=%v", valid, err)
 			}
 		})

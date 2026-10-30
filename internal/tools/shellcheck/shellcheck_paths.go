@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 )
 
 func (run *shellcheckRun) prepareConfigPath() error {
@@ -24,14 +25,14 @@ func (run *shellcheckRun) prepareConfigPath() error {
 	if err := run.prepareInlineConfig(); err != nil {
 		return err
 	}
-	var selection ShellcheckConfigSelection
+	var selection shellprofile.RCSelection
 	base := run.pathContext().ConfigDir
 	if run.config != nil && run.config.Config != nil {
 		selection = run.config.Config
 		base = ""
 	} else if config := run.cfg; config != nil {
 		if path := config.Tools["shellcheck"].Config.Path(); path != "" {
-			selection = ShellcheckRCFile(path)
+			selection = shellprofile.RCFile(path)
 			if config.Tools["shellcheck"].Config.FromInput() {
 				base = run.paths.analysis
 			}
@@ -43,8 +44,8 @@ func (run *shellcheckRun) prepareConfigPath() error {
 	case nil:
 		run.rcArgs = rcArgs
 		return nil
-	case ShellcheckRCMode:
-		if selected == ShellcheckRCDisabled {
+	case shellprofile.RCMode:
+		if selected == shellprofile.RCDisabled {
 			run.rcArgs = rcArgs
 			return nil
 		}
@@ -57,7 +58,7 @@ func (run *shellcheckRun) prepareConfigPath() error {
 			run.rcArgs = rcArgs
 			return nil
 		}
-	case ShellcheckRCFile:
+	case shellprofile.RCFile:
 		var err error
 		path, err = run.pathContext().ResolveFrom(string(selected), base)
 		if err == nil {

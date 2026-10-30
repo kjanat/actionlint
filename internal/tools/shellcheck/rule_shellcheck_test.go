@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 )
@@ -29,7 +30,7 @@ func TestShellcheckInvocationDebugContext(t *testing.T) {
 			rule.cmd.Env = []string{"SHELLCHECK_OPTS=--shell=bash"}
 			rule.inlineConfig = &ShellcheckConfig{Enable: []string{"quote-safe-variables"}}
 			directory := runDirectory{kind, t.TempDir()}
-			if err := rule.runShellcheck("echo hello", workflowdecl.ScriptSourceView{}, shellcheckShell{name: "sh"}, directory, &workflowlang.Pos{Line: 7, Col: 1}, nil); err != nil {
+			if err := rule.runShellcheck("echo hello", workflowdecl.ScriptSourceView{}, shellprofile.Shell{Name: "sh"}, directory, &workflowlang.Pos{Line: 7, Col: 1}, nil); err != nil {
 				t.Fatal(err)
 			}
 			if err := rule.cmd.Wait(); err != nil {
@@ -49,85 +50,6 @@ func TestShellcheckInvocationDebugContext(t *testing.T) {
 			disabled := strings.Contains(output.String(), "Source following disabled: working directory cannot be resolved locally")
 			if disabled != (kind == directoryUnknown) {
 				t.Fatalf("wrong source-following context:\n%s", output.String())
-			}
-		})
-	}
-}
-
-func TestRuleShellcheckSanitizeExpressionsInScript(t *testing.T) {
-	testCases := []struct {
-		input string
-		want  string
-	}{
-		{
-			"",
-			"",
-		},
-		{
-			"foo",
-			"foo",
-		},
-		{
-			"${{}}",
-			"_____",
-		},
-		{
-			"${{ matrix.foo }}",
-			"_________________",
-		},
-		{
-			"aaa ${{ matrix.foo }} bbb",
-			"aaa _________________ bbb",
-		},
-		{
-			"${{}}${{}}",
-			"__________",
-		},
-		{
-			"p${{a}}q${{b}}r",
-			"p______q______r",
-		},
-		{
-			"${{",
-			"${{",
-		},
-		{
-			"}}",
-			"}}",
-		},
-		{
-			"aaa${{foo",
-			"aaa${{foo",
-		},
-		{
-			"a${{b}}${{c",
-			"a______${{c",
-		},
-		{
-			"a${{b}}c}}d",
-			"a______c}}d",
-		},
-		{
-			"a}}b${{c}}d",
-			"a}}b______d",
-		},
-		{
-			"before ${{\nfoo\n}} after",
-			"before ___\n___\n__ after",
-		},
-		{
-			"before ${{\né\n}} after",
-			"before ___\n_\n__ after",
-		},
-	}
-
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d_%s", i, tc.input), func(t *testing.T) {
-			have := sanitizeExpressionsInScript(tc.input)
-			if tc.want != have {
-				t.Fatalf(`sanitized result is unexpected.
-want: %q
-have: %q`, tc.want, have)
 			}
 		})
 	}

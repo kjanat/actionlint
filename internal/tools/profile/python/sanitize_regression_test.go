@@ -1,16 +1,15 @@
-package ruff_test
+package python_test
 
 import (
 	"strings"
 	"testing"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/expression"
-	"actionlint.kjanat.dev/v2/internal/tools/ruff"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/python"
 )
 
 func TestSanitizePythonScript(t *testing.T) {
 	for _, source := range []string{"print(${{ github.sha }})", "print('${{ '}}' }}')", "print(${{\n github.sha\n}})", "print(${{ 'é' }}, missing)"} {
-		got, valid, err := ruff.Sanitize(source, testExpressionEnd)
+		got, valid, err := python.Sanitize(source, python.TemplateEnd)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -23,13 +22,7 @@ func TestSanitizePythonScript(t *testing.T) {
 			}
 		}
 	}
-	if _, valid, _ := ruff.Sanitize("print(${{ missing)", testExpressionEnd); valid {
+	if _, valid, _ := python.Sanitize("print(${{ missing)", python.TemplateEnd); valid {
 		t.Fatal("accepted malformed template")
 	}
-}
-
-func testExpressionEnd(src string) (int, bool) {
-	lexer := exprlang.NewLexer(src)
-	_, err := exprlang.NewParser().Parse(lexer)
-	return lexer.Offset(), err == nil
 }

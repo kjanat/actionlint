@@ -17,6 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/source/text"
 	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/internal/tools/profile"
+	"actionlint.kjanat.dev/v2/internal/tools/profile/mask"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"actionlint.kjanat.dev/v2/internal/yaml/codec"
@@ -54,15 +56,15 @@ func scriptFixture(t *testing.T, input string) tools.Script {
 
 // generated prepares a script as a shell preparation does: a kept shebang,
 // then a generated directive and startup line, then the script.
-func generated(script string) tools.PreparedInput {
+func generated(script string) profile.Prepared {
 	var out strings.Builder
-	var lines []tools.PreparedLine
+	var lines []profile.Line
 	row := 0
-	write := func(line string, origin tools.LineOrigin) {
+	write := func(line string, origin profile.LineOrigin) {
 		out.WriteString(strings.TrimSuffix(line, "\n"))
 		out.WriteString("\n")
-		mapped := tools.PreparedLine{Origin: origin}
-		if origin == tools.LineScript {
+		mapped := profile.Line{Origin: origin}
+		if origin == profile.LineScript {
 			row++
 			mapped.Line = row
 		}
@@ -70,17 +72,17 @@ func generated(script string) tools.PreparedInput {
 	}
 	body := slices.DeleteFunc(strings.SplitAfter(script, "\n"), func(line string) bool { return line == "" })
 	if len(body) != 0 && strings.HasPrefix(body[0], "#!") {
-		write(body[0], tools.LineScript)
+		write(body[0], profile.LineScript)
 		body = body[1:]
 	}
-	write("# tool disable=X1", tools.LineDirective)
-	write("set -e", tools.LineStartup)
+	write("# tool disable=X1", profile.LineDirective)
+	write("set -e", profile.LineStartup)
 	for _, line := range body {
-		write(line, tools.LineScript)
+		write(line, profile.LineScript)
 	}
-	return tools.PreparedInput{Source: out.String(), LineMap: func(line int) tools.PreparedLine {
+	return profile.Prepared{Source: out.String(), LineMap: func(line int) profile.Line {
 		if line < 1 || line > len(lines) {
-			return tools.PreparedLine{Origin: tools.LineDirective}
+			return profile.Line{Origin: profile.LineDirective}
 		}
 		return lines[line-1]
 	}}
@@ -188,7 +190,7 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			script := scriptFixture(t, tc.input)
-			prepared := generated(maskExpressions(script.Text))
+			prepared := generated(mask.Expressions(script.Text))
 			if fix, ok := scriptFix(script.Source, prepared, analyzer.ScriptFix{Description: "Fix", Replacements: tc.replacements}); ok {
 				t.Fatalf("unsafe fix exposed: %+v", fix)
 			}
@@ -196,7 +198,7 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 	}
 	// Without a line map the engine saw the masked script itself.
 	script := scriptFixture(t, input)
-	fix, ok := scriptFix(script.Source, tools.PreparedInput{Source: maskExpressions(script.Text)}, analyzer.ScriptFix{Replacements: []analyzer.ScriptReplacement{replacement(1, 6, `"`)}})
+	fix, ok := scriptFix(script.Source, profile.Prepared{Source: mask.Expressions(script.Text)}, analyzer.ScriptFix{Replacements: []analyzer.ScriptReplacement{replacement(1, 6, `"`)}})
 	if !ok || len(fix.Edits) != 1 {
 		t.Fatalf("identity mapping lost the fix: %+v", fix)
 	}
@@ -337,7 +339,7 @@ func TestLineOriginsAndMessages(t *testing.T) {
 	prepared := generated(script.Text)
 	prepared.Vars = map[string]string{"dialect": "bash"}
 	runner := buildRunner(t, backend, engineOptions{
-		prepare:  func(tools.Script) (tools.PreparedInput, error) { return prepared, nil },
+		prepare:  func(tools.Script) (profile.Prepared, error) { return prepared, nil },
 		filename: "actionlint.sh",
 		findings: findingCapabilities{fixes: true, messageTemplate: "{code}:{severity}:{row}:{column}: {message}"},
 	})
@@ -359,7 +361,7 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		t.Errorf("end on a generated line kept: %+v", findings[1])
 	}
 
-	undeclared := buildRunner(t, backend, engineOptions{prepare: func(tools.Script) (tools.PreparedInput, error) { return prepared, nil }})
+	undeclared := buildRunner(t, backend, engineOptions{prepare: func(tools.Script) (profile.Prepared, error) { return prepared, nil }})
 	if _, err := undeclared.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}}); err == nil || !strings.Contains(err.Error(), "does not declare them") {
 		t.Fatalf("undeclared fixes accepted: %v", err)
 	}
