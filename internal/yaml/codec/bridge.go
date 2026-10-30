@@ -2,6 +2,7 @@
 package codec
 
 import (
+	"bytes"
 	"errors"
 	"io"
 
@@ -124,6 +125,18 @@ func Parse(data []byte) (*syntax.Node, error) {
 		return &syntax.Node{}, nil
 	}
 	return fromParser(&node, nil)
+}
+
+// FollowingDocument reports where a second YAML document starts. GitHub reads
+// a workflow as exactly one document. Malformed input reports none; Parse owns
+// that error.
+func FollowingDocument(data []byte) (Mark, bool) {
+	decoder := upstream.NewDecoder(bytes.NewReader(data))
+	var first, second upstream.Node
+	if decoder.Decode(&first) != nil || decoder.Decode(&second) != nil {
+		return Mark{}, false
+	}
+	return Mark{Line: second.Line, Column: second.Column}, true
 }
 
 func encodeError(err error) error {

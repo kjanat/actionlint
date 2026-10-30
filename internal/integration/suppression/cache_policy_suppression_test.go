@@ -150,7 +150,7 @@ jobs:
 		{"flow comments repeated on nested collections", header + "jobs: {test: {\n  cache-mode: write, runs-on: ubuntu-latest, steps: [{run: echo ok}]} " + ignore + "\n} " + ignore + "\n", nil},
 		{"flow comment before same comment in later document", header + `jobs: {test: {
   runs-on: ubuntu-latest, steps: [{run: echo ok}],
-  cache-mode: write}} ` + ignore + "\n---\n{cache-mode: write} " + ignore + "\n", nil},
+  cache-mode: write}} ` + ignore + "\n---\n{cache-mode: write} " + ignore + "\n", []string{"syntax-check"}},
 		{"flow comment before matching ordinary footer", header + `jobs: {test: {
   runs-on: ubuntu-latest, steps: [{run: echo ok}],
   cache-mode: write}} ` + ignore + "\n# } " + ignore + "\n", nil},
@@ -177,10 +177,10 @@ cache-mode: write
 		{"document markers", "---\n" + next + `
 cache-mode: write
 ` + header + body + "...\n", nil},
-		// Parse reads one document. Directives in later documents cannot affect it.
+		// GitHub reads one document: a later one is a syntax-check finding, and its directives cannot affect the first.
 		{"second document ignored", header + "cache-mode: write\n" + body + `---
 cache-mode: write # actionlint:ignore expression -- later document
-`, []string{"cache-write-untrusted"}},
+`, []string{"cache-write-untrusted", "syntax-check"}},
 		{"document marker detaches", next + `
 ---
 cache-mode: write

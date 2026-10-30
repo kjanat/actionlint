@@ -40,6 +40,12 @@ func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
 			if workflow == nil || len(workflow.Jobs) != 1 {
 				t.Fatalf("workflow recovery failed: %v", findings)
 			}
+			if strings.HasPrefix(tc.source, "\ufeff") {
+				if len(findings) == 0 || findings[0].Code != CodeBOM {
+					t.Fatalf("want leading BOM finding, got %v", findings)
+				}
+				findings = findings[1:]
+			}
 			if tc.line == 0 {
 				if len(findings) != 0 {
 					t.Fatalf("valid workflow rejected: %v", findings)

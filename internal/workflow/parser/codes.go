@@ -8,6 +8,10 @@ type Code string
 const (
 	// CodeYAML marks input the YAML reader cannot load.
 	CodeYAML Code = "yaml"
+	// CodeBOM marks a leading byte order mark, which GitHub reads as part of the first key.
+	CodeBOM Code = "bom"
+	// CodeMultipleDocuments marks a second YAML document; GitHub reads exactly one.
+	CodeMultipleDocuments Code = "multiple-documents"
 	// CodeAlias marks a YAML anchor or alias GitHub's reader refuses.
 	CodeAlias Code = "alias"
 	// CodeFlowNull marks a compact flow-mapping key without a value, such as {key:}.

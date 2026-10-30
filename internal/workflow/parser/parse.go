@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"iter"
@@ -1108,6 +1109,10 @@ func RawYAMLTagError(n *syntax.Node) string {
 }
 
 func rawYAMLTagProblem(n *syntax.Node) (Code, string) {
+	// The reader marks a bare "!" without TaggedStyle. GitHub rejects it on a plain scalar.
+	if n.Kind == syntax.ScalarNode && n.Tag == "!" && n.Style == 0 {
+		return CodeUnknownTag, "the non-specific tag \"!\" is not supported by GitHub Actions; remove it or quote the value"
+	}
 	if n.Kind != syntax.ScalarNode || n.Style&syntax.TaggedStyle == 0 || n.Tag == workflowlang.YamlTagStr {
 		return "", ""
 	}
@@ -2137,7 +2142,21 @@ func Parse(b []byte) (*workflowlang.Workflow, []*SyntaxError) {
 		return nil, HandleYAMLUnmarshalError(err)
 	}
 
-	return parseDocument(b, n)
+	workflow, findings := parseDocument(b, n)
+	return workflow, append(documentFindings(b), findings...)
+}
+
+// documentFindings reports stream-level input GitHub's workflow reader rejects.
+// Action manifests use other loaders, which strip a byte order mark.
+func documentFindings(b []byte) []*SyntaxError {
+	var findings []*SyntaxError
+	if bytes.HasPrefix(b, []byte("\xef\xbb\xbf")) {
+		findings = append(findings, &SyntaxError{Message: "a byte order mark makes GitHub read the first key with a U+FEFF prefix; remove it", Line: 1, Column: 1, Kind: "syntax-check", Code: CodeBOM})
+	}
+	if mark, ok := codec.FollowingDocument(b); ok {
+		findings = append(findings, &SyntaxError{Message: "GitHub Actions reads one YAML document; remove the document starting here", Line: mark.Line, Column: mark.Column, Kind: "syntax-check", Code: CodeMultipleDocuments})
+	}
+	return findings
 }
 
 // parseDocument owns one parser and one projection for the complete physical source.
