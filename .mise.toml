@@ -21,7 +21,7 @@ wasm-tools                        = "latest"
 "github:jgm/pandoc"               = { prefix = "3" }
 "github:kjanat/runner"            = { prefix = "0.28" }
 "github:microsoft/TypeScript"     = { prefix = "7" }
-"github:tombi-toml/tombi"         = { prefix = "1.8" }
+"github:tombi-toml/tombi"         = { prefix = "1.9" }
 "github:biomejs/biome"            = { prefix = "2", version_prefix = "@biomejs/biome@" }
 
 [tools."golangci-lint"]
@@ -37,7 +37,7 @@ version = "latest"
 depends = ["rshellcheck"]
 
 [tools."github:kjanat/dprint"]
-version = "0.59.0-kjanat"
+version = "0.60.0-kjanat"
 depends = ["tombi", "go"]
 
 [tool_alias]
@@ -69,7 +69,7 @@ run  = "go mod tidy -diff"
 alias       = ["f", "fmt"]
 description = "Format code"
 run         = "dprint fmt"
-tools       = { tombi = { prefix = "1.8" } }
+tools       = { tombi = { prefix = "1.9" } }
 
 [monorepo]
 config_roots = [
