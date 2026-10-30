@@ -273,11 +273,11 @@ func TestExclusionMatcherRequiresKnownPresentKeys(t *testing.T) {
 		(Combination{}).With("OS", windows).With("nokey", windows),
 		(Combination{}).With("OS", value.DynamicValue("${{ vars.OS }}", value.KindUnknown, value.Origin{})),
 	} {
-		if exclusionMatches(actual.exclusionValues, filter) {
+		if exclusionMatches(actual, nil, filter) {
 			t.Fatalf("invalid or unknown filter supplied a definite match: %#v", filter)
 		}
 	}
-	if !exclusionMatches(actual.exclusionValues, (Combination{}).With("OS", windows)) {
+	if !exclusionMatches(actual, nil, (Combination{}).With("OS", windows)) {
 		t.Fatal("case-variant exclusion did not match its axis")
 	}
 	semantic := value.Template(`${{ fromJSON('{"os":["ubuntu-latest","windows-latest"],"exclude":[{"OS":"windows-latest"}]}') }}`, value.Origin{})

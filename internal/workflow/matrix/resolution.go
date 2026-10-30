@@ -64,6 +64,27 @@ func (c Combination) With(name string, item value.Value) Combination {
 	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
 }
 
+// merge returns a copy of c with every key of inclusion that is not a base
+// axis. Base axis keys are left alone: inclusion only merges into c when its
+// base axis values already match.
+func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination {
+	values := maps.Clone(c.values)
+	if values == nil {
+		values = map[string]value.Value{}
+	}
+	keyOrigins := maps.Clone(c.keyOrigins)
+	if keyOrigins == nil {
+		keyOrigins = map[string]value.Origin{}
+	}
+	for name, item := range inclusion.values {
+		if axisIndex(axes, name) < 0 {
+			values[name] = item
+			keyOrigins[name] = inclusion.keyOrigin(name)
+		}
+	}
+	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
+}
+
 func (c Combination) keyOrigin(name string) value.Origin {
 	if origin, declared := c.keyOrigins[strings.ToLower(name)]; declared {
 		return origin
@@ -401,32 +422,33 @@ func (r Resolution) combinations(limit int, declarations bool) ([]Combination, b
 			excludedDeclarations = append(excludedDeclarations, candidate)
 		}
 	}
-	combinations = kept
-	originalCount := len(combinations)
-	for _, inclusion := range r.include {
-		added := false
-		for _, candidate := range combinations[:originalCount] {
-			match := includeMatch(candidate, inclusion, r.axes)
-			if match == matchUncertain {
+	// Each surviving original takes the extra keys of every include that
+	// matches it, in include order. Matching reads only base axes, which merge
+	// never changes, so checking per original gives the same matches.
+	merged := make([]bool, len(r.include))
+	combinations = make([]Combination, 0, len(kept))
+	for _, candidate := range kept {
+		for index, inclusion := range r.include {
+			switch includeMatch(candidate, inclusion, r.axes) {
+			case matchUncertain:
 				return nil, false
+			case matchAlways:
+				candidate = candidate.merge(inclusion, r.axes)
+				merged[index] = true
+			case matchNever:
 			}
-			if match != matchAlways {
-				continue
-			}
-			for name, item := range inclusion.values {
-				if axisIndex(r.axes, name) < 0 {
-					candidate.values[name] = item
-					candidate.keyOrigins[name] = inclusion.keyOrigin(name)
-				}
-			}
-			added = true
 		}
-		if !added {
-			if len(combinations) >= limit {
-				return nil, false
-			}
-			combinations = append(combinations, inclusion)
+		combinations = append(combinations, candidate)
+	}
+	// An include that matched no original becomes its own combination.
+	for index, inclusion := range r.include {
+		if merged[index] {
+			continue
 		}
+		if len(combinations) >= limit {
+			return nil, false
+		}
+		combinations = append(combinations, inclusion)
 	}
 	if len(combinations)+len(excludedDeclarations) > limit {
 		return nil, false
@@ -438,7 +460,7 @@ func (r Resolution) combinations(limit int, declarations bool) ([]Combination, b
 // excludes reports whether any exclude entry removes candidate.
 func (r Resolution) excludes(candidate Combination) bool {
 	for _, excluded := range r.exclude {
-		if exclusionMatches(candidate.exclusionValues, excluded) {
+		if exclusionMatches(candidate, nil, excluded) {
 			return true
 		}
 	}
@@ -562,18 +584,9 @@ func (r Resolution) survivingBaseCombinations(limit int) ([]Combination, bool) {
 // A fallback axis value is unreachable when one known exclusion covers it
 // regardless of the other axes. Conditional or dynamic exclusions prove less.
 func (r Resolution) definitelyExcludedAxisValue(axisName string, candidate value.Value) bool {
+	fixed := (Combination{}).With(axisName, candidate)
 	for _, exclusion := range r.exclude {
-		lookup := func(name string) ([]value.Value, bool) {
-			if name == axisName {
-				return []value.Value{candidate}, true
-			}
-			index := axisIndex(r.axes, name)
-			if index < 0 || !r.axes[index].Complete {
-				return nil, false
-			}
-			return r.axes[index].Values, true
-		}
-		if exclusionMatches(lookup, exclusion) {
+		if exclusionMatches(fixed, r.axes, exclusion) {
 			return true
 		}
 	}
@@ -635,7 +648,7 @@ func (r Resolution) witnessSurvives(witness Combination) bool {
 		return false
 	}
 	for _, exclusion := range r.exclude {
-		if exclusionMatch(witness.exclusionValues, exclusion) != matchNever {
+		if exclusionMatch(witness, nil, exclusion) != matchNever {
 			return false
 		}
 	}
@@ -910,9 +923,18 @@ func appendUnique(values *[]value.Value, candidate value.Value) {
 	*values = append(*values, candidate)
 }
 
-func (c Combination) exclusionValues(name string) ([]value.Value, bool) {
-	item, exists := c.Get(name)
-	return []value.Value{item}, exists
+// exclusionCandidates lists the values key name can take when an exclusion is
+// checked: the value set in fixed, otherwise every value of the matching axis
+// in free. The result is incomplete when free has no complete axis for name.
+func exclusionCandidates(fixed Combination, free []matrixAxis, name string) ([]value.Value, bool) {
+	if item, exists := fixed.Get(name); exists {
+		return []value.Value{item}, true
+	}
+	index := axisIndex(free, name)
+	if index < 0 || !free[index].Complete {
+		return nil, false
+	}
+	return free[index].Values, true
 }
 
 type matchProof uint8
@@ -923,19 +945,20 @@ const (
 	matchAlways
 )
 
-func exclusionMatches(actual func(string) ([]value.Value, bool), expected Combination) bool {
-	return exclusionMatch(actual, expected) == matchAlways
+func exclusionMatches(fixed Combination, free []matrixAxis, expected Combination) bool {
+	return exclusionMatch(fixed, free, expected) == matchAlways
 }
 
-// exclusionMatch checks every supplied candidate for each key. A known
-// mismatch disproves coverage; dynamic values cannot prove a witness survives.
-func exclusionMatch(actual func(string) ([]value.Value, bool), expected Combination) matchProof {
+// exclusionMatch checks every candidate of each key of expected, as listed by
+// exclusionCandidates. A known mismatch disproves coverage; dynamic values
+// cannot prove a witness survives.
+func exclusionMatch(fixed Combination, free []matrixAxis, expected Combination) matchProof {
 	if len(expected.values) == 0 {
 		return matchNever
 	}
 	result := matchAlways
 	for name, filter := range expected.values {
-		candidates, complete := actual(name)
+		candidates, complete := exclusionCandidates(fixed, free, name)
 		if !complete || len(candidates) == 0 {
 			return matchNever
 		}
