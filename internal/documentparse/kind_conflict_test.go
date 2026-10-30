@@ -69,7 +69,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			for index, failure := range failures {
 				if failure == nil {
 					previous = snapshots[index]
-				} else if _, ok := errors.AsType[*capture.ConflictError](failure); !ok {
+				} else if _, ok := errors.AsType[capture.ConflictError](failure); !ok {
 					t.Fatalf("kind mismatch returned untyped error: %v", failure)
 				}
 			}
@@ -79,7 +79,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			for _, document := range documents {
 				if _, err := registry.Document(captured, document); err == nil {
 					t.Fatal("quarantined declaration was readmitted")
-				} else if conflict, ok := errors.AsType[*capture.ConflictError](err); !ok || conflict.Error() != "source-revision-conflict: "+strconv.Quote(captured.Revision().Document())+": conflicting declaration kinds: action, workflow" {
+				} else if conflict, ok := errors.AsType[capture.ConflictError](err); !ok || conflict.Error() != "source-revision-conflict: "+strconv.Quote(captured.Revision().Document())+": conflicting declaration kinds: action, workflow" {
 					t.Fatalf("non-deterministic kind conflict: %v", err)
 				}
 			}

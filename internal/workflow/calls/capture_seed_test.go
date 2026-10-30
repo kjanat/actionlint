@@ -80,7 +80,7 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			}
 			if metadata, err := cache.FindMetadata(spec); metadata != nil {
 				t.Fatal("cached callee metadata outlived its capture")
-			} else if _, ok := errors.AsType[*capture.ConflictError](err); !ok {
+			} else if _, ok := errors.AsType[capture.ConflictError](err); !ok {
 				t.Fatalf("cached capture conflict was lost: %v", err)
 			}
 			if err := store.Close(t.Context()); err != nil {

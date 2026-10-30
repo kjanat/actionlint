@@ -121,7 +121,7 @@ func TestEditorCaseVariantBuffersConflictOnWindows(t *testing.T) {
 			a, b = b, a
 		}
 		analysis, err := analyzeDocuments(t.Context(), application.Options{WorkingDir: root, SkipProjectConfig: true}, map[string]langserver.Document{path: {Text: a}, alias: {Text: b}, caller: {Text: callerText}})
-		if _, conflicted := errors.AsType[*capture.ConflictError](err); !conflicted {
+		if _, conflicted := errors.AsType[capture.ConflictError](err); !conflicted {
 			t.Fatalf("case-variant buffers were not quarantined: %v", err)
 		}
 		if _, exists := analysis.Sources[path]; exists {

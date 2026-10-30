@@ -233,7 +233,7 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: documentmodel.NewWorkflow(documentmodel.WorkflowFields{Path: goodPath})},
 	}}
 	_, err = fixture.Store.Read(t.Context(), badPath, source.RawLF)
-	conflict, conflicted := errors.AsType[*capture.ConflictError](err)
+	conflict, conflicted := errors.AsType[capture.ConflictError](err)
 	if !conflicted {
 		t.Fatalf("model disagreement accepted: %v", err)
 	}

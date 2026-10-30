@@ -179,7 +179,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatalf("consumer failure quarantined the shared healthy capture: %v", err)
 			}
 			if !missing {
-				if _, ok := errors.AsType[*capture.ConflictError](sourceErr); !ok {
+				if _, ok := errors.AsType[capture.ConflictError](sourceErr); !ok {
 					t.Fatalf("Verify mismatch lost typed cause: %v", sourceErr)
 				}
 			}
