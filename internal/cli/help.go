@@ -229,7 +229,7 @@ func (a *commandApp) legacyHelp(c *cobra.Command) {
   -color / -no-color      boolean options on the root; no-color wins
   -ID[=COMMAND]           --tool ID[=COMMAND], for each bundled tool ID (deprecated)
   -no-ID                  --no-tool ID (deprecated)
-  -stdin-filename PATH
+`+deprecatedFlagHelp()+`  -stdin-filename PATH
 
 Options may appear before or after filenames. -- ends option parsing.
 Existing files named check, config, rules, doctor, completion or version win

@@ -61,6 +61,28 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	}
 }
 
+// deprecatedFlagHelp returns one --help-legacy line for each retired flag
+// listed in the deprecated_flags field of a bundled provider manifest.
+func deprecatedFlagHelp() string {
+	manifests, err := provider.Bundled()
+	if err != nil {
+		// externalToolFlags already read the same manifests.
+		panic(err)
+	}
+	var lines strings.Builder
+	for _, manifest := range manifests {
+		id := manifest.Rule.Name
+		for _, retired := range manifest.DeprecatedFlags {
+			usage := "runs " + id
+			if len(retired.Arguments) != 0 {
+				usage += " adding " + strings.Join(retired.Arguments, " ")
+			}
+			fmt.Fprintf(&lines, "  %-22s  %s; empty or false disables %s (deprecated)\n", "-"+retired.Name+" VALUE", usage, id)
+		}
+	}
+	return lines.String()
+}
+
 // toolListValue appends every value to a shared list, so --tool, --no-tool
 // and their deprecated aliases keep their command-line order.
 type toolListValue struct{ target *[]string }
