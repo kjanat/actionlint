@@ -131,9 +131,8 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			if err != nil {
 				return nil, &PluginLoadError{errors.Join(err, loaded.close(context.WithoutCancel(ctx)))}
 			}
-			metadata := engine.Metadata()
 			loaded.core = append(loaded.core, engine)
-			loaded.engines = append(loaded.engines, scriptEngineRegistration{engine, metadata.ScriptDescriptor()})
+			loaded.engines = append(loaded.engines, scriptEngineRegistration{engine, engine.ScriptDescriptor()})
 
 			continue
 		}
