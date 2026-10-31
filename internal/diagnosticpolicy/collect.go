@@ -61,7 +61,8 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 			if finding.Source != nil {
 				identityPath = diagnostic.Path
 			}
-			CompleteDiagnostic(&diagnostic, finding.SourceFor(file.Content), identityPath, finding.UnavailableSource.Present())
+			content := finding.SourceFor(file.Content)
+			CompleteDiagnostic(&diagnostic, content, identityPath, finding.UnavailableSource.Present())
 			if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
 				key := metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
 				if !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
@@ -80,7 +81,7 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 			}
 			seen[key] = append(seen[key], diagnostic)
 			diagnostics = append(diagnostics, diagnostic)
-			sources = append(sources, report.DiagnosticSource{Content: finding.SourceFor(file.Content), RawScript: finding.RawScriptSource, Unavailable: finding.UnavailableSource.Present()})
+			sources = append(sources, report.DiagnosticSource{Content: content, RawScript: finding.RawScriptSource, Unavailable: finding.UnavailableSource.Present()})
 			unique = append(unique, finding)
 		}
 		clear(file.Findings[len(unique):])
