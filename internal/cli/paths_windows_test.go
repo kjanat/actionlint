@@ -42,7 +42,7 @@ func TestWindowsForwardSlashToolPaths(t *testing.T) {
 				t.Fatalf("tool command: %q, %v, %v", resolved, arguments, err)
 			}
 			t.Setenv("ACTIONLINT_TOOL_SHELLCHECK_BIN", path)
-			options, _, err := toolEnvironment("shellcheck")
+			options, err := toolEnvironment("shellcheck")
 			if err != nil {
 				t.Fatal(err)
 			}

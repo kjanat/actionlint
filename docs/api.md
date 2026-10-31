@@ -71,9 +71,6 @@ External tools are disabled by default in the library. Enable them explicitly in
 options.Tools = map[string]analysis.Tool{"ruff": {Process: &analysis.Process{Executable: "ruff"}}}
 ```
 
-The deprecated `Options.ShellCheck` and `Options.Ruff` fields still select their tool when `Options.Tools` has no key
-for it; they are removed in the next release.
-
 `Executable` is a literal executable name or path. `Arguments` supplies separate arguments; no shell command-line parsing
 is performed. An empty executable disables that tool. CLI environment discovery does not configure a library call.
 

@@ -79,8 +79,8 @@ jobs:
 				outputPath := filepath.Join(t.TempDir(), "output")
 				env := map[string]string{
 					"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "ACTIONLINT_ACTION_RESULT": resultPath,
-					"INPUT_PYFLAKES": "false", "INPUT_WORKING-DIRECTORY": "work",
-					"INPUT_FILES": tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
+					"INPUT_WORKING-DIRECTORY": "work",
+					"INPUT_FILES":             tc.file, "INPUT_FORMAT": format, "INPUT_OUTPUT-FILE": "report.txt",
 					"INPUT_SARIF": "true",
 				}
 				var output strings.Builder
@@ -183,7 +183,7 @@ jobs:
 		"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath,
 		"ACTIONLINT_ACTION_RESULT": resultPath,
 		"INPUT_FILES":              "my workflow.yml", "INPUT_FORMAT": "sarif",
-		"INPUT_OUTPUT-FILE": "report.sarif", "INPUT_PYFLAKES": "false",
+		"INPUT_OUTPUT-FILE": "report.sarif",
 	}
 	var output strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &output); code != 1 {

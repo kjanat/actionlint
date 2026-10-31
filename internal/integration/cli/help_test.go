@@ -80,7 +80,7 @@ func TestLegacyHelpListsDeprecatedFlags(t *testing.T) {
 	for _, manifest := range manifests {
 		for _, retired := range manifest.DeprecatedFlags {
 			declared++
-			if !strings.Contains(got.Stderr, "-"+retired.Name+" VALUE") {
+			if !strings.Contains(got.Stderr, "-"+retired.Name+" COMMAND") && !strings.Contains(got.Stderr, "-"+retired.Name+" VALUE") {
 				t.Errorf("legacy help omits -%s:\n%s", retired.Name, got.Stderr)
 			}
 		}

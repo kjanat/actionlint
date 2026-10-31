@@ -51,12 +51,6 @@ export async function runAction(environment: Environment, runtime: Runtime): Pro
 	}
 
 	const childEnvironment = subprocessEnvironment(environment);
-	// Match action.yml defaults even when the launcher is invoked directly.
-	if (!childEnvironment.INPUT_RUFF) childEnvironment.INPUT_RUFF = 'true';
-	if (environment.INPUT_PYFLAKES === 'true') {
-		console.log('::warning::The deprecated pyflakes input is ignored. Use ruff with a declared Ruff Wasm plugin.');
-	}
-	childEnvironment.INPUT_PYFLAKES = 'false';
 	const run = async (): Promise<number> => {
 		if (addActionlint) await runtime.publish(executable);
 		if (setupOnly) return 0;

@@ -16,7 +16,7 @@ status=0
 diagnostics="$(docker run --rm --platform "${platform}" \
 	--mount "type=bind,source=${workspace},target=/w,readonly" \
 	--workdir /w --entrypoint /usr/local/bin/actionlint \
-	"${image}" --no-config --shellcheck= --json nix/integration.yml)" || status=$?
+	"${image}" --no-config --no-tool shellcheck --json nix/integration.yml)" || status=$?
 if [[ "${status}" != 1 ]]; then
 	printf 'Expected a Ruff finding (exit 1), got exit %s:\n%s\n' "${status}" "${diagnostics}" >&2
 	exit 1
@@ -26,7 +26,7 @@ jq -e 'any(.diagnostics[]; .rule == "ruff" and .code == "F821")' <<<"${diagnosti
 docker run --rm --platform "${platform}" \
 	--mount "type=bind,source=${workspace},target=/w,readonly" \
 	--workdir /w --entrypoint /usr/local/bin/actionlint \
-	"${image}" --no-config --shellcheck= --ruff= --json nix/integration.yml \
+	"${image}" --no-config --no-tool shellcheck --no-tool ruff --json nix/integration.yml \
 	| jq -e '.diagnostics == []'
 
 echo 'Bundled Docker Ruff checks passed.'

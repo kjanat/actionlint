@@ -20,6 +20,7 @@
   },
   "preparation": "kjanat:actionlint/shell-preparation@0.2.0",
   "integration": { "tool": "shellcheck", "contract": "kjanat:actionlint/shellcheck-config@0.1.0" },
+  "deprecated_flags": [{ "name": "shellcheck", "value": "command" }],
   "selectors": { "filename": "actionlint.sh" },
   "capabilities": {
     "fixes": true,

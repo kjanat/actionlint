@@ -355,7 +355,7 @@ jobs:
           git diff --exit-code -- ':(glob)internal/plugins/component/*.gen.go'
       - name: Load the Rust, C and TinyGo examples
         run: >-
-          go run ./cmd/actionlint --no-config --shellcheck= --ruff=
+          go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
           --plugin internal/plugins/component/testdata/plugins/pipe-to-shell.wasm
           --plugin internal/plugins/component/testdata/plugins/no-sudo.wasm
           --plugin internal/plugins/component/testdata/plugins/insecure-download.wasm

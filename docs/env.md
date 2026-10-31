@@ -136,9 +136,6 @@ replaced by underscores:
 | `ACTIONLINT_TOOL_<ID>_ENV`   | Child environment overrides or forwarded variable names.                                        |
 
 For example, `ACTIONLINT_TOOL_SHELLCHECK_BIN` and `ACTIONLINT_TOOL_RUFF_FLAGS`.
-The former names without `TOOL_`, such as `ACTIONLINT_SHELLCHECK_BIN` and
-`ACTIONLINT_RUFF_FLAGS`, are deprecated aliases for one release. Each one used
-prints a deprecation warning; a set new variable wins over its alias.
 
 `_BIN` is a literal executable, so Windows paths containing spaces need no embedded
 quotes. `_FLAGS` accepts a JSON string array or a shell-style quoted argument list.

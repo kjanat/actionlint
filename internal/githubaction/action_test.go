@@ -334,7 +334,7 @@ func TestActionPassesInputsToLinter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, recorder := runActionWithInputs(t, workspace, knownFiles(&lintOutcome{"", "", render.ExitSuccessNoProblem}, 3), map[string]string{"INPUT_SHELLCHECK": "false", "INPUT_DISABLE-TOOLS": "ruff"},
+	_, recorder := runActionWithInputs(t, workspace, knownFiles(&lintOutcome{"", "", render.ExitSuccessNoProblem}, 3), map[string]string{"INPUT_DISABLE-TOOLS": "ruff\nshellcheck"},
 		"w.yaml\n\nw.yaml", "sarif", "first\nsecond", "conf.yaml", "sub", "", "true")
 
 	req := recorder.req

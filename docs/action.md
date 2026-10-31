@@ -294,30 +294,29 @@ require network access, including reruns. HTTP(S) proxy settings are honored.
 
 All inputs are optional. Booleans accept `true`/`false`.
 
-| Input                    | Default        | Meaning                                                                                                                               |
-| ------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `version`                | Action release | Exact binary release; overrides `version-file`.                                                                                       |
-| `version-file`           | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.                                                              |
-| `install-only`           | `false`        | Install actionlint on PATH without analysis or reporting.                                                                             |
-| `plugin-cache`           | `true`         | Restore and save digest-verified plugin artifacts.                                                                                    |
-| `files`                  | discover       | Literal newline-separated workflow paths.                                                                                             |
-| `format`                 | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.                                                            |
-| `ignore`                 | empty          | Newline-separated regular expressions.                                                                                                |
-| `config-file`            | discover       | Explicit config file.                                                                                                                 |
-| `config`                 | inherit        | Inline YAML/JSON overlay.                                                                                                             |
-| `working-directory`      | `.`            | Analysis directory.                                                                                                                   |
-| `disable-tools`          | empty          | Tool ids to turn off, separated by newlines or commas, such as `shellcheck` or `ruff`.                                                |
-| `shellcheck`             | `true`         | Deprecated: `false` is the same as listing `shellcheck` in `disable-tools`.                                                           |
-| `ruff`                   | `true`         | Deprecated: `false` is the same as listing `ruff` in `disable-tools`.                                                                 |
-| `add-actionlint-to-path` | `true`         | Export actionlint for later steps.                                                                                                    |
-| `output-file`            | empty          | Workspace-relative legacy-format report.                                                                                              |
-| `fail-on-error`          | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
-| `annotations`            | `auto`         | Finding annotation control.                                                                                                           |
-| `summary`                | `true`         | Compact job summary.                                                                                                                  |
-| `summary-title`          | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
-| `sarif`                  | `false`        | Write additional SARIF file.                                                                                                          |
-| `review`                 | `false`        | Advisory PR review posting.                                                                                                           |
-| `token`                  | `github.token` | Used only by the review reporter.                                                                                                     |
+| Input                            | Default        | Meaning                                                                                                                               |
+| -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                        | Action release | Exact binary release; overrides `version-file`.                                                                                       |
+| `version-file`                   | empty          | Exact version file or `.tool-versions`, relative to `working-directory`.                                                              |
+| `install-only`                   | `false`        | Install actionlint on PATH without analysis or reporting.                                                                             |
+| `plugin-cache`                   | `true`         | Restore and save digest-verified plugin artifacts.                                                                                    |
+| `files`                          | discover       | Literal newline-separated workflow paths.                                                                                             |
+| `format`                         | `github`       | `github`, `default`, `oneline`, `json`, `json-lines`, `markdown`, `sarif`.                                                            |
+| `ignore`                         | empty          | Newline-separated regular expressions.                                                                                                |
+| `config-file`                    | discover       | Explicit config file.                                                                                                                 |
+| `config`                         | inherit        | Inline YAML/JSON overlay.                                                                                                             |
+| `working-directory`              | `.`            | Analysis directory.                                                                                                                   |
+| `disable-tools`                  | empty          | Tool ids to turn off, separated by newlines or commas, such as `shellcheck` or `ruff`.                                                |
+| `shellcheck`, `ruff`, `pyflakes` | none           | Ignored. List the tool id in `disable-tools` to turn a tool off.                                                                      |
+| `add-actionlint-to-path`         | `true`         | Export actionlint for later steps.                                                                                                    |
+| `output-file`                    | empty          | Workspace-relative legacy-format report.                                                                                              |
+| `fail-on-error`                  | `true`         | Fail for findings; invalid options/failures always fail.                                                                              |
+| `annotations`                    | `auto`         | Finding annotation control.                                                                                                           |
+| `summary`                        | `true`         | Compact job summary.                                                                                                                  |
+| `summary-title`                  | Empty          | Add a summary label and text-log label, for example `Production workflows`. Without one, only text logs use the Action invocation ID. |
+| `sarif`                          | `false`        | Write additional SARIF file.                                                                                                          |
+| `review`                         | `false`        | Advisory PR review posting.                                                                                                           |
+| `token`                          | `github.token` | Used only by the review reporter.                                                                                                     |
 
 | Output           | Meaning                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -333,9 +332,9 @@ All inputs are optional. Booleans accept `true`/`false`.
 
 ## Migration and troubleshooting
 
-The per-tool inputs `shellcheck` and `ruff` are deprecated aliases of `disable-tools`
-for one release; `false` prints a deprecation warning. The deprecated `pyflakes` input
-is ignored.
+The inputs `shellcheck`, `ruff` and `pyflakes` are ignored. GitHub shows their
+deprecation message when a workflow sets them. To turn a tool off, list its id in
+`disable-tools`, for example `disable-tools: shellcheck`.
 **JSON and JSON Lines change shape**:
 JSON now returns the versioned result object instead of a diagnostic array; JSON
 Lines uses versioned canonical diagnostics. Update consumers using the

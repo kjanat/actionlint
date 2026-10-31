@@ -72,8 +72,8 @@ type doctorRequest struct {
 	Tools registry.Selections
 	// NamedTools lists the tool ids --tool and --no-tool named.
 	NamedTools []string
-	// Deprecations holds a warning for each deprecated flag or environment
-	// variable used; doctor prints them to stderr.
+	// Deprecations holds a warning for each deprecated flag used; doctor
+	// prints them to stderr.
 	Deprecations []string
 	Config       repoconfig.Selection
 	JSON         bool

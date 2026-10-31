@@ -444,11 +444,9 @@ same rules at the root and after subcommands. A plugin's ids are its lock entry'
 name and alias and the engine and rule names in its metadata. An id that names no
 bundled tool and no plugin is rejected with the list of valid ids.
 
-The former per-tool flags remain as hidden, deprecated aliases for one release.
-Each bundled tool has `--ID[=COMMAND]` (`--tool ID=COMMAND`) and `--no-ID`
-(`--no-tool ID`), such as `--shellcheck=` and `--no-ruff`; each use prints a
-deprecation warning. Use `=` for their optional command values; a separate argument
-is parsed as a workflow path.
+The actionlint v1 option `-shellcheck COMMAND`, which the bundled ShellCheck tool
+declares, remains as a hidden, deprecated alias of `--tool shellcheck=COMMAND`; an
+empty command disables ShellCheck. Each use prints a deprecation warning.
 
 Repository configuration can select native executables through
 `tools.<name>.backend.process`. Authorize these selections with
@@ -456,7 +454,7 @@ Repository configuration can select native executables through
 including inherited files and overrides. Explicit CLI and environment commands
 already authorize their own executable.
 
-The deprecated `-pyflakes COMMAND` option, which the bundled Ruff tool declares,
+The deprecated actionlint v1 option `-pyflakes COMMAND`, which the bundled Ruff tool declares,
 selects Ruff's Pyflakes (`F`) rules when nothing else selects Ruff. The command
 value is never executed. An empty value or `false` disables Ruff.
 

@@ -199,9 +199,9 @@ func TestEnvironmentRejectsNullFilters(t *testing.T) {
 
 func TestEnvironmentDisabledTools(t *testing.T) {
 	for _, tool := range []string{"SHELLCHECK"} {
-		t.Setenv("ACTIONLINT_"+tool+"_BIN", "")
-		t.Setenv("ACTIONLINT_"+tool+"_FLAGS", `"unterminated`)
-		t.Setenv("ACTIONLINT_"+tool+"_ENV", `{"INVALID":123}`)
+		t.Setenv("ACTIONLINT_TOOL_"+tool+"_BIN", "")
+		t.Setenv("ACTIONLINT_TOOL_"+tool+"_FLAGS", `"unterminated`)
+		t.Setenv("ACTIONLINT_TOOL_"+tool+"_ENV", `{"INVALID":123}`)
 	}
 	var out, stderr bytes.Buffer
 	cmd := cli.Command{Stdout: &out, Stderr: &stderr}

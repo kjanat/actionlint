@@ -57,20 +57,17 @@ inputs:
     required: false
     default: ""
   shellcheck:
-    description: "Deprecated: false is the same as listing shellcheck in disable-tools."
-    deprecationMessage: Use disable-tools to turn ShellCheck off.
+    description: "Ignored. List shellcheck in disable-tools to turn ShellCheck off."
+    deprecationMessage: The shellcheck input is ignored; list shellcheck in disable-tools to turn ShellCheck off.
     required: false
-    default: "true"
   ruff:
-    description: "Deprecated: false is the same as listing ruff in disable-tools."
-    deprecationMessage: Use disable-tools to turn Ruff off.
+    description: "Ignored. List ruff in disable-tools to turn Ruff off."
+    deprecationMessage: The ruff input is ignored; list ruff in disable-tools to turn Ruff off.
     required: false
-    default: "true"
   pyflakes:
-    description: "Deprecated and ignored: Ruff checks Python scripts unless disable-tools lists ruff."
-    deprecationMessage: The pyflakes input is ignored; use disable-tools to turn Ruff off.
+    description: "Ignored. Ruff checks Python scripts; list ruff in disable-tools to turn it off."
+    deprecationMessage: The pyflakes input is ignored; list ruff in disable-tools to turn Ruff off.
     required: false
-    default: "false"
   add-actionlint-to-path:
     description: Make actionlint available on PATH for subsequent steps in this job.
     required: false

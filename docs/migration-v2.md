@@ -51,29 +51,31 @@ that old URL to a v2 source revision will not install a hook.
 
 ## External tool selection
 
-Tools are selected by id. The per-tool command-line flags, environment variables,
-Action inputs and library fields still work for one release as deprecated aliases;
-each command-line or environment alias prints a warning.
+Tools are selected by id: `--tool ID[=COMMAND]`, `--no-tool ID`,
+`ACTIONLINT_TOOL_<ID>_BIN`, `_FLAGS` and `_ENV`, the Action input `disable-tools`
+and `analysis.Options.Tools`. The two v1.17.0 options still work for one release
+as hidden, deprecated aliases and print a warning. The v1.17.0 Action inputs are
+accepted and ignored.
 
-| v1 or earlier v2 surface                         | v2 replacement                                                                        |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `--shellcheck[=COMMAND]`, `--ruff[=COMMAND]`     | `--tool shellcheck[=COMMAND]`, `--tool ruff[=COMMAND]`                                |
-| `--shellcheck=`, `--ruff=false`                  | `--no-tool shellcheck`, `--tool ruff=false`                                           |
-| `--no-shellcheck`, `--no-ruff`                   | `--no-tool shellcheck`, `--no-tool ruff`                                              |
-| `--pyflakes COMMAND`                             | Deprecated alias declared by the bundled Ruff tool; `--pyflakes=` disables Ruff       |
-| `ACTIONLINT_SHELLCHECK_BIN`, `_FLAGS`, `_ENV`    | `ACTIONLINT_TOOL_SHELLCHECK_BIN`, `_FLAGS`, `_ENV`                                    |
-| `ACTIONLINT_RUFF_BIN`, `_FLAGS`, `_ENV`          | `ACTIONLINT_TOOL_RUFF_BIN`, `_FLAGS`, `_ENV`                                          |
-| Action inputs `shellcheck: false`, `ruff: false` | `disable-tools: shellcheck` or `disable-tools: ruff`                                  |
-| Action input `pyflakes`                          | Ignored, as before                                                                    |
-| `analysis.Options{ShellCheck: tool, Ruff: tool}` | `analysis.Options{Tools: map[string]analysis.Tool{"shellcheck": tool, "ruff": tool}}` |
+| v1.17.0 surface           | v2 replacement                                                         |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `-shellcheck COMMAND`     | `--tool shellcheck=COMMAND`; the old option is a deprecated alias      |
+| `-shellcheck=`            | `--no-tool shellcheck`; the old option is a deprecated alias           |
+| `-pyflakes COMMAND`       | Deprecated: runs Ruff with `--select F`; the command is never executed |
+| `-pyflakes=`              | `--no-tool ruff`; the old option is a deprecated alias                 |
+| Action input `shellcheck` | `disable-tools: shellcheck`; the input is ignored                      |
+| Action input `pyflakes`   | `disable-tools: ruff`; the input is ignored                            |
 
-The deprecated library fields `analysis.Options.ShellCheck` and
-`analysis.Options.Ruff` are used only when `Options.Tools` has no key for that
-tool. `analysis.Tools()` lists the valid map keys.
+Unreleased v2 builds also had `--ruff`, `--no-ruff`, `--no-shellcheck`,
+`ACTIONLINT_SHELLCHECK_*`, `ACTIONLINT_RUFF_*`, the Action input `ruff` and the
+library fields `analysis.Options.ShellCheck` and `analysis.Options.Ruff`. They are
+removed without aliases; the `ruff` input is ignored like the v1.17.0 inputs. Use
+`analysis.Options{Tools: map[string]analysis.Tool{"shellcheck": tool, "ruff": tool}}`
+in the library; `analysis.Tools()` lists the valid map keys.
 
-Two behaviors differ from the old flags. The last `--tool` or `--no-tool` for an id
-wins, so `--no-ruff --ruff=COMMAND` now runs `COMMAND`. A disabled tool also turns
-off plugins that provide it: a locked plugin whose name or alias is the id is not
-downloaded, and any other plugin whose metadata names the id as its engine or a
-rule is not loaded. The former `--no-ruff` and `--no-shellcheck` skipped plugins by
-a `languages` metadata key instead.
+The last `--tool`, `--no-tool` or `-shellcheck` for an id wins, so
+`--no-tool shellcheck -shellcheck=COMMAND` runs `COMMAND`. A disabled tool also
+turns off plugins that provide it: a locked plugin whose name or alias is the id is
+not downloaded, and any other plugin whose metadata names the id as its engine or a
+rule is not loaded. Unreleased v2 builds skipped plugins by a `languages` metadata
+key instead.

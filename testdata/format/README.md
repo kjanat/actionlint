@@ -5,7 +5,7 @@ How to generate `test.sarif`:
 ```sh
 cd /path/to/actionlint
 
-go run ./cmd/actionlint -no-config -shellcheck= -ruff= --output-format sarif testdata/format/test.yaml > testdata/format/test.sarif
+go run ./cmd/actionlint -no-config --no-tool shellcheck --no-tool ruff --output-format sarif testdata/format/test.yaml > testdata/format/test.sarif
 
 # Unit tests report the module version as (devel)
 sed -i 's/"version": "v[^"]*"/"version": "(devel)"/' testdata/format/test.sarif

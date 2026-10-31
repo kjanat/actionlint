@@ -88,7 +88,6 @@ func (a *commandApp) applyEnvironment() error {
 		return err
 	}
 	i.Check.Tools, i.Check.DisabledTools, i.Check.NamedTools = resolved.tools, resolved.disabled, resolved.named
-	i.Check.Deprecations = append(i.Check.Deprecations, resolved.deprecations...)
 	if i.Operation == operationDoctor {
 		return nil
 	}

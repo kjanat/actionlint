@@ -828,7 +828,8 @@
       "items": {
         "type": "object",
         "required": [
-          "name"
+          "name",
+          "value"
         ],
         "properties": {
           "arguments": {
@@ -836,9 +837,29 @@
           },
           "name": {
             "$ref": "#/$defs/name"
+          },
+          "value": {
+            "enum": [
+              "command",
+              "ignored"
+            ]
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "if": {
+          "properties": {
+            "value": {
+              "const": "command"
+            }
+          }
+        },
+        "then": {
+          "not": {
+            "required": [
+              "arguments"
+            ]
+          }
+        }
       }
     },
     "id": {

@@ -29,7 +29,6 @@ func TestLinterSwitches(t *testing.T) {
 		{"disable after command", "disabled", append(append([]string{}, custom...), "--no-tool=ruff", "--no-tool=shellcheck")},
 		{"command after disable", "available", append([]string{"--no-tool=ruff", "--no-tool=shellcheck"}, custom...)},
 		{"custom commands", "available", custom},
-		{"explicit false", "available", append(append([]string{}, custom...), "--no-ruff=false", "--no-shellcheck=false")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out, stderr bytes.Buffer
@@ -63,9 +62,9 @@ func TestLinterCommandSpellings(t *testing.T) {
 				}
 				for _, name := range []string{"ruff", "shellcheck"} {
 					if custom {
-						args = append(args, dash+name+"="+toolCommand)
+						args = append(args, dash+"tool="+name+"="+toolCommand)
 					} else {
-						args = append(args, dash+name)
+						args = append(args, dash+"tool", name)
 					}
 				}
 				if beforeCommand {
@@ -94,7 +93,9 @@ func TestLinterCommandSpellings(t *testing.T) {
 	}
 }
 
-func TestBareLinterFlagsLeaveWorkflowArguments(t *testing.T) {
+// TestToolFlagValuesLeaveWorkflowArguments checks that --tool and the
+// deprecated --shellcheck flag take only their own value as an argument.
+func TestToolFlagValuesLeaveWorkflowArguments(t *testing.T) {
 	t.Chdir(t.TempDir())
 	if err := os.WriteFile("input.yml", []byte(commandGoodWorkflow), 0600); err != nil {
 		t.Fatal(err)
@@ -104,7 +105,7 @@ func TestBareLinterFlagsLeaveWorkflowArguments(t *testing.T) {
 			var out, stderr bytes.Buffer
 			cmd := cli.Command{Stdout: &out, Stderr: &stderr}
 			args := append([]string{"actionlint"}, prefix...)
-			args = append(args, dash+"ruff", dash+"shellcheck", "--no-tool=ruff", "--no-tool=shellcheck", "--no-config", "--json", "--summary=false", "input.yml")
+			args = append(args, dash+"tool", "ruff", dash+"shellcheck", "shellcheck", "--no-tool=ruff", "--no-tool=shellcheck", "--no-config", "--json", "--summary=false", "input.yml")
 			if status := cmd.Main(args); status != 0 || !onlyDeprecationWarnings(stderr.String()) || !cleanCheckJSON(out.String()) {
 				t.Fatalf("%v: exit=%d stdout=%s stderr=%s", args, status, &out, &stderr)
 			}
@@ -140,16 +141,17 @@ func TestUnknownToolIDs(t *testing.T) {
 	}
 }
 
-func TestToolEnvironmentAliases(t *testing.T) {
+// TestToolEnvironment checks that ACTIONLINT_TOOL_RUFF_BIN selects the Ruff
+// command and that ACTIONLINT_RUFF_BIN, a name from unreleased v2 builds,
+// is not read.
+func TestToolEnvironment(t *testing.T) {
 	t.Setenv("PATH", "")
 	for _, tc := range []struct {
 		name, command string
 		env           map[string]string
-		deprecated    bool
 	}{
-		{"new", "new-ruff", map[string]string{"ACTIONLINT_TOOL_RUFF_BIN": "new-ruff"}, false},
-		{"former", "old-ruff", map[string]string{"ACTIONLINT_RUFF_BIN": "old-ruff"}, true},
-		{"new wins", "new-ruff", map[string]string{"ACTIONLINT_TOOL_RUFF_BIN": "new-ruff", "ACTIONLINT_RUFF_BIN": "old-ruff"}, false},
+		{"new", "new-ruff", map[string]string{"ACTIONLINT_TOOL_RUFF_BIN": "new-ruff"}},
+		{"former name ignored", "ruff", map[string]string{"ACTIONLINT_RUFF_BIN": "old-ruff"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, key := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_RUFF_BIN"} {
@@ -173,8 +175,8 @@ func TestToolEnvironmentAliases(t *testing.T) {
 			if report.Tools[0].Name != "ruff" || report.Tools[0].Command != tc.command {
 				t.Fatalf("environment selected %+v, want %s", report.Tools[0], tc.command)
 			}
-			if strings.Contains(stderr.String(), "ACTIONLINT_RUFF_BIN is deprecated; use ACTIONLINT_TOOL_RUFF_BIN") != tc.deprecated {
-				t.Fatalf("deprecation warning: %s", &stderr)
+			if strings.Contains(stderr.String(), "deprecated") {
+				t.Fatalf("unexpected deprecation warning: %s", &stderr)
 			}
 		})
 	}

@@ -63,7 +63,7 @@ func TestActionLockedPlugins(t *testing.T) {
 				t.Fatal(err)
 			}
 			env := map[string]string{
-				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false",
+				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck,ruff",
 				"INPUT_CONFIG": "lint: {rules: {plugins: {no-sudo: warn}}}",
 			}
 			if explicit {
@@ -146,7 +146,7 @@ func TestActionConfiguredWasm(t *testing.T) {
 				".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: " + string(encoded) + "\n",
 			})
 			t.Setenv("PATH", t.TempDir())
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_RUFF": "true", "INPUT_SHELLCHECK": "false"}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 			lookup := func(key string) string { return env[key] }
 			req, err := provisioningRequest(lookup)
 			if err != nil {
@@ -160,7 +160,7 @@ func TestActionConfiguredWasm(t *testing.T) {
 			if result.code != 1 || len(result.diagnostics) != 1 || result.diagnostics[0].Code != wantCode {
 				t.Fatalf("configured Wasm result: %+v %s", result.diagnostics, result.stderr)
 			}
-			env["INPUT_RUFF"] = "false"
+			env["INPUT_DISABLE-TOOLS"] = "shellcheck,ruff"
 			req, err = provisioningRequest(lookup)
 			if err != nil {
 				t.Fatal(err)
@@ -185,7 +185,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 			}
 			workspace := workspaceWith(t, files)
 			t.Setenv("PATH", t.TempDir())
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_RUFF": "true", "INPUT_SHELLCHECK": "false"}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 			req, err := provisioningRequest(func(key string) string { return env[key] })
 			if err != nil {
 				t.Fatal(err)
@@ -208,7 +208,7 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{
 		".git": "", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: https://example.invalid/ruff.wasm#sha256=" + digest + "\n",
 	})
-	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_RUFF": "true"}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace}
 	var stdout, stderr bytes.Buffer
 	if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 0 {
 		t.Fatalf("plan failed: %d %s", code, &stderr)
@@ -373,7 +373,7 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false"}
+			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "shellcheck,ruff"}
 			var stdout, stderr bytes.Buffer
 			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 3 {
 				t.Fatalf("got status %d, want failure: %s", code, &stderr)
@@ -399,7 +399,7 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 		"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n",
 	})
 	env := map[string]string{
-		"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false",
+		"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck,ruff",
 		"INPUT_CONFIG": fmt.Sprintf("plugins: [%q]\n", url+"#sha256="+digest),
 	}
 	lookup := func(key string) string { return env[key] }

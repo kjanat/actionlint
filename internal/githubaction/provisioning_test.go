@@ -97,7 +97,6 @@ func TestPluginPlanRejectsInvalidConfiguration(t *testing.T) {
 		inputs map[string]string
 		code   int
 	}{
-		{name: "input", inputs: map[string]string{"INPUT_SHELLCHECK": "yes"}, code: 2},
 		{name: "overlay", inputs: map[string]string{"INPUT_CONFIG": "tools: {shellcheck: {enabled: wrong}}"}, code: 2},
 		{name: "file", config: "tools: {shellcheck: {enabled: wrong}}", code: 3},
 	} {

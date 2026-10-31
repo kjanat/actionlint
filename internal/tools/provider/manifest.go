@@ -91,15 +91,30 @@ type Manifest struct {
 }
 
 // DeprecatedFlag is a retired command-line flag that selects a provider.
-// --NAME= and --NAME=false disable the provider. Any other value runs the
-// provider's default command with Arguments added. Either way, --tool,
-// --no-tool and the provider's environment variables take precedence.
+// --NAME= and --NAME=false disable the provider. Value says what any other
+// value of the flag does.
 type DeprecatedFlag struct {
 	// Name is the flag without leading dashes.
 	Name string `json:"name"`
-	// Arguments are added to the default command line.
+	// Value says what a value other than empty or false does.
+	Value DeprecatedFlagValue `json:"value"`
+	// Arguments are added to the default command line when Value is
+	// DeprecatedFlagIgnored. The schema forbids them otherwise.
 	Arguments []string `json:"arguments,omitempty"`
 }
+
+// DeprecatedFlagValue says what the value of a deprecated flag does.
+type DeprecatedFlagValue string
+
+const (
+	// DeprecatedFlagCommand makes --NAME=COMMAND the same as
+	// --tool ID=COMMAND: the last of them and --no-tool ID decides.
+	DeprecatedFlagCommand DeprecatedFlagValue = "command"
+	// DeprecatedFlagIgnored ignores the value and runs the provider's
+	// default command with Arguments added. --tool, --no-tool and the
+	// provider's environment variables take precedence.
+	DeprecatedFlagIgnored DeprecatedFlagValue = "ignored"
+)
 
 // ConfigShorthand is a key written directly under tools.<name> that sets one
 // property of the provider's configuration. Its type lives in the leaf

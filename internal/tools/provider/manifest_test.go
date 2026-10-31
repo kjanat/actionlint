@@ -91,6 +91,9 @@ func TestParseRejects(t *testing.T) {
 			`"config_schema": {"properties": {"level": {}}}, "config_shorthands": {"level": {"path": [], "precedence": "config"}}, "capabilities"`),
 		"arg rule with two kinds": replace(`"config": {"render": "none"}`,
 			`"config": {"render": "none"}, "user_args": {"operands": false, "forbidden": [{"flag": "--fix", "prefix": "@", "reason": "no"}]}`),
+		"deprecated flag without value": replace(`"capabilities"`, `"deprecated_flags": [{"name": "old"}], "capabilities"`),
+		"deprecated command flag with arguments": replace(`"capabilities"`,
+			`"deprecated_flags": [{"name": "old", "value": "command", "arguments": ["-x"]}], "capabilities"`),
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := provider.Parse([]byte(document))

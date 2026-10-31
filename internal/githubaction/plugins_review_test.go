@@ -34,7 +34,7 @@ func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 		".git": "", ".github/actionlint.yaml": config,
 		".github/workflows/wasm.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: missing = 1\n        shell: python\n",
 	})
-	env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_RUFF": "true", "ACTIONLINT_RUFF_COMMAND": "retired-command-must-not-run"}
+	env := map[string]string{"GITHUB_WORKSPACE": root, "ACTIONLINT_RUFF_COMMAND": "retired-command-must-not-run"}
 	lookup := func(key string) string { return env[key] }
 	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
 	if err := req.configureEnvironment(lookup); err != nil {
@@ -101,7 +101,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{
 				"GITHUB_WORKSPACE": root, "INPUT_FORMAT": "json",
-				"INPUT_FILES": ".github/workflows/ci.yml", "INPUT_RUFF": "true",
+				"INPUT_FILES": ".github/workflows/ci.yml",
 			}
 			lookup := func(key string) string { return env[key] }
 			plan, err := provisioningRequest(lookup)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -15,8 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 )
 
-// deprecatedToolFlag is one use of a retired flag that a bundled provider
-// manifest declares.
+// deprecatedToolFlag is one use of a deprecated flag whose value is ignored,
+// as declared in a bundled provider manifest.
 type deprecatedToolFlag struct {
 	id    string
 	flag  provider.DeprecatedFlag
@@ -24,10 +23,9 @@ type deprecatedToolFlag struct {
 }
 
 // externalToolFlags registers --tool, --no-tool and --allow-config-processes.
-// For every bundled provider it also registers hidden deprecated aliases:
-// --ID[=COMMAND] for --tool ID=COMMAND, --no-ID for --no-tool ID, and the
-// retired flags the provider's manifest declares. Each alias records a
-// deprecation warning when it is used.
+// It also registers, hidden, each flag listed in the deprecated_flags field
+// of a bundled provider manifest. Using one of those records a deprecation
+// warning.
 func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	c := &a.inv.Check
 	f.Var(toolListValue{&c.ToolFlags}, "tool", "Run the tool `ID[=COMMAND]` with its default command or COMMAND; ID=false disables it (repeatable)")
@@ -43,20 +41,17 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	}
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
-		aliases := []*pflag.Flag{
-			{Name: id, Value: toolAliasValue{id, c}, NoOptDefVal: id, Usage: "Deprecated: use --tool " + id},
-			{Name: "no-" + id, Value: noToolAliasValue{id, c}, NoOptDefVal: "true", Usage: "Deprecated: use --no-tool " + id},
-		}
 		for _, retired := range manifest.DeprecatedFlags {
-			aliases = append(aliases, &pflag.Flag{Name: retired.Name, Value: deprecatedFlagValue{id, retired, c}, Usage: "Deprecated: use --tool " + id + " or --no-tool " + id})
-		}
-		for _, alias := range aliases {
-			if f.Lookup(alias.Name) != nil {
-				panic(fmt.Sprintf("bundled tool %s: flag --%s already exists", id, alias.Name))
+			if f.Lookup(retired.Name) != nil {
+				panic(fmt.Sprintf("bundled tool %s: flag --%s already exists", id, retired.Name))
 			}
-			alias.Hidden = true
-			alias.Annotations = map[string][]string{commandGroupAnnotation: {"External linters"}}
-			f.AddFlag(alias)
+			f.AddFlag(&pflag.Flag{
+				Name:        retired.Name,
+				Value:       deprecatedFlagValue{id, retired, c},
+				Usage:       "Deprecated: use --tool " + id + " or --no-tool " + id,
+				Hidden:      true,
+				Annotations: map[string][]string{commandGroupAnnotation: {"External linters"}},
+			})
 		}
 	}
 }
@@ -73,18 +68,21 @@ func deprecatedFlagHelp() string {
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
 		for _, retired := range manifest.DeprecatedFlags {
-			usage := "runs " + id
-			if len(retired.Arguments) != 0 {
-				usage += " adding " + strings.Join(retired.Arguments, " ")
+			name, usage := "-"+retired.Name+" COMMAND", "--tool "+id+"=COMMAND"
+			if retired.Value == provider.DeprecatedFlagIgnored {
+				name, usage = "-"+retired.Name+" VALUE", "runs "+id
+				if len(retired.Arguments) != 0 {
+					usage += " adding " + strings.Join(retired.Arguments, " ")
+				}
 			}
-			fmt.Fprintf(&lines, "  %-22s  %s; empty or false disables %s (deprecated)\n", "-"+retired.Name+" VALUE", usage, id)
+			fmt.Fprintf(&lines, "  %-22s  %s; empty or false disables %s (deprecated)\n", name, usage, id)
 		}
 	}
 	return lines.String()
 }
 
 // toolListValue appends every value to a shared list, so --tool, --no-tool
-// and their deprecated aliases keep their command-line order.
+// and the deprecated command flags keep their command-line order.
 type toolListValue struct{ target *[]string }
 
 func (v toolListValue) String() string { return strings.Join(*v.target, ",") }
@@ -111,47 +109,9 @@ func (v noToolValue) Set(id string) error {
 
 func (noToolValue) Type() string { return "stringArray" }
 
-// toolAliasValue is the deprecated flag --ID[=COMMAND]. It appends
-// ID=COMMAND to the --tool values.
-type toolAliasValue struct {
-	id    string
-	check *checkInvocation
-}
-
-func (v toolAliasValue) String() string { return "" }
-
-func (v toolAliasValue) Set(value string) error {
-	v.check.ToolFlags = append(v.check.ToolFlags, v.id+"="+value)
-	v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s=COMMAND or --no-tool %s", v.id, v.id, v.id))
-	return nil
-}
-
-func (toolAliasValue) Type() string { return "string" }
-
-// noToolAliasValue is the deprecated flag --no-ID. When true, it appends
-// ID=false to the --tool values, as --no-tool ID does.
-type noToolAliasValue struct {
-	id    string
-	check *checkInvocation
-}
-
-func (v noToolAliasValue) String() string { return "false" }
-
-func (v noToolAliasValue) Set(value string) error {
-	disable, err := strconv.ParseBool(value)
-	if err != nil {
-		return err
-	}
-	if disable {
-		v.check.ToolFlags = append(v.check.ToolFlags, v.id+"=false")
-	}
-	v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--no-%s is deprecated; use --no-tool %s", v.id, v.id))
-	return nil
-}
-
-func (noToolAliasValue) Type() string { return "bool" }
-
-// deprecatedFlagValue is a retired flag a bundled provider manifest declares.
+// deprecatedFlagValue is a flag listed in the deprecated_flags field of a
+// bundled provider manifest. A command flag appends ID=VALUE to the --tool
+// values; an ignored-value flag is recorded for defaultSelection.
 type deprecatedFlagValue struct {
 	id    string
 	flag  provider.DeprecatedFlag
@@ -161,8 +121,16 @@ type deprecatedFlagValue struct {
 func (v deprecatedFlagValue) String() string { return "" }
 
 func (v deprecatedFlagValue) Set(value string) error {
-	v.check.DeprecatedToolFlags = append(v.check.DeprecatedToolFlags, deprecatedToolFlag{v.id, v.flag, value})
-	v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s or --no-tool %s", v.flag.Name, v.id, v.id))
+	switch v.flag.Value {
+	case provider.DeprecatedFlagCommand:
+		v.check.ToolFlags = append(v.check.ToolFlags, v.id+"="+value)
+		v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s=COMMAND or --no-tool %s", v.flag.Name, v.id, v.id))
+	case provider.DeprecatedFlagIgnored:
+		v.check.DeprecatedToolFlags = append(v.check.DeprecatedToolFlags, deprecatedToolFlag{v.id, v.flag, value})
+		v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s or --no-tool %s", v.flag.Name, v.id, v.id))
+	default:
+		return fmt.Errorf("--%s: manifest of %s declares unknown value kind %q", v.flag.Name, v.id, v.flag.Value)
+	}
 	return nil
 }
 
@@ -174,12 +142,13 @@ func disablesTool(value string) bool {
 	return value == "" || strings.EqualFold(value, "false")
 }
 
-// resolveTools selects every bundled tool from --tool, --no-tool, their
-// deprecated aliases and the ACTIONLINT_TOOL_<ID>_* environment variables.
-// The last --tool or --no-tool given for a tool decides; without one, the
-// environment variables do; without those, the tool runs its default
-// command, which is skipped with a warning when it cannot run. A retired
-// flag changes only that default.
+// resolveTools selects every bundled tool from --tool, --no-tool, the
+// deprecated flags bundled manifests declare and the ACTIONLINT_TOOL_<ID>_*
+// environment variables. The last --tool, --no-tool or deprecated command
+// flag given for a tool decides; without one, the environment variables do;
+// without those, the tool runs its default command, which is skipped with a
+// warning when it cannot run. A deprecated flag whose value is ignored
+// changes only that default.
 func (c checkInvocation) resolveTools() (resolvedTools, error) {
 	manifests, err := provider.Bundled()
 	if err != nil {
@@ -221,11 +190,10 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 		case explicit:
 			resolved.tools[id] = backend.Selection{Command: command, Process: &processconfig.Options{IgnoreConfig: true}}
 		default:
-			options, deprecations, err := toolEnvironment(id)
+			options, err := toolEnvironment(id)
 			if err != nil {
 				return resolvedTools{}, err
 			}
-			resolved.deprecations = append(resolved.deprecations, deprecations...)
 			if options != nil {
 				resolved.tools[id] = backend.Selection{Command: id, Process: options}
 				continue
@@ -248,14 +216,11 @@ type resolvedTools struct {
 	disabled []string
 	// named lists the tool ids --tool and --no-tool named.
 	named []string
-	// deprecations holds a warning for each deprecated environment
-	// variable read.
-	deprecations []string
 }
 
 // defaultSelection returns the selection of the bundled tool id when no flag
 // or environment variable selected it: its default command, changed by the
-// last of the retired flags used that is declared for id. It also reports
+// last deprecated flag with an ignored value used for id. It also reports
 // whether that flag disabled the tool.
 func defaultSelection(id string, used []deprecatedToolFlag) (backend.Selection, bool) {
 	selection := backend.Selection{Command: id, Process: &processconfig.Options{Optional: true}}
@@ -274,24 +239,12 @@ func defaultSelection(id string, used []deprecatedToolFlag) (backend.Selection, 
 
 // toolEnvironment reads the ACTIONLINT_TOOL_<ID>_BIN, _FLAGS and _ENV
 // variables of the tool id, where <ID> is id upper-cased with dashes
-// replaced by underscores. The former ACTIONLINT_<ID>_* variables are
-// deprecated aliases; a set new variable wins over its alias. It returns
-// nil options when none of the variables is set, and a warning for every
-// alias it read.
-func toolEnvironment(id string) (*processconfig.Options, []string, error) {
-	key := strings.ToUpper(strings.ReplaceAll(id, "-", "_"))
-	current, former := "ACTIONLINT_TOOL_"+key, "ACTIONLINT_"+key
-	var deprecations []string
-	lookup := func(suffix string) (string, string, bool) {
-		if value, ok := os.LookupEnv(current + suffix); ok {
-			return current + suffix, value, true
-		}
-		if value, ok := os.LookupEnv(former + suffix); ok {
-			deprecations = append(deprecations, fmt.Sprintf("%s is deprecated; use %s", former+suffix, current+suffix))
-			return former + suffix, value, true
-		}
-		return "", "", false
-	}
-	options, err := externalToolEnvironment(lookup)
-	return options, deprecations, err
+// replaced by underscores. It returns nil options when none of the
+// variables is set.
+func toolEnvironment(id string) (*processconfig.Options, error) {
+	prefix := "ACTIONLINT_TOOL_" + strings.ToUpper(strings.ReplaceAll(id, "-", "_"))
+	return externalToolEnvironment(func(suffix string) (string, string, bool) {
+		value, ok := os.LookupEnv(prefix + suffix)
+		return prefix + suffix, value, ok
+	})
 }

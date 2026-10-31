@@ -52,7 +52,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 	}
 	// Keep tool-manager shims in the repository's version context. Both the
 	// native command and actionlint disable configuration discovery below.
-	for _, key := range []string{"ACTIONLINT_RUFF_BIN", "ACTIONLINT_RUFF_FLAGS", "ACTIONLINT_RUFF_ENV"} {
+	for _, key := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatal(err)
@@ -94,12 +94,12 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 			{"defaults", nil, defaults},
 			{"legacy Pyflakes", []string{"--pyflakes=old-command"}, pyflakes},
 			{"single dash Pyflakes", []string{"-pyflakes", "old-command"}, pyflakes},
-			{"explicit Ruff", []string{"--pyflakes=old-command", "--ruff"}, defaults},
-			{"explicit Ruff first", []string{"--ruff", "--pyflakes=old-command"}, defaults},
-			{"explicit Ruff command", []string{"--pyflakes=old-command", "--ruff=" + ruff}, defaults},
-			{"disabled Ruff", []string{"--pyflakes=old-command", "--no-ruff"}, nil},
-			{"empty Ruff", []string{"--pyflakes=old-command", "--ruff="}, nil},
-			{"empty Pyflakes with Ruff", []string{"--pyflakes=", "--ruff"}, defaults},
+			{"explicit Ruff", []string{"--pyflakes=old-command", "--tool", "ruff"}, defaults},
+			{"explicit Ruff first", []string{"--tool", "ruff", "--pyflakes=old-command"}, defaults},
+			{"explicit Ruff command", []string{"--pyflakes=old-command", "--tool=ruff=" + ruff}, defaults},
+			{"disabled Ruff", []string{"--pyflakes=old-command", "--no-tool", "ruff"}, nil},
+			{"empty Ruff", []string{"--pyflakes=old-command", "--tool", "ruff="}, nil},
+			{"empty Pyflakes with Ruff", []string{"--pyflakes=", "--tool", "ruff"}, defaults},
 			{"empty Pyflakes", []string{"--pyflakes="}, nil},
 			{"disabled Pyflakes", []string{"--pyflakes=false"}, nil},
 		} {

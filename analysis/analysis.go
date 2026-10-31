@@ -66,17 +66,7 @@ type Options struct {
 	// Tools selects how each bundled tool runs, keyed by tool id. The
 	// function Tools lists the valid ids; any other key is an error. A
 	// bundled tool missing from the map gets the zero Tool.
-	Tools map[string]Tool
-	// ShellCheck is used for the "shellcheck" tool when Tools has no
-	// "shellcheck" key.
-	//
-	// Deprecated: Use Tools["shellcheck"]. ShellCheck is removed in the next
-	// release.
-	ShellCheck Tool
-	// Ruff is used for the "ruff" tool when Tools has no "ruff" key.
-	//
-	// Deprecated: Use Tools["ruff"]. Ruff is removed in the next release.
-	Ruff           Tool
+	Tools          map[string]Tool
 	Presets        config.Presets
 	IgnorePatterns []string
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
@@ -161,21 +151,6 @@ func Tools() []string {
 	return registry.IDs()
 }
 
-// selectedTools returns options.Tools with the deprecated ShellCheck and
-// Ruff fields added under their ids. A key already in options.Tools wins.
-func selectedTools(options Options) map[string]Tool {
-	tools := maps.Clone(options.Tools)
-	if tools == nil {
-		tools = map[string]Tool{}
-	}
-	for id, tool := range map[string]Tool{"shellcheck": options.ShellCheck, "ruff": options.Ruff} {
-		if _, ok := tools[id]; !ok {
-			tools[id] = tool
-		}
-	}
-	return tools
-}
-
 func toolOptions(tool Process) *processconfig.Options {
 	return &processconfig.Options{Executable: &tool.Executable, LauncherArguments: tool.Arguments, Environment: tool.Environment, WorkingDir: tool.WorkingDir}
 }
@@ -202,10 +177,9 @@ func fileOptions(options FileOptions) (application.Options, error) {
 			return application.Options{}, fmt.Errorf("analysis: unknown tool %q; bundled tools: %s", id, strings.Join(ids, ", "))
 		}
 	}
-	tools := selectedTools(options.Options)
 	selections := registry.Selections{}
 	for _, name := range ids {
-		tool := tools[name]
+		tool := options.Tools[name]
 		// A managed analyzer replaces an unselected tool without a native fallback.
 		if managed[name] && tool.Process == nil && tool.Backend == nil {
 			selections[name] = backend.Selection{Command: name, ManagedOnly: true}

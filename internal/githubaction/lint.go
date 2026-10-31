@@ -16,7 +16,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
-	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
@@ -35,8 +34,7 @@ const lintCancellationGrace = time.Second
 
 type lintRequest struct {
 	ctx context.Context
-	// disabledTools lists the tool ids the disable-tools input and the
-	// deprecated per-tool inputs turned off.
+	// disabledTools lists the tool ids the disable-tools input turned off.
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
 	// Tests use it to select executables.
@@ -70,9 +68,7 @@ type lintResult struct {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	if err := req.configureTools(env); err != nil {
-		return err
-	}
+	req.configureTools(env)
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
 		overlay, err := repoconfig.ParseOverlayBeforePlugins("config", []byte(value))
@@ -264,10 +260,8 @@ func reportPath(workingDir, workspace, path string) string {
 }
 
 // configureTools reads the disable-tools input, a list of tool ids separated
-// by newlines or commas, and the deprecated inputs named after each bundled
-// tool, where false disables the tool. The deprecated inputs named after a
-// retired flag of a bundled tool must be true or false and are ignored.
-func (req *lintRequest) configureTools(env func(string) string) error {
+// by newlines or commas.
+func (req *lintRequest) configureTools(env func(string) string) {
 	req.disabledTools = nil
 	for line := range strings.SplitSeq(env("INPUT_DISABLE-TOOLS"), "\n") {
 		for id := range strings.SplitSeq(line, ",") {
@@ -276,30 +270,6 @@ func (req *lintRequest) configureTools(env func(string) string) error {
 			}
 		}
 	}
-	manifests, err := provider.Bundled()
-	if err != nil {
-		return err
-	}
-	for _, manifest := range manifests {
-		id := manifest.Rule.Name
-		if value := env(toolInput(id)); value != "" {
-			enabled, err := parseBool(id, value)
-			if err != nil {
-				return err
-			}
-			if !enabled && !slices.Contains(req.disabledTools, id) {
-				req.disabledTools = append(req.disabledTools, id)
-			}
-		}
-		for _, retired := range manifest.DeprecatedFlags {
-			if value := env(toolInput(retired.Name)); value != "" {
-				if _, err := parseBool(retired.Name, value); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // toolSelections selects every bundled tool: disabled when the inputs

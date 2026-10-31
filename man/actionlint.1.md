@@ -311,15 +311,13 @@ Unknown ids are rejected with the list of valid ids once plugins load.
 providing the tool are not loaded: a locked plugin whose name or alias is *ID* is
 not downloaded. Repeatable.
 
-**--shellcheck**[=*COMMAND*], **--ruff**[=*COMMAND*]
-: Deprecated aliases of **--tool** `shellcheck=COMMAND` and **--tool**
-`ruff=COMMAND`, generated for every bundled tool. Each use prints a warning.
-
-**--no-shellcheck**, **--no-ruff**
-: Deprecated aliases of **--no-tool** `shellcheck` and **--no-tool** `ruff`.
+**--shellcheck** *COMMAND*
+: Deprecated option from actionlint v1, declared by the bundled ShellCheck tool.
+The same as **--tool** `shellcheck=COMMAND`; an empty command disables ShellCheck.
+Each use prints a warning.
 
 **--pyflakes** *COMMAND*
-: Deprecated compatibility option declared by the bundled Ruff tool. Selects
+: Deprecated option from actionlint v1, declared by the bundled Ruff tool. Selects
 Ruff's Pyflakes (`F`) rules when nothing else selects Ruff. An empty command or
 `false` disables Ruff. The command value is never executed.
 
@@ -622,8 +620,6 @@ execution or variable expansion is performed.
 : Child environment overrides, as a JSON object or quoted NAME=value entries and
 variable names. JSON null or bare names forward inherited values; strings set values.
 **--tool** and **--no-tool** override the BIN, FLAGS and ENV settings together.
-The former names `ACTIONLINT_`*ID*`_BIN`, `_FLAGS` and `_ENV` are deprecated aliases;
-a set new variable wins over its alias.
 
 See [Environment variables](../docs/env.md) for precedence, defaults and examples.
 

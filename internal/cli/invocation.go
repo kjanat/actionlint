@@ -41,11 +41,11 @@ type checkInvocation struct {
 	StdinFilename         string
 	IgnoreRegex           []string
 	// ToolFlags lists the --tool values, ID or ID=COMMAND, in command-line
-	// order. --no-tool ID and the deprecated --ID and --no-ID flags add
-	// their values here too.
+	// order. --no-tool ID and the deprecated command flags, such as
+	// --shellcheck=COMMAND, add their values here too.
 	ToolFlags []string
-	// DeprecatedToolFlags lists uses of retired flags that bundled provider
-	// manifests declare.
+	// DeprecatedToolFlags lists uses of deprecated flags whose value is
+	// ignored, such as --pyflakes.
 	DeprecatedToolFlags []deprecatedToolFlag
 	// Tools selects every bundled tool. applyEnvironment sets it, and the
 	// two lists below, from the flags above and the environment.
@@ -54,8 +54,7 @@ type checkInvocation struct {
 	DisabledTools []string
 	// NamedTools lists the tool ids --tool and --no-tool named.
 	NamedTools []string
-	// Deprecations holds a warning for each deprecated flag or environment
-	// variable used.
+	// Deprecations holds a warning for each deprecated flag used.
 	Deprecations         []string
 	Plugins              []string
 	PluginLock           string
