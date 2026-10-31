@@ -50,6 +50,38 @@ Template-aware engines must declare `capabilities.script_shells` or
 `capabilities.script_inputs` routes. Engines without route metadata use the
 explicitly selected native adapter's routing defaults.
 
+## Check 3
+
+Check 3 adds what script-engine 0.3.0 adds to the component interface: fixes,
+findings in files the engine read, excluded codes and the request directory. A
+host supporting it selects check 3 whenever discovery advertises it and checks
+1 or 2 otherwise. Without `template_contract`, check 3 extends check 1; with it,
+it extends check 2 and every diagnostic requires `template_effect`.
+
+Discovery declares the capabilities in `capabilities`: `fixes` (boolean),
+`reported_sources` (boolean) and `resources`, a list whose only allowed entry is
+`"directory"`. They take effect only with check 3.
+
+Request: `{source,filename,config,excluded,directory}`. `excluded` is always
+present: a list of diagnostic codes, such as `"SC1091"`, the host's preparation
+excludes; the engine must not report them. `directory` is present only when the
+engine requests the `directory` resource and the script's working directory is
+known. It is the host path of that directory and grants no access, because core
+modules import nothing; it anchors reported sources.
+
+Each diagnostic may add `fixes` and `source`:
+
+- `fixes` is a list of `{description,replacements}`; each replacement is
+  `{row,end_row,column,end_column,text}` in snippet coordinates with an
+  exclusive end. A fix has at least one replacement. Fixes require
+  `capabilities.fixes`.
+- `source` names a file the engine read besides the snippet, relative to the
+  request directory. The diagnostic's positions are then that file's, and it has
+  no fixes. Sources require `capabilities.reported_sources`.
+
+The host drops a diagnostic that uses an undeclared capability and reports an
+error. Check 1 and check 2 define neither member; a host ignores them there.
+
 ## Validate-config 1
 
 Request is the engine-owned configuration JSON object. Response uses

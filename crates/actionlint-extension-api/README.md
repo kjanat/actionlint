@@ -70,6 +70,13 @@ current analysis. Unknown references fail; unsupported shell scripts return
 `none`. Guests must not infer mounts from host path conventions, prepare a
 second copy of the same script, or infer behavior from diagnostic wording.
 
+Script engines implement the `script-engine-plugin` world of
+[`wit/script-engine.wit`](wit/script-engine.wit) (0.2.0) or
+[`wit/0.3.0/script-engine.wit`](wit/0.3.0/script-engine.wit) (0.3.0, adding fixes,
+reported sources, excluded codes and the directory resource). Each version is its
+own WIT package directory; generate bindings from the directory of the version
+the engine exports. This crate's `bindings` module covers the analyzer worlds only.
+
 Enable `package` for a native packaging binary. Construct `package::Package`
 from the extension's own descriptor, Cargo identity, engine, languages,
 capabilities and license text, then call `write(input, output)`. It writes
