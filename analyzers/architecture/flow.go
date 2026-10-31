@@ -1084,7 +1084,7 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						}
 					}
 					callee := common.StaticCallee()
-					if callee != nil && byteQuery(callee) {
+					if callee != nil && (byteQuery(callee) || sliceQuery(callee)) {
 						continue
 					}
 					if callee != nil && standardClone(callee) {
@@ -1315,6 +1315,23 @@ func byteQuery(fn *ssa.Function) bool {
 	case "Compare", "Contains", "ContainsAny", "ContainsRune", "Count", "Equal", "EqualFold",
 		"HasPrefix", "HasSuffix", "Index", "IndexAny", "IndexByte", "IndexRune",
 		"LastIndex", "LastIndexAny", "LastIndexByte":
+		return true
+	}
+	return false
+}
+
+// sliceQuery reports a slices package search or comparison of comparable or
+// ordered elements, such as slices.Contains or slices.Equal. Comparing such
+// elements runs no code, so the call only reads its slices and returns an int
+// or bool. The variants taking a function, such as slices.ContainsFunc, are
+// not included: they run their callback.
+func sliceQuery(fn *ssa.Function) bool {
+	obj, _ := fn.Object().(*types.Func)
+	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "slices" || obj.Signature().Recv() != nil {
+		return false
+	}
+	switch obj.Name() {
+	case "BinarySearch", "Compare", "Contains", "Equal", "Index", "IsSorted":
 		return true
 	}
 	return false

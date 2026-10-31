@@ -30,7 +30,10 @@ Whether locks are balanced is not checked.
 The `bytes` searches and comparisons returning an int or bool, such as
 `bytes.IndexByte`, `bytes.Equal` and `bytes.HasPrefix`, only read their byte
 slices. The variants taking a function, such as `bytes.IndexFunc`, have no
-model.
+model. Likewise `slices.Contains`, `slices.Index`, `slices.Equal`,
+`slices.Compare`, `slices.IsSorted` and `slices.BinarySearch` only read their
+slices: their comparable or ordered elements compare without running code.
+`slices.ContainsFunc` and the other variants taking a function have no model.
 
 `maps.Keys`, `maps.Values`, `maps.All`, `slices.All` and `slices.Values` write
 nothing and return an iterator that only reads its argument. The iterator
@@ -105,8 +108,8 @@ fields stored into that local, so writing `w.m` writes no parameter. Other flows
 are flow-insensitive. The analyzer does not implement a whole-program heap
 analysis; reflection and arbitrary unsafe
 memory operations need separate review. Standard-library bodies are not analyzed;
-the clone, iterator, `bytes` search, `context.Context.Err` and mutex lock
-calls above have explicit models. Diagnostics concern production declarations; test code still
+the clone, iterator, `bytes` and `slices` search, `context.Context.Err` and
+mutex lock calls above have explicit models. Diagnostics concern production declarations; test code still
 participates in helper summaries.
 
 The default golangci-lint configuration additionally enables `dupl` for structural
