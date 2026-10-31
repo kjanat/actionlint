@@ -173,6 +173,46 @@ using only direct URLs do not create a lockfile. Changing the artifact requires 
 or digest explicitly. Registry withdrawal information does not cover independent direct URLs.
 Remote execution through `--plugin` or configured Wasm backends also requires a digest pin.
 
+### Pull from an OCI registry
+
+A plugin or tool provider can also be published as an OCI artifact, for example to GHCR with the
+`oras` CLI. Declare it by digest:
+
+```yaml
+plugins:
+  - "oci://ghcr.io/owner/provider@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+```
+
+The digest names an image index or an image manifest. An index selects the image manifest whose
+platform matches this host's `GOOS/GOARCH`; a lone image manifest serves every platform. The selected
+image manifest has exactly one primary layer:
+
+- `application/wasm`: a WebAssembly module, loaded like any other plugin.
+- `application/vnd.actionlint.tool-provider.v1+json`: a tool provider manifest with
+  `transport: "process"`. Its `artifacts` list names the executable for each platform by digest, and its
+  transforms are named by digest too; both are other layers of the same image manifest.
+
+Every manifest and layer is verified against its digest before it is stored in the artifact cache,
+`actionlint/artifacts/<sha256 hex>`. A blob that does not match its digest is never stored; a stored blob
+that no longer matches, such as one left by an interrupted download, is fetched again. A provider's
+executable is copied to `actionlint/artifacts/exec/<sha256 hex>/<filename>` with mode `0755` (`.exe` is
+added on Windows) and re-hashed on every use.
+
+Tags are not pins. `actionlint plugin install oci://ghcr.io/owner/provider:v1` resolves the tag once and
+declares the digest it names; everywhere else, including `--plugin` and `plugin inspect`, a tag is refused.
+The registry is reached anonymously, answering its bearer challenge as public GHCR images require;
+`localhost` and loopback registries are reached over plain HTTP. Each pull has the 30-second deadline.
+
+`plugin install` and `plugin update` also record each OCI declaration in the lock (schema version 2), with the
+image manifest and layer digests of every platform it serves; `plugin sync` and analysis check a pull against
+that record. The GitHub Action uses the list to restore the executable from its cache before analysis.
+Version 1 locks are still read and are rewritten as version 2 by the next install.
+
+A tool provider from an OCI source runs a native executable, which no sandbox contains. One declared in
+repository configuration runs only with `--allow-config-processes`; the GitHub Action never sets it. A source
+passed with `--plugin` is an explicit choice and needs no opt-in. `--no-tool ID` skips a provider whose
+`rule.name` is `ID` before it is materialized.
+
 ### GitHub Action caching
 
 The JavaScript Action loads the same declarations and locked artifacts as the CLI.
@@ -628,7 +668,9 @@ Inline `tools.<id>.config` settings reach the tool through `process.config.rende
 ## Remote artifacts and static metadata
 
 `--plugin`, `tools.ruff.backend.wasm.path`, `plugin.Load`, and `plugin.LoadEngine`
-accept local paths, absolute `file://` URIs, and HTTP(S) URLs. Both module kinds
+accept local paths, absolute `file://` URIs, and HTTP(S) URLs; `--plugin` and
+`tools.<id>.backend.wasm.path` also accept the `oci://` references described in
+[Pull from an OCI registry](#pull-from-an-oci-registry). Both module kinds
 accept raw WASM and gzip-compressed artifacts. Relative filesystem paths in
 configuration resolve from the declaring file; URIs are preserved.
 

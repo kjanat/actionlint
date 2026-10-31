@@ -12,6 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/config"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
 // PluginCachePlan describes portable artifact bytes, never compiled native code.
@@ -55,6 +56,14 @@ func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 		if !strings.Contains(path, "://") {
 			continue
 		}
+		if pluginartifact.IsOCI(path) {
+			digests, err := s.ociDigests(path)
+			if err != nil {
+				return PluginCachePlan{}, err
+			}
+			plan.Artifacts = append(plan.Artifacts, digests...)
+			continue
+		}
 		location, err := url.Parse(path)
 		if err != nil {
 			return PluginCachePlan{}, err
@@ -80,4 +89,22 @@ func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 	slices.Sort(plan.Artifacts)
 	plan.Artifacts = slices.Compact(plan.Artifacts)
 	return plan, nil
+}
+
+// ociDigests returns the stored blobs of the oci:// source on this host:
+// the lock's list when the lock pins the source, otherwise only the root
+// digest the source names.
+func (s *PluginSources) ociDigests(source string) ([]string, error) {
+	if err := pluginartifact.RequireRemotePin(source); err != nil {
+		return nil, err
+	}
+	if s.lock != nil {
+		if pin, ok := s.lock.SourcePin(source); ok {
+			if digests, ok := pin.Digests(pluginartifact.HostPlatform()); ok {
+				return digests, nil
+			}
+		}
+	}
+	_, root, _ := strings.Cut(source, "@sha256:")
+	return []string{root}, nil
 }

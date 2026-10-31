@@ -94,7 +94,7 @@ Verified true unless noted. Format: **item → decision → change (stage)**.
 
 - **K1** unchanged (gojq) + config transform outputs `{config, vars}` (c4) + `Output.Coordinates` (b2).
 - **K2** + `env_passthrough` is the only route for ambient env (`SHELLCHECK_OPTS`); untrusted-PR policy above.
-- **K3** unchanged.
+- **K3 changed**: oras-go v3, pinned at the `v3.0.0-rc.4` release candidate the owner accepted, is the OCI pull transport, imported only by `internal/plugins/artifact/oci`; the content-addressed store stays the cache. The claim that oras-go pulls the docker module graph was wrong (measured: v2.7.0 needs `opencontainers/go-digest`, `opencontainers/image-spec` and `x/sync`; v3 adds `toml`, `yaml.v3`, `ProtonMail/go-crypto`, `circl` and `x/crypto`).
 - **K4** + `FromComponentMetadata` derivation; managed route is primary this release.
 - **K5 changed**: deprecated aliases (A.2). `docs/migration-v2.md` table lists old → new.
 - **K6** scope unchanged (stages 0-6 + host side of 7), but binary+jq usable at end of stage 2.

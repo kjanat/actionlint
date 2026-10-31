@@ -230,6 +230,9 @@ supported legacy name.
 or `kjanat:actionlint/runner-provider@0.1.0`.
 Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of memory and
 10 seconds; a trap, an exit or an exceeded limit fails that document's analysis.
+*PATH* may also be an `oci://`*HOST*`/`*REPOSITORY*`@sha256:`*HEX* reference to a
+WebAssembly module or a tool provider published to an OCI registry; see
+[Plugins](../docs/plugins.md#pull-from-an-oci-registry).
 
 **--plugin-lock** *FILE*
 : Explicitly load every pin from this lock, bypassing config declarations.

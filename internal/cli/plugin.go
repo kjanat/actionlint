@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/localapp"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -265,6 +266,11 @@ func (r pluginRegistryRequest) install(ctx context.Context, project *localapp.Pl
 		return err
 	}
 	if name != "" {
+		// The declaration records the digest an oci:// tag names now.
+		name, err = localapp.PinPluginSource(ctx, name)
+		if err != nil {
+			return err
+		}
 		ref, err := requestedPlugin(name, r.Options, refs)
 		if err != nil {
 			return err
@@ -279,7 +285,7 @@ func (r pluginRegistryRequest) install(ctx context.Context, project *localapp.Pl
 			refs[index] = ref
 		}
 	}
-	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 {
+	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 && len(project.Lock.Lock.Sources) == 0 {
 		return nil
 	}
 	if err := project.Resolve(ctx, refs, nil); err != nil {
@@ -310,7 +316,7 @@ func (r pluginRegistryRequest) update(ctx context.Context, project *localapp.Plu
 		refs[index] = ref
 		update = []pluginref.Reference{ref}
 	}
-	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 {
+	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 && len(project.Lock.Lock.Sources) == 0 {
 		return nil
 	}
 	if err := project.Resolve(ctx, refs, update); err != nil {
@@ -332,6 +338,9 @@ func removePlugin(ctx context.Context, project *localapp.PluginProject, name, re
 	refs = slices.Delete(refs, index, index+1)
 	project.Lock.Lock.Plugins = slices.DeleteFunc(project.Lock.Lock.Plugins, func(pin pluginregistry.Pin) bool {
 		return pin.Matches(ref)
+	})
+	project.Lock.Lock.Sources = slices.DeleteFunc(project.Lock.Lock.Sources, func(pin pluginregistry.SourcePin) bool {
+		return ref.DirectSource() != "" && pin.Source() == ref.DirectSource()
 	})
 	return project.Save(ctx, refs)
 }
@@ -439,6 +448,17 @@ func (r pluginInspectRequest) run(ctx context.Context, streams Command) (int, er
 	}
 	if _, err := fmt.Fprintf(streams.Stdout, "%s\nKind: %s\nSHA256: %s\nSize: %d bytes (%d decoded)\n", info.Source, info.Kind, info.SHA256, info.Size, info.ModuleSize); err != nil {
 		return 0, err
+	}
+	if info.Manifest != "" {
+		if _, err := fmt.Fprintf(streams.Stdout, "Platform: %s\nImage manifest: sha256:%s\n", info.Platform, info.Manifest); err != nil {
+			return 0, err
+		}
+	}
+	if info.Kind == pluginartifact.ProviderManifest {
+		if _, err := fmt.Fprintln(streams.Stdout, "Tool provider manifest:"); err != nil {
+			return 0, err
+		}
+		return 0, writeCommandJSON(streams.Stdout, info.Metadata)
 	}
 	if info.Metadata == nil {
 		_, err := fmt.Fprintln(streams.Stdout, "No actionlint.plugin custom section.")

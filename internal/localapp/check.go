@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
 
@@ -142,8 +143,15 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 			return options, &PluginLoadError{fmt.Errorf("multiple plugins provide script engine %q", name)}
 		}
 		seen[name] = true
+		if local.repository && !options.AllowConfigProcesses {
+			return options, &PluginLoadError{fmt.Errorf("tool provider %s from %s runs a native executable; use --allow-config-processes for trusted repository configuration", name, local.source)}
+		}
+		selection := backend.Selection{Command: name}
+		if local.executable != "" {
+			selection.Process = &processconfig.Options{Executable: &local.executable}
+		}
 		// An explicitly selected manifest replaces the tool's default route.
-		registration, err := backend.RegisterProvider(backend.Provider{Manifest: local.manifest, Programs: local.programs, Selection: backend.Selection{Command: name}})
+		registration, err := backend.RegisterProvider(backend.Provider{Manifest: local.manifest, Programs: local.programs, Selection: selection})
 		if err != nil {
 			return options, &PluginLoadError{err}
 		}

@@ -56,6 +56,9 @@ type PluginSources struct {
 	disabledTools, tools []string
 	// skipped lists the disabled tool ids that matched a locked plugin.
 	skipped []string
+	// repository is set when repository configuration declared Paths, so a
+	// binary tool provider among them needs --allow-config-processes.
+	repository bool
 }
 
 type pluginSelectionMode uint8
@@ -226,7 +229,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 		if err != nil {
 			return PluginSources{}, err
 		}
-		selected := PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: []*config.Config{resolved.Config}, overlays: slices.Clone(s.Overlays)}
+		selected := PluginSources{Inputs: inputs, root: pluginProjectRoot(directory), automatic: true, configs: []*config.Config{resolved.Config}, overlays: slices.Clone(s.Overlays), repository: true}
 		for _, ref := range resolved.Config.Plugins {
 			source := ref.DirectSource()
 			if source == "" {
@@ -283,6 +286,7 @@ func (s PluginSelection) sourcesFromProject(ctx context.Context, project *Plugin
 	}
 	selected.configs = []*config.Config{prepared}
 	selected.overlays = slices.Clone(s.Overlays)
+	selected.repository = true
 	for _, ref := range project.Manifest.References {
 		if source := ref.DirectSource(); source != "" {
 			selected.Paths = append(selected.Paths, source)
@@ -349,6 +353,19 @@ func (s *PluginSources) Hydrate(ctx context.Context) error {
 		}
 		if err := pin.Verify(artifact.Info); err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
+		}
+		artifacts[pin.Source()] = artifact
+	}
+	for _, pin := range s.lock.Sources {
+		if !slices.Contains(s.Paths, pin.Source()) {
+			continue
+		}
+		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), artifactOptions())
+		if err != nil {
+			return err
+		}
+		if err := pin.Verify(artifact.Info); err != nil {
+			return err
 		}
 		artifacts[pin.Source()] = artifact
 	}

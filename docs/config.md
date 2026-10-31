@@ -411,7 +411,9 @@ interface or a core module implementing the version 1 JSON ABI. A document-only
 analyzer, such as the official ShellCheck component, belongs in root `plugins`,
 not `tools.shellcheck.backend.wasm`. Artifacts can be raw or gzip-compressed.
 Local paths resolve from the declaring configuration file; remote execution
-requires a `#sha256=` pin covering the downloaded bytes, including compression.
+requires a `#sha256=` pin covering the downloaded bytes, including compression,
+or an `oci://<host>/<repository>@sha256:<hex>` reference to an image with an
+`application/wasm` layer.
 
 actionlint validates exports and metadata before registering the engine. Component
 calls default to 64 MiB of guest memory and a 10-second limit; core calls default

@@ -91,7 +91,8 @@ func Parse(value string) (Reference, error) {
 	return New(name, version, "")
 }
 
-// DirectSource returns a SHA-pinned artifact URL, or empty for registry entries.
+// DirectSource returns a SHA-pinned artifact URL or oci:// digest reference,
+// or empty for registry entries.
 // Direct declarations already contain their immutable pin and need no lock row.
 func (r Reference) DirectSource() string { return r.direct }
 
@@ -114,6 +115,9 @@ func (r Reference) Normalize() (Reference, error) {
 }
 
 func directURL(value string) (Reference, error) {
+	if scheme, _, _ := strings.Cut(value, "://"); strings.EqualFold(scheme, "oci") {
+		return directOCI(value)
+	}
 	u, err := url.Parse(value)
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Opaque != "" {
 		return Reference{}, errors.New("direct plugin URL must use HTTPS without credentials")
@@ -128,6 +132,22 @@ func directURL(value string) (Reference, error) {
 	name := u.String()
 	u.Fragment = "sha256=" + strings.ToLower(digest)
 	return Reference{Name: name, direct: u.String()}, nil
+}
+
+// directOCI accepts oci://<host>/<repository>@sha256:<hex>. The digest pins
+// the image index or manifest, so a tag is refused: actionlint plugin install
+// resolves tags before it writes a declaration. The artifact resolver checks
+// the host and repository syntax.
+func directOCI(value string) (Reference, error) {
+	rest := value[len("oci://"):]
+	host, path, ok := strings.Cut(rest, "/")
+	repository, digest, pinned := strings.Cut(path, "@sha256:")
+	decoded, err := hex.DecodeString(digest)
+	if !ok || host == "" || strings.Contains(host, "@") || repository == "" || !pinned || err != nil || len(decoded) != 32 || digest != strings.ToLower(digest) {
+		return Reference{}, errors.New("direct OCI plugin reference must be oci://<host>/<repository>@sha256:<64 lowercase hex digits>")
+	}
+	name := "oci://" + strings.ToLower(host) + "/" + repository
+	return Reference{Name: name, direct: name + "@sha256:" + digest}, nil
 }
 
 // New validates and normalizes a plugin declaration. Empty version and registry

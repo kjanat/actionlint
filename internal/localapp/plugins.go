@@ -9,10 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/component"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/core"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
@@ -23,7 +25,8 @@ type loadedPlugins struct {
 	plugins []*component.Plugin
 	engines []scriptEngineRegistration
 	core    []*corewasm.Engine
-	// providers are local process tool provider manifests.
+	// providers are process tool provider manifests read from a local path
+	// or pulled from an oci:// source.
 	providers []localProvider
 	// tools lists the tool ids the invocation named; configure checks that
 	// each names a tool.
@@ -37,10 +40,19 @@ type loadedPlugins struct {
 	ids []string
 }
 
-// localProvider is a tool provider manifest read from a local path.
+// localProvider is a process tool provider manifest read from a local path
+// or pulled from an oci:// source.
 type localProvider struct {
 	manifest provider.Manifest
 	programs provider.Programs
+	// executable is the path of the provider's executable materialized from
+	// the artifact store. Empty runs the manifest's process entry from PATH.
+	executable string
+	// source is the oci:// source of a pulled manifest, empty for a local one.
+	source string
+	// repository is set when repository configuration declared source, so
+	// running it needs --allow-config-processes.
+	repository bool
 }
 
 type scriptEngineRegistration struct {
@@ -69,7 +81,7 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 				loaded.skipped = append(loaded.skipped, manifest.Rule.Name)
 				continue
 			}
-			loaded.providers = append(loaded.providers, localProvider{manifest, programs})
+			loaded.providers = append(loaded.providers, localProvider{manifest: manifest, programs: programs})
 			continue
 		}
 		if err := pluginartifact.RequireRemotePin(path); err != nil {
@@ -84,6 +96,23 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			}
 		}
 		path = artifact.Info.Source
+		if artifact.Info.Kind == pluginartifact.ProviderManifest {
+			manifest, err := provider.Parse(artifact.Bytes)
+			if err != nil {
+				return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
+			}
+			if slices.Contains(sources.disabledTools, manifest.Rule.Name) {
+				loaded.skipped = append(loaded.skipped, manifest.Rule.Name)
+				continue
+			}
+			stored, err := storedProvider(ctx, manifest, path)
+			if err != nil {
+				return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
+			}
+			stored.repository = sources.repository
+			loaded.providers = append(loaded.providers, stored)
+			continue
+		}
 		// Metadata is read only when --tool or --no-tool named an id, so
 		// unusual metadata cannot fail a run that names none.
 		if len(sources.disabledTools) != 0 || len(sources.tools) != 0 {
@@ -183,6 +212,9 @@ func ScriptEngineLoader(log io.Writer, debug bool) func(context.Context, string)
 }
 
 func loadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, log io.Writer, debug bool) (analyzer.ScriptBackend, error) {
+	if artifact.Info.Kind != pluginartifact.Core && artifact.Info.Kind != pluginartifact.Component {
+		return nil, fmt.Errorf("%s is a %s artifact, not a WebAssembly module", artifact.Info.Source, artifact.Info.Kind)
+	}
 	if artifact.Info.Kind == pluginartifact.Component {
 		var options component.Options
 		if debug {
@@ -213,6 +245,44 @@ func loadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, 
 	return engine, nil
 }
 
+// storedProvider prepares the tool provider manifest the oci:// source
+// pulled, dispatching on its transport. A process provider runs the
+// executable its artifacts list for this host, materialized from the
+// artifact store, or its process entry from PATH when it lists no artifacts.
+// Its transform programs come from the store too.
+func storedProvider(ctx context.Context, manifest provider.Manifest, source string) (localProvider, error) {
+	options := artifactOptions()
+	store := pluginartifact.Store{Dir: options.CacheDir}
+	if manifest.Transport != provider.TransportProcess {
+		return localProvider{}, fmt.Errorf("tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", manifest.Rule.Name, manifest.Transport, pluginartifact.MediaTypeWasm)
+	}
+	programs, err := provider.LoadPrograms(manifest, func(digest string) ([]byte, error) {
+		return store.Read(ctx, strings.TrimPrefix(digest, "sha256:"), artifactMaxBytes)
+	})
+	if err != nil {
+		return localProvider{}, err
+	}
+	stored := localProvider{manifest: manifest, programs: programs, source: source}
+	if len(manifest.Artifacts) == 0 {
+		return stored, nil
+	}
+	platform := pluginartifact.HostPlatform()
+	index := slices.IndexFunc(manifest.Artifacts, func(a provider.Artifact) bool { return a.Platform == platform })
+	if index < 0 {
+		return localProvider{}, fmt.Errorf("tool provider %s has no executable for %s", manifest.Rule.Name, platform)
+	}
+	executable := manifest.Artifacts[index]
+	stored.executable, err = store.Materialize(ctx, strings.TrimPrefix(executable.Digest, "sha256:"), executable.Filename, artifactMaxBytes)
+	if err != nil {
+		return localProvider{}, fmt.Errorf("tool provider %s: %w", manifest.Rule.Name, err)
+	}
+	return stored, nil
+}
+
+// artifactMaxBytes bounds a stored transform program or executable, as
+// pluginartifact.Options.MaxBytes bounds a download by default.
+const artifactMaxBytes = 128 << 20
+
 func engineCacheDir() string {
 	base, err := os.UserCacheDir()
 	if err != nil {
@@ -225,12 +295,24 @@ func engineCacheDir() string {
 	return dir
 }
 
+// artifactOptions caches artifacts in the user cache directory and pulls
+// oci:// sources.
 func artifactOptions() pluginartifact.Options {
 	base, err := os.UserCacheDir()
 	if err != nil {
-		return pluginartifact.Options{}
+		return pluginartifact.Options{PullOCI: oci.Pull}
 	}
-	return pluginartifact.Options{CacheDir: filepath.Join(base, "actionlint", "artifacts")}
+	return pluginartifact.Options{CacheDir: filepath.Join(base, "actionlint", "artifacts"), PullOCI: oci.Pull}
+}
+
+// PinPluginSource returns source with the tag of an
+// oci://<host>/<repository>:<tag> source replaced by the digest the tag
+// names now. Other sources are returned unchanged.
+func PinPluginSource(ctx context.Context, source string) (string, error) {
+	if !pluginartifact.IsOCI(source) {
+		return source, nil
+	}
+	return oci.Pin(ctx, source, artifactOptions())
 }
 
 // InspectPlugin resolves and reads metadata without creating a runtime.

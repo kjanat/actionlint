@@ -82,5 +82,26 @@ func ReadLocal(reader *fsread.Reader, path string) (Manifest, Programs, error) {
 	return manifest, resolve, nil
 }
 
+// LoadPrograms reads every transform program manifest names by digest, such
+// as "sha256:<hex>", with read, and returns them as Programs. It reads them
+// now, so a later check does not depend on read's context.
+func LoadPrograms(manifest Manifest, read func(digest string) ([]byte, error)) (Programs, error) {
+	programs := map[string][]byte{}
+	for _, transform := range manifest.transforms() {
+		if transform.Digest == "" {
+			continue
+		}
+		program, err := read(transform.Digest)
+		if err != nil {
+			return nil, fmt.Errorf("tool provider %s: transform %s: %w", manifest.Rule.Name, transform.Digest, err)
+		}
+		programs[transform.Digest] = program
+	}
+	return func(digest string) ([]byte, bool) {
+		program, ok := programs[digest]
+		return bytes.Clone(program), ok
+	}, nil
+}
+
 // errMissingProgram reports a transform digest no file beside the manifest has.
 var errMissingProgram = errors.New("no .jq file beside the manifest has the transform digest")

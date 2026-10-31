@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/pluginref"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
 )
 
 // PluginProject keeps human-authored dependencies separate from resolved pins.
@@ -113,9 +114,14 @@ func (p *PluginProject) SelectedLock() (pluginregistry.Lock, error) {
 }
 
 func (p *PluginProject) selectedPins(refs []pluginref.Reference) (pluginregistry.Lock, error) {
-	selected := pluginregistry.Lock{SchemaVersion: 1, Plugins: []pluginregistry.Pin{}}
+	selected := pluginregistry.Lock{SchemaVersion: pluginregistry.LockSchemaVersion, Plugins: []pluginregistry.Pin{}}
 	for _, ref := range refs {
-		if ref.DirectSource() != "" {
+		if source := ref.DirectSource(); source != "" {
+			// A direct oci:// source runs without its lock entry, which
+			// only lists its blobs ahead of the pull.
+			if pin, ok := p.Lock.Lock.SourcePin(source); ok {
+				selected.Sources = append(selected.Sources, pin)
+			}
 			continue
 		}
 		found := false
@@ -137,10 +143,22 @@ func (p *PluginProject) selectedPins(refs []pluginref.Reference) (pluginregistry
 // Existing immutable identity checks still apply to every replacement.
 func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Reference) error {
 	selected := make([]pluginregistry.Pin, 0, len(refs))
+	var sources []pluginregistry.SourcePin
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
-			if _, err := artifact.Resolve(ctx, source, artifactOptions()); err != nil {
+			pulled, err := artifact.Resolve(ctx, source, artifactOptions())
+			if err != nil {
 				return err
+			}
+			if artifact.IsOCI(source) {
+				pin, err := describeSource(ctx, source)
+				if err != nil {
+					return err
+				}
+				if err := pin.Verify(pulled.Info); err != nil {
+					return err
+				}
+				sources = append(sources, pin)
 			}
 			continue
 		}
@@ -168,7 +186,7 @@ func (p *PluginProject) Resolve(ctx context.Context, refs, update []pluginref.Re
 		}
 		selected = append(selected, pin)
 	}
-	p.Lock.Lock.Plugins = selected
+	p.Lock.Lock.Plugins, p.Lock.Lock.Sources = selected, sources
 	if err := p.Lock.Lock.Validate(); err != nil {
 		return err
 	}
@@ -196,7 +214,7 @@ func (p *PluginProject) Save(ctx context.Context, refs []pluginref.Reference) (e
 	if err := p.Manifest.CheckUnchanged(ctx); err != nil {
 		return err
 	}
-	writeLock := p.Lock.Exists() || len(p.Lock.Lock.Plugins) != 0
+	writeLock := p.Lock.Exists() || len(p.Lock.Lock.Plugins) != 0 || len(p.Lock.Lock.Sources) != 0
 	if writeLock {
 		if err := p.Lock.Save(ctx); err != nil {
 			return err
@@ -210,5 +228,16 @@ func (p *PluginProject) Save(ctx context.Context, refs []pluginref.Reference) (e
 	}
 	p.original = *p.Lock
 	p.original.Lock.Plugins = slices.Clone(p.Lock.Lock.Plugins)
+	p.original.Lock.Sources = slices.Clone(p.Lock.Lock.Sources)
 	return nil
+}
+
+// describeSource returns the lock entry of the oci:// source: the image
+// manifest and layer digests of every platform it serves.
+func describeSource(ctx context.Context, source string) (pluginregistry.SourcePin, error) {
+	platforms, err := oci.Describe(ctx, source, artifactOptions())
+	if err != nil {
+		return pluginregistry.SourcePin{}, err
+	}
+	return pluginregistry.NewSourcePin(source, platforms)
 }

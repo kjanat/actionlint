@@ -34,8 +34,9 @@ func (b *Backend) UnmarshalYAML(n *yaml.Node) error {
 
 // Module locates a core WebAssembly engine.
 type Module struct {
-	// Path is a raw or gzip-compressed module path, file URI, or HTTP(S) URL.
-	// URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve
+	// Path is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or
+	// oci://<host>/<repository>@sha256:<hex> reference to an image with a
+	// WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve
 	// from the declaring config file; inline configs use the analysis directory.
 	Path string `yaml:"path" jsonschema:"required,minLength=1"`
 }
