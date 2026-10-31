@@ -77,7 +77,7 @@ func PrepareRun(r Run, text string) (profile.Prepared, error) {
 		directives += "# shellcheck external-sources=false\n"
 	}
 	script := Prepare(mask.Expressions(text), directives, setup)
-	prepared := profile.Prepared{Source: script.Text(), LineMap: script.Line}
+	prepared := profile.Prepared{Source: script.Text(), LineMap: script.Line, Excluded: Excluded(nil)}
 	if r.Engine {
 		prepared.Config, err = EngineConfig(dialect)
 		return prepared, err
@@ -114,6 +114,7 @@ func EngineInput(text, dialect string, directives *Directives) (profile.Prepared
 		return profile.Prepared{}, err
 	}
 	prepared, dialect := Input(text, dialect, rendered)
+	prepared.Excluded = Excluded(nil)
 	prepared.Config, err = EngineConfig(dialect)
 	return prepared, err
 }

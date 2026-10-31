@@ -330,6 +330,11 @@ func (t *transports) engine(key string, engine analyzer.ScriptBackend) (string, 
 	}
 	m := t.provider.Manifest
 	descriptor := analyzer.ScriptEngineDescriptor{Rule: m.Rule, Shells: m.Selectors.Shells, TemplateContract: templateContract(engine)}
+	// The manifest bounds what findings carry; the engine states the
+	// resources it needs for each check.
+	if described, ok := engine.(analyzer.DescribedScriptBackend); ok {
+		descriptor.Resources = described.ScriptDescriptor().Resources
+	}
 	return t.register(key, descriptor, engine, routeEngine)
 }
 

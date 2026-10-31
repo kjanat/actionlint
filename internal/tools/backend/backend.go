@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -90,8 +91,13 @@ func registerEngine(descriptor analyzer.ScriptEngineDescriptor, backend analyzer
 	for _, input := range descriptor.ScriptInputs {
 		inputs[input] = struct{}{}
 	}
-	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0, Build: func(c tools.Context) (tools.Runner, error) {
-		return runner{descriptor: descriptor.Rule, templateContract: descriptor.TemplateContract, shells: selectors, inputs: inputs, backend: backend, context: c, options: options}, nil
+	// An engine's own capabilities admit what its diagnostics carry; its
+	// transport already rejected anything it did not declare.
+	options.findings.fixes = options.findings.fixes || descriptor.Fixes
+	options.findings.reportedSources = options.findings.reportedSources || descriptor.ReportedSources
+	directory := slices.Contains(descriptor.Resources, analyzer.ToolDirectory)
+	return tools.Registration{Descriptor: descriptor.Rule, ScriptInputs: append([]analyzer.ScriptInput(nil), descriptor.ScriptInputs...), RequiresExecution: len(descriptor.Shells) != 0 || directory, Build: func(c tools.Context) (tools.Runner, error) {
+		return runner{descriptor: descriptor.Rule, templateContract: descriptor.TemplateContract, shells: selectors, inputs: inputs, backend: backend, context: c, options: options, directory: directory}, nil
 	}}, nil
 }
 
@@ -117,6 +123,9 @@ type runner struct {
 	backend          analyzer.ScriptBackend
 	context          tools.Context
 	options          engineOptions
+	// directory sends the working directory to an engine that requested the
+	// directory resource.
+	directory bool
 }
 
 // processRunner is a backend that runs one native process per check: it
@@ -250,10 +259,10 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 				continue
 			}
 		}
-		request := analyzer.ScriptRequest{Source: prepared.Source, Filename: r.filename(script), Config: options}
-		// Only process backends receive the directory; snippet engines get
-		// it on the wire with script-engine 0.3.0.
-		if reporting && script.Execution.DirectoryKnown {
+		request := analyzer.ScriptRequest{Source: prepared.Source, Filename: r.filename(script), Config: options, Excluded: prepared.Excluded}
+		// Process backends and engines that requested the directory resource
+		// receive the directory.
+		if (reporting || r.directory) && script.Execution.DirectoryKnown {
 			request.Directory = script.Execution.Directory
 		}
 		checks = append(checks, check{index: i, prepared: prepared, request: request})

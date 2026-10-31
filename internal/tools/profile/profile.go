@@ -26,6 +26,9 @@ type Prepared struct {
 	AcceptDiagnostic func(analyzer.ScriptDiagnostic) bool
 	// Vars are preparation variables for process argument placeholders.
 	Vars map[string]string
+	// Excluded are diagnostic codes the profile excludes, which snippet
+	// engines receive with each request.
+	Excluded []string
 	// Skip is why preparation withholds the script from the tool. Empty
 	// checks it.
 	Skip string

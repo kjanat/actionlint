@@ -32,6 +32,11 @@ type ScriptConfigValidator interface {
 
 // ScriptEngineDescriptor describes a portable snippet engine independently of
 // its transport. Rule names identify the host adapter it can replace.
+//
+// Fixes and ReportedSources declare what the engine's diagnostics may carry;
+// hosts reject diagnostics that use an undeclared capability. Resources are
+// the read-only grants the engine requests for each check; only
+// ToolDirectory is defined for snippet engines.
 type ScriptEngineDescriptor struct {
 	ID               string
 	Version          string
@@ -42,6 +47,9 @@ type ScriptEngineDescriptor struct {
 	Shells           []string
 	ScriptInputs     []ScriptInput
 	Rule             rule.Descriptor
+	Fixes            bool
+	ReportedSources  bool
+	Resources        []ToolResourceKind
 }
 
 // ScriptInput identifies source code supplied to one action input, independently
@@ -107,6 +115,7 @@ func selectorWord(word string, uppercase bool) bool {
 func (d ScriptEngineDescriptor) Clone() ScriptEngineDescriptor {
 	d.Shells = slices.Clone(d.Shells)
 	d.ScriptInputs = slices.Clone(d.ScriptInputs)
+	d.Resources = slices.Clone(d.Resources)
 	d.Rule = d.Rule.Clone()
 	return d
 }
@@ -115,12 +124,16 @@ func (d ScriptEngineDescriptor) Clone() ScriptEngineDescriptor {
 // Config contains only engine settings. Filename is a virtual snippet name and
 // grants no filesystem access. Source has already had workflow expressions masked.
 // Directory, when set, is the script's working directory; files an engine
-// reports reading resolve from it. It grants no access by itself.
+// reports reading resolve from it. It grants no access by itself; a transport
+// grants access only for the resources its engine requests. Excluded lists
+// diagnostic codes the preparation profile excludes, such as "SC1091";
+// engines must not report them.
 type ScriptRequest struct {
 	Source    string          `json:"source"`
 	Filename  string          `json:"filename"`
 	Config    json.RawMessage `json:"config,omitempty"`
 	Directory string          `json:"directory,omitempty"`
+	Excluded  []string        `json:"excluded,omitempty"`
 }
 
 // ScriptTemplateValidator checks runtime support before template filtering.

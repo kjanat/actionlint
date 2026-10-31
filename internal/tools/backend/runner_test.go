@@ -233,7 +233,12 @@ func (b *reportingBackend) Concurrent() bool { return b.concurrent }
 
 func buildRunner(t *testing.T, backend analyzer.ScriptBackend, options engineOptions) tools.Runner {
 	t.Helper()
-	registration, err := registerEngine(analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}}, backend, options)
+	return buildEngineRunner(t, analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}}, backend, options)
+}
+
+func buildEngineRunner(t *testing.T, descriptor analyzer.ScriptEngineDescriptor, backend analyzer.ScriptBackend, options engineOptions) tools.Runner {
+	t.Helper()
+	registration, err := registerEngine(descriptor, backend, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,6 +402,50 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 	}
 	if len(findings) != 2 || findings[0].Message != "first" || findings[1].Message != "second" || findings[0].Script != 0 || findings[1].Script != 1 {
 		t.Fatalf("findings out of script order: %+v", findings)
+	}
+}
+
+// A snippet engine that requests the directory resource receives the
+// working directory, and its declared capabilities admit fixes and findings
+// in files it read, as a manifest's do for a process provider.
+func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "lib.sh"), []byte("echo $x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var requests []analyzer.ScriptRequest
+	backend := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+		requests = append(requests, request)
+		return []analyzer.ScriptDiagnostic{
+			{Filename: request.Filename, Code: "X1", Severity: "info", Message: "quote", Location: analyzer.ScriptPosition{Row: 1, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 8},
+				Fixes: []analyzer.ScriptFix{{Description: "quote", Replacements: []analyzer.ScriptReplacement{replacement(1, 6, `"`), replacement(1, 8, `"`)}}}},
+			{Filename: "lib.sh", Source: "lib.sh", Code: "X2", Severity: "info", Message: "sourced", Location: analyzer.ScriptPosition{Row: 1, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 8}},
+		}, nil
+	})
+	script := scriptFixture(t, "run: |\n  echo $x\n")
+	script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
+	descriptor := analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, Fixes: true, ReportedSources: true, Resources: []analyzer.ToolResourceKind{analyzer.ToolDirectory}}
+	registration, err := RegisterEngine(descriptor, backend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !registration.RequiresExecution {
+		t.Fatal("an engine requesting the directory needs execution facts")
+	}
+	// The preparation's excluded codes travel with the request.
+	prepare := func(tools.Script) (profile.Prepared, error) {
+		return profile.Prepared{Source: "echo $x\n", Excluded: []string{"X9"}}, nil
+	}
+	runner := buildEngineRunner(t, descriptor, backend, engineOptions{prepare: prepare})
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(requests) != 1 || requests[0].Directory != directory || !slices.Equal(requests[0].Excluded, []string{"X9"}) {
+		t.Fatalf("engine requests %+v", requests)
+	}
+	if len(findings) != 2 || len(findings[0].Fixes) != 1 || !findings[1].RawScript || !strings.HasSuffix(findings[1].Path, "lib.sh") {
+		t.Fatalf("findings %+v", findings)
 	}
 }
 
