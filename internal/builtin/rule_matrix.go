@@ -9,17 +9,17 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// RuleMatrix adapts canonical matrix diagnostics to the visitor pipeline.
-type RuleMatrix struct {
+// ruleMatrix adapts canonical matrix diagnostics to the visitor pipeline.
+type ruleMatrix struct {
 	workflowvisit.Base
-	Configuration
+	configuration
 }
 
-func NewRuleMatrix() *RuleMatrix {
-	return &RuleMatrix{Base: builtinRuleBase("matrix")}
+func NewRuleMatrix() *ruleMatrix {
+	return &ruleMatrix{Base: builtinRuleBase("matrix")}
 }
 
-func (r *RuleMatrix) VisitJobPre(view workflowdecl.JobView) error {
+func (r *ruleMatrix) VisitJobPre(view workflowdecl.JobView) error {
 	if !view.Present() {
 		return errors.New("matrix rule requires a job declaration")
 	}

@@ -70,7 +70,7 @@ func ruleBehaviours() map[string]behaviour {
 		"parallel-steps": {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},
 		"action":         {Build: func(c Context) workflowvisit.Rule { return NewRuleAction(c.Actions) }},
 		"executable-bit": {Build: func(c Context) workflowvisit.Rule {
-			return newRuleExecutableBit(c)
+			return NewRuleExecutableBit(c)
 		}, Enabled: func(c Context) bool { return c.ProjectRoot != "" && c.Index != nil }},
 		"env-var":       {Build: func(c Context) workflowvisit.Rule { return NewRuleEnvVar() }},
 		"id":            {Build: func(c Context) workflowvisit.Rule { return NewRuleID() }},

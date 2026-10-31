@@ -11,8 +11,16 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
+// executableRule is what the probe needs from the executable-bit rule: the
+// invocation hooks, checkout placement and the current script paths.
+type executableRule interface {
+	builtin.InvocationParticipant
+	builtin.CheckoutParticipant
+	Paths() execution.Paths
+}
+
 type executablePathsProbe struct {
-	*builtin.RuleExecutableBit
+	executableRule
 	t       *testing.T
 	want    execution.Paths
 	entered int
@@ -28,7 +36,7 @@ func (p *executablePathsProbe) checkPaths() {
 
 func (p *executablePathsProbe) EnterInvocation(call builtin.Invocation) error {
 	p.checkPaths()
-	if err := p.RuleExecutableBit.EnterInvocation(call); err != nil {
+	if err := p.executableRule.EnterInvocation(call); err != nil {
 		return err
 	}
 	p.checkPaths()
@@ -40,7 +48,7 @@ func (p *executablePathsProbe) EnterInvocation(call builtin.Invocation) error {
 }
 
 func (p *executablePathsProbe) LeaveInvocation(call invocation.Context) error {
-	if err := p.RuleExecutableBit.LeaveInvocation(call); err != nil {
+	if err := p.executableRule.LeaveInvocation(call); err != nil {
 		return err
 	}
 	p.checkPaths()
@@ -54,9 +62,9 @@ func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
 	}, nil)
 	reader := &fsread.Reader{}
 	want := execution.Paths{Workspace: f.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
-	p := &executablePathsProbe{RuleExecutableBit: &builtin.RuleExecutableBit{ExecutableChecker: execution.NewExecutableChecker(execution.ExecutableContext{
+	p := &executablePathsProbe{executableRule: builtin.NewRuleExecutableBit(builtin.Context{
 		Context: t.Context(), ProjectRoot: want.Workspace, WorkingDir: want.Analysis, Reader: reader,
-	})}, t: t, want: want}
+	}), t: t, want: want}
 	f.options.Rules = []workflowvisit.Rule{p}
 	_, err := Workflow(f.options, f.root)
 	if err != nil || p.entered != 2 {

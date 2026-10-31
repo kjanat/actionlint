@@ -7,8 +7,8 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
-// Configuration supplies the optional settings capability of built-in adapters.
-type Configuration struct{ config *repoconfig.Config }
+// configuration supplies the optional settings capability of built-in adapters.
+type configuration struct{ config *repoconfig.Config }
 
 // ruleLogger is used only by adapters that produce trace output.
 type ruleLogger struct {
@@ -36,12 +36,6 @@ func (r *ruleLogger) EnableDebug(out io.Writer) {
 
 // SetConfig populates user configuration of actionlint to the rule.
 // When no config is set, rules should behave as if the default configuration is set.
-func (r *Configuration) SetConfig(cfg *repoconfig.Config) {
+func (r *configuration) SetConfig(cfg *repoconfig.Config) {
 	r.config = cfg
-}
-
-// Config returns the user configuration of actionlint.
-// When no config was set to this rule by SetConfig, this method returns nil.
-func (r *Configuration) Config() *repoconfig.Config {
-	return r.config
 }

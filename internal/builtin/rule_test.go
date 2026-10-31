@@ -8,13 +8,13 @@ import (
 )
 
 func TestRuleConfiguration(t *testing.T) {
-	r := Configuration{}
-	if r.Config() != nil {
-		t.Error("Config must be nil after creating a rule")
+	r := configuration{}
+	if r.config != nil {
+		t.Error("config must be nil after creating a rule")
 	}
 	want := &repoconfig.Config{}
 	r.SetConfig(want)
-	if have := r.Config(); have != want {
+	if have := r.config; have != want {
 		t.Errorf("Wanted config %v but got %v", want, have)
 	}
 }

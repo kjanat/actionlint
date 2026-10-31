@@ -17,11 +17,11 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// RuleExpression connects workflow expression checking to host lookups and options.
-type RuleExpression struct {
+// ruleExpression connects workflow expression checking to host lookups and options.
+type ruleExpression struct {
 	*workflowexpr.Checker
 	ruleLogger
-	Configuration
+	configuration
 	frames   []expressionInvocation
 	findings workflowvisit.Findings
 }
@@ -31,7 +31,7 @@ type expressionInvocation struct {
 	parent *workflowexpr.Checker
 }
 
-func (r *RuleExpression) EnterInvocation(scope Invocation) error {
+func (r *ruleExpression) EnterInvocation(scope Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
@@ -39,7 +39,7 @@ func (r *RuleExpression) EnterInvocation(scope Invocation) error {
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{}, workflowExpressionOptions(scope.Config))
 	return nil
 }
-func (r *RuleExpression) LeaveInvocation(context invocation.Context) error {
+func (r *ruleExpression) LeaveInvocation(context invocation.Context) error {
 	if len(r.frames) == 0 || r.frames[len(r.frames)-1].scope.Context != context {
 		return invocation.ErrForeignContext
 	}
@@ -48,44 +48,52 @@ func (r *RuleExpression) LeaveInvocation(context invocation.Context) error {
 	r.frames = r.frames[:len(r.frames)-1]
 	return nil
 }
-func (r *RuleExpression) collect(visit func() error) error {
-	before := r.Checker.FindingCount()
-	err := visit()
-	r.findings.Report(r.FindingsSince(before)...)
+
+// collect moves the findings the current checker reported after mark, a prior
+// r.Checker.FindingCount, into the rule, and passes err through.
+func (r *ruleExpression) collect(mark int, err error) error {
+	r.findings.Report(r.FindingsSince(mark)...)
 	return err
 }
-func (r *RuleExpression) VisitStep(step workflowdecl.StepView) error {
-	return r.collect(func() error { return r.Checker.VisitStep(step) })
+func (r *ruleExpression) VisitStep(step workflowdecl.StepView) error {
+	mark := r.Checker.FindingCount()
+	return r.collect(mark, r.Checker.VisitStep(step))
 }
-func (r *RuleExpression) VisitInvocationStep(step workflowdecl.StepView) error {
-	return r.collect(func() error { r.CheckCompositeScript(step); return nil })
+func (r *ruleExpression) VisitInvocationStep(step workflowdecl.StepView) error {
+	mark := r.Checker.FindingCount()
+	r.CheckCompositeScript(step)
+	return r.collect(mark, nil)
 }
-func (r *RuleExpression) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (r *ruleExpression) VisitOpaqueAction(step workflowdecl.StepView) error {
 	if len(r.frames) == 0 {
 		// Workflow steps already receive the full expression pass before resolution.
 		return nil
 	}
 	return r.VisitInvocationStep(step)
 }
-func (r *RuleExpression) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
-	return r.collect(func() error { return r.Checker.VisitWorkflowPre(view) })
+func (r *ruleExpression) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
+	mark := r.Checker.FindingCount()
+	return r.collect(mark, r.Checker.VisitWorkflowPre(view))
 }
-func (r *RuleExpression) VisitWorkflowPost(view workflowdecl.WorkflowView) error {
-	return r.collect(func() error { return r.Checker.VisitWorkflowPost(view) })
+func (r *ruleExpression) VisitWorkflowPost(view workflowdecl.WorkflowView) error {
+	mark := r.Checker.FindingCount()
+	return r.collect(mark, r.Checker.VisitWorkflowPost(view))
 }
-func (r *RuleExpression) VisitJobPre(view workflowdecl.JobView) error {
-	return r.collect(func() error { return r.Checker.VisitJobPre(view) })
+func (r *ruleExpression) VisitJobPre(view workflowdecl.JobView) error {
+	mark := r.Checker.FindingCount()
+	return r.collect(mark, r.Checker.VisitJobPre(view))
 }
-func (r *RuleExpression) VisitJobPost(view workflowdecl.JobView) error {
-	return r.collect(func() error { return r.Checker.VisitJobPost(view) })
+func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
+	mark := r.Checker.FindingCount()
+	return r.collect(mark, r.Checker.VisitJobPost(view))
 }
 
-func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *RuleExpression {
+func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *ruleExpression {
 	return newRuleExpression(actionsCache, workflowCache, nil)
 }
 
-func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge) *RuleExpression {
-	r := &RuleExpression{tag: "expression"}
+func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge) *ruleExpression {
+	r := &ruleExpression{tag: "expression"}
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
 		Runners: runners,
 		LocalAction: func(spec string) (*actionmeta.Metadata, error) {
@@ -109,18 +117,18 @@ func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *c
 	return r
 }
 
-func (r *RuleExpression) Name() string                  { return "expression" }
-func (r *RuleExpression) Description() string           { return builtinRuleDescription("expression") }
-func (r *RuleExpression) Errs() []*findingmodel.Finding { return r.findings.Errs() }
+func (r *ruleExpression) Name() string                  { return "expression" }
+func (r *ruleExpression) Description() string           { return builtinRuleDescription("expression") }
+func (r *ruleExpression) Errs() []*findingmodel.Finding { return r.findings.Errs() }
 
 // FindingCount counts the findings collected by the rule. It shadows the
 // embedded checker's count, which covers only the current invocation.
-func (r *RuleExpression) FindingCount() int { return r.findings.FindingCount() }
-func (r *RuleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+func (r *ruleExpression) FindingCount() int { return r.findings.FindingCount() }
+func (r *ruleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
 	r.findings.AnnotateSince(mark, annotate)
 }
-func (r *RuleExpression) SetConfig(config *repoconfig.Config) {
-	r.Configuration.SetConfig(config)
+func (r *ruleExpression) SetConfig(config *repoconfig.Config) {
+	r.configuration.SetConfig(config)
 	r.Configure(workflowExpressionOptions(config))
 }
 

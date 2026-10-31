@@ -11,24 +11,24 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// RuleShellName is a rule to check 'shell' field. For more details, see
+// ruleShellName is a rule to check 'shell' field. For more details, see
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
-type RuleShellName struct {
+type ruleShellName struct {
 	runners *runnerlang.Knowledge
 	workflowvisit.Base
 	platform runnerlang.Platform
 }
 
 // NewRuleShellName creates new RuleShellName instance.
-func NewRuleShellName() *RuleShellName {
-	return &RuleShellName{
+func NewRuleShellName() *ruleShellName {
+	return &ruleShellName{
 		Base:     builtinRuleBase("shell-name"),
 		platform: runnerlang.Any,
 	}
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleShellName) VisitStep(view workflowdecl.StepView) error {
+func (rule *ruleShellName) VisitStep(view workflowdecl.StepView) error {
 	if !view.Present() {
 		return errors.New("shell-name step declaration is unavailable")
 	}
@@ -39,7 +39,7 @@ func (rule *RuleShellName) VisitStep(view workflowdecl.StepView) error {
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleShellName) VisitJobPre(view workflowdecl.JobView) error {
+func (rule *ruleShellName) VisitJobPre(view workflowdecl.JobView) error {
 	if !view.Present() {
 		return errors.New("shell-name job declaration is unavailable")
 	}
@@ -51,13 +51,13 @@ func (rule *RuleShellName) VisitJobPre(view workflowdecl.JobView) error {
 }
 
 // VisitJobPost is callback when visiting Job node after visiting its children.
-func (rule *RuleShellName) VisitJobPost(workflowdecl.JobView) error {
+func (rule *ruleShellName) VisitJobPost(workflowdecl.JobView) error {
 	rule.platform = runnerlang.Any // Clear
 	return nil
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleShellName) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
+func (rule *ruleShellName) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
 	if !view.Present() {
 		return errors.New("shell-name workflow declaration is unavailable")
 	}
@@ -65,7 +65,7 @@ func (rule *RuleShellName) VisitWorkflowPre(view workflowdecl.WorkflowView) erro
 	return nil
 }
 
-func (rule *RuleShellName) checkShellValue(shell value.Value) {
+func (rule *ruleShellName) checkShellValue(shell value.Value) {
 	for _, d := range execution.CheckShell(shell, rule.platform) {
 		rule.Report(findingmodel.FromDiagnostic(d))
 	}

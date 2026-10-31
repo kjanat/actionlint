@@ -41,4 +41,4 @@ type (
 	}
 )
 
-var _ InvocationParticipant = (*RuleExecutableBit)(nil)
+var _ InvocationParticipant = (*ruleExecutableBit)(nil)

@@ -17,22 +17,22 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// RuleAction is a rule to check running action in steps of jobs.
+// ruleAction is a rule to check running action in steps of jobs.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstepsuses
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-type RuleAction struct {
+type ruleAction struct {
 	workflowvisit.Base
 	ruleLogger
-	Configuration
+	configuration
 	cache      actionlocal.MetadataDocumentLookup
 	validation *actionMetadataValidation
 }
 
 // NewRuleAction creates new RuleAction instance.
-func NewRuleAction(cache actionlocal.MetadataDocumentLookup) *RuleAction {
+func NewRuleAction(cache actionlocal.MetadataDocumentLookup) *ruleAction {
 	validation := newActionMetadataValidation()
 
-	return &RuleAction{
+	return &ruleAction{
 		Base: builtinRuleBase("action"), tag: "action",
 		cache:      cache,
 		validation: validation,
@@ -40,7 +40,7 @@ func NewRuleAction(cache actionlocal.MetadataDocumentLookup) *RuleAction {
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *RuleAction) VisitStep(n workflowdecl.StepView) error {
+func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 	e, ok := n.Action()
 	if !ok || !e.Uses().Present() {
 		return nil
@@ -80,7 +80,7 @@ func (rule *RuleAction) VisitStep(n workflowdecl.StepView) error {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action workflowdecl.ExecActionView) error {
+func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action workflowdecl.ExecActionView) error {
 	if strings.HasPrefix(displaySpec, "$/") {
 		localSpec = displaySpec
 	}
@@ -117,14 +117,14 @@ func (rule *RuleAction) checkLocalAction(localSpec, displaySpec string, action w
 	return nil
 }
 
-func (rule *RuleAction) ForMetadata(actions *actionlocal.Resolver) workflowvisit.Rule {
+func (rule *ruleAction) ForMetadata(actions *actionlocal.Resolver) workflowvisit.Rule {
 	child := NewRuleAction(actions)
 	child.validation = rule.validation
-	child.SetConfig(rule.Config())
+	child.configuration = rule.configuration
 	return child
 }
 
-func (rule *RuleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snapshot documentparse.SourceSnapshot) error {
+func (rule *ruleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snapshot documentparse.SourceSnapshot) error {
 	if snapshot.Kind() != documentparse.KindAction {
 		return errors.New("standalone metadata has no admitted source snapshot")
 	}

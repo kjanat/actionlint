@@ -13,11 +13,11 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-// RuleWorkflowCall is a rule checker to check workflow call at jobs.<job_id>.
-type RuleWorkflowCall struct {
+// ruleWorkflowCall is a rule checker to check workflow call at jobs.<job_id>.
+type ruleWorkflowCall struct {
 	workflowvisit.Base
 	ruleLogger
-	Configuration
+	configuration
 	workflowPermissions workflowdecl.PermissionsView
 	workflowCacheMode   workflowdecl.CacheModeView
 	cache               *calls.Cache
@@ -25,8 +25,8 @@ type RuleWorkflowCall struct {
 }
 
 // NewRuleWorkflowCall checks calls using captured reusable-workflow metadata.
-func NewRuleWorkflowCall(source documentparse.SourceSnapshot, cache *calls.Cache) *RuleWorkflowCall {
-	return &RuleWorkflowCall{
+func NewRuleWorkflowCall(source documentparse.SourceSnapshot, cache *calls.Cache) *ruleWorkflowCall {
+	return &ruleWorkflowCall{
 		Base: builtinRuleBase("workflow-call"), tag: "workflow-call",
 		cache:  cache,
 		source: source,
@@ -34,7 +34,7 @@ func NewRuleWorkflowCall(source documentparse.SourceSnapshot, cache *calls.Cache
 }
 
 // VisitWorkflowPre is callback when visiting Workflow node before visiting its children.
-func (rule *RuleWorkflowCall) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
+func (rule *ruleWorkflowCall) VisitWorkflowPre(n workflowdecl.WorkflowView) error {
 	rule.workflowPermissions = n.Permissions()
 	rule.workflowCacheMode = n.CacheMode()
 	for event := range n.On() {
@@ -52,7 +52,7 @@ func (rule *RuleWorkflowCall) VisitWorkflowPre(n workflowdecl.WorkflowView) erro
 }
 
 // VisitJobPre is callback when visiting Job node before visiting its children.
-func (rule *RuleWorkflowCall) VisitJobPre(n workflowdecl.JobView) error {
+func (rule *ruleWorkflowCall) VisitJobPre(n workflowdecl.JobView) error {
 	if !n.WorkflowCall().Present() {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (rule *RuleWorkflowCall) VisitJobPre(n workflowdecl.JobView) error {
 	return nil
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call workflowdecl.WorkflowCallView, jobPerms workflowdecl.PermissionsView, jobCacheMode workflowdecl.CacheModeView) {
+func (rule *ruleWorkflowCall) checkWorkflowCallUsesLocal(call workflowdecl.WorkflowCallView, jobPerms workflowdecl.PermissionsView, jobCacheMode workflowdecl.CacheModeView) {
 	u := call.Uses()
 	m, err := rule.cache.FindMetadataForCall(u.Value())
 	if err != nil {
@@ -110,7 +110,7 @@ func (rule *RuleWorkflowCall) checkWorkflowCallUsesLocal(call workflowdecl.Workf
 	rule.Debug("Validated reusable workflow %q", u.Value())
 }
 
-func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call workflowdecl.WorkflowCallView, jobPerms workflowdecl.PermissionsView, m *calls.Metadata) {
+func (rule *ruleWorkflowCall) checkWorkflowCallPermissions(call workflowdecl.WorkflowCallView, jobPerms workflowdecl.PermissionsView, m *calls.Metadata) {
 	var granted calls.ResolvedPermissions
 	switch {
 	case jobPerms.Present():
@@ -119,8 +119,8 @@ func (rule *RuleWorkflowCall) checkWorkflowCallPermissions(call workflowdecl.Wor
 		granted = calls.ResolvePermissions(rule.workflowPermissions)
 	default:
 		a := repoconfig.DefaultPermissionsAssumptionUnset
-		if cfg := rule.Config(); cfg != nil {
-			a = cfg.AssumeDefaultPermissions
+		if rule.config != nil {
+			a = rule.config.AssumeDefaultPermissions
 		}
 		granted = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(a == repoconfig.DefaultPermissionsAssumptionPermissive)}
 	}

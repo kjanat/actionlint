@@ -23,7 +23,7 @@ func workflowRunNamesAvailable(c Context) bool {
 
 type workflowRunNamesRule struct {
 	workflowvisit.Base
-	Configuration
+	configuration
 	root  string
 	index *workflownames.Index
 }

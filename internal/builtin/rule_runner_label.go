@@ -9,17 +9,17 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 )
 
-type RuleRunnerLabel struct {
+type ruleRunnerLabel struct {
 	runners *runnerlang.Knowledge
 	workflowvisit.Base
-	Configuration
+	configuration
 }
 
-func NewRuleRunnerLabel() *RuleRunnerLabel {
-	return &RuleRunnerLabel{Base: builtinRuleBase("runner-label")}
+func NewRuleRunnerLabel() *ruleRunnerLabel {
+	return &ruleRunnerLabel{Base: builtinRuleBase("runner-label")}
 }
 
-func (r *RuleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
+func (r *ruleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
 	if !declaration.Present() {
 		return errors.New("runner-label job declaration is unavailable")
 	}
