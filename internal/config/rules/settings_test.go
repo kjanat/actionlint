@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -74,6 +75,30 @@ func TestNewSettingRejectsNonMappingOptions(t *testing.T) {
 	setting, err := NewSetting("warn", nil)
 	if err != nil || setting.HasOptions() || setting.Level() != "warn" {
 		t.Fatalf("setting=%+v err=%v", setting, err)
+	}
+}
+
+func TestNewSettingParsesJSONRawMessage(t *testing.T) {
+	setting, err := NewSetting("on", json.RawMessage(`{"max-count": 3, "names": ["a"]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var options struct {
+		MaxCount int      `yaml:"max-count"`
+		Names    []string `yaml:"names"`
+	}
+	if loaded, err := setting.LoadOptions(&options); !loaded || err != nil || options.MaxCount != 3 || len(options.Names) != 1 || options.Names[0] != "a" {
+		t.Fatalf("loaded=%v err=%v options=%+v", loaded, err, options)
+	}
+	for _, raw := range []json.RawMessage{nil, json.RawMessage("null")} {
+		if setting, err := NewSetting("on", raw); err != nil || setting.HasOptions() {
+			t.Fatalf("%q: setting=%+v err=%v", raw, setting, err)
+		}
+	}
+	for _, raw := range []json.RawMessage{json.RawMessage("[1]"), json.RawMessage("{"), json.RawMessage("max-count: 3")} {
+		if _, err := NewSetting("on", raw); err == nil {
+			t.Fatalf("accepted %q", raw)
+		}
 	}
 }
 

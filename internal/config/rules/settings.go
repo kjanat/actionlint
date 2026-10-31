@@ -2,6 +2,7 @@
 package rules
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"iter"
@@ -78,24 +79,29 @@ type Setting struct {
 }
 
 // NewSetting returns a setting with the given level and options. An empty
-// level selects the rule's default. options is encoded to YAML and must form a
-// mapping; nil means no options.
+// level selects the rule's default; nil options mean no options.
+//
+// options must form a mapping. A json.RawMessage is parsed as a JSON object,
+// the form analyzer.Registration.Options uses. Any other value is encoded with
+// the YAML encoder: struct fields are named by their yaml tags, json tags and
+// MarshalJSON methods are ignored, and a value whose MarshalYAML returns a
+// scalar, such as a disabled policy that encodes as false, is rejected.
 func NewSetting(level Level, options any) (Setting, error) {
 	setting := Setting{level: level}
-	if options == nil {
+	if raw, ok := options.(json.RawMessage); options == nil || ok && len(raw) == 0 {
 		return setting, nil
 	}
-	var node yaml.Node
-	if err := node.Encode(options); err != nil {
+	node, err := encodeOptions(options)
+	if err != nil {
 		return Setting{}, fmt.Errorf("rule options: %w", err)
 	}
 	if node.ShortTag() == "!!null" {
 		return setting, nil
 	}
 	if node.Kind != yaml.MappingNode {
-		return Setting{}, errors.New("rule options must be a mapping")
+		return Setting{}, fmt.Errorf("rule options must be a mapping, not %s", node.ShortTag())
 	}
-	owned, err := ownOptions(&node)
+	owned, err := ownOptions(node)
 	if err != nil {
 		return Setting{}, fmt.Errorf("rule options: %w", err)
 	}
@@ -129,6 +135,31 @@ func (s Setting) LoadOptions(dst any) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// encodeOptions returns options as a YAML node. JSON is valid YAML flow
+// syntax, so the YAML parser reads a json.RawMessage into the same tree the
+// encoder builds for the equivalent Go value.
+func encodeOptions(options any) (*yaml.Node, error) {
+	raw, ok := options.(json.RawMessage)
+	if !ok {
+		var node yaml.Node
+		if err := node.Encode(options); err != nil {
+			return nil, err
+		}
+		return &node, nil
+	}
+	if !json.Valid(raw) {
+		return nil, errors.New("json.RawMessage options are not valid JSON")
+	}
+	var document yaml.Node
+	if err := yaml.Unmarshal(raw, &document); err != nil {
+		return nil, err
+	}
+	if document.Kind != yaml.DocumentNode || len(document.Content) != 1 {
+		return nil, errors.New("json.RawMessage options must hold one JSON value")
+	}
+	return document.Content[0], nil
 }
 
 // ownOptions returns a copy of an options mapping with aliases and merge keys
