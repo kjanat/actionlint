@@ -89,6 +89,45 @@ func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
 	return manifest
 }
 
+// config schema adds tools.<rule.name> for a provider the --plugin flag
+// installs, without downloading its executable.
+func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
+	testutil.IsolateUserCache(t)
+	t.Chdir(t.TempDir())
+	t.Setenv("ACTIONLINT_CONFIG", "")
+	t.Setenv("ACTIONLINT_NO_CONFIG", "1")
+	registry := ocitest.New(t)
+	executable := registry.Blob("application/octet-stream", []byte("executable"))
+	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProviderManifest(t, executable))
+	reference := registry.Reference(registry.Manifest(t, manifest, executable))
+
+	output := pluginCommandTest(t, 0, "config", "schema", "--plugin", reference)
+	var schema struct {
+		Properties struct {
+			Tools struct {
+				OneOf []struct {
+					Properties map[string]json.RawMessage `json:"properties"`
+				} `json:"oneOf"`
+			} `json:"tools"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal([]byte(output), &schema); err != nil {
+		t.Fatalf("output is not JSON: %v\n%s", err, output)
+	}
+	found := false
+	for _, alternative := range schema.Properties.Tools.OneOf {
+		_, oci := alternative.Properties["oci-tool"]
+		_, bundled := alternative.Properties["shellcheck"]
+		found = found || oci && bundled
+	}
+	if !found {
+		t.Fatal("tools lacks the installed provider or the bundled ones")
+	}
+	if got := registry.Fetches(executable); got != 0 {
+		t.Fatalf("config schema downloaded the executable %d times", got)
+	}
+}
+
 // plugin install refuses an OCI package whose provider manifest layer is not
 // a valid tool provider manifest, and declares nothing.
 func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {

@@ -117,10 +117,11 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 		{"path", "Print the selected configuration path"},
 		{"show", "Show effective configuration settings"},
 		{"validate", "Validate the selected configuration using actionlint's loader"},
+		{"schema", "Print the configuration JSON schema, including tools from installed plugins"},
 		{"migrate", "Preview conversion to current configuration syntax"},
 	} {
 		c := &cobra.Command{Use: item.name, Short: item.description, Args: cobra.NoArgs, RunE: a.capture(operation("config " + item.name))}
-		if item.name == "show" || item.name == "validate" {
+		if item.name == "show" || item.name == "validate" || item.name == "schema" {
 			a.pluginFlags(c.Flags())
 		}
 		if item.name == "show" {

@@ -110,6 +110,7 @@ const (
 	operationConfigPath     operation = "config path"
 	operationConfigShow     operation = "config show"
 	operationConfigValidate operation = "config validate"
+	operationConfigSchema   operation = "config schema"
 	operationConfigMigrate  operation = "config migrate"
 	operationConfigInit     operation = "config init"
 	operationCompletion     operation = "completion"
@@ -211,6 +212,8 @@ func (inv invocation) request() (commandRequest, error) {
 		return configShowRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, JSON: inv.JSON, Origin: inv.Origin}, nil
 	case operationConfigValidate:
 		return configValidateRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins, JSON: inv.JSON}, nil
+	case operationConfigSchema:
+		return configSchemaRequest{Config: inv.Check.Config, Plugins: inv.Check.Plugins}, nil
 	case operationConfigMigrate:
 		if inv.MigrationWrite && inv.MigrationCheck {
 			return nil, commandUsageError{errors.New("config migrate: --write and --check cannot be combined")}

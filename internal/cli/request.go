@@ -116,6 +116,17 @@ func (r configValidateRequest) run(ctx context.Context, streams Command) (int, e
 	return 0, writeConfigValidation(ctx, streams.Stdout, r)
 }
 
+// configSchemaRequest prints the configuration JSON schema with the tool
+// providers that the --plugin flags or the selected configuration install.
+type configSchemaRequest struct {
+	Config  repoconfig.Selection
+	Plugins []string
+}
+
+func (r configSchemaRequest) run(ctx context.Context, streams Command) (int, error) {
+	return 0, writeConfigSchema(ctx, streams.Stdout, r)
+}
+
 type configInitRequest struct {
 	JSON       bool
 	Hyperlinks hyperlinkMode

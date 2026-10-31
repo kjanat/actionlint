@@ -266,7 +266,8 @@ suppressions and configured ignores apply to them like built-in rules. `--log-le
 when it loads and forwards its log lines, stdout and stderr.
 
 Pass the same `--plugin` arguments to `config show`, `config validate` or `doctor` when the configuration names plugin
-rules. These commands validate rule IDs against loaded descriptors without running document analysis.
+rules. These commands validate rule IDs against loaded descriptors without running document analysis. Pass them to
+`config schema` to print a configuration schema that describes the tool providers they install.
 
 The language server closes loaded plugins at shutdown. Explicit `--plugin` selections and remote engine URLs
 use a fixed snapshot for that session; restart to refresh them. Configured local engine files reload when their

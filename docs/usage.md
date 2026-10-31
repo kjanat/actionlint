@@ -309,6 +309,7 @@ actionlint config init
 actionlint config path
 actionlint config show --origin
 actionlint config validate
+actionlint config schema > .github/actionlint.schema.json
 ```
 
 Select an explicit configuration file or use repository discovery in this order:
@@ -331,6 +332,9 @@ value does not imply that the user explicitly set it.
 `config validate` uses the same parser and validation as analysis, including its
 current handling of unknown keys described in [Configuration](config.md). It does
 not silently introduce the stricter JSON Schema validation policy.
+`config schema` prints the configuration JSON schema with an entry under `tools`
+for each tool provider that `--plugin` or the configuration installs; see
+[Configuration](config.md).
 `config init` writes to the repository configuration directory, refuses to overwrite either
 config filename, and includes the YAML Language Server schema directive.
 It creates a commented configuration reference with lint rules and tools first.

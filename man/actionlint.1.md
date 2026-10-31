@@ -107,6 +107,10 @@ missing/null/value state, and positions for file settings.
 **config validate**
 : Validate with the analysis configuration loader.
 
+**config schema**
+: Print the configuration JSON schema, with a **tools** entry for each tool
+provider manifest that **--plugin** or the configuration installs.
+
 **rules** [*name*]
 : List checks under Correctness, Security, Suspicious, Policy, and External linters,
 alphabetically within each group, or explain one check. **--json** returns the

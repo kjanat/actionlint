@@ -8,6 +8,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/fsread"
+	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/tools/provider"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
@@ -46,4 +49,48 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 		return inspection, err
 	}
 	return config.Inspect(selection, origins, rules...)
+}
+
+// InstalledProviders returns the tool provider manifests among the plugins
+// that the --plugin flags or the selected configuration name: local manifest
+// files and the manifests of oci:// sources. It runs no plugin and downloads
+// no executable; other plugins are resolved but skipped.
+func InstalledProviders(ctx context.Context, selection config.Selection, paths []string) ([]provider.Manifest, error) {
+	directory, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	sources, err := (PluginSelection{Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled}).Resolve(ctx, directory, application.Input{Kind: application.Repository})
+	if err != nil {
+		return nil, err
+	}
+	var manifests []provider.Manifest
+	for _, path := range sources.Paths {
+		if provider.IsLocalManifest(path) {
+			manifest, _, err := provider.ReadLocal(fsread.New(ctx, nil, nil), path)
+			if err != nil {
+				return nil, err
+			}
+			manifests = append(manifests, manifest)
+			continue
+		}
+		artifact := sources.artifacts[path]
+		if artifact == nil {
+			if err := pluginartifact.RequireRemotePin(path); err != nil {
+				return nil, err
+			}
+			if artifact, err = pluginartifact.Resolve(ctx, path, artifactOptions()); err != nil {
+				return nil, err
+			}
+		}
+		if artifact.Info.Kind != pluginartifact.ProviderManifest {
+			continue
+		}
+		manifest, err := pulledProvider(artifact)
+		if err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, manifest)
+	}
+	return manifests, nil
 }

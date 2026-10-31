@@ -364,6 +364,13 @@ for `enabled`. A bundled provider's schema validates inline `config` settings; a
 string `config` selects a configuration file and is accepted only by tools that
 read one, such as ShellCheck.
 
+The published schema knows only the bundled providers, so it accepts any mapping as
+the `config` of a provider a plugin installs. `actionlint config schema` prints the
+schema with a `tools.<name>` entry for each tool provider manifest that `--plugin`
+or the configuration's `plugins` installs, validated by the manifest's
+`config_schema`. Save it and point the editor directive at the copy. It reads the
+manifests without running a plugin or downloading an executable.
+
 Engine configuration and execution are separate. `tools.<name>.config` configures
 checks; `tools.<name>.backend` selects how the engine runs. `process` invokes a native
 executable and `wasm` loads a typed script-engine component or a legacy core engine

@@ -66,7 +66,7 @@ func (a *commandApp) applyEnvironment() error {
 		return err
 	}
 	switch i.Operation {
-	case "lsp", operationCheck, operationRules, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate, operationConfigMigrate,
+	case "lsp", operationCheck, operationRules, operationDoctor, operationConfigPath, operationConfigShow, operationConfigValidate, operationConfigSchema, operationConfigMigrate,
 		operationPluginInstall, operationPluginUpdate, operationPluginRemove, operationPluginList, operationPluginSync:
 		if !a.anySet("config", "config-file", "no-config") {
 			a.envString("ACTIONLINT_CONFIG", &i.Check.Config.Path)

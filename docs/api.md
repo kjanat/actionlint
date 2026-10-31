@@ -124,6 +124,10 @@ The returned tree is a detached value copy owned by the caller; it shares no sto
 The configuration package aliases a standalone implementation that does not import the analysis engine. Its public
 names are the supported import surface. Treat unexported state as opaque and use keyed struct literals.
 
+`actionlint.Schema(name)` returns a published JSON schema by path: `actionlint.schema.json`, which validates
+configuration files, or a file under `schemas/`, such as those it references. `actionlint config schema` prints the configuration schema with
+those references inlined and the tool providers of the selected plugins added.
+
 ## Migration from the flat API
 
 | Previous root API                                          | Replacement                                                                     |

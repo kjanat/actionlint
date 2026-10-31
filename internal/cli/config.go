@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
+	actionlint "actionlint.kjanat.dev/v2"
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/editorschema"
 	"actionlint.kjanat.dev/v2/internal/localapp"
 
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
@@ -59,6 +61,22 @@ func writeConfigValidation(ctx context.Context, out io.Writer, req configValidat
 	} else {
 		_, err = fmt.Fprintf(out, "Configuration is valid: %s\n", inspection.Path)
 	}
+	return err
+}
+
+// writeConfigSchema writes the configuration JSON schema to out. Beyond the
+// published actionlint.schema.json, it describes tools.<name> for every tool
+// provider that the --plugin flags or the selected configuration install.
+func writeConfigSchema(ctx context.Context, out io.Writer, req configSchemaRequest) error {
+	manifests, err := localapp.InstalledProviders(ctx, req.Config, req.Plugins)
+	if err != nil {
+		return err
+	}
+	document, err := editorschema.Document(actionlint.Schema, manifests)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(document)
 	return err
 }
 
