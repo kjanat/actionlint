@@ -81,8 +81,8 @@ func ruleBehaviours() map[string]behaviour {
 		"require-commit-hash": {Build: func(c Context) workflowvisit.Rule {
 			options := new(lintconfig.CommitHashOptions)
 			if c.Config != nil {
-				// Parsing already validated these options. Options of another type,
-				// set from Go, fail to load and leave no exclusions.
+				// Parsing and ValidateRuleNames reject options that do not load
+				// here; without that check they leave no exclusions.
 				setting, _ := c.Config.Lint.Rules.Policy.Rule("require-commit-hash")
 				if _, err := setting.LoadOptions(options); err != nil {
 					options = new(lintconfig.CommitHashOptions)

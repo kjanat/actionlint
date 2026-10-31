@@ -19,7 +19,8 @@ type Setting = lintconfig.Setting
 type Group = lintconfig.Group
 
 // NewSetting returns a rule setting with a level and options. An empty level
-// selects the rule's default; options must encode to a YAML mapping.
+// selects the rule's default. See [lintconfig.NewSetting] for the accepted
+// options values. ValidateRuleNames checks the options against the rule.
 func NewSetting(level Level, options any) (Setting, error) {
 	return lintconfig.NewSetting(level, options)
 }
@@ -30,9 +31,10 @@ func NewGroup(preset Preset, level Level, rules map[string]Setting) Group {
 }
 
 // loadOptions decodes the options of s into dst and reports whether it did.
-// Parsing already checked options against the rule's type, so a decode error
-// can only come from a setting built in Go with options of another type. Such
-// options are ignored, and the rule keeps its default options.
+// Parsing and ValidateRuleNames reject options that do not decode into the
+// rule's options type, and document analysis calls ValidateRuleNames before
+// it resolves rules. A caller that resolves rules without validating them
+// gets the rule's default options when decoding fails.
 func loadOptions(s Setting, dst any) bool {
 	loaded, err := s.LoadOptions(dst)
 	return loaded && err == nil

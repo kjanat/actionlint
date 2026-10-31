@@ -66,7 +66,19 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Load(&next, yaml.WithV3Defaults(), yaml.WithKnownFields()); err != nil {
 		return err
 	}
-	for category, group := range (*LintRulesConfig)(&next).Groups() {
+	if err := (*LintRulesConfig)(&next).validateSettings(); err != nil {
+		return err
+	}
+	*c = LintRulesConfig(next)
+	return nil
+}
+
+// validateSettings checks every explicit rule setting: a built-in rule must
+// be in its own group, have a valid level and options of its options type;
+// plugin options must decode as a mapping. Parsing calls it, and so does
+// ValidateRuleNames, because settings built with NewSetting skip parsing.
+func (c *LintRulesConfig) validateSettings() error {
+	for category, group := range c.Groups() {
 		for name, setting := range group.Rules() {
 			if category == "plugins" {
 				if _, err := setting.LoadOptions(new(map[string]any)); err != nil {
@@ -86,7 +98,6 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 			}
 		}
 	}
-	*c = LintRulesConfig(next)
 	return nil
 }
 

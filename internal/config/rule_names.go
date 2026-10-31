@@ -7,9 +7,17 @@ import (
 
 // ValidateRuleNames binds structurally decoded suppression settings to the
 // rules registered by this invocation. Additional names never change global state.
+//
+// It also checks the rule settings in config.Lint the way parsing does, so a
+// setting built with NewSetting whose options do not decode into the rule's
+// options type is an error here instead of being ignored later. Settings in
+// config.Overrides are checked when ForFile merges them for a matching file.
 func ValidateRuleNames(config *Config, additional ...string) error {
 	if config == nil {
 		return nil
+	}
+	if err := config.Lint.Rules.validateSettings(); err != nil {
+		return err
 	}
 	for _, ignore := range config.Ignores {
 		if err := ignore.Validate(additional...); err != nil {

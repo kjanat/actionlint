@@ -61,8 +61,15 @@ const (
 )
 
 // NewRuleSetting returns a rule setting with a level and options, such as
-// &RequiredActionsOptions{...}. An empty level selects the rule's default.
-// options must encode to a YAML mapping; nil means no options.
+// &RequiredActionsOptions{...}. An empty level selects the rule's default;
+// nil options mean no options.
+//
+// options must form a mapping. A json.RawMessage is parsed as a JSON object,
+// as in analyzer.Registration.Options. Any other value is encoded as YAML:
+// struct fields are named by their yaml tags, and json tags and MarshalJSON
+// are ignored. A disabled policy, such as &JobTimeoutPolicy{}, encodes as
+// false and is rejected; use level "off" to turn a rule off. Analysis checks
+// the options against the rule and fails if they do not decode.
 func NewRuleSetting(level RuleLevel, options any) (RuleSetting, error) {
 	return repoconfig.NewSetting(level, options)
 }
