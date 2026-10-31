@@ -65,7 +65,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}.Registrations(),
 	}
 	if c.ResolverCommand != "" {
-		options.Resolver = &resolution.Process{Executable: c.ResolverCommand, Arguments: c.ResolverArguments}
+		options.Resolver = resolution.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 	}
 	options.Runners, err = c.runners()
 	if err != nil {
