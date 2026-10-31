@@ -1,6 +1,7 @@
 package finding
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
@@ -61,8 +62,19 @@ func Errorf(pos *workflowlang.Pos, kind string, format string, args ...any) *Fin
 	}
 }
 
-// SourceFor selects the finding's foreign source when a source snapshot is available.
+// SourceFor selects the finding's foreign source when a source snapshot is
+// available. A selected foreign source is a copy of Source, so a caller that
+// keeps it shares nothing with the finding; otherwise it returns source.
 func (e *Finding) SourceFor(source []byte) []byte {
+	if source != nil && e.Source != nil {
+		return bytes.Clone(e.Source)
+	}
+	return source
+}
+
+// sourceFor is SourceFor without the copy. Canonical only reads the snippet
+// line from it.
+func (e *Finding) sourceFor(source []byte) []byte {
 	if source != nil && e.Source != nil {
 		return e.Source
 	}
