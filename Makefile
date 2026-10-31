@@ -215,7 +215,7 @@ plugins-check-native:
 .PHONY: plugin-examples plugins
 plugin-examples: $(PLUGIN_FIXTURES)/pipe-to-shell.wasm $(PLUGIN_FIXTURES)/source-annotations.wasm $(PLUGIN_FIXTURES)/pinned-actions.wasm $(PLUGIN_FIXTURES)/no-sudo.wasm $(PLUGIN_FIXTURES)/insecure-download.wasm $(PLUGIN_FIXTURES)/buildkite-runners.wasm $(PLUGIN_FIXTURES)/script-engine.wasm $(PLUGIN_FIXTURES)/action-input.wasm $(PLUGIN_FIXTURES)/ruff-script-engine.wasm $(PLUGIN_FIXTURES)/ruff-action-input.wasm
 
-plugins: plugin-examples $(PLUGIN_FIXTURES)/script-engine-0.3.0.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
+plugins: plugin-examples $(PLUGIN_FIXTURES)/script-engine-0.3.0.wasm $(PLUGIN_FIXTURES)/template-script-engine-0.3.0.wasm $(PLUGIN_FIXTURES)/misbehave.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-values.wasm $(PLUGIN_FIXTURES)/oversized-descriptor-bytes.wasm $(ENGINE_FIXTURES)/echo.wasm $(PLUGIN_WAT:.wat=.wasm)
 
 $(PLUGIN_FIXTURES)/pipe-to-shell.wasm: crates/actionlint-extension-api/wit/analyzer.wit $(RUST_BUILD_INPUTS) $(SDK_BUILD_INPUTS) examples/plugins/pipe-to-shell.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example pipe-to-shell
@@ -249,6 +249,10 @@ $(PLUGIN_FIXTURES)/script-engine.wasm: crates/actionlint-extension-api/wit/scrip
 $(PLUGIN_FIXTURES)/script-engine-0.3.0.wasm: $(wildcard crates/actionlint-extension-api/wit/0.3.0/*.wit) $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/script-engine-0.3.0/src/*.rs)
 	cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-plugin-script-engine-0-3-0
 	install -m 644 target/wasm32-wasip2/wasm/actionlint_plugin_script_engine_0_3_0.wasm $@
+
+$(PLUGIN_FIXTURES)/template-script-engine-0.3.0.wasm: $(wildcard crates/actionlint-extension-api/wit/0.3.0/*.wit) $(RUST_BUILD_INPUTS) $(wildcard testdata/plugins/template-script-engine-0.3.0/src/*.rs)
+	cargo build --locked --profile wasm --target wasm32-wasip2 -p actionlint-plugin-template-script-engine-0-3-0
+	install -m 644 target/wasm32-wasip2/wasm/actionlint_plugin_template_script_engine_0_3_0.wasm $@
 
 $(PLUGIN_FIXTURES)/ruff-script-engine.wasm:crates/actionlint-extension-api/wit/script-engine.wit $(RUST_BUILD_INPUTS) examples/plugins/script-engine.rs
 	cargo build --locked --profile wasm --target wasm32-wasip2 --example script-engine --features ruff-fixture --target-dir target/plugin-fixtures/ruff-script-engine

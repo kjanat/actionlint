@@ -136,7 +136,8 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 			return err
 		}
 	}
-	if roles.templateEffects {
+	if roles.templateEffects != "" {
+		p.templateInterface = roles.templateEffects
 		if err := p.loadTemplateEffects(ctx, staticMetadata); err != nil {
 			return err
 		}

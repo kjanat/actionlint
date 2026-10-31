@@ -39,7 +39,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := generateRoleContract("template-effects", "template-effects", "TemplateEffectsInterface", "templateEffectsContractDigest", "expectedTemplateEffectsContract"); err != nil {
+	if err := generateTemplateEffects(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

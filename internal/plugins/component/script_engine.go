@@ -69,7 +69,7 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 }
 
 func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte) error {
-	value, err := p.callInterface(ctx, TemplateEffectsInterface, "contract")
+	value, err := p.callInterface(ctx, p.templateInterface, "contract")
 	if err != nil {
 		return err
 	}
@@ -175,8 +175,12 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) (dia
 			field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
 	}
 	contract := p.scriptInterface
+	effects := template_effects_effect
 	if p.scriptDescriptor.TemplateContract != "" {
-		contract = TemplateEffectsInterface
+		contract = p.templateInterface
+		if current {
+			effects = template_effects_03_effect
+		}
 	}
 	value, err := p.callInterface(context.WithValue(ctx, fileSystemsKey{}, grant.files), contract, "check", input)
 	if err != nil {
@@ -216,7 +220,7 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) (dia
 				return nil, err
 			}
 			value = wrapped.Field("diagnostic")
-			tag, err := liftRunnerEnum(wrapped.Field("effect"), template_effects_effect)
+			tag, err := liftRunnerEnum(wrapped.Field("effect"), effects)
 			if err != nil {
 				return nil, err
 			}

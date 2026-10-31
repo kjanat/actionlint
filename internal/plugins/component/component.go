@@ -36,6 +36,9 @@ type Plugin struct {
 	toolIntegration    *analyzer.ToolIntegration
 	// scriptInterface is the negotiated script-engine version.
 	scriptInterface string
+	// templateInterface is the negotiated template-effects version, empty
+	// without the role. Its check replaces the script engine's.
+	templateInterface string
 
 	digest string
 	path   string

@@ -30,34 +30,44 @@ type extensionRoleSet struct {
 	// script is the exported script-engine interface, empty without the role.
 	script          string
 	toolIntegration bool
-	templateEffects bool
+	// templateEffects is the exported template-effects interface, empty
+	// without the role.
+	templateEffects string
 }
 
 // scriptEngineInterfaces are the script-engine versions this host accepts.
 var scriptEngineInterfaces = []string{ScriptEngineInterface, ScriptEngine03Interface}
 
+// templateEffectsPairs maps each template-effects version this host accepts
+// to the script-engine version it pairs with: the one whose request and
+// diagnostic its check uses.
+var templateEffectsPairs = map[string]string{
+	TemplateEffectsInterface:   ScriptEngineInterface,
+	TemplateEffects03Interface: ScriptEngine03Interface,
+}
+
 // extensionRoles negotiates the roles a component exports. A component
-// exports one script-engine version; template effects pair only with 0.2.0,
-// whose check they replace.
+// exports one script-engine version and at most one template-effects
+// version, the one of the same package, whose check replaces the engine's.
 func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	var roles extensionRoleSet
 	supported := []struct {
 		name string
 		role *bool
-	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ToolIntegrationInterface, &roles.toolIntegration}, {TemplateEffectsInterface, &roles.templateEffects}}
+	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ToolIntegrationInterface, &roles.toolIntegration}}
 	scriptPrefix, _, _ := strings.Cut(ScriptEngineInterface, "@")
+	templatePrefix, _, _ := strings.Cut(TemplateEffectsInterface, "@")
 	for _, export := range exports {
 		if strings.HasPrefix(export.Name, scriptPrefix+"@") {
-			if !slices.Contains(scriptEngineInterfaces, export.Name) {
-				return roles, fmt.Errorf("plugin exports %s; this host supports %s", export.Name, strings.Join(scriptEngineInterfaces, " and "))
+			if err := negotiateVersion(export, scriptEngineInterfaces, &roles.script, "script-engine"); err != nil {
+				return roles, err
 			}
-			if export.Kind != wacogo.SortInstance {
-				return roles, fmt.Errorf("plugin export %s must be an interface instance", export.Name)
+			continue
+		}
+		if strings.HasPrefix(export.Name, templatePrefix+"@") {
+			if err := negotiateVersion(export, []string{TemplateEffectsInterface, TemplateEffects03Interface}, &roles.templateEffects, "template-effects"); err != nil {
+				return roles, err
 			}
-			if roles.script != "" {
-				return roles, fmt.Errorf("plugin exports %s and %s; export one script-engine version", roles.script, export.Name)
-			}
-			roles.script = export.Name
 			continue
 		}
 		for _, candidate := range supported {
@@ -80,10 +90,27 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	if roles.toolIntegration && !roles.analyzer {
 		return roles, errors.New("tool integration requires analyzer interface")
 	}
-	if roles.templateEffects && roles.script != ScriptEngineInterface {
-		return roles, fmt.Errorf("template effects requires %s", ScriptEngineInterface)
+	if roles.templateEffects != "" && roles.script != templateEffectsPairs[roles.templateEffects] {
+		return roles, fmt.Errorf("%s requires %s", roles.templateEffects, templateEffectsPairs[roles.templateEffects])
 	}
 	return roles, nil
+}
+
+// negotiateVersion records export as the component's version of a
+// versioned role, stored in role. It fails for a version outside accepted,
+// a non-instance export, or a second version of the role.
+func negotiateVersion(export wacogo.ExportDesc, accepted []string, role *string, kind string) error {
+	if !slices.Contains(accepted, export.Name) {
+		return fmt.Errorf("plugin exports %s; this host supports %s", export.Name, strings.Join(accepted, " and "))
+	}
+	if export.Kind != wacogo.SortInstance {
+		return fmt.Errorf("plugin export %s must be an interface instance", export.Name)
+	}
+	if *role != "" {
+		return fmt.Errorf("plugin exports %s and %s; export one %s version", *role, export.Name, kind)
+	}
+	*role = export.Name
+	return nil
 }
 
 type importRequirements struct {

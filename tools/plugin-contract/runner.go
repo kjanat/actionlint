@@ -28,11 +28,31 @@ func generateScriptEngine() error {
 	})
 }
 
-// roleContract names one generated role contract. Source is relative to the
-// WIT directory; prefix starts the generated enum variable names and output
-// is the generated file in internal/plugins/component.
+// generateTemplateEffects generates every template-effects version the host
+// accepts. Each pairs with the script-engine version of its package, whose
+// file the world names, so that file is decoded with it.
+func generateTemplateEffects() error {
+	if err := generateContract(roleContract{
+		source: "template-effects.wit", dependency: "script-engine.wit", role: "template-effects",
+		interfaceName: "TemplateEffectsInterface", digestName: "templateEffectsContractDigest",
+		functionName: "expectedTemplateEffectsContract", prefix: "template_effects", output: "template_effects.gen.go",
+	}); err != nil {
+		return err
+	}
+	return generateContract(roleContract{
+		source: "0.3.0/template-effects.wit", dependency: "0.3.0/script-engine.wit", role: "template-effects",
+		interfaceName: "TemplateEffects03Interface", digestName: "templateEffects03ContractDigest",
+		functionName: "expectedTemplateEffects03Contract", prefix: "template_effects_03", output: "template_effects_03.gen.go",
+	})
+}
+
+// roleContract names one generated role contract. Source and dependency are
+// relative to the WIT directory; dependency, when set, is another file of the
+// same package that source's world refers to. Prefix starts the generated
+// enum variable names and output is the generated file in
+// internal/plugins/component.
 type roleContract struct {
-	source, role, interfaceName, digestName, functionName, prefix, output string
+	source, dependency, role, interfaceName, digestName, functionName, prefix, output string
 }
 
 // generateRoleContract generates the contract of a role defined in the
@@ -52,12 +72,17 @@ func generateContract(spec roleContract) error {
 	}
 	role, interfaceName, digestName, functionName := spec.role, spec.interfaceName, spec.digestName, spec.functionName
 	contractData := data
-	if spec.source == "template-effects.wit" {
-		dependency, err := os.ReadFile("../../crates/actionlint-extension-api/wit/script-engine.wit")
+	if spec.dependency != "" {
+		dependency, err := os.ReadFile("../../crates/actionlint-extension-api/wit/" + spec.dependency)
 		if err != nil {
 			return err
 		}
-		contractData = append(append([]byte{}, dependency...), []byte(strings.TrimPrefix(string(data), "package kjanat:actionlint@0.2.0;"))...)
+		// Both files declare the package; keep the dependency's declaration.
+		_, body, found := strings.Cut(string(data), ";")
+		if !found || !strings.HasPrefix(string(data), "package ") {
+			return fmt.Errorf("%s does not start with a package declaration", spec.source)
+		}
+		contractData = append(append([]byte{}, dependency...), []byte(body)...)
 	}
 	resolved, err := wit.DecodeWIT(bytes.NewReader(contractData))
 	if err != nil {

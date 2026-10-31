@@ -86,7 +86,10 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	}{
 		{"unsupported version", instance("kjanat:actionlint/script-engine@0.4.0"), "this host supports " + ScriptEngineInterface + " and " + ScriptEngine03Interface},
 		{"two versions", instance(ScriptEngineInterface, ScriptEngine03Interface), "export one script-engine version"},
-		{"template effects with 0.3.0", instance(ScriptEngine03Interface, TemplateEffectsInterface), "template effects requires " + ScriptEngineInterface},
+		{"template effects 0.2.0 with script-engine 0.3.0", instance(ScriptEngine03Interface, TemplateEffectsInterface), TemplateEffectsInterface + " requires " + ScriptEngineInterface},
+		{"template effects 0.3.0 with script-engine 0.2.0", instance(ScriptEngineInterface, TemplateEffects03Interface), TemplateEffects03Interface + " requires " + ScriptEngine03Interface},
+		{"two template-effects versions", instance(ScriptEngine03Interface, TemplateEffectsInterface, TemplateEffects03Interface), "export one template-effects version"},
+		{"unsupported template-effects version", instance(ScriptEngine03Interface, "kjanat:actionlint/template-effects@0.4.0"), "this host supports " + TemplateEffectsInterface + " and " + TemplateEffects03Interface},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := extensionRoles(tc.exports); err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -96,8 +99,15 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	}
 	for _, version := range []string{ScriptEngineInterface, ScriptEngine03Interface} {
 		roles, err := extensionRoles(instance(version))
-		if err != nil || roles.script != version {
+		if err != nil || roles.script != version || roles.templateEffects != "" {
 			t.Fatalf("%s: roles=%+v err=%v", version, roles, err)
+		}
+	}
+	// Each template-effects version pairs with the script engine of its package.
+	for script, template := range map[string]string{ScriptEngineInterface: TemplateEffectsInterface, ScriptEngine03Interface: TemplateEffects03Interface} {
+		roles, err := extensionRoles(instance(script, template))
+		if err != nil || roles.script != script || roles.templateEffects != template {
+			t.Fatalf("%s with %s: roles=%+v err=%v", script, template, roles, err)
 		}
 	}
 	// A 0.3.0 component relabeled as 0.2.0 fails the structural check
@@ -278,5 +288,66 @@ func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+const templateFixture03 = "testdata/plugins/template-script-engine-0.3.0.wasm"
+
+func TestTemplateEffects03ContractCurrent(t *testing.T) {
+	data, err := os.ReadFile("../../../crates/actionlint-extension-api/wit/0.3.0/template-effects.wit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")))) != templateEffects03ContractDigest {
+		t.Fatal("stale template-effects 0.3.0 contract; regenerate")
+	}
+}
+
+// A template-aware 0.3.0 engine keeps the 0.3.0 capabilities: its
+// template-effects check carries excluded codes and the directory grant, and
+// its findings carry fixes and reported sources besides their effects.
+func TestTemplateEffects03Check(t *testing.T) {
+	p, err := Load(t.Context(), templateFixture03, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := p.Close(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	if p.scriptInterface != ScriptEngine03Interface || p.templateInterface != TemplateEffects03Interface {
+		t.Fatalf("negotiated %q and %q", p.scriptInterface, p.templateInterface)
+	}
+	d := p.ScriptDescriptor()
+	if d.TemplateContract != analyzer.TemplateEffectsContract || !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []analyzer.ToolResourceKind{analyzer.ToolDirectory}) {
+		t.Fatalf("descriptor = %+v", d)
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "lib.sh"), []byte("echo lib\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	request := analyzer.ScriptRequest{Source: "x\n", Filename: "actionlint.sh", Config: []byte(`{"read":"lib.sh"}`), Directory: root, DirectoryFS: directoryGrant(t, root)}
+	diagnostics, err := p.Check(t.Context(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []analyzer.ScriptDiagnostic{
+		{
+			Filename: "actionlint.sh", Code: "TPL001", Message: "first character", Severity: "style", TemplateEffect: analyzer.TemplateEffectLineLength,
+			Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 2},
+			Fixes: []analyzer.ScriptFix{{Description: "replace it", Replacements: []analyzer.ScriptReplacement{{Row: 1, Column: 1, EndRow: 1, EndColumn: 2, Text: "y"}}}},
+		},
+		{
+			Filename: "lib.sh", Code: "READ001", Message: "echo lib", Severity: "info", Source: "lib.sh", TemplateEffect: analyzer.TemplateEffectNone,
+			Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 9},
+		},
+	}
+	if diff := cmp.Diff(want, diagnostics); diff != "" {
+		t.Fatalf("diagnostics (-want +got):\n%s", diff)
+	}
+	request.Excluded, request.Config = []string{"TPL001"}, nil
+	if diagnostics, err := p.Check(t.Context(), request); err != nil || len(diagnostics) != 0 {
+		t.Fatalf("excluded: %+v %v", diagnostics, err)
 	}
 }

@@ -609,15 +609,19 @@ The host accepts two versions of the interface. A component exports exactly one 
 exported version's complete type graph before running guest code and rejects any other version.
 
 - `kjanat:actionlint/script-engine@0.2.0` ([`script-engine.wit`](../crates/actionlint-extension-api/wit/script-engine.wit))
-  returns diagnostics without fix edits and reads no files. It is the only version the optional
-  [`template-effects`](../crates/actionlint-extension-api/wit/template-effects.wit) export pairs with.
+  returns diagnostics without fix edits and reads no files. The optional
+  [`template-effects@0.2.0`](../crates/actionlint-extension-api/wit/template-effects.wit) export pairs with it.
 - `kjanat:actionlint/script-engine@0.3.0` ([`0.3.0/script-engine.wit`](../crates/actionlint-extension-api/wit/0.3.0/script-engine.wit))
   is the same contract as the process route's: what a manifest says about a native tool, the engine says in its
   descriptor. The descriptor's `capabilities` record declares `fixes`, `reported-sources` and the `resources` the
   engine needs for each check. The request adds `excluded`, the diagnostic codes the host's preparation profile
   excludes (strings such as `SC1091`), and `directory`. Each diagnostic adds `fixes`, edits in snippet coordinates,
   and `source`, a file the engine read besides the snippet. The diagnostic severity is the engine's own string,
-  such as `style`; the host maps it as it maps a process tool's severity.
+  such as `style`; the host maps it as it maps a process tool's severity. A template-aware engine pairs it with
+  [`template-effects@0.3.0`](../crates/actionlint-extension-api/wit/0.3.0/template-effects.wit), whose check
+  takes the 0.3.0 request and wraps 0.3.0 diagnostics, so effects, fixes, reported sources and the directory
+  grant combine. A finding in a reported source has the effect `none`. The host rejects a template-effects export
+  of the other version.
 
 Resource negotiation: the only resource kind is `directory`, the script's working directory. When the engine
 requests it and the working directory is known, the host opens that directory through the workspace root and
