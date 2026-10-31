@@ -1,5 +1,7 @@
-// Package artifact resolves and inspects WebAssembly artifacts without
-// compiling or executing them.
+// Package artifact resolves and inspects WebAssembly modules and tool
+// provider packages without compiling or executing them, and keeps the
+// content-addressed Store they are cached in. Its oci subpackage pulls
+// oci:// sources and is the only package that imports oras-go.
 package artifact
 
 import (
@@ -17,16 +19,22 @@ const (
 	maxMetadataBytes = 1 << 20
 )
 
+// Kind is the format of an artifact. Sniff detects the WebAssembly kinds
+// from the bytes; the media type of an OCI layer selects ProviderManifest.
+// A provider's executables are blobs its manifest names, not artifacts.
 type Kind string
 
 const (
 	Core      Kind = "core"
 	Component Kind = "component"
+	// ProviderManifest is a tool provider manifest, JSON.
+	ProviderManifest Kind = "manifest"
 )
 
 // Info describes the distributed artifact and its top-level custom metadata.
-// SHA256 covers the downloaded bytes, before optional gzip decompression.
-// Metadata is untrusted declarative data, not evidence of ABI compatibility.
+// SHA256 covers the downloaded bytes, before optional gzip decompression;
+// for an oci:// source it is the digest the source pins. Metadata is
+// untrusted declarative data, not evidence of ABI compatibility.
 type Info struct {
 	Source     string          `json:"source"`
 	Kind       Kind            `json:"kind"`
@@ -34,6 +42,15 @@ type Info struct {
 	Size       int             `json:"size"`
 	ModuleSize int             `json:"module_size"`
 	Metadata   json.RawMessage `json:"metadata,omitempty"`
+	// Platform is the platform key an oci:// source was pulled for:
+	// "<os>/<arch>", or AnyPlatform for a lone image manifest.
+	Platform string `json:"platform,omitempty"`
+	// Manifest is the SHA256 hex of the image manifest an oci:// source
+	// was pulled from.
+	Manifest string `json:"manifest,omitempty"`
+	// Blobs are the SHA256 hex digests of every layer of that image
+	// manifest; the Store holds each of them.
+	Blobs []string `json:"blobs,omitempty"`
 }
 
 // Artifact owns one resolved snapshot, shared by inspection and execution.
@@ -44,6 +61,7 @@ type Artifact struct {
 
 // Sniff reads only the module envelope and top-level custom sections. Nested
 // modules in components cannot supply metadata for their enclosing component.
+// It detects only the WebAssembly kinds, Core and Component.
 func Sniff(data []byte) (Kind, json.RawMessage, error) {
 	if len(data) < 8 || !bytes.Equal(data[:4], []byte{0, 'a', 's', 'm'}) {
 		return "", nil, errors.New("not a WebAssembly binary")

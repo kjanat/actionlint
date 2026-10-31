@@ -139,6 +139,12 @@ deny  = [
   { pkg = "github.com/kjanat/wacogo", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },
 ]
 
+[linters.settings.depguard.rules.oci-transport]
+files = ["$all", "!**/internal/plugins/artifact/oci/**"]
+deny  = [
+  { pkg = "github.com/oras-project/oras-go", desc = "oci:// sources are pulled only by internal/plugins/artifact/oci; everything else reads the artifact Store" },
+]
+
 [linters.settings.depguard.rules.preparation-profiles]
 files = ["**/internal/tools/profile/**", "!$test"]
 deny  = [

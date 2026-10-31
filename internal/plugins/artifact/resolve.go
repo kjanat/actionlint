@@ -28,6 +28,9 @@ type Options struct {
 	Timeout time.Duration
 	// MaxBytes bounds both distributed and decompressed bytes; defaults to 128 MiB.
 	MaxBytes int64
+	// PullOCI pulls oci:// sources; the oci subpackage's Pull is the
+	// implementation. Nil refuses oci:// sources.
+	PullOCI PullOCI
 }
 
 // NormalizeSource roots filesystem paths in directory while preserving URI
@@ -35,6 +38,13 @@ type Options struct {
 // otherwise it identifies the local file consumed by the artifact resolver.
 // It validates the location without reading files or making network requests.
 func NormalizeSource(source, directory string) (reference, local string, err error) {
+	if IsOCI(source) {
+		ref, err := ParseOCI(source)
+		if err != nil {
+			return "", "", err
+		}
+		return ref.String(), "", nil
+	}
 	u, local, _, err := parseSource(source)
 	if err != nil {
 		return "", "", err
@@ -53,6 +63,10 @@ func NormalizeSource(source, directory string) (reference, local string, err err
 // RequireRemotePin checks execution inputs without fetching their bytes.
 // Inspection may acquire unpinned URLs to discover their digest; execution may not.
 func RequireRemotePin(source string) error {
+	if IsOCI(source) {
+		_, err := ParseOCI(source)
+		return err
+	}
 	u, local, pin, err := parseSource(source)
 	if err != nil {
 		return err
@@ -63,17 +77,45 @@ func RequireRemotePin(source string) error {
 	return nil
 }
 
-// Resolve accepts paths, absolute file URIs and HTTP(S) URLs. A URI fragment of
-// #sha256=<hex> pins the distributed bytes. Unpinned URLs are always fetched.
+// The bounds an Options value without Timeout or MaxBytes gets.
+const (
+	DefaultTimeout  = 30 * time.Second
+	DefaultMaxBytes = 128 << 20
+)
+
+// withDefaults returns options with the default Timeout and MaxBytes set.
+func (o Options) withDefaults() Options {
+	if o.Timeout <= 0 {
+		o.Timeout = DefaultTimeout
+	}
+	if o.MaxBytes <= 0 {
+		o.MaxBytes = DefaultMaxBytes
+	}
+	return o
+}
+
+// Resolve accepts paths, absolute file URIs, HTTP(S) URLs and oci:// digest
+// references, which Options.PullOCI pulls. A URI fragment of #sha256=<hex>
+// pins the distributed bytes. Unpinned URLs are always fetched.
+// Options.Timeout bounds the whole pull.
 func Resolve(ctx context.Context, source string, options Options) (*Artifact, error) {
-	if options.Timeout <= 0 {
-		options.Timeout = 30 * time.Second
-	}
-	if options.MaxBytes <= 0 {
-		options.MaxBytes = 128 << 20
-	}
+	options = options.withDefaults()
 	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
 	defer cancel()
+	if IsOCI(source) {
+		ref, err := ParseOCI(source)
+		if err != nil {
+			return nil, err
+		}
+		if options.PullOCI == nil {
+			return nil, fmt.Errorf("plugin artifact %s: this caller cannot pull oci:// sources", ref)
+		}
+		artifact, err := options.PullOCI(ctx, ref, options)
+		if err != nil {
+			return nil, fmt.Errorf("plugin artifact %s: %w", ref, err)
+		}
+		return artifact, nil
+	}
 	u, local, pin, err := parseSource(source)
 	if err != nil {
 		return nil, err
@@ -179,7 +221,7 @@ func parseSource(source string) (*url.URL, string, string, error) {
 		}
 		return u, path, pin, nil
 	default:
-		return nil, "", "", errors.New("plugin URI scheme must be file, http or https")
+		return nil, "", "", errors.New("plugin URI scheme must be file, http, https or oci")
 	}
 }
 
@@ -192,7 +234,7 @@ func Import(ctx context.Context, input io.Reader, digest string, options Options
 	}
 	limit := options.MaxBytes
 	if limit <= 0 {
-		limit = 128 << 20
+		limit = DefaultMaxBytes
 	}
 	data, err := readBounded(input, limit)
 	if err != nil {
