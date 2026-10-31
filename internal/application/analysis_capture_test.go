@@ -214,7 +214,7 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	directory := t.TempDir()
 	badPath, goodPath := filepath.Join(directory, "bad.yml"), filepath.Join(directory, "good.yml")
 	content := []byte(commandGoodWorkflow)
-	fixture := capturefixture.NewCapturedSources(t, directory)
+	store, fixture := capturefixture.NewCapturedSources(t, directory)
 	bad, err := fixture.Capture(badPath, content, source.YAML)
 	if err != nil {
 		t.Fatal(err)
@@ -232,19 +232,19 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 		{captured: bad, errors: []*findingmodel.Finding{finding(bad, "old accepted entry")}, outline: documentmodel.NewWorkflow(documentmodel.WorkflowFields{Path: badPath})},
 		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: documentmodel.NewWorkflow(documentmodel.WorkflowFields{Path: goodPath})},
 	}}
-	_, err = fixture.Store.Read(t.Context(), badPath, source.RawLF)
+	_, err = store.Read(t.Context(), badPath, source.RawLF)
 	conflict, conflicted := errors.AsType[capture.ConflictError](err)
 	if !conflicted {
 		t.Fatalf("model disagreement accepted: %v", err)
 	}
-	if err := fixture.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := fixture.Store.Sources()
+	rows, err := store.Sources()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := result.revalidateCaptures(fixture.Store, rows, directory, nil); !errors.Is(err, conflict) {
+	if err := result.revalidateCaptures(store, rows, directory, nil); !errors.Is(err, conflict) {
 		t.Fatalf("publication lost source conflict: %v", err)
 	}
 	if result.files[0].outline != nil || len(result.files[0].errors) != 0 {

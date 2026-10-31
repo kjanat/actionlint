@@ -50,7 +50,7 @@ func newCapturedWorkflowCache(t testing.TB, root, cwd string, debug io.Writer) *
 	}
 	snapshots := newCapturedSnapshots(t, cwd)
 	cache := calls.NewCache(root, cwd, debug)
-	cache.SetSources(t.Context(), snapshots.Sources.Store, cwd)
+	cache.SetSources(t.Context(), snapshots.Store, cwd)
 	return &capturedWorkflowCache{Cache: cache, snapshots: snapshots}
 }
 
@@ -70,7 +70,7 @@ func checkWithCaches(t testing.TB, ctx context.Context, request analysisRequest,
 	if workflows != nil {
 		declarations, workflowCache = workflows.snapshots, workflows.Cache
 	}
-	session.captures, session.snapshots = declarations.Sources.Store, declarations.SourceSnapshots
+	session.captures, session.snapshots = declarations.Store, declarations.SourceSnapshots
 	address := source.InputPath
 	if address == "" {
 		address = source.Path

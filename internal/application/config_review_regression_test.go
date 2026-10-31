@@ -116,22 +116,22 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	if err != nil {
 		return nil, err
 	}
-	entry, state, err := cache.snapshots.Sources.Store.Lookup(cache.snapshots.Sources.Path(workflow.Path))
+	entry, state, err := cache.snapshots.Store.Lookup(cache.snapshots.Sources.Path(workflow.Path))
 	if err != nil {
 		return nil, err
 	}
 	if state != capture.Captured {
 		t.Fatalf("workflow fixture was not captured: %s", state)
 	}
-	if err := cache.snapshots.Sources.Store.Close(t.Context()); err != nil {
+	if err := cache.snapshots.Store.Close(t.Context()); err != nil {
 		return nil, err
 	}
-	rows, err := cache.snapshots.Sources.Store.Sources()
+	rows, err := cache.snapshots.Store.Sources()
 	if err != nil {
 		return nil, err
 	}
 	result := &analysisResult{files: []analyzedFile{{captured: entry, source: workflow, errors: findings}}}
-	if err := result.revalidateCaptures(cache.snapshots.Sources.Store, rows, root, nil); err != nil {
+	if err := result.revalidateCaptures(cache.snapshots.Store, rows, root, nil); err != nil {
 		return result, err
 	}
 	result.collectDiagnostics()

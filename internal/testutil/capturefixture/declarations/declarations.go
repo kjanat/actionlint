@@ -7,6 +7,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/source"
 )
@@ -14,18 +15,19 @@ import (
 // CapturedSnapshots builds document declarations backed by captured fixture sources.
 type CapturedSnapshots struct {
 	*documentparse.SourceSnapshots
+	Store   *capture.Store
 	Sources *capturefixture.CapturedSources
 }
 
 // NewCapturedSnapshots creates a declaration registry for fixture sources.
 func NewCapturedSnapshots(t testing.TB, base string) *CapturedSnapshots {
 	t.Helper()
-	sources := capturefixture.NewCapturedSources(t, base)
-	registry, err := documentparse.NewSourceSnapshots(sources.Store)
+	store, sources := capturefixture.NewCapturedSources(t, base)
+	registry, err := documentparse.NewSourceSnapshots(store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &CapturedSnapshots{registry, sources}
+	return &CapturedSnapshots{registry, store, sources}
 }
 
 // Document captures and registers a document fixture.
@@ -61,7 +63,7 @@ func (s *CapturedSnapshots) LookupDocument(path string) (documentparse.SourceSna
 	if snapshot, exists := s.SourceSnapshots.LookupDocument(path); exists {
 		return snapshot, true
 	}
-	captured, _, err := s.Sources.Store.Lookup(s.Sources.Path(path))
+	captured, _, err := s.Store.Lookup(s.Sources.Path(path))
 	if err != nil || !captured.Valid() {
 		return documentparse.SourceSnapshot{}, false
 	}

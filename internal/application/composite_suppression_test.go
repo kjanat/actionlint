@@ -43,7 +43,7 @@ jobs:
 	process := analyzerhost.NewProcessPool(t.Context(), 1)
 	session := &analysisSession{ctx: t.Context(), workingDir: root, reader: fsread.New(t.Context(), nil, nil), gitModes: &gitModes{}}
 	declarations := newCapturedSnapshots(t, root)
-	session.captures, session.snapshots = declarations.Sources.Store, declarations.SourceSnapshots
+	session.captures, session.snapshots = declarations.Store, declarations.SourceSnapshots
 	actions.Configure(actionlocal.Options{Captures: session.captures, Context: t.Context(), WorkingDir: root, Reader: session.reader})
 	workflows.SetSources(t.Context(), session.captures, root)
 	for _, workflow := range []string{used, unused, used} {

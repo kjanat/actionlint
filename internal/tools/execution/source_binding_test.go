@@ -313,7 +313,7 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 	if err := os.Symlink(other, alias); err != nil {
 		t.Fatal(err)
 	}
-	if err := registry.Sources.Store.Close(t.Context()); err != nil {
+	if err := registry.Store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if deployment, err := NewDeployment(registry.SourceSnapshots, snapshot, alias, alias, false); err != nil || deployment.reference != snapshot.Reference() || deployment.Address() != alias {

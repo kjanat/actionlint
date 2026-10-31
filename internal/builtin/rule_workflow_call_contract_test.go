@@ -120,7 +120,7 @@ func TestRuleWorkflowCallWriteEventNodeToMetadataCache(t *testing.T) {
 		t.Fatal("captured workflow unavailable")
 	}
 	c := calls.NewCache(cwd, cwd, nil)
-	c.SetSources(t.Context(), declarations.Sources.Store, cwd)
+	c.SetSources(t.Context(), declarations.Store, cwd)
 	r := builtin.NewRuleWorkflowCall(snapshot, c)
 
 	if err := r.VisitWorkflowPre(w); err != nil {

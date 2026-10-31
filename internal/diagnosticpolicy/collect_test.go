@@ -52,12 +52,12 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 		}
 		t.Fatal(err)
 	}
-	fixture := capturefixture.NewCapturedSources(t, root)
+	store, fixture := capturefixture.NewCapturedSources(t, root)
 	captured, err := fixture.Capture(alias, content, source.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := fixture.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(alias); err != nil {

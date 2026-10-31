@@ -23,7 +23,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				t.Fatal(err)
 			}
 			alias := filepath.Dir(path) + string(filepath.Separator) + "." + string(filepath.Separator) + filepath.Base(path)
-			aliased, err := fixtures.sources.Store.Read(t.Context(), alias, source.YAML)
+			aliased, err := fixtures.store.Read(t.Context(), alias, source.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -106,10 +106,10 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if previous.Kind() != KindUnknown || string(previous.Content()) != string(content) {
 				t.Fatal("quarantine changed bytes or exposed a semantic kind")
 			}
-			if err := fixtures.sources.Store.Close(t.Context()); err != nil {
+			if err := fixtures.store.Close(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			rows, err := fixtures.sources.Store.Sources()
+			rows, err := fixtures.store.Sources()
 			if err != nil || len(rows) != 1 || rows[0].State != capture.Conflicted || rows[0].Revision.Valid() || rows[0].Code != "source-revision-conflict" || len(rows[0].Aliases) != 2 {
 				t.Fatalf("published conflicted declaration: rows=%+v error=%v", rows, err)
 			}

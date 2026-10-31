@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
+	"actionlint.kjanat.dev/v2/internal/source/capture"
 	testutil "actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	"actionlint.kjanat.dev/v2/source"
@@ -52,17 +53,18 @@ func sourceFixtureBase(t testing.TB) string {
 
 type capturedSnapshots struct {
 	*SourceSnapshots
+	store   *capture.Store
 	sources *testutil.CapturedSources
 }
 
 func newCapturedSnapshots(t testing.TB, base string) *capturedSnapshots {
 	t.Helper()
-	sources := testutil.NewCapturedSources(t, base)
-	registry, err := NewSourceSnapshots(sources.Store)
+	store, sources := testutil.NewCapturedSources(t, base)
+	registry, err := NewSourceSnapshots(store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &capturedSnapshots{registry, sources}
+	return &capturedSnapshots{registry, store, sources}
 }
 
 func (s *capturedSnapshots) Document(path string, content []byte, document Document) (SourceSnapshot, error) {
@@ -92,7 +94,7 @@ func (s *capturedSnapshots) Action(path string, metadata *actionmeta.Metadata) (
 }
 
 func (s *capturedSnapshots) LookupDocument(path string) (SourceSnapshot, bool) {
-	captured, _, err := s.sources.Store.Lookup(s.sources.Path(path))
+	captured, _, err := s.store.Lookup(s.sources.Path(path))
 	if err != nil || !captured.Valid() {
 		return SourceSnapshot{}, false
 	}

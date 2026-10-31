@@ -17,7 +17,7 @@ import (
 
 func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	root := t.TempDir()
-	fixture := capturefixture.NewCapturedSources(t, root)
+	store, fixture := capturefixture.NewCapturedSources(t, root)
 	path := filepath.Join(root, "ci.yml")
 	entry, err := fixture.Capture(path, []byte("a\r\n"), source.YAML)
 	if err != nil {
@@ -31,25 +31,25 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.Store.Read(t.Context(), filepath.Join(root, "conflict.yml"), source.RawLF); err == nil {
+	if _, err := store.Read(t.Context(), filepath.Join(root, "conflict.yml"), source.RawLF); err == nil {
 		t.Fatal("missing conflict")
 	}
 	failedPath := filepath.Join(root, "missing.yml")
-	failedDocument, err := fixture.Store.Canonical(t.Context(), failedPath)
+	failedDocument, err := store.Canonical(t.Context(), failedPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.Store.Read(t.Context(), failedPath, source.YAML); err == nil {
+	if _, err := store.Read(t.Context(), failedPath, source.YAML); err == nil {
 		t.Fatal("missing failed capture")
 	}
 	second, err := fixture.Capture("second.yml", []byte("a"), source.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := fixture.Store.Close(t.Context()); err != nil {
+	if err := store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := fixture.Store.Sources()
+	rows, err := store.Sources()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,15 +92,15 @@ func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
 	bad[12].Revision = second.Revision()
 	primary := &findingmodel.Finding{Path: "ci.yml", Message: "primary", Related: append(append([]diagnostic.Related{good, eof}, bad...), diagnostic.Related{Path: "ci.yml"})}
 	result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: path}, errors: []*findingmodel.Finding{primary}}}}
-	err = result.revalidateCaptures(fixture.Store, rows, root, nil)
+	err = result.revalidateCaptures(store, rows, root, nil)
 	rejected, ok := errors.AsType[*related.RejectedError](err)
 	if !ok || rejected.Count() != len(bad)+1 || len(result.files[0].errors) != 1 || result.files[0].errors[0] != primary || len(primary.Related) != 2 || primary.Related[0] != good || primary.Related[1] != eof {
 		t.Fatalf("related admission: primary=%+v error=%v", primary, err)
 	}
-	if _, ok := fixture.Store.Revision(wrongDigest); ok {
+	if _, ok := store.Revision(wrongDigest); ok {
 		t.Fatal("stale revision snapshot admitted")
 	}
-	if _, ok := fixture.Store.Revision(conflicted.Revision()); ok {
+	if _, ok := store.Revision(conflicted.Revision()); ok {
 		t.Fatal("conflicted snapshot admitted")
 	}
 }

@@ -66,7 +66,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 	finding := &findingmodel.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
 	document := snapshot.Reference().Document
 	before := metadataFindingKey(metadata, document, finding)
-	if err := registry.Sources.Store.Close(t.Context()); err != nil {
+	if err := registry.Store.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(alias); err != nil {

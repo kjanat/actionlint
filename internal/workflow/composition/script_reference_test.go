@@ -70,7 +70,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache.Configure(actionlocal.Options{Captures: snapshots.Sources.Store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
+	cache.Configure(actionlocal.Options{Captures: snapshots.Store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
 	resolver := actionlocal.NewResolver(cache, map[string]string{"./generated": "./source"})
 	options := Options{Context: t.Context(), SourceSnapshots: snapshots.SourceSnapshots, Actions: resolver, CollectScripts: true}
 	result, err := Workflow(options, snapshot)

@@ -118,16 +118,16 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 
 func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	root := t.TempDir()
-	fixture := capturefixture.NewCapturedSources(t, root)
+	store, _ := capturefixture.NewCapturedSources(t, root)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	session := analysisSession{ctx: ctx, captures: fixture.Store, workingDir: root}
+	session := analysisSession{ctx: ctx, captures: store, workingDir: root}
 	path := filepath.Join("broken", "action.yml")
 	rejected, err := session.admitSourceDocuments(composition.Result{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]workflowfacts.SourceIndex{})
 	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "no admitted parse provenance") {
 		t.Fatalf("canonical resolution failure was hidden: rejected=%v error=%v", rejected, err)
 	}
-	if _, state, err := fixture.Store.Lookup(filepath.Join(root, path)); err != nil || state != capture.Absent {
+	if _, state, err := store.Lookup(filepath.Join(root, path)); err != nil || state != capture.Absent {
 		t.Fatalf("cancelled rejection resolution acquired a source: state=%s error=%v", state, err)
 	}
 }
@@ -137,7 +137,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 		t.Run(map[bool]string{false: "Verify mismatch", true: "missing parse provenance"}[missing], func(t *testing.T) {
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
-			fixture := capturefixture.NewCapturedSources(t, root)
+			store, fixture := capturefixture.NewCapturedSources(t, root)
 			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), source.YAML)
 			if err != nil {
 				t.Fatal(err)
@@ -147,7 +147,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal(err)
 			}
 			cache := actionlocal.NewCache(t.Context(), root, nil)
-			cache.Configure(actionlocal.Options{Captures: fixture.Store, Context: t.Context(), WorkingDir: root})
+			cache.Configure(actionlocal.Options{Captures: store, Context: t.Context(), WorkingDir: root})
 			lookup, _ := cache.LookupMetadata("./broken")
 			document, exists := cache.SourceDocument(lookup)
 			if !exists {
@@ -165,17 +165,17 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				composed.Sources[displayPath] = metadata.Bytes()
 				delete(composed.SourceDocuments, displayPath)
 			}
-			registry, err := documentparse.NewSourceSnapshots(fixture.Store)
+			registry, err := documentparse.NewSourceSnapshots(store)
 			if err != nil {
 				t.Fatal(err)
 			}
-			session := analysisSession{ctx: t.Context(), captures: fixture.Store, snapshots: registry, workingDir: root}
+			session := analysisSession{ctx: t.Context(), captures: store, snapshots: registry, workingDir: root}
 			references := map[string]workflowfacts.SourceIndex{}
 			rejected, sourceErr := session.admitSourceDocuments(composed, references)
 			if sourceErr == nil || !rejected[displayPath] || !rejected[metadata.Revision().Document()] || len(references) != 0 {
 				t.Fatalf("bad source retained canonical admission: rejected=%v references=%v error=%v", rejected, references, sourceErr)
 			}
-			if err := fixture.Store.VerifyHandle(metadata); err != nil {
+			if err := store.VerifyHandle(metadata); err != nil {
 				t.Fatalf("consumer failure quarantined the shared healthy capture: %v", err)
 			}
 			if !missing {
@@ -184,15 +184,15 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				}
 			}
 			accepted, admissionErr := session.admitReportedSources([]*findingmodel.Finding{parse, retained}, "ci.yml", entryPath, composed, rejected)
-			if err := fixture.Store.Close(t.Context()); err != nil {
+			if err := store.Close(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			rows, err := fixture.Store.Sources()
+			rows, err := store.Sources()
 			if err != nil {
 				t.Fatal(err)
 			}
 			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
-			err = result.revalidateCaptures(fixture.Store, rows, root, errors.Join(sourceErr, admissionErr))
+			err = result.revalidateCaptures(store, rows, root, errors.Join(sourceErr, admissionErr))
 			result.collectDiagnostics()
 			rejection, ok := errors.AsType[*admissionRejectedError](err)
 			if !ok || rejection.Count() != 1 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != retained.Message {

@@ -21,7 +21,7 @@ func newCapturedWorkflowCacheAndSnapshots(t testing.TB, root, cwd string, debug 
 	t.Helper()
 	cache := calls.NewCache(root, cwd, debug)
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-	cache.SetSources(t.Context(), snapshots.Sources.Store, sourceFixtureBase(t))
+	cache.SetSources(t.Context(), snapshots.Store, sourceFixtureBase(t))
 	return cache, snapshots
 }
 
