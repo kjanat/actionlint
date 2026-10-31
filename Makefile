@@ -104,8 +104,16 @@ lint-build:
 test-analyzers:
 	go test -C analyzers -count=1 ./...
 
-lint-architecture: lint-build
+lint-architecture: lint-build layers-check
 	./.bin/actionlintarch$(EXE) ./...
+
+# The layer table in tools/layers/layers.toml generates the depguard rules in .golangci.toml.
+.PHONY: layers layers-check
+layers:
+	go run ./tools/layers
+
+layers-check:
+	go run ./tools/layers -check
 
 # Both runners execute before the target fails.
 lint: lint-build
