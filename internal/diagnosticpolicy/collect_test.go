@@ -141,3 +141,26 @@ func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 		t.Fatalf("distinct analyzer metadata was lost: %+v", diagnostics)
 	}
 }
+
+// Findings that point into the same foreign file share one copy of it in the
+// reported sources, and that copy is not the findings' own Source.
+func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
+	script := []byte("echo $A\necho $B\n")
+	findings := []*findingmodel.Finding{
+		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: diagmodel.Position{Line: 1, Column: 6}, Source: script},
+		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: diagmodel.Position{Line: 2, Column: 6}, Source: script},
+	}
+	_, sources := Collect([]File{{Content: []byte("workflow"), Findings: findings}})
+	if len(sources) != 2 {
+		t.Fatalf("sources = %d, want 2", len(sources))
+	}
+	if &sources[0].Content[0] != &sources[1].Content[0] {
+		t.Error("findings in the same file got separate copies")
+	}
+	if &sources[0].Content[0] == &script[0] {
+		t.Error("reported source shares storage with the finding")
+	}
+	if string(sources[0].Content) != string(script) {
+		t.Errorf("content = %q, want %q", sources[0].Content, script)
+	}
+}

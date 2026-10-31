@@ -1,6 +1,7 @@
 package diagnosticpolicy
 
 import (
+	"bytes"
 	"reflect"
 	"slices"
 
@@ -48,6 +49,7 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 			}
 		}
 	}
+	copies := sourceCopies{}
 	for i := range files {
 		file := &files[i]
 		project := file.Project
@@ -61,7 +63,10 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 			if finding.Source != nil {
 				identityPath = diagnostic.Path
 			}
-			content := finding.SourceFor(file.Content)
+			content := file.Content
+			if finding.Foreign(file.Content) {
+				content = copies.of(finding.Source)
+			}
 			CompleteDiagnostic(&diagnostic, content, identityPath, finding.UnavailableSource.Present())
 			if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
 				key := metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
@@ -88,4 +93,30 @@ func Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report
 		file.Findings = unique
 	}
 	return diagnostics, sources
+}
+
+// sourceCopies copies each foreign source once per Collect call. Findings in
+// the same action.yml or sourced script share one Source array, so their
+// diagnostics share one copy instead of each holding the whole file.
+type sourceCopies map[sourceKey][]byte
+
+// sourceKey identifies a Source slice by its first byte and length.
+type sourceKey struct {
+	first *byte
+	size  int
+}
+
+// of returns the copy of src, making it on first use. The copy shares no
+// storage with any finding.
+func (c sourceCopies) of(src []byte) []byte {
+	if len(src) == 0 {
+		return []byte{}
+	}
+	key := sourceKey{&src[0], len(src)}
+	if copied, ok := c[key]; ok {
+		return copied
+	}
+	copied := bytes.Clone(src)
+	c[key] = copied
+	return copied
 }
