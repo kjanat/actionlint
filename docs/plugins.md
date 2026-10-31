@@ -620,13 +620,17 @@ exported version's complete type graph before running guest code and rejects any
   such as `style`; the host maps it as it maps a process tool's severity.
 
 Resource negotiation: the only resource kind is `directory`, the script's working directory. When the engine
-requests it and the working directory is known, the host mounts that directory read-only at the guest path
-`/directory` for that one call and sets the request's `directory` to it. Otherwise `directory` is none and the
-engine sees no files. A `source` is a relative slash-separated path below the request directory, without `..`,
-backslashes or colons, and the host accepts it only when the engine declares `reported-sources` and the directory
-was granted for that check. A finding in a source has that file's positions and no fixes. The host rejects
-diagnostics that carry fixes or sources the engine did not declare. Files the engine reads without reporting a
-finding in them are not recorded for watch mode.
+requests it and the working directory is known, the host opens that directory through the workspace root and
+mounts it read-only at the guest path `/directory` for that one call, and sets the request's `directory` to it.
+Like managed grants, the grant stays within the host-selected workspace: a working directory outside it, or a
+symlink that leaves it, fails the check; a missing directory receives no grant. Without a grant `directory` is
+none and the engine sees no files. A `source` is a relative slash-separated path below the request directory,
+without `..`, backslashes or colons, and the host accepts it only when the engine declares `reported-sources` and
+the directory was granted for that check. A finding in a source has that file's positions and no fixes, and the
+host shows the file as read through the same grant, so it never displays a file the engine could not read. The
+host rejects diagnostics that carry fixes or sources the engine did not declare. Every file the engine reads
+through the grant is recorded for watch mode. Guest reads come from disk, as a native tool's do; read overlays
+of the caller apply to workflow files, not to files an engine reads.
 
 [actionlint-plugin-ruff](https://github.com/kjanat/actionlint-plugin-ruff) supplies a component and a legacy core
 module built from the same analysis implementation. Both use the existing Ruff expression sanitizer, configuration

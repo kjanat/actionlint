@@ -1,16 +1,13 @@
 package component
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 	"github.com/kjanat/wacogo"
 )
@@ -56,33 +53,17 @@ func liftScriptCapabilities(value wacogo.Val, d *analyzer.ScriptEngineDescriptor
 type scriptGrant struct {
 	files     []analyzer.FileSystem
 	directory string
-	snapshot  *fsread.SnapshotFS
 }
 
-func (g scriptGrant) close() error {
-	if g.snapshot == nil {
-		return nil
+// grantScriptResources mounts the host's directory grant read-only when the
+// engine requested the directory resource. The component never opens a
+// path itself: the caller confines the grant to the workspace and records
+// the reads. Without a grant the engine sees no files.
+func (p *Plugin) grantScriptResources(request analyzer.ScriptRequest) scriptGrant {
+	if request.DirectoryFS == nil || !slices.Contains(p.scriptDescriptor.Resources, analyzer.ToolDirectory) {
+		return scriptGrant{}
 	}
-	return g.snapshot.Close()
-}
-
-// grantScriptResources mounts the script's working directory read-only when
-// the engine requested it and the request names one. Without a grant the
-// engine sees no files.
-func (p *Plugin) grantScriptResources(ctx context.Context, request analyzer.ScriptRequest) (scriptGrant, error) {
-	if request.Directory == "" || !slices.Contains(p.scriptDescriptor.Resources, analyzer.ToolDirectory) {
-		return scriptGrant{}, nil
-	}
-	directory, err := filepath.Abs(request.Directory)
-	if err != nil {
-		return scriptGrant{}, err
-	}
-	// The runner records the files findings name; reads alone record nothing.
-	snapshot, err := fsread.NewSnapshot(ctx, directory, fsread.New(ctx, nil, nil), nil)
-	if err != nil {
-		return scriptGrant{}, fmt.Errorf("script engine %s working directory: %w", p.scriptDescriptor.ID, err)
-	}
-	return scriptGrant{files: []analyzer.FileSystem{{Path: scriptDirectoryMount, FS: snapshot}}, directory: scriptDirectoryMount, snapshot: snapshot}, nil
+	return scriptGrant{files: []analyzer.FileSystem{{Path: scriptDirectoryMount, FS: request.DirectoryFS}}, directory: scriptDirectoryMount}
 }
 
 // lowerScriptRequest03 builds a script-engine 0.3.0 request.

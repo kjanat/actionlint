@@ -151,18 +151,23 @@ func (r runner) scriptEnabled(cfg *config.Config) bool {
 	return r.options.enabled(c)
 }
 
-// check is one prepared request for the batch script at index.
+// check is one prepared request for the batch script at index. Scope is
+// the script's, which bounds a directory grant.
 type check struct {
 	index    int
 	prepared profile.Prepared
 	request  analyzer.ScriptRequest
+	scope    *tools.Scope
 }
 
-// outcome is the backend's answer to one check.
+// outcome is the backend's answer to one check. Copies, set when the check
+// had a directory grant, holds the display copy of each reported source read
+// through that grant; reported sources missing from it are unreadable.
 type outcome struct {
 	diagnostics []analyzer.ScriptDiagnostic
 	sources     []string
 	directory   string
+	copies      map[string]reportedFile
 	err         error
 }
 
@@ -265,7 +270,7 @@ func (r runner) prepare(ctx context.Context, batch tools.Batch) ([]check, error)
 		if (reporting || r.directory) && script.Execution.DirectoryKnown {
 			request.Directory = script.Execution.Directory
 		}
-		checks = append(checks, check{index: i, prepared: prepared, request: request})
+		checks = append(checks, check{index: i, prepared: prepared, request: request, scope: script.Scope})
 	}
 	return checks, failures
 }
@@ -281,8 +286,7 @@ func (r runner) check(ctx context.Context, checks []check) []outcome {
 			outcomes[i] = outcome{diagnostics: result.Diagnostics, sources: result.Sources, directory: result.Directory, err: err}
 			return
 		}
-		diagnostics, err := r.backend.Check(ctx, checks[i].request)
-		outcomes[i] = outcome{diagnostics: diagnostics, directory: checks[i].request.Directory, err: err}
+		outcomes[i] = r.checkGranted(ctx, checks[i])
 	}
 	if !reporting || !processes.Concurrent() || len(checks) < 2 {
 		for i := range checks {
@@ -323,7 +327,7 @@ func (r runner) findings(c check, script tools.Script, result outcome) ([]tools.
 				failures = errors.Join(failures, fmt.Errorf("tool %s returned template effect %q for reported source %q", r.descriptor.Name, d.TemplateEffect, d.Source))
 				continue
 			}
-			out = append(out, r.reportedFinding(c.index, script, d, result.directory, files))
+			out = append(out, r.reportedFinding(c.index, script, d, result, files))
 			continue
 		}
 		if r.templateContract == analyzer.TemplateEffectsContract && !d.TemplateEffect.Valid() ||

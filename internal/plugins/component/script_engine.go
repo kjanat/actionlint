@@ -143,8 +143,8 @@ func scriptOptions(config json.RawMessage) (string, error) {
 
 // Check analyzes a sanitized snippet and validates the returned findings.
 // A script-engine 0.3.0 engine also receives the excluded codes and, when it
-// requested the directory resource and the request names one, the working
-// directory mounted read-only for this call.
+// requested the directory resource and the request carries a directory
+// grant, that grant mounted read-only for this call.
 func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) (diagnostics []analyzer.ScriptDiagnostic, err error) {
 	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")
@@ -168,10 +168,7 @@ func (p *Plugin) Check(ctx context.Context, request analyzer.ScriptRequest) (dia
 	var grant scriptGrant
 	var input wacogo.Val
 	if current {
-		if grant, err = p.grantScriptResources(ctx, request); err != nil {
-			return nil, err
-		}
-		defer func() { err = errors.Join(err, grant.close()) }()
+		grant = p.grantScriptResources(request)
 		input = lowerScriptRequest03(request, options, grant)
 	} else {
 		input = wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),

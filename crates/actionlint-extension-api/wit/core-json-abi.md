@@ -66,7 +66,8 @@ Request: `{source,filename,config,excluded,directory}`. `excluded` is always
 present: a list of diagnostic codes, such as `"SC1091"`, the host's preparation
 excludes; the engine must not report them. `directory` is present only when the
 engine requests the `directory` resource and the script's working directory is
-known. It is the host path of that directory and grants no access, because core
+known, exists and lies inside the workspace; a working directory outside the
+workspace fails the check. It is the host path of that directory and grants no access, because core
 modules import nothing; it anchors reported sources.
 
 Each diagnostic may add `fixes` and `source`:

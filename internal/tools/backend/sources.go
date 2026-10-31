@@ -1,10 +1,14 @@
 package backend
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
@@ -18,6 +22,101 @@ import (
 type reportedFile struct {
 	content    []byte
 	readFailed bool
+}
+
+// checkGranted runs one check on a backend that is not a native process.
+// When the engine requested the directory resource, the runner opens the
+// working directory read-only inside the workspace for the call and reads
+// the display copies of reported sources through the same grant. The engine
+// and the finding then see the same bytes, the scope records every file
+// read, and no reported name reaches a file outside the workspace. A
+// directory that does not exist gets no grant and is not sent.
+//
+// Reported sources of such a backend are never reread by path: without a
+// grant they have no display copy.
+func (r runner) checkGranted(ctx context.Context, c check) outcome {
+	request := c.request
+	result := outcome{copies: map[string]reportedFile{}}
+	var grant *fsread.SnapshotFS
+	if r.directory && request.Directory != "" {
+		var err error
+		if grant, err = directoryGrant(ctx, c.scope, request.Directory); err != nil {
+			result.err = fmt.Errorf("tool %s %w", r.descriptor.Name, err)
+			return result
+		}
+		if grant == nil {
+			request.Directory = ""
+		} else {
+			request.DirectoryFS = grant
+		}
+	}
+	result.diagnostics, result.err = r.backend.Check(ctx, request)
+	result.directory = request.Directory
+	if grant == nil {
+		return result
+	}
+	for _, d := range result.diagnostics {
+		if _, read := result.copies[d.Source]; d.Source == "" || read {
+			continue
+		}
+		file := reportedFile{content: []byte{}, readFailed: true}
+		if content, err := grant.ReadFile(d.Source); err == nil {
+			file = reportedFile{content: content}
+		} else {
+			r.debug("Cannot read %s diagnostic source %q: %v", r.descriptor.Name, d.Source, err)
+		}
+		result.copies[d.Source] = file
+	}
+	if err := grant.Close(); err != nil {
+		result.err = errors.Join(result.err, fmt.Errorf("tool %s working directory: %w", r.descriptor.Name, err))
+	}
+	return result
+}
+
+// directoryGrant opens directory read-only through the workspace root of
+// scope, so neither the path nor a symlink below it leaves the workspace.
+// Reads through the grant are recorded with the scope's reader. A missing
+// directory gets no grant; one outside the workspace fails the check.
+func directoryGrant(ctx context.Context, scope *tools.Scope, directory string) (*fsread.SnapshotFS, error) {
+	if scope == nil || scope.Workspace == "" && scope.AnalysisDir == "" {
+		return nil, errors.New("directory access requires a workspace root")
+	}
+	workspace := scope.Workspace
+	if workspace == "" {
+		workspace = scope.AnalysisDir
+	}
+	workspace, err := filepath.Abs(workspace)
+	if err != nil {
+		return nil, err
+	}
+	directory, err = filepath.Abs(directory)
+	if err != nil {
+		return nil, err
+	}
+	relative, err := filepath.Rel(workspace, directory)
+	if err != nil || !filepath.IsLocal(relative) {
+		return nil, fmt.Errorf("working directory %q is outside workspace root %q", directory, workspace)
+	}
+	root, err := os.OpenRoot(workspace)
+	if err != nil {
+		return nil, fmt.Errorf("workspace root: %w", err)
+	}
+	files := scope.Reader
+	if files == nil {
+		files = fsread.New(ctx, nil, nil)
+	}
+	grant, err := fsread.NewSnapshotAt(ctx, root, relative, files, nil)
+	closeErr := root.Close()
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return nil, closeErr
+	}
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("working directory %q: %w", directory, err), closeErr)
+	}
+	if closeErr != nil {
+		return nil, errors.Join(closeErr, grant.Close())
+	}
+	return grant, nil
 }
 
 // reader is the script scope's recording reader, or nil.
@@ -71,12 +170,20 @@ func RecordSources(files *fsread.Reader, paths []string, directory string) error
 // reportedFinding is a finding in a file the engine read besides the
 // snippet. Its positions are that file's own and its snippet is a display
 // copy, never evidence of the revision the engine analyzed. Suppression
-// comments of the script still apply.
-func (r runner) reportedFinding(index int, script tools.Script, d analyzer.ScriptDiagnostic, directory string, files map[string]reportedFile) tools.Finding {
+// comments of the script still apply. A check with copies takes the display
+// copy from them; otherwise the copy is reread by path, as a native process
+// read the file by path itself.
+func (r runner) reportedFinding(index int, script tools.Script, d analyzer.ScriptDiagnostic, result outcome, files map[string]reportedFile) tools.Finding {
+	directory := result.directory
 	path := sourcePath(d.Source, directory)
 	reported := sourceInventoryPath(sourceName(d.Source, directory), directory)
 	file, found := files[path]
-	if !found {
+	if result.copies != nil {
+		file, found = result.copies[d.Source]
+		if !found {
+			file = reportedFile{content: []byte{}, readFailed: true}
+		}
+	} else if !found {
 		file.content, file.readFailed = []byte{}, true
 		if scope := reader(script); scope != nil {
 			content, err := scope.Mapped(func(string) string { return reported }).ReadFile(path)
@@ -88,8 +195,9 @@ func (r runner) reportedFinding(index int, script tools.Script, d analyzer.Scrip
 		}
 		files[path] = file
 	}
-	if scope := reader(script); scope != nil {
+	if scope := reader(script); scope != nil && (result.copies == nil || directory != "") {
 		// A cached or failed display reread does not erase the reported alias.
+		// Without a directory the name anchors nowhere and records nothing.
 		scope.Record(reported)
 	}
 	finding := tools.Finding{

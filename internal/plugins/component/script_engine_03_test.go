@@ -19,6 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
+	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/tools/provider"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/bundled"
 	"actionlint.kjanat.dev/v2/internal/tools/provider/process"
@@ -155,6 +156,7 @@ func TestScriptEngine03ProcessParity(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			request, stdout := json1Request(t, name)
 			request.Directory = t.TempDir()
+			request.DirectoryFS = directoryGrant(t, request.Directory)
 			pool := analyzerhost.NewProcessPool(t.Context(), 1)
 			command := pool.EmbeddedCommand("shellcheck", func([]string, string) ([]byte, error) { return stdout, nil })
 			backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundled.Program, Required: true})
@@ -202,7 +204,24 @@ func TestScriptEngine03Excluded(t *testing.T) {
 	}
 }
 
-// The engine reads a file only through a granted working directory.
+// directoryGrant opens directory as the runner's grant would, closed when
+// the test ends.
+func directoryGrant(t *testing.T, directory string) *fsread.SnapshotFS {
+	t.Helper()
+	grant, err := fsread.NewSnapshot(t.Context(), directory, fsread.New(t.Context(), nil, nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := grant.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return grant
+}
+
+// The engine reads a file only through the host's directory grant. A
+// directory path alone opens nothing.
 func TestScriptEngine03DirectoryGrant(t *testing.T) {
 	p := loadScriptFixture03(t)
 	root := t.TempDir()
@@ -212,7 +231,7 @@ func TestScriptEngine03DirectoryGrant(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "scripts", "lib.sh"), []byte("echo $value\nexit 0\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	request := analyzer.ScriptRequest{Source: "echo ok\n", Filename: "actionlint.sh", Config: []byte(`{"read":"scripts/lib.sh"}`), Directory: root}
+	request := analyzer.ScriptRequest{Source: "echo ok\n", Filename: "actionlint.sh", Config: []byte(`{"read":"scripts/lib.sh"}`), Directory: root, DirectoryFS: directoryGrant(t, root)}
 	diagnostics, err := p.Check(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
@@ -224,13 +243,14 @@ func TestScriptEngine03DirectoryGrant(t *testing.T) {
 	if diff := cmp.Diff(want, diagnostics); diff != "" {
 		t.Fatalf("diagnostics (-want +got):\n%s", diff)
 	}
-	request.Directory = ""
+	grant := request.DirectoryFS
+	request.DirectoryFS = nil
 	if _, err := p.Check(t.Context(), request); err == nil || !strings.Contains(err.Error(), "no directory was granted") {
-		t.Fatalf("check without a directory: %v", err)
+		t.Fatalf("check with a directory path and no grant: %v", err)
 	}
 	// An engine that did not request the resource sees no directory either.
 	p.scriptDescriptor.Resources = nil
-	request.Directory = root
+	request.DirectoryFS = grant
 	if _, err := p.Check(t.Context(), request); err == nil || !strings.Contains(err.Error(), "no directory was granted") {
 		t.Fatalf("check without the resource: %v", err)
 	}
@@ -252,6 +272,7 @@ func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
 			request, _ := json1Request(t, tc.fixture)
 			if tc.directory {
 				request.Directory = t.TempDir()
+				request.DirectoryFS = directoryGrant(t, request.Directory)
 			}
 			if _, err := p.Check(t.Context(), request); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want %q", err, tc.want)

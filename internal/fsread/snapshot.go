@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -163,6 +164,25 @@ func (s *SnapshotFS) lookup(name string) error {
 	s.budget.lookups++
 	s.reader.Record(filepath.Join(s.root.Name(), filepath.FromSlash(name)))
 	return nil
+}
+
+// ReadFile reads name through the snapshot: the bytes the guest read if it
+// read the file, otherwise a new root-contained read within the budget. It
+// records the read like a guest's.
+func (s *SnapshotFS) ReadFile(name string) ([]byte, error) {
+	file, err := s.Open(name)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", name, err)
+	}
+	if err := file.Close(); err != nil {
+		return nil, fmt.Errorf("read %s: %w", name, err)
+	}
+	// Open snapshots a regular file in full; a directory has no content.
+	_, data, ok := s.Content(name)
+	if !ok {
+		return nil, &fs.PathError{Op: "read", Path: name, Err: fs.ErrInvalid}
+	}
+	return data, nil
 }
 
 // Content returns the resolved name and exact bytes read by the guest.

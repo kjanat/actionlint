@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"slices"
 	"strings"
 
@@ -124,16 +125,22 @@ func (d ScriptEngineDescriptor) Clone() ScriptEngineDescriptor {
 // Config contains only engine settings. Filename is a virtual snippet name and
 // grants no filesystem access. Source has already had workflow expressions masked.
 // Directory, when set, is the script's working directory; files an engine
-// reports reading resolve from it. It grants no access by itself; a transport
-// grants access only for the resources its engine requests. Excluded lists
-// diagnostic codes the preparation profile excludes, such as "SC1091";
+// reports reading resolve from it. It grants no access by itself. Excluded
+// lists diagnostic codes the preparation profile excludes, such as "SC1091";
 // engines must not report them.
+//
+// DirectoryFS is the host's read-only grant of Directory for this call, or
+// nil. The host opens it inside the workspace and records the files read
+// through it. A sandboxed transport gives its engine only this grant, never
+// Directory as a path, and only when the engine requested the directory
+// resource. The caller keeps it open until Check returns.
 type ScriptRequest struct {
-	Source    string          `json:"source"`
-	Filename  string          `json:"filename"`
-	Config    json.RawMessage `json:"config,omitempty"`
-	Directory string          `json:"directory,omitempty"`
-	Excluded  []string        `json:"excluded,omitempty"`
+	Source      string          `json:"source"`
+	Filename    string          `json:"filename"`
+	Config      json.RawMessage `json:"config,omitempty"`
+	Directory   string          `json:"directory,omitempty"`
+	Excluded    []string        `json:"excluded,omitempty"`
+	DirectoryFS fs.FS           `json:"-"`
 }
 
 // ScriptTemplateValidator checks runtime support before template filtering.

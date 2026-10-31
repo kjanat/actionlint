@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -414,16 +415,26 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	var requests []analyzer.ScriptRequest
+	var engineRead []byte
 	backend := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
 		requests = append(requests, request)
+		if request.DirectoryFS == nil {
+			return nil, errors.New("no directory grant")
+		}
+		var err error
+		if engineRead, err = fs.ReadFile(request.DirectoryFS, "lib.sh"); err != nil {
+			return nil, err
+		}
 		return []analyzer.ScriptDiagnostic{
 			{Filename: request.Filename, Code: "X1", Severity: "info", Message: "quote", Location: analyzer.ScriptPosition{Row: 1, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 8},
 				Fixes: []analyzer.ScriptFix{{Description: "quote", Replacements: []analyzer.ScriptReplacement{replacement(1, 6, `"`), replacement(1, 8, `"`)}}}},
 			{Filename: "lib.sh", Source: "lib.sh", Code: "X2", Severity: "info", Message: "sourced", Location: analyzer.ScriptPosition{Row: 1, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 8}},
 		}, nil
 	})
+	var recorded []string
 	script := scriptFixture(t, "run: |\n  echo $x\n")
 	script.Execution.Directory, script.Execution.DirectoryKnown = directory, true
+	script.Scope = &tools.Scope{Workspace: directory, Reader: fsread.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })}
 	descriptor := analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, Fixes: true, ReportedSources: true, Resources: []analyzer.ToolResourceKind{analyzer.ToolDirectory}}
 	registration, err := RegisterEngine(descriptor, backend)
 	if err != nil {
@@ -446,6 +457,81 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 	}
 	if len(findings) != 2 || len(findings[0].Fixes) != 1 || !findings[1].RawScript || !strings.HasSuffix(findings[1].Path, "lib.sh") {
 		t.Fatalf("findings %+v", findings)
+	}
+	// The display copy is the bytes the engine read, and the scope recorded
+	// the read for watchers.
+	if string(engineRead) != "echo $x\n" || string(findings[1].Content) != string(engineRead) {
+		t.Fatalf("engine read %q, finding shows %q", engineRead, findings[1].Content)
+	}
+	if !slices.Contains(recorded, filepath.Join(directory, "lib.sh")) {
+		t.Fatalf("recorded %q", recorded)
+	}
+}
+
+// directoryEngine is a snippet engine requesting the directory resource that
+// reports a finding in source.
+func directoryEngine(t *testing.T, source string, requests *[]analyzer.ScriptRequest) tools.Runner {
+	t.Helper()
+	backend := routingBackend(func(_ context.Context, request analyzer.ScriptRequest) ([]analyzer.ScriptDiagnostic, error) {
+		*requests = append(*requests, request)
+		return []analyzer.ScriptDiagnostic{{Filename: source, Source: source, Code: "X2", Severity: "info", Message: "sourced", Location: analyzer.ScriptPosition{Row: 1, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 2}}}, nil
+	})
+	descriptor := analyzer.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, ReportedSources: true, Resources: []analyzer.ToolResourceKind{analyzer.ToolDirectory}}
+	return buildEngineRunner(t, descriptor, backend, engineOptions{})
+}
+
+// A working directory outside the workspace gets no grant: the check fails
+// before the engine runs.
+func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
+	workspace, outside := t.TempDir(), t.TempDir()
+	var requests []analyzer.ScriptRequest
+	runner := directoryEngine(t, "lib.sh", &requests)
+	script := scriptFixture(t, "run: |\n  echo $x\n")
+	script.Execution.Directory, script.Execution.DirectoryKnown = outside, true
+	script.Scope = &tools.Scope{Workspace: workspace}
+	_, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	if err == nil || !strings.Contains(err.Error(), "outside workspace root") || len(requests) != 0 {
+		t.Fatalf("requests %+v err %v", requests, err)
+	}
+	// A symlink below the workspace that leaves it is refused as well.
+	link := filepath.Join(workspace, "escape")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Skipf("cannot create symlinks: %v", err)
+	}
+	script.Execution.Directory = link
+	if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}}); err == nil || len(requests) != 0 {
+		t.Fatalf("symlinked directory: requests %+v err %v", requests, err)
+	}
+}
+
+// A reported source is shown only through the grant: a symlink in the
+// working directory pointing out of the workspace is not read, and without
+// a grant nothing is reread by path.
+func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
+	workspace, outside := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "secret"), []byte("secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var requests []analyzer.ScriptRequest
+	runner := directoryEngine(t, "lib.sh", &requests)
+	script := scriptFixture(t, "run: |\n  echo $x\n")
+	script.Execution.Directory, script.Execution.DirectoryKnown = workspace, true
+	script.Scope = &tools.Scope{Workspace: workspace, Reader: fsread.New(t.Context(), nil, nil)}
+	if err := os.Symlink(filepath.Join(outside, "secret"), filepath.Join(workspace, "lib.sh")); err == nil {
+		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+		if err != nil || len(findings) != 1 || len(findings[0].Content) != 0 || findings[0].UnavailableSource.Reason() != "read-failed" {
+			t.Fatalf("symlinked source: findings %+v err %v", findings, err)
+		}
+	}
+	// A missing working directory gets no grant and is not sent.
+	script.Execution.Directory = filepath.Join(workspace, "missing")
+	requests = nil
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{script}})
+	if err != nil || len(requests) != 1 || requests[0].Directory != "" || requests[0].DirectoryFS != nil {
+		t.Fatalf("missing directory: requests %+v err %v", requests, err)
+	}
+	if len(findings) != 1 || len(findings[0].Content) != 0 || findings[0].UnavailableSource.Reason() != "read-failed" {
+		t.Fatalf("source without a grant: findings %+v", findings)
 	}
 }
 
