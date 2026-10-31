@@ -67,8 +67,9 @@ each command-line or environment alias prints a warning.
 | Action input `pyflakes`                          | Ignored, as before                                                                    |
 | `analysis.Options{ShellCheck: tool, Ruff: tool}` | `analysis.Options{Tools: map[string]analysis.Tool{"shellcheck": tool, "ruff": tool}}` |
 
-The library fields `analysis.Options.ShellCheck` and `analysis.Options.Ruff` are
-removed rather than deprecated; `analysis.Tools()` lists the valid map keys.
+The deprecated library fields `analysis.Options.ShellCheck` and
+`analysis.Options.Ruff` are used only when `Options.Tools` has no key for that
+tool. `analysis.Tools()` lists the valid map keys.
 
 Two behaviors differ from the old flags. The last `--tool` or `--no-tool` for an id
 wins, so `--no-ruff --ruff=COMMAND` now runs `COMMAND`. A disabled tool also turns
