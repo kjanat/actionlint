@@ -27,7 +27,7 @@ func localCandidate(t *testing.T) (string, *pluginregistry.Client) {
 	var record struct {
 		Artifact json.RawMessage `json:"artifact"`
 	}
-	if err := json.Unmarshal(network.Files[network.RecordURL("v1.0.0")], &record); err != nil {
+	if err := json.Unmarshal(network.File(network.RecordURL("v1.0.0")), &record); err != nil {
 		t.Fatal(err)
 	}
 	root := filepath.Join(t.TempDir(), "candidate space # +%")
@@ -57,8 +57,8 @@ func localCandidate(t *testing.T) (string, *pluginregistry.Client) {
 		t.Fatalf("valid candidate: %v", err)
 	}
 	t.Cleanup(func() {
-		if len(network.Requests) != 0 {
-			t.Errorf("candidate accessed network: %v", network.Requests)
+		if len(network.Requests()) != 0 {
+			t.Errorf("candidate accessed network: %v", network.Requests())
 		}
 	})
 	return root, client

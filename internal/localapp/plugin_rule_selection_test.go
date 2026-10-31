@@ -43,7 +43,8 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 	base := filepath.Join(filepath.Dir(project.Manifest.Path), "base.yml")
 	writeManifestTest(t, base, "dependency: &plugin\n  name: "+testutil.FixturePluginName+"\n  registry: "+testutil.FixtureRegistryURL+"\nplugins: [*plugin]\npolicy: {bad: true}\n")
 	writeManifestTest(t, project.Manifest.Path, "extends: [base.yml]\ntools: {shellcheck: {enabled: wrong}}\n")
-	registry.Requests, registry.Offline = nil, true
+	registry.ResetRequests()
+	registry.SetOffline(true)
 	for _, selection := range []PluginSelection{{}, {ConfigFile: project.Manifest.Path}} {
 		sources, err := selection.ResolveForRules(t.Context(), root)
 		if err != nil || len(sources.Paths) != 1 || sources.Paths[0] != pin.Source() {
@@ -69,8 +70,8 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 	if err != nil || len(sources.Paths) != 0 {
 		t.Fatalf("leaf opt-out lost: %+v %v", sources, err)
 	}
-	if len(registry.Requests) != 0 {
-		t.Fatalf("rule discovery resolved registry: %v", registry.Requests)
+	if len(registry.Requests()) != 0 {
+		t.Fatalf("rule discovery resolved registry: %v", registry.Requests())
 	}
 }
 

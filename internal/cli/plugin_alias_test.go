@@ -67,7 +67,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := testutil.NewPluginRegistry(t)
-	registry.Aliases = []string{"community-check"}
+	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", wasm)
 	registry.Add(t, "v1.1.0", wasm)
 	t.Chdir(t.TempDir())
@@ -90,14 +90,15 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].Alias != "community-check" || lock.Lock.Plugins[0].Name != testutil.FixturePluginName {
 		t.Fatalf("canonical pin missing: %+v %v", lock, err)
 	}
-	registry.Requests, registry.Offline = nil, true
+	registry.ResetRequests()
+	registry.SetOffline(true)
 	pluginCommandTest(t, 0, "plugin", "install")
 	pluginCommandTest(t, 0, "plugin", "list")
 	pluginCommandTest(t, 1, "check", "--no-shellcheck", "--no-ruff", "workflow.yml")
-	if len(registry.Requests) != 0 {
-		t.Fatalf("offline alias triggered registry lookup: %v", registry.Requests)
+	if requests := registry.Requests(); len(requests) != 0 {
+		t.Fatalf("offline alias triggered registry lookup: %v", requests)
 	}
-	registry.Offline = false
+	registry.SetOffline(false)
 	pluginCommandTest(t, 0, "plugin", "update", testutil.FixturePluginName, "--version", "v1.1.0")
 	cfg, err = config.Load(configPath)
 	if err != nil || cfg.Plugins[0].Name() != "community-check" || cfg.Plugins[0].Version() != "v1.1.0" {
@@ -115,7 +116,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	if !strings.Contains(output, "duplicate") {
 		t.Fatalf("alias and full repository not rejected: %s", output)
 	}
-	registry.Name, registry.RepositoryID = "github.com/another/plugin", 20
+	registry.SetRepository("github.com/another/plugin", 20)
 	registry.Add(t, "v1.1.0", wasm)
 	registry.Publish(t, "v1.1.0")
 	output = pluginCommandTest(t, 3, "plugin", "update", "community-check")
@@ -128,9 +129,10 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 			t.Fatalf("failed resolution changed %s: %v", path, err)
 		}
 	}
-	registry.Requests, registry.Offline = nil, true
+	registry.ResetRequests()
+	registry.SetOffline(true)
 	pluginCommandTest(t, 0, "plugin", "remove", testutil.FixturePluginName)
-	if len(registry.Requests) != 0 {
-		t.Fatalf("canonical removal of alias contacted registry: %v", registry.Requests)
+	if requests := registry.Requests(); len(requests) != 0 {
+		t.Fatalf("canonical removal of alias contacted registry: %v", requests)
 	}
 }

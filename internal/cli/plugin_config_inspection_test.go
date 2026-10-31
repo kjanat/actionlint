@@ -28,8 +28,8 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
-	requests := len(registry.Requests)
+	registry.SetOffline(true)
+	requests := len(registry.Requests())
 	for _, setting := range []string{
 		"lint: {rules: {plugins: {no-sudo: off}}}",
 		"lint: {rules: {disable: [no-sudo]}}",
@@ -50,7 +50,7 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 	if output := pluginCommandTest(t, 3, "config", "validate"); !strings.Contains(output, "unknown diagnostic rule") {
 		t.Fatal(output)
 	}
-	if len(registry.Requests) != requests {
+	if len(registry.Requests()) != requests {
 		t.Fatal("config inspection contacted the offline registry")
 	}
 }

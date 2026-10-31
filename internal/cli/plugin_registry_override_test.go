@@ -18,9 +18,9 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	r.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	const mirror = "https://mirror.example/"
-	for url, data := range r.Files {
+	for url, data := range r.Files() {
 		if relative, ok := strings.CutPrefix(url, testutil.FixtureRegistryURL); ok {
-			r.Files[mirror+relative] = bytes.Clone(data)
+			r.SetFile(mirror+relative, data)
 		}
 	}
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -41,13 +41,13 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0].Registry != mirror || lock.Lock.Plugins[0].Selector != "v1.0.0" || lock.Lock.Plugins[0].Version != "v1.0.0" {
 		t.Fatalf("registry pin: %#v, %v", lock, err)
 	}
-	r.Offline = true
-	requests := len(r.Requests)
+	r.SetOffline(true)
+	requests := len(r.Requests())
 	pluginCommandTest(t, 0, "plugin", "install")
-	if len(r.Requests) != requests {
+	if len(r.Requests()) != requests {
 		t.Fatal("repeated installation contacted network")
 	}
-	r.Offline = false
+	r.SetOffline(false)
 	before, err := os.ReadFile(lockPath)
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := r.RecordURL("v1.0.0")
-	r.Files[record] = bytes.ReplaceAll(r.Files[record], []byte(`"owner_id":5`), []byte(`"owner_id":6`))
+	r.SetFile(record, bytes.ReplaceAll(r.File(record), []byte(`"owner_id":5`), []byte(`"owner_id":6`)))
 	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin", "--registry", testutil.FixtureRegistryURL)
 	after, err := os.ReadFile(lockPath)
 	if err != nil || !bytes.Equal(before, after) {
@@ -122,8 +122,8 @@ func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 			pluginCommandTest(t, 2, append(args, "--registry", registry)...)
 		}
 	}
-	if len(r.Requests) != 0 {
-		t.Fatalf("invalid endpoint reached transport: %v", r.Requests)
+	if len(r.Requests()) != 0 {
+		t.Fatalf("invalid endpoint reached transport: %v", r.Requests())
 	}
 }
 

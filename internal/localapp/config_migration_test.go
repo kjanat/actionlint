@@ -31,7 +31,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if !plan.Changed || !bytes.Contains(plan.Content, []byte("shellcheck")) || !bytes.Contains(plan.Content, []byte("ruff")) {
 		t.Fatalf("missing defaults: %s", plan.Content)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 	if err := plan.Apply(t.Context()); err == nil {
 		t.Fatal("offline default resolution succeeded")
 	}
@@ -42,7 +42,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
 		t.Fatalf("failed migration wrote lock: %v", err)
 	}
-	registry.Offline = false
+	registry.SetOffline(false)
 	if err := plan.Apply(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -54,12 +54,12 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err != nil || len(lock.Lock.Plugins) != 2 {
 		t.Fatalf("default pins: %+v %v", lock, err)
 	}
-	registry.Offline = true
-	before := len(registry.Requests)
+	registry.SetOffline(true)
+	before := len(registry.Requests())
 	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
 		t.Fatal(err)
 	}
-	if len(registry.Requests) != before {
+	if len(registry.Requests()) != before {
 		t.Fatal("already migrated config contacted registry")
 	}
 }
@@ -96,7 +96,7 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 
 	if err := MigrateConfig(t.Context(), path, DefaultPluginOptions{Shellcheck: true, Ruff: true}); err != nil {
 		t.Fatal(err)
@@ -375,7 +375,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 	if err != nil || len(cfg.Plugins) != 2 {
 		t.Fatalf("defaults missing: %+v %v", cfg, err)
 	}
-	registry.Offline = true
+	registry.SetOffline(true)
 	if _, err := InitializeConfig(t.Context(), root, "2.0.0"); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("existing config not protected: %v", err)
 	}
