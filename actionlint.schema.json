@@ -13,16 +13,10 @@
   "markdownDescription": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or `.github/actionlint.toml`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "type": "object",
   "properties": {
-    "$schema": {
-      "title": "$schema",
-      "description": "Schema reference for editors. actionlint ignores it.",
-      "markdownDescription": "Schema reference for editors. actionlint ignores it.",
-      "type": "string"
-    },
     "extends": {
       "title": "extends",
-      "description": "Loads local YAML/JSON files, relative to this config, in order. Later bases override earlier bases; this file wins over all bases. No URLs.",
-      "markdownDescription": "Loads local YAML/JSON files, relative to this config, in order. Later bases override earlier bases; this file wins over all bases. No URLs.",
+      "description": "Loads local or HTTPS YAML, JSON and TOML configurations in order. Relative references resolve against their declaring file or URL. Later bases override earlier bases; this file wins over all bases.",
+      "markdownDescription": "Loads local or HTTPS YAML, JSON and TOML configurations in order. Relative references resolve against their declaring file or URL. Later bases override earlier bases; this file wins over all bases.",
       "oneOf": [
         {
           "type": "array",
@@ -9692,8 +9686,8 @@
     },
     "plugins": {
       "title": "plugins",
-      "description": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
-      "markdownDescription": "Declares plugin repositories and requested versions. Entries are owner/repo or forge-qualified names, optionally followed by @release-tag. Omitted versions select latest stable. Use a mapping with name, version, and registry for a custom catalogue. Empty or null disables plugins.",
+      "description": "Declares canonical plugin packages with exact registry versions, or digest-pinned HTTPS/OCI artifacts. Install/update resolves aliases and latest before saving. Use name, version and registry for a custom catalogue, or source for a direct artifact. Empty or null disables plugins.",
+      "markdownDescription": "Declares canonical plugin packages with exact registry versions, or digest-pinned HTTPS/OCI artifacts. Install/update resolves aliases and latest before saving. Use name, version and registry for a custom catalogue, or source for a direct artifact. Empty or null disables plugins.",
       "oneOf": [
         {
           "type": "array",
@@ -9738,6 +9732,23 @@
                     "markdownDescription": "Exact release tag or latest stable. Omission selects latest.",
                     "type": "string",
                     "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "title": "source",
+                    "description": "Independent artifact URL with a mandatory SHA256 pin",
+                    "markdownDescription": "Independent artifact URL with a mandatory SHA256 pin",
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(https://.+#sha256=[a-fA-F0-9]{64}|oci://.+@sha256:[a-f0-9]{64})$"
                   }
                 },
                 "additionalProperties": false
@@ -10439,6 +10450,12 @@
           "type": "null"
         }
       ]
+    }
+  },
+  "patternProperties": {
+    "^\\$schema$": {
+      "description": "Schema reference for editors. actionlint ignores it.",
+      "type": "string"
     }
   },
   "additionalProperties": false

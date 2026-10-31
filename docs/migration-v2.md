@@ -31,9 +31,9 @@ cannot perform the URL change.
 
 Remove Go `additional_dependencies` entries used to install native ShellCheck.
 The new default hook does not build Go source or provision native script linters.
-Its pinned wheel supplies the host; the project's [plugin configuration and
-lockfile](plugins.md) supply analyzer versions and artifact digests. Keep the
-lockfile in version control.
+Its pinned wheel supplies the host; the project's [plugin configuration](plugins.md)
+selects exact analyzer versions. The registry supplies immutable artifact records and
+checksums; direct artifact declarations carry their own digests. Commit the configuration.
 
 Use `actionlint config init` for a new configuration, or `actionlint config migrate`
 to inspect an existing configuration and `actionlint config migrate --write` to

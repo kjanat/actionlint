@@ -1,9 +1,10 @@
 package position
 
 import (
+	"testing"
+
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/source"
-	"testing"
 )
 
 func TestStrictCapturedRanges(t *testing.T) {

@@ -13,12 +13,14 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-var structs = map[string]*types.Named{}
-var interfaces = map[string]*types.Named{}
-var pkg *types.Package
-var clone bytes.Buffer
-var views bytes.Buffer
-var serial int
+var (
+	structs    = map[string]*types.Named{}
+	interfaces = map[string]*types.Named{}
+	pkg        *types.Package
+	clone      bytes.Buffer
+	views      bytes.Buffer
+	serial     int
+)
 
 var semanticCollections = map[string]string{
 	"String":      "stringNodes",
@@ -39,6 +41,7 @@ func ts(t types.Type) string {
 		panic("unexpected model package " + p.Path())
 	})
 }
+
 func gather(t types.Type) {
 	switch v := t.(type) {
 	case *types.Pointer:
@@ -80,6 +83,7 @@ func gather(t types.Type) {
 		}
 	}
 }
+
 func mapKeyError(key types.Type) error {
 	if !scalar(key) {
 		return fmt.Errorf("unsupported mutable map key type %s: map keys must be pointer-free scalar values", types.TypeString(key, nil))
@@ -133,6 +137,7 @@ func scalar(t types.Type) bool {
 	}
 	return false
 }
+
 func copyInto(dst, src string, t types.Type) {
 	if scalar(t) {
 		fmt.Fprintf(&clone, "%s = %s\n", dst, src)
@@ -175,6 +180,7 @@ func copyInto(dst, src string, t types.Type) {
 		panic("unsupported " + ts(t))
 	}
 }
+
 func viewType(t types.Type) string {
 	if scalar(t) {
 		return ts(t)
@@ -193,6 +199,7 @@ func viewType(t types.Type) string {
 	}
 	panic("view type " + ts(t))
 }
+
 func viewExpr(t types.Type, expr string) string {
 	if scalar(t) {
 		return expr
@@ -209,6 +216,7 @@ func viewExpr(t types.Type, expr string) string {
 	}
 	panic(ts(t))
 }
+
 func zero(t types.Type) string {
 	if !scalar(t) {
 		return viewType(t) + "{}"
@@ -229,6 +237,7 @@ func zero(t types.Type) string {
 	}
 	panic(ts(t))
 }
+
 func main() {
 	if len(os.Args) != 3 {
 		panic("usage: root target")

@@ -160,6 +160,7 @@ func (r *sharedCompositeObserver) EnterInvocation(scope builtin.Invocation) erro
 	*r.snapshots = append(*r.snapshots, scope.Source)
 	return nil
 }
+
 func (r *sharedCompositeObserver) VisitInvocationStep(step workflowdecl.StepView) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

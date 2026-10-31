@@ -1,8 +1,9 @@
 package builtin_test
 
 import (
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 func permissionsConfig(t *testing.T, permissions string) *repoconfig.Config {

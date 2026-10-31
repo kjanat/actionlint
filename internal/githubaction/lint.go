@@ -136,14 +136,7 @@ func runLinter(req *lintRequest) *lintResult {
 		input = application.Input{Kind: application.Files, Paths: paths}
 	}
 	selection := req.pluginSelection()
-	selectionErr := selection.Migrate(ctx, req.workingDir, input, localapp.DefaultPluginOptions{
-		Tools:   req.defaultTools(),
-		Warning: func(message string) { _, _ = fmt.Fprintln(&logs, "warning: "+message) },
-	})
-	var selected localapp.PluginSources
-	if selectionErr == nil {
-		selected, selectionErr = selection.Resolve(ctx, req.workingDir, input)
-	}
+	selected, selectionErr := selection.Resolve(ctx, req.workingDir, input)
 	if selectionErr != nil {
 		err = selectionErr
 	} else {
@@ -290,18 +283,6 @@ func (req *lintRequest) toolSelections() registry.Selections {
 		selections[id] = backend.Selection{Command: id, Process: &options}
 	}
 	return selections
-}
-
-// defaultTools lists the bundled tools that run their default command, so
-// each may receive a default plugin declaration.
-func (req *lintRequest) defaultTools() []string {
-	var ids []string
-	for _, id := range registry.IDs() {
-		if !slices.Contains(req.disabledTools, id) && req.processes[id] == nil {
-			ids = append(ids, id)
-		}
-	}
-	return ids
 }
 
 // requestedTools lists the bundled tools the inputs leave enabled.

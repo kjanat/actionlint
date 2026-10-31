@@ -114,9 +114,11 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin := &Plugin{path: path, engine: engine, hostFactory: factory, component: withoutTables,
+	plugin := &Plugin{
+		path: path, engine: engine, hostFactory: factory, component: withoutTables,
 		limits: Limits{Timeout: time.Second, MemoryPages: 64}, gate: semaphore.NewWeighted(1),
-		memory: &memoryBudget{limit: 64 << 16}, log: func(string) {}}
+		memory: &memoryBudget{limit: 64 << 16}, log: func(string) {},
+	}
 	t.Cleanup(func() { _ = plugin.Close(context.Background()) })
 	if _, err := plugin.callAnalyzer(t.Context(), "describe"); err != nil {
 		t.Fatal(err)

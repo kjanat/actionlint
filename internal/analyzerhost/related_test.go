@@ -1,14 +1,15 @@
 package analyzerhost
 
 import (
-	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/internal/related"
-	"actionlint.kjanat.dev/v2/source"
 	"context"
 	"errors"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/internal/related"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {

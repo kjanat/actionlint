@@ -47,6 +47,7 @@ func (d Definition) Using() string                   { return d.using }
 func (d Definition) SkipInputs() bool                { return d.skipInputs }
 func (d Definition) SkipOutputs() bool               { return d.skipOutputs }
 func (d Definition) Input(name string) (Input, bool) { input, ok := d.inputs[name]; return input, ok }
+
 func (d Definition) InputNames() []string {
 	names := make([]string, 0, len(d.inputs))
 	for name := range d.inputs {

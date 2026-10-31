@@ -264,6 +264,9 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		if err != nil {
 			return Pin{}, err
 		}
+		if err := c.cacheRelease(ctx, pin); err != nil {
+			return Pin{}, err
+		}
 		return pin, nil
 	}
 }
@@ -321,6 +324,9 @@ func (c *Client) resolveVersion(ctx context.Context, p CatalogPlugin, m manifest
 		return Pin{}, errors.New("registry version disagrees with publisher identity or selected release")
 	}
 	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.Asset, URL: r.URL, SHA256: s.SHA256, Contract: d.Contract}
+	if len(p.Aliases) == 1 {
+		pin.Alias = p.Aliases[0]
+	}
 	if err := pin.Validate(); err != nil {
 		return Pin{}, err
 	}

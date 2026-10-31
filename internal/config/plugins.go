@@ -52,7 +52,7 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 	values := map[string]string{}
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key, value := node.Content[i], node.Content[i+1]
-		if key.ShortTag() != "!!str" || (key.Value != "name" && key.Value != "version" && key.Value != "registry") {
+		if key.ShortTag() != "!!str" || (key.Value != "name" && key.Value != "version" && key.Value != "registry" && key.Value != "source") {
 			return pluginref.Reference{}, fmt.Errorf("unknown plugin field %q", key.Value)
 		}
 		if _, exists := values[key.Value]; exists {
@@ -62,6 +62,19 @@ func decodePluginDeclaration(node *yaml.Node) (pluginref.Reference, error) {
 			return pluginref.Reference{}, fmt.Errorf("plugin %s must be a nonempty string", key.Value)
 		}
 		values[key.Value] = value.Value
+	}
+	if source, exists := values["source"]; exists {
+		if len(values) != 1 {
+			return pluginref.Reference{}, errors.New("a direct plugin source cannot also declare name, version, or registry")
+		}
+		ref, err := pluginref.Parse(source)
+		if err != nil {
+			return pluginref.Reference{}, err
+		}
+		if ref.DirectSource() == "" {
+			return pluginref.Reference{}, errors.New("plugin source requires a digest-pinned HTTPS or OCI artifact")
+		}
+		return ref, nil
 	}
 	return pluginref.New(values["name"], values["version"], values["registry"])
 }

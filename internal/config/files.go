@@ -1,9 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/config/address"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/filefilter"
 
@@ -54,7 +56,14 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 	for i := range resolved.Warnings {
 		resolved.Warnings[i].File = path
 	}
-	toolconfig.NormalizePaths(node, filepath.Dir(path))
+	remote := address.Remote(path)
+	if remote {
+		if err := ValidateSourcePaths(path, node); err != nil {
+			return nil, nil, err
+		}
+	} else {
+		toolconfig.NormalizePaths(node, filepath.Dir(path))
+	}
 	// Preserve the declaring origin of inherited relative tool configuration
 	// paths. A "*" key matches every entry of a mapping.
 	var visit func(*yaml.Node, []string)
@@ -77,7 +86,7 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 			}
 		}
 	}
-	if inherited {
+	if inherited && !remote {
 		visit(node, []string{"tools", "*", "config"})
 		if node.Kind == yaml.MappingNode {
 			for i := 0; i < len(node.Content); i += 2 {
@@ -100,6 +109,111 @@ func normalizeExtendedConfig(path string, node *yaml.Node, inherited bool, addit
 		}
 	}
 	return normalizeToolSwitch(node), resolved.Warnings, nil
+}
+
+// ValidateSourcePaths rejects settings that require a declaring local directory
+// in an HTTPS source. Plugin discovery calls this before its partial projection.
+func ValidateSourcePaths(origin string, node *yaml.Node) error {
+	if !address.Remote(origin) {
+		return nil
+	}
+	if err := validateRemoteToolPaths(node); err != nil {
+		return err
+	}
+	if plugins := field(node, "plugins"); plugins != nil {
+		for _, entry := range plugins.Content {
+			if registry := field(entry, "registry"); registry != nil && strings.HasPrefix(strings.ToLower(registry.Value), "file:") {
+				return fmt.Errorf("plugins.registry: remote config cannot select a local file registry")
+			}
+		}
+	}
+	return nil
+}
+
+// Remote declarations have no local config directory. Repository paths and
+// runtime workspace expressions retain their existing local meaning.
+func validateRemoteToolPaths(node *yaml.Node) error {
+	if tools := field(node, "tools"); tools != nil && tools.Kind == yaml.MappingNode {
+		for i := 0; i < len(tools.Content); i += 2 {
+			name, entry := tools.Content[i].Value, tools.Content[i+1]
+			settings := field(entry, "config")
+			if err := rejectRemoteConfigDir(settings); err != nil {
+				return fmt.Errorf("tools.%s.config: %w", name, err)
+			}
+			if settings != nil && settings.Kind == yaml.ScalarNode && settings.ShortTag() == "!!str" && !filepath.IsAbs(settings.Value) && !runtimeAbsolutePath(settings.Value) {
+				return fmt.Errorf("tools.%s.config: remote config cannot declare a relative filesystem path; use an absolute path or a workspace path expression", name)
+			}
+			backend := field(entry, "backend")
+			if executable := field(field(backend, "process"), "executable"); executable != nil {
+				if err := rejectRemoteConfigDir(executable); err != nil {
+					return fmt.Errorf("tools.%s.backend.process.executable: %w", name, err)
+				}
+				if !filepath.IsAbs(executable.Value) && (strings.ContainsAny(executable.Value, `/\`) || filepath.VolumeName(executable.Value) != "" || executable.Value == "." || executable.Value == "..") {
+					return fmt.Errorf("tools.%s.backend.process.executable: remote config cannot declare a relative filesystem path", name)
+				}
+			}
+			if module := field(field(backend, "wasm"), "path"); module != nil {
+				if err := rejectRemoteConfigDir(module); err != nil {
+					return fmt.Errorf("tools.%s.backend.wasm.path: %w", name, err)
+				}
+				if !filepath.IsAbs(module.Value) && !strings.Contains(module.Value, "://") {
+					return fmt.Errorf("tools.%s.backend.wasm.path: remote config cannot declare a relative filesystem path", name)
+				}
+			}
+		}
+	}
+	if overrides := field(node, "overrides"); overrides != nil {
+		for _, override := range overrides.Content {
+			if err := validateRemoteToolPaths(override); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func rejectRemoteConfigDir(node *yaml.Node) error {
+	if node == nil {
+		return nil
+	}
+	value := node.Value
+	for {
+		_, expression, found := strings.Cut(value, "${{")
+		if !found {
+			break
+		}
+		name, after, closed := strings.Cut(expression, "}}")
+		if !closed {
+			break
+		}
+		if strings.EqualFold(strings.TrimSpace(name), "configdir") {
+			return fmt.Errorf("configdir is unavailable in a remote config; use github.workspace, gitdir or github.action_path")
+		}
+		value = after
+	}
+	for _, child := range node.Content {
+		if err := rejectRemoteConfigDir(child); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runtimeAbsolutePath(value string) bool {
+	expression, found := strings.CutPrefix(value, "${{")
+	if !found {
+		return false
+	}
+	name, _, closed := strings.Cut(expression, "}}")
+	if !closed {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "gitdir", "github.workspace", "github.action_path":
+		return true
+	default:
+		return false
+	}
 }
 
 func expandInheritedConfigDirectory(value, directory string) string {

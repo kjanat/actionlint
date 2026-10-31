@@ -1239,7 +1239,7 @@ func (sema *Checker) checkFuncCall(n *FuncCallNode) Type {
 
 func (sema *Checker) checkNotOp(n *NotOpNode) Type {
 	ty := sema.check(n.Operand)
-	if !(BoolType()).Assignable(ty) {
+	if !BoolType().Assignable(ty) {
 		sema.errorf(operandType, n, "type of operand of ! operator %q is not assignable to type \"bool\"", ty.String())
 	}
 	return BoolType()

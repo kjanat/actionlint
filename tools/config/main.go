@@ -57,11 +57,17 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			Version  string `yaml:"version,omitempty" jsonschema:"minLength=1,description=Exact release tag or latest stable. Omission selects latest."`
 			Registry string `yaml:"registry,omitempty" jsonschema:"minLength=1,description=HTTPS catalogue or absolute file URI for an unpublished local candidate. Omission uses the public actionlint registry."`
 		}{})
+		direct := reflectMapping(struct {
+			Source string `yaml:"source" jsonschema:"required,minLength=1,description=Independent artifact URL with a mandatory SHA256 pin, or an OCI digest reference. Cannot be combined with registry declaration fields."`
+		}{})
+		source, _ := direct.Properties.Get("source")
+		source.Pattern = `^(https://.+#sha256=[a-fA-F0-9]{64}|oci://.+@sha256:[a-f0-9]{64})$`
 		return &jsonschema.Schema{
 			Type: "array",
 			Items: &jsonschema.Schema{OneOf: []*jsonschema.Schema{
 				{Type: "string", MinLength: new(uint64(1)), Description: "Plugin alias, repository with optional release tag, HTTPS artifact URL pinned with #sha256=<64 hex digits>, or OCI reference pinned with @sha256:<64 hex digits>.", Examples: []any{"shellcheck", "kjanat/actionlint-plugin-shellcheck@v0.2.0", "gitlab.com/group/plugin", "https://example.com/plugin.wasm#sha256=" + strings.Repeat("a", 64), "oci://ghcr.io/owner/provider@sha256:" + strings.Repeat("a", 64)}},
 				mapping,
+				direct,
 			}},
 		}
 	case reflect.TypeFor[actionlint.IgnoreConfig]():
@@ -378,7 +384,10 @@ func generate() ([]byte, error) {
 		Type: "string", MinLength: new(uint64(1)),
 		Pattern: "[^\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]",
 	}
-	s.Properties.Set("$schema", &jsonschema.Schema{Type: "string", Description: "Schema reference for editors. actionlint ignores it."})
+	// Accept editor metadata without listing it among completion candidates.
+	s.PatternProperties = map[string]*jsonschema.Schema{
+		`^\$schema$`: {Type: "string", Description: "Schema reference for editors. actionlint ignores it."},
+	}
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""
 	s.Title = "actionlint configuration"

@@ -1,8 +1,9 @@
 package knowledge_test
 
 import (
-	"actionlint.kjanat.dev/v2/knowledge"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/knowledge"
 )
 
 func TestUnavailableFactsRemainDistinctFromKnownEmpty(t *testing.T) {

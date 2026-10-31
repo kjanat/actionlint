@@ -50,9 +50,13 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err != nil || len(cfg.Plugins) != 2 || config.VariableNames(cfg.Facts()) == nil {
 		t.Fatalf("migrated config: %+v %v", cfg, err)
 	}
-	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
-	if err != nil || len(lock.Lock.Plugins) != 2 {
-		t.Fatalf("default pins: %+v %v", lock, err)
+	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+		t.Fatalf("default installation created a lock: %v", err)
+	}
+	for _, ref := range cfg.Plugins {
+		if ref.Version() != "v1.0.0" || ref.IsAlias() {
+			t.Fatalf("unresolved default declaration: %v", ref)
+		}
 	}
 	registry.SetOffline(true)
 	before := len(registry.Requests())
@@ -108,9 +112,8 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name() != pin.Name || migrated.Plugins[0].Version() != pin.Selector || migrated.Plugins[0].Registry() != pin.Registry {
 		t.Fatalf("lock-only plugin selection changed: %+v, %v", migrated.Plugins, err)
 	}
-	lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(filepath.Dir(path), pluginregistry.LockName))
-	if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0] != pin {
-		t.Fatalf("lock-only pin changed: %+v, %v", lock, err)
+	if _, err := os.Stat(filepath.Join(filepath.Dir(path), pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("migrated legacy lock retained: %v", err)
 	}
 }
 
@@ -414,12 +417,15 @@ func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg, err := config.Load(path)
-			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != name || cfg.Plugins[0].Version() != pin.Selector || cfg.Plugins[0].Registry() != pin.Registry {
+			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != pin.Name || cfg.Plugins[0].Version() != pin.Version || cfg.Plugins[0].Registry() != pin.Registry {
 				t.Fatalf("locked selection changed: %+v, %v", cfg, err)
 			}
-			lock, err := pluginregistry.OpenLock(t.Context(), project.Lock.Path)
-			if err != nil || len(lock.Lock.Plugins) != 1 || lock.Lock.Plugins[0] != pin {
-				t.Fatalf("locked bytes changed: %+v, %v", lock, err)
+			if _, err := os.Stat(project.Lock.Path); !os.IsNotExist(err) {
+				t.Fatalf("legacy lock was not retired: %v", err)
+			}
+			resolved, err := client.Lookup(t.Context(), pin.Name, pin.Version)
+			if err != nil || !resolved.SameRelease(pin) {
+				t.Fatalf("recorded release changed: %+v, %v", resolved, err)
 			}
 		})
 	}

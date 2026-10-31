@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/address"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 )
 
@@ -23,7 +24,10 @@ func (f *Inputs) Add(path string) {
 	if f.paths == nil {
 		f.paths = map[string]struct{}{}
 	}
-	f.paths[absPath(path)] = struct{}{}
+	if !address.Remote(path) {
+		path = absPath(path)
+	}
+	f.paths[path] = struct{}{}
 }
 
 func (f *Inputs) List() []string {

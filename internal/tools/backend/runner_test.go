@@ -337,8 +337,10 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		{Code: "X1", Severity: "warning", Message: "on directive", Location: analyzer.ScriptPosition{Row: 1, Column: 1}},
 		{Code: "X2", Severity: "warning", Message: "on startup", Location: analyzer.ScriptPosition{Row: 2, Column: 1}},
 		{Code: "X3", Severity: "error", Message: "startup fails", Location: analyzer.ScriptPosition{Row: 2, Column: 1}},
-		{Code: "X4", Severity: "info", Message: "in script", Location: analyzer.ScriptPosition{Row: 3, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 3, Column: 12},
-			Fixes: []analyzer.ScriptFix{{Description: "quote", Replacements: []analyzer.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)}}}},
+		{
+			Code: "X4", Severity: "info", Message: "in script", Location: analyzer.ScriptPosition{Row: 3, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 3, Column: 12},
+			Fixes: []analyzer.ScriptFix{{Description: "quote", Replacements: []analyzer.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)}}},
+		},
 		{Code: "X5", Severity: "info", Message: "end on startup", Location: analyzer.ScriptPosition{Row: 3, Column: 1}, EndLocation: analyzer.ScriptPosition{Row: 2, Column: 1}},
 	}
 	backend := &reportingBackend{result: func(analyzer.ScriptRequest) process.Result { return process.Result{Diagnostics: diagnostics} }}
@@ -426,8 +428,10 @@ func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
 			return nil, err
 		}
 		return []analyzer.ScriptDiagnostic{
-			{Filename: request.Filename, Code: "X1", Severity: "info", Message: "quote", Location: analyzer.ScriptPosition{Row: 1, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 8},
-				Fixes: []analyzer.ScriptFix{{Description: "quote", Replacements: []analyzer.ScriptReplacement{replacement(1, 6, `"`), replacement(1, 8, `"`)}}}},
+			{
+				Filename: request.Filename, Code: "X1", Severity: "info", Message: "quote", Location: analyzer.ScriptPosition{Row: 1, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 8},
+				Fixes: []analyzer.ScriptFix{{Description: "quote", Replacements: []analyzer.ScriptReplacement{replacement(1, 6, `"`), replacement(1, 8, `"`)}}},
+			},
 			{Filename: "lib.sh", Source: "lib.sh", Code: "X2", Severity: "info", Message: "sourced", Location: analyzer.ScriptPosition{Row: 1, Column: 6}, EndLocation: analyzer.ScriptPosition{Row: 1, Column: 8}},
 		}, nil
 	})

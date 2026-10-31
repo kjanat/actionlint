@@ -138,8 +138,7 @@ export async function cachePlugins(
 	try {
 		return await run();
 	} finally {
-		// Automatic config migration can add pins during analysis. Inspect again
-		// so its first run saves the newly verified default artifacts too.
+		// Re-read the selected digests after analysis before saving verified bytes.
 		let current = plan;
 		let canSave = true;
 		if (inspectAfter) {

@@ -3,8 +3,9 @@
 package declaration
 
 import (
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"slices"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 func (b *builder) cloneActionInputMapping(in *workflowlang.ActionInputMapping) *workflowlang.ActionInputMapping {
@@ -27,6 +28,7 @@ func (b *builder) cloneActionInputMapping(in *workflowlang.ActionInputMapping) *
 	}
 	return out
 }
+
 func (b *builder) cloneBool(in *workflowlang.Bool) *workflowlang.Bool {
 	if in == nil {
 		return nil
@@ -38,6 +40,7 @@ func (b *builder) cloneBool(in *workflowlang.Bool) *workflowlang.Bool {
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneCacheMode(in *workflowlang.CacheMode) *workflowlang.CacheMode {
 	if in == nil {
 		return nil
@@ -47,6 +50,7 @@ func (b *builder) cloneCacheMode(in *workflowlang.CacheMode) *workflowlang.Cache
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneConcurrency(in *workflowlang.Concurrency) *workflowlang.Concurrency {
 	if in == nil {
 		return nil
@@ -59,6 +63,7 @@ func (b *builder) cloneConcurrency(in *workflowlang.Concurrency) *workflowlang.C
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneContainer(in *workflowlang.Container) *workflowlang.Container {
 	if in == nil {
 		return nil
@@ -89,6 +94,7 @@ func (b *builder) cloneContainer(in *workflowlang.Container) *workflowlang.Conta
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneCredentials(in *workflowlang.Credentials) *workflowlang.Credentials {
 	if in == nil {
 		return nil
@@ -100,6 +106,7 @@ func (b *builder) cloneCredentials(in *workflowlang.Credentials) *workflowlang.C
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneDefaults(in *workflowlang.Defaults) *workflowlang.Defaults {
 	if in == nil {
 		return nil
@@ -109,6 +116,7 @@ func (b *builder) cloneDefaults(in *workflowlang.Defaults) *workflowlang.Default
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneDefaultsRun(in *workflowlang.DefaultsRun) *workflowlang.DefaultsRun {
 	if in == nil {
 		return nil
@@ -121,6 +129,7 @@ func (b *builder) cloneDefaultsRun(in *workflowlang.DefaultsRun) *workflowlang.D
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneDispatchInput(in *workflowlang.DispatchInput) *workflowlang.DispatchInput {
 	if in == nil {
 		return nil
@@ -139,6 +148,7 @@ func (b *builder) cloneDispatchInput(in *workflowlang.DispatchInput) *workflowla
 	}
 	return out
 }
+
 func (b *builder) cloneEnv(in *workflowlang.Env) *workflowlang.Env {
 	if in == nil {
 		return nil
@@ -160,6 +170,7 @@ func (b *builder) cloneEnv(in *workflowlang.Env) *workflowlang.Env {
 	out.Expression = b.cloneString(in.Expression)
 	return out
 }
+
 func (b *builder) cloneEnvVar(in *workflowlang.EnvVar) *workflowlang.EnvVar {
 	if in == nil {
 		return nil
@@ -169,6 +180,7 @@ func (b *builder) cloneEnvVar(in *workflowlang.EnvVar) *workflowlang.EnvVar {
 	out.Value = b.cloneString(in.Value)
 	return out
 }
+
 func (b *builder) cloneEnvironment(in *workflowlang.Environment) *workflowlang.Environment {
 	if in == nil {
 		return nil
@@ -181,6 +193,7 @@ func (b *builder) cloneEnvironment(in *workflowlang.Environment) *workflowlang.E
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneExecAction(in *workflowlang.ExecAction) *workflowlang.ExecAction {
 	if in == nil {
 		return nil
@@ -213,6 +226,7 @@ func (b *builder) cloneExecAction(in *workflowlang.ExecAction) *workflowlang.Exe
 	}
 	return out
 }
+
 func (b *builder) cloneExecCancel(in *workflowlang.ExecCancel) *workflowlang.ExecCancel {
 	if in == nil {
 		return nil
@@ -221,6 +235,7 @@ func (b *builder) cloneExecCancel(in *workflowlang.ExecCancel) *workflowlang.Exe
 	out.Name = b.cloneString(in.Name)
 	return out
 }
+
 func (b *builder) cloneExecParallel(in *workflowlang.ExecParallel) *workflowlang.ExecParallel {
 	if in == nil {
 		return nil
@@ -234,6 +249,7 @@ func (b *builder) cloneExecParallel(in *workflowlang.ExecParallel) *workflowlang
 	}
 	return out
 }
+
 func (b *builder) cloneExecRun(in *workflowlang.ExecRun) *workflowlang.ExecRun {
 	if in == nil {
 		return nil
@@ -246,6 +262,7 @@ func (b *builder) cloneExecRun(in *workflowlang.ExecRun) *workflowlang.ExecRun {
 	out.RunPos = b.clonePos(in.RunPos)
 	return out
 }
+
 func (b *builder) cloneExecWait(in *workflowlang.ExecWait) *workflowlang.ExecWait {
 	if in == nil {
 		return nil
@@ -261,6 +278,7 @@ func (b *builder) cloneExecWait(in *workflowlang.ExecWait) *workflowlang.ExecWai
 	out.AllPos = b.clonePos(in.AllPos)
 	return out
 }
+
 func (b *builder) cloneFloat(in *workflowlang.Float) *workflowlang.Float {
 	if in == nil {
 		return nil
@@ -271,6 +289,7 @@ func (b *builder) cloneFloat(in *workflowlang.Float) *workflowlang.Float {
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneImageVersionEvent(in *workflowlang.ImageVersionEvent) *workflowlang.ImageVersionEvent {
 	if in == nil {
 		return nil
@@ -297,6 +316,7 @@ func (b *builder) cloneImageVersionEvent(in *workflowlang.ImageVersionEvent) *wo
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneInput(in *workflowlang.Input) *workflowlang.Input {
 	if in == nil {
 		return nil
@@ -307,6 +327,7 @@ func (b *builder) cloneInput(in *workflowlang.Input) *workflowlang.Input {
 	out.Source = b.cloneScriptSource(in.Source)
 	return out
 }
+
 func (b *builder) cloneInt(in *workflowlang.Int) *workflowlang.Int {
 	if in == nil {
 		return nil
@@ -318,6 +339,7 @@ func (b *builder) cloneInt(in *workflowlang.Int) *workflowlang.Int {
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneJob(in *workflowlang.Job) *workflowlang.Job {
 	if in == nil {
 		return nil
@@ -364,6 +386,7 @@ func (b *builder) cloneJob(in *workflowlang.Job) *workflowlang.Job {
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneMatrix(in *workflowlang.Matrix) *workflowlang.Matrix {
 	if in == nil {
 		return nil
@@ -387,6 +410,7 @@ func (b *builder) cloneMatrix(in *workflowlang.Matrix) *workflowlang.Matrix {
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneMatrixAssign(in *workflowlang.MatrixAssign) *workflowlang.MatrixAssign {
 	if in == nil {
 		return nil
@@ -396,6 +420,7 @@ func (b *builder) cloneMatrixAssign(in *workflowlang.MatrixAssign) *workflowlang
 	out.Value = b.cloneRawYAMLValue(in.Value)
 	return out
 }
+
 func (b *builder) cloneMatrixCombination(in *workflowlang.MatrixCombination) *workflowlang.MatrixCombination {
 	if in == nil {
 		return nil
@@ -411,6 +436,7 @@ func (b *builder) cloneMatrixCombination(in *workflowlang.MatrixCombination) *wo
 	out.Expression = b.cloneString(in.Expression)
 	return out
 }
+
 func (b *builder) cloneMatrixCombinations(in *workflowlang.MatrixCombinations) *workflowlang.MatrixCombinations {
 	if in == nil {
 		return nil
@@ -427,6 +453,7 @@ func (b *builder) cloneMatrixCombinations(in *workflowlang.MatrixCombinations) *
 	out.Expression = b.cloneString(in.Expression)
 	return out
 }
+
 func (b *builder) cloneMatrixRow(in *workflowlang.MatrixRow) *workflowlang.MatrixRow {
 	if in == nil {
 		return nil
@@ -443,6 +470,7 @@ func (b *builder) cloneMatrixRow(in *workflowlang.MatrixRow) *workflowlang.Matri
 	out.Expression = b.cloneString(in.Expression)
 	return out
 }
+
 func (b *builder) cloneOutput(in *workflowlang.Output) *workflowlang.Output {
 	if in == nil {
 		return nil
@@ -452,6 +480,7 @@ func (b *builder) cloneOutput(in *workflowlang.Output) *workflowlang.Output {
 	out.Value = b.cloneString(in.Value)
 	return out
 }
+
 func (b *builder) clonePermissionScope(in *workflowlang.PermissionScope) *workflowlang.PermissionScope {
 	if in == nil {
 		return nil
@@ -461,6 +490,7 @@ func (b *builder) clonePermissionScope(in *workflowlang.PermissionScope) *workfl
 	out.Value = b.cloneString(in.Value)
 	return out
 }
+
 func (b *builder) clonePermissions(in *workflowlang.Permissions) *workflowlang.Permissions {
 	if in == nil {
 		return nil
@@ -476,6 +506,7 @@ func (b *builder) clonePermissions(in *workflowlang.Permissions) *workflowlang.P
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) clonePos(in *workflowlang.Pos) *workflowlang.Pos {
 	if in == nil {
 		return nil
@@ -485,6 +516,7 @@ func (b *builder) clonePos(in *workflowlang.Pos) *workflowlang.Pos {
 	out.Col = in.Col
 	return out
 }
+
 func (b *builder) cloneRawYAMLArray(in *workflowlang.RawYAMLArray) *workflowlang.RawYAMLArray {
 	if in == nil {
 		return nil
@@ -499,6 +531,7 @@ func (b *builder) cloneRawYAMLArray(in *workflowlang.RawYAMLArray) *workflowlang
 	out.Position = b.clonePos(in.Position)
 	return out
 }
+
 func (b *builder) cloneRawYAMLObject(in *workflowlang.RawYAMLObject) *workflowlang.RawYAMLObject {
 	if in == nil {
 		return nil
@@ -513,6 +546,7 @@ func (b *builder) cloneRawYAMLObject(in *workflowlang.RawYAMLObject) *workflowla
 	out.Position = b.clonePos(in.Position)
 	return out
 }
+
 func (b *builder) cloneRawYAMLString(in *workflowlang.RawYAMLString) *workflowlang.RawYAMLString {
 	if in == nil {
 		return nil
@@ -523,6 +557,7 @@ func (b *builder) cloneRawYAMLString(in *workflowlang.RawYAMLString) *workflowla
 	out.Position = b.clonePos(in.Position)
 	return out
 }
+
 func (b *builder) cloneRepositoryDispatchEvent(in *workflowlang.RepositoryDispatchEvent) *workflowlang.RepositoryDispatchEvent {
 	if in == nil {
 		return nil
@@ -537,6 +572,7 @@ func (b *builder) cloneRepositoryDispatchEvent(in *workflowlang.RepositoryDispat
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneRunner(in *workflowlang.Runner) *workflowlang.Runner {
 	if in == nil {
 		return nil
@@ -554,6 +590,7 @@ func (b *builder) cloneRunner(in *workflowlang.Runner) *workflowlang.Runner {
 	out.Group = b.cloneString(in.Group)
 	return out
 }
+
 func (b *builder) cloneScalarComment(in *workflowlang.ScalarComment) *workflowlang.ScalarComment {
 	if in == nil {
 		return nil
@@ -564,6 +601,7 @@ func (b *builder) cloneScalarComment(in *workflowlang.ScalarComment) *workflowla
 	out.Trailing = in.Trailing
 	return out
 }
+
 func (b *builder) cloneScheduleEntry(in *workflowlang.ScheduleEntry) *workflowlang.ScheduleEntry {
 	if in == nil {
 		return nil
@@ -573,6 +611,7 @@ func (b *builder) cloneScheduleEntry(in *workflowlang.ScheduleEntry) *workflowla
 	out.Timezone = b.cloneString(in.Timezone)
 	return out
 }
+
 func (b *builder) cloneScheduledEvent(in *workflowlang.ScheduledEvent) *workflowlang.ScheduledEvent {
 	if in == nil {
 		return nil
@@ -587,6 +626,7 @@ func (b *builder) cloneScheduledEvent(in *workflowlang.ScheduledEvent) *workflow
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneScriptSource(in *workflowlang.ScriptSource) *workflowlang.ScriptSource {
 	if in == nil {
 		return nil
@@ -611,6 +651,7 @@ func (b *builder) cloneScriptSource(in *workflowlang.ScriptSource) *workflowlang
 	}
 	return out
 }
+
 func (b *builder) cloneScriptSourceSpan(in *workflowlang.ScriptSourceSpan) *workflowlang.ScriptSourceSpan {
 	if in == nil {
 		return nil
@@ -624,6 +665,7 @@ func (b *builder) cloneScriptSourceSpan(in *workflowlang.ScriptSourceSpan) *work
 	out.YamlEndLine = in.YamlEndLine
 	return out
 }
+
 func (b *builder) cloneService(in *workflowlang.Service) *workflowlang.Service {
 	if in == nil {
 		return nil
@@ -633,6 +675,7 @@ func (b *builder) cloneService(in *workflowlang.Service) *workflowlang.Service {
 	out.Container = b.cloneContainer(in.Container)
 	return out
 }
+
 func (b *builder) cloneServices(in *workflowlang.Services) *workflowlang.Services {
 	if in == nil {
 		return nil
@@ -648,6 +691,7 @@ func (b *builder) cloneServices(in *workflowlang.Services) *workflowlang.Service
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneSnapshot(in *workflowlang.Snapshot) *workflowlang.Snapshot {
 	if in == nil {
 		return nil
@@ -659,6 +703,7 @@ func (b *builder) cloneSnapshot(in *workflowlang.Snapshot) *workflowlang.Snapsho
 	out.If = b.cloneString(in.If)
 	return out
 }
+
 func (b *builder) cloneSourceScalar(in *workflowlang.SourceScalar) *workflowlang.SourceScalar {
 	if in == nil {
 		return nil
@@ -673,6 +718,7 @@ func (b *builder) cloneSourceScalar(in *workflowlang.SourceScalar) *workflowlang
 	out.End = in.End
 	return out
 }
+
 func (b *builder) cloneStep(in *workflowlang.Step) *workflowlang.Step {
 	if in == nil {
 		return nil
@@ -691,6 +737,7 @@ func (b *builder) cloneStep(in *workflowlang.Step) *workflowlang.Step {
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneStrategy(in *workflowlang.Strategy) *workflowlang.Strategy {
 	if in == nil {
 		return nil
@@ -704,6 +751,7 @@ func (b *builder) cloneStrategy(in *workflowlang.Strategy) *workflowlang.Strateg
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneString(in *workflowlang.String) *workflowlang.String {
 	if in == nil {
 		return nil
@@ -716,6 +764,7 @@ func (b *builder) cloneString(in *workflowlang.String) *workflowlang.String {
 	out.SourceScalar = in.SourceScalar
 	return out
 }
+
 func (b *builder) cloneWebhookEvent(in *workflowlang.WebhookEvent) *workflowlang.WebhookEvent {
 	if in == nil {
 		return nil
@@ -743,6 +792,7 @@ func (b *builder) cloneWebhookEvent(in *workflowlang.WebhookEvent) *workflowlang
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneWebhookEventFilter(in *workflowlang.WebhookEventFilter) *workflowlang.WebhookEventFilter {
 	if in == nil {
 		return nil
@@ -757,6 +807,7 @@ func (b *builder) cloneWebhookEventFilter(in *workflowlang.WebhookEventFilter) *
 	}
 	return out
 }
+
 func (b *builder) cloneWorkflow(in *workflowlang.Workflow) *workflowlang.Workflow {
 	if in == nil {
 		return nil
@@ -792,6 +843,7 @@ func (b *builder) cloneWorkflow(in *workflowlang.Workflow) *workflowlang.Workflo
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneWorkflowCall(in *workflowlang.WorkflowCall) *workflowlang.WorkflowCall {
 	if in == nil {
 		return nil
@@ -813,6 +865,7 @@ func (b *builder) cloneWorkflowCall(in *workflowlang.WorkflowCall) *workflowlang
 	out.InheritSecrets = in.InheritSecrets
 	return out
 }
+
 func (b *builder) cloneWorkflowCallEvent(in *workflowlang.WorkflowCallEvent) *workflowlang.WorkflowCallEvent {
 	if in == nil {
 		return nil
@@ -839,6 +892,7 @@ func (b *builder) cloneWorkflowCallEvent(in *workflowlang.WorkflowCallEvent) *wo
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneWorkflowCallEventInput(in *workflowlang.WorkflowCallEventInput) *workflowlang.WorkflowCallEventInput {
 	if in == nil {
 		return nil
@@ -852,6 +906,7 @@ func (b *builder) cloneWorkflowCallEventInput(in *workflowlang.WorkflowCallEvent
 	out.ID = in.ID
 	return out
 }
+
 func (b *builder) cloneWorkflowCallEventOutput(in *workflowlang.WorkflowCallEventOutput) *workflowlang.WorkflowCallEventOutput {
 	if in == nil {
 		return nil
@@ -862,6 +917,7 @@ func (b *builder) cloneWorkflowCallEventOutput(in *workflowlang.WorkflowCallEven
 	out.Value = b.cloneString(in.Value)
 	return out
 }
+
 func (b *builder) cloneWorkflowCallEventSecret(in *workflowlang.WorkflowCallEventSecret) *workflowlang.WorkflowCallEventSecret {
 	if in == nil {
 		return nil
@@ -872,6 +928,7 @@ func (b *builder) cloneWorkflowCallEventSecret(in *workflowlang.WorkflowCallEven
 	out.Required = b.cloneBool(in.Required)
 	return out
 }
+
 func (b *builder) cloneWorkflowCallInput(in *workflowlang.WorkflowCallInput) *workflowlang.WorkflowCallInput {
 	if in == nil {
 		return nil
@@ -881,6 +938,7 @@ func (b *builder) cloneWorkflowCallInput(in *workflowlang.WorkflowCallInput) *wo
 	out.Value = b.cloneString(in.Value)
 	return out
 }
+
 func (b *builder) cloneWorkflowCallSecret(in *workflowlang.WorkflowCallSecret) *workflowlang.WorkflowCallSecret {
 	if in == nil {
 		return nil
@@ -890,6 +948,7 @@ func (b *builder) cloneWorkflowCallSecret(in *workflowlang.WorkflowCallSecret) *
 	out.Value = b.cloneString(in.Value)
 	return out
 }
+
 func (b *builder) cloneWorkflowDispatchEvent(in *workflowlang.WorkflowDispatchEvent) *workflowlang.WorkflowDispatchEvent {
 	if in == nil {
 		return nil
@@ -904,6 +963,7 @@ func (b *builder) cloneWorkflowDispatchEvent(in *workflowlang.WorkflowDispatchEv
 	out.Pos = b.clonePos(in.Pos)
 	return out
 }
+
 func (b *builder) cloneEvent(in workflowlang.Event) workflowlang.Event {
 	switch value := in.(type) {
 	case nil:
@@ -924,6 +984,7 @@ func (b *builder) cloneEvent(in workflowlang.Event) workflowlang.Event {
 		panic("unpublished Event implementation")
 	}
 }
+
 func (b *builder) cloneExec(in workflowlang.Exec) workflowlang.Exec {
 	switch value := in.(type) {
 	case nil:
@@ -942,6 +1003,7 @@ func (b *builder) cloneExec(in workflowlang.Exec) workflowlang.Exec {
 		panic("unpublished Exec implementation")
 	}
 }
+
 func (b *builder) cloneRawYAMLValue(in workflowlang.RawYAMLValue) workflowlang.RawYAMLValue {
 	switch value := in.(type) {
 	case nil:

@@ -1,6 +1,7 @@
 package localapp
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"maps"
@@ -13,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/config"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
 )
 
 // PluginCachePlan describes portable artifact bytes, never compiled native code.
@@ -21,9 +23,10 @@ type PluginCachePlan struct {
 	Artifacts []string `json:"artifacts"`
 }
 
-// CachePlan does not fetch artifacts or execute plugins. Configuration backends
+// CachePlan may acquire OCI manifests to enumerate this host's verified blobs.
+// It never fetches executable layers or executes plugins. Configuration backends
 // are included so their pinned bytes can be restored before runtime loading.
-func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
+func (s *PluginSources) CachePlan(ctx context.Context) (PluginCachePlan, error) {
 	base, err := os.UserCacheDir()
 	if err != nil {
 		return PluginCachePlan{}, err
@@ -57,7 +60,7 @@ func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 			continue
 		}
 		if pluginartifact.IsOCI(path) {
-			digests, err := s.ociDigests(path)
+			digests, err := s.ociDigests(ctx, path)
 			if err != nil {
 				return PluginCachePlan{}, err
 			}
@@ -91,10 +94,9 @@ func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 	return plan, nil
 }
 
-// ociDigests returns the stored blobs of the oci:// source on this host:
-// the lock's list when the lock pins the source, otherwise only the root
-// digest the source names.
-func (s *PluginSources) ociDigests(source string) ([]string, error) {
+// ociDigests accepts old explicit lock evidence or derives the closure from the
+// configured digest and its manifests. No new project metadata is needed.
+func (s *PluginSources) ociDigests(ctx context.Context, source string) ([]string, error) {
 	if err := pluginartifact.RequireRemotePin(source); err != nil {
 		return nil, err
 	}
@@ -105,6 +107,5 @@ func (s *PluginSources) ociDigests(source string) ([]string, error) {
 			}
 		}
 	}
-	_, root, _ := strings.Cut(source, "@sha256:")
-	return []string{root}, nil
+	return oci.Digests(ctx, source, artifactOptions())
 }

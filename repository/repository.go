@@ -47,6 +47,7 @@ func (p Permissions) Reason() knowledge.Reason {
 	}
 	return p.missing.Reason()
 }
+
 func UnavailablePermissions(reason knowledge.Unavailability) Permissions {
 	return Permissions{missing: reason}
 }
@@ -122,6 +123,7 @@ func (v Variables) Reason() knowledge.Reason {
 	}
 	return v.missing.Reason()
 }
+
 func UnavailableVariables(reason knowledge.Unavailability) Variables {
 	return Variables{missing: reason}
 }
@@ -169,6 +171,7 @@ func (e Environments) Reason() knowledge.Reason {
 	}
 	return e.missing.Reason()
 }
+
 func UnavailableEnvironments(reason knowledge.Unavailability) Environments {
 	return Environments{missing: reason}
 }

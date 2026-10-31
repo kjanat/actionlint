@@ -48,6 +48,24 @@ func TestRuleLevelSuggestions(t *testing.T) {
 	}
 }
 
+func TestSchemaReferenceNotSuggested(t *testing.T) {
+	var schema struct {
+		Properties        map[string]json.RawMessage `json:"properties"`
+		PatternProperties map[string]struct {
+			Type string `json:"type"`
+		} `json:"patternProperties"`
+	}
+	if err := json.Unmarshal(generatedSchema(t), &schema); err != nil {
+		t.Fatal(err)
+	}
+	if _, suggested := schema.Properties["$schema"]; suggested {
+		t.Fatal("editor metadata must not be offered as a configuration setting")
+	}
+	if schema.PatternProperties[`^\$schema$`].Type != "string" {
+		t.Fatal("an existing $schema string must remain accepted")
+	}
+}
+
 func TestPluginRuleSelectors(t *testing.T) {
 	ignore := mapYAMLType(reflect.TypeFor[actionlint.IgnoreConfig](), nil)
 	rule, _ := ignore.Properties.Get("rule")
@@ -362,6 +380,9 @@ func TestSchemaValidation(t *testing.T) {
 		parserValid bool
 	}{
 		{"empty", `{}`, true, true},
+		{"schema reference", `{"$schema": "https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json"}`, true, true},
+		{"invalid schema reference type", `{"$schema": 42}`, false, true},
+		{"schema reference lookalike", `{"$schema-extra": "unexpected"}`, false, true},
 		{"ruff wasm path", `tools: {ruff: {backend: {wasm: {path: ruff.wasm}}}}`, true, true},
 		{"ruff empty wasm path", `tools: {ruff: {backend: {wasm: {path: ""}}}}`, false, false},
 		{"shellcheck wasm path", `tools: {shellcheck: {backend: {wasm: {path: shellcheck.wasm}}}}`, true, true},
@@ -383,6 +404,9 @@ func TestSchemaValidation(t *testing.T) {
 		{"plugin empty entry", `plugins: ['']`, false, false},
 		{"plugin missing name", `plugins: [{version: v1}]`, false, false},
 		{"plugin unknown field", `plugins: [{name: owner/repo, extra: true}]`, false, false},
+		{"plugin direct source table", `plugins: [{source: 'https://example.org/plugin.wasm#sha256=` + strings.Repeat("a", 64) + `'}]`, true, true},
+		{"plugin source without digest", `plugins: [{source: 'https://example.org/plugin.wasm'}]`, false, false},
+		{"plugin source mixed with registry identity", `plugins: [{name: owner/repo, source: 'https://example.org/plugin.wasm#sha256=` + strings.Repeat("a", 64) + `'}]`, false, false},
 		{"plugin null version", `plugins: [{name: owner/repo, version: null}]`, false, false},
 		{"plugin ignore requires registration", `ignores: [{rule: no-sudo, file: '**'}]`, true, false},
 		{"ignore policy itself", `ignores: [{rule: disallow-suppressions, file: '**'}]`, false, false},

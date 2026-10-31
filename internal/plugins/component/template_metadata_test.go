@@ -1,8 +1,9 @@
 package component
 
 import (
-	"actionlint.kjanat.dev/v2/analyzer"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/analyzer"
 )
 
 func TestTemplateMetadataRequiresMatchingExport(t *testing.T) {

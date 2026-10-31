@@ -434,9 +434,11 @@ func (m Metadata) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
 			break
 		}
 	}
-	return analyzer.ScriptEngineDescriptor{ID: m.ID, Version: m.PluginVersion, Name: m.Name,
+	return analyzer.ScriptEngineDescriptor{
+		ID: m.ID, Version: m.PluginVersion, Name: m.Name,
 		Engine: m.Engine.Name, EngineVersion: m.Engine.Version, TemplateContract: m.TemplateContract,
-		Shells: slices.Clone(m.Capabilities.ScriptShells), ScriptInputs: slices.Clone(m.Capabilities.ScriptInputs), Rule: descriptor}
+		Shells: slices.Clone(m.Capabilities.ScriptShells), ScriptInputs: slices.Clone(m.Capabilities.ScriptInputs), Rule: descriptor,
+	}
 }
 
 type response struct {

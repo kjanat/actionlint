@@ -19,9 +19,16 @@ func TestDescriptorNameFitsInlineSuppressionSelector(t *testing.T) {
 		name  string
 		valid bool
 	}{
-		{"no,sudo", false}, {"no -- x", false}, {"name --", false},
-		{" no-sud", false}, {"no-sud ", false}, {"no\nsudo", false}, {"no\rsudo", false},
-		{"no-sudo", true}, {"NO.SUDO", true}, {"org/foo", true},
+		{"no,sudo", false},
+		{"no -- x", false},
+		{"name --", false},
+		{" no-sud", false},
+		{"no-sud ", false},
+		{"no\nsudo", false},
+		{"no\rsudo", false},
+		{"no-sudo", true},
+		{"NO.SUDO", true},
+		{"org/foo", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "plugin.wasm")

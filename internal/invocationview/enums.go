@@ -1,9 +1,10 @@
 package invocationview
 
 import (
+	"fmt"
+
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
-	"fmt"
 )
 
 func projectEntryKind(value invocation.EntryKind) (analyzer.InvocationEntryKind, error) {

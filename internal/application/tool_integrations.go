@@ -92,6 +92,7 @@ type boundToolAnalyzer struct {
 func (b boundToolAnalyzer) ToolIntegration() *analyzer.ToolIntegration {
 	return b.integrator.ToolIntegration()
 }
+
 func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*analyzer.ToolNegotiation, error) {
 	effective := configured
 	if len(b.options) != 0 {

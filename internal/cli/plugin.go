@@ -25,7 +25,7 @@ type pluginInvocation struct {
 }
 
 func (a *commandApp) pluginLockFlag(f *pflag.FlagSet) {
-	f.StringVar(&a.inv.Check.PluginLock, "plugin-lock", "", "Use an explicit plugin lock `FILE`")
+	f.StringVar(&a.inv.Check.PluginLock, "plugin-lock", "", "Read a legacy plugin lock `FILE`")
 	annotateFlag(f, "plugin-lock", "Rule selection")
 }
 
@@ -44,11 +44,11 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	}{
 		{"search [query]", "Search the published plugin catalogue", operationPluginSearch, cobra.MaximumNArgs(1)},
 		{"versions <plugin>", "List published tags and host-specific compatibility evidence", operationPluginVersions, cobra.ExactArgs(1)},
-		{"install [plugin]", "Install declared plugins, or add a plugin to configuration and lock it", operationPluginInstall, cobra.MaximumNArgs(1)},
-		{"list", "List declared and locked plugins without network access", operationPluginList, cobra.NoArgs},
+		{"install [plugin]", "Install plugins and save canonical packages with exact versions", operationPluginInstall, cobra.MaximumNArgs(1)},
+		{"list", "List configured exact plugin releases", operationPluginList, cobra.NoArgs},
 		{"update [plugin]", "Resolve declared versions and update their pins", operationPluginUpdate, cobra.MaximumNArgs(1)},
-		{"remove <plugin>", "Remove a plugin from configuration and lockfile", operationPluginRemove, cobra.ExactArgs(1)},
-		{"sync", "Refresh release status and restore exact locked artifacts", operationPluginSync, cobra.NoArgs},
+		{"remove <plugin>", "Remove a plugin from configuration", operationPluginRemove, cobra.ExactArgs(1)},
+		{"sync", "Refresh release status and restore configured artifacts", operationPluginSync, cobra.NoArgs},
 	} {
 		c := &cobra.Command{Use: item.use, Short: item.description, Args: item.args, RunE: a.capture(item.op)}
 		if item.op == operationPluginSearch || item.op == operationPluginVersions || item.op == operationPluginInstall || item.op == operationPluginUpdate || item.op == operationPluginRemove {
@@ -150,7 +150,7 @@ func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, e
 		}
 		selected = project.Lock.Lock
 	case operationPluginSync:
-		selected, err = project.SelectedLock()
+		selected, err = project.SelectedPlugins(ctx)
 		if err != nil {
 			return 0, err
 		}
@@ -164,7 +164,7 @@ func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, e
 			return 0, err
 		}
 	case operationPluginList:
-		selected, err = project.SelectedLock()
+		selected, err = project.SelectedPlugins(ctx)
 		if err != nil {
 			return 0, err
 		}
@@ -302,7 +302,7 @@ func (r pluginRegistryRequest) update(ctx context.Context, project *localapp.Plu
 	}
 	update := refs
 	if name != "" {
-		index, err := declaredPlugin(project, refs, name, r.Options.Registry)
+		index, err := declaredPlugin(ctx, project, refs, name, r.Options.Registry)
 		if err != nil {
 			return err
 		}
@@ -335,24 +335,23 @@ func removePlugin(ctx context.Context, project *localapp.PluginProject, name, re
 	if err != nil {
 		return err
 	}
-	index, err := declaredPlugin(project, refs, name, registry)
+	index, err := declaredPlugin(ctx, project, refs, name, registry)
 	if err != nil {
 		return err
 	}
-	ref := refs[index]
 	refs = slices.Delete(refs, index, index+1)
-	project.Lock.Lock.Plugins = slices.DeleteFunc(project.Lock.Lock.Plugins, func(pin pluginregistry.Pin) bool {
-		return pin.Matches(ref)
-	})
-	project.Lock.Lock.Sources = slices.DeleteFunc(project.Lock.Lock.Sources, func(pin pluginregistry.SourcePin) bool {
-		return ref.DirectSource() != "" && pin.Source() == ref.DirectSource()
-	})
+	project.Manifest.References = slices.Clone(refs)
+	selected, err := project.SelectedPlugins(ctx)
+	if err != nil {
+		return err
+	}
+	project.Lock.Lock = selected
 	return project.Save(ctx, refs)
 }
 
 // declaredPlugin resolves command spelling against declarations and recorded
 // pins only. A shorthand from another registry never selects this declaration.
-func declaredPlugin(project *localapp.PluginProject, refs []pluginref.Reference, name, registry string) (int, error) {
+func declaredPlugin(ctx context.Context, project *localapp.PluginProject, refs []pluginref.Reference, name, registry string) (int, error) {
 	requested, err := pluginref.Parse(name)
 	if err != nil {
 		return -1, commandUsageError{err}
@@ -375,6 +374,30 @@ func declaredPlugin(project *localapp.PluginProject, refs []pluginref.Reference,
 			return -1, fmt.Errorf("plugin %q is declared in multiple registries; select --registry", name)
 		}
 		index = i
+	}
+	if index < 0 && requested.IsAlias() {
+		// Alias convenience uses the selected release's cached registry evidence,
+		// scoped to the declaration's authority; config itself stays canonical.
+		for i, ref := range refs {
+			if ref.DirectSource() != "" || registry != "" && !pluginregistry.SameRegistry(ref.Registry(), registry) {
+				continue
+			}
+			client, err := pluginregistry.New(ref.Registry())
+			if err != nil {
+				return -1, err
+			}
+			pin, err := client.Lookup(ctx, ref.Name(), ref.Version())
+			if err != nil {
+				return -1, err
+			}
+			if pin.Alias != requested.Name() {
+				continue
+			}
+			if index >= 0 {
+				return -1, fmt.Errorf("plugin %q is declared in multiple registries; select --registry", name)
+			}
+			index = i
+		}
 	}
 	if index < 0 {
 		return -1, fmt.Errorf("plugin %q is not declared", name)

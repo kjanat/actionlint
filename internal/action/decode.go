@@ -82,9 +82,11 @@ func (d manifestDecoder) metadata(root codec.Entered, out *Metadata) error {
 			return err
 		},
 	})
-	for _, value := range []*string{&out.Name, &out.Description, &out.Runs.Using, &out.Runs.Plugin,
+	for _, value := range []*string{
+		&out.Name, &out.Description, &out.Runs.Using, &out.Runs.Plugin,
 		&out.Runs.Main, &out.Runs.Pre, &out.Runs.Post, &out.Runs.PreIf, &out.Runs.PostIf,
-		&out.Runs.Image, &out.Runs.Entrypoint, &out.Runs.PreEntrypoint, &out.Runs.PostEntrypoint} {
+		&out.Runs.Image, &out.Runs.Entrypoint, &out.Runs.PreEntrypoint, &out.Runs.PostEntrypoint,
+	} {
 		if literal := exprlang.LiteralExpressionValue(*value); literal != nil {
 			*value = *literal
 		}

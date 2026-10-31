@@ -77,8 +77,10 @@ func migrateRepositoryFacts(root *yaml.Node) (*yaml.Node, bool, error) {
 		return nil
 	}
 	for _, legacy := range []struct{ key, name string }{
-		{"self-hosted-runner", "runners"}, {"config-variables", "variables"},
-		{"config-secrets", "secrets"}, {"assume-default-permissions", "default-workflow-permissions"},
+		{"self-hosted-runner", "runners"},
+		{"config-variables", "variables"},
+		{"config-secrets", "secrets"},
+		{"assume-default-permissions", "default-workflow-permissions"},
 	} {
 		value := field(root, legacy.key)
 		if value == nil {

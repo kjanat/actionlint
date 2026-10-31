@@ -69,6 +69,7 @@ name      = "leaves"
 doc       = "Internal utilities and data that import no module package: file reading, source text, YAML node models, expression context tables and webhook data."
 packages  = [
   "internal/buildinfo",
+  "internal/config/address",
   "internal/expression/context",
   "internal/fsread",
   "internal/pluginref",
@@ -117,6 +118,7 @@ doc       = "Configuration decoding and its parts. Configuration does not reach 
 packages  = [
   "internal/config",
   "internal/config/rules",
+  "internal/config/source",
   "internal/config/tools",
   "internal/config/tree",
   "internal/filefilter",

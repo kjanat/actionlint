@@ -1,12 +1,13 @@
 package builtin
 
 import (
+	"strings"
+
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
 	workflowexpr "actionlint.kjanat.dev/v2/internal/workflow/expressions"
 	"actionlint.kjanat.dev/v2/repository"
-	"strings"
 )
 
 func environmentReferenceNames(variables, secrets, environmentSecrets []string) workflowexpr.ReferenceNames {

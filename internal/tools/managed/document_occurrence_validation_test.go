@@ -32,7 +32,8 @@ func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
 			batch := documentBatchFixture(t, 1)
 			change(&batch.Scripts[0].Fact.Occurrence)
 			guest := &negotiationObserver{}
-			runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest,
+			runner := documentRunner{
+				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
 				context: tools.Context{Document: analyzer.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 			}
 			_, err := runner.Analyze(t.Context(), batch)

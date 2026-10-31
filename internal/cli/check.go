@@ -87,11 +87,6 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
 		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
-	if err := c.pluginSelection().Migrate(ctx, workingDir, input, c.defaultPlugins(func(message string) {
-		_, _ = fmt.Fprintln(log, "warning: "+message)
-	})); err != nil {
-		return 0, err
-	}
 	plugins, err := c.pluginSelection().Resolve(ctx, workingDir, input)
 	if err != nil {
 		return 0, err

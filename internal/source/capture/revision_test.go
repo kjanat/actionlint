@@ -1,12 +1,13 @@
 package capture
 
 import (
-	"actionlint.kjanat.dev/v2/source"
 	"context"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestRevisionLookupRequiresSealingAndPerformsNoIO(t *testing.T) {

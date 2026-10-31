@@ -72,7 +72,8 @@ func TestDocumentPluginRetainsScriptsBesideScopeFailure(t *testing.T) {
 	batch.Scopes = []*tools.Scope{{}}
 	failure := errors.New("empty scope failed")
 	guest := &partialGuest{failAt: 1, failure: failure}
-	r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest,
+	r := documentRunner{
+		documentRoute: shellcheckRoute, guest: guest, integrator: guest,
 		context: tools.Context{Document: analyzer.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml"}},
 	}
 	findings, err := r.Analyze(t.Context(), batch)

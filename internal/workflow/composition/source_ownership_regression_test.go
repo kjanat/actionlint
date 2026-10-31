@@ -40,6 +40,7 @@ func (r *sourceMutationRule) LeaveInvocation(invocation.Context) error { return 
 func (r *sourceMutationRule) VisitInvocationStep(step workflowdecl.StepView) error {
 	return r.VisitStep(step)
 }
+
 func (r *sourceMutationRule) VisitOpaqueAction(step workflowdecl.StepView) error {
 	return r.VisitStep(step)
 }
@@ -48,12 +49,15 @@ func (r *sourceMutationRule) ForMetadata(*actionlocal.Resolver) workflowvisit.Ru
 	r.metadata++
 	return r
 }
+
 func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, documentparse.SourceSnapshot) error {
 	return nil
 }
 
-var _ builtin.MetadataParticipant = (*sourceMutationRule)(nil)
-var _ builtin.InvocationParticipant = (*sourceMutationRule)(nil)
+var (
+	_ builtin.MetadataParticipant   = (*sourceMutationRule)(nil)
+	_ builtin.InvocationParticipant = (*sourceMutationRule)(nil)
+)
 
 type canonicalFactObserver struct {
 	workflowvisit.Base
@@ -104,14 +108,17 @@ func (observer *canonicalFactObserver) EnterInvocation(call builtin.Invocation) 
 	observer.source = call.Source
 	return nil
 }
+
 func (observer *canonicalFactObserver) LeaveInvocation(invocation.Context) error {
 	observer.source = observer.parents[len(observer.parents)-1]
 	observer.parents = observer.parents[:len(observer.parents)-1]
 	return nil
 }
+
 func (observer *canonicalFactObserver) VisitInvocationStep(step workflowdecl.StepView) error {
 	return observer.VisitStep(step)
 }
+
 func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.StepView) error {
 	return observer.VisitStep(step)
 }
@@ -542,6 +549,7 @@ func captureMutableMetadata(f *invocationFixture) {
 	f.mutableMetadata = map[string]*actionmeta.Metadata{}
 	f.mutateMeta = func(meta *actionmeta.Metadata) { f.mutableMetadata[filepath.Clean(meta.Path())] = meta }
 }
+
 func mutateRunInput(t *testing.T, f *invocationFixture, view workflowdecl.StepView, text string) {
 	t.Helper()
 	if view.SourceReference() == f.root.Reference() {
@@ -565,6 +573,7 @@ func mutateRunInput(t *testing.T, f *invocationFixture, view workflowdecl.StepVi
 	}
 	t.Fatal("mutable run input unavailable")
 }
+
 func mutateCallInput(t *testing.T, f *invocationFixture, view workflowdecl.StepView, text string) {
 	t.Helper()
 	if view.SourceReference() == f.root.Reference() {
@@ -588,6 +597,7 @@ func mutateCallInput(t *testing.T, f *invocationFixture, view workflowdecl.StepV
 	}
 	t.Fatal("mutable call input unavailable")
 }
+
 func mutateMetadataScalar(step *actionmeta.Step, key, value string) {
 	for i := 0; i+1 < len(step.Node.Content); i += 2 {
 		if step.Node.Content[i].Value == key {

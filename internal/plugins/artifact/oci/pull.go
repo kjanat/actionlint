@@ -369,6 +369,38 @@ func PullLayers(ctx context.Context, source string, options artifact.Options) er
 	return nil
 }
 
+// Digests plans the verified blobs needed by this host. It fetches only the
+// pinned index and selected image manifest, never artifact or executable layers.
+func Digests(ctx context.Context, source string, options artifact.Options) ([]string, error) {
+	ctx, cancel := withTimeout(ctx, options)
+	defer cancel()
+	ref, err := artifact.ParseOCI(source)
+	if err != nil {
+		return nil, err
+	}
+	pull, err := newPuller(ref, options)
+	if err != nil {
+		return nil, err
+	}
+	_, manifest, err := pull.hostManifest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	layers, _, err := pull.layers(ctx, manifest)
+	if err != nil {
+		return nil, err
+	}
+	digests := []string{ref.Digest(), manifest}
+	for _, layer := range layers {
+		digest, err := descriptorDigest(layer)
+		if err != nil {
+			return nil, err
+		}
+		digests = append(digests, digest)
+	}
+	return digests, nil
+}
+
 // Describe returns the image manifest and layer digests of every platform
 // the oci:// source serves, keyed like artifact.Info.Platform. It fetches
 // manifests only, never layers, so it reads no executable of another

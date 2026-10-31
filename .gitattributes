@@ -9,3 +9,4 @@
 /internal/webhook/generate/testdata/** -text
 /testdata/** -text
 /.zed/*.json linguist-language=JSONC
+/dprint.schema.json  linguist-generated=true -diff

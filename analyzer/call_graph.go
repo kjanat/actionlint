@@ -191,6 +191,7 @@ func (graph CallGraph) Entry() InvocationEntry {
 	}
 	return graph.data.records.Entry
 }
+
 func (graph CallGraph) Budget() InvocationBudget {
 	if !graph.Valid() {
 		return InvocationBudget{}
@@ -204,24 +205,28 @@ func (graph CallGraph) Stop() Optional[InvocationStop] {
 	}
 	return graph.data.records.Stop
 }
+
 func (graph CallGraph) EntryInterruption() Optional[Interruption] {
 	if !graph.Valid() {
 		return Optional[Interruption]{}
 	}
 	return graph.data.records.EntryInterruption
 }
+
 func (graph CallGraph) CallCount() int {
 	if !graph.Valid() {
 		return 0
 	}
 	return len(graph.data.records.Calls)
 }
+
 func (graph CallGraph) ScriptCount() int {
 	if !graph.Valid() {
 		return 0
 	}
 	return len(graph.data.records.Scripts)
 }
+
 func (graph CallGraph) Call(id OccurrenceID) (Call, bool) {
 	if !graph.Valid() {
 		return Call{}, false
@@ -232,6 +237,7 @@ func (graph CallGraph) Call(id OccurrenceID) (Call, bool) {
 	}
 	return graph.data.records.Calls[index].detached(), true
 }
+
 func (graph CallGraph) script(id OccurrenceID) (ScriptOccurrence, bool) {
 	if !graph.Valid() {
 		return ScriptOccurrence{}, false
@@ -242,6 +248,7 @@ func (graph CallGraph) script(id OccurrenceID) (ScriptOccurrence, bool) {
 	}
 	return graph.data.records.Scripts[index], true
 }
+
 func (graph CallGraph) Script(id OccurrenceID) (ScriptOccurrence, bool) {
 	script, found := graph.script(id)
 	return script.detached(), found
@@ -262,6 +269,7 @@ func (graph CallGraph) Snapshot() CallGraphData {
 	}
 	return graph.data.records.clone()
 }
+
 func (graph CallGraph) pageEnd(offset, limit, length int) (int, error) {
 	if !graph.Valid() || offset < 0 || offset > length || limit < 1 || limit > MaxCallGraphPageSize {
 		return 0, invalidGraph("invalid page offset %d or limit %d", offset, limit)

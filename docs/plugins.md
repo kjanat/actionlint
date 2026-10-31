@@ -55,14 +55,13 @@ or `.toml`), creating `.github/actionlint.yaml` when no config exists:
 ```yaml
 plugins:
   - github.com/owner/plugin@v1.2.3
-  - gitlab.com/group/plugin
+  - gitlab.com/group/plugin@v1.2.3
 ```
 
 The registry explicitly assigns short names such as `shellcheck` and `ruff` to published plugins.
 Names are never inferred from a repository prefix or claimed through plugin metadata.
-The lock records both the configured alias and its resolved repository identity.
-Aliases belong to their selected registry. Checking uses the recorded identity offline;
-an update refuses an alias reassigned to a different repository.
+Install resolves an alias through its selected registry and writes the canonical package
+and exact version into configuration. An alias reassignment cannot change that declaration.
 Plugins without an assigned alias use `owner/plugin`, `github.com/owner/plugin` or `gitlab.com/group/plugin`.
 A new dependency without `@version` selects `latest`.
 Reinstalling an existing dependency preserves its declared version and registry unless explicitly overridden.
@@ -75,10 +74,30 @@ plugins:
     registry: https://example.org/catalogue/
 ```
 
-Exact downloaded versions and verification data go into the adjacent `actionlint.plugins.lock.json`.
-Commit **both files**. The config declares dependencies; the lock records their resolved artifacts.
-Each lock entry records publisher identity, exact release tag, artifact URL, kind, interface version and SHA256.
-The digest covers the distributed bytes, including compression.
+When a TOML config has no plugin declaration yet, installation appends plugin tables
+at the end, after its existing tables. Existing declarations are updated in place:
+
+```toml
+#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
+
+[lint.rules]
+preset = "recommended"
+
+[[plugins]]
+name    = "github.com/kjanat/actionlint-plugin-shellcheck"
+version = "v0.2.0"
+```
+
+A direct artifact in table form uses only `source`, containing the digest-pinned URL
+or OCI reference. It cannot also declare `name`, `version` or `registry`.
+
+Commit the configuration. Registry declarations need only the canonical package and exact version;
+no project lockfile is created. The selected registry supplies publisher identity, artifact location,
+format, contract and checksum from its immutable release record. Verified resolutions are cached
+under the user's `actionlint/registry` cache, separately for each registry, package and version.
+Downloaded bytes are checked against that checksum, including compression. A changed record for
+an already observed release is refused. This trusts the configured registry to maintain its
+immutable release mapping; admission does not guarantee plugin safety or correctness.
 Install verifies the download and embedded metadata without executing guest code. Actual ABI/capability checks
 run when the plugin loads. Registry admission and reports for another host revision do not guarantee compatibility.
 `versions --json` includes the registry's host-specific compatibility evidence; missing evidence is not a failure.
@@ -94,34 +113,42 @@ actionlint plugin sync
 actionlint plugin remove github.com/owner/plugin
 ```
 
-Only install/update resolve selectors against the catalogue. `sync` restores the exact locked artifacts into
+Only install/update resolve floating selectors against the catalogue, then save exact versions.
+Checking requires exact canonical declarations; unresolved aliases or `latest` require `plugin install`.
+An uncached exact declaration obtains its registry record once. `sync` restores the configured artifacts into
 the shared user cache and refreshes registry withdrawal information, useful after cloning or in CI.
 Checks also restore missing pinned artifacts; populated
 caches work offline and cached bytes are re-hashed. No implicit upgrades run during linting or LSP analysis.
 `latest` refuses downgrades from a stale catalogue; an explicit exact tag permits a deliberate downgrade.
-Failed downloads, identity changes, same-version digest replacements and concurrent lock edits preserve the old
-lock. Updates acquire every selected artifact before saving config and lock. A failed config write restores
-the previous lock unless another writer changed it. Removal updates both files and leaves shared cache entries intact.
+Failed downloads, immutable-release conflicts and concurrent config edits leave configuration unchanged.
+Updates acquire every selected artifact before saving config. Removal edits the config and leaves shared
+cache entries intact. Checking, synchronization, rule discovery and LSP analysis never rewrite project files.
+
+For an old `actionlint.plugins.lock.json`, run `actionlint plugin install` or
+`actionlint config migrate --write`. Migration retains the locked exact version, including when the old
+selector was `latest`, verifies its registry binding and artifact, then removes the unchanged old lock
+after successfully saving config. Preview never writes or downloads. Explicit `--plugin-lock` reading
+remains available for legacy invocations; new installations do not write that file.
 
 A new release may change its artifact filename or migrate from a core module to a component.
 An explicit update records that release's format, filename, interface and digest. Updates reject changes to the
 publisher, repository or plugin identity, and reject altered bytes, format or filenames for an existing release.
 Checking, synchronization and installation with an already matching pin use the pinned artifact.
 
-The discovery metadata's `id` identifies the package in the registry and lockfile.
+The discovery metadata's `id` identifies the package in the registry.
 Its analyzer descriptor names the rule; that name can differ from the package ID.
 The tool-integration identifier must equal the analyzer rule name.
 
 Edit `plugins` directly, then run `actionlint plugin install` without arguments to resolve missing or changed
 dependencies. Existing matching pins stay pinned. This command also migrates older lock-only installations
-into config without upgrading their artifacts. Checks require declarations and matching pins; they never
-activate extra entries left in the lock. `plugins: []` or `plugins: null` disables all declared plugins,
+into config without upgrading their artifacts. Checks require declarations and verified exact releases; they never
+activate undeclared entries from an old lock. `plugins: []` or `plugins: null` disables all declared plugins,
 including inherited ones. An inherited list is replaced as a whole; install/remove edit only the selected leaf config.
 
 `actionlint config init` installs and pins `shellcheck` and `ruff`. Migrating an old configuration
 adds these defaults when `plugins` was omitted, respecting disabled checks and explicit native backends.
-All downloads must verify before the migrated config and lock are saved.
-See [configuration migration](config-migration.md) for preview and automatic migration behavior.
+All downloads must verify before the migrated config is saved and an old lock is removed.
+See [configuration migration](config-migration.md) for preview and explicit migration behavior.
 
 ### Try an unpublished candidate
 
@@ -133,7 +160,7 @@ actionlint check
 ```
 
 On Windows, use `file:///C:/path/to/candidate/`. The registry's candidate exporter creates this directory
-from a packaged artifact. Installation creates the usual configuration and lockfile, verifies the artifact's
+from a packaged artifact. Installation writes configuration, verifies the artifact's
 digest and metadata, and imports it into the shared cache. The lock identifies the source as `candidate`;
 it makes no claim about publisher authentication or publication. Candidate catalogues are accepted only through
 an explicit local file URI. Their records and artifacts must stay within that directory.
@@ -170,8 +197,7 @@ Replace the example digest with the downloaded file's SHA256. `actionlint plugin
 reports the digest without executing the plugin. `actionlint plugin install "URL#sha256=…"`
 verifies and caches the artifact before saving the declaration.
 
-Direct declarations already contain their exact artifact pin, so they need no lock row; projects
-using only direct URLs do not create a lockfile. Changing the artifact requires changing its URL
+Direct declarations contain their exact artifact pin. Changing the artifact requires changing its URL
 or digest explicitly. Registry withdrawal information does not cover independent direct URLs.
 Remote execution through `--plugin` or configured Wasm backends also requires a digest pin.
 
@@ -205,10 +231,10 @@ declares the digest it names; everywhere else, including `--plugin` and `plugin 
 The registry is reached anonymously, answering its bearer challenge as public GHCR images require;
 `localhost` and loopback registries are reached over plain HTTP. Each pull has the 30-second deadline.
 
-`plugin install` and `plugin update` also record each OCI declaration in the lock (schema version 2), with the
-image manifest and layer digests of every platform it serves; `plugin sync` and analysis check a pull against
-that record. The GitHub Action restores the listed blobs from its cache before analysis.
-Version 1 locks are still read and are rewritten as version 2 by the next install.
+The configured OCI digest binds the index, selected platform manifest and layers. No project metadata
+duplicates that graph. Cache planning reads the index and this host's manifest to enumerate the required
+digests without downloading executable layers. Install and sync populate this host's artifact cache;
+analysis verifies the manifests and bytes it uses. Legacy lock schemas remain readable for migration.
 
 A tool provider from an OCI source runs a native executable, which no sandbox contains. One declared in
 repository configuration runs only with `--allow-config-processes`; the GitHub Action never sets it. A source
@@ -222,7 +248,7 @@ analysis can run offline afterwards.
 
 ### GitHub Action caching
 
-The JavaScript Action loads the same declarations and locked artifacts as the CLI.
+The JavaScript Action loads the same declarations and exact registry releases as the CLI.
 Its `plugin-cache` input defaults to `true`. Before downloading or starting plugins, it restores
 only the selected digest-named artifact files from GitHub Actions cache. The key contains the
 operating system and exact set of digests. Every restored file is rehashed before use.
@@ -246,13 +272,13 @@ Check, fix, rules and LSP load declared plugins from their matching locked artif
 - `--no-config` (or `ACTIONLINT_NO_CONFIG`) disables automatic plugin selection; explicit sources/locks still work.
 - Explicit `--config FILE` selects that config's declarations and adjacent lock, with no repository fallback.
 - Otherwise declarations come from the nearest repository's `.github/actionlint.*`, with its adjacent lock.
-- `--no-tool ID` (or the Action's `disable-tools` input) drops plugins that provide the tool `ID`: a locked plugin
+- `--no-tool ID` (or the Action's `disable-tools` input) drops plugins that provide the tool `ID`: a selected plugin
   whose name or alias is `ID` is not downloaded, and any other plugin whose static metadata names `ID` as its engine
   or one of its rules is not loaded.
 
-Checks spanning repositories with a lock require separate invocations or an explicit invocation-wide selection.
+Checks spanning repositories with plugin declarations require separate invocations or an explicit invocation-wide selection.
 LSP snapshots the startup selection; restart after installing, updating or removing plugins. Automatic project
-plugins cannot apply to documents from another repository. Use a separate server or an explicit lock for that scope.
+plugins cannot apply to documents from another repository. Use a separate server or an explicit config for that scope.
 Select a runner provider's execution target with `--runner-target`.
 Management commands accept `--config FILE` too. Outside a Git repository, select a config with `--config FILE`,
 or use `--plugin-lock FILE` to place a config beside that lock. Management commands reject `--no-config`.

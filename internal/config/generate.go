@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/buildinfo"
-	"actionlint.kjanat.dev/v2/internal/fsread"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 )
 
 // Generate creates the repository configuration without producing terminal output.
@@ -22,7 +22,7 @@ func Generate(ctx context.Context, root string, skipConfig bool, version string)
 		return "", errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
 	}
 	if !skipConfig {
-		if _, _, err := LoadRepository(root, fsread.New(ctx, nil, nil).ReadFile); err != nil {
+		if _, _, err := LoadRepository(root, configsource.New(ctx, nil).ReadFile); err != nil {
 			return "", err
 		}
 	}
@@ -58,5 +58,5 @@ func WriteDefaultFile(path, version string) error {
 func DefaultDocument(version string) []byte {
 	info, _ := debug.ReadBuildInfo()
 	ref := buildinfo.SourceRef(version, info)
-	return []byte(strings.Replace(defaultConfigTemplate, "/HEAD/actionlint.schema.json", "/"+ref+"/actionlint.schema.json", 1))
+	return []byte(strings.Replace(defaultConfigTemplate, "@2/actionlint.schema.json", "@"+strings.TrimPrefix(ref, "v")+"/actionlint.schema.json", 1))
 }

@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/application"
-	"actionlint.kjanat.dev/v2/internal/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/pluginref"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/testutil"
 	"actionlint.kjanat.dev/v2/internal/testutil/ocitest"
@@ -173,39 +173,28 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	}
 }
 
-// The lock lists the blobs of an oci:// source, so the cache plan names the
-// executable before anything is pulled.
+// OCI manifests supply the complete host cache plan without a project lock.
 func TestCachePlanListsOCIBlobs(t *testing.T) {
 	testutil.IsolateUserCache(t)
 	pkg := publishOCIProvider(t)
 	_, root, _ := strings.Cut(pkg.reference, "@sha256:")
-	unlocked := PluginSources{Paths: []string{pkg.reference}}
-	plan, err := unlocked.CachePlan()
-	if err != nil || !slices.Equal(plan.Artifacts, []string{root}) {
-		t.Fatalf("unlocked plan = %+v, %v", plan, err)
-	}
-	pin, err := describeSource(t.Context(), pkg.reference)
-	if err != nil {
-		t.Fatal(err)
-	}
-	locked := PluginSources{Paths: []string{pkg.reference}, lock: &pluginregistry.Lock{SchemaVersion: pluginregistry.LockSchemaVersion, Plugins: []pluginregistry.Pin{}, Sources: []pluginregistry.SourcePin{pin}}}
-	plan, err = locked.CachePlan()
+	sources := PluginSources{Paths: []string{pkg.reference}}
+	plan, err := sources.CachePlan(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Contains(plan.Artifacts, root) || !slices.Contains(plan.Artifacts, pkg.executable.Hex()) || len(plan.Artifacts) != 5 {
-		t.Fatalf("locked plan = %q", plan.Artifacts)
-	}
-	// Hydrate runs before every check, so it stores what selecting the
-	// provider reads and leaves the executable to an opted-in run.
-	if err := locked.Hydrate(t.Context()); err != nil {
-		t.Fatal(err)
+		t.Fatalf("incomplete manifest cache plan: %q", plan.Artifacts)
 	}
 	if got := pkg.registry.Fetches(pkg.executable); got != 0 {
-		t.Fatalf("hydrate downloaded the executable %d times", got)
+		t.Fatalf("planning fetched executable %d times", got)
 	}
-	// plugin sync stores everything, so a check can run offline.
-	if err := SyncPlugins(t.Context(), *locked.lock); err != nil {
+	ref, err := pluginref.Parse(pkg.reference)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := PluginProject{Manifest: &PluginManifest{References: []pluginref.Reference{ref}}}
+	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	for _, digest := range plan.Artifacts {

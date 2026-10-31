@@ -7,23 +7,27 @@ file atomically, or `--check` to exit with status 1 when conversion is needed.
 Only the selected file is rewritten. Inherited files are normalized while read;
 select each inherited file explicitly to rewrite its syntax too.
 
-Local CLI and GitHub Action checking automatically migrate a selected legacy
-file before plugin selection. Explicit `config migrate` also supplies default
+Checking reads legacy syntax through normalization without rewriting project files.
+Explicit `config migrate` supplies default
 ShellCheck and Ruff declarations when `plugins` was omitted. An explicit `plugins`
 value, including `[]` or `null`, prevents default plugin insertion. Native backends
 are selected for explicit process configuration and ShellCheck source or rc-file settings.
 
 Applying this migration resolves and verifies plugin dependencies before saving
-the config and its lockfile. A failed download leaves both project files unchanged.
+exact canonical registry versions in config. An existing project lock is retired only
+after its recorded versions and digests agree with registry evidence and config is saved.
+A failed resolution or download leaves config and the old lock unchanged. New locks are not created.
 Preview and `--check` do not download artifacts. Already canonical configs are
-not automatically enrolled in default plugins.
+not automatically enrolled in default plugins. A legacy lock's `latest` selector
+becomes its recorded exact version; migration never upgrades it implicitly.
 
 The parser accepts old documents through the same conversion, including
 inherited files and inline configuration. Parsing alone never writes files.
 Migration writes the input format: YAML, JSON or TOML. TOML schema directives are
 copied to the output; comments within moved settings appear before the resulting `lint` section.
-A prepared file migration checks its entire inherited input graph before writing;
-concurrent edits abort the write.
+A prepared file migration checks its entire inherited input graph before writing,
+including fetching HTTPS bases again; changed bytes abort the write. Hosted bases
+remain read-only. Migrate a selected local file to retain its remote `extends`.
 TOML cannot express null resets or unknown variable values. If encoding would lose facts or change inherited settings,
 migration refuses the rewrite; convert that selected document to YAML or JSON first.
 

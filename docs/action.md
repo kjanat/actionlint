@@ -271,10 +271,10 @@ Each invocation downloads the selected actionlint binary, verifies its checksum,
 and executes it. `add-actionlint-to-path` makes that binary available in later
 steps. `install-only: true` performs only this installation.
 
-Declare ShellCheck and Ruff Wasm plugins in the project's `plugins` list and
-commit the generated lockfile. The Action uses the same pinned artifacts as the
+Declare exact ShellCheck and Ruff Wasm plugin versions in the project's `plugins` list and
+commit that configuration. The Action resolves the same immutable registry releases as the
 CLI. `disable-tools` lists tool ids to turn off, such as `shellcheck` or `ruff`;
-those tools run neither natively nor as plugins, and a locked plugin whose name or
+those tools run neither natively nor as plugins, and a selected plugin whose name or
 alias is a listed id is not downloaded. An id that names no bundled tool and no
 plugin fails with the list of valid ids. Plugin options belong in project configuration.
 See [installing and configuring plugins](plugins.md).
@@ -282,9 +282,10 @@ See [installing and configuring plugins](plugins.md).
 `plugin-cache: true` restores and saves pinned Wasm artifacts through GitHub
 Actions cache. The Action reads the plugin plan before restoring the cache;
 analysis then hydrates missing artifacts and verifies their digests. The cache
-never contains plugin declarations, lockfiles, or the actionlint executable.
-After automatic config migration, a second read-only plan includes any newly
-locked defaults when saving the cache.
+contains only selected digest-addressed artifact bytes; registry authority records,
+plugin declarations and the actionlint executable are excluded. OCI planning may
+fetch manifests to enumerate this host's blobs, but never downloads executable layers.
+Checking does not migrate configuration on disk.
 
 Node 24 support is required from the runner. Linux, macOS and Windows x64/arm64
 are supported where the selected release supplies an asset. Binary downloads

@@ -2,10 +2,11 @@ package results_test
 
 import (
 	"encoding/json"
-	validator "github.com/santhosh-tekuri/jsonschema/v6"
 	"os"
 	"strings"
 	"testing"
+
+	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 func TestRelatedSchemaRequiresPairedValidBinding(t *testing.T) {

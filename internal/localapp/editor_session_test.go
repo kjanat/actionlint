@@ -336,9 +336,11 @@ type describedValidatingEditorBackend struct{ editorTestBackend }
 func (*describedValidatingEditorBackend) ScriptDescriptor() analyzer.ScriptEngineDescriptor {
 	return editorInputDescriptor()
 }
+
 func editorInputDescriptor() analyzer.ScriptEngineDescriptor {
 	return analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}
 }
+
 func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
 	for _, tc := range []struct {
 		name                  string
@@ -361,6 +363,7 @@ func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
 		})
 	}
 }
+
 func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	root := t.TempDir()
 	for name, source := range map[string]string{".git/HEAD": "ref: refs/heads/master\n", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n"} {

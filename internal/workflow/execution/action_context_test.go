@@ -214,6 +214,7 @@ func testEntryContext(t *testing.T) invocation.Context {
 	}
 	return builder.RootContext()
 }
+
 func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.Platform) (invocation.Context, error) {
 	t.Helper()
 	action, ok := step.Exec.(*workflowlang.ExecAction)

@@ -44,11 +44,14 @@ type Interruption struct {
 	Detail string
 }
 
-type ExpandedCall struct{ Target source.Reference }
-type OpaqueCall struct {
-	Reason OpaqueReason
-	Detail string
-}
+type (
+	ExpandedCall struct{ Target source.Reference }
+	OpaqueCall   struct {
+		Reason OpaqueReason
+		Detail string
+	}
+)
+
 type UnavailableCall struct {
 	Reason UnavailableReason
 	Detail string
@@ -57,16 +60,21 @@ type UnresolvedCall struct {
 	Reason UnresolvedReason
 	Detail string
 }
-type DynamicCall struct{ Detail string }
-type CycleCall struct {
-	Target, Active source.Reference
-	Owner, Closing OccurrenceID
-}
-type DepthLimitedCall struct{ Max int }
-type InterruptedCall struct {
-	Interruption
-	Target Optional[source.Reference]
-}
+type (
+	DynamicCall struct{ Detail string }
+	CycleCall   struct {
+		Target, Active source.Reference
+		Owner, Closing OccurrenceID
+	}
+)
+
+type (
+	DepthLimitedCall struct{ Max int }
+	InterruptedCall  struct {
+		Interruption
+		Target Optional[source.Reference]
+	}
+)
 
 // CallResolution is a closed set of value payloads. NewCallOutcome validates it.
 type CallResolution interface{ callResolution() }

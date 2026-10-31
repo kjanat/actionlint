@@ -133,6 +133,10 @@ type Pin struct {
 	Contract     string        `json:"contract"`
 }
 
+// SameRelease compares immutable release evidence, ignoring alias spelling and
+// whether install originally requested latest or the exact release.
+func (p Pin) SameRelease(other Pin) bool { return sameRelease(p, other) }
+
 func (p Pin) Source() string {
 	if p.Origin == "candidate" {
 		return "sha256://" + p.SHA256

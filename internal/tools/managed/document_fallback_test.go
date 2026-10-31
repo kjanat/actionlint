@@ -20,9 +20,11 @@ type fallbackGuest struct{ inputs []analyzer.Input }
 func (*fallbackGuest) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "shellcheck"}
 }
+
 func (*fallbackGuest) ToolIntegration() *analyzer.ToolIntegration {
 	return &analyzer.ToolIntegration{Tool: "shellcheck"}
 }
+
 func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*analyzer.ToolNegotiation, error) {
 	var options documentSettings
 	if err := json.Unmarshal(data, &options); err != nil {
@@ -33,6 +35,7 @@ func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 	}
 	return &analyzer.ToolNegotiation{Options: data}, nil
 }
+
 func (guest *fallbackGuest) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	guest.inputs = append(guest.inputs, input)
 	return []diagnostic.Diagnostic{{Path: input.Path, Message: "plugin"}}, nil

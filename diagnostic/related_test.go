@@ -1,10 +1,11 @@
 package diagnostic
 
 import (
-	"actionlint.kjanat.dev/v2/source"
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/source"
 )
 
 func TestRelatedJSONRevisionBindingRoundTrip(t *testing.T) {

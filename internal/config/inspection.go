@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"actionlint.kjanat.dev/v2/internal/fsread"
 )
 
 // Selection selects an explicit file, repository discovery, or no configuration.
@@ -51,7 +49,7 @@ func Inspect(selection Selection, withOrigin bool, registeredRules ...string) (I
 	var resolved Resolved
 	if path != "" {
 		var source *Loaded
-		source, err = Read(path, fsread.Disk, registeredRules...)
+		source, err = Read(path, nil, registeredRules...)
 		if err != nil {
 			return Inspection{Path: path}, err
 		}

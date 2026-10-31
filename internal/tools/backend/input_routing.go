@@ -86,6 +86,7 @@ func selectScripts(batch tools.Batch, accept func(tools.Script) bool) (tools.Bat
 	}
 	return selected, indices
 }
+
 func restoreIndices(findings []tools.Finding, indices []int) []tools.Finding {
 	for i := range findings {
 		if findings[i].Script >= 0 && findings[i].Script < len(indices) {

@@ -1,12 +1,13 @@
 package workspace
 
 import (
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 )
 
 // Project discovery needs a .git marker. Keep it in a temporary fixture copy so

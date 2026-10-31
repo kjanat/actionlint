@@ -18,6 +18,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/address"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 	"actionlint.kjanat.dev/v2/internal/report"
@@ -130,8 +132,11 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 				byAlias[path] = index
 			}
 		}
-		backing := fsread.New(ctx, options.ReadFile, nil)
+		backing := configsource.New(ctx, options.ReadFile)
 		selectionReader = func(path string) ([]byte, error) {
+			if address.Remote(path) {
+				return backing.ReadFile(path)
+			}
 			if path != "<stdin>" && !filepath.IsAbs(path) {
 				path = filepath.Join(base, path)
 			}

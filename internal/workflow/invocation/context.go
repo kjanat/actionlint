@@ -59,24 +59,28 @@ func (context Context) ID() ID {
 	}
 	return context.data.id
 }
+
 func (context Context) Parent() ID {
 	if !context.Valid() {
 		return ""
 	}
 	return context.data.parent
 }
+
 func (context Context) Depth() int {
 	if !context.Valid() {
 		return 0
 	}
 	return context.data.depth
 }
+
 func (context Context) Site() source.Reference {
 	if !context.Valid() {
 		return source.Reference{}
 	}
 	return context.data.site
 }
+
 func (context Context) Facts() (Facts, bool) {
 	if !context.Valid() || context.IsEntry() {
 		return Facts{}, false
@@ -97,6 +101,7 @@ func (b *Builder) Context(id ID) (Context, bool) {
 	}
 	return b.records[i].call.Context, true
 }
+
 func (b *Builder) Owns(context Context) bool {
 	stored, exists := b.Context(context.ID())
 	return exists && stored == context
@@ -109,6 +114,7 @@ func (g Graph) Context(id ID) (Context, bool) {
 	call, exists := g.Call(id)
 	return call.Context, exists
 }
+
 func (g Graph) Owns(context Context) bool {
 	stored, exists := g.Context(context.ID())
 	return exists && stored == context

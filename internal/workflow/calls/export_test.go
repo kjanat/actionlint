@@ -1,8 +1,9 @@
 package calls
 
 import (
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"path/filepath"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 // Legacy AST conversion is exercised only by metadata parity tests.

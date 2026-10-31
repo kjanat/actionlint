@@ -29,6 +29,7 @@ func viewPosition(pos workflow.Pos, present bool) *workflow.Pos {
 	}
 	return &pos
 }
+
 func expressionLiteral(value declaration.StringView) (any, bool) {
 	if !value.Present() {
 		return nil, false

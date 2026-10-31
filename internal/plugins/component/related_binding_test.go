@@ -1,17 +1,18 @@
 package component
 
 import (
+	"context"
+	"errors"
+	"reflect"
+	"strings"
+	"testing"
+
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/related"
 	"actionlint.kjanat.dev/v2/source"
-	"context"
-	"errors"
 	"github.com/kjanat/wacogo"
-	"reflect"
-	"strings"
-	"testing"
 )
 
 type relatedProbe struct{ locations []diagnostic.Related }

@@ -13,8 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/testutil/ocitest"
 )
 
-// plugin install resolves an oci:// tag once, declares the digest and locks
-// the blobs of every platform; inspect reads the package without running it;
+// plugin install resolves an oci:// tag once, declares the digest and caches
+// the blobs needed by this host; inspect reads the package without running it;
 // sync restores it offline from the store.
 func TestPluginInstallAndInspectOCI(t *testing.T) {
 	testutil.IsolateUserCache(t)
@@ -37,22 +37,9 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	if err != nil || !strings.Contains(string(config), reference) {
 		t.Fatalf("configuration does not declare the digest %s: %q, %v", reference, config, err)
 	}
-	data, err := os.ReadFile(filepath.Join(".github", pluginregistry.LockName))
-	if err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(filepath.Join(".github", pluginregistry.LockName)); !os.IsNotExist(err) {
+		t.Fatalf("OCI install created a project lock: %v", err)
 	}
-	var lock pluginregistry.Lock
-	if err := json.Unmarshal(data, &lock); err != nil {
-		t.Fatal(err)
-	}
-	pin, ok := lock.SourcePin(reference)
-	if lock.SchemaVersion != pluginregistry.LockSchemaVersion || !ok {
-		t.Fatalf("lock = %s", data)
-	}
-	if digests, ok := pin.Digests(pluginartifact.HostPlatform()); !ok || len(digests) != 4 || digests[3] != executable.Hex() {
-		t.Fatalf("locked digests = %q", digests)
-	}
-
 	output := pluginCommandTest(t, 0, "plugin", "inspect", reference)
 	for _, want := range []string{"Kind: manifest", "SHA256: " + index.Hex(), "Platform: " + pluginartifact.HostPlatform(), "Tool provider manifest:", "example.com/oci-tool"} {
 		if !strings.Contains(output, want) {

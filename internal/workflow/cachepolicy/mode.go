@@ -22,25 +22,30 @@ type modeGrant struct {
 }
 
 func grant(mode declaration.CacheModeView) modeGrant { return modeGrant{mode.Present(), mode.Kind()} }
+
 func metadataGrant(mode calls.CacheModeDeclaration) modeGrant {
 	kind, declared := mode.Kind()
 	return modeGrant{declared, kind}
 }
+
 func effectiveGrant(parent, child modeGrant) modeGrant {
 	if child.present {
 		return child
 	}
 	return parent
 }
+
 func (m modeGrant) capabilities() (uint8, bool) {
 	if !m.present {
 		return 0, false
 	}
 	return m.kind.Capabilities()
 }
+
 func position(node interface {
 	Pos() (workflowlang.Pos, bool)
-}) workflowlang.Pos {
+},
+) workflowlang.Pos {
 	pos, _ := node.Pos()
 	return pos
 }

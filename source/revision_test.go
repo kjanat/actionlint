@@ -16,8 +16,11 @@ func TestRevision(t *testing.T) {
 		t.Fatalf("revision = %#v, %v", revision, err)
 	}
 	for _, input := range [][2]string{
-		{"", digest}, {"a\x00b", digest}, {"document", ""},
-		{"document", strings.ToUpper(digest)}, {"document", strings.Repeat("z", 64)},
+		{"", digest},
+		{"a\x00b", digest},
+		{"document", ""},
+		{"document", strings.ToUpper(digest)},
+		{"document", strings.Repeat("z", 64)},
 	} {
 		if value, err := NewRevision(input[0], input[1]); err == nil || value.Valid() {
 			t.Errorf("accepted invalid revision %q", input)

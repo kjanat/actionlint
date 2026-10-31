@@ -68,8 +68,10 @@ func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
 	backend := &reviewShellcheckBackend{}
 	_, err = runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: backend}}),
-		Sources: []sourceUnit{{Path: "workflow.yml", Config: cfg, Project: workspace.Identity(root),
-			Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n")}},
+		Sources: []sourceUnit{{
+			Path: "workflow.yml", Config: cfg, Project: workspace.Identity(root),
+			Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n"),
+		}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -120,8 +122,10 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 			if tool == "shellcheck" {
 				shell = "bash"
 			}
-			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(options), Sources: []sourceUnit{{Path: "ci.yml", Config: cfg,
-				Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n")}}}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(options), Sources: []sourceUnit{{
+				Path: "ci.yml", Config: cfg,
+				Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n"),
+			}}}
 			_, err = runTestAnalysis(t.Context(), request)
 			if err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
 				t.Errorf("repository process selection needs an actionable opt-in error: %v", err)

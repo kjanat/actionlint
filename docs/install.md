@@ -12,7 +12,7 @@ npm and PyPI packages need `git` on `PATH`; on macOS the Xcode Command Line Tool
 In v2, ShellCheck and Ruff run as project-managed Wasm plugins. Standalone archives, Go installs, and npm and
 PyPI packages contain the actionlint host. Run `actionlint config init` for a new project, or follow
 [configuration migration](config-migration.md) for an existing one, to install and pin the default plugins.
-Commit the configuration and adjacent `actionlint.plugins.lock.json`; native script-linter executables are not
+Commit the configuration with its exact plugin versions; no project lockfile is required. Native script-linter executables are not
 required for these plugins. See [plugin installation](plugins.md#install-from-the-registry).
 
 Images built from this revision bundle both native executables, without requiring Python. The Nix package

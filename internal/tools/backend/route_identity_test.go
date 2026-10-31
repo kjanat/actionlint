@@ -1,12 +1,13 @@
 package backend
 
 import (
-	"actionlint.kjanat.dev/v2/analyzer"
-	"actionlint.kjanat.dev/v2/internal/tools"
-	"actionlint.kjanat.dev/v2/rule"
 	"context"
 	"reflect"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/analyzer"
+	"actionlint.kjanat.dev/v2/internal/tools"
+	"actionlint.kjanat.dev/v2/rule"
 )
 
 func TestInputRequestsIdentifyLanguageAndSite(t *testing.T) {

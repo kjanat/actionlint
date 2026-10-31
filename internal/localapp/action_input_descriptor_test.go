@@ -185,6 +185,7 @@ func (pythonInputBackend) Check(_ context.Context, request analyzer.ScriptReques
 	}
 	return findings, nil
 }
+
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
 	plugins := loadedPlugins{engines: []scriptEngineRegistration{{backend: pythonInputBackend{}, descriptor: analyzer.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: analyzer.TemplateEffectsContract, ScriptInputs: []analyzer.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
 	options, err := plugins.configure(t.Context(), application.Options{WorkingDir: t.TempDir(), Tools: []tools.Registration{providerRegistration(t, "ruff", backend.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})}})

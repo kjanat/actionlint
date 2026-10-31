@@ -19,8 +19,10 @@ type namedTargetElement struct {
 	Enabled bool   `yaml:"enabled"`
 }
 
-type namedTargetMap map[string]namedTargetElement
-type namedTargetSlice []namedTargetElement
+type (
+	namedTargetMap   map[string]namedTargetElement
+	namedTargetSlice []namedTargetElement
+)
 
 func TestCursorErrorsNameRootType(t *testing.T) {
 	var got namedTargetRoot

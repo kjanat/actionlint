@@ -3,6 +3,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -12,8 +13,9 @@ import (
 	"strconv"
 	"strings"
 
+	configaddress "actionlint.kjanat.dev/v2/internal/config/address"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
-	"actionlint.kjanat.dev/v2/internal/fsread"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/kjanat/go-yaml/v4"
@@ -342,13 +344,14 @@ func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 type Config struct {
 	filename    string
 	configFiles []string
-	// Extends loads local YAML/JSON files, relative to this config, in order.
-	// Later bases override earlier bases; this file wins over all bases. No URLs.
+	// Extends loads local or HTTPS YAML, JSON and TOML configurations in order.
+	// Relative references resolve against their declaring file or URL. Later
+	// bases override earlier bases; this file wins over all bases.
 	Extends []string `yaml:"extends,omitempty" jsonschema:"nullable"`
-	// Plugins declares plugin repositories and requested versions. Entries are
-	// owner/repo or forge-qualified names, optionally followed by @release-tag.
-	// Omitted versions select latest stable. Use a mapping with name, version,
-	// and registry for a custom catalogue. Empty or null disables plugins.
+	// Plugins declares canonical plugin packages with exact registry versions,
+	// or digest-pinned HTTPS/OCI artifacts. Install/update resolves aliases and
+	// latest before saving. Use name, version and registry for a custom catalogue,
+	// or source for a direct artifact. Empty or null disables plugins.
 	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
 	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
@@ -537,7 +540,12 @@ func resolveNode(root *yaml.Node, inputs map[*yaml.Node]Input, bindRules bool, a
 
 // Load reads the actionlint config file (actionlint.yaml) from the given file path.
 func Load(path string, additional ...string) (*Config, error) {
-	source, err := Read(path, fsread.Disk, additional...)
+	return LoadContext(context.Background(), path, additional...)
+}
+
+// LoadContext reads local or HTTPS inheritance with cancellable acquisition.
+func LoadContext(ctx context.Context, path string, additional ...string) (*Config, error) {
+	source, err := ReadContext(ctx, path, nil, additional...)
 	if err != nil {
 		return nil, err
 	}
@@ -545,8 +553,15 @@ func Load(path string, additional ...string) (*Config, error) {
 }
 
 func Read(path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+	return ReadContext(context.Background(), path, readFile, additional...)
+}
+
+// ReadContext preserves a supplied source reader for local and HTTPS inputs.
+// Without one, the host reader acquires local files and explicit HTTPS sources.
+func ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
+	reader := configsource.New(ctx, readFile)
 	warningsByFile := map[string][]Warning{}
-	loaded, err := loadConfigTree(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+	loaded, err := loadConfigTree(path, reader.ReadFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
 		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin, additional...)
 		warningsByFile[origin] = warnings
 		return normalized, err
@@ -614,6 +629,9 @@ func (cfg *Config) Sources() []string {
 }
 
 func absPath(path string) string {
+	if configaddress.Remote(path) {
+		return path
+	}
 	if p, err := filepath.Abs(path); err == nil {
 		path = p
 	}

@@ -47,7 +47,8 @@ func (rule *Checker) expressionPosition(offset int, end bool) *workflowlang.Pos 
 
 func viewPosition(view interface {
 	Pos() (workflowlang.Pos, bool)
-}) *workflowlang.Pos {
+},
+) *workflowlang.Pos {
 	position, present := view.Pos()
 	if !present {
 		return nil
@@ -65,7 +66,8 @@ func expressionLiteral(text string) (any, bool) {
 
 func rawPosition(view interface {
 	Position() (workflowlang.Pos, bool)
-}) *workflowlang.Pos {
+},
+) *workflowlang.Pos {
 	position, present := view.Position()
 	if !present {
 		return nil

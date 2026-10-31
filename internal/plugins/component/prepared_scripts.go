@@ -13,11 +13,13 @@ import (
 
 const PreparedScriptsInterface = preparedbind.InterfaceName
 
-type preparedScriptsKey struct{}
-type preparationScope struct {
-	prepare     analyzer.ScriptPreparer
-	occurrences map[analyzer.OccurrenceID]struct{}
-}
+type (
+	preparedScriptsKey struct{}
+	preparationScope   struct {
+		prepare     analyzer.ScriptPreparer
+		occurrences map[analyzer.OccurrenceID]struct{}
+	}
+)
 type preparedScripts struct{}
 
 func (preparedScripts) Prepare(ctx context.Context, id string, dialect preparedbind.OptionString) (preparedbind.ResultOptionPreparedString, error) {

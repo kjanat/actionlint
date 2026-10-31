@@ -78,7 +78,7 @@ jobs:
 `docs/screenshots/actionlint.yaml`:
 
 ```yaml
-# yaml-language-server: $schema=../../actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@1/actionlint.schema.json
 ---
 policy:
   require-commit-hash: true
@@ -190,7 +190,7 @@ repos:
 ```
 
 The default hook installs the matching binary wheel in an isolated Python environment.
-Project configuration and the plugin lockfile select ShellCheck and Ruff Wasm plugins.
+Exact plugin versions in project configuration select ShellCheck and Ruff Wasm plugins.
 See [v2 migration](docs/migration-v2.md) for existing hook configurations.
 
 ## Documents

@@ -23,6 +23,7 @@ func (p *frameObserver) VisitStep(workflowdecl.StepView) error         { return 
 func (p *frameObserver) VisitInvocationStep(step workflowdecl.StepView) error {
 	return p.VisitStep(step)
 }
+
 func (p *frameObserver) VisitOpaqueAction(step workflowdecl.StepView) error {
 	return p.VisitStep(step)
 }

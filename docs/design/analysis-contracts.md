@@ -416,6 +416,13 @@ request. Selections retain the original request, selected object, terminal commi
 and route. Content caches use host, repository ID, terminal commit and action path;
 ref lookups are scoped to the request. There is no bundled popular-action catalogue.
 
+Plugin declarations use a different trust boundary: a selected registry owns the
+immutable package/version record and checksum, while unregistered artifacts need
+a caller-provided digest. Exact registry resolutions are cached under that registry's
+authority in the host cache. Ordinary checking never writes project configuration
+or creates a plugin lockfile. Legacy locks remain readable; explicit migration verifies
+their selected releases, writes exact canonical declarations and retires the old lock.
+
 Workflow name inventories own producer-name filter checking as well as pattern
 matching. Action validation owns remote reference syntax, Docker URI checks and
 runtime/input checks against caller-supplied manifests. Builtin adapters

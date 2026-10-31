@@ -244,7 +244,8 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := analyzer.Input{Reference: entry, CallGraph: graph, Available: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}, SelectedScripts: []analyzer.OccurrenceID{runID, inputID},
+	input := analyzer.Input{
+		Reference: entry, CallGraph: graph, Available: []analyzer.Fact{analyzer.Scripts, analyzer.Invocations}, SelectedScripts: []analyzer.OccurrenceID{runID, inputID},
 		Invoked:      []analyzer.Script{{Reference: occurrences[0].Declaration, Occurrence: occurrences[0], Text: "original", Spans: []analyzer.Span{{End: 8}}, Comments: []analyzer.SourceComment{{Text: "original"}}, Runtime: &analyzer.Runtime{Shell: "bash"}}},
 		ActionInputs: []analyzer.ActionInput{{Reference: occurrences[1].Declaration, Occurrence: occurrences[1], Text: "original", Spans: []analyzer.Span{{End: 8}}, Comments: []analyzer.SourceComment{{Text: "original"}}, Site: analyzer.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 	}

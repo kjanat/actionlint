@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/application"
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/address"
 	"actionlint.kjanat.dev/v2/internal/pluginregistry"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifact"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifact/oci"
@@ -17,8 +18,8 @@ import (
 )
 
 // PluginSelection is CLI policy, separate from the analysis configuration.
-// Explicit sources replace automatic selection. Explicit locks/configs are
-// invocation-wide; automatic locks belong only to their nearest repository.
+// Explicit sources replace automatic selection. Explicit configs are
+// invocation-wide; automatic declarations belong to their nearest repository.
 type PluginSelection struct {
 	Paths      []string
 	LockFile   string
@@ -67,7 +68,6 @@ type pluginSelectionMode uint8
 const (
 	pluginAnalysis pluginSelectionMode = iota
 	pluginRuleDiscovery
-	pluginCachePreview
 )
 
 func OpenPluginLock(ctx context.Context, directory, explicit, config string) (*pluginregistry.LockFile, error) {
@@ -108,16 +108,16 @@ func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) 
 	return selected, nil
 }
 
-// Select reads declarations and pins without downloading artifacts or running
-// plugin code. Hosts can restore caches before Hydrate verifies their contents.
+// Select resolves exact registry metadata without downloading artifacts or
+// running plugin code. Hosts can restore artifacts before Hydrate verifies them.
 func (s PluginSelection) Select(ctx context.Context, directory string, input application.Input) (PluginSources, error) {
 	return s.selectSources(ctx, directory, input, pluginAnalysis)
 }
 
-// SelectForCache previews migratable lock-only legacy projects without changing
-// the selection rules used by analysis or editor commands.
+// SelectForCache selects the same declared releases as analysis without fetching
+// artifacts or implicitly migrating project files.
 func (s PluginSelection) SelectForCache(ctx context.Context, directory string, input application.Input) (PluginSources, error) {
-	return s.selectSources(ctx, directory, input, pluginCachePreview)
+	return s.Select(ctx, directory, input)
 }
 
 func (s PluginSelection) selectSources(ctx context.Context, directory string, input application.Input, mode pluginSelectionMode) (PluginSources, error) {
@@ -162,7 +162,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 		if mode == pluginRuleDiscovery && !project.Manifest.Exists {
 			return PluginSources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
 		}
-		return s.sourcesFromProject(ctx, project, "", mode)
+		return s.sourcesFromProject(ctx, project, "")
 	}
 	starts := []string{directory}
 	if input.Kind == application.Files && len(input.Paths) > 0 {
@@ -210,7 +210,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			return PluginSources{}, err
 		}
 		configs = append(configs, prepared)
-		pins, err := s.selectedLock(ctx, project, mode, root)
+		pins, err := project.SelectedPlugins(ctx)
 		if err != nil {
 			return PluginSources{}, err
 		}
@@ -218,7 +218,7 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 			inputs = append(inputs, project.Lock.Path)
 		}
 		if len(pins.Plugins) != 0 || len(project.DirectSources()) != 0 {
-			selected = PluginSources{LockFile: project.Lock.Path, root: root, automatic: true}
+			selected = PluginSources{root: root, automatic: true}
 			selectedProject = project
 		}
 	}
@@ -234,16 +234,16 @@ func (s PluginSelection) selectDeclared(ctx context.Context, directory string, i
 		for _, ref := range resolved.Config.Plugins {
 			source := ref.DirectSource()
 			if source == "" {
-				return PluginSources{}, errors.New("registry plugin declarations require a repository or explicit config file with a lockfile")
+				return PluginSources{}, errors.New("registry plugin declarations require a repository or explicit config file")
 			}
 			selected.Paths = append(selected.Paths, source)
 		}
 		return selected, nil
 	}
 	if len(roots) != 1 {
-		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
+		return PluginSources{}, errors.New("inputs span repositories with plugin configuration; check them separately or select --config explicitly")
 	}
-	return s.sourcesFromProject(ctx, selectedProject, selected.root, mode)
+	return s.sourcesFromProject(ctx, selectedProject, selected.root)
 }
 
 func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config, error) {
@@ -257,6 +257,9 @@ func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config,
 		// Check the complete source graph only after overlays determine whether
 		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.snapshots {
+			if address.Remote(path) {
+				continue
+			}
 			if err := safePluginManifestPath(path); err != nil {
 				return nil, err
 			}
@@ -265,20 +268,16 @@ func (s PluginSelection) prepareProject(project *PluginProject) (*config.Config,
 	return resolved.Config, nil
 }
 
-func (s PluginSelection) sourcesFromProject(ctx context.Context, project *PluginProject, root string, mode pluginSelectionMode) (PluginSources, error) {
+func (s PluginSelection) sourcesFromProject(ctx context.Context, project *PluginProject, root string) (PluginSources, error) {
 	prepared, err := s.prepareProject(project)
 	if err != nil {
 		return PluginSources{}, err
 	}
-	lock, err := s.selectedLock(ctx, project, mode, root)
+	lock, err := project.SelectedPlugins(ctx)
 	if err != nil {
 		return PluginSources{}, err
 	}
-	path := project.Lock.Path
-	if len(lock.Plugins) == 0 {
-		path = ""
-	}
-	selected, err := sourcesFromPins(path, lock, root)
+	selected, err := sourcesFromPins("", lock, root)
 	if err != nil {
 		return PluginSources{}, err
 	}
@@ -396,7 +395,7 @@ func (s *PluginSources) ValidateScope(ctx context.Context, paths []string) error
 			if _, err := (PluginSelection{Overlays: s.overlays}).prepareProject(project); err != nil {
 				return err
 			}
-			pins, err := project.SelectedLock()
+			pins, err := project.SelectedPlugins(ctx)
 			if err != nil {
 				return err
 			}
@@ -405,7 +404,7 @@ func (s *PluginSources) ValidateScope(ctx context.Context, paths []string) error
 			}
 		}
 		if root != s.root {
-			return fmt.Errorf("document %s is outside the plugin lock's repository; use a separate language server or --plugin-lock", path)
+			return fmt.Errorf("document %s is outside the plugin configuration's repository; use a separate language server or --config", path)
 		}
 	}
 	return nil

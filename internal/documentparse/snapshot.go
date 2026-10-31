@@ -341,6 +341,7 @@ func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.WorkflowView) error {
 	}
 	return nil
 }
+
 func (s SourceSnapshot) ValidateJob(view workflowdecl.JobView) error {
 	if err := s.verify(); err != nil {
 		return err
@@ -350,6 +351,7 @@ func (s SourceSnapshot) ValidateJob(view workflowdecl.JobView) error {
 	}
 	return nil
 }
+
 func (s SourceSnapshot) ValidateStep(view workflowdecl.StepView) error {
 	if err := s.verify(); err != nil {
 		return err

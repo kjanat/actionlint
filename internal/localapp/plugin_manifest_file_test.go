@@ -105,6 +105,90 @@ func TestPluginManifestFormats(t *testing.T) {
 	}
 }
 
+func TestPluginTOMLInsertionPreservesSchemaHeader(t *testing.T) {
+	ref := manifestTestReference(t, "github.com/kjanat/actionlint-plugin-shellcheck@v0.2.0")
+	for _, test := range []struct{ name, source, header string }{
+		{"schema-only", "#:schema ../actionlint.schema.json\n", "#:schema ../actionlint.schema.json\n"},
+		{"schema-without-newline", "#:schema ../actionlint.schema.json", "#:schema ../actionlint.schema.json\n"},
+		{"schema-and-table", "#:schema ../actionlint.schema.json\n\n[lint.rules]\npreset = 'none'\n", "#:schema ../actionlint.schema.json\n\n"},
+		{"local-actions-and-ignores", "#:schema ../actionlint.schema.json\n\n[local-actions]\n\"./.published-action-test\" = \"./tools/action/testdata/published-action\"\n\n[[ignores]]\nrule = 'missing-local-action'\nfile = '.github/workflows/ci.yml'\nuses = './.actionlint-action-test'\nreason = 'Release bundle built during CI.'\n", "#:schema ../actionlint.schema.json\n\n"},
+		{"table-comment", "#:schema ../actionlint.schema.json\n\n# table settings\n[lint.rules]\npreset = 'none'\n", "#:schema ../actionlint.schema.json\n\n"},
+		{"intro-crlf", "# project settings\r\n#:schema ../actionlint.schema.json\r\n\r\n[lint.rules]\r\npreset = 'none'\r\n", "# project settings\r\n#:schema ../actionlint.schema.json\r\n\r\n"},
+		{"plugin-table", "#:schema ../actionlint.schema.json\n\n[[plugins]]\nname = 'old/plugin'\nversion = 'v1'\n", "#:schema ../actionlint.schema.json\n\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "actionlint.toml")
+			writeManifestTest(t, path, test.source)
+			manifest, err := OpenPluginManifest(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := manifest.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+				t.Fatal(err)
+			}
+			content := readManifestTest(t, path)
+			if !strings.HasPrefix(content, test.header) || strings.Count(content, "#:schema ../actionlint.schema.json") != 1 {
+				t.Fatalf("plugins moved above schema header:\n%s", content)
+			}
+			plugin := strings.Index(content, "[[plugins]]")
+			if plugin < 0 {
+				t.Fatal("new TOML declarations must use plugin tables")
+			}
+			if !strings.Contains(test.source, "[[plugins]]") {
+				if !strings.HasPrefix(content, test.source) {
+					t.Fatal("new plugins changed existing document content")
+				}
+				if table := strings.Index(content, "[lint.rules]"); table >= 0 && plugin < table {
+					t.Fatal("new plugins were not appended after existing tables")
+				}
+			}
+			if strings.Contains(test.source, "# table settings") && !strings.Contains(content, "# table settings\n[lint.rules]") {
+				t.Fatal("plugin insertion detached the table comment")
+			}
+			if strings.Contains(test.source, "\r\n") && strings.Contains(strings.ReplaceAll(content, "\r\n", ""), "\n") {
+				t.Fatal("plugin insertion introduced LF into CRLF config")
+			}
+		})
+	}
+}
+
+func TestPluginTOMLAppendsDirectSourcesAndPreservesExistingPosition(t *testing.T) {
+	ref := manifestTestReference(t, "github.com/owner/plugin@v1.2.3")
+	direct := manifestTestReference(t, "https://example.org/check.wasm#sha256="+strings.Repeat("a", 64))
+	const original = "#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json\n\n[lint.rules]\npreset = 'none'\n"
+	path := filepath.Join(t.TempDir(), "actionlint.toml")
+	writeManifestTest(t, path, original)
+	manifest, err := OpenPluginManifest(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refs := []pluginref.Reference{ref, direct}
+	if err := manifest.Save(t.Context(), refs); err != nil {
+		t.Fatal(err)
+	}
+	content := readManifestTest(t, path)
+	if !strings.HasPrefix(content, original) || !strings.Contains(content, "source = \"https://example.org/check.wasm#sha256=") {
+		t.Fatalf("plugin tables were not appended with pinned direct sources:\n%s", content)
+	}
+	reloaded, err := OpenPluginManifest(t.Context(), path)
+	if err != nil || !slices.Equal(reloaded.References, refs) {
+		t.Fatalf("appended declarations changed identity: %+v, %v", reloaded, err)
+	}
+	const existing = "#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json\n\nplugins = ['old/plugin@v1']\n\n[lint.rules]\npreset = 'none'\n"
+	writeManifestTest(t, path, existing)
+	manifest, err = OpenPluginManifest(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manifest.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+		t.Fatal(err)
+	}
+	content = readManifestTest(t, path)
+	if strings.Index(content, "plugins =") != strings.Index(existing, "plugins =") || strings.Contains(content, "[[plugins]]") {
+		t.Fatal("existing root declaration moved")
+	}
+}
+
 func TestPluginManifestInheritance(t *testing.T) {
 	dir := t.TempDir()
 	base := filepath.Join(dir, "base.yml")

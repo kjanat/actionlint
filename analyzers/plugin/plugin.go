@@ -2,8 +2,9 @@
 package plugin
 
 import (
-	"actionlint.kjanat.dev/v2/analyzers/architecture"
 	"errors"
+
+	"actionlint.kjanat.dev/v2/analyzers/architecture"
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 )
@@ -18,6 +19,7 @@ func newPlugin(settings any) (register.LinterPlugin, error) {
 	}
 	return plugin{}, nil
 }
+
 func (plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{architecture.Analyzer}, nil
 }

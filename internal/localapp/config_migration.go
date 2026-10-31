@@ -75,7 +75,7 @@ func sourceFollowingNotes(refs []pluginref.Reference) ([]string, error) {
 }
 
 // ConfigMigration previews the syntax conversion and default plugin declarations.
-// Applying it downloads and verifies all dependencies before replacing either file.
+// Applying it verifies dependencies before writing exact config and retiring an old lock.
 type ConfigMigration struct {
 	*config.FileMigration
 	project       *PluginProject
@@ -90,6 +90,9 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	}
 	project, err := OpenPluginProject(ctx, filepath.Dir(migration.Path), "", migration.Path)
 	if err != nil {
+		return nil, err
+	}
+	if err := migration.CheckSources(project.Manifest.snapshots); err != nil {
 		return nil, err
 	}
 	if err := migration.CheckUnchanged(ctx); err != nil {
@@ -129,6 +132,14 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	if err != nil {
 		return nil, err
 	}
+	canonical, err := project.migrationDeclarations(refs)
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(refs, canonical) {
+		updatePlugins = true
+	}
+	refs = canonical
 	content := migration.Content
 	if updatePlugins {
 		content, err = editPluginManifest(migration.Path, migration.Content, refs)
@@ -138,6 +149,10 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 	}
 	if err := migration.SetContent(content); err != nil {
 		return nil, err
+	}
+	if project.Lock.Exists() {
+		migration.Changed = true
+		migration.Notes = append(migration.Notes, "Migrate exact plugin versions into configuration and remove the legacy project lock after verification.")
 	}
 	if !project.Manifest.Declared {
 		notes, err := sourceFollowingNotes(refs)
@@ -151,16 +166,17 @@ func PrepareConfigMigration(ctx context.Context, path string, options DefaultPlu
 }
 
 func (m *ConfigMigration) Apply(ctx context.Context) error {
+	legacy := m.project.Lock.Exists()
 	if err := m.SetContent(m.Content); err != nil {
 		return err
 	}
-	if !m.Changed {
+	if !m.Changed && !legacy {
 		return nil
 	}
 	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
-	if !m.updatePlugins {
+	if !m.updatePlugins && !legacy {
 		return m.FileMigration.Apply(ctx)
 	}
 	if err := m.project.Resolve(ctx, m.refs, nil); err != nil {
@@ -169,12 +185,35 @@ func (m *ConfigMigration) Apply(ctx context.Context) error {
 	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
+	if !m.updatePlugins {
+		if err := m.FileMigration.Apply(ctx); err != nil {
+			return err
+		}
+		if err := m.project.removeLegacyLock(ctx); err != nil {
+			return err
+		}
+		m.Changed = m.Changed || legacy
+		return nil
+	}
+	resolved, err := m.project.resolvedDeclarations(ctx, m.refs)
+	if err != nil {
+		return err
+	}
+	content, err := editPluginManifest(m.Path, m.Content, resolved)
+	if err != nil {
+		return err
+	}
+	if err := m.SetContent(content); err != nil {
+		return err
+	}
 	original := m.project.Manifest.original
 	m.project.Manifest.original = bytes.Clone(m.Content)
-	if err := m.project.Save(ctx, m.refs); err != nil {
+	if err := m.project.Save(ctx, resolved); err != nil {
 		m.project.Manifest.original = original
 		return err
 	}
+	m.refs = resolved
+	m.Changed = m.Changed || legacy
 	return nil
 }
 

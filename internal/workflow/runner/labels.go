@@ -50,8 +50,10 @@ var allGitHubHostedRunnerLabels = []string{
 	"xcode-27", "xcode-27-xlarge", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14",
 }
 
-var selfHostedRunnerPresetOSLabels = []string{"linux", "macos", "windows"}
-var selfHostedRunnerPresetOtherLabels = []string{"self-hosted", "x64", "arm", "arm64"}
+var (
+	selfHostedRunnerPresetOSLabels    = []string{"linux", "macos", "windows"}
+	selfHostedRunnerPresetOtherLabels = []string{"self-hosted", "x64", "arm", "arm64"}
+)
 
 var defaultRunnerOSCompats = map[string]runnerOSCompat{
 	"ubuntu-slim":            compatUbuntu2404,

@@ -1,4 +1,4 @@
-#:schema https://dprint.kjanat.dev/schemas/v0.json
+#:schema dprint.schema.json
 
 incremental = true
 plugins     = [
@@ -14,9 +14,9 @@ plugins     = [
   "npm:dprint-plugin-markup@0.27.5",
   "https://plugins.dprint.dev/kjanat/pwsh-0.2.0.wasm",
   "https://plugins.dprint.dev/kjanat/shfmt-1.1.1.wasm",
-  "https://plugins.dprint.dev/kjanat/sortpackagejson-0.2.1.wasm",
   "https://plugins.dprint.dev/kjanat/svg-v0.4.1.wasm",
   "https://plugins.dprint.dev/kjanat/tombi-0.1.1.wasm",
+  "npm:@jakebailey/dprint-plugin-gofumpt@0.0.20",
 ]
 excludes    = [
   "**/testdata/**",
@@ -35,10 +35,6 @@ cwd = "${configDir}"
 [[exec.commands]]
 command = "rustfmt --edition 2024"
 exts    = ["rs"]
-
-[[exec.commands]]
-command = "gofmt -s"
-exts    = ["go"]
 
 [jsonSchemaSort]
 associations = ["**/*schema.json", "**/*.schema.json"]
@@ -73,12 +69,9 @@ textWrap = "never"
 [yaml]
 printWidth = 160
 
-[sortPackageJson]
-associations = ["package.json"]
-
 [json]
-jsonTrailingCommaFiles = ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"]
-associations           = ["package.json"]
+jsonTrailingCommaFiles         = ["**/.vscode/*.json", "**/.zed/{settings,tasks,debug}.json", "**/tsconfig*.json"]
+"packageJson.applyConventions" = true
 
 [typescript]
 quoteStyle                              = "preferSingle"

@@ -43,7 +43,7 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const schemaHeader = "# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/v1.17.0/actionlint.schema.json\n"
+	const schemaHeader = "# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@1.17.0/actionlint.schema.json\n"
 	if !strings.HasPrefix(string(b), schemaHeader) {
 		t.Fatalf("generated config must start with the YAML Language Server schema directive, got %q", string(b))
 	}

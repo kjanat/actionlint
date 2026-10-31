@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/address"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/tools/profile"
@@ -374,7 +375,7 @@ func PathContext(scope *tools.Scope, cfg *config.Config) config.PathContext {
 // context is the path interpolation context of a scope's configuration.
 func (paths runPaths) context(cfg *config.Config) config.PathContext {
 	configDir := paths.workspace
-	if cfg.Path() != "" {
+	if cfg.Path() != "" && !address.Remote(cfg.Path()) {
 		configDir = filepath.Dir(cfg.Path())
 	}
 	return config.PathContext{ConfigDir: configDir, GitDir: paths.workspace, Workspace: shellprofile.RunnerWorkspace(paths.workspace), ActionPath: shellprofile.RunnerActionPath(paths.actionPath)}

@@ -247,12 +247,14 @@ func VariableNames(facts repository.Snapshot) []string {
 	}
 	return nil
 }
+
 func SecretNames(facts repository.Snapshot) []string {
 	if secrets, ok := facts.Secrets.Value(); ok {
 		return secrets.Values()
 	}
 	return nil
 }
+
 func RunnerLabels(facts repository.Snapshot) []string {
 	if labels, ok := facts.RunnerLabels.Value(); ok {
 		return slices.Clone(labels.Values())

@@ -121,6 +121,9 @@ Use `config.Parse`, `config.Load`, `config.ParseOverlay` and `config.Inspect` to
 configuration. `config.Config` is opaque; its zero value selects defaults.
 `MarshalText` returns owned YAML bytes. Build configuration as YAML or JSON and validate
 it once at this boundary. Internal policy and tool representations are not public API.
+Registry plugin declarations select canonical packages and exact versions. Registry
+evidence is cached by the host; no project lockfile is required. Direct artifact
+declarations retain their mandatory digest pins.
 `syntax.Parse` returns a workflow and structured parser diagnostics. Parsing does not execute semantic checks.
 The returned tree is a detached value copy owned by the caller; it shares no storage with the parser.
 

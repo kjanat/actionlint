@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/internal/config/address"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 	"actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/pluginref"
@@ -32,6 +34,7 @@ type PluginManifest struct {
 	original   []byte
 	snapshots  map[string][]byte
 	node       *yaml.Node
+	readSource func(context.Context, string) ([]byte, error)
 }
 
 // OpenPluginManifest reads only plugin declarations. Plugin rule configuration
@@ -45,16 +48,21 @@ func openPluginManifest(ctx context.Context, path string, read func(context.Cont
 }
 
 func openPluginManifestMode(ctx context.Context, path string, read func(context.Context, string) ([]byte, error), mode pluginSelectionMode) (*PluginManifest, error) {
-	absolute, err := filepath.Abs(path)
+	absolute, err := address.Normalize(path)
 	if err != nil {
 		return nil, err
 	}
-	absolute, err = physicalPluginManifestPath(absolute)
-	if err != nil {
-		return nil, err
+	if address.Remote(absolute) {
+		// Keep the declared spelling for caller-supplied source readers.
+		absolute = path
+	} else {
+		absolute, err = physicalPluginManifestPath(absolute)
+		if err != nil {
+			return nil, err
+		}
 	}
-	manifest := &PluginManifest{Path: absolute, snapshots: map[string][]byte{}}
-	data, err := read(ctx, absolute)
+	manifest := &PluginManifest{Path: absolute, snapshots: map[string][]byte{}, readSource: read}
+	data, err := manifest.read(ctx, absolute)
 	if errors.Is(err, os.ErrNotExist) {
 		manifest.snapshots[absolute] = nil
 		return manifest, nil
@@ -63,18 +71,27 @@ func openPluginManifestMode(ctx context.Context, path string, read func(context.
 		return nil, err
 	}
 	manifest.original, manifest.Exists = data, true
+	manifest.snapshots[absolute] = bytes.Clone(data)
 	loaded, err := tree.LoadWithMerge(absolute, func(name string) ([]byte, error) {
-		name, err := filepath.Abs(name)
-		if err != nil {
-			return nil, err
+		if name == absolute {
+			return bytes.Clone(data), nil
 		}
-		content, err := read(ctx, name)
+		if !address.Remote(name) {
+			name, err = filepath.Abs(name)
+			if err != nil {
+				return nil, err
+			}
+		}
+		content, err := manifest.read(ctx, name)
 		if err == nil {
-			manifest.snapshots[name] = content
+			manifest.snapshots[name] = bytes.Clone(content)
 		}
 		return content, err
-	}, func(_ string, node *yaml.Node) (*yaml.Node, error) {
+	}, func(origin string, node *yaml.Node) (*yaml.Node, error) {
 		if err := validateManifestRoot(node); err != nil {
+			return nil, err
+		}
+		if err := config.ValidateSourcePaths(origin, node); err != nil {
 			return nil, err
 		}
 		if mode == pluginRuleDiscovery {
@@ -189,6 +206,9 @@ func safePluginManifestPath(path string) error {
 }
 
 func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
+	if address.Remote(path) {
+		return configsource.New(ctx, nil).ReadFile(path)
+	}
 	if err := safePluginManifestPath(path); err != nil {
 		return nil, err
 	}
@@ -196,6 +216,9 @@ func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
 }
 
 func readPluginManifestSource(ctx context.Context, path string) ([]byte, error) {
+	if address.Remote(path) {
+		return configsource.New(ctx, nil).ReadFile(path)
+	}
 	reader := fsread.New(ctx, nil, nil)
 	file, err := reader.Open(path)
 	if err != nil {
@@ -226,7 +249,7 @@ func readPluginManifestSource(ctx context.Context, path string) ([]byte, error) 
 // CheckUnchanged checks every inherited file as well as the edited leaf.
 func (m *PluginManifest) CheckUnchanged(ctx context.Context) error {
 	for path, original := range m.snapshots {
-		current, err := readPluginManifest(ctx, path)
+		current, err := m.read(ctx, path)
 		if errors.Is(err, os.ErrNotExist) && original == nil {
 			continue
 		}
@@ -240,6 +263,16 @@ func (m *PluginManifest) CheckUnchanged(ctx context.Context) error {
 	return nil
 }
 
+func (m *PluginManifest) read(ctx context.Context, path string) ([]byte, error) {
+	read := m.readSource
+	if read == nil {
+		read = readPluginManifest
+	}
+	return configsource.New(ctx, func(name string) ([]byte, error) {
+		return read(ctx, name)
+	}).ReadFile(path)
+}
+
 // OriginalBytes returns a copy of the selected config's original bytes.
 func (m *PluginManifest) OriginalBytes() []byte {
 	return slices.Clone(m.original)
@@ -248,6 +281,9 @@ func (m *PluginManifest) OriginalBytes() []byte {
 // Save writes an explicit leaf-level list, including [] when removing the last
 // plugin.
 func (m *PluginManifest) Save(ctx context.Context, refs []pluginref.Reference) (err error) {
+	if address.Remote(m.Path) {
+		return errors.New("remote config sources are read-only; select a local file to edit plugins")
+	}
 	data, err := editPluginManifest(m.Path, m.original, refs)
 	if err != nil {
 		return err
@@ -647,6 +683,91 @@ func editTOMLPlugins(original []byte, sequence *yaml.Node) ([]byte, error) {
 		}
 		original = spliceManifest(original, section[0], end, nil)
 	}
-	// TOML root assignments must precede the first table header.
-	return append(append(replacement, '\n'), original...), nil
+	if len(sequence.Content) != 0 {
+		newline := "\n"
+		if bytes.Contains(original, []byte("\r\n")) {
+			newline = "\r\n"
+		}
+		tables, err := pluginTOMLTables(sequence, newline)
+		if err != nil {
+			return nil, err
+		}
+		if len(sections) != 0 {
+			return spliceManifest(original, sections[0][0], sections[0][0], tables), nil
+		}
+		// A new array of tables is a root declaration even after other tables.
+		// Appending a root-style plugins assignment here would change its scope.
+		result := slices.Clone(original)
+		if len(result) != 0 && !bytes.HasSuffix(result, []byte(newline)) {
+			result = append(result, newline...)
+		}
+		if len(result) != 0 && !bytes.HasSuffix(result, []byte(newline+newline)) {
+			result = append(result, newline...)
+		}
+		return append(result, tables...), nil
+	}
+	// Root assignments precede tables. Keep the schema preamble first, while
+	// comments following it remain attached to their original setting or table.
+	position := 0
+	for offset := 0; offset < len(original); {
+		end := bytes.IndexByte(original[offset:], '\n')
+		if end < 0 {
+			end = len(original)
+		} else {
+			end += offset + 1
+		}
+		line := bytes.TrimSpace(original[offset:end])
+		if len(line) != 0 && line[0] != '#' {
+			break
+		}
+		if bytes.HasPrefix(line, []byte("#:schema ")) || bytes.HasPrefix(line, []byte("#:schema\t")) {
+			position = end
+		} else if len(line) == 0 && position == offset && position != 0 {
+			position = end
+		}
+		offset = end
+	}
+	newline := []byte{'\n'}
+	if bytes.Contains(original, []byte("\r\n")) {
+		newline = []byte("\r\n")
+	}
+	if position > 0 && original[position-1] != '\n' {
+		replacement = append(slices.Clone(newline), replacement...)
+	}
+	replacement = append(replacement, newline...)
+	return spliceManifest(original, position, position, replacement), nil
+}
+
+func pluginTOMLTables(sequence *yaml.Node, newline string) ([]byte, error) {
+	var tables []byte
+	for index, entry := range sequence.Content {
+		var declarations config.PluginDeclarations
+		if err := declarations.UnmarshalYAML(&yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{entry}}); err != nil {
+			return nil, err
+		}
+		ref := declarations[0]
+		if index != 0 {
+			tables = append(tables, newline...)
+		}
+		tables = append(tables, "[[plugins]]"+newline...)
+		var fields [][2]string
+		if ref.DirectSource() != "" {
+			fields = append(fields, [2]string{"source", ref.DirectSource()})
+		} else {
+			fields = append(fields, [2]string{"name", ref.Name()}, [2]string{"version", ref.Version()})
+			if ref.Registry() != pluginref.DefaultRegistry {
+				fields = append(fields, [2]string{"registry", ref.Registry()})
+			}
+		}
+		for _, field := range fields {
+			value, err := json.Marshal(field[1])
+			if err != nil {
+				return nil, err
+			}
+			tables = append(tables, field[0]+" = "...)
+			tables = append(tables, value...)
+			tables = append(tables, newline...)
+		}
+	}
+	return tables, nil
 }

@@ -44,7 +44,8 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 			failure := errors.New("negotiation failed")
 			guest := &partialGuest{failAt: failureAt, grant: grant, failure: failure}
 			nativeCalls := 0
-			runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest,
+			runner := documentRunner{
+				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
 				context: tools.Context{Document: analyzer.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 				native: func() (tools.Runner, error) {
 					return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {

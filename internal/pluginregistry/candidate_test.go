@@ -17,8 +17,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/testutil"
 )
 
-const candidateManifestPath = "plugins/no-sudo/index.json"
-const candidateRecordPath = "plugins/no-sudo/versions/v1.json"
+const (
+	candidateManifestPath = "plugins/no-sudo/index.json"
+	candidateRecordPath   = "plugins/no-sudo/versions/v1.json"
+)
 
 func localCandidate(t *testing.T) (string, *pluginregistry.Client) {
 	t.Helper()

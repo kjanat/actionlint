@@ -39,7 +39,7 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 			}}},
 		}},
 	}
-	plan, err := sources.CachePlan()
+	plan, err := sources.CachePlan(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestCachePlanRejectsMalformedCandidateSources(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			sources := PluginSources{Paths: []string{source}}
-			if _, err := sources.CachePlan(); err == nil {
+			if _, err := sources.CachePlan(t.Context()); err == nil {
 				t.Fatalf("invalid candidate entered cache plan: %q", source)
 			}
 		})

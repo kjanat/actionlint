@@ -1,6 +1,12 @@
 package application
 
 import (
+	"context"
+	"errors"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -8,11 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/source/capture"
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/source"
-	"context"
-	"errors"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
@@ -110,6 +111,7 @@ type relatedAdmissionProbe struct{}
 func (relatedAdmissionProbe) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: "related-admission-probe", Requires: []analyzer.Fact{analyzer.Source}}
 }
+
 func (relatedAdmissionProbe) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	point := diagnostic.Position{Line: 1, Column: 1}
 	valid := diagnostic.Related{Path: input.Path, Start: point, End: point}

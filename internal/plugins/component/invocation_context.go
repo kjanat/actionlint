@@ -13,8 +13,10 @@ import (
 
 const InvocationContextInterface = bind.InterfaceName
 
-type invocationGraphKey struct{}
-type invocationContext struct{}
+type (
+	invocationGraphKey struct{}
+	invocationContext  struct{}
+)
 
 // Generated bindings reserve Go errors for transport traps. Query failures
 // belong to the WIT result, so these adapters never return a Go error.

@@ -12,6 +12,7 @@ import (
 
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"actionlint.kjanat.dev/v2/internal/projectpath"
 )
@@ -70,10 +71,7 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	if opts.Config != nil && opts.ConfigFile != "" {
 		return nil, errors.New("workspace options set both Config and ConfigFile")
 	}
-	a := &Session{projects: NewProjects(), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: opts.ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
-	if a.readFile == nil {
-		a.readFile = fsread.Disk
-	}
+	a := &Session{projects: NewProjects(), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	if a.log == nil {
 		a.log = func(...any) {}
 	}

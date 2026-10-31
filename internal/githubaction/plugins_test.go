@@ -29,9 +29,17 @@ func isolatePluginCache(t *testing.T) string {
 	return filepath.Join(base, "actionlint", "artifacts")
 }
 
-func TestActionLockedPlugins(t *testing.T) {
-	for _, explicit := range []bool{false, true} {
-		t.Run(map[bool]string{false: "discovered", true: "explicit"}[explicit], func(t *testing.T) {
+func TestActionExactRegistryPlugins(t *testing.T) {
+	for _, test := range []struct {
+		name                 string
+		explicit, legacyLock bool
+	}{
+		{name: "discovered"},
+		{name: "explicit", explicit: true},
+		{name: "discovered-legacy-lock", legacyLock: true},
+		{name: "explicit-legacy-lock", explicit: true, legacyLock: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			wasm, err := os.ReadFile("../plugins/component/testdata/plugins/no-sudo.wasm")
 			if err != nil {
 				t.Fatal(err)
@@ -49,24 +57,27 @@ func TestActionLockedPlugins(t *testing.T) {
 			}
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", "ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\n",
-				".github/base.yaml":       "plugins:\n  - name: " + testutil.FixturePluginName + "\n    registry: " + testutil.FixtureRegistryURL + "\n",
+				".github/base.yaml":       "plugins:\n  - name: " + testutil.FixturePluginName + "\n    version: v1.0.0\n    registry: " + testutil.FixtureRegistryURL + "\n",
 				".github/actionlint.yaml": "extends: [base.yaml]\n",
 			})
-			lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(workspace, ".github", pluginregistry.LockName))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := lock.Set(pin); err != nil {
-				t.Fatal(err)
-			}
-			if err := lock.Save(t.Context()); err != nil {
-				t.Fatal(err)
+			lockPath := filepath.Join(workspace, ".github", pluginregistry.LockName)
+			if test.legacyLock {
+				lock, err := pluginregistry.OpenLock(t.Context(), lockPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := lock.Set(pin); err != nil {
+					t.Fatal(err)
+				}
+				if err := lock.Save(t.Context()); err != nil {
+					t.Fatal(err)
+				}
 			}
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck,ruff",
 				"INPUT_CONFIG": "lint: {rules: {plugins: {no-sudo: warn}}}",
 			}
-			if explicit {
+			if test.explicit {
 				env["INPUT_CONFIG-FILE"] = ".github/actionlint.yaml"
 			}
 			lookup := func(key string) string { return env[key] }
@@ -103,6 +114,11 @@ func TestActionLockedPlugins(t *testing.T) {
 			}
 			if len(registry.Requests()) != 0 {
 				t.Fatalf("cached Action fetched artifacts: %v", registry.Requests())
+			}
+			if !test.legacyLock {
+				if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+					t.Fatalf("checking created a lockfile: %v", err)
+				}
 			}
 			env["INPUT_CONFIG"] = "plugins: []"
 			req, err = provisioningRequest(lookup)
@@ -224,13 +240,13 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	}
 }
 
-func TestActionPluginPlanPreviewsLockOnlyLegacyMigration(t *testing.T) {
+func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
 	wasm, err := os.ReadFile("../plugins/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := testutil.NewPluginRegistry(t)
-	directory := isolatePluginCache(t)
+	isolatePluginCache(t)
 	registry.Add(t, "v1.0.0", wasm)
 	client, err := pluginregistry.New(testutil.FixtureRegistryURL)
 	if err != nil {
@@ -273,15 +289,8 @@ func TestActionPluginPlanPreviewsLockOnlyLegacyMigration(t *testing.T) {
 	}
 	lookup := func(key string) string { return env[key] }
 	var stdout, stderr bytes.Buffer
-	if code := PluginPlan(lookup, &stdout, &stderr); code != 0 {
-		t.Fatalf("plugin plan failed: %d %s", code, &stderr)
-	}
-	var plan localapp.PluginCachePlan
-	if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
-		t.Fatal(err)
-	}
-	if plan.Directory != directory || len(plan.Artifacts) != 1 || plan.Artifacts[0] != pin.SHA256 {
-		t.Fatalf("lock-only plan = %+v; want directory %s and digest %s", plan, directory, pin.SHA256)
+	if code := PluginPlan(lookup, &stdout, &stderr); code != 3 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "not declared") {
+		t.Fatalf("cache plan accepted undeclared lock: %d %s", code, &stderr)
 	}
 	if len(registry.Requests()) != 0 {
 		t.Fatalf("cache preview fetched artifacts: %v", registry.Requests())
@@ -303,18 +312,19 @@ func TestActionPluginPlanPreviewsLockOnlyLegacyMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := runLinter(req)
-	if result.code != 1 || len(result.diagnostics) != 1 || result.diagnostics[0].Rule != "no-sudo" {
-		t.Fatalf("migrated locked plugin result: %+v %s", result.diagnostics, result.stderr)
+	if result.code != 3 || len(result.diagnostics) != 0 || !strings.Contains(result.stderr, "not declared") {
+		t.Fatalf("checking accepted undeclared lock: %+v %s", result.diagnostics, result.stderr)
 	}
-	if len(registry.Requests()) != 1 || registry.Requests()[0] != pin.URL {
-		t.Fatalf("migration fetched unexpected plugin bytes: %v", registry.Requests())
+	if len(registry.Requests()) != 0 {
+		t.Fatalf("checking fetched undeclared plugin bytes: %v", registry.Requests())
 	}
 	configAfter, err = os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(configAfter), testutil.FixturePluginName) {
-		t.Fatalf("action analysis did not migrate pinned plugin declaration: %s", configAfter)
+	lockAfter, err = os.ReadFile(lockPath)
+	if err != nil || !bytes.Equal(configBefore, configAfter) || !bytes.Equal(lockBefore, lockAfter) {
+		t.Fatal("checking rewrote legacy config or lock")
 	}
 }
 
@@ -338,11 +348,6 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 		config string
 		lock   string
 	}{
-		{
-			name: "missing lock",
-			config: "policy: {require-job-timeout: false}\nplugins:\n" +
-				"  - name: " + testutil.FixturePluginName + "\n    version: v1.0.0\n    registry: " + testutil.FixtureRegistryURL + "\n",
-		},
 		{name: "corrupt lock", config: "policy: {require-job-timeout: false}\n", lock: "not a lock\n"},
 		{
 			name: "stale lock",

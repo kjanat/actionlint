@@ -82,9 +82,15 @@ func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 		name  string
 		valid bool
 	}{
-		{"no,sudo", false}, {"no -- x", false}, {"name --", false},
-		{" no-sudo", false}, {"no-sudo ", false}, {"no\nsudo", false},
-		{"no-sudo", true}, {"NO.SUDO", true}, {"org/foo", true},
+		{"no,sudo", false},
+		{"no -- x", false},
+		{"name --", false},
+		{" no-sudo", false},
+		{"no-sudo ", false},
+		{"no\nsudo", false},
+		{"no-sudo", true},
+		{"NO.SUDO", true},
+		{"org/foo", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			descriptor, err := scriptDescriptorWithRuleName(original, test.name)

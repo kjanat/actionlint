@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/config/address"
+	configsource "actionlint.kjanat.dev/v2/internal/config/source"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -22,18 +23,33 @@ type FileMigration struct {
 	mode      os.FileMode
 }
 
-type fileSnapshot struct {
+type fileSnapshot interface {
+	bytes() []byte
+	configSnapshot()
+}
+
+type localConfigSnapshot struct {
 	content []byte
 	target  string
 }
+
+type remoteConfigSnapshot struct{ content []byte }
+
+func (s localConfigSnapshot) bytes() []byte  { return s.content }
+func (s remoteConfigSnapshot) bytes() []byte { return s.content }
+func (localConfigSnapshot) configSnapshot()  {}
+func (remoteConfigSnapshot) configSnapshot() {}
 
 // PrepareMigration reads the selected file and its inherited inputs, validates
 // the converted graph, and returns a write candidate tied to those inputs.
 // Reads stop when ctx is canceled.
 func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) {
-	absolute, err := filepath.Abs(path)
+	absolute, err := address.Normalize(path)
 	if err != nil {
 		return nil, err
+	}
+	if address.Remote(absolute) {
+		return nil, errors.New("remote config sources are read-only; select a local file to migrate")
 	}
 	parent, err := filepath.EvalSymlinks(filepath.Dir(absolute))
 	if err != nil {
@@ -48,20 +64,27 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 		return nil, fmt.Errorf("cannot migrate non-regular config file %q", absolute)
 	}
 	snapshots := map[string]fileSnapshot{}
-	reader := fsread.New(ctx, nil, nil)
+	reader := configsource.New(ctx, nil)
 	read := func(path string) ([]byte, error) {
 		content, err := reader.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
-		target, err := filepath.EvalSymlinks(path)
-		if err != nil {
-			return nil, err
+		if address.Remote(path) {
+			snapshots[path] = remoteConfigSnapshot{content: bytes.Clone(content)}
+		} else {
+			target, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return nil, err
+			}
+			snapshots[path] = localConfigSnapshot{content: bytes.Clone(content), target: target}
 		}
-		snapshots[path] = fileSnapshot{content: bytes.Clone(content), target: target}
 		return content, err
 	}
-	normalize := func(_ string, node *yaml.Node) (*yaml.Node, error) {
+	normalize := func(origin string, node *yaml.Node) (*yaml.Node, error) {
+		if err := ValidateSourcePaths(origin, node); err != nil {
+			return nil, err
+		}
 		resolved, err := resolveNode(node, nil, false)
 		return resolved.Node, err
 	}
@@ -69,7 +92,7 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 	if err != nil {
 		return nil, err
 	}
-	migration, err := MigrateDocument(absolute, snapshots[absolute].content)
+	migration, err := MigrateDocument(absolute, snapshots[absolute].bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +106,7 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 		if !exists {
 			return nil, fmt.Errorf("migration introduced unexpected config dependency %q", path)
 		}
-		return content.content, nil
+		return content.bytes(), nil
 	}, normalize)
 	if err != nil {
 		return nil, err
@@ -120,15 +143,34 @@ func (m *FileMigration) SetContent(content []byte) error {
 		if !exists {
 			return nil, fmt.Errorf("migration introduced unexpected config dependency %q", path)
 		}
-		return original.content, nil
-	}, func(_ string, node *yaml.Node) (*yaml.Node, error) {
+		return original.bytes(), nil
+	}, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+		if err := ValidateSourcePaths(origin, node); err != nil {
+			return nil, err
+		}
 		resolved, err := resolveNode(node, nil, false)
 		return resolved.Node, err
 	}); err != nil {
 		return err
 	}
 	m.Content = bytes.Clone(content)
-	m.Changed = !bytes.Equal(content, m.snapshots[m.Path].content)
+	m.Changed = !bytes.Equal(content, m.snapshots[m.Path].bytes())
+	return nil
+}
+
+// CheckSources compares another previously captured source graph with this
+// preview's exact inputs. It performs no acquisition and exposes no snapshots.
+func (m *FileMigration) CheckSources(sources map[string][]byte) error {
+	if len(sources) != len(m.snapshots) {
+		return errors.New("config source graph changed during migration preparation; prepare the migration again")
+	}
+	for path, expected := range m.snapshots {
+		content, exists := sources[path]
+		original := expected.bytes()
+		if !exists || (content == nil) != (original == nil) || !bytes.Equal(content, original) {
+			return fmt.Errorf("config input changed during migration preparation: %s; prepare the migration again", path)
+		}
+	}
 	return nil
 }
 
@@ -179,8 +221,22 @@ func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
 	if parent != filepath.Dir(m.Path) {
 		return errors.New("config directory changed before migration; prepare the migration again")
 	}
-	reader := fsread.New(ctx, nil, nil)
+	reader := configsource.New(ctx, nil)
 	for path, expected := range m.snapshots {
+		if _, remote := expected.(remoteConfigSnapshot); remote {
+			current, err := reader.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(current, expected.bytes()) {
+				return fmt.Errorf("config input changed before migration: %s; prepare the migration again", path)
+			}
+			continue
+		}
+		local, ok := expected.(localConfigSnapshot)
+		if !ok {
+			return fmt.Errorf("invalid config snapshot for %q", path)
+		}
 		readPath := path
 		if path == m.Path {
 			info, err := os.Lstat(path)
@@ -198,7 +254,7 @@ func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("config input changed before migration: %s; prepare the migration again: %w", path, err)
 			}
-			if filepath.Clean(target) != filepath.Clean(expected.target) {
+			if filepath.Clean(target) != filepath.Clean(local.target) {
 				return fmt.Errorf("config input changed before migration: %s now resolves to %s; prepare the migration again", path, target)
 			}
 			info, err := os.Lstat(target)
@@ -214,7 +270,7 @@ func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if !bytes.Equal(current, expected.content) {
+		if !bytes.Equal(current, expected.bytes()) {
 			return fmt.Errorf("config input changed before migration: %s; prepare the migration again", path)
 		}
 	}

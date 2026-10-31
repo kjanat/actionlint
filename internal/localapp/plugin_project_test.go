@@ -35,7 +35,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := project.SelectedLock(); err == nil || !strings.Contains(err.Error(), "migrate") {
+	if _, err := project.SelectedPlugins(t.Context()); err == nil || !strings.Contains(err.Error(), "migrate") {
 		t.Fatalf("legacy lock silently activated: %v", err)
 	}
 	refs, err := project.Dependencies(true)
@@ -49,8 +49,8 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := project.SelectedLock()
-	if err != nil || len(selected.Plugins) != 1 || selected.Plugins[0] != pin {
+	selected, err := project.SelectedPlugins(t.Context())
+	if err != nil || len(selected.Plugins) != 1 || !selected.Plugins[0].SameRelease(pin) {
 		t.Fatalf("migration changed pin: %+v %v", selected, err)
 	}
 	declared := project.Manifest.References[0]
@@ -58,7 +58,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := project.SelectedLock(); err == nil || !strings.Contains(err.Error(), "plugin install") {
+	if _, err := project.SelectedPlugins(t.Context()); err == nil || !strings.Contains(err.Error(), "not published") {
 		t.Fatalf("changed declaration accepted stale pin: %v", err)
 	}
 	if err := os.WriteFile(project.Manifest.Path, []byte("plugins: []\n"), 0600); err != nil {
@@ -89,7 +89,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := project.SelectedLock()
+	selected, err := project.SelectedPlugins(t.Context())
 	if err != nil || len(selected.Plugins) != 0 {
 		t.Fatalf("direct source acquired a registry pin: %+v %v", selected, err)
 	}
@@ -187,7 +187,7 @@ func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
 	if err := project.Resolve(t.Context(), refs, nil); err != nil {
 		t.Fatal(err)
 	}
-	if len(registry.Requests()) != requests || project.Lock.Lock.Plugins[0] != pin {
+	if len(registry.Requests()) != requests || !project.Lock.Lock.Plugins[0].SameRelease(pin) {
 		t.Fatal("migration changed the locked pin or contacted the registry")
 	}
 }
@@ -295,10 +295,10 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 		t.Fatal(err)
 	}
 	requests := len(registry.Requests())
-	if err := project.Resolve(t.Context(), refs, nil); err != nil {
+	if err := project.Resolve(t.Context(), project.Manifest.References, nil); err != nil {
 		t.Fatal(err)
 	}
-	if len(registry.Requests()) != requests || project.Lock.Lock.Plugins[0] != original {
+	if len(registry.Requests()) != requests || !project.Lock.Lock.Plugins[0].SameRelease(original) {
 		t.Fatal("install upgraded an existing matching pin")
 	}
 	// A failed migration must leave the previous on-disk lock usable.
@@ -312,8 +312,8 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := project.SelectedLock()
-	if err != nil || len(selected.Plugins) != 1 || selected.Plugins[0] != original {
+	selected, err := project.SelectedPlugins(t.Context())
+	if err != nil || len(selected.Plugins) != 1 || !selected.Plugins[0].SameRelease(original) {
 		t.Fatalf("failed update damaged previous selection: %+v %v", selected, err)
 	}
 	registry.SetFile(artifactURL, good)
@@ -323,7 +323,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if err := project.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}
-	selected, err = project.SelectedLock()
+	selected, err = project.SelectedPlugins(t.Context())
 	if err != nil || len(selected.Plugins) != 1 || selected.Plugins[0].Version != "v2.0.0" || selected.Plugins[0].Asset != "plugin.component.wasm" {
 		t.Fatalf("explicit update did not select component: %+v %v", selected, err)
 	}

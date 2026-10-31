@@ -1,12 +1,13 @@
 package application
 
 import (
-	"actionlint.kjanat.dev/v2/actions"
-	"actionlint.kjanat.dev/v2/internal/workspace"
 	"context"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/actions"
+	"actionlint.kjanat.dev/v2/internal/workspace"
 )
 
 type manifestProvider func(context.Context, actions.Reference) (actions.Manifest, error)

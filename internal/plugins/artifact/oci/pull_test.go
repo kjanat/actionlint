@@ -211,3 +211,18 @@ func TestDescribeReadsNoLayers(t *testing.T) {
 		t.Fatal("Describe fetched a layer")
 	}
 }
+
+func TestDigestPlanReadsOnlyHostManifests(t *testing.T) {
+	registry := ocitest.New(t)
+	pkg := publishProvider(t, registry)
+	digests, err := oci.Digests(t.Context(), pkg.reference, options(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(digests) != 4 || !slices.Contains(digests, pkg.executable.Hex()) || !slices.Contains(digests, pkg.manifest.Hex()) {
+		t.Fatalf("incomplete OCI cache plan: %v", digests)
+	}
+	if registry.Fetches(pkg.executable) != 0 || registry.Fetches(pkg.manifest) != 0 {
+		t.Fatal("cache planning fetched an artifact layer")
+	}
+}

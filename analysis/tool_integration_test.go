@@ -51,9 +51,11 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 func (a *integratedAnalyzer) Descriptor() analyzer.Descriptor {
 	return analyzer.Descriptor{Name: a.tool, Provider: "arbitrary-fork", OptionsSchema: a.schema, Requires: []analyzer.Fact{analyzer.Scripts}}
 }
+
 func (a *integratedAnalyzer) ToolIntegration() *analyzer.ToolIntegration {
 	return &analyzer.ToolIntegration{Tool: a.tool, Contract: a.contract, ConfigurationSchema: `{}`}
 }
+
 func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _ json.RawMessage, explicit json.RawMessage) (*analyzer.ToolNegotiation, error) {
 	a.explicit = explicit
 	if a.unsupported {
@@ -107,6 +109,7 @@ func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 		}
 	}
 }
+
 func (a *integratedAnalyzer) Analyze(_ context.Context, input analyzer.Input) ([]diagnostic.Diagnostic, error) {
 	a.calls++
 	return []diagnostic.Diagnostic{{Message: "managed finding", Path: input.Path, Start: input.Scripts[0].Start}}, nil

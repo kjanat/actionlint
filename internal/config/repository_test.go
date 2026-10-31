@@ -1,10 +1,11 @@
 package config
 
 import (
-	"actionlint.kjanat.dev/v2/repository"
 	"reflect"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/repository"
 )
 
 func configuredWorkflowPermissions(cfg *Config) string {

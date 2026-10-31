@@ -106,7 +106,10 @@ func TestUnavailableRunnerLabelsDoNotBecomeAnEmptyAllowlist(t *testing.T) {
 		config, selector string
 		findings         int
 	}{
-		{"{}", "private-pool", 0}, {"repository: {runners: null}", "private-pool", 0}, {"repository: {runners: []}", "private-pool", 1}, {"repository: {runners: [private-pool]}", "private-pool", 0},
+		{"{}", "private-pool", 0},
+		{"repository: {runners: null}", "private-pool", 0},
+		{"repository: {runners: []}", "private-pool", 1},
+		{"repository: {runners: [private-pool]}", "private-pool", 0},
 		{"{}", "[ubuntu-latest, windows-latest]", 1},
 	} {
 		t.Run(test.config+"/"+test.selector, func(t *testing.T) {

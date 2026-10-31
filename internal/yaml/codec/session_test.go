@@ -11,9 +11,11 @@ import (
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
-const aliasBudgetItems = 3
-const aliasBudgetDepth = 3
-const aliasBudgetWidth = 8
+const (
+	aliasBudgetItems = 3
+	aliasBudgetDepth = 3
+	aliasBudgetWidth = 8
+)
 
 type upstreamAliasBudgetTarget struct {
 	Items []map[string]any `yaml:"items"`
@@ -101,8 +103,10 @@ func TestSelectedItemsShareAliasExpansionBudgetAndStopAfterFatal(t *testing.T) {
 	}
 }
 
-const inheritedAliasWidth = 650
-const inheritedAliasOccurrences = 3
+const (
+	inheritedAliasWidth       = 650
+	inheritedAliasOccurrences = 3
+)
 
 type inheritedAliasTarget struct {
 	Items [][]string `yaml:"items"`

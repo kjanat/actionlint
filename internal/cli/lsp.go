@@ -27,11 +27,6 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
 		return 0, commandUsageError{errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
-	if err := c.pluginSelection().Migrate(ctx, cwd, application.Input{Kind: application.Repository}, c.defaultPlugins(func(message string) {
-		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+message)
-	})); err != nil {
-		return 0, err
-	}
 	plugins, err := c.pluginSelection().Resolve(ctx, cwd, application.Input{Kind: application.Repository})
 	if err != nil {
 		return 0, err

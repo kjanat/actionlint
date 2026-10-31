@@ -145,7 +145,8 @@ func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 
 func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
-	options := application.Options{WorkingDir: root,
+	options := application.Options{
+		WorkingDir:       root,
 		Tools:            registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &processconfig.Options{Optional: true}}}),
 		LoadScriptEngine: func(context.Context, string) (analyzer.ScriptBackend, error) { return nil, nil },
 	}

@@ -2,10 +2,11 @@
 package related
 
 import (
-	"actionlint.kjanat.dev/v2/diagnostic"
-	"actionlint.kjanat.dev/v2/source"
 	"errors"
 	"fmt"
+
+	"actionlint.kjanat.dev/v2/diagnostic"
+	"actionlint.kjanat.dev/v2/source"
 )
 
 // RejectedError counts withheld related locations, never primary diagnostics.

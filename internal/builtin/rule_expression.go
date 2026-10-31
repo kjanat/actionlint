@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"context"
 	"errors"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
@@ -16,7 +17,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/repository"
-	"context"
 )
 
 // ruleExpression connects workflow expression checking to host lookups and options.
@@ -42,6 +42,7 @@ func (r *ruleExpression) EnterInvocation(scope Invocation) error {
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{RemoteAction: r.remoteLookup}, workflowExpressionOptionsWithFacts(scope.Config, r.host))
 	return nil
 }
+
 func (r *ruleExpression) LeaveInvocation(context invocation.Context) error {
 	if len(r.frames) == 0 || r.frames[len(r.frames)-1].scope.Context != context {
 		return invocation.ErrForeignContext
@@ -58,15 +59,18 @@ func (r *ruleExpression) collect(mark int, err error) error {
 	r.findings.Report(r.FindingsSince(mark)...)
 	return err
 }
+
 func (r *ruleExpression) VisitStep(step workflowdecl.StepView) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitStep(step))
 }
+
 func (r *ruleExpression) VisitInvocationStep(step workflowdecl.StepView) error {
 	mark := r.Checker.FindingCount()
 	r.CheckCompositeScript(step)
 	return r.collect(mark, nil)
 }
+
 func (r *ruleExpression) VisitOpaqueAction(step workflowdecl.StepView) error {
 	if len(r.frames) == 0 {
 		// Workflow steps already receive the full expression pass before resolution.
@@ -74,18 +78,22 @@ func (r *ruleExpression) VisitOpaqueAction(step workflowdecl.StepView) error {
 	}
 	return r.VisitInvocationStep(step)
 }
+
 func (r *ruleExpression) VisitWorkflowPre(view workflowdecl.WorkflowView) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitWorkflowPre(view))
 }
+
 func (r *ruleExpression) VisitWorkflowPost(view workflowdecl.WorkflowView) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitWorkflowPost(view))
 }
+
 func (r *ruleExpression) VisitJobPre(view workflowdecl.JobView) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitJobPre(view))
 }
+
 func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitJobPost(view))
@@ -137,9 +145,11 @@ func (r *ruleExpression) Errs() []*findingmodel.Finding { return r.findings.Errs
 // FindingCount counts the findings collected by the rule. It shadows the
 // embedded checker's count, which covers only the current invocation.
 func (r *ruleExpression) FindingCount() int { return r.findings.FindingCount() }
+
 func (r *ruleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
 	r.findings.AnnotateSince(mark, annotate)
 }
+
 func (r *ruleExpression) SetConfig(config *repoconfig.Config) {
 	r.configuration.SetConfig(config)
 	r.Configure(workflowExpressionOptionsWithFacts(config, r.host))

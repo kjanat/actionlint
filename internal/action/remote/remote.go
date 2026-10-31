@@ -15,11 +15,13 @@ type repositoryKey struct {
 	host string
 	id   uint64
 }
-type location struct{ host, name string }
-type contentKey struct {
-	repository        repositoryKey
-	commit, directory string
-}
+type (
+	location   struct{ host, name string }
+	contentKey struct {
+		repository        repositoryKey
+		commit, directory string
+	}
+)
 
 // Service separates mutable-reference lookups from immutable manifest parsing.
 // It is owned by one analysis request and contains no process-global data.

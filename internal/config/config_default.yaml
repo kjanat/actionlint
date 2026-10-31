@@ -1,5 +1,5 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/kjanat/actionlint/HEAD/actionlint.schema.json
-# Replace HEAD with either v1|vX.Y.X|etc. to get a tailored schema for your actionlint version.
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
+# Use an exact release such as @2.0.0 to pin the schema, or @2 to follow v2.
 # Lint rules: recommended checks are enabled without a configuration file.
 # Use all for all stable rules, or none to select rules individually.
 ---

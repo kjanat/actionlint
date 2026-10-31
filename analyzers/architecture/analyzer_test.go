@@ -1,10 +1,11 @@
 package architecture_test
 
 import (
+	"testing"
+
 	"actionlint.kjanat.dev/v2/analyzers/architecture"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/analysistest"
-	"testing"
 )
 
 func TestStructuralRules(t *testing.T) {

@@ -1,6 +1,13 @@
 package application
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
@@ -8,12 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/workflow/composition"
 	"actionlint.kjanat.dev/v2/source"
-	"context"
-	"encoding/json"
-	"errors"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 type unrelatedPathAnalyzer struct{ path string }

@@ -116,7 +116,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := selected.CachePlan()
+	plan, err := selected.CachePlan(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

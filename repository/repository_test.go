@@ -1,9 +1,10 @@
 package repository_test
 
 import (
+	"testing"
+
 	"actionlint.kjanat.dev/v2/knowledge"
 	"actionlint.kjanat.dev/v2/repository"
-	"testing"
 )
 
 func TestUnknownDiffersFromKnownEmptyFacts(t *testing.T) {

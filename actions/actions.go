@@ -164,6 +164,7 @@ func (m Manifest) Reason() knowledge.Reason {
 	}
 	return m.missing.Reason()
 }
+
 func UnavailableManifest(reason knowledge.Unavailability) Manifest { return Manifest{missing: reason} }
 
 // Provider resolves a reference and obtains its manifest. Expected transport

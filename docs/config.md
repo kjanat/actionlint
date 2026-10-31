@@ -8,7 +8,7 @@ settings.
 ## Configuration file
 
 ```yaml
-# yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
 repository:
   runners: [linux.2xlarge, windows-latest-xl]
   variables: { DEFAULT_RUNNER: null, ENVIRONMENT_STAGE: "production" }
@@ -20,15 +20,15 @@ lint:
       - "shellcheck reported issue in this script: SC2086:.+"
 ```
 
-| Key                                       | Purpose                                                                                                                                                        |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins`                                 | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
-| `repository.runners`                      | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                               |
-| `repository.variables`                    | Available variable names mapped to optional string values. A null value keeps its name known. An empty mapping permits none.                                   |
-| `repository.secrets`                      | Available secret names, case-insensitive. An empty list permits only built-in and declared `workflow_call` secrets.                                            |
-| `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                                      |
-| `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                                             |
-| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                              |
+| Key                                       | Purpose                                                                                                                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `plugins`                                 | Exact registry releases, such as `owner/repo@v1.2.3`, or digest-pinned direct artifacts. No project lockfile is required. See [Plugins](plugins.md#install-from-the-registry). |
+| `repository.runners`                      | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                                               |
+| `repository.variables`                    | Available variable names mapped to optional string values. A null value keeps its name known. An empty mapping permits none.                                                   |
+| `repository.secrets`                      | Available secret names, case-insensitive. An empty list permits only built-in and declared `workflow_call` secrets.                                                            |
+| `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                                                      |
+| `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                                                             |
+| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                                              |
 
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
@@ -54,7 +54,7 @@ The same keys apply in every format, and `extends` entries may name files of any
 file may carry a top-level `$schema` key. TOML editors take the schema from a `#:schema` comment:
 
 ```toml
-#:schema ../node_modules/@kjanat/actionlint/actionlint.schema.json
+#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json
 
 [repository]
 runners                      = ["linux.2xlarge", "windows-latest-xl"]
@@ -72,17 +72,17 @@ ENVIRONMENT_STAGE = "production"
 
 Errors and warnings name the line and column in the file as written.
 
-The [schema](../actionlint.schema.json) provides editor completion and validation.
+The [v2 schema](https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json) provides editor completion and validation.
 The YAML language service completes quoted property names after a prefix is
 entered. YAML LS 2.0.0 omits completions for empty quoted keys, and accepting its
 suggestions inside empty quoted values leaves a trailing quote. Remove the quotes
 or enter a prefix before completing these entries. YAML uses nested mappings: `lint.rules.security` is a literal key, not a nested path.
 Use TOML when dotted property paths are preferred.
-An installed npm package also supplies it at
-`../node_modules/@kjanat/actionlint/actionlint.schema.json` from a `.github/` config;
-see [schema distribution](../distribution/npm/facade/README.md#configuration-schema).
-Without an installed package, select a matching published version from that guide.
-Use a source-commit schema when trying unreleased settings; `HEAD` changes with development.
+Use `https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json` to follow
+v2, or `https://cdn.jsdelivr.net/gh/kjanat/actionlint@2.0.0/actionlint.schema.json`
+for an exact release. V1 configurations can use `@1` or an exact version such as
+`@1.17.0`. Match the schema's major version to the installed actionlint version.
+For unreleased settings, replace the version with the source commit you are testing.
 The full editor experience works in a real config file. YAML inside the Action
 `config` string is validated at runtime; editors generally see only a string.
 The schema rejects unknown keys. Runtime parsing warns about ignored keys at the
@@ -92,25 +92,38 @@ validity is checked when actionlint loads the file.
 
 ## Extending configuration
 
-Use `extends` to share local configuration files:
+Use `extends` to share local files or HTTPS configuration:
 
 ```yaml
-extends: [../config/actionlint-base.yml, ../config/team.yml]
+extends:
+  - https://example.org/actionlint/base.yml
+  - ../config/team.yml
 files:
   includes: [".github/workflows/**/*.{yml,yaml}"]
   excludes: [".github/workflows/generated/**"]
 ```
 
-Each path resolves relative to the file declaring it. Bases are applied in order,
+Replace the example URL with your hosted configuration. Relative references resolve
+against the declaring file's directory or HTTPS URL. Bases are applied in order,
 then the declaring file wins. Maps merge recursively; arrays and scalar values
 replace earlier values. `null` resets the selected setting. Inherited ShellCheck
 rc paths resolve relative to the configuration that declares them.
 
-Only local files are supported: no remote downloads, package resolution, or
-commands. Missing bases, cycles, invalid base settings, and chains deeper than
-32 levels are errors. `config.Load` and file-based CLI configuration resolve
-inheritance. In-memory `config.Parse` and inline Action overlays cannot resolve
-`extends`; select a configuration file instead.
+Remote files may extend other HTTPS configurations. Downloads require HTTPS,
+reject credentials and redirects, and have a 30-second timeout and 4 MiB limit per
+document. Use the final URL directly so relative references retain their origin.
+Remote configuration cannot extend local files or select a `file://` plugin
+registry. Relative filesystem paths for native tool executables, modules and rc
+files, including `${{ configdir }}`, require a local configuration; repository
+paths such as `local-actions` still resolve against the analyzed repository.
+
+Missing bases, cycles, invalid settings, and chains deeper than 32 levels are
+errors. `config.Load`, `config.LoadContext` and file-based CLI configuration resolve
+inheritance. A supplied Go file reader receives HTTPS addresses too; actionlint
+never bypasses it with network fallback. In-memory `config.Parse` and inline Action
+overlays cannot resolve `extends`; select a configuration file instead. Explicit
+migration rewrites the selected local file and checks inherited remote bytes again
+before writing; it does not rewrite hosted configurations.
 
 ## File selection
 

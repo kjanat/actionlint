@@ -35,6 +35,7 @@ func (rule *ruleExecutableBit) Description() string {
 
 func (rule *ruleExecutableBit) Errs() []*findingmodel.Finding { return rule.findings.Errs() }
 func (rule *ruleExecutableBit) FindingCount() int             { return rule.findings.FindingCount() }
+
 func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
 	rule.findings.AnnotateSince(mark, annotate)
 }
@@ -55,12 +56,15 @@ func (rule *ruleExecutableBit) VisitStep(step workflowdecl.StepView) error {
 	}
 	return rule.VisitInvocationStep(step)
 }
+
 func (rule *ruleExecutableBit) VisitInvocationStep(step workflowdecl.StepView) error {
 	return rule.ExecutableChecker.VisitStep(step)
 }
+
 func (rule *ruleExecutableBit) VisitOpaqueAction(step workflowdecl.StepView) error {
 	return rule.VisitInvocationStep(step)
 }
+
 func (rule *ruleExecutableBit) EnterInvocation(scope Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
@@ -69,6 +73,7 @@ func (rule *ruleExecutableBit) EnterInvocation(scope Invocation) error {
 	rule.ExecutableChecker = rule.ForkComposite(scope.Context, scope.ActionPath, rule.Paths())
 	return nil
 }
+
 func (rule *ruleExecutableBit) LeaveInvocation(context invocation.Context) error {
 	if len(rule.frames) == 0 || rule.frames[len(rule.frames)-1].scope.Context != context {
 		return invocation.ErrForeignContext

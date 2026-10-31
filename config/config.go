@@ -3,6 +3,8 @@
 package config
 
 import (
+	"context"
+
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	configvalue "actionlint.kjanat.dev/v2/internal/config/value"
@@ -33,9 +35,18 @@ func Parse(source []byte, additionalRules ...string) (*Config, error) {
 	return configvalue.Wrap(value), nil
 }
 
-// Load resolves local inheritance and validates the resulting configuration.
+// Load resolves local and HTTPS inheritance and validates the configuration.
 func Load(path string, additionalRules ...string) (*Config, error) {
 	value, err := repoconfig.Load(path, additionalRules...)
+	if err != nil {
+		return nil, err
+	}
+	return configvalue.Wrap(value), nil
+}
+
+// LoadContext resolves inheritance with cancellable local and HTTPS acquisition.
+func LoadContext(ctx context.Context, path string, additionalRules ...string) (*Config, error) {
+	value, err := repoconfig.LoadContext(ctx, path, additionalRules...)
 	if err != nil {
 		return nil, err
 	}

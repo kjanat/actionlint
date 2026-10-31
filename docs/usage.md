@@ -309,7 +309,7 @@ actionlint config init
 actionlint config path
 actionlint config show --origin
 actionlint config validate
-actionlint config schema > .github/actionlint.schema.json
+actionlint config schema
 ```
 
 Select an explicit configuration file or use repository discovery in this order:
@@ -984,7 +984,7 @@ repos:
 The default `actionlint` hook installs an exact `actionlint-kjanat` wheel dependency
 in pre-commit's Python environment. The wheel contains the native host binary; no Go
 compiler or separate native ShellCheck/Ruff installer is needed. The project's
-[plugin declarations and lockfile](plugins.md) select and pin Wasm analyzers.
+[plugin declarations](plugins.md) select exact registry releases or digest-pinned Wasm artifacts.
 Initialize or migrate those files with actionlint before committing them.
 
 The distribution also offers `actionlint-system` for an existing installation and
@@ -1013,7 +1013,7 @@ pre-commit autoupdate --freeze --repo https://github.com/kjanat/actionlint-pre-c
 Only completed stable hook releases receive tags in that repository; unrelated
 source, Action-channel, and development tags belong to the host repository.
 Review the selected release and commit the updated revision. A frozen revision pins
-the hook installation; `actionlint.plugins.lock.json` separately pins the project's plugins.
+the hook installation; exact declarations in actionlint configuration select the project's plugins.
 
 ### VS Code
 
@@ -1184,8 +1184,8 @@ edits or stale source revisions abort preparation. Writes are atomic per file;
 an I/O failure during a multi-file application reports how many files were written.
 
 `actionlint plugin search` discovers published plugins. `plugin install owner/repo@TAG`
-adds a dependency to the config's root `plugins` list and pins its verified artifact
-in the adjacent `actionlint.plugins.lock.json`; commit both files.
+adds the canonical package and exact version to the config's root `plugins` list;
+commit that file. Registry evidence and verified resolutions stay in the user cache.
 Check, fix, rules and LSP load declared plugins using their pins. `plugin install`
 without a name resolves manually edited declarations or migrates older lock-only projects.
 `plugin sync` restores exact pins; `plugin update` explicitly refreshes declared versions.

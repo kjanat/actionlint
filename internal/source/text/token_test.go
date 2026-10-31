@@ -39,11 +39,21 @@ func TestByteOffsetAtColumn(t *testing.T) {
 		offset int
 		ok     bool
 	}{
-		{"", 1, 0, true}, {"", 2, 0, false},
-		{"abc", 1, 0, true}, {"abc", 3, 2, true}, {"abc", 4, 3, true}, {"abc", 5, 0, false},
-		{"é🐚x", 2, 2, true}, {"é🐚x", 3, 6, true}, {"é🐚x", 4, 7, true}, {"é🐚x", 5, 0, false},
+		{"", 1, 0, true},
+		{"", 2, 0, false},
+		{"abc", 1, 0, true},
+		{"abc", 3, 2, true},
+		{"abc", 4, 3, true},
+		{"abc", 5, 0, false},
+		{"é🐚x", 2, 2, true},
+		{"é🐚x", 3, 6, true},
+		{"é🐚x", 4, 7, true},
+		{"é🐚x", 5, 0, false},
 		{"a\xffb", 3, 2, true},
-		{"abc", 0, 0, false}, {"abc", -1, 0, false}, {"abc", math.MinInt, 0, false}, {"abc", math.MaxInt, 0, false},
+		{"abc", 0, 0, false},
+		{"abc", -1, 0, false},
+		{"abc", math.MinInt, 0, false},
+		{"abc", math.MaxInt, 0, false},
 	} {
 		if offset, ok := ByteOffsetAtColumn(tc.text, tc.column); offset != tc.offset || ok != tc.ok {
 			t.Errorf("ByteOffsetAtColumn(%q, %d) = (%d, %v), want (%d, %v)", tc.text, tc.column, offset, ok, tc.offset, tc.ok)
@@ -56,10 +66,14 @@ func TestInclusiveEnd(t *testing.T) {
 		line                  string
 		start, explicit, want int
 	}{
-		{"abc def", 1, 0, 3}, {"abc def", 5, 0, 7},
-		{"abc def", 1, 2, 2}, {"abc def", 1, 1, 1},
-		{"abc def", 3, 2, 3}, {"abc def", 4, 0, 4},
-		{"é🐚x next", 1, 0, 3}, {"é🐚x next", 2, 2, 2},
+		{"abc def", 1, 0, 3},
+		{"abc def", 5, 0, 7},
+		{"abc def", 1, 2, 2},
+		{"abc def", 1, 1, 1},
+		{"abc def", 3, 2, 3},
+		{"abc def", 4, 0, 4},
+		{"é🐚x next", 1, 0, 3},
+		{"é🐚x next", 2, 2, 2},
 	} {
 		if got := InclusiveEnd(tc.line, tc.start, tc.explicit); got != tc.want {
 			t.Errorf("InclusiveEnd(%q, %d, %d) = %d, want %d", tc.line, tc.start, tc.explicit, got, tc.want)

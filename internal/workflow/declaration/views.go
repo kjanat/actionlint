@@ -246,6 +246,7 @@ func (v ActionBodyView) Using() string {
 	}
 	return v.workflow.owner.record.using
 }
+
 func (v ActionBodyView) Steps() iter.Seq[StepView] {
 	job, _ := v.workflow.Job("")
 	return job.Steps()

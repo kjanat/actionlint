@@ -3,8 +3,9 @@
 package declaration
 
 import (
-	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 	"iter"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
 type ActionInputMappingView struct {
@@ -34,6 +35,7 @@ func (v ActionInputMappingView) Inputs() iter.Seq2[string, InputView] {
 		}
 	}
 }
+
 func (v ActionInputMappingView) InputsAt(key string) (InputView, bool) {
 	node := v.data()
 	if node == nil {
@@ -45,10 +47,12 @@ func (v ActionInputMappingView) InputsAt(key string) (InputView, bool) {
 	}
 	return makeInputView(v.owner, element), true
 }
+
 func (v ActionInputMappingView) InputsPresent() bool {
 	node := v.data()
 	return node != nil && node.Inputs != nil
 }
+
 func (v ActionInputMappingView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -56,6 +60,7 @@ func (v ActionInputMappingView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v ActionInputMappingView) Insertions() iter.Seq[ActionInputMappingView] {
 	return func(yield func(ActionInputMappingView) bool) {
 		node := v.data()
@@ -69,6 +74,7 @@ func (v ActionInputMappingView) Insertions() iter.Seq[ActionInputMappingView] {
 		}
 	}
 }
+
 func (v ActionInputMappingView) InsertionsPresent() bool {
 	node := v.data()
 	return node != nil && node.Insertions != nil
@@ -95,6 +101,7 @@ func (v BoolView) Value() bool {
 	}
 	return node.Value
 }
+
 func (v BoolView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -102,6 +109,7 @@ func (v BoolView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v BoolView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -131,6 +139,7 @@ func (v CacheModeView) Kind() workflowlang.CacheModeKind {
 	}
 	return node.Kind
 }
+
 func (v CacheModeView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -160,6 +169,7 @@ func (v ConcurrencyView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v ConcurrencyView) Group() StringView {
 	node := v.data()
 	if node == nil {
@@ -167,6 +177,7 @@ func (v ConcurrencyView) Group() StringView {
 	}
 	return makeStringView(v.owner, node.Group)
 }
+
 func (v ConcurrencyView) CancelInProgress() BoolView {
 	node := v.data()
 	if node == nil {
@@ -174,6 +185,7 @@ func (v ConcurrencyView) CancelInProgress() BoolView {
 	}
 	return makeBoolView(v.owner, node.CancelInProgress)
 }
+
 func (v ConcurrencyView) Queue() StringView {
 	node := v.data()
 	if node == nil {
@@ -181,6 +193,7 @@ func (v ConcurrencyView) Queue() StringView {
 	}
 	return makeStringView(v.owner, node.Queue)
 }
+
 func (v ConcurrencyView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -210,6 +223,7 @@ func (v ContainerView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v ContainerView) Image() StringView {
 	node := v.data()
 	if node == nil {
@@ -217,6 +231,7 @@ func (v ContainerView) Image() StringView {
 	}
 	return makeStringView(v.owner, node.Image)
 }
+
 func (v ContainerView) Credentials() CredentialsView {
 	node := v.data()
 	if node == nil {
@@ -224,6 +239,7 @@ func (v ContainerView) Credentials() CredentialsView {
 	}
 	return makeCredentialsView(v.owner, node.Credentials)
 }
+
 func (v ContainerView) Env() EnvView {
 	node := v.data()
 	if node == nil {
@@ -231,6 +247,7 @@ func (v ContainerView) Env() EnvView {
 	}
 	return makeEnvView(v.owner, node.Env)
 }
+
 func (v ContainerView) Ports() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -244,7 +261,9 @@ func (v ContainerView) Ports() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v ContainerView) PortsPresent() bool { node := v.data(); return node != nil && node.Ports != nil }
+
 func (v ContainerView) PortsExpression() StringView {
 	node := v.data()
 	if node == nil {
@@ -252,6 +271,7 @@ func (v ContainerView) PortsExpression() StringView {
 	}
 	return makeStringView(v.owner, node.PortsExpression)
 }
+
 func (v ContainerView) Volumes() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -265,10 +285,12 @@ func (v ContainerView) Volumes() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v ContainerView) VolumesPresent() bool {
 	node := v.data()
 	return node != nil && node.Volumes != nil
 }
+
 func (v ContainerView) VolumesExpression() StringView {
 	node := v.data()
 	if node == nil {
@@ -276,6 +298,7 @@ func (v ContainerView) VolumesExpression() StringView {
 	}
 	return makeStringView(v.owner, node.VolumesExpression)
 }
+
 func (v ContainerView) Options() StringView {
 	node := v.data()
 	if node == nil {
@@ -283,6 +306,7 @@ func (v ContainerView) Options() StringView {
 	}
 	return makeStringView(v.owner, node.Options)
 }
+
 func (v ContainerView) Command() StringView {
 	node := v.data()
 	if node == nil {
@@ -290,6 +314,7 @@ func (v ContainerView) Command() StringView {
 	}
 	return makeStringView(v.owner, node.Command)
 }
+
 func (v ContainerView) Entrypoint() StringView {
 	node := v.data()
 	if node == nil {
@@ -297,6 +322,7 @@ func (v ContainerView) Entrypoint() StringView {
 	}
 	return makeStringView(v.owner, node.Entrypoint)
 }
+
 func (v ContainerView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -326,6 +352,7 @@ func (v CredentialsView) Username() StringView {
 	}
 	return makeStringView(v.owner, node.Username)
 }
+
 func (v CredentialsView) Password() StringView {
 	node := v.data()
 	if node == nil {
@@ -333,6 +360,7 @@ func (v CredentialsView) Password() StringView {
 	}
 	return makeStringView(v.owner, node.Password)
 }
+
 func (v CredentialsView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -340,6 +368,7 @@ func (v CredentialsView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v CredentialsView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -369,6 +398,7 @@ func (v DefaultsView) Run() DefaultsRunView {
 	}
 	return makeDefaultsRunView(v.owner, node.Run)
 }
+
 func (v DefaultsView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -398,6 +428,7 @@ func (v DefaultsRunView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v DefaultsRunView) Shell() StringView {
 	node := v.data()
 	if node == nil {
@@ -405,6 +436,7 @@ func (v DefaultsRunView) Shell() StringView {
 	}
 	return makeStringView(v.owner, node.Shell)
 }
+
 func (v DefaultsRunView) WorkingDirectory() StringView {
 	node := v.data()
 	if node == nil {
@@ -412,6 +444,7 @@ func (v DefaultsRunView) WorkingDirectory() StringView {
 	}
 	return makeStringView(v.owner, node.WorkingDirectory)
 }
+
 func (v DefaultsRunView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -441,6 +474,7 @@ func (v DispatchInputView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v DispatchInputView) Description() StringView {
 	node := v.data()
 	if node == nil {
@@ -448,6 +482,7 @@ func (v DispatchInputView) Description() StringView {
 	}
 	return makeStringView(v.owner, node.Description)
 }
+
 func (v DispatchInputView) Required() BoolView {
 	node := v.data()
 	if node == nil {
@@ -455,6 +490,7 @@ func (v DispatchInputView) Required() BoolView {
 	}
 	return makeBoolView(v.owner, node.Required)
 }
+
 func (v DispatchInputView) Default() StringView {
 	node := v.data()
 	if node == nil {
@@ -462,6 +498,7 @@ func (v DispatchInputView) Default() StringView {
 	}
 	return makeStringView(v.owner, node.Default)
 }
+
 func (v DispatchInputView) Type() workflowlang.WorkflowDispatchEventInputType {
 	node := v.data()
 	if node == nil {
@@ -469,6 +506,7 @@ func (v DispatchInputView) Type() workflowlang.WorkflowDispatchEventInputType {
 	}
 	return node.Type
 }
+
 func (v DispatchInputView) Options() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -482,6 +520,7 @@ func (v DispatchInputView) Options() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v DispatchInputView) OptionsPresent() bool {
 	node := v.data()
 	return node != nil && node.Options != nil
@@ -514,6 +553,7 @@ func (v EnvView) Vars() iter.Seq2[string, EnvVarView] {
 		}
 	}
 }
+
 func (v EnvView) VarsAt(key string) (EnvVarView, bool) {
 	node := v.data()
 	if node == nil {
@@ -539,10 +579,12 @@ func (v EnvView) Insertions() iter.Seq[EnvView] {
 		}
 	}
 }
+
 func (v EnvView) InsertionsPresent() bool {
 	node := v.data()
 	return node != nil && node.Insertions != nil
 }
+
 func (v EnvView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -572,6 +614,7 @@ func (v EnvVarView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v EnvVarView) Value() StringView {
 	node := v.data()
 	if node == nil {
@@ -601,6 +644,7 @@ func (v EnvironmentView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v EnvironmentView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -608,6 +652,7 @@ func (v EnvironmentView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v EnvironmentView) URL() StringView {
 	node := v.data()
 	if node == nil {
@@ -615,6 +660,7 @@ func (v EnvironmentView) URL() StringView {
 	}
 	return makeStringView(v.owner, node.URL)
 }
+
 func (v EnvironmentView) Deployment() BoolView {
 	node := v.data()
 	if node == nil {
@@ -622,6 +668,7 @@ func (v EnvironmentView) Deployment() BoolView {
 	}
 	return makeBoolView(v.owner, node.Deployment)
 }
+
 func (v EnvironmentView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -651,6 +698,7 @@ func (v ExecActionView) Uses() StringView {
 	}
 	return makeStringView(v.owner, node.Uses)
 }
+
 func (v ExecActionView) Inputs() iter.Seq2[string, InputView] {
 	return func(yield func(string, InputView) bool) {
 		node := v.data()
@@ -664,6 +712,7 @@ func (v ExecActionView) Inputs() iter.Seq2[string, InputView] {
 		}
 	}
 }
+
 func (v ExecActionView) InputsAt(key string) (InputView, bool) {
 	node := v.data()
 	if node == nil {
@@ -675,10 +724,12 @@ func (v ExecActionView) InputsAt(key string) (InputView, bool) {
 	}
 	return makeInputView(v.owner, element), true
 }
+
 func (v ExecActionView) InputsPresent() bool {
 	node := v.data()
 	return node != nil && node.Inputs != nil
 }
+
 func (v ExecActionView) InputsExpression() StringView {
 	node := v.data()
 	if node == nil {
@@ -686,6 +737,7 @@ func (v ExecActionView) InputsExpression() StringView {
 	}
 	return makeStringView(v.owner, node.InputsExpression)
 }
+
 func (v ExecActionView) InputInsertions() iter.Seq[ActionInputMappingView] {
 	return func(yield func(ActionInputMappingView) bool) {
 		node := v.data()
@@ -699,10 +751,12 @@ func (v ExecActionView) InputInsertions() iter.Seq[ActionInputMappingView] {
 		}
 	}
 }
+
 func (v ExecActionView) InputInsertionsPresent() bool {
 	node := v.data()
 	return node != nil && node.InputInsertions != nil
 }
+
 func (v ExecActionView) Entrypoint() StringView {
 	node := v.data()
 	if node == nil {
@@ -710,6 +764,7 @@ func (v ExecActionView) Entrypoint() StringView {
 	}
 	return makeStringView(v.owner, node.Entrypoint)
 }
+
 func (v ExecActionView) Args() StringView {
 	node := v.data()
 	if node == nil {
@@ -717,6 +772,7 @@ func (v ExecActionView) Args() StringView {
 	}
 	return makeStringView(v.owner, node.Args)
 }
+
 func (v ExecActionView) EntrypointEvaluated() bool {
 	node := v.data()
 	if node == nil {
@@ -724,6 +780,7 @@ func (v ExecActionView) EntrypointEvaluated() bool {
 	}
 	return node.EntrypointEvaluated
 }
+
 func (v ExecActionView) ArgsEvaluated() bool {
 	node := v.data()
 	if node == nil {
@@ -731,6 +788,7 @@ func (v ExecActionView) ArgsEvaluated() bool {
 	}
 	return node.ArgsEvaluated
 }
+
 func (v ExecActionView) InputNameExpressions() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -744,6 +802,7 @@ func (v ExecActionView) InputNameExpressions() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v ExecActionView) InputNameExpressionsPresent() bool {
 	node := v.data()
 	return node != nil && node.InputNameExpressions != nil
@@ -798,6 +857,7 @@ func (v ExecParallelView) Steps() iter.Seq[StepView] {
 		}
 	}
 }
+
 func (v ExecParallelView) StepsPresent() bool {
 	node := v.data()
 	return node != nil && node.Steps != nil
@@ -824,6 +884,7 @@ func (v ExecRunView) Run() StringView {
 	}
 	return makeStringView(v.owner, node.Run)
 }
+
 func (v ExecRunView) Source() ScriptSourceView {
 	node := v.data()
 	if node == nil {
@@ -831,6 +892,7 @@ func (v ExecRunView) Source() ScriptSourceView {
 	}
 	return makeScriptSourceView(v.owner, node.Source)
 }
+
 func (v ExecRunView) Shell() StringView {
 	node := v.data()
 	if node == nil {
@@ -838,6 +900,7 @@ func (v ExecRunView) Shell() StringView {
 	}
 	return makeStringView(v.owner, node.Shell)
 }
+
 func (v ExecRunView) WorkingDirectory() StringView {
 	node := v.data()
 	if node == nil {
@@ -845,6 +908,7 @@ func (v ExecRunView) WorkingDirectory() StringView {
 	}
 	return makeStringView(v.owner, node.WorkingDirectory)
 }
+
 func (v ExecRunView) RunPos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.RunPos == nil {
@@ -880,7 +944,9 @@ func (v ExecWaitView) Names() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v ExecWaitView) NamesPresent() bool { node := v.data(); return node != nil && node.Names != nil }
+
 func (v ExecWaitView) All() bool {
 	node := v.data()
 	if node == nil {
@@ -888,6 +954,7 @@ func (v ExecWaitView) All() bool {
 	}
 	return node.All
 }
+
 func (v ExecWaitView) AllPos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.AllPos == nil {
@@ -917,6 +984,7 @@ func (v FloatView) Value() float64 {
 	}
 	return node.Value
 }
+
 func (v FloatView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -924,6 +992,7 @@ func (v FloatView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v FloatView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -959,10 +1028,12 @@ func (v ImageVersionEventView) Types() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v ImageVersionEventView) TypesPresent() bool {
 	node := v.data()
 	return node != nil && node.Types != nil
 }
+
 func (v ImageVersionEventView) Names() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -976,10 +1047,12 @@ func (v ImageVersionEventView) Names() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v ImageVersionEventView) NamesPresent() bool {
 	node := v.data()
 	return node != nil && node.Names != nil
 }
+
 func (v ImageVersionEventView) Versions() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -993,10 +1066,12 @@ func (v ImageVersionEventView) Versions() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v ImageVersionEventView) VersionsPresent() bool {
 	node := v.data()
 	return node != nil && node.Versions != nil
 }
+
 func (v ImageVersionEventView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -1026,6 +1101,7 @@ func (v InputView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v InputView) Value() StringView {
 	node := v.data()
 	if node == nil {
@@ -1033,6 +1109,7 @@ func (v InputView) Value() StringView {
 	}
 	return makeStringView(v.owner, node.Value)
 }
+
 func (v InputView) Source() ScriptSourceView {
 	node := v.data()
 	if node == nil {
@@ -1062,6 +1139,7 @@ func (v IntView) Value() int {
 	}
 	return node.Value
 }
+
 func (v IntView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -1069,6 +1147,7 @@ func (v IntView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v IntView) TruncatedFrom() string {
 	node := v.data()
 	if node == nil {
@@ -1076,6 +1155,7 @@ func (v IntView) TruncatedFrom() string {
 	}
 	return node.TruncatedFrom
 }
+
 func (v IntView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -1099,6 +1179,7 @@ func makeJobView(owner *Bound, node *workflowlang.Job) JobView {
 	}
 	return JobView{owner: owner, index: index}
 }
+
 func (v JobView) data() *workflowlang.Job {
 	if v.owner == nil || v.index < 0 || v.index >= len(v.owner.record.jobs) {
 		return nil
@@ -1113,6 +1194,7 @@ func (v JobView) ID() StringView {
 	}
 	return makeStringView(v.owner, node.ID)
 }
+
 func (v JobView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -1120,6 +1202,7 @@ func (v JobView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v JobView) Needs() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -1141,6 +1224,7 @@ func (v JobView) RunsOn() RunnerView {
 	}
 	return makeRunnerView(v.owner, node.RunsOn)
 }
+
 func (v JobView) Permissions() PermissionsView {
 	node := v.data()
 	if node == nil {
@@ -1148,6 +1232,7 @@ func (v JobView) Permissions() PermissionsView {
 	}
 	return makePermissionsView(v.owner, node.Permissions)
 }
+
 func (v JobView) CacheMode() CacheModeView {
 	node := v.data()
 	if node == nil {
@@ -1155,6 +1240,7 @@ func (v JobView) CacheMode() CacheModeView {
 	}
 	return makeCacheModeView(v.owner, node.CacheMode)
 }
+
 func (v JobView) Environment() EnvironmentView {
 	node := v.data()
 	if node == nil {
@@ -1162,6 +1248,7 @@ func (v JobView) Environment() EnvironmentView {
 	}
 	return makeEnvironmentView(v.owner, node.Environment)
 }
+
 func (v JobView) Concurrency() ConcurrencyView {
 	node := v.data()
 	if node == nil {
@@ -1169,6 +1256,7 @@ func (v JobView) Concurrency() ConcurrencyView {
 	}
 	return makeConcurrencyView(v.owner, node.Concurrency)
 }
+
 func (v JobView) Outputs() iter.Seq2[string, OutputView] {
 	return func(yield func(string, OutputView) bool) {
 		node := v.data()
@@ -1182,6 +1270,7 @@ func (v JobView) Outputs() iter.Seq2[string, OutputView] {
 		}
 	}
 }
+
 func (v JobView) OutputsAt(key string) (OutputView, bool) {
 	node := v.data()
 	if node == nil {
@@ -1193,7 +1282,9 @@ func (v JobView) OutputsAt(key string) (OutputView, bool) {
 	}
 	return makeOutputView(v.owner, element), true
 }
+
 func (v JobView) OutputsPresent() bool { node := v.data(); return node != nil && node.Outputs != nil }
+
 func (v JobView) Env() EnvView {
 	node := v.data()
 	if node == nil {
@@ -1201,6 +1292,7 @@ func (v JobView) Env() EnvView {
 	}
 	return makeEnvView(v.owner, node.Env)
 }
+
 func (v JobView) Defaults() DefaultsView {
 	node := v.data()
 	if node == nil {
@@ -1208,6 +1300,7 @@ func (v JobView) Defaults() DefaultsView {
 	}
 	return makeDefaultsView(v.owner, node.Defaults)
 }
+
 func (v JobView) If() StringView {
 	node := v.data()
 	if node == nil {
@@ -1215,6 +1308,7 @@ func (v JobView) If() StringView {
 	}
 	return makeStringView(v.owner, node.If)
 }
+
 func (v JobView) Steps() iter.Seq[StepView] {
 	return func(yield func(StepView) bool) {
 		node := v.data()
@@ -1236,6 +1330,7 @@ func (v JobView) TimeoutMinutes() FloatView {
 	}
 	return makeFloatView(v.owner, node.TimeoutMinutes)
 }
+
 func (v JobView) CancelTimeoutMinutes() FloatView {
 	node := v.data()
 	if node == nil {
@@ -1243,6 +1338,7 @@ func (v JobView) CancelTimeoutMinutes() FloatView {
 	}
 	return makeFloatView(v.owner, node.CancelTimeoutMinutes)
 }
+
 func (v JobView) Strategy() StrategyView {
 	node := v.data()
 	if node == nil {
@@ -1250,6 +1346,7 @@ func (v JobView) Strategy() StrategyView {
 	}
 	return makeStrategyView(v.owner, node.Strategy)
 }
+
 func (v JobView) ContinueOnError() BoolView {
 	node := v.data()
 	if node == nil {
@@ -1257,6 +1354,7 @@ func (v JobView) ContinueOnError() BoolView {
 	}
 	return makeBoolView(v.owner, node.ContinueOnError)
 }
+
 func (v JobView) Container() ContainerView {
 	node := v.data()
 	if node == nil {
@@ -1264,6 +1362,7 @@ func (v JobView) Container() ContainerView {
 	}
 	return makeContainerView(v.owner, node.Container)
 }
+
 func (v JobView) Services() ServicesView {
 	node := v.data()
 	if node == nil {
@@ -1271,6 +1370,7 @@ func (v JobView) Services() ServicesView {
 	}
 	return makeServicesView(v.owner, node.Services)
 }
+
 func (v JobView) WorkflowCall() WorkflowCallView {
 	node := v.data()
 	if node == nil {
@@ -1278,6 +1378,7 @@ func (v JobView) WorkflowCall() WorkflowCallView {
 	}
 	return makeWorkflowCallView(v.owner, node.WorkflowCall)
 }
+
 func (v JobView) DeclaredUses() StringView {
 	node := v.data()
 	if node == nil {
@@ -1285,6 +1386,7 @@ func (v JobView) DeclaredUses() StringView {
 	}
 	return makeStringView(v.owner, node.DeclaredUses)
 }
+
 func (v JobView) Snapshot() SnapshotView {
 	node := v.data()
 	if node == nil {
@@ -1292,6 +1394,7 @@ func (v JobView) Snapshot() SnapshotView {
 	}
 	return makeSnapshotView(v.owner, node.Snapshot)
 }
+
 func (v JobView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -1327,10 +1430,12 @@ func (v MatrixView) Insertions() iter.Seq[MatrixView] {
 		}
 	}
 }
+
 func (v MatrixView) InsertionsPresent() bool {
 	node := v.data()
 	return node != nil && node.Insertions != nil
 }
+
 func (v MatrixView) Rows() iter.Seq2[string, MatrixRowView] {
 	return func(yield func(string, MatrixRowView) bool) {
 		node := v.data()
@@ -1344,6 +1449,7 @@ func (v MatrixView) Rows() iter.Seq2[string, MatrixRowView] {
 		}
 	}
 }
+
 func (v MatrixView) RowsAt(key string) (MatrixRowView, bool) {
 	node := v.data()
 	if node == nil {
@@ -1363,6 +1469,7 @@ func (v MatrixView) Include() MatrixCombinationsView {
 	}
 	return makeMatrixCombinationsView(v.owner, node.Include)
 }
+
 func (v MatrixView) Exclude() MatrixCombinationsView {
 	node := v.data()
 	if node == nil {
@@ -1370,6 +1477,7 @@ func (v MatrixView) Exclude() MatrixCombinationsView {
 	}
 	return makeMatrixCombinationsView(v.owner, node.Exclude)
 }
+
 func (v MatrixView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -1377,6 +1485,7 @@ func (v MatrixView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v MatrixView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -1406,6 +1515,7 @@ func (v MatrixAssignView) Key() StringView {
 	}
 	return makeStringView(v.owner, node.Key)
 }
+
 func (v MatrixAssignView) Value() RawYAMLValueView {
 	node := v.data()
 	if node == nil {
@@ -1435,6 +1545,7 @@ func (v MatrixCombinationView) Evaluated() bool {
 	}
 	return node.Evaluated
 }
+
 func (v MatrixCombinationView) Assigns() iter.Seq2[string, MatrixAssignView] {
 	return func(yield func(string, MatrixAssignView) bool) {
 		node := v.data()
@@ -1448,6 +1559,7 @@ func (v MatrixCombinationView) Assigns() iter.Seq2[string, MatrixAssignView] {
 		}
 	}
 }
+
 func (v MatrixCombinationView) AssignsAt(key string) (MatrixAssignView, bool) {
 	node := v.data()
 	if node == nil {
@@ -1459,10 +1571,12 @@ func (v MatrixCombinationView) AssignsAt(key string) (MatrixAssignView, bool) {
 	}
 	return makeMatrixAssignView(v.owner, element), true
 }
+
 func (v MatrixCombinationView) AssignsPresent() bool {
 	node := v.data()
 	return node != nil && node.Assigns != nil
 }
+
 func (v MatrixCombinationView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -1492,6 +1606,7 @@ func (v MatrixCombinationsView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v MatrixCombinationsView) Evaluated() bool {
 	node := v.data()
 	if node == nil {
@@ -1499,6 +1614,7 @@ func (v MatrixCombinationsView) Evaluated() bool {
 	}
 	return node.Evaluated
 }
+
 func (v MatrixCombinationsView) Combinations() iter.Seq[MatrixCombinationView] {
 	return func(yield func(MatrixCombinationView) bool) {
 		node := v.data()
@@ -1512,10 +1628,12 @@ func (v MatrixCombinationsView) Combinations() iter.Seq[MatrixCombinationView] {
 		}
 	}
 }
+
 func (v MatrixCombinationsView) CombinationsPresent() bool {
 	node := v.data()
 	return node != nil && node.Combinations != nil
 }
+
 func (v MatrixCombinationsView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -1545,6 +1663,7 @@ func (v MatrixRowView) Evaluated() bool {
 	}
 	return node.Evaluated
 }
+
 func (v MatrixRowView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -1552,6 +1671,7 @@ func (v MatrixRowView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v MatrixRowView) Values() iter.Seq[RawYAMLValueView] {
 	return func(yield func(RawYAMLValueView) bool) {
 		node := v.data()
@@ -1565,10 +1685,12 @@ func (v MatrixRowView) Values() iter.Seq[RawYAMLValueView] {
 		}
 	}
 }
+
 func (v MatrixRowView) ValuesPresent() bool {
 	node := v.data()
 	return node != nil && node.Values != nil
 }
+
 func (v MatrixRowView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -1598,6 +1720,7 @@ func (v OutputView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v OutputView) Value() StringView {
 	node := v.data()
 	if node == nil {
@@ -1627,6 +1750,7 @@ func (v PermissionScopeView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v PermissionScopeView) Value() StringView {
 	node := v.data()
 	if node == nil {
@@ -1656,6 +1780,7 @@ func (v PermissionsView) All() StringView {
 	}
 	return makeStringView(v.owner, node.All)
 }
+
 func (v PermissionsView) Scopes() iter.Seq2[string, PermissionScopeView] {
 	return func(yield func(string, PermissionScopeView) bool) {
 		node := v.data()
@@ -1669,6 +1794,7 @@ func (v PermissionsView) Scopes() iter.Seq2[string, PermissionScopeView] {
 		}
 	}
 }
+
 func (v PermissionsView) ScopesAt(key string) (PermissionScopeView, bool) {
 	node := v.data()
 	if node == nil {
@@ -1680,10 +1806,12 @@ func (v PermissionsView) ScopesAt(key string) (PermissionScopeView, bool) {
 	}
 	return makePermissionScopeView(v.owner, element), true
 }
+
 func (v PermissionsView) ScopesPresent() bool {
 	node := v.data()
 	return node != nil && node.Scopes != nil
 }
+
 func (v PermissionsView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -1713,6 +1841,7 @@ func (v PosView) Line() int {
 	}
 	return node.Line
 }
+
 func (v PosView) Col() int {
 	node := v.data()
 	if node == nil {
@@ -1748,10 +1877,12 @@ func (v RawYAMLArrayView) Elems() iter.Seq[RawYAMLValueView] {
 		}
 	}
 }
+
 func (v RawYAMLArrayView) ElemsPresent() bool {
 	node := v.data()
 	return node != nil && node.Elems != nil
 }
+
 func (v RawYAMLArrayView) Position() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Position == nil {
@@ -1787,6 +1918,7 @@ func (v RawYAMLObjectView) Props() iter.Seq2[string, RawYAMLValueView] {
 		}
 	}
 }
+
 func (v RawYAMLObjectView) PropsAt(key string) (RawYAMLValueView, bool) {
 	node := v.data()
 	if node == nil {
@@ -1798,10 +1930,12 @@ func (v RawYAMLObjectView) PropsAt(key string) (RawYAMLValueView, bool) {
 	}
 	return RawYAMLValueView{owner: v.owner, node: element}, true
 }
+
 func (v RawYAMLObjectView) PropsPresent() bool {
 	node := v.data()
 	return node != nil && node.Props != nil
 }
+
 func (v RawYAMLObjectView) Position() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Position == nil {
@@ -1831,6 +1965,7 @@ func (v RawYAMLStringView) Value() string {
 	}
 	return node.Value
 }
+
 func (v RawYAMLStringView) Tag() string {
 	node := v.data()
 	if node == nil {
@@ -1838,6 +1973,7 @@ func (v RawYAMLStringView) Tag() string {
 	}
 	return node.Tag
 }
+
 func (v RawYAMLStringView) Position() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Position == nil {
@@ -1860,6 +1996,7 @@ func makeRepositoryDispatchEventView(owner *Bound, node *workflowlang.Repository
 }
 func (v RepositoryDispatchEventView) data() *workflowlang.RepositoryDispatchEvent { return v.node }
 func (v RepositoryDispatchEventView) Present() bool                               { return v.data() != nil }
+
 func (v RepositoryDispatchEventView) Types() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -1873,10 +2010,12 @@ func (v RepositoryDispatchEventView) Types() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v RepositoryDispatchEventView) TypesPresent() bool {
 	node := v.data()
 	return node != nil && node.Types != nil
 }
+
 func (v RepositoryDispatchEventView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -1906,6 +2045,7 @@ func (v RunnerView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v RunnerView) Labels() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -1919,7 +2059,9 @@ func (v RunnerView) Labels() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v RunnerView) LabelsPresent() bool { node := v.data(); return node != nil && node.Labels != nil }
+
 func (v RunnerView) LabelsExpr() StringView {
 	node := v.data()
 	if node == nil {
@@ -1927,6 +2069,7 @@ func (v RunnerView) LabelsExpr() StringView {
 	}
 	return makeStringView(v.owner, node.LabelsExpr)
 }
+
 func (v RunnerView) Group() StringView {
 	node := v.data()
 	if node == nil {
@@ -1956,6 +2099,7 @@ func (v ScalarCommentView) Text() string {
 	}
 	return node.Text
 }
+
 func (v ScalarCommentView) Pos() workflowlang.Pos {
 	node := v.data()
 	if node == nil {
@@ -1966,6 +2110,7 @@ func (v ScalarCommentView) Pos() workflowlang.Pos {
 	}
 	return node.Pos
 }
+
 func (v ScalarCommentView) Trailing() bool {
 	node := v.data()
 	if node == nil {
@@ -1995,6 +2140,7 @@ func (v ScheduleEntryView) Cron() StringView {
 	}
 	return makeStringView(v.owner, node.Cron)
 }
+
 func (v ScheduleEntryView) Timezone() StringView {
 	node := v.data()
 	if node == nil {
@@ -2030,10 +2176,12 @@ func (v ScheduledEventView) Schedules() iter.Seq[ScheduleEntryView] {
 		}
 	}
 }
+
 func (v ScheduledEventView) SchedulesPresent() bool {
 	node := v.data()
 	return node != nil && node.Schedules != nil
 }
+
 func (v ScheduledEventView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2066,6 +2214,7 @@ func (v ScriptSourceView) ContentStart() workflowlang.Pos {
 	}
 	return node.ContentStart
 }
+
 func (v ScriptSourceView) ScalarEnd() workflowlang.Pos {
 	node := v.data()
 	if node == nil {
@@ -2076,6 +2225,7 @@ func (v ScriptSourceView) ScalarEnd() workflowlang.Pos {
 	}
 	return node.ScalarEnd
 }
+
 func (v ScriptSourceView) Value() string {
 	node := v.data()
 	if node == nil {
@@ -2083,6 +2233,7 @@ func (v ScriptSourceView) Value() string {
 	}
 	return node.Value
 }
+
 func (v ScriptSourceView) Spans() iter.Seq[workflowlang.ScriptSourceSpan] {
 	return func(yield func(workflowlang.ScriptSourceSpan) bool) {
 		node := v.data()
@@ -2096,10 +2247,12 @@ func (v ScriptSourceView) Spans() iter.Seq[workflowlang.ScriptSourceSpan] {
 		}
 	}
 }
+
 func (v ScriptSourceView) SpansPresent() bool {
 	node := v.data()
 	return node != nil && node.Spans != nil
 }
+
 func (v ScriptSourceView) Literal() bool {
 	node := v.data()
 	if node == nil {
@@ -2107,6 +2260,7 @@ func (v ScriptSourceView) Literal() bool {
 	}
 	return node.Literal
 }
+
 func (v ScriptSourceView) Comments() iter.Seq[workflowlang.ScalarComment] {
 	return func(yield func(workflowlang.ScalarComment) bool) {
 		node := v.data()
@@ -2120,6 +2274,7 @@ func (v ScriptSourceView) Comments() iter.Seq[workflowlang.ScalarComment] {
 		}
 	}
 }
+
 func (v ScriptSourceView) CommentsPresent() bool {
 	node := v.data()
 	return node != nil && node.Comments != nil
@@ -2146,6 +2301,7 @@ func (v ScriptSourceSpanView) Start() int {
 	}
 	return node.Start
 }
+
 func (v ScriptSourceSpanView) End() int {
 	node := v.data()
 	if node == nil {
@@ -2153,6 +2309,7 @@ func (v ScriptSourceSpanView) End() int {
 	}
 	return node.End
 }
+
 func (v ScriptSourceSpanView) YamlLine() int {
 	node := v.data()
 	if node == nil {
@@ -2160,6 +2317,7 @@ func (v ScriptSourceSpanView) YamlLine() int {
 	}
 	return node.YamlLine
 }
+
 func (v ScriptSourceSpanView) YamlColumn() int {
 	node := v.data()
 	if node == nil {
@@ -2167,6 +2325,7 @@ func (v ScriptSourceSpanView) YamlColumn() int {
 	}
 	return node.YamlColumn
 }
+
 func (v ScriptSourceSpanView) YamlEndColumn() int {
 	node := v.data()
 	if node == nil {
@@ -2174,6 +2333,7 @@ func (v ScriptSourceSpanView) YamlEndColumn() int {
 	}
 	return node.YamlEndColumn
 }
+
 func (v ScriptSourceSpanView) YamlEndLine() int {
 	node := v.data()
 	if node == nil {
@@ -2203,6 +2363,7 @@ func (v ServiceView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v ServiceView) Container() ContainerView {
 	node := v.data()
 	if node == nil {
@@ -2238,6 +2399,7 @@ func (v ServicesView) Value() iter.Seq2[string, ServiceView] {
 		}
 	}
 }
+
 func (v ServicesView) ValueAt(key string) (ServiceView, bool) {
 	node := v.data()
 	if node == nil {
@@ -2249,7 +2411,9 @@ func (v ServicesView) ValueAt(key string) (ServiceView, bool) {
 	}
 	return makeServiceView(v.owner, element), true
 }
+
 func (v ServicesView) ValuePresent() bool { node := v.data(); return node != nil && node.Value != nil }
+
 func (v ServicesView) Expression() StringView {
 	node := v.data()
 	if node == nil {
@@ -2257,6 +2421,7 @@ func (v ServicesView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v ServicesView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2286,6 +2451,7 @@ func (v SnapshotView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v SnapshotView) ImageName() StringView {
 	node := v.data()
 	if node == nil {
@@ -2293,6 +2459,7 @@ func (v SnapshotView) ImageName() StringView {
 	}
 	return makeStringView(v.owner, node.ImageName)
 }
+
 func (v SnapshotView) Version() StringView {
 	node := v.data()
 	if node == nil {
@@ -2300,6 +2467,7 @@ func (v SnapshotView) Version() StringView {
 	}
 	return makeStringView(v.owner, node.Version)
 }
+
 func (v SnapshotView) If() StringView {
 	node := v.data()
 	if node == nil {
@@ -2329,6 +2497,7 @@ func (v SourceScalarView) HasSource() bool {
 	}
 	return node.HasSource
 }
+
 func (v SourceScalarView) Evaluated() bool {
 	node := v.data()
 	if node == nil {
@@ -2336,6 +2505,7 @@ func (v SourceScalarView) Evaluated() bool {
 	}
 	return node.Evaluated
 }
+
 func (v SourceScalarView) Kind() workflowlang.SourceScalarKind {
 	node := v.data()
 	if node == nil {
@@ -2343,6 +2513,7 @@ func (v SourceScalarView) Kind() workflowlang.SourceScalarKind {
 	}
 	return node.Kind
 }
+
 func (v SourceScalarView) Tag() string {
 	node := v.data()
 	if node == nil {
@@ -2350,6 +2521,7 @@ func (v SourceScalarView) Tag() string {
 	}
 	return node.Tag
 }
+
 func (v SourceScalarView) Value() string {
 	node := v.data()
 	if node == nil {
@@ -2357,6 +2529,7 @@ func (v SourceScalarView) Value() string {
 	}
 	return node.Value
 }
+
 func (v SourceScalarView) Pos() workflowlang.Pos {
 	node := v.data()
 	if node == nil {
@@ -2367,6 +2540,7 @@ func (v SourceScalarView) Pos() workflowlang.Pos {
 	}
 	return node.Pos
 }
+
 func (v SourceScalarView) End() workflowlang.Pos {
 	node := v.data()
 	if node == nil {
@@ -2393,6 +2567,7 @@ func makeStepView(owner *Bound, node *workflowlang.Step) StepView {
 	}
 	return StepView{owner: owner, index: index}
 }
+
 func (v StepView) data() *workflowlang.Step {
 	if v.owner == nil || v.index < 0 || v.index >= len(v.owner.record.steps) {
 		return nil
@@ -2407,6 +2582,7 @@ func (v StepView) ID() StringView {
 	}
 	return makeStringView(v.owner, node.ID)
 }
+
 func (v StepView) If() StringView {
 	node := v.data()
 	if node == nil {
@@ -2414,6 +2590,7 @@ func (v StepView) If() StringView {
 	}
 	return makeStringView(v.owner, node.If)
 }
+
 func (v StepView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -2421,6 +2598,7 @@ func (v StepView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v StepView) Exec() ExecView {
 	node := v.data()
 	if node == nil {
@@ -2428,6 +2606,7 @@ func (v StepView) Exec() ExecView {
 	}
 	return ExecView{owner: v.owner, node: node.Exec}
 }
+
 func (v StepView) DeclaredUses() StringView {
 	node := v.data()
 	if node == nil {
@@ -2435,6 +2614,7 @@ func (v StepView) DeclaredUses() StringView {
 	}
 	return makeStringView(v.owner, node.DeclaredUses)
 }
+
 func (v StepView) Env() EnvView {
 	node := v.data()
 	if node == nil {
@@ -2442,6 +2622,7 @@ func (v StepView) Env() EnvView {
 	}
 	return makeEnvView(v.owner, node.Env)
 }
+
 func (v StepView) ContinueOnError() BoolView {
 	node := v.data()
 	if node == nil {
@@ -2449,6 +2630,7 @@ func (v StepView) ContinueOnError() BoolView {
 	}
 	return makeBoolView(v.owner, node.ContinueOnError)
 }
+
 func (v StepView) TimeoutMinutes() FloatView {
 	node := v.data()
 	if node == nil {
@@ -2456,6 +2638,7 @@ func (v StepView) TimeoutMinutes() FloatView {
 	}
 	return makeFloatView(v.owner, node.TimeoutMinutes)
 }
+
 func (v StepView) Background() BoolView {
 	node := v.data()
 	if node == nil {
@@ -2463,6 +2646,7 @@ func (v StepView) Background() BoolView {
 	}
 	return makeBoolView(v.owner, node.Background)
 }
+
 func (v StepView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2492,6 +2676,7 @@ func (v StrategyView) Expression() StringView {
 	}
 	return makeStringView(v.owner, node.Expression)
 }
+
 func (v StrategyView) Matrix() MatrixView {
 	node := v.data()
 	if node == nil {
@@ -2499,6 +2684,7 @@ func (v StrategyView) Matrix() MatrixView {
 	}
 	return makeMatrixView(v.owner, node.Matrix)
 }
+
 func (v StrategyView) FailFast() BoolView {
 	node := v.data()
 	if node == nil {
@@ -2506,6 +2692,7 @@ func (v StrategyView) FailFast() BoolView {
 	}
 	return makeBoolView(v.owner, node.FailFast)
 }
+
 func (v StrategyView) MaxParallel() IntView {
 	node := v.data()
 	if node == nil {
@@ -2513,6 +2700,7 @@ func (v StrategyView) MaxParallel() IntView {
 	}
 	return makeIntView(v.owner, node.MaxParallel)
 }
+
 func (v StrategyView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2542,6 +2730,7 @@ func (v StringView) Value() string {
 	}
 	return node.Value
 }
+
 func (v StringView) Quoted() bool {
 	node := v.data()
 	if node == nil {
@@ -2549,6 +2738,7 @@ func (v StringView) Quoted() bool {
 	}
 	return node.Quoted
 }
+
 func (v StringView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2556,6 +2746,7 @@ func (v StringView) Pos() (workflowlang.Pos, bool) {
 	}
 	return *node.Pos, true
 }
+
 func (v StringView) SourceScalar() workflowlang.SourceScalar {
 	node := v.data()
 	if node == nil {
@@ -2593,6 +2784,7 @@ func (v WebhookEventView) Hook() StringView {
 	}
 	return makeStringView(v.owner, node.Hook)
 }
+
 func (v WebhookEventView) Types() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -2606,10 +2798,12 @@ func (v WebhookEventView) Types() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v WebhookEventView) TypesPresent() bool {
 	node := v.data()
 	return node != nil && node.Types != nil
 }
+
 func (v WebhookEventView) Branches() WebhookEventFilterView {
 	node := v.data()
 	if node == nil {
@@ -2617,6 +2811,7 @@ func (v WebhookEventView) Branches() WebhookEventFilterView {
 	}
 	return makeWebhookEventFilterView(v.owner, node.Branches)
 }
+
 func (v WebhookEventView) BranchesIgnore() WebhookEventFilterView {
 	node := v.data()
 	if node == nil {
@@ -2624,6 +2819,7 @@ func (v WebhookEventView) BranchesIgnore() WebhookEventFilterView {
 	}
 	return makeWebhookEventFilterView(v.owner, node.BranchesIgnore)
 }
+
 func (v WebhookEventView) Tags() WebhookEventFilterView {
 	node := v.data()
 	if node == nil {
@@ -2631,6 +2827,7 @@ func (v WebhookEventView) Tags() WebhookEventFilterView {
 	}
 	return makeWebhookEventFilterView(v.owner, node.Tags)
 }
+
 func (v WebhookEventView) TagsIgnore() WebhookEventFilterView {
 	node := v.data()
 	if node == nil {
@@ -2638,6 +2835,7 @@ func (v WebhookEventView) TagsIgnore() WebhookEventFilterView {
 	}
 	return makeWebhookEventFilterView(v.owner, node.TagsIgnore)
 }
+
 func (v WebhookEventView) Paths() WebhookEventFilterView {
 	node := v.data()
 	if node == nil {
@@ -2645,6 +2843,7 @@ func (v WebhookEventView) Paths() WebhookEventFilterView {
 	}
 	return makeWebhookEventFilterView(v.owner, node.Paths)
 }
+
 func (v WebhookEventView) PathsIgnore() WebhookEventFilterView {
 	node := v.data()
 	if node == nil {
@@ -2652,6 +2851,7 @@ func (v WebhookEventView) PathsIgnore() WebhookEventFilterView {
 	}
 	return makeWebhookEventFilterView(v.owner, node.PathsIgnore)
 }
+
 func (v WebhookEventView) Workflows() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -2665,10 +2865,12 @@ func (v WebhookEventView) Workflows() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v WebhookEventView) WorkflowsPresent() bool {
 	node := v.data()
 	return node != nil && node.Workflows != nil
 }
+
 func (v WebhookEventView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2698,6 +2900,7 @@ func (v WebhookEventFilterView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v WebhookEventFilterView) Values() iter.Seq[StringView] {
 	return func(yield func(StringView) bool) {
 		node := v.data()
@@ -2711,6 +2914,7 @@ func (v WebhookEventFilterView) Values() iter.Seq[StringView] {
 		}
 	}
 }
+
 func (v WebhookEventFilterView) ValuesPresent() bool {
 	node := v.data()
 	return node != nil && node.Values != nil
@@ -2743,6 +2947,7 @@ func (v WorkflowView) ExpressionSources() iter.Seq2[workflowlang.Pos, ScriptSour
 		}
 	}
 }
+
 func (v WorkflowView) ExpressionSourcesAt(key workflowlang.Pos) (ScriptSourceView, bool) {
 	node := v.data()
 	if node == nil {
@@ -2754,10 +2959,12 @@ func (v WorkflowView) ExpressionSourcesAt(key workflowlang.Pos) (ScriptSourceVie
 	}
 	return makeScriptSourceView(v.owner, element), true
 }
+
 func (v WorkflowView) ExpressionSourcesPresent() bool {
 	node := v.data()
 	return node != nil && node.ExpressionSources != nil
 }
+
 func (v WorkflowView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -2765,6 +2972,7 @@ func (v WorkflowView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v WorkflowView) Description() StringView {
 	node := v.data()
 	if node == nil {
@@ -2772,6 +2980,7 @@ func (v WorkflowView) Description() StringView {
 	}
 	return makeStringView(v.owner, node.Description)
 }
+
 func (v WorkflowView) RunName() StringView {
 	node := v.data()
 	if node == nil {
@@ -2779,6 +2988,7 @@ func (v WorkflowView) RunName() StringView {
 	}
 	return makeStringView(v.owner, node.RunName)
 }
+
 func (v WorkflowView) On() iter.Seq[EventView] {
 	return func(yield func(EventView) bool) {
 		node := v.data()
@@ -2800,6 +3010,7 @@ func (v WorkflowView) OnPos() (workflowlang.Pos, bool) {
 	}
 	return *node.OnPos, true
 }
+
 func (v WorkflowView) Permissions() PermissionsView {
 	node := v.data()
 	if node == nil {
@@ -2807,6 +3018,7 @@ func (v WorkflowView) Permissions() PermissionsView {
 	}
 	return makePermissionsView(v.owner, node.Permissions)
 }
+
 func (v WorkflowView) CacheMode() CacheModeView {
 	node := v.data()
 	if node == nil {
@@ -2814,6 +3026,7 @@ func (v WorkflowView) CacheMode() CacheModeView {
 	}
 	return makeCacheModeView(v.owner, node.CacheMode)
 }
+
 func (v WorkflowView) Env() EnvView {
 	node := v.data()
 	if node == nil {
@@ -2821,6 +3034,7 @@ func (v WorkflowView) Env() EnvView {
 	}
 	return makeEnvView(v.owner, node.Env)
 }
+
 func (v WorkflowView) Defaults() DefaultsView {
 	node := v.data()
 	if node == nil {
@@ -2828,6 +3042,7 @@ func (v WorkflowView) Defaults() DefaultsView {
 	}
 	return makeDefaultsView(v.owner, node.Defaults)
 }
+
 func (v WorkflowView) Concurrency() ConcurrencyView {
 	node := v.data()
 	if node == nil {
@@ -2835,6 +3050,7 @@ func (v WorkflowView) Concurrency() ConcurrencyView {
 	}
 	return makeConcurrencyView(v.owner, node.Concurrency)
 }
+
 func (v WorkflowView) Jobs() iter.Seq2[string, JobView] {
 	return func(yield func(string, JobView) bool) {
 		node := v.data()
@@ -2848,6 +3064,7 @@ func (v WorkflowView) Jobs() iter.Seq2[string, JobView] {
 		}
 	}
 }
+
 func (v WorkflowView) JobsAt(key string) (JobView, bool) {
 	node := v.data()
 	if node == nil {
@@ -2859,7 +3076,9 @@ func (v WorkflowView) JobsAt(key string) (JobView, bool) {
 	}
 	return makeJobView(v.owner, element), true
 }
+
 func (v WorkflowView) JobsPresent() bool { node := v.data(); return node != nil && node.Jobs != nil }
+
 func (v WorkflowView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -2889,6 +3108,7 @@ func (v WorkflowCallView) Uses() StringView {
 	}
 	return makeStringView(v.owner, node.Uses)
 }
+
 func (v WorkflowCallView) Inputs() iter.Seq2[string, WorkflowCallInputView] {
 	return func(yield func(string, WorkflowCallInputView) bool) {
 		node := v.data()
@@ -2902,6 +3122,7 @@ func (v WorkflowCallView) Inputs() iter.Seq2[string, WorkflowCallInputView] {
 		}
 	}
 }
+
 func (v WorkflowCallView) InputsAt(key string) (WorkflowCallInputView, bool) {
 	node := v.data()
 	if node == nil {
@@ -2913,10 +3134,12 @@ func (v WorkflowCallView) InputsAt(key string) (WorkflowCallInputView, bool) {
 	}
 	return makeWorkflowCallInputView(v.owner, element), true
 }
+
 func (v WorkflowCallView) InputsPresent() bool {
 	node := v.data()
 	return node != nil && node.Inputs != nil
 }
+
 func (v WorkflowCallView) Secrets() iter.Seq2[string, WorkflowCallSecretView] {
 	return func(yield func(string, WorkflowCallSecretView) bool) {
 		node := v.data()
@@ -2930,6 +3153,7 @@ func (v WorkflowCallView) Secrets() iter.Seq2[string, WorkflowCallSecretView] {
 		}
 	}
 }
+
 func (v WorkflowCallView) SecretsAt(key string) (WorkflowCallSecretView, bool) {
 	node := v.data()
 	if node == nil {
@@ -2941,10 +3165,12 @@ func (v WorkflowCallView) SecretsAt(key string) (WorkflowCallSecretView, bool) {
 	}
 	return makeWorkflowCallSecretView(v.owner, element), true
 }
+
 func (v WorkflowCallView) SecretsPresent() bool {
 	node := v.data()
 	return node != nil && node.Secrets != nil
 }
+
 func (v WorkflowCallView) InheritSecrets() bool {
 	node := v.data()
 	if node == nil {
@@ -2980,10 +3206,12 @@ func (v WorkflowCallEventView) Inputs() iter.Seq[WorkflowCallEventInputView] {
 		}
 	}
 }
+
 func (v WorkflowCallEventView) InputsPresent() bool {
 	node := v.data()
 	return node != nil && node.Inputs != nil
 }
+
 func (v WorkflowCallEventView) Secrets() iter.Seq2[string, WorkflowCallEventSecretView] {
 	return func(yield func(string, WorkflowCallEventSecretView) bool) {
 		node := v.data()
@@ -2997,6 +3225,7 @@ func (v WorkflowCallEventView) Secrets() iter.Seq2[string, WorkflowCallEventSecr
 		}
 	}
 }
+
 func (v WorkflowCallEventView) SecretsAt(key string) (WorkflowCallEventSecretView, bool) {
 	node := v.data()
 	if node == nil {
@@ -3008,10 +3237,12 @@ func (v WorkflowCallEventView) SecretsAt(key string) (WorkflowCallEventSecretVie
 	}
 	return makeWorkflowCallEventSecretView(v.owner, element), true
 }
+
 func (v WorkflowCallEventView) SecretsPresent() bool {
 	node := v.data()
 	return node != nil && node.Secrets != nil
 }
+
 func (v WorkflowCallEventView) Outputs() iter.Seq2[string, WorkflowCallEventOutputView] {
 	return func(yield func(string, WorkflowCallEventOutputView) bool) {
 		node := v.data()
@@ -3025,6 +3256,7 @@ func (v WorkflowCallEventView) Outputs() iter.Seq2[string, WorkflowCallEventOutp
 		}
 	}
 }
+
 func (v WorkflowCallEventView) OutputsAt(key string) (WorkflowCallEventOutputView, bool) {
 	node := v.data()
 	if node == nil {
@@ -3036,10 +3268,12 @@ func (v WorkflowCallEventView) OutputsAt(key string) (WorkflowCallEventOutputVie
 	}
 	return makeWorkflowCallEventOutputView(v.owner, element), true
 }
+
 func (v WorkflowCallEventView) OutputsPresent() bool {
 	node := v.data()
 	return node != nil && node.Outputs != nil
 }
+
 func (v WorkflowCallEventView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -3062,6 +3296,7 @@ func makeWorkflowCallEventInputView(owner *Bound, node *workflowlang.WorkflowCal
 }
 func (v WorkflowCallEventInputView) data() *workflowlang.WorkflowCallEventInput { return v.node }
 func (v WorkflowCallEventInputView) Present() bool                              { return v.data() != nil }
+
 func (v WorkflowCallEventInputView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -3069,6 +3304,7 @@ func (v WorkflowCallEventInputView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v WorkflowCallEventInputView) Description() StringView {
 	node := v.data()
 	if node == nil {
@@ -3076,6 +3312,7 @@ func (v WorkflowCallEventInputView) Description() StringView {
 	}
 	return makeStringView(v.owner, node.Description)
 }
+
 func (v WorkflowCallEventInputView) Default() StringView {
 	node := v.data()
 	if node == nil {
@@ -3083,6 +3320,7 @@ func (v WorkflowCallEventInputView) Default() StringView {
 	}
 	return makeStringView(v.owner, node.Default)
 }
+
 func (v WorkflowCallEventInputView) Required() BoolView {
 	node := v.data()
 	if node == nil {
@@ -3090,6 +3328,7 @@ func (v WorkflowCallEventInputView) Required() BoolView {
 	}
 	return makeBoolView(v.owner, node.Required)
 }
+
 func (v WorkflowCallEventInputView) Type() workflowlang.WorkflowCallEventInputType {
 	node := v.data()
 	if node == nil {
@@ -3097,6 +3336,7 @@ func (v WorkflowCallEventInputView) Type() workflowlang.WorkflowCallEventInputTy
 	}
 	return node.Type
 }
+
 func (v WorkflowCallEventInputView) ID() string {
 	node := v.data()
 	if node == nil {
@@ -3119,6 +3359,7 @@ func makeWorkflowCallEventOutputView(owner *Bound, node *workflowlang.WorkflowCa
 }
 func (v WorkflowCallEventOutputView) data() *workflowlang.WorkflowCallEventOutput { return v.node }
 func (v WorkflowCallEventOutputView) Present() bool                               { return v.data() != nil }
+
 func (v WorkflowCallEventOutputView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -3126,6 +3367,7 @@ func (v WorkflowCallEventOutputView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v WorkflowCallEventOutputView) Description() StringView {
 	node := v.data()
 	if node == nil {
@@ -3133,6 +3375,7 @@ func (v WorkflowCallEventOutputView) Description() StringView {
 	}
 	return makeStringView(v.owner, node.Description)
 }
+
 func (v WorkflowCallEventOutputView) Value() StringView {
 	node := v.data()
 	if node == nil {
@@ -3155,6 +3398,7 @@ func makeWorkflowCallEventSecretView(owner *Bound, node *workflowlang.WorkflowCa
 }
 func (v WorkflowCallEventSecretView) data() *workflowlang.WorkflowCallEventSecret { return v.node }
 func (v WorkflowCallEventSecretView) Present() bool                               { return v.data() != nil }
+
 func (v WorkflowCallEventSecretView) Name() StringView {
 	node := v.data()
 	if node == nil {
@@ -3162,6 +3406,7 @@ func (v WorkflowCallEventSecretView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v WorkflowCallEventSecretView) Description() StringView {
 	node := v.data()
 	if node == nil {
@@ -3169,6 +3414,7 @@ func (v WorkflowCallEventSecretView) Description() StringView {
 	}
 	return makeStringView(v.owner, node.Description)
 }
+
 func (v WorkflowCallEventSecretView) Required() BoolView {
 	node := v.data()
 	if node == nil {
@@ -3198,6 +3444,7 @@ func (v WorkflowCallInputView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v WorkflowCallInputView) Value() StringView {
 	node := v.data()
 	if node == nil {
@@ -3227,6 +3474,7 @@ func (v WorkflowCallSecretView) Name() StringView {
 	}
 	return makeStringView(v.owner, node.Name)
 }
+
 func (v WorkflowCallSecretView) Value() StringView {
 	node := v.data()
 	if node == nil {
@@ -3249,6 +3497,7 @@ func makeWorkflowDispatchEventView(owner *Bound, node *workflowlang.WorkflowDisp
 }
 func (v WorkflowDispatchEventView) data() *workflowlang.WorkflowDispatchEvent { return v.node }
 func (v WorkflowDispatchEventView) Present() bool                             { return v.data() != nil }
+
 func (v WorkflowDispatchEventView) Inputs() iter.Seq2[string, DispatchInputView] {
 	return func(yield func(string, DispatchInputView) bool) {
 		node := v.data()
@@ -3262,6 +3511,7 @@ func (v WorkflowDispatchEventView) Inputs() iter.Seq2[string, DispatchInputView]
 		}
 	}
 }
+
 func (v WorkflowDispatchEventView) InputsAt(key string) (DispatchInputView, bool) {
 	node := v.data()
 	if node == nil {
@@ -3273,10 +3523,12 @@ func (v WorkflowDispatchEventView) InputsAt(key string) (DispatchInputView, bool
 	}
 	return makeDispatchInputView(v.owner, element), true
 }
+
 func (v WorkflowDispatchEventView) InputsPresent() bool {
 	node := v.data()
 	return node != nil && node.Inputs != nil
 }
+
 func (v WorkflowDispatchEventView) Pos() (workflowlang.Pos, bool) {
 	node := v.data()
 	if node == nil || node.Pos == nil {
@@ -3296,22 +3548,27 @@ func (v EventView) ImageVersionEvent() (ImageVersionEventView, bool) {
 	node, ok := v.node.(*workflowlang.ImageVersionEvent)
 	return makeImageVersionEventView(v.owner, node), ok
 }
+
 func (v EventView) RepositoryDispatchEvent() (RepositoryDispatchEventView, bool) {
 	node, ok := v.node.(*workflowlang.RepositoryDispatchEvent)
 	return makeRepositoryDispatchEventView(v.owner, node), ok
 }
+
 func (v EventView) ScheduledEvent() (ScheduledEventView, bool) {
 	node, ok := v.node.(*workflowlang.ScheduledEvent)
 	return makeScheduledEventView(v.owner, node), ok
 }
+
 func (v EventView) WebhookEvent() (WebhookEventView, bool) {
 	node, ok := v.node.(*workflowlang.WebhookEvent)
 	return makeWebhookEventView(v.owner, node), ok
 }
+
 func (v EventView) WorkflowCallEvent() (WorkflowCallEventView, bool) {
 	node, ok := v.node.(*workflowlang.WorkflowCallEvent)
 	return makeWorkflowCallEventView(v.owner, node), ok
 }
+
 func (v EventView) WorkflowDispatchEvent() (WorkflowDispatchEventView, bool) {
 	node, ok := v.node.(*workflowlang.WorkflowDispatchEvent)
 	return makeWorkflowDispatchEventView(v.owner, node), ok
@@ -3328,18 +3585,22 @@ func (v ExecView) Action() (ExecActionView, bool) {
 	node, ok := v.node.(*workflowlang.ExecAction)
 	return makeExecActionView(v.owner, node), ok
 }
+
 func (v ExecView) Cancel() (ExecCancelView, bool) {
 	node, ok := v.node.(*workflowlang.ExecCancel)
 	return makeExecCancelView(v.owner, node), ok
 }
+
 func (v ExecView) Parallel() (ExecParallelView, bool) {
 	node, ok := v.node.(*workflowlang.ExecParallel)
 	return makeExecParallelView(v.owner, node), ok
 }
+
 func (v ExecView) Run() (ExecRunView, bool) {
 	node, ok := v.node.(*workflowlang.ExecRun)
 	return makeExecRunView(v.owner, node), ok
 }
+
 func (v ExecView) Wait() (ExecWaitView, bool) {
 	node, ok := v.node.(*workflowlang.ExecWait)
 	return makeExecWaitView(v.owner, node), ok
@@ -3356,10 +3617,12 @@ func (v RawYAMLValueView) RawYAMLArray() (RawYAMLArrayView, bool) {
 	node, ok := v.node.(*workflowlang.RawYAMLArray)
 	return makeRawYAMLArrayView(v.owner, node), ok
 }
+
 func (v RawYAMLValueView) RawYAMLObject() (RawYAMLObjectView, bool) {
 	node, ok := v.node.(*workflowlang.RawYAMLObject)
 	return makeRawYAMLObjectView(v.owner, node), ok
 }
+
 func (v RawYAMLValueView) RawYAMLString() (RawYAMLStringView, bool) {
 	node, ok := v.node.(*workflowlang.RawYAMLString)
 	return makeRawYAMLStringView(v.owner, node), ok
