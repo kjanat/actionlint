@@ -472,10 +472,17 @@ func (e *Engine) encodeRequest(request analyzer.ScriptRequest) ([]byte, error) {
 	if payload.Excluded == nil {
 		payload.Excluded = []string{}
 	}
-	if slices.Contains(e.metadata.Capabilities.Resources, analyzer.ToolDirectory) {
-		payload.Directory = request.Directory
-	}
+	payload.Directory = e.requestDirectory(request)
 	return json.Marshal(payload)
+}
+
+// requestDirectory is the directory a check 3 request carries: the
+// request's own when the engine requested the directory resource, else "".
+func (e *Engine) requestDirectory(request analyzer.ScriptRequest) string {
+	if e.checkVersion != 3 || !slices.Contains(e.metadata.Capabilities.Resources, analyzer.ToolDirectory) {
+		return ""
+	}
+	return request.Directory
 }
 
 // Check sends one snippet request and returns its diagnostics.
@@ -505,7 +512,7 @@ func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 			// Checks 1 and 2 define neither member; an engine sending them
 			// is read as before they existed.
 			finding.Source, finding.Fixes = "", nil
-		} else if problem := e.checkFindings3(finding); problem != "" {
+		} else if problem := e.checkFindings3(finding, e.requestDirectory(request)); problem != "" {
 			err = errors.Join(err, fmt.Errorf("engine %s: diagnostic %d %s", e.name(), i, problem))
 			continue
 		}
@@ -538,14 +545,19 @@ func (e *Engine) Check(ctx context.Context, request analyzer.ScriptRequest) ([]a
 
 // checkFindings3 reports why a check 3 diagnostic uses a capability the
 // engine did not declare or carries an invalid source or fix, or "".
-func (e *Engine) checkFindings3(finding analyzer.ScriptDiagnostic) string {
+// Directory is the one the request carried. A reported source must be a
+// relative path below it: the host reads that file to show the finding, and
+// a core module, which reads no files, must not choose any other.
+func (e *Engine) checkFindings3(finding analyzer.ScriptDiagnostic, directory string) string {
 	capabilities := e.metadata.Capabilities
 	if finding.Source != "" {
 		switch {
 		case !capabilities.ReportedSources:
 			return fmt.Sprintf("reports source %q without the reported_sources capability", finding.Source)
-		case strings.ContainsRune(finding.Source, 0):
-			return fmt.Sprintf("reports invalid source %q", finding.Source)
+		case directory == "":
+			return fmt.Sprintf("reports source %q but the request carried no directory", finding.Source)
+		case !scriptcoords.ReportedSource(finding.Source):
+			return fmt.Sprintf("reports invalid source %q; sources are relative slash-separated paths below the request directory", finding.Source)
 		case len(finding.Fixes) != 0:
 			return fmt.Sprintf("has fixes for reported source %q", finding.Source)
 		}

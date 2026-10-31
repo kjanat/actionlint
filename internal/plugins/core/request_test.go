@@ -45,6 +45,11 @@ func TestCheckFindings3RejectsUndeclaredCapabilities(t *testing.T) {
 		finding      analyzer.ScriptDiagnostic
 		want         string
 	}{
+		{"absolute source", Capabilities{ReportedSources: true}, analyzer.ScriptDiagnostic{Source: "/etc/passwd"}, "invalid source"},
+		{"parent source", Capabilities{ReportedSources: true}, analyzer.ScriptDiagnostic{Source: "../../secret"}, "invalid source"},
+		{"backslash source", Capabilities{ReportedSources: true}, analyzer.ScriptDiagnostic{Source: `scripts\lib.sh`}, "invalid source"},
+		{"drive source", Capabilities{ReportedSources: true}, analyzer.ScriptDiagnostic{Source: `C:\secret`}, "invalid source"},
+		{"declared source", Capabilities{ReportedSources: true}, analyzer.ScriptDiagnostic{Source: "scripts/lib.sh"}, ""},
 		{"fixes", Capabilities{}, analyzer.ScriptDiagnostic{Fixes: fix}, "without the fixes capability"},
 		{"source", Capabilities{Fixes: true}, analyzer.ScriptDiagnostic{Source: "lib.sh"}, "without the reported_sources capability"},
 		{"fixes on a source", Capabilities{Fixes: true, ReportedSources: true}, analyzer.ScriptDiagnostic{Source: "lib.sh", Fixes: fix}, "fixes for reported source"},
@@ -54,10 +59,15 @@ func TestCheckFindings3RejectsUndeclaredCapabilities(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := &Engine{checkVersion: 3, metadata: Metadata{Capabilities: tc.capabilities}}
-			got := e.checkFindings3(tc.finding)
+			got := e.checkFindings3(tc.finding, "/work")
 			if tc.want == "" && got != "" || !strings.Contains(got, tc.want) {
 				t.Fatalf("got %q, want %q", got, tc.want)
 			}
 		})
+	}
+	// A source anchors at the request directory; without one there is none.
+	e := &Engine{checkVersion: 3, metadata: Metadata{Capabilities: Capabilities{ReportedSources: true}}}
+	if got := e.checkFindings3(analyzer.ScriptDiagnostic{Source: "lib.sh"}, ""); !strings.Contains(got, "carried no directory") {
+		t.Fatalf("source without a directory: %q", got)
 	}
 }

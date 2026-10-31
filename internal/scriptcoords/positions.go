@@ -1,4 +1,5 @@
-// Package scriptcoords maps engine universal-newline rows to decoded source rows.
+// Package scriptcoords maps engine universal-newline rows to decoded source
+// rows and checks the file names sandboxed engines report findings in.
 package scriptcoords
 
 import "actionlint.kjanat.dev/v2/analyzer"

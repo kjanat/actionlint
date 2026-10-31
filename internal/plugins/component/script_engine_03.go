@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/internal/fsread"
+	"actionlint.kjanat.dev/v2/internal/scriptcoords"
 	"github.com/kjanat/wacogo"
 )
 
@@ -130,7 +130,7 @@ func liftScriptDiagnostic03(value wacogo.Val) (analyzer.ScriptDiagnostic, error)
 	}
 	if source != nil {
 		d.Source = *source
-		if !validReportedSource(d.Source) {
+		if !scriptcoords.ReportedSource(d.Source) {
 			return d, fmt.Errorf("script engine reported invalid source %q", d.Source)
 		}
 	}
@@ -146,13 +146,6 @@ func liftScriptDiagnostic03(value wacogo.Val) (analyzer.ScriptDiagnostic, error)
 		d.Fixes = append(d.Fixes, fix)
 	}
 	return d, nil
-}
-
-// validReportedSource accepts a relative slash-separated path below the
-// request directory. Backslashes and colons would let a Windows host read
-// the name as a different path than the guest opened.
-func validReportedSource(name string) bool {
-	return name != "." && fs.ValidPath(name) && !strings.ContainsAny(name, "\\:")
 }
 
 func liftScriptFix(value wacogo.Val) (analyzer.ScriptFix, error) {

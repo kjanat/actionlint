@@ -259,14 +259,3 @@ func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
 		})
 	}
 }
-
-func TestValidReportedSource(t *testing.T) {
-	for name, valid := range map[string]bool{
-		"lib.sh": true, "scripts/lib.sh": true, "": false, ".": false, "../lib.sh": false,
-		"/etc/passwd": false, "scripts\\lib.sh": false, "C:lib.sh": false, "a//b": false,
-	} {
-		if validReportedSource(name) != valid {
-			t.Errorf("validReportedSource(%q) = %t, want %t", name, !valid, valid)
-		}
-	}
-}

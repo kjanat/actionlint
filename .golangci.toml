@@ -604,6 +604,7 @@ deny      = [
 files     = [
   "**/internal/analyzerref/*_test.go",
   "**/internal/related/*_test.go",
+  "**/internal/scriptcoords/*_test.go",
   "**/internal/source/capture/*_test.go",
   "**/internal/source/position/*_test.go",
   "**/internal/sourceid/*_test.go",

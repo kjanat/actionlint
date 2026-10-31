@@ -75,9 +75,11 @@ Each diagnostic may add `fixes` and `source`:
   `{row,end_row,column,end_column,text}` in snippet coordinates with an
   exclusive end. A fix has at least one replacement. Fixes require
   `capabilities.fixes`.
-- `source` names a file the engine read besides the snippet, relative to the
-  request directory. The diagnostic's positions are then that file's, and it has
-  no fixes. Sources require `capabilities.reported_sources`.
+- `source` names a file the engine read besides the snippet, as a relative
+  slash-separated path below the request directory, with no `.` or `..`
+  elements, backslashes or colons. The diagnostic's positions are then that
+  file's, and it has no fixes. Sources require `capabilities.reported_sources`
+  and a request that carried `directory`.
 
 The host drops a diagnostic that uses an undeclared capability and reports an
 error. Check 1 and check 2 define neither member; a host ignores them there.
