@@ -59,9 +59,8 @@ deny-std = ["os/exec"]
 
 [[layer]]
 name      = "leaves"
-doc       = "Internal utilities and data that import no module package: file reading, source text, YAML node models, expression context tables, webhook data and references."
+doc       = "Internal utilities and data that import no module package: file reading, source text, YAML node models, expression context tables and webhook data."
 packages  = [
-  "internal/action/reference",
   "internal/buildinfo",
   "internal/expression/context",
   "internal/fsread",
@@ -77,6 +76,15 @@ packages  = [
 isolated  = true
 externals = ["golang.org/x/sys"]
 deny-std  = ["os/exec"]
+
+# Action references are action-domain values. They sit apart from leaves so
+# that semantics, which allows leaves, cannot import any internal/action package.
+[[layer]]
+name     = "action-reference"
+doc      = "Parsed action references. The package imports no module package."
+packages = ["internal/action/reference"]
+isolated = true
+deny-std = ["os/exec"]
 
 [[layer]]
 name           = "provider-data"
@@ -106,7 +114,7 @@ packages  = [
   "internal/config/tree",
   "internal/filefilter",
 ]
-allow     = ["contract-leaves", "leaves", "provider-data", "catalog"]
+allow     = ["contract-leaves", "leaves", "action-reference", "provider-data", "catalog"]
 externals = ["github.com/bmatcuk/doublestar/v4", "github.com/kjanat/go-yaml/v4", "github.com/pelletier/go-toml/v2"]
 deny-std  = ["os/exec"]
 tests     = ["tool-providers", "yaml-codec"]
@@ -270,6 +278,7 @@ allow          = [
   "analysis-contracts",
   "document-contracts",
   "leaves",
+  "action-reference",
   "core-helpers",
   "yaml-codec",
   "expression",
