@@ -1084,6 +1084,9 @@ func analyzeFlow(fn *ssa.Function, lookup func(*ssa.Function) (flow, bool), visi
 						}
 					}
 					callee := common.StaticCallee()
+					if callee != nil && byteQuery(callee) {
+						continue
+					}
 					if callee != nil && standardClone(callee) {
 						if call != nil && !detachedClone(callee, call.Type(), visible) && len(args) > 0 {
 							put(call, get(args[0]))
@@ -1293,6 +1296,25 @@ func lockState(common *ssa.CallCommon) bool {
 	}
 	switch obj.Name() {
 	case "Lock", "Unlock", "TryLock", "RLock", "RUnlock", "TryRLock":
+		return true
+	}
+	return false
+}
+
+// byteQuery reports a bytes package search or comparison, such as
+// bytes.IndexByte or bytes.Equal. Each only reads its byte slices and returns
+// an int or bool, so it writes nothing and its result aliases nothing. The
+// variants taking a function, such as bytes.IndexFunc, are not included: they
+// run their callback.
+func byteQuery(fn *ssa.Function) bool {
+	obj, _ := fn.Object().(*types.Func)
+	if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "bytes" || obj.Signature().Recv() != nil {
+		return false
+	}
+	switch obj.Name() {
+	case "Compare", "Contains", "ContainsAny", "ContainsRune", "Count", "Equal", "EqualFold",
+		"HasPrefix", "HasSuffix", "Index", "IndexAny", "IndexByte", "IndexRune",
+		"LastIndex", "LastIndexAny", "LastIndexByte":
 		return true
 	}
 	return false
