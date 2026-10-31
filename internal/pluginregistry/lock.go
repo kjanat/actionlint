@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -21,14 +22,165 @@ import (
 
 const LockName = "actionlint.plugins.lock.json"
 
+// LockSchemaVersion is the lock schema version Save writes. Locks of schema
+// version 1, which have no Sources, are read and rewritten as version 2.
+const LockSchemaVersion = 2
+
 type Lock struct {
 	SchemaVersion int   `json:"schema_version"`
 	Plugins       []Pin `json:"plugins"`
+	// Sources lists the oci:// plugin sources declared directly in
+	// configuration, with the image manifest and layer digests of every
+	// platform they serve. Schema version 2 added it.
+	Sources []SourcePin `json:"sources,omitempty"`
+}
+
+// SourcePin records what one oci:// source holds, so the cache plan and
+// plugin sync know every blob of this host's platform without network
+// access. In the lock it is {"source": ..., "platforms": {...}}.
+type SourcePin struct {
+	// source is oci://<host>/<repository>@sha256:<hex>. A tag is refused.
+	source string
+	// platforms maps "<os>/<arch>", or artifact.AnyPlatform for a lone
+	// image manifest, to the image manifest and layer digests read there.
+	platforms map[string]artifact.OCIPlatform
+}
+
+// sourcePinJSON is the lock representation of a SourcePin.
+type sourcePinJSON struct {
+	Source    string                          `json:"source"`
+	Platforms map[string]artifact.OCIPlatform `json:"platforms"`
+}
+
+var platformPattern = regexp.MustCompile(`^[a-z0-9]+/[a-z0-9]+$`)
+
+// NewSourcePin returns the pin of the oci:// source, which serves
+// platforms. It checks that source is a normalized oci:// digest reference
+// and that every platform lists valid digests.
+func NewSourcePin(source string, platforms map[string]artifact.OCIPlatform) (SourcePin, error) {
+	normalized, _, err := artifact.NormalizeSource(source, "")
+	if err != nil {
+		return SourcePin{}, fmt.Errorf("plugin lock source %q: %w", source, err)
+	}
+	if !artifact.IsOCI(source) || normalized != source {
+		return SourcePin{}, fmt.Errorf("plugin lock source %q must be a normalized oci:// digest reference", source)
+	}
+	if len(platforms) == 0 {
+		return SourcePin{}, fmt.Errorf("plugin lock source %s lists no platforms", source)
+	}
+	pin := SourcePin{source: source, platforms: make(map[string]artifact.OCIPlatform, len(platforms))}
+	for platform, entry := range platforms {
+		if platform != artifact.AnyPlatform && !platformPattern.MatchString(platform) {
+			return SourcePin{}, fmt.Errorf("plugin lock source %s: invalid platform %q", source, platform)
+		}
+		if !digestPattern.MatchString(entry.Manifest) || len(entry.Blobs) == 0 {
+			return SourcePin{}, fmt.Errorf("plugin lock source %s: platform %s needs a manifest digest and blobs", source, platform)
+		}
+		for _, blob := range entry.Blobs {
+			if !digestPattern.MatchString(blob) {
+				return SourcePin{}, fmt.Errorf("plugin lock source %s: platform %s: invalid blob digest %q", source, platform, blob)
+			}
+		}
+		pin.platforms[platform] = artifact.OCIPlatform{Manifest: entry.Manifest, Blobs: slices.Clone(entry.Blobs)}
+	}
+	return pin, nil
+}
+
+// Source returns the oci:// source the pin describes.
+func (p SourcePin) Source() string { return p.source }
+
+// Digests returns every stored blob this host reads for the source: the
+// root index or manifest, the image manifest of platform, falling back to
+// artifact.AnyPlatform, and its layers. It reports false when the source
+// serves neither.
+func (p SourcePin) Digests(platform string) ([]string, bool) {
+	entry, ok := p.platforms[platform]
+	if !ok {
+		entry, ok = p.platforms[artifact.AnyPlatform]
+	}
+	if !ok {
+		return nil, false
+	}
+	_, root, _ := strings.Cut(p.source, "@sha256:")
+	digests := make([]string, 0, 2+len(entry.Blobs))
+	digests = append(digests, root, entry.Manifest)
+	return append(digests, entry.Blobs...), true
+}
+
+// Verify checks that a pulled artifact read the image manifest and layers
+// the pin records for its platform.
+func (p SourcePin) Verify(info artifact.Info) error {
+	entry, ok := p.platforms[info.Platform]
+	if !ok || entry.Manifest != info.Manifest || len(entry.Blobs) != len(info.Blobs) {
+		return fmt.Errorf("plugin %s: pulled image manifest %s disagrees with the plugin lock", p.source, info.Manifest)
+	}
+	for i, blob := range entry.Blobs {
+		if info.Blobs[i] != blob {
+			return fmt.Errorf("plugin %s: pulled layer %s disagrees with the plugin lock", p.source, info.Blobs[i])
+		}
+	}
+	return nil
+}
+
+// MarshalJSON writes the lock representation.
+func (p SourcePin) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(sourcePinJSON{Source: p.source, Platforms: p.platforms})
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	return bytes.Clone(data), nil
+}
+
+// clone returns a copy that shares no storage with p.
+func (p SourcePin) clone() SourcePin {
+	platforms := make(map[string]artifact.OCIPlatform, len(p.platforms))
+	for platform, entry := range p.platforms {
+		platforms[platform] = artifact.OCIPlatform{Manifest: entry.Manifest, Blobs: slices.Clone(entry.Blobs)}
+	}
+	return SourcePin{source: p.source, platforms: platforms}
+}
+
+// UnmarshalJSON reads the lock representation and validates it like
+// NewSourcePin.
+func (p *SourcePin) UnmarshalJSON(data []byte) error {
+	var raw sourcePinJSON
+	if err := jsonv2.Unmarshal(data, &raw, jsonv2.RejectUnknownMembers(true)); err != nil {
+		return err
+	}
+	pin, err := NewSourcePin(raw.Source, raw.Platforms)
+	if err != nil {
+		return err
+	}
+	*p = pin
+	return nil
+}
+
+// SourcePin returns the pin of the oci:// source.
+func (l Lock) SourcePin(source string) (SourcePin, bool) {
+	for _, pin := range l.Sources {
+		if pin.source == source {
+			return pin.clone(), true
+		}
+	}
+	return SourcePin{}, false
 }
 
 func (l Lock) Validate() error {
-	if l.SchemaVersion != 1 || l.Plugins == nil {
+	if l.SchemaVersion != 1 && l.SchemaVersion != LockSchemaVersion || l.Plugins == nil {
 		return errors.New("unsupported plugin lock schema")
+	}
+	if l.SchemaVersion == 1 && l.Sources != nil {
+		return errors.New("plugin lock schema 1 has no sources; use schema 2")
+	}
+	sources := map[string]bool{}
+	for _, p := range l.Sources {
+		if p.source == "" {
+			return errors.New("plugin lock source is empty; build it with NewSourcePin")
+		}
+		if sources[p.source] {
+			return fmt.Errorf("duplicate plugin lock source %s", p.source)
+		}
+		sources[p.source] = true
 	}
 	names, ids := map[string]bool{}, map[string]bool{}
 	aliases := map[string]bool{}
@@ -128,7 +280,7 @@ func openLock(ctx context.Context, absolute string) (*LockFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	f := &LockFile{Path: absolute, original: data, Lock: Lock{SchemaVersion: 1, Plugins: []Pin{}}}
+	f := &LockFile{Path: absolute, original: data, Lock: Lock{SchemaVersion: LockSchemaVersion, Plugins: []Pin{}}}
 	if data == nil {
 		return f, nil
 	}
@@ -205,11 +357,14 @@ func safePath(path string) error {
 	}
 }
 
+// Save writes the lock as schema version LockSchemaVersion.
 func (f *LockFile) Save(ctx context.Context) (err error) {
+	f.Lock.SchemaVersion = LockSchemaVersion
 	if err := f.Lock.Validate(); err != nil {
 		return err
 	}
 	slices.SortFunc(f.Lock.Plugins, func(a, b Pin) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(f.Lock.Sources, func(a, b SourcePin) int { return strings.Compare(a.source, b.source) })
 	data, err := json.MarshalIndent(f.Lock, "", "  ")
 	if err != nil {
 		return err
@@ -411,6 +566,15 @@ func (l Lock) Sync(ctx context.Context, options artifact.Options) error {
 		}
 		if err := p.Verify(a.Info); err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", p.Name, p.Version, err)
+		}
+	}
+	for _, p := range l.Sources {
+		a, err := artifact.Resolve(ctx, p.source, options)
+		if err != nil {
+			return err
+		}
+		if err := p.Verify(a.Info); err != nil {
+			return err
 		}
 	}
 	return nil
