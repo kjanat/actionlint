@@ -107,9 +107,12 @@ func declinedConfiguration(ctx context.Context, guest analyzer.ToolIntegrator, c
 // can depend on before a script is known.
 func negotiationKey(cfg *config.Config, tool string, enabled bool) (string, error) {
 	options := configuredDocumentOptions(cfg)
-	var pluginOptions any
+	var pluginOptions map[string]any
 	if cfg != nil {
-		pluginOptions = cfg.Lint.Rules.Plugins.Rules[tool].Options
+		var err error
+		if pluginOptions, err = cfg.Lint.Rules.PluginOptions(tool); err != nil {
+			return "", err
+		}
 	}
 	data, err := json.Marshal(struct {
 		Enabled bool                  `json:"enabled"`
@@ -160,7 +163,11 @@ func negotiateDocument(ctx context.Context, guest analyzer.ToolIntegrator, cfg *
 	}
 	var pluginOptions json.RawMessage
 	if cfg != nil {
-		if value := cfg.Lint.Rules.Plugins.Rules[guest.ToolIntegration().Tool].Options; value != nil {
+		value, err := cfg.Lint.Rules.PluginOptions(guest.ToolIntegration().Tool)
+		if err != nil {
+			return nil, err
+		}
+		if value != nil {
 			pluginOptions, err = json.Marshal(value)
 			if err != nil {
 				return nil, err

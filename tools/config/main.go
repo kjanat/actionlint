@@ -13,6 +13,7 @@ import (
 	"unicode"
 
 	actionlint "actionlint.kjanat.dev/v2/internal/config"
+	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/genfile"
 
@@ -270,6 +271,18 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
+	case reflect.TypeFor[lintconfig.CommitHashOptions]():
+		// The runtime type keeps validated patterns private. Keep this in sync
+		// with CommitHashOptions.UnmarshalYAML.
+		mapping := reflectMapping(struct {
+			Exclude []string `yaml:"exclude" jsonschema:"nullable"`
+		}{})
+		exclude, _ := mapping.Properties.Get("exclude")
+		exclude.Description = "Contains repository, action-path, or docker://image glob patterns. Repository patterns such as my-org/* also cover actions and workflows within matching repositories. Include @ref to restrict an exception to that ref."
+		mapping.Description = "Selects exceptions to immutable action references."
+		mapping.Version = ""
+		mapping.ID = ""
+		return mapping
 	case reflect.TypeFor[actionlint.PermissionsPolicy]():
 		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
@@ -348,9 +361,6 @@ func requireOneBackend(mapping *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/rules/commit_hash.go", jsonschema.WithFullComment()); err != nil {
-		return nil, err
-	}
 	if err := r.AddGoComments("actionlint.kjanat.dev/v2", "internal/config/tools/command.go", jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}

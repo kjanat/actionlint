@@ -129,7 +129,10 @@ func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding
 			prepared.Source = maskExpressions(script.Text)
 		}
 		if (r.prepareInput == nil || script.Input == nil) && script.Config != nil {
-			settings := script.Config.Lint.Rules.Plugins.Rules[r.descriptor.Name].Options
+			settings, err := script.Config.Lint.Rules.PluginOptions(r.descriptor.Name)
+			if err != nil {
+				return out, err
+			}
 			if settings != nil {
 				data, err := json.Marshal(settings)
 				if err != nil {

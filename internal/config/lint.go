@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -66,29 +67,40 @@ func (c *LintRulesConfig) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 	for category, group := range (*LintRulesConfig)(&next).Groups() {
-		for name, setting := range group.Rules {
+		for name, setting := range group.Rules() {
 			if category == "plugins" {
-				if err := setting.DecodeOptions(func() any { return new(map[string]any) }); err != nil {
+				if _, err := setting.LoadOptions(new(map[string]any)); err != nil {
 					return fmt.Errorf("yaml: options for %q: %w", name, err)
 				}
-				group.Rules[name] = setting
 				continue
 			}
 			d, ok := FindRule(name)
 			if !ok || d.Group != category {
 				return fmt.Errorf("yaml: unknown rule %q in lint.rules.%s", name, category)
 			}
-			if setting.Level != "" && !setting.Level.Valid() {
+			if setting.Level() != "" && !setting.Level().Valid() {
 				return fmt.Errorf("yaml: rule %q requires a valid level", name)
 			}
-			if err := setting.DecodeOptions(d.Options); err != nil {
+			if err := validateOptions(d, setting); err != nil {
 				return fmt.Errorf("yaml: options for %q: %w", name, err)
 			}
-			group.Rules[name] = setting
 		}
 	}
 	*c = LintRulesConfig(next)
 	return nil
+}
+
+// validateOptions decodes the options of setting into the rule's options type
+// and discards the result. Rules without an options type accept none.
+func validateOptions(d Rule, setting Setting) error {
+	if !setting.HasOptions() {
+		return nil
+	}
+	if d.Options == nil {
+		return errors.New("rule does not accept options")
+	}
+	_, err := setting.LoadOptions(d.Options())
+	return err
 }
 
 // ResolvedLevel returns the level selected for a rule after presets were applied.

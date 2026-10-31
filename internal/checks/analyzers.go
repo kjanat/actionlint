@@ -23,7 +23,11 @@ func ConfigureAnalyzers(config *repoconfig.Config, registrations []analyzer.Regi
 			continue
 		}
 		if config != nil && len(registration.Options) == 0 {
-			if options := config.Lint.Rules.Plugins.Rules[name].Options; options != nil {
+			options, err := config.Lint.Rules.PluginOptions(name)
+			if err != nil {
+				return nil, err
+			}
+			if options != nil {
 				data, err := jsonv2.Marshal(options)
 				if err != nil {
 					return nil, fmt.Errorf("options for analyzer %q: %w", name, err)

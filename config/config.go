@@ -60,6 +60,25 @@ const (
 	DefaultPermissionsAssumptionPermissive = repoconfig.DefaultPermissionsAssumptionPermissive
 )
 
+// NewRuleSetting returns a rule setting with a level and options, such as
+// &RequiredActionsOptions{...}. An empty level selects the rule's default.
+// options must encode to a YAML mapping; nil means no options.
+func NewRuleSetting(level RuleLevel, options any) (RuleSetting, error) {
+	return repoconfig.NewSetting(level, options)
+}
+
+// NewRuleGroup returns a rule group with a preset, a group level and
+// per-rule settings. Empty preset and level leave the parent selection in place.
+func NewRuleGroup(preset RulePreset, level RuleLevel, rules map[string]RuleSetting) RuleGroupConfig {
+	return repoconfig.NewGroup(preset, level, rules)
+}
+
+// NewCommitHashOptions returns require-commit-hash options that exempt
+// references matching any of the glob patterns. A malformed pattern is an error.
+func NewCommitHashOptions(exclude ...string) (*CommitHashOptions, error) {
+	return lintconfig.NewCommitHashOptions(exclude...)
+}
+
 // Parse decodes a standalone configuration document. Use Load to resolve extends.
 // additionalRules lists registered analyzer names accepted in suppression settings.
 func Parse(source []byte, additionalRules ...string) (*Config, error) {

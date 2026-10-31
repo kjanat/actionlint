@@ -39,7 +39,7 @@ func (cfg *Config) MarshalYAML() (any, error) {
 	}
 	hasRule := func(name string) bool {
 		rule, _ := FindRule(name)
-		_, ok := cfg.Lint.Rules.Groups()[rule.Group].Rules[name]
+		_, ok := cfg.Lint.Rules.Groups()[rule.Group].Rule(name)
 		return ok
 	}
 	if !hasRule("runner-label") && cfg.SelfHostedRunner.Labels != nil {

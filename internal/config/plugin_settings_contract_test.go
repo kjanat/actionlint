@@ -16,8 +16,8 @@ func TestRegisteredNurseryPresetSelection(t *testing.T) {
 	} {
 		cfg := &repoconfig.Config{}
 		cfg.Lint.Rules.Preset = test.root
-		cfg.Lint.Rules.Plugins.Preset = test.group
-		if got := repoconfig.SettingFor(cfg, descriptor, repoconfig.Presets{}, true).Level; got != test.want {
+		cfg.Lint.Rules.Plugins = repoconfig.NewGroup(test.group, "", nil)
+		if got := repoconfig.SettingFor(cfg, descriptor, repoconfig.Presets{}, true).Level(); got != test.want {
 			t.Errorf("root=%s group=%s: %s want %s", test.root, test.group, got, test.want)
 		}
 	}

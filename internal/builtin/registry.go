@@ -79,9 +79,14 @@ func ruleBehaviours() map[string]behaviour {
 		"empty-job":           {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyJob() }},
 		"empty-run":           {Build: func(c Context) workflowvisit.Rule { return NewRuleEmptyRun() }},
 		"require-commit-hash": {Build: func(c Context) workflowvisit.Rule {
-			var options *lintconfig.CommitHashOptions
+			options := new(lintconfig.CommitHashOptions)
 			if c.Config != nil {
-				options, _ = c.Config.Lint.Rules.Policy.Rules["require-commit-hash"].Options.(*lintconfig.CommitHashOptions)
+				// Parsing already validated these options. Options of another type,
+				// set from Go, fail to load and leave no exclusions.
+				setting, _ := c.Config.Lint.Rules.Policy.Rule("require-commit-hash")
+				if _, err := setting.LoadOptions(options); err != nil {
+					options = new(lintconfig.CommitHashOptions)
+				}
 			}
 			return NewRuleRequireCommitHash(options.Excludes)
 		}, Enabled: func(c Context) bool { return c.Config.RequiresCommitHash() }},

@@ -42,18 +42,18 @@ func ValidateRuleNames(config *Config, additional ...string) error {
 				return fmt.Errorf("yaml: unknown diagnostic rule %q in lint.rules.disable", name)
 			}
 		}
-		for name := range lint.Rules.Plugins.Rules {
+		for name := range lint.Rules.Plugins.Rules() {
 			if !slices.Contains(additional, name) {
 				return fmt.Errorf("yaml: unknown registered rule %q in lint.rules.plugins", name)
 			}
 		}
-		for _, group := range lint.Rules.Groups() {
-			for _, setting := range group.Rules {
-				if policy, ok := setting.Options.(*SuppressionsPolicy); ok {
-					if err := validate(policy); err != nil {
-						return err
-					}
-				}
+		// Parsing only accepts disallow-suppressions in its own group, so that is
+		// the one setting whose options name rules.
+		suppressions, _ := FindRule("disallow-suppressions")
+		setting, _ := lint.Rules.Groups()[suppressions.Group].Rule(suppressions.Name)
+		if policy := new(SuppressionsPolicy); loadOptions(setting, policy) {
+			if err := validate(policy); err != nil {
+				return err
 			}
 		}
 	}

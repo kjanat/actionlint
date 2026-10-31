@@ -190,11 +190,11 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 				return err
 			}
 			group = mapping()
-			if decoded.Level != "" {
-				setField(group, "level", textNode(string(decoded.Level)))
+			if decoded.Level() != "" {
+				setField(group, "level", textNode(string(decoded.Level())))
 			}
-			if decoded.Preset != "" {
-				setField(group, "preset", textNode(string(decoded.Preset)))
+			if decoded.Preset() != "" {
+				setField(group, "preset", textNode(string(decoded.Preset())))
 			}
 		}
 		if previous := field(group, name); previous != nil {
