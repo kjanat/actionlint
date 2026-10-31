@@ -15,8 +15,14 @@ type ruleRunnerLabel struct {
 	configuration
 }
 
-func NewRuleRunnerLabel() *ruleRunnerLabel {
-	return &ruleRunnerLabel{Base: builtinRuleBase("runner-label")}
+// NewRuleRunnerLabel checks runs-on labels against the built-in runner labels
+// and the self-hosted-runner labels in the user configuration.
+func NewRuleRunnerLabel() workflowvisit.Rule { return newRuleRunnerLabel(nil) }
+
+// newRuleRunnerLabel reports the job findings of runners instead when runners
+// is not nil.
+func newRuleRunnerLabel(runners *runnerlang.Knowledge) *ruleRunnerLabel {
+	return &ruleRunnerLabel{Base: builtinRuleBase("runner-label"), runners: runners}
 }
 
 func (r *ruleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {

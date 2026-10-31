@@ -15,7 +15,8 @@ type ruleMatrix struct {
 	configuration
 }
 
-func NewRuleMatrix() *ruleMatrix {
+// NewRuleMatrix reports matrix diagnostics of each job's strategy.
+func NewRuleMatrix() workflowvisit.Rule {
 	return &ruleMatrix{Base: builtinRuleBase("matrix")}
 }
 

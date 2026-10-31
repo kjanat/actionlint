@@ -17,9 +17,9 @@ type ruleExecutableBit struct {
 	findings workflowvisit.Findings
 }
 
-// NewRuleExecutableBit checks script executable bits under c.ProjectRoot,
+// newRuleExecutableBit checks script executable bits under c.ProjectRoot,
 // reading files through c.Reader and the git index through c.Index.
-func NewRuleExecutableBit(c Context) *ruleExecutableBit {
+func newRuleExecutableBit(c Context) *ruleExecutableBit {
 	r := &ruleExecutableBit{tag: "executable-bit"}
 	r.ExecutableChecker = execution.NewExecutableChecker(execution.ExecutableContext{
 		Context: c.Context, ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,

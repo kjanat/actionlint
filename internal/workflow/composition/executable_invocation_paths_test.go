@@ -19,6 +19,24 @@ type executableRule interface {
 	Paths() execution.Paths
 }
 
+// productionExecutableRule builds the executable-bit rule the way analysis
+// does, through its registry descriptor.
+func productionExecutableRule(t *testing.T, c builtin.Context) executableRule {
+	t.Helper()
+	for _, descriptor := range builtin.Descriptors() {
+		if descriptor.Name != "executable-bit" {
+			continue
+		}
+		rule, ok := descriptor.Build(c).(executableRule)
+		if !ok {
+			t.Fatal("executable-bit rule lacks invocation, checkout or path hooks")
+		}
+		return rule
+	}
+	t.Fatal("executable-bit descriptor absent")
+	return nil
+}
+
 type executablePathsProbe struct {
 	executableRule
 	t       *testing.T
@@ -62,7 +80,7 @@ func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
 	}, nil)
 	reader := &fsread.Reader{}
 	want := execution.Paths{Workspace: f.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
-	p := &executablePathsProbe{executableRule: builtin.NewRuleExecutableBit(builtin.Context{
+	p := &executablePathsProbe{executableRule: productionExecutableRule(t, builtin.Context{
 		Context: t.Context(), ProjectRoot: want.Workspace, WorkingDir: want.Analysis, Reader: reader,
 	}), t: t, want: want}
 	f.options.Rules = []workflowvisit.Rule{p}

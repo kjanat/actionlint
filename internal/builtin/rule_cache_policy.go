@@ -14,7 +14,8 @@ type ruleCacheWriteUntrusted struct {
 	trust *cachepolicy.Trust
 }
 
-func NewRuleCacheWriteUntrusted() *ruleCacheWriteUntrusted {
+// NewRuleCacheWriteUntrusted reports write-capable cache modes on low-trust triggers.
+func NewRuleCacheWriteUntrusted() workflowvisit.Rule {
 	return &ruleCacheWriteUntrusted{Base: builtinRuleBase("cache-write-untrusted")}
 }
 
@@ -36,7 +37,8 @@ type ruleCacheCallUnrestricted struct {
 	trust *cachepolicy.Trust
 }
 
-func NewRuleCacheCallUnrestricted() *ruleCacheCallUnrestricted {
+// NewRuleCacheCallUnrestricted requires explicit cache ceilings on low-trust reusable calls.
+func NewRuleCacheCallUnrestricted() workflowvisit.Rule {
 	return &ruleCacheCallUnrestricted{Base: builtinRuleBase("cache-call-unrestricted")}
 }
 
@@ -59,14 +61,14 @@ type ruleCacheOperation struct {
 	cache         *calls.Cache
 }
 
-func NewRuleCacheOperation() *ruleCacheOperation {
-	return &ruleCacheOperation{Base: builtinRuleBase("cache-operation")}
-}
+// NewRuleCacheOperation reports official cache action steps disabled by an
+// explicit cache mode. Without a workflow cache it does not check
+// reusable-workflow calls.
+func NewRuleCacheOperation() workflowvisit.Rule { return newRuleCacheOperation(nil) }
 
+// newRuleCacheOperation also checks reusable-workflow calls when cache is not nil.
 func newRuleCacheOperation(cache *calls.Cache) *ruleCacheOperation {
-	r := NewRuleCacheOperation()
-	r.cache = cache
-	return r
+	return &ruleCacheOperation{Base: builtinRuleBase("cache-operation"), cache: cache}
 }
 
 func (r *ruleCacheOperation) VisitWorkflowPre(w workflowdecl.WorkflowView) error {

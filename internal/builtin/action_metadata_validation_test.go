@@ -121,7 +121,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
 	var cacheLog, ruleLog strings.Builder
-	rule := NewRuleAction(newCapturedLocalCache(t, root, &cacheLog))
+	rule := newRuleAction(newCapturedLocalCache(t, root, &cacheLog))
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
 		if err := rule.checkLocalAction("./inner", "./inner", ownedActionFixture(&workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}})); err != nil {
@@ -142,7 +142,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	// without a shell is positioned in the metadata and carries an ignore origin.
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - run: echo\n")
 	cache := newCapturedLocalCache(t, root, nil)
-	rule := NewRuleAction(cache)
+	rule := newRuleAction(cache)
 	for i := 1; i <= 3; i++ {
 		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}
 		if err := rule.checkLocalAction("./inner", "./inner", ownedActionFixture(action)); err != nil {

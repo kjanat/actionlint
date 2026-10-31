@@ -88,7 +88,10 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
 	return r.collect(mark, r.Checker.VisitJobPost(view))
 }
 
-func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) *ruleExpression {
+// NewRuleExpression checks expressions, looking up local action metadata in
+// actionsCache and reusable-workflow metadata in workflowCache. It has no
+// runner knowledge, so it does not learn the shell of a job from runs-on.
+func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache) InvocationParticipant {
 	return newRuleExpression(actionsCache, workflowCache, nil)
 }
 

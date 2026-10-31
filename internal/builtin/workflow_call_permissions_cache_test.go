@@ -310,9 +310,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			r := builtin.NewRuleWorkflowCall(documentparse.SourceSnapshot{}, cache)
-			if tc.cfg != nil {
-				r.SetConfig(tc.cfg)
-			}
+			configureRule(r, tc.cfg)
 
 			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
 			if err := r.VisitWorkflowPre(ownedWorkflowFixture(w)); err != nil {

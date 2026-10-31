@@ -19,10 +19,16 @@ type ruleShellName struct {
 	platform runnerlang.Platform
 }
 
-// NewRuleShellName creates new RuleShellName instance.
-func NewRuleShellName() *ruleShellName {
+// NewRuleShellName checks the shell of run steps and of defaults.run. It does
+// not know the runs-on platform, so it accepts the shells of every platform.
+func NewRuleShellName() workflowvisit.Rule { return newRuleShellName(nil) }
+
+// newRuleShellName checks shells against the platform that runners resolves
+// for each job, when runners is not nil.
+func newRuleShellName(runners *runnerlang.Knowledge) *ruleShellName {
 	return &ruleShellName{
 		Base:     builtinRuleBase("shell-name"),
+		runners:  runners,
 		platform: runnerlang.Any,
 	}
 }

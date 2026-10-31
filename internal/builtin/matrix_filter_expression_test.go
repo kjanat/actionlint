@@ -51,7 +51,7 @@ jobs:
 						t.Fatal(err)
 					}
 					rule := builtin.NewRuleMatrix()
-					rule.SetConfig(cfg)
+					configureRule(rule, cfg)
 					if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 						t.Fatal(err)
 					}
@@ -142,7 +142,7 @@ jobs:
 					t.Fatal(err)
 				}
 				rule := builtin.NewRuleMatrix()
-				rule.SetConfig(cfg)
+				configureRule(rule, cfg)
 				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
@@ -211,7 +211,7 @@ jobs:
 					t.Fatal(err)
 				}
 				rule := builtin.NewRuleMatrix()
-				rule.SetConfig(cfg)
+				configureRule(rule, cfg)
 				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}
@@ -291,7 +291,7 @@ jobs:
 					t.Fatal(err)
 				}
 				rule := builtin.NewRuleMatrix()
-				rule.SetConfig(cfg)
+				configureRule(rule, cfg)
 				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)
 				}

@@ -100,7 +100,7 @@ func (rule *commitHashCheck) checkJob(n declaration.JobView) {
 }
 
 // Return the {ref} part of a {owner}/{repo}@{ref} or {owner}/{repo}/{path}@{ref} specification. The
-// second return value is false when the specification has another form. RuleAction reports the forms
+// second return value is false when the specification has another form. The "action" rule reports the forms
 // which are invalid.
 func actionUsesRepoRef(spec string) (string, bool) {
 	if strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/") {

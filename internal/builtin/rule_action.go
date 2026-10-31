@@ -23,13 +23,17 @@ import (
 type ruleAction struct {
 	workflowvisit.Base
 	ruleLogger
-	configuration
 	cache      actionlocal.MetadataDocumentLookup
 	validation *actionMetadataValidation
 }
 
-// NewRuleAction creates new RuleAction instance.
-func NewRuleAction(cache actionlocal.MetadataDocumentLookup) *ruleAction {
+// NewRuleAction checks the actions that steps use, reading local action
+// metadata through cache.
+func NewRuleAction(cache actionlocal.MetadataDocumentLookup) MetadataParticipant {
+	return newRuleAction(cache)
+}
+
+func newRuleAction(cache actionlocal.MetadataDocumentLookup) *ruleAction {
 	validation := newActionMetadataValidation()
 
 	return &ruleAction{
@@ -118,9 +122,8 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action w
 }
 
 func (rule *ruleAction) ForMetadata(actions *actionlocal.Resolver) workflowvisit.Rule {
-	child := NewRuleAction(actions)
+	child := newRuleAction(actions)
 	child.validation = rule.validation
-	child.configuration = rule.configuration
 	return child
 }
 

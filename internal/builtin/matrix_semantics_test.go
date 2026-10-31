@@ -53,7 +53,7 @@ jobs:
 					if err != nil {
 						t.Fatal(err)
 					}
-					rule.SetConfig(cfg)
+					configureRule(rule, cfg)
 				}
 				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)

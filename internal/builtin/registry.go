@@ -53,24 +53,16 @@ func ruleBehaviours() map[string]behaviour {
 		"workflow-run-names": {Build: func(c Context) workflowvisit.Rule {
 			return &workflowRunNamesRule{Base: builtinRuleBase("workflow-run-names"), root: absolutePath(c.ProjectRoot), index: c.WorkflowNames}
 		}, Enabled: workflowRunNamesAvailable},
-		"matrix":      {Build: func(Context) workflowvisit.Rule { return NewRuleMatrix() }},
-		"credentials": {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
-		"shell-name": {Build: func(c Context) workflowvisit.Rule {
-			r := NewRuleShellName()
-			r.runners = c.Runners
-			return r
-		}},
-		"runner-label": {Build: func(c Context) workflowvisit.Rule {
-			r := NewRuleRunnerLabel()
-			r.runners = c.Runners
-			return r
-		}},
+		"matrix":         {Build: func(Context) workflowvisit.Rule { return NewRuleMatrix() }},
+		"credentials":    {Build: func(c Context) workflowvisit.Rule { return NewRuleCredentials() }},
+		"shell-name":     {Build: func(c Context) workflowvisit.Rule { return newRuleShellName(c.Runners) }},
+		"runner-label":   {Build: func(c Context) workflowvisit.Rule { return newRuleRunnerLabel(c.Runners) }},
 		"events":         {Build: func(c Context) workflowvisit.Rule { return NewRuleEvents() }},
 		"job-needs":      {Build: func(c Context) workflowvisit.Rule { return NewRuleJobNeeds() }},
 		"parallel-steps": {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},
 		"action":         {Build: func(c Context) workflowvisit.Rule { return NewRuleAction(c.Actions) }},
 		"executable-bit": {Build: func(c Context) workflowvisit.Rule {
-			return NewRuleExecutableBit(c)
+			return newRuleExecutableBit(c)
 		}, Enabled: func(c Context) bool { return c.ProjectRoot != "" && c.Index != nil }},
 		"env-var":       {Build: func(c Context) workflowvisit.Rule { return NewRuleEnvVar() }},
 		"id":            {Build: func(c Context) workflowvisit.Rule { return NewRuleID() }},

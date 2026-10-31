@@ -25,7 +25,7 @@ type ruleWorkflowCall struct {
 }
 
 // NewRuleWorkflowCall checks calls using captured reusable-workflow metadata.
-func NewRuleWorkflowCall(source documentparse.SourceSnapshot, cache *calls.Cache) *ruleWorkflowCall {
+func NewRuleWorkflowCall(source documentparse.SourceSnapshot, cache *calls.Cache) workflowvisit.Rule {
 	return &ruleWorkflowCall{
 		Base: builtinRuleBase("workflow-call"), tag: "workflow-call",
 		cache:  cache,
