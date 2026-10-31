@@ -30,7 +30,7 @@ List of checks:
 - [Action format in `uses:`](#check-action-format)
 - [Local action inputs validation at `with:`](#check-local-action-inputs)
 - [Popular action inputs validation at `with:`](#check-popular-action-inputs)
-- [Outdated popular actions detection at `uses:`](#detect-outdated-popular-actions)
+- [Action runtime lifecycle](#detect-outdated-popular-actions)
 - [Shell name validation at `shell:`](#check-shell-names)
 - [Job ID and step ID uniqueness](#check-job-step-ids)
 - [Hardcoded credentials](#check-hardcoded-credentials)
@@ -625,7 +625,7 @@ Outputs of step can be accessed via `steps.<step_id>` objects. The `steps` conte
 It is a common mistake to access the wrong step outputs since people often forget to fix placeholders on copying&pasting
 steps. actionlint can catch invalid accesses to step outputs and reports them as errors.
 
-When the outputs are set by popular actions, the outputs object is more strictly typed.
+When a metadata provider supplies the selected action's manifest, its declared outputs constrain the outputs object.
 
 Example input:
 
@@ -1865,6 +1865,11 @@ actionlint also checks the `timezone` configuration [is a valid IANA timezone st
 
 ## Runner labels
 
+Unknown-label findings require a complete additional-label set from the host or
+`repository.runners`. With unavailable facts, custom labels remain unknown;
+known built-in compatibility checks still run. The unknown-label examples below
+assume `repository: {runners: []}`.
+
 `ubuntu-latest` accepts Ubuntu 24.04 and 26.04 compatibility during the
 [October 19 to November 19, 2026 migration](https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/).
 `macos-latest-xlarge` maps to macOS 26.
@@ -2093,92 +2098,30 @@ validates inputs at `with:` in the workflow are correct. Missing required inputs
 
 <a id="check-popular-action-inputs"></a>
 
-## Popular action inputs validation at `with:`
+## Remote action inputs and outputs
 
-Example input:
+Remote reference syntax is checked without metadata. Input names, required inputs
+and declared outputs are checked when a host supplies the action manifest through
+`analysis.Options.RemoteActions`. Both checks use the same request-scoped metadata
+service and the same selected content.
 
-```yaml
-on: push
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/cache@v6
-        with:
-          keys: |
-            ${{ hashFiles('**/*.lock') }}
-            ${{ hashFiles('**/*.cache') }}
-          path: ./packages
-      - run: make
-```
-
-Output:
-
-```console
-test.yaml:7:15: missing input "key" which is required by action "actions/cache@v6". all required inputs are "key", "path" [action]
-  |
-7 |       - uses: actions/cache@v6
-  |               ^~~~~~~~~~~~~~~~
-test.yaml:9:11: input "keys" is not defined in action "actions/cache@v6". available inputs are "enableCrossOsArchive", "fail-on-cache-miss", "key", "lookup-only", "path", "restore-keys", "save-always", "upload-chunk-size" [action]
-  |
-9 |           keys: |
-  |           ^~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNqEjrHKwkAQhPs8xRQ/5DeQpLO4ysr32ByLFy/eHdlbRWLeXRIliI3VsvN9MBODQVJxRXGOnZgCyCx5ucCoQepF0E5D1nqgha1IMid5WUANFRYDsrmPQVpL1vHhun9j4NZnZ7YP8HwXg8dHAvxNExyJO/YDy39ZVW3VDNH6cod5/mmuld9qouwMmjaR9XRi2eaOGgwu5PkZAAD///yrRBc=)
-
-actionlint checks inputs of many popular actions such as `actions/checkout@v7`. It checks
-
-- some input is required by the action but it is not set at `with:`
-- input set at `with:` is not defined in the action (this commonly occurs by a typo)
-
-this is done by checking `with:` section items with a small database collected at building `actionlint` binary. actionlint
-can check popular actions without fetching any `action.yml` of the actions from the remote so that it can run efficiently.
-
-Note that it only supports the case of specifying major versions like `actions/checkout@v7`. Fixing version of action like
-`actions/checkout@v7.0.1` and using the HEAD of action like `actions/checkout@main` are not supported for now.
-
-Actionlint bundles metadata for popular actions in [`popular_actions.json`](../internal/actioncatalog/popular_actions.json)
-and were automatically collected by [a script][generate-popular-actions]. If you want more checks for other actions, please
-make a request [as an issue][issue-form].
+There is no bundled popular-action list. Without a provider, remote metadata is
+unavailable; metadata-dependent checks skip that action. Local action validation
+continues to use the actual local manifest. See [the library API](api.md#configuration-and-syntax).
 
 <a id="detect-outdated-popular-actions"></a>
 
-## Outdated popular actions detection at `uses:`
+## Action runtime lifecycle
 
-Example input:
+Available manifests are checked against runtime tables generated from GitHub's
+runner source. Deprecated runtimes do not disable input/output validation.
+The declared runtime determines the finding; an action's tag or release age does
+not. Unfetched metadata does not establish that a runtime or service is retired.
 
-```yaml
-on: push
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      # ERROR: actions/checkout@v3 is using the outdated runner 'node16'
-      - uses: actions/checkout@v3
-```
-
-Output:
-
-```console
-test.yaml:8:15: the runtime or service used by "actions/checkout@v3" action is retired on GitHub.com. update the action's version to fix this issue [action]
-  |
-8 |       - uses: actions/checkout@v3
-  |               ^~~~~~~~~~~~~~~~~~~
-```
-
-[Playground](https://kjanat.github.io/actionlint/#eNokyjEOxCAMRNGeU8wF0BbbUe1VAFlik8hGGTvnj0iqX/xnWjCDI6XNGksCXOirwBnKvEC0UI981PWeRZfJVwEZQWFB7f435acP6buF/67vHQAA//90iR3O)
-
-In addition to the checks for inputs of actions described in [the previous section](#check-popular-action-inputs), actionlint
-reports an error when a popular action declares a deprecated or removed runtime, or uses a known retired service.
-Input and output checks also run for Node 20 actions. Local JavaScript
-actions receive the same runtime lifecycle checks. Runtime metadata is generated from GitHub's runner source.
-
-This check evaluates the declared runtime and service, not the age of an action release.
-SHA references whose metadata is absent from the popular-action data set are not resolved online.
-If you want to keep actions used by your workflows up-to-date, consider to use [Dependabot][dependabot-doc].
+A provider selection preserves the requested ref, original selected object,
+terminal commit, repository identity and lookup route. A raw tag-object ID may
+peel to a different commit. Selection and fetched bytes are distinct from proof
+of what a runner actually executed.
 
 <a id="check-shell-names"></a>
 
@@ -3732,7 +3675,6 @@ test.yaml:9:14: could not parse as YAML: unknown anchor 'credentials' referenced
 [permissions-doc]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 [perm-config-doc]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
 [generate-webhook-events]: https://github.com/kjanat/actionlint/tree/HEAD/internal/webhook/generate
-[generate-popular-actions]: https://github.com/kjanat/actionlint/tree/HEAD/internal/actioncatalog/generate
 [issue-25]: https://github.com/rhysd/actionlint/issues/25
 [issue-40]: https://github.com/rhysd/actionlint/issues/40
 [security-doc]: https://docs.github.com/en/actions/reference/security/secure-use

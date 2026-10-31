@@ -119,14 +119,6 @@ func EffectiveValues(cfg *Config) (map[string]any, error) {
 	return values, nil
 }
 
-// MarshalYAML preserves the public string representation of permission assumptions.
-func (a DefaultPermissionsAssumption) MarshalYAML() (any, error) {
-	if a == DefaultPermissionsAssumptionPermissive {
-		return "permissive", nil
-	}
-	return "restricted", nil
-}
-
 // MarshalYAML serializes regular expressions as pattern strings.
 func (pats IgnorePatterns) MarshalYAML() (any, error) {
 	values := make([]string, len(pats))

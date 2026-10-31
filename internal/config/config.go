@@ -332,15 +332,6 @@ func (p *PermissionsPolicy) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-// SelfHostedRunnerConfig is configuration for self-hosted runners.
-type SelfHostedRunnerConfig struct {
-	// Labels lists additional self-hosted runner labels accepted in `runs-on`.
-	//
-	// For example, `[linux.2xlarge, custom-*]` accepts that label and matching custom labels.
-	// Patterns use Go `path.Match` syntax. Omit this key, use `null`, or use `[]` to add no labels.
-	Labels []string `yaml:"labels" jsonschema:"nullable"`
-}
-
 // Config configures validation of GitHub Actions workflows for this repository.
 //
 // Declare custom runner labels and available variable or secret names, suppress selected
@@ -363,6 +354,8 @@ type Config struct {
 	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Lint configures rule selection separately from repository policy.
 	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
+	// Repository supplies overrides for repository knowledge obtained by the host.
+	Repository RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
 	// Overrides applies per-file lint settings in declaration order. Later matching
 	// settings win; mappings merge and arrays replace. Paths are repository-relative.
 	Overrides []Override `yaml:"overrides" jsonschema:"nullable"`
@@ -377,73 +370,16 @@ type Config struct {
 	// Known checkout placements are removed before matching. Sources resolve once
 	// to actual directories; mappings do not chain.
 	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
-	// SelfHostedRunner configures extra labels accepted for self-hosted runners.
-	//
-	// Add your labels under `labels`, for example `{labels: [linux.2xlarge]}`.
-	SelfHostedRunner SelfHostedRunnerConfig `yaml:"-"`
-	// ConfigVariables lists configuration variable names available to the checked workflows through `vars`.
-	//
-	// Omit this key or use `null` to disable variable-name checking. Use `[]` to allow no variables.
-	// A list such as `[DEFAULT_RUNNER, ENVIRONMENT_STAGE]` reports names outside that list as undefined.
-	ConfigVariables []string `yaml:"-"`
-	// ConfigSecrets lists secret names available to the checked workflows through `secrets`.
-	//
-	// Omit this key or use `null` to disable secret-name checking. Use `[]` to allow only built-in
-	// secrets and secrets declared in `on.workflow_call.secrets`. A list such as `[DEPLOY_TOKEN, API_KEY]`
-	// also allows those names; other names are reported as undefined. Matching is case-insensitive.
-	//
-	// `GITHUB_TOKEN`, `ACTIONS_STEP_DEBUG`, and `ACTIONS_RUNNER_DEBUG` are always allowed.
-	// List names only, never secret values.
-	ConfigSecrets []string `yaml:"-"`
 	// Paths applies configuration to workflow files matching a glob pattern.
 	//
 	// Keys are paths relative to the repository root, using `/` separators and doublestar glob syntax,
 	// for example `.github/workflows/**/*.yaml`. All matching entries apply. Each entry can set `ignore`.
 	Paths map[string]PathConfig `yaml:"-"`
-	// AssumeDefaultPermissions selects the repository's assumed default token permissions when checking
-	// reusable workflow calls whose calling job and workflow both omit `permissions:`.
-	//
-	// `restricted` (the default) grants read access to `contents` and `packages` only.
-	// `permissive` assumes read/write access, except `id-token`, which still requires an explicit grant.
-	// Omit this key or use `null` to assume `restricted`.
-	AssumeDefaultPermissions DefaultPermissionsAssumption `yaml:"-"`
 	// Policy configures cache safety checks and repository conventions, such as pinned actions and job timeouts.
 	//
 	// Cache policies default to true; other policies are opt-in. Set individual keys to override their
 	// defaults. Omit the mapping or use `{}` or `null` to keep defaults. Syntax checks always run.
 	Policy Policy `yaml:"-"`
-}
-
-// DefaultPermissionsAssumption is an assumption about the repository's "Workflow permissions" setting,
-// which actionlint cannot read from a workflow file.
-type DefaultPermissionsAssumption uint8
-
-const (
-	// DefaultPermissionsAssumptionUnset means the "assume-default-permissions" key was not set.
-	DefaultPermissionsAssumptionUnset DefaultPermissionsAssumption = iota
-	// DefaultPermissionsAssumptionRestricted assumes GitHub's restricted default token, which grants read
-	// access to "contents" and "packages" and nothing else.
-	DefaultPermissionsAssumptionRestricted
-	// DefaultPermissionsAssumptionPermissive assumes GitHub's permissive default token.
-	DefaultPermissionsAssumptionPermissive
-)
-
-// UnmarshalYAML implements yaml.Unmarshaler.
-func (a *DefaultPermissionsAssumption) UnmarshalYAML(n *yaml.Node) error {
-	switch n.Value {
-	case "restricted":
-		*a = DefaultPermissionsAssumptionRestricted
-	case "permissive":
-		*a = DefaultPermissionsAssumptionPermissive
-	default:
-		return fmt.Errorf(
-			"yaml: \"assume-default-permissions\" must be \"restricted\" or \"permissive\" but got %q at line:%d,col:%d",
-			n.Value,
-			n.Line,
-			n.Column,
-		)
-	}
-	return nil
 }
 
 // PathConfigs returns a list of all PathConfig values matching to the given file path. The path must
@@ -610,7 +546,7 @@ func Load(path string, additional ...string) (*Config, error) {
 
 func Read(path string, readFile func(string) ([]byte, error), additional ...string) (*Loaded, error) {
 	warningsByFile := map[string][]Warning{}
-	loaded, err := configtree.Load(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
+	loaded, err := loadConfigTree(path, readFile, func(origin string, node *yaml.Node) (*yaml.Node, error) {
 		normalized, warnings, err := normalizeExtendedConfig(origin, node, absPath(path) != origin, additional...)
 		warningsByFile[origin] = warnings
 		return normalized, err

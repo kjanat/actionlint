@@ -49,7 +49,7 @@ func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(c.SelfHostedRunner.Labels, tc.labels); diff != "" {
+			if diff := cmp.Diff(RunnerLabels(c.Facts()), tc.labels); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -91,7 +91,7 @@ func TestConfigParseConfigSecrets(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(c.ConfigSecrets, tc.secrets); diff != "" {
+			if diff := cmp.Diff(SecretNames(c.Facts()), tc.secrets); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -105,7 +105,7 @@ func TestConfigParseError(t *testing.T) {
 	}{
 		{
 			in:   `self-hosted-runner: 42`,
-			want: `cannot construct`,
+			want: `self-hosted-runner must be a mapping`,
 		},
 		{
 			in: `
@@ -317,7 +317,7 @@ func TestConfigReadFileOK(t *testing.T) {
 		t.Fatal(err)
 	}
 	labels := []string{"foo", "bar"}
-	if diff := cmp.Diff(c.SelfHostedRunner.Labels, labels); diff != "" {
+	if diff := cmp.Diff(RunnerLabels(c.Facts()), labels); diff != "" {
 		t.Fatal(diff)
 	}
 }
@@ -350,32 +350,32 @@ func TestConfigParseAssumeDefaultPermissions(t *testing.T) {
 	tests := []struct {
 		what  string
 		input string
-		want  DefaultPermissionsAssumption
+		want  string
 	}{
 		{
 			what:  "key is absent",
 			input: "",
-			want:  DefaultPermissionsAssumptionUnset,
+			want:  "",
 		},
 		{
 			what:  "empty value",
 			input: "assume-default-permissions:\n",
-			want:  DefaultPermissionsAssumptionUnset,
+			want:  "",
 		},
 		{
 			what:  "null value",
 			input: "assume-default-permissions: null\n",
-			want:  DefaultPermissionsAssumptionUnset,
+			want:  "",
 		},
 		{
 			what:  "restricted",
 			input: "assume-default-permissions: restricted\n",
-			want:  DefaultPermissionsAssumptionRestricted,
+			want:  "read",
 		},
 		{
 			what:  "permissive",
 			input: "assume-default-permissions: permissive\n",
-			want:  DefaultPermissionsAssumptionPermissive,
+			want:  "write",
 		},
 	}
 
@@ -385,8 +385,8 @@ func TestConfigParseAssumeDefaultPermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if c.AssumeDefaultPermissions != tc.want {
-				t.Fatalf("wanted %v but have %v", tc.want, c.AssumeDefaultPermissions)
+			if got := configuredWorkflowPermissions(c); got != tc.want {
+				t.Fatalf("wanted %v but have %v", tc.want, got)
 			}
 		})
 	}

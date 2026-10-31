@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	actionremote "actionlint.kjanat.dev/v2/internal/action/remote"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/builtin"
 	"actionlint.kjanat.dev/v2/internal/checks"
@@ -32,6 +33,7 @@ import (
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/runner"
 )
@@ -48,6 +50,8 @@ type analysisSession struct {
 	loadScriptEngine     func(context.Context, string) (analyzer.ScriptBackend, error)
 	allowConfigProcesses bool
 	workflowNames        *workflownames.Index
+	remoteActions        *actionremote.Service
+	repositories         map[string]repository.Snapshot
 	analysisLogger
 	ctx            context.Context
 	workingDir     string
@@ -204,11 +208,13 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		mappings = cfg.LocalActions
 	}
 	resolvedActions := actionlocal.NewResolver(actions, mappings)
-	var customLabels []string
-	if cfg != nil {
-		customLabels = cfg.SelfHostedRunner.Labels
+	host := s.repositories[projectRoot(project)]
+	facts := repoconfig.RepositoryFacts(cfg, host)
+	customLabels := runnerlang.LabelSet{}
+	if known, available := facts.RunnerLabels.Value(); available {
+		customLabels = runnerlang.KnownLabels(known.Values())
 	}
-	runners, runnerErr := runnerlang.Prepare(s.ctx, snapshot, customLabels, s.runners, root)
+	runners, runnerErr := runnerlang.PrepareWithLabels(s.ctx, snapshot, customLabels, s.runners, root)
 	if report := runners.Report(); report.Identity != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
@@ -219,6 +225,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	resolvedActions.SetRunners(runners)
 	context := builtin.Context{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, Workflows: workflows, WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
+	context.Repository = host
+	context.RemoteActions = s.remoteActions
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}

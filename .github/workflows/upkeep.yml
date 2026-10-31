@@ -22,31 +22,6 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with: { go-version-file: go.mod }
-      - name: Check new release on GitHub
-        run: |
-          set -euo pipefail
-          detector="$(mktemp)"
-          trap 'rm -f "${detector}"' EXIT
-          go build -o "${detector}" ./internal/actioncatalog/generate
-          # Run directly: go run turns the detector's exit 2 into exit 1.
-          status=0
-          releases="$("${detector}" -d)" || status=$?
-          if [[ -n "${releases}" ]]; then
-            printf '%s\n' "${releases}"
-          fi
-          if [[ "${status}" -eq 2 ]]; then
-            echo '::notice title=New major releases::A tracked action has a new major. See the job summary.'
-            cat >> "${GITHUB_STEP_SUMMARY}" <<'SUMMARY'
-          ## New major releases
-
-          Move each version into the tags list and bump next in
-          internal/actioncatalog/generate/popular_actions.json.
-
-          SUMMARY
-            printf '%s\n' "${releases}" >> "${GITHUB_STEP_SUMMARY}"
-          elif [[ "${status}" -ne 0 ]]; then
-            exit "${status}"
-          fi
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version-file: .node-version, package-manager-cache: false }
       - uses: kjanat/install-dprint@7dafce0e5019151901bae232b12cf8b7bd330b2a # v2
@@ -67,13 +42,12 @@ jobs:
           branch: ci/go-generate
           delete-branch: true
           add-paths: |
-            internal/actioncatalog/popular_actions.json
             internal/webhook/payload/catalogue.json
             :(glob)internal/**/*.gen.go
           commit-message: "Update the generated Go tables"
           title: "Update the generated Go tables"
           body: |
-            `go generate` refreshed the popular actions, webhook events, workflow availability, runner action-metadata tables, or JavaScript runtime lifecycle.
+            `go generate` refreshed webhook events, workflow availability, runner action-metadata tables, or JavaScript runtime lifecycle.
 
             Created by [this Upkeep run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
           labels: |

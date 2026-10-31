@@ -63,7 +63,7 @@ func openPluginManifestMode(ctx context.Context, path string, read func(context.
 		return nil, err
 	}
 	manifest.original, manifest.Exists = data, true
-	loaded, err := tree.Load(absolute, func(name string) ([]byte, error) {
+	loaded, err := tree.LoadWithMerge(absolute, func(name string) ([]byte, error) {
 		name, err := filepath.Abs(name)
 		if err != nil {
 			return nil, err
@@ -81,7 +81,7 @@ func openPluginManifestMode(ctx context.Context, path string, read func(context.
 			return pluginDependencyNode(node)
 		}
 		return config.NormalizeForMerge(node)
-	})
+	}, config.MergeDocuments)
 	if err != nil {
 		return nil, err
 	}

@@ -125,7 +125,7 @@ func ResolveBeforePlugins(node *yaml.Node, overlays []Overlay) (Resolved, error)
 	inputs := make(map[*yaml.Node]Input)
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
-		node = configtree.Merge(node, overlay.node, inputs)
+		node = MergeDocuments(node, overlay.node, inputs)
 		names = append(names, overlay.name)
 	}
 	resolved, err := resolveNode(node, nil, false)
@@ -177,7 +177,7 @@ func Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...str
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
 		MarkInput(overlay.node, overlay.name, inputs)
-		node = configtree.Merge(node, overlay.node, inputs)
+		node = MergeDocuments(node, overlay.node, inputs)
 		names = append(names, overlay.name)
 	}
 	if len(overlays) > 0 {

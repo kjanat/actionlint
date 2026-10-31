@@ -5,7 +5,7 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
-	"actionlint.kjanat.dev/v2/internal/actioncatalog"
+	actionremote "actionlint.kjanat.dev/v2/internal/action/remote"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	exprlang "actionlint.kjanat.dev/v2/internal/expression"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
@@ -15,6 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/invocation"
 	"actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/repository"
+	"context"
 )
 
 // ruleExpression connects workflow expression checking to host lookups and options.
@@ -22,8 +24,9 @@ type ruleExpression struct {
 	*workflowexpr.Checker
 	ruleLogger
 	configuration
-	frames   []expressionInvocation
-	findings workflowvisit.Findings
+	frames       []expressionInvocation
+	findings     workflowvisit.Findings
+	remoteLookup func(string) (actionmeta.Definition, error)
 }
 
 type expressionInvocation struct {
@@ -36,7 +39,7 @@ func (r *ruleExpression) EnterInvocation(scope Invocation) error {
 		return invocation.ErrForeignContext
 	}
 	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})
-	r.Checker = workflowexpr.New(workflowexpr.Dependencies{}, workflowExpressionOptions(scope.Config))
+	r.Checker = workflowexpr.New(workflowexpr.Dependencies{RemoteAction: r.remoteLookup}, workflowExpressionOptionsWithFacts(scope.Config, r.host))
 	return nil
 }
 func (r *ruleExpression) LeaveInvocation(context invocation.Context) error {
@@ -96,7 +99,14 @@ func NewRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *c
 }
 
 func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge) *ruleExpression {
+	return newRuleExpressionWithRemote(actionsCache, workflowCache, runners, nil, context.Background())
+}
+
+func newRuleExpressionWithRemote(actionsCache actionlocal.MetadataLookup, workflowCache *calls.Cache, runners *runner.Knowledge, remote *actionremote.Service, ctx context.Context) *ruleExpression {
 	r := &ruleExpression{tag: "expression"}
+	if remote != nil {
+		r.remoteLookup = func(spec string) (actionmeta.Definition, error) { return remote.Lookup(ctx, spec) }
+	}
 	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
 		Runners: runners,
 		LocalAction: func(spec string) (*actionmeta.Metadata, error) {
@@ -113,9 +123,9 @@ func newRuleExpression(actionsCache actionlocal.MetadataLookup, workflowCache *c
 			}
 			return meta, err
 		},
-		PopularAction: func(spec string) *actionmeta.Metadata { meta, _ := actioncatalog.Lookup(spec); return meta },
-		Workflow:      workflowCache.FindMetadataForCall,
-		Log:           r.Debug,
+		RemoteAction: r.remoteLookup,
+		Workflow:     workflowCache.FindMetadataForCall,
+		Log:          r.Debug,
 	}, workflowExpressionOptions(nil))
 	return r
 }
@@ -132,12 +142,25 @@ func (r *ruleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Fin
 }
 func (r *ruleExpression) SetConfig(config *repoconfig.Config) {
 	r.configuration.SetConfig(config)
-	r.Configure(workflowExpressionOptions(config))
+	r.Configure(workflowExpressionOptionsWithFacts(config, r.host))
+}
+
+func (r *ruleExpression) SetRepository(facts repository.Snapshot) {
+	r.configuration.SetRepository(facts)
+	r.Configure(workflowExpressionOptionsWithFacts(r.config, facts))
 }
 
 func workflowExpressionOptions(config *repoconfig.Config) workflowexpr.Options {
+	return workflowExpressionOptionsWithFacts(config, repository.Snapshot{})
+}
+
+func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host repository.Snapshot) workflowexpr.Options {
+	semantics := expressionOptionsFromConfig(config)
+	facts := repoconfig.RepositoryFacts(config, host)
+	semantics.Variables, semantics.Secrets = repoconfig.VariableNames(facts), repoconfig.SecretNames(facts)
 	return workflowexpr.Options{
-		Semantics:               *expressionOptionsFromConfig(config),
+		Semantics:               *semantics,
+		JobReferences:           func(job workflowdecl.JobView) workflowexpr.ReferenceNames { return jobReferenceNames(facts, job) },
 		UnsoundTernary:          repoconfig.DiagnosticLevel(config, "unsound-ternary") != "off",
 		ScriptInjectionDisabled: repoconfig.DiagnosticLevel(config, "script-injection") == "off",
 	}
@@ -149,8 +172,7 @@ func expressionOptionsFromConfig(config *repoconfig.Config) *exprlang.Options {
 		MixedTypeComparisons:      repoconfig.DiagnosticLevel(config, "mixed-type-comparisons") != "off",
 		CaseInsensitiveConditions: repoconfig.DiagnosticLevel(config, "case-insensitive-conditions") != "off",
 	}}
-	if config != nil {
-		options.Variables, options.Secrets = config.ConfigVariables, config.ConfigSecrets
-	}
+	facts := repoconfig.RepositoryFacts(config, repository.Snapshot{})
+	options.Variables, options.Secrets = repoconfig.VariableNames(facts), repoconfig.SecretNames(facts)
 	return options
 }

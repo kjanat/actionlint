@@ -133,6 +133,11 @@ func (rule *Checker) VisitWorkflowPost(n workflowdecl.WorkflowView) error {
 }
 
 func (rule *Checker) VisitJobPre(n workflowdecl.JobView) error {
+	rule.jobReferences = nil
+	if rule.options.JobReferences != nil {
+		names := rule.options.JobReferences(n)
+		rule.jobReferences = &names
+	}
 	rule.jobEnv, rule.scriptJob = n.Env(), n
 	rule.matrixScriptSafe = nil
 	// Needs must be available before matrix expressions are evaluated.
@@ -197,7 +202,10 @@ func (rule *Checker) VisitJobPre(n workflowdecl.JobView) error {
 }
 
 func (rule *Checker) VisitJobPost(n workflowdecl.JobView) error {
-	defer func() { rule.jobEnv, rule.scriptJob = workflowdecl.EnvView{}, workflowdecl.JobView{} }()
+	defer func() {
+		rule.jobEnv, rule.scriptJob = workflowdecl.EnvView{}, workflowdecl.JobView{}
+		rule.jobReferences = nil
+	}()
 	rule.checkSnapshot(n.Snapshot())
 	environment := n.Environment()
 	if environment.Present() {

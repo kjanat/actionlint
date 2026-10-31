@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
-	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 	workflowlang "actionlint.kjanat.dev/v2/internal/workflow"
 )
 
@@ -21,12 +20,6 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 				t.Fatal("source-less metadata did not retain its fallback position")
 			}
 		}
-	}
-	for spec, meta := range actioncatalog.PopularActions {
-		if meta == nil {
-			t.Fatalf("generated action %s has no metadata", spec)
-		}
-		checkSourceLess(meta)
 	}
 	var decoded struct {
 		Metadata *actionmeta.Metadata `json:"metadata"`

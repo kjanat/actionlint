@@ -1,6 +1,4 @@
 import 'wasm_exec.js';
-import catalogueUrl from '../../internal/actioncatalog/popular_actions.json?url';
-import { fetchActionCatalogue } from './catalogue.ts';
 import 'bulma/css/bulma.min.css';
 import 'devicon/devicon.min.css';
 import './style.css';
@@ -397,7 +395,6 @@ jobs:
 		result = await WebAssembly.instantiate(mod, go.importObject);
 	}
 
-	window.actionlintCatalogue = await fetchActionCatalogue(catalogueUrl);
 	getElementById('shellcheck-license').setAttribute('href', shellcheckAssets.license);
 	shellcheck = await loadShellcheck();
 	window.runShellcheck = shellcheck.check;

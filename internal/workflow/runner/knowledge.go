@@ -107,6 +107,12 @@ func detachResolution(resolution runnerapi.Resolution) runnerapi.Resolution {
 // Prepare resolves a document against the session's selected, immutable evidence.
 // Failed resolution leaves unknown facts while independent checks can continue.
 func Prepare(ctx context.Context, snapshot documentparse.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*Knowledge, error) {
+	return PrepareWithLabels(ctx, snapshot, KnownLabels(custom), options, scope)
+}
+
+// PrepareWithLabels keeps unavailable repository labels distinct from a known
+// empty set while sharing the same provider and trait resolution path.
+func PrepareWithLabels(ctx context.Context, snapshot documentparse.SourceSnapshot, custom LabelSet, options runnerapi.Options, scope string) (*Knowledge, error) {
 	k := &Knowledge{jobs: make(map[workflowdecl.JobView]jobRecord)}
 	if !snapshot.Present() {
 		return k, nil
@@ -136,7 +142,7 @@ func Prepare(ctx context.Context, snapshot documentparse.SourceSnapshot, custom 
 		return k, errors.New("runner snapshot scope does not match requested scope")
 	}
 	if options.Target == "github" && (options.Provider == "" || options.Provider == "github") {
-		selected = builtinProvider{custom: slices.Clone(custom)}
+		selected = builtinProvider{custom: custom}
 		builtinLabels = true
 		identity = "builtin-github"
 	}
@@ -186,11 +192,12 @@ func Prepare(ctx context.Context, snapshot documentparse.SourceSnapshot, custom 
 	request := runnerapi.Request{Target: options.Target, Scope: scope, Snapshot: options.Snapshot, Selectors: selectors}
 	descriptor := selected.RunnerDescriptor()
 	dependency, err := json.Marshal(struct {
-		Request    runnerapi.Request
-		Descriptor runnerapi.Descriptor
-		Artifact   string
-		Custom     []string
-	}{request, descriptor, identity, custom})
+		Request     runnerapi.Request
+		Descriptor  runnerapi.Descriptor
+		Artifact    string
+		Custom      []string
+		CustomKnown bool
+	}{request, descriptor, identity, custom.patterns, custom.known})
 	if err != nil {
 		return k, err
 	}

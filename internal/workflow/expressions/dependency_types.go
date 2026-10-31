@@ -33,16 +33,15 @@ func (rule *Checker) getActionOutputsType(spec workflowdecl.StringView) exprlang
 		return typeOfActionOutputs(meta)
 	}
 
-	// github-script action allows to set any outputs through calling `core.setOutput` directly.
-	// So any `outputs.*` properties should be accepted (#104)
-	if strings.HasPrefix(spec.Value(), "actions/github-script@") {
-		return exprlang.NewEmptyObjectType()
-	}
-
-	// When the action run at this step is a popular action, we know what outputs are set by it.
-	// Set the output names to `steps.{step_id}.outputs.{name}`.
-	if meta := rule.popularAction(spec.Value()); meta != nil {
-		return typeOfActionOutputs(meta)
+	if meta, err := rule.remoteAction(spec.Value()); err == nil && meta.Present() {
+		if meta.SkipOutputs() {
+			return exprlang.NewEmptyObjectType()
+		}
+		var object exprlang.ObjectBuilder
+		for _, name := range meta.OutputNames() {
+			object.SetProperty(name, exprlang.StringType())
+		}
+		return object.Build()
 	}
 
 	return exprlang.NewMapObjectType(exprlang.StringType())

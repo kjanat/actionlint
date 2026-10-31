@@ -38,7 +38,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 					t.Fatalf("disabled defaults contacted registry: %v", registry.Requests())
 				}
 				cfg, err := config.Load(path)
-				if err != nil || cfg.ConfigVariables == nil || cfg.Plugins == nil || len(cfg.Plugins) != 0 {
+				if err != nil || config.VariableNames(cfg.Facts()) == nil || cfg.Plugins == nil || len(cfg.Plugins) != 0 {
 					t.Fatalf("migration ignored opt-out: %+v, %v", cfg, err)
 				}
 				lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(filepath.Dir(path), pluginregistry.LockName))

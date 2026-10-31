@@ -17,6 +17,9 @@ func (cfg *Config) UnmarshalYAML(node *yaml.Node) error {
 		return err
 	}
 	*cfg = Config(decoded)
+	if repository := field(next, "repository"); repository != nil && repository.ShortTag() == "!!null" {
+		cfg.Repository = RepositoryConfig{reset: true}
+	}
 	projectSettings(cfg)
 	return nil
 }
@@ -41,28 +44,6 @@ func (cfg *Config) MarshalYAML() (any, error) {
 		rule, _ := FindRule(name)
 		_, ok := cfg.Lint.Rules.Groups()[rule.Group].Rule(name)
 		return ok
-	}
-	if !hasRule("runner-label") && cfg.SelfHostedRunner.Labels != nil {
-		if err := add("self-hosted-runner", cfg.SelfHostedRunner); err != nil {
-			return nil, err
-		}
-	}
-	if !hasRule("expression-reference") {
-		for _, entry := range []struct {
-			key   string
-			value []string
-		}{{"config-variables", cfg.ConfigVariables}, {"config-secrets", cfg.ConfigSecrets}} {
-			if entry.value != nil {
-				if err := add(entry.key, entry.value); err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-	if !hasRule("workflow-call") && cfg.AssumeDefaultPermissions != DefaultPermissionsAssumptionUnset {
-		if err := add("assume-default-permissions", cfg.AssumeDefaultPermissions); err != nil {
-			return nil, err
-		}
 	}
 	if cfg.Lint.MessageIgnores == nil && cfg.Paths != nil {
 		if err := add("paths", cfg.Paths); err != nil {

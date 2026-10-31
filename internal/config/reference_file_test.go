@@ -21,20 +21,20 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.SelfHostedRunner.Labels) != 0 {
-		t.Fatal(c.SelfHostedRunner.Labels)
+	if len(repoconfig.RunnerLabels(c.Facts())) != 0 {
+		t.Fatal(repoconfig.RunnerLabels(c.Facts()))
 	}
-	if c.ConfigVariables != nil {
-		t.Fatal(c.SelfHostedRunner.Labels)
+	if repoconfig.VariableNames(c.Facts()) != nil {
+		t.Fatal(repoconfig.RunnerLabels(c.Facts()))
 	}
-	if c.ConfigSecrets != nil {
-		t.Fatal(c.ConfigSecrets)
+	if repoconfig.SecretNames(c.Facts()) != nil {
+		t.Fatal(repoconfig.SecretNames(c.Facts()))
 	}
 	if len(c.Paths) != 0 {
 		t.Fatal(c.Paths)
 	}
-	if c.AssumeDefaultPermissions != repoconfig.DefaultPermissionsAssumptionUnset {
-		t.Fatal(c.AssumeDefaultPermissions)
+	if _, known := c.Facts().DefaultWorkflowPermissions.Value(); known {
+		t.Fatal("default config fabricated repository permissions")
 	}
 	if diff := cmp.Diff(repoconfig.Policy{}, c.Policy); diff != "" {
 		t.Fatal(diff)
@@ -60,9 +60,6 @@ func TestConfigGenerateDefaultConfigFileOK(t *testing.T) {
 		if key != "" && key != "-" && !strings.Contains(string(b), key+":") {
 			t.Errorf("generated reference omits %s", key)
 		}
-	}
-	if strings.Index(string(b), "lint:") > strings.Index(string(b), "runner-label:") {
-		t.Fatal("repository allowlists precede lint settings")
 	}
 	if got := repoconfig.DiagnosticLevel(c, "missing-local-action"); got != "on" {
 		t.Fatalf("generated config changes recommended rules: %s", got)

@@ -4,7 +4,7 @@ MAKEFLAGS += --no-builtin-rules
 
 GO_DIRS := $(shell go list -f '{{.Dir}}' ./...)
 GO_FILES := $(patsubst $(CURDIR)/%,%,$(wildcard $(addsuffix /*.go,$(GO_DIRS))))
-SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/actioncatalog/popular_actions.json internal/webhook/payload/catalogue.json go.mod go.sum
+SRCS := $(filter-out %_test.go, $(GO_FILES)) internal/config/config_default.yaml internal/webhook/payload/catalogue.json go.mod go.sum
 TESTS := $(filter %_test.go, $(GO_FILES))
 TOOL := $(wildcard tools/config/*.go internal/*/generate/*.go internal/*/metadata/*.go tools/release/bump-version/*.go internal/*/check-*/*.go)
 TESTDATA := $(wildcard \
@@ -16,8 +16,7 @@ TESTDATA := $(wildcard \
 		testdata/projects/* \
 		testdata/reusable_workflow_metadata/* \
 	)
-GO_GEN_SRCS := generate.go $(filter-out %_test.go,$(wildcard internal/actioncatalog/generate/*.go internal/actioncatalog/metadata/*.go)) \
-				internal/actioncatalog/generate/popular_actions.json \
+GO_GEN_SRCS := generate.go $(filter-out %_test.go,$(wildcard internal/action/generate/*.go)) \
 				$(filter-out %_test.go,$(wildcard internal/webhook/generate/*.go)) \
 				$(wildcard internal/webhook/generate/sources/*) \
 				$(filter-out %_test.go,$(wildcard internal/webhook/payload/*.go)) \
@@ -144,9 +143,9 @@ else
 	go generate -run 'payload/generate'
 endif
 
-internal/actioncatalog/popular_actions.json internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go &: $(GO_GEN_SRCS) internal/webhook/payload/catalogue.json
+internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go &: $(GO_GEN_SRCS) internal/webhook/payload/catalogue.json
 ifdef SKIP_GO_GENERATE
-	$(TOUCH) internal/actioncatalog/popular_actions.json internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go
+	$(TOUCH) internal/webhook/webhooks.gen.go internal/expression/context/availability.gen.go internal/action/availability.gen.go internal/action/runtimes.gen.go
 else
 	go generate -skip 'payload/generate'
 endif

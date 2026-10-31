@@ -3,7 +3,6 @@ package builtin
 import (
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	"actionlint.kjanat.dev/v2/internal/workflow/cachepolicy"
@@ -118,11 +117,9 @@ func (rule *ruleWorkflowCall) checkWorkflowCallPermissions(call workflowdecl.Wor
 	case rule.workflowPermissions.Present():
 		granted = calls.ResolvePermissions(rule.workflowPermissions)
 	default:
-		a := repoconfig.DefaultPermissionsAssumptionUnset
-		if rule.config != nil {
-			a = rule.config.AssumeDefaultPermissions
+		if permissions, known := rule.repositoryFacts().DefaultWorkflowPermissions.Value(); known {
+			granted = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(permissions.String() == "write")}
 		}
-		granted = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(a == repoconfig.DefaultPermissionsAssumptionPermissive)}
 	}
 
 	for _, d := range calls.CheckPermissions(call, granted, m) {

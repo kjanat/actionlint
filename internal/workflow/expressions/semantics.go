@@ -74,7 +74,11 @@ func (rule *Checker) exprError(err *exprlang.Error, lineBase, colBase int) {
 }
 
 func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int, checkUntrusted bool, workflowKey string) (exprlang.Type, bool) {
-	c := exprlang.NewChecker(checkUntrusted, &rule.options.Semantics)
+	options := rule.options.Semantics
+	if rule.jobReferences != nil {
+		options.Variables, options.Secrets = rule.jobReferences.Variables, rule.jobReferences.Secrets
+	}
+	c := exprlang.NewChecker(checkUntrusted, &options)
 	if rule.eventTy != nil {
 		c.UpdateEvent(*rule.eventTy)
 	}
@@ -88,7 +92,17 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprlang.Node, line, col int,
 		c.UpdateNeeds(*rule.needsTy)
 	}
 	if rule.secretsTy != nil {
-		c.UpdateSecrets(*rule.secretsTy)
+		secrets := *rule.secretsTy
+		if rule.jobReferences != nil && rule.jobReferences.EnvironmentSecrets != nil {
+			environment := *rule.jobReferences.EnvironmentSecrets
+			for name, property := range environment.Properties() {
+				secrets = secrets.WithProperty(environment.PropertyName(name), property)
+			}
+			if mapped, known := environment.Mapped(); known {
+				secrets = secrets.WithMapped(mapped)
+			}
+		}
+		c.UpdateSecrets(secrets)
 	}
 	if rule.inputsTy != nil {
 		c.UpdateInputs(*rule.inputsTy)

@@ -46,6 +46,13 @@ type Checker struct {
 	scriptPosition   exprlang.ScriptPosition
 	scriptJob        workflowdecl.JobView
 	compositeScript  bool
+	jobReferences    *ReferenceNames
+}
+
+// ReferenceNames contains complete name sets; nil leaves membership unknown.
+type ReferenceNames struct {
+	Variables, Secrets []string
+	EnvironmentSecrets *exprlang.ObjectType
 }
 
 // Options selects expression diagnostics without repository configuration.
@@ -53,15 +60,16 @@ type Options struct {
 	Semantics               exprlang.Options
 	UnsoundTernary          bool
 	ScriptInjectionDisabled bool
+	JobReferences           func(workflowdecl.JobView) ReferenceNames
 }
 
 // Dependencies supplies metadata for workflow expression inference.
 type Dependencies struct {
-	Runners       *runner.Knowledge
-	LocalAction   func(string) (*actionmeta.Metadata, error)
-	PopularAction func(string) *actionmeta.Metadata
-	Workflow      func(string) (*calls.Metadata, error)
-	Log           func(string, ...any)
+	Runners      *runner.Knowledge
+	LocalAction  func(string) (*actionmeta.Metadata, error)
+	RemoteAction func(string) (actionmeta.Definition, error)
+	Workflow     func(string) (*calls.Metadata, error)
+	Log          func(string, ...any)
 }
 
 // New creates an expression checker with independent per-workflow context state.
@@ -141,9 +149,9 @@ func (rule *Checker) workflowMetadata(spec string) (*calls.Metadata, error) {
 	return rule.dependencies.Workflow(spec)
 }
 
-func (rule *Checker) popularAction(spec string) *actionmeta.Metadata {
-	if rule.dependencies.PopularAction == nil {
-		return nil
+func (rule *Checker) remoteAction(spec string) (actionmeta.Definition, error) {
+	if rule.dependencies.RemoteAction == nil {
+		return actionmeta.Definition{}, nil
 	}
-	return rule.dependencies.PopularAction(spec)
+	return rule.dependencies.RemoteAction(spec)
 }

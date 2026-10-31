@@ -1,11 +1,13 @@
 package consumer_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/analysis"
@@ -14,7 +16,7 @@ import (
 
 const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n"
 
-func TestTypedRuleOptions(t *testing.T) {
+func TestValidatedRuleOptions(t *testing.T) {
 	for _, tc := range []struct {
 		name, action, rule string
 		exclude            []string
@@ -23,25 +25,14 @@ func TestTypedRuleOptions(t *testing.T) {
 		{"commit pin", "actions/checkout", "require-commit-hash", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			required, err := config.NewRuleSetting("error", &config.RequiredActionsOptions{Actions: []string{tc.action}})
+			exclusions, err := json.Marshal(tc.exclude)
 			if err != nil {
 				t.Fatal(err)
 			}
-			exclusions, err := config.NewCommitHashOptions(tc.exclude...)
+			cfg, err := config.Parse([]byte(fmt.Sprintf(`lint: {rules: {preset: none, policy: {required-actions: {level: error, options: {actions: [%q]}}, require-commit-hash: {level: error, options: {exclude: %s}}}}}`, tc.action, exclusions)))
 			if err != nil {
 				t.Fatal(err)
 			}
-			commitHash, err := config.NewRuleSetting("error", exclusions)
-			if err != nil {
-				t.Fatal(err)
-			}
-			cfg := &config.Config{Lint: config.LintConfig{Rules: config.LintRulesConfig{
-				Preset: "none",
-				Policy: config.NewRuleGroup("", "", map[string]config.RuleSetting{
-					"required-actions":    required,
-					"require-commit-hash": commitHash,
-				}),
-			}}}
 			result, err := analysis.Analyze(t.Context(), analysis.Request{
 				Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}},
 				Options: analysis.Options{WorkingDir: t.TempDir()},
@@ -93,39 +84,29 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 	}
 }
 
-func TestShellcheckSourcesCanBeConstructed(t *testing.T) {
-	file, err := config.ToolConfigPath("./.shellcheckrc")
-	if err != nil || file.Path() != "./.shellcheckrc" || file.Inline() != nil {
-		t.Fatalf("path source: %#v: %v", file, err)
+func TestShellcheckSourcesAreValidatedAndOwned(t *testing.T) {
+	for _, settings := range []string{"'./.shellcheckrc'", "{disable: [SC2086], enable: [all], shell: bash, extended-analysis: true, external-sources: false, source-path: [scripts]}"} {
+		source := []byte("tools: {shellcheck: {config: " + settings + "}}")
+		parsed, err := config.Parse(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		before, err := parsed.MarshalText()
+		if err != nil {
+			t.Fatal(err)
+		}
+		clear(source)
+		after, err := parsed.MarshalText()
+		if err != nil || !bytes.Equal(before, after) {
+			t.Fatalf("mutable source retained: %v", err)
+		}
 	}
-	disable, enable, sourcePath := []string{"SC2086"}, []string{"all"}, []string{"scripts"}
-	settings := map[string]any{"disable": disable, "enable": enable, "shell": "bash", "extended-analysis": true, "external-sources": false, "source-path": sourcePath}
-	inline, err := config.ToolConfigInline("shellcheck", settings)
-	if err != nil {
+	for _, settings := range []string{`""`, `"bad\npath"`, `"bad\u0000path"`, `{disable: ["SC2086\nenable=all"]}`, `{enable: [some_check]}`, `{shell: python}`, `{source-path: ['']}`, `{typo: true}`} {
+		if _, err := config.Parse([]byte("tools: {shellcheck: {config: " + settings + "}}")); err == nil {
+			t.Errorf("accepted invalid settings %s", settings)
+		}
+	}
+	if _, err := config.Parse([]byte("tools: {plugin-tool: {config: {level: 2}}}"), "plugin-tool"); err != nil {
 		t.Fatal(err)
-	}
-	parsed, err := config.Parse([]byte("tools: {shellcheck: {config: {disable: [SC2086], enable: [all], shell: bash, extended-analysis: true, external-sources: false, source-path: [scripts]}}}"))
-	if err != nil || !reflect.DeepEqual(inline.Inline(), parsed.Tools["shellcheck"].Config.Inline()) || inline.Path() != "" {
-		t.Fatalf("inline constructor differs from parsed settings: %#v: %v", inline, err)
-	}
-	disable[0], enable[0], sourcePath[0] = "SC2154", "check-set-e-suppressed", "other"
-	settings["shell"], settings["extended-analysis"] = "sh", false
-	if !reflect.DeepEqual(inline.Inline(), parsed.Tools["shellcheck"].Config.Inline()) {
-		t.Fatal("constructor stored mutable caller settings")
-	}
-	for _, path := range []string{"", "bad\npath", "bad\x00path"} {
-		if _, err := config.ToolConfigPath(path); err == nil {
-			t.Errorf("accepted invalid rc path %q", path)
-		}
-	}
-	for _, settings := range []map[string]any{
-		{"disable": []string{"SC2086\nenable=all"}}, {"enable": []string{"some_check"}}, {"shell": "python"}, {"source-path": []string{""}}, {"typo": true},
-	} {
-		if _, err := config.ToolConfigInline("shellcheck", settings); err == nil {
-			t.Errorf("accepted invalid inline settings %#v", settings)
-		}
-	}
-	if _, err := config.ToolConfigInline("plugin-tool", map[string]any{"level": 2}); err != nil {
-		t.Errorf("a plugin's provider validates its own settings: %v", err)
 	}
 }

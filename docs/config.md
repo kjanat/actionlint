@@ -9,36 +9,44 @@ settings.
 
 ```yaml
 # yaml-language-server: $schema=../node_modules/@kjanat/actionlint/actionlint.schema.json
+repository:
+  runners: [linux.2xlarge, windows-latest-xl]
+  variables: { DEFAULT_RUNNER: null, ENVIRONMENT_STAGE: "production" }
+  secrets: [DEPLOY_TOKEN]
+  default-workflow-permissions: read
 lint:
-  rules:
-    correctness:
-      runner-label:
-        level: default
-        options: { labels: [linux.2xlarge, windows-latest-xl] }
-      expression-reference:
-        level: default
-        options:
-          variables: [DEFAULT_RUNNER, ENVIRONMENT_STAGE]
-          secrets: [DEPLOY_TOKEN]
-      workflow-call:
-        level: default
-        options: { default-permissions: restricted }
   message-ignores:
     ".github/workflows/**/*.{yml,yaml}":
       - "shellcheck reported issue in this script: SC2086:.+"
 ```
 
-| Key                                                                | Purpose                                                                                                                                                        |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plugins`                                                          | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
-| `lint.rules.correctness.runner-label.options.labels`               | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                               |
-| `lint.rules.correctness.expression-reference.options.variables`    | Allowed `vars` names. Omitted or `null` disables checking; `[]` allows none.                                                                                   |
-| `lint.rules.correctness.expression-reference.options.secrets`      | Allowed secret names, case-insensitive. Omitted or `null` disables checking; `[]` allows only built-in and declared `workflow_call` secrets.                   |
-| `lint.rules.correctness.workflow-call.options.default-permissions` | Assumed repository token default: `restricted` (default) or `permissive`. Neither implicitly grants `id-token`.                                                |
-| `lint.message-ignores`                                             | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                              |
+| Key                                       | Purpose                                                                                                                                                        |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins`                                 | CLI plugin dependencies, such as `owner/repo@v1.2.3`; resolved artifacts are pinned in the adjacent lock. See [Plugins](plugins.md#install-from-the-registry). |
+| `repository.runners`                      | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                               |
+| `repository.variables`                    | Available variable names mapped to optional string values. A null value keeps its name known. An empty mapping permits none.                                   |
+| `repository.secrets`                      | Available secret names, case-insensitive. An empty list permits only built-in and declared `workflow_call` secrets.                                            |
+| `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                                      |
+| `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                                             |
+| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to diagnostic message regular expressions.                                                              |
 
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.
+
+Repository facts are independent of diagnostic levels. A host can supply them through
+`analysis.Options.Repository`; the CLI currently uses configured facts. Each field is
+independently available. Omission inherits host knowledge; explicit `null` makes the
+fact unknown. Configuration overrides the host after inheritance and file selection.
+Each field replaces the complete fact, including variable and environment mappings.
+Unknown defaults skip only permission comparisons requiring that default; explicit
+workflow/job permissions and reusable-workflow argument checks still run.
+Job name checks combine repository names with the statically selected environment.
+Dynamic environments or unavailable environment facts keep membership unknown.
+Variable values are retained for host integrations; they do not yet produce literal expression types.
+
+Unavailable runner-label facts do not establish that a custom label is invalid.
+Built-in label compatibility still runs. Use `repository.runners: []` to validate
+against only built-in labels, or provide the complete set of additional labels.
 
 ### JSON and TOML
 
@@ -48,18 +56,13 @@ file may carry a top-level `$schema` key. TOML editors take the schema from a `#
 ```toml
 #:schema ../node_modules/@kjanat/actionlint/actionlint.schema.json
 
-[lint.rules.correctness.runner-label]
-level = "default"
+[repository]
+runners                      = ["linux.2xlarge", "windows-latest-xl"]
+secrets                      = ["DEPLOY_TOKEN"]
+default-workflow-permissions = "read"
 
-[lint.rules.correctness.runner-label.options]
-labels = ["linux.2xlarge", "windows-latest-xl"]
-
-[lint.rules.correctness.expression-reference]
-level = "default"
-
-[lint.rules.correctness.expression-reference.options]
-variables = ["DEFAULT_RUNNER", "ENVIRONMENT_STAGE"]
-secrets   = ["DEPLOY_TOKEN"]
+[repository.variables]
+ENVIRONMENT_STAGE = "production"
 
 [lint.message-ignores]
 ".github/workflows/**/*.{yml,yaml}" = [

@@ -10,15 +10,19 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/actions"
 	"actionlint.kjanat.dev/v2/analyzer"
 	"actionlint.kjanat.dev/v2/config"
+	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/diagnostic"
 	"actionlint.kjanat.dev/v2/document"
 	"actionlint.kjanat.dev/v2/internal/application"
+	configvalue "actionlint.kjanat.dev/v2/internal/config/value"
 	"actionlint.kjanat.dev/v2/internal/processconfig"
 	"actionlint.kjanat.dev/v2/internal/tools/backend"
 	"actionlint.kjanat.dev/v2/internal/tools/registry"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/resolver"
 	"actionlint.kjanat.dev/v2/runner"
 )
@@ -51,9 +55,15 @@ type Tool struct {
 // ReadFile must support concurrent calls. It does not sandbox external tools.
 // A nil read error promises complete content, including when cancellation races.
 type Options struct {
-	Runners   runner.Options
-	Resolver  resolver.Resolver
-	Analyzers []analyzer.Registration
+	// RemoteActions supplies manifests resolved to immutable commit identities.
+	// Nil leaves remote metadata unavailable while reference syntax is checked.
+	RemoteActions actions.Provider
+	// Repository supplies host knowledge for each absolute project root.
+	// Configured repository facts override it after inheritance and file selection.
+	Repository func(context.Context, string) repository.Snapshot
+	Runners    runner.Options
+	Resolver   resolver.Resolver
+	Analyzers  []analyzer.Registration
 	// LoadScriptEngine authorizes configuration-selected Wasm engines. Nil disables
 	// them. Calls receive resolved paths and may be concurrent. Each analysis loads
 	// each path once and closes returned backends implementing Close(context.Context) error.
@@ -96,7 +106,7 @@ type Result struct {
 	Diagnostics    []diagnostic.Diagnostic `json:"diagnostics"`
 	Documents      document.Outlines       `json:"documents"`
 	Inputs         []string                `json:"inputs"`
-	Configurations []config.Report         `json:"configurations"`
+	Configurations []configreport.Report   `json:"configurations"`
 	FileCount      int                     `json:"file_count"`
 }
 
@@ -109,7 +119,7 @@ func Analyze(ctx context.Context, request Request) (*Result, error) {
 	project := workspace.Identity(options.WorkingDir)
 	sources := make([]workspace.Source, len(request.Sources))
 	for i, source := range request.Sources {
-		sources[i] = workspace.Source{Path: source.Path, Content: source.Content, Config: source.Config, Project: project}
+		sources[i] = workspace.Source{Path: source.Path, Content: source.Content, Config: configvalue.Unwrap(source.Config), Project: project}
 	}
 	result, err := application.Analyze(ctx, options, sources)
 	return applicationResultView(result), err
@@ -192,7 +202,9 @@ func fileOptions(options FileOptions) (application.Options, error) {
 		}
 	}
 	return application.Options{
-		Resolver: options.Resolver, Analyzers: options.Analyzers, Runners: options.Runners, WorkingDir: root, ConfigFile: options.ConfigFile,
+		Repository:    options.Repository,
+		RemoteActions: options.RemoteActions,
+		Resolver:      options.Resolver, Analyzers: options.Analyzers, Runners: options.Runners, WorkingDir: root, ConfigFile: options.ConfigFile,
 		ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile:             options.ReadFile,
 		AllowConfigProcesses: options.AllowConfigProcesses,

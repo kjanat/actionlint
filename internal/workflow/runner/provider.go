@@ -11,7 +11,7 @@ import (
 	runnerapi "actionlint.kjanat.dev/v2/runner"
 )
 
-type builtinProvider struct{ custom []string }
+type builtinProvider struct{ custom LabelSet }
 
 var builtinDataset = func() string {
 	data, _ := json.Marshal(struct {
@@ -38,13 +38,16 @@ func (p builtinProvider) ResolveRunners(ctx context.Context, request runnerapi.R
 			answers = append(answers, answer)
 			continue
 		}
-		check := checker{labels: p.custom}
+		check := checker{labels: p.custom.patterns, labelsKnown: p.custom.known}
 		labels, unknown := check.checkSelector(selector)
 		switch {
 		case len(check.rejections) != 0:
 			answer.Resolution = runnerapi.NoMatch{Rejections: check.rejections}
 		case unknown:
 			answer.Resolution = runnerapi.Unknown{Reason: "runner selector depends on runtime values"}
+			if check.unknownLabels {
+				answer.Resolution = runnerapi.Unknown{Reason: "repository runner labels are unavailable"}
+			}
 		default:
 			selection := value.Map(value.Origin{}, value.Prop{Name: "labels", Value: value.Seq(value.Origin{}, labels...)})
 			if selector.Group != nil {

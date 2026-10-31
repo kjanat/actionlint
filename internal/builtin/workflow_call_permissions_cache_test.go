@@ -194,21 +194,18 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"contents": calls.PermissionLevelRead}},
 		},
 		{
-			what:   "restricted default does not cover pull-requests",
+			what:   "unknown default does not invent a grant",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			errs: []string{
-				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
-			},
 		},
 		{
 			what:   "permissive default covers pull-requests",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionPermissive},
+			cfg:    permissionsConfig(t, "write"),
 		},
 		{
 			what:   "permissive default never covers id-token",
 			callee: map[string]calls.PermissionScopeLevels{"attest": {"id-token": calls.PermissionLevelWrite}},
-			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionPermissive},
+			cfg:    permissionsConfig(t, "write"),
 			errs: []string{
 				"nested job \"attest\" of \"./callee.yaml\" requires \"id-token: write\" but the calling job grants \"id-token: none\"",
 			},
@@ -216,7 +213,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		{
 			what:   "restricted assumption set explicitly",
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
-			cfg:    &repoconfig.Config{AssumeDefaultPermissions: repoconfig.DefaultPermissionsAssumptionRestricted},
+			cfg:    permissionsConfig(t, "read"),
 			errs: []string{
 				"nested job \"snapshot\" of \"./callee.yaml\" requires \"pull-requests: write\" but the calling job grants \"pull-requests: none\"",
 			},
@@ -283,6 +280,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		},
 		{
 			what:   "condition on the calling job does not suppress the check",
+			cfg:    permissionsConfig(t, "read"),
 			jobIf:  true,
 			callee: map[string]calls.PermissionScopeLevels{"snapshot": {"pull-requests": calls.PermissionLevelWrite}},
 			errs: []string{

@@ -47,7 +47,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, err := config.Load(path)
-	if err != nil || len(cfg.Plugins) != 2 || cfg.ConfigVariables == nil {
+	if err != nil || len(cfg.Plugins) != 2 || config.VariableNames(cfg.Facts()) == nil {
 		t.Fatalf("migrated config: %+v %v", cfg, err)
 	}
 	lock, err := pluginregistry.OpenLock(t.Context(), lockPath)

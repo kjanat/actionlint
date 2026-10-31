@@ -28,15 +28,20 @@ type tomlMigrationExpression struct {
 // migrateTOML rewrites legacy settings and the merged lint subtree using parser
 // spans to distinguish comments from '#' characters in strings.
 func migrateTOML(source []byte, migrated *yaml.Node) ([]byte, error) {
+	if hasUnknownRepositoryFacts(migrated) {
+		return nil, errors.New("TOML cannot preserve unknown values or null resets; convert the selected config to YAML or JSON first")
+	}
 	var values map[string]any
 	if err := migrated.Decode(&values); err != nil {
 		return nil, err
 	}
-	lint, exists := values["lint"]
-	if !exists {
-		return nil, errors.New("cannot migrate TOML without the canonical lint subtree")
+	canonical := make(map[string]any)
+	for _, key := range []string{"lint", "repository", "overrides"} {
+		if value, exists := values[key]; exists {
+			canonical[key] = value
+		}
 	}
-	generated, err := toml.Marshal(map[string]any{"lint": lint})
+	generated, err := toml.Marshal(canonical)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +153,26 @@ func migrateTOML(source []byte, migrated *yaml.Node) ([]byte, error) {
 	return output, nil
 }
 
+func containsNull(node *yaml.Node) bool {
+	if node == nil {
+		return false
+	}
+	if node.ShortTag() == "!!null" {
+		return true
+	}
+	return slices.ContainsFunc(node.Content, containsNull)
+}
+
+func hasUnknownRepositoryFacts(node *yaml.Node) bool {
+	if containsNull(field(node, "repository")) {
+		return true
+	}
+	if overrides := field(node, "overrides"); overrides != nil {
+		return slices.ContainsFunc(overrides.Content, hasUnknownRepositoryFacts)
+	}
+	return false
+}
+
 func tomlKeyPath(node *unstable.Node) []string {
 	var path []string
 	for it := node.Key(); it.Next(); {
@@ -186,7 +211,7 @@ func tomlMigrationOffsets(raw unstable.Range, sourceLength int) (int, int) {
 }
 
 func isMigrationTOMLPath(path []string) bool {
-	return len(path) > 0 && (path[0] == "lint" || slices.Contains(legacyKeys, path[0]))
+	return len(path) > 0 && (path[0] == "lint" || path[0] == "repository" || path[0] == "overrides" || slices.Contains(legacyKeys, path[0]))
 }
 
 func tomlLineSpan(source []byte, start, end int) (int, int) {

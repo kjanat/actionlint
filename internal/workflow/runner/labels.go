@@ -100,14 +100,33 @@ type labelFact struct {
 }
 
 type checker struct {
-	rejections []runner.Rejection
-	labels     []string
-	compats    map[runnerOSCompat]labelFact
+	rejections    []runner.Rejection
+	labels        []string
+	compats       map[runnerOSCompat]labelFact
+	labelsKnown   bool
+	unknownLabels bool
+}
+
+// LabelSet distinguishes a complete additional-label set from unavailable
+// repository knowledge. Its zero value leaves additional labels unknown.
+type LabelSet struct {
+	patterns []string
+	known    bool
+}
+
+func KnownLabels(patterns []string) LabelSet {
+	return LabelSet{patterns: slices.Clone(patterns), known: true}
 }
 
 // Check owns built-in runner-label diagnostics. Spelling is checked on declared
 // alternatives; compatibility is checked only on execution selectors.
 func Check(job workflowdecl.JobView, customLabels []string) []diagnostic.Diagnostic {
+	return CheckWithLabels(job, KnownLabels(customLabels))
+}
+
+// CheckWithLabels retains built-in compatibility checks when repository labels
+// are unavailable; unavailable names do not establish an unknown-label finding.
+func CheckWithLabels(job workflowdecl.JobView, customLabels LabelSet) []diagnostic.Diagnostic {
 	return labelFindings(labelRejections(job, customLabels))
 }
 
@@ -125,13 +144,13 @@ func labelFindings(rejections []runner.Rejection) []diagnostic.Diagnostic {
 
 // labelRejections lists the distinct built-in label rejections of a job, in
 // the order they were found.
-func labelRejections(job workflowdecl.JobView, customLabels []string) []runner.Rejection {
+func labelRejections(job workflowdecl.JobView, customLabels LabelSet) []runner.Rejection {
 	if !job.Present() {
 		return nil
 	}
 	selection := job.RunsOn().Selection()
 	strategy := job.Strategy().MatrixResolution()
-	check := checker{labels: customLabels}
+	check := checker{labels: customLabels.patterns, labelsKnown: customLabels.known}
 	combinations, complete := strategy.DeclarationCombinations(256)
 	if !complete {
 		combinations = []matrixmodel.Combination{{}}
@@ -184,6 +203,7 @@ func (rule *checker) checkDeclaredSelection(selection value.Value, combination m
 
 func (rule *checker) checkSelector(selector runner.Selector) ([]value.Value, bool) {
 	rule.compats = map[runnerOSCompat]labelFact{}
+	rule.unknownLabels = false
 	unknown := selector.Expression != "" || selector.Incomplete
 	if selector.Group != nil {
 		_, unresolved := selector.Group.Value.(runner.Expression)
@@ -201,7 +221,7 @@ func (rule *checker) checkSelector(selector runner.Selector) ([]value.Value, boo
 			unknown = true
 		}
 	}
-	return labels, unknown
+	return labels, unknown || rule.unknownLabels
 }
 
 func hasMatrixReference(selection value.Value) bool {
@@ -235,6 +255,10 @@ func (rule *checker) verifyRunnerLabel(label labelFact) runnerOSCompat {
 			}
 			return compatInvalid
 		}
+	}
+	if !rule.labelsKnown {
+		rule.unknownLabels = true
+		return compatInvalid
 	}
 	rule.Errorf(label.start, "label %q is unknown. available labels are %s. if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file", label.text, stringutil.QuotesAll(allGitHubHostedRunnerLabels, selfHostedRunnerPresetOtherLabels, selfHostedRunnerPresetOSLabels, rule.labels))
 	return compatInvalid

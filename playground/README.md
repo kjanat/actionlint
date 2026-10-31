@@ -30,10 +30,9 @@ npm test
 
 `npm run dev` builds `public/main.wasm` and starts the Vite dev server with hot reloading.
 
-The playground fetches `internal/actioncatalog/popular_actions.json` separately through Vite's asset pipeline.
-Production builds give the JSON a content-hashed URL. WASM excludes the embedded catalogue and checks the fetched
-bytes against its build-time SHA-256 before exposing the lint function. A failed fetch or mismatched deployment
-stops startup and reports an error. Ordinary CLI and library builds still embed the catalogue.
+The playground runs without a bundled action catalogue or remote metadata provider.
+Remote references receive syntax checks; input and output metadata remains unavailable.
+Local action metadata and the runner-derived runtime tables are independent of this.
 
 Shell scripts are checked locally with `@kjanat/rshellcheck-wasm` 1.0.0. The browser loads its
 worker, JavaScript wrapper and WASM from version-pinned jsDelivr URLs. A same-origin module-worker

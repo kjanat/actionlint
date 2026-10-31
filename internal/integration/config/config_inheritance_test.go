@@ -33,7 +33,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	resolved := repoconfig.ResolveRules(repoconfig.Presets{}, cfg)
 	minimum, _ := resolved.RequiresJobTimeout().MinMinutes()
 	maximum, _ := resolved.RequiresJobTimeout().MaxMinutes()
-	if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(cfg.ConfigVariables, []string{"second"}) {
+	if minimum != 5 || maximum != 60 || repoconfig.DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(repoconfig.VariableNames(cfg.Facts()), []string{"second"}) {
 		t.Fatalf("%+v", resolved)
 	}
 	if len(cfg.Sources()) != 3 {

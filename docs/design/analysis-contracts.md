@@ -344,7 +344,6 @@ branding, composite-step contracts and supplied inputs. It returns findings with
 source provenance. Local-action caches,
 caller-specific validation replay and suppression provenance are managed by the host.
 Consumers import the action model directly; engine does not re-export its types.
-The action-catalogue generators also consume this model without loading engine.
 
 `internal/workflow/matrix` owns matrix expansion, sequence/mapping insertions,
 filter comparisons and mixed-type checks. Its check function accepts a job and an
@@ -412,13 +411,14 @@ templates and invocation identities outside the cache. Composite scopes share
 metadata while their conditional checkout/environment state is joined explicitly.
 Physical source identity belongs to `fsread`, shared by snapshots and analysis.
 
-The action catalogue materializes runtime metadata and resolves exact references
-inside `internal/actioncatalog`. Loading a browser catalogue and regenerating its
-bundled data no longer loads the engine, including in catalogue round-trip tests.
+`internal/action/remote` shares host-supplied action manifests within an analysis
+request. Selections retain the original request, selected object, terminal commit
+and route. Content caches use host, repository ID, terminal commit and action path;
+ref lookups are scoped to the request. There is no bundled popular-action catalogue.
 
 Workflow name inventories own producer-name filter checking as well as pattern
 matching. Action validation owns remote reference syntax, Docker URI checks and
-runtime/input checks against caller-supplied catalogue lookup. Builtin adapters
+runtime/input checks against caller-supplied manifests. Builtin adapters
 use application-supplied dependencies and attach results to the active invocation.
 
 `internal/workflow/visit` defines the synchronous pass/rule contract and finding

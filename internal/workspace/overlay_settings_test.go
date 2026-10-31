@@ -83,13 +83,14 @@ paths:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(cfg.SelfHostedRunner.Labels, []string{"individual"}) {
-		t.Errorf("individual input must replace labels: %#v", cfg.SelfHostedRunner)
+	if !reflect.DeepEqual(repoconfig.RunnerLabels(cfg.Facts()), []string{"individual"}) {
+		t.Errorf("individual input must replace labels: %#v", cfg.Facts())
 	}
-	if cfg.ConfigVariables != nil || cfg.ConfigSecrets == nil || len(cfg.ConfigSecrets) != 0 {
+	if repoconfig.VariableNames(cfg.Facts()) != nil || repoconfig.SecretNames(cfg.Facts()) == nil || len(repoconfig.SecretNames(cfg.Facts())) != 0 {
 		t.Errorf("null must disable variable checking, [] must forbid custom secrets: %#v", cfg)
 	}
-	if cfg.AssumeDefaultPermissions != repoconfig.DefaultPermissionsAssumptionPermissive || cfg.RequiresCommitHash() || cfg.Policy.RequireCommitHash == nil {
+	permissions, knownPermissions := cfg.Facts().DefaultWorkflowPermissions.Value()
+	if !knownPermissions || permissions.String() != "write" || cfg.RequiresCommitHash() || cfg.Policy.RequireCommitHash == nil {
 		t.Errorf("file settings and explicit false must survive merging: %#v", cfg)
 	}
 	if !cfg.CachePolicyEnabled("cache-write-untrusted") {
@@ -111,11 +112,11 @@ paths:
 	}
 	inspection := reports[0].Inspection
 	for pointer, want := range map[string]repoconfig.Origin{
-		"/lint/rules/correctness/runner-label/options/labels":               {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
-		"/lint/rules/correctness/expression-reference/options/variables":    {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
-		"/lint/rules/correctness/workflow-call/options/default-permissions": {Source: "config", State: "value", Line: 4, Column: 29},
-		"/lint/rules/security/cache-write-untrusted/level":                  {Source: "input", Input: "policy", State: "null", Line: 1, Column: 24},
-		"/lint/rules/policy/require-job-timeout/options/min-minutes":        {Source: "config", State: "value", Line: 8, Column: 38},
+		"/repository/runners":                                        {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
+		"/repository/variables":                                      {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
+		"/repository/default-workflow-permissions":                   {Source: "config", State: "value", Line: 4, Column: 29},
+		"/lint/rules/security/cache-write-untrusted/level":           {Source: "input", Input: "policy", State: "null", Line: 1, Column: 24},
+		"/lint/rules/policy/require-job-timeout/options/min-minutes": {Source: "config", State: "value", Line: 8, Column: 38},
 	} {
 		if got := inspection.Origins[pointer]; got != want {
 			t.Errorf("%s: got %+v, want %+v", pointer, got, want)
@@ -132,7 +133,7 @@ paths:
 		t.Fatalf("inspection differs from analyzed configuration: %#v, %v", inspection.Config, err)
 	}
 	original, err := repoconfig.Load(path)
-	if err != nil || !original.RequiresCommitHash() || original.ConfigVariables[0] != "ORIGINAL" {
+	if err != nil || !original.RequiresCommitHash() || repoconfig.VariableNames(original.Facts())[0] != "ORIGINAL" {
 		t.Errorf("overlays must leave the config file unchanged: %#v, %v", original, err)
 	}
 }
@@ -164,7 +165,7 @@ func TestConfigOverlaysPreserveYAMLAliases(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(cfg.SelfHostedRunner.Labels, tc.labels) || !reflect.DeepEqual(cfg.ConfigVariables, tc.variables) {
+			if !reflect.DeepEqual(repoconfig.RunnerLabels(cfg.Facts()), tc.labels) || !reflect.DeepEqual(repoconfig.VariableNames(cfg.Facts()), tc.variables) {
 				t.Errorf("unexpected config after overlay: %#v", cfg)
 			}
 		})

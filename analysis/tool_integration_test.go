@@ -90,12 +90,10 @@ func TestPublicManagedOptionsValidateBeforeNegotiation(t *testing.T) {
 func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 	for _, explicit := range []json.RawMessage{nil, json.RawMessage(`{"private-option":"caller"}`)} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-		setting, err := config.NewRuleSetting("", map[string]string{"private-option": "repository"})
+		cfg, err := config.Parse([]byte(`lint: {rules: {plugins: {shellcheck: {level: default, options: {private-option: repository}}}}}`), "shellcheck")
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg := &config.Config{}
-		cfg.Lint.Rules.Plugins = config.NewRuleGroup("", "", map[string]config.RuleSetting{"shellcheck": setting})
 		_, err = analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest, Options: explicit}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
 		if err != nil {
 			t.Fatal(err)
@@ -194,7 +192,7 @@ func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T)
 func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		external, plugin config.RuleLevel
+		external, plugin string
 		want             int
 	}{
 		{"default", "", "", 1},
@@ -204,17 +202,17 @@ func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-			external, err := config.NewRuleSetting(tc.external, nil)
+			external, plugin := tc.external, tc.plugin
+			if external == "" {
+				external = "default"
+			}
+			if plugin == "" {
+				plugin = "default"
+			}
+			cfg, err := config.Parse([]byte("lint: {rules: {external: {shellcheck: "+external+"}, plugins: {shellcheck: {level: "+plugin+", options: {private-option: repository}}}}}"), "shellcheck")
 			if err != nil {
 				t.Fatal(err)
 			}
-			plugin, err := config.NewRuleSetting(tc.plugin, map[string]string{"private-option": "repository"})
-			if err != nil {
-				t.Fatal(err)
-			}
-			cfg := &config.Config{}
-			cfg.Lint.Rules.External = config.NewRuleGroup("", "", map[string]config.RuleSetting{"shellcheck": external})
-			cfg.Lint.Rules.Plugins = config.NewRuleGroup("", "", map[string]config.RuleSetting{"shellcheck": plugin})
 			_, err = analysis.Analyze(t.Context(), analysis.Request{Options: analysis.Options{Analyzers: []analyzer.Registration{{Analyzer: guest}}}, Sources: []analysis.Source{{Path: "workflow.yml", Content: []byte(workflow), Config: cfg}}})
 			if err != nil {
 				t.Fatal(err)

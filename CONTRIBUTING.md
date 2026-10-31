@@ -349,7 +349,7 @@ run playground:preview
 
 ## Maintain auto-generated sources
 
-Generators live with their owning subsystems under `internal/`: configuration schemas in `config/generate`, rule documentation in `rulecatalog/generate`, action data in `actioncatalog`, and expression context data in `expression/context/generate`. Release tools live in `tools/release`, installers in `distribution/install`, and conformance tools in `internal/conformance`. CI invokes these same entry points.
+Generators live with their owning subsystems under `internal/`: configuration schemas in `config/generate`, rule documentation in `rulecatalog/generate`, runner action tables in `action/generate`, and expression context data in `expression/context/generate`. Release tools live in `tools/release`, installers in `distribution/install`, and conformance tools in `internal/conformance`. CI invokes these same entry points.
 
 ### Action metadata availability
 
@@ -357,23 +357,15 @@ Generators live with their owning subsystems under `internal/`: configuration sc
 
 The weekly `Upkeep` job includes this file in its usual generation PR. Review schema changes there before merging; incompatible schema changes fail generation without replacing the existing output. `Generated content` checks that regeneration matches the checked-in file. Both workflows provide `GH_TOKEN` for the GitHub API; local generation also accepts `GITHUB_TOKEN`, or uses the public API unauthenticated when neither is set.
 
-To refresh only these tables, run `go run ./internal/actioncatalog/metadata`. Normal builds and lint runs use the checked-in Go data and do not fetch the schema. Workflow expression availability is maintained separately below.
+To refresh only these tables, run `go run ./internal/action/generate`. Normal builds and lint runs use the checked-in Go data and do not fetch the schema. Workflow expression availability is maintained separately below.
 
 ### JavaScript action runtime lifecycle
 
-`go run ./internal/actioncatalog/metadata -runtimes` refreshes `internal/action/runtimes.gen.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
+`go run ./internal/action/generate -runtimes` refreshes `internal/action/runtimes.gen.go`. It reads the runner's current and legacy manifest parsers for accepted `runs.using` values, `src/Misc/externals.sh` for bundled Node executables, and `Constants.cs` for deprecation notices and removal dates. The action template schema only requires a nonempty string at `runs.using`; it cannot supply the accepted versions or their lifecycle.
 
 The generator resolves the newest commit touching those inputs and downloads all of them from jsDelivr at that revision. The generated header links that revision; `runtimeSourcePaths` in the generator lists the files. Parser disagreement, missing packaging data, or an unrecognized migration declaration fails generation before replacing the output. Review upstream source changes when that happens. No upstream source files are vendored, and ordinary builds and lint runs do not fetch anything.
 
-`go generate` refreshes runtime data before popular-action metadata; weekly `Upkeep` includes both in its PR. Popular-action metadata includes the JavaScript runtime alongside inputs and outputs. Input/output checks also run when the runtime is deprecated. The generator identifies removed runtimes from the runner's packaging sources and includes scheduled removal dates in diagnostics. This data describes the upstream runner. Individual installations can use different migration dates and runtimes through GitHub's server-side flags.
-
-### Maintain `popular_actions.json`
-
-[`popular_actions.json`] is the bundled metadata catalogue for actions hosted on GitHub. It is generated automatically with `go generate`. The command runs [`generate-popular-actions`] script. Its `$schema` link provides editor validation and completion.
-
-The script also can detect new major releases of popular actions on GitHub by giving `-d` flag.
-
-The [`Upkeep`] CI workflow weekly runs to detect new major releases and update `popular_actions.json`, and opens a pull request with the result. Runs can be found [actions/workflows/upkeep.yml].
+`go generate` and weekly `Upkeep` refresh the runtime tables independently of action manifests. Remote manifests come from the host's metadata provider; there is no generated popular-action catalogue. Input/output checks also run when a supplied manifest declares a deprecated runtime. The generator identifies removed runtimes from the runner's packaging sources and includes scheduled removal dates in diagnostics. This data describes the upstream runner. Individual installations can use different migration dates and runtimes through GitHub's server-side flags.
 
 ### Maintain `webhooks.gen.go`
 
@@ -442,14 +434,12 @@ Please see [the readme of the script][the readme of the script-2] for the usage 
 [`ci.yml`]: .github/workflows/ci.yml
 [`events-that-trigger-workflows.md`]: https://raw.githubusercontent.com/github/docs/refs/heads/main/content/actions/reference/workflows-and-actions/events-that-trigger-workflows.md
 [`fuzz/`]: ./fuzz
-[`generate-action-metadata`]: ./internal/actioncatalog/metadata/main.go
+[`generate-action-metadata`]: ./internal/action/generate/main.go
 [`generate-actionlint-matcher`]: ./tools/matcher
-[`generate-popular-actions`]: ./internal/actioncatalog/generate
 [`generate-webhook-events`]: ./internal/webhook/generate
 [`man/actionlint.1.md`]: ./man/actionlint.1.md
 [`man/manual.css`]: ./man/manual.css
 [`playground/README.md`]: ./playground/README.md
-[`popular_actions.json`]: ./internal/actioncatalog/popular_actions.json
 [`release.yml`]: .github/workflows/release.yml
 [actions/workflows/upkeep.yml]: https://github.com/kjanat/actionlint/actions/workflows/upkeep.yml
 [active branches]: https://github.com/kjanat/actionlint/branches

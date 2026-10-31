@@ -8,8 +8,8 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	actionremote "actionlint.kjanat.dev/v2/internal/action/remote"
 	actioncheck "actionlint.kjanat.dev/v2/internal/action/validation"
-	"actionlint.kjanat.dev/v2/internal/actioncatalog"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
 	findingmodel "actionlint.kjanat.dev/v2/internal/finding"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/workflow/declaration"
@@ -25,6 +25,8 @@ type ruleAction struct {
 	ruleLogger
 	cache      actionlocal.MetadataDocumentLookup
 	validation *actionMetadataValidation
+	remote     *actionremote.Service
+	context    context.Context
 }
 
 // NewRuleAction checks the actions that steps use, reading local action
@@ -78,7 +80,19 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 		return nil
 	}
 
-	rule.Report(actioncheck.Repository(e, actioncatalog.Lookup, rule.Debug)...)
+	if findings := actioncheck.RepositoryReference(spec, declarationPosition(e.Uses())); len(findings) != 0 {
+		rule.Report(findings...)
+		return nil
+	}
+	ctx := rule.context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	metadata, err := rule.remote.Lookup(ctx, spec)
+	if err != nil {
+		return err
+	}
+	rule.Report(actioncheck.Repository(e, metadata)...)
 	return nil
 }
 
@@ -124,6 +138,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action w
 func (rule *ruleAction) ForMetadata(actions *actionlocal.Resolver) workflowvisit.Rule {
 	child := newRuleAction(actions)
 	child.validation = rule.validation
+	child.remote, child.context = rule.remote, rule.context
 	return child
 }
 

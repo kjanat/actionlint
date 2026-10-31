@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/actions"
 	"actionlint.kjanat.dev/v2/analyzer"
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
@@ -23,12 +24,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/resolution"
 	"actionlint.kjanat.dev/v2/internal/tools"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/resolver"
 	"actionlint.kjanat.dev/v2/runner"
 )
 
 // Options selects configuration and analysis backends for one application session.
 type Options struct {
+	RemoteActions actions.Provider
+	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
+	Repository             func(context.Context, string) repository.Snapshot
 	Runners                runner.Options
 	Tools                  []tools.Registration
 	Resolver               resolver.Resolver
@@ -149,6 +154,8 @@ func Check(ctx context.Context, options Options, input Input) (result *Result, e
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	request := analysisRequest{Processes: processes, Runners: options.Runners, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
+	request.RemoteActions = options.RemoteActions
+	request.Repository = options.Repository
 	request.DiskSources = input.Kind == Files || input.Kind == Repository
 
 	if options.LoadScriptEngine != nil {

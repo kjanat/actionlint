@@ -1,6 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Generated from internal/config/config.go by go generate -run generate-config-schema. DO NOT EDIT.",
+  "$defs": {
+    "non-blank-string": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "[^\t\n\u000b\f\r    -     　]"
+    }
+  },
   "title": "actionlint configuration",
   "description": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or `.github/actionlint.toml`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
   "markdownDescription": "Configures validation of GitHub Actions workflows for this repository.\n\nDeclare custom runner labels and available variable or secret names, suppress selected diagnostics by file path, choose assumed token permissions, and enable repository policy checks. Save as `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json` or `.github/actionlint.toml`, or select a file with `--config`. Every setting is optional; normal workflow correctness checks run without a configuration file.",
@@ -90,28 +97,22 @@
             ],
             "properties": {
               "file": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "file",
                 "description": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
-                "markdownDescription": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them."
               },
               "job": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "job",
                 "description": "Exact workflow job ID.",
-                "markdownDescription": "Exact workflow job ID.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Exact workflow job ID."
               },
               "reason": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "reason",
                 "description": "Optional explanation for this exception.",
-                "markdownDescription": "Optional explanation for this exception.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Optional explanation for this exception."
               },
               "rule": {
                 "title": "rule",
@@ -175,20 +176,16 @@
                 }
               },
               "step": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "step",
                 "description": "Exact step ID or name.",
-                "markdownDescription": "Exact step ID or name.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Exact step ID or name."
               },
               "uses": {
+                "$ref": "#/$defs/non-blank-string",
                 "title": "uses",
                 "description": "Exact action or reusable workflow reference including its version.",
-                "markdownDescription": "Exact action or reusable workflow reference including its version.",
-                "type": "string",
-                "minLength": 1,
-                "pattern": "[^\t\n\u000b\f\r    -     　]"
+                "markdownDescription": "Exact action or reusable workflow reference including its version."
               }
             },
             "additionalProperties": false,
@@ -1058,60 +1055,9 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Options specific to this rule; null resets to defaults.",
-                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                      "anyOf": [
-                                        {
-                                          "type": "null"
-                                        },
-                                        {
-                                          "allOf": [
-                                            {
-                                              "type": "object"
-                                            },
-                                            {
-                                              "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                              "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                              "type": "object",
-                                              "properties": {
-                                                "secrets": {
-                                                  "title": "secrets",
-                                                  "description": "Adds configured secret names to built-in and workflow_call names.",
-                                                  "markdownDescription": "Adds configured secret names to built-in and workflow_call names.",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "string"
-                                                      }
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                },
-                                                "variables": {
-                                                  "title": "variables",
-                                                  "description": "Lists configured variable names; null disables checking and [] allows none.",
-                                                  "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "string"
-                                                      }
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          ]
-                                        }
-                                      ]
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
                                     }
                                   },
                                   "additionalProperties": false
@@ -2042,44 +1988,9 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Options specific to this rule; null resets to defaults.",
-                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                      "anyOf": [
-                                        {
-                                          "type": "null"
-                                        },
-                                        {
-                                          "allOf": [
-                                            {
-                                              "type": "object"
-                                            },
-                                            {
-                                              "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                              "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                              "type": "object",
-                                              "properties": {
-                                                "labels": {
-                                                  "title": "labels",
-                                                  "description": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                  "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                  "oneOf": [
-                                                    {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "string"
-                                                      }
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          ]
-                                        }
-                                      ]
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
                                     }
                                   },
                                   "additionalProperties": false
@@ -2422,46 +2333,9 @@
                                     },
                                     "options": {
                                       "title": "options",
-                                      "description": "Options specific to this rule; null resets to defaults.",
-                                      "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                      "anyOf": [
-                                        {
-                                          "type": "null"
-                                        },
-                                        {
-                                          "allOf": [
-                                            {
-                                              "type": "object"
-                                            },
-                                            {
-                                              "description": "Sets repository assumptions for reusable workflow checks.",
-                                              "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
-                                              "type": "object",
-                                              "properties": {
-                                                "default-permissions": {
-                                                  "title": "default-permissions",
-                                                  "description": "Assumes restricted (default) or permissive repository token permissions.",
-                                                  "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
-                                                  "oneOf": [
-                                                    {
-                                                      "default": "restricted",
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "restricted",
-                                                        "permissive"
-                                                      ]
-                                                    },
-                                                    {
-                                                      "type": "null"
-                                                    }
-                                                  ]
-                                                }
-                                              },
-                                              "additionalProperties": false
-                                            }
-                                          ]
-                                        }
-                                      ]
+                                      "description": "Reset rule options to their defaults.",
+                                      "markdownDescription": "Reset rule options to their defaults.",
+                                      "type": "null"
                                     }
                                   },
                                   "additionalProperties": false
@@ -5588,60 +5462,9 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Options specific to this rule; null resets to defaults.",
-                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "null"
-                                                  },
-                                                  {
-                                                    "allOf": [
-                                                      {
-                                                        "type": "object"
-                                                      },
-                                                      {
-                                                        "description": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                                        "markdownDescription": "Declares available names. Null disables checking; an explicit empty list permits no configured names.",
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "secrets": {
-                                                            "title": "secrets",
-                                                            "description": "Adds configured secret names to built-in and workflow_call names.",
-                                                            "markdownDescription": "Adds configured secret names to built-in and workflow_call names.",
-                                                            "oneOf": [
-                                                              {
-                                                                "type": "array",
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          },
-                                                          "variables": {
-                                                            "title": "variables",
-                                                            "description": "Lists configured variable names; null disables checking and [] allows none.",
-                                                            "markdownDescription": "Lists configured variable names; null disables checking and [] allows none.",
-                                                            "oneOf": [
-                                                              {
-                                                                "type": "array",
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
                                               }
                                             },
                                             "additionalProperties": false
@@ -6572,44 +6395,9 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Options specific to this rule; null resets to defaults.",
-                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "null"
-                                                  },
-                                                  {
-                                                    "allOf": [
-                                                      {
-                                                        "type": "object"
-                                                      },
-                                                      {
-                                                        "description": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                                        "markdownDescription": "Supplies repository-specific labels to runner validation and execution inference, independently of the diagnostic's selected level.",
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "labels": {
-                                                            "title": "labels",
-                                                            "description": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                            "markdownDescription": "Lists additional accepted runner labels or Go path.Match patterns.",
-                                                            "oneOf": [
-                                                              {
-                                                                "type": "array",
-                                                                "items": {
-                                                                  "type": "string"
-                                                                }
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
                                               }
                                             },
                                             "additionalProperties": false
@@ -6952,46 +6740,9 @@
                                               },
                                               "options": {
                                                 "title": "options",
-                                                "description": "Options specific to this rule; null resets to defaults.",
-                                                "markdownDescription": "Options specific to this rule; null resets to defaults.",
-                                                "anyOf": [
-                                                  {
-                                                    "type": "null"
-                                                  },
-                                                  {
-                                                    "allOf": [
-                                                      {
-                                                        "type": "object"
-                                                      },
-                                                      {
-                                                        "description": "Sets repository assumptions for reusable workflow checks.",
-                                                        "markdownDescription": "Sets repository assumptions for reusable workflow checks.",
-                                                        "type": "object",
-                                                        "properties": {
-                                                          "default-permissions": {
-                                                            "title": "default-permissions",
-                                                            "description": "Assumes restricted (default) or permissive repository token permissions.",
-                                                            "markdownDescription": "Assumes restricted (default) or permissive repository token permissions.",
-                                                            "oneOf": [
-                                                              {
-                                                                "default": "restricted",
-                                                                "type": "string",
-                                                                "enum": [
-                                                                  "restricted",
-                                                                  "permissive"
-                                                                ]
-                                                              },
-                                                              {
-                                                                "type": "null"
-                                                              }
-                                                            ]
-                                                          }
-                                                        },
-                                                        "additionalProperties": false
-                                                      }
-                                                    ]
-                                                  }
-                                                ]
+                                                "description": "Reset rule options to their defaults.",
+                                                "markdownDescription": "Reset rule options to their defaults.",
+                                                "type": "null"
                                               }
                                             },
                                             "additionalProperties": false
@@ -9240,6 +8991,148 @@
                   }
                 ]
               },
+              "repository": {
+                "title": "repository",
+                "description": "Overlays facts for matching files without changing rule selection.",
+                "markdownDescription": "Overlays facts for matching files without changing rule selection.",
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "default-workflow-permissions": {
+                        "title": "default-workflow-permissions",
+                        "description": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+                        "markdownDescription": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "read",
+                              "write"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "environments": {
+                        "title": "environments",
+                        "description": "Known deployment environments and their variable and secret names.",
+                        "markdownDescription": "Known deployment environments and their variable and secret names.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "secrets": {
+                                  "title": "secrets",
+                                  "oneOf": [
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "variables": {
+                                  "title": "variables",
+                                  "oneOf": [
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "runners": {
+                        "title": "runners",
+                        "description": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+                        "markdownDescription": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+                        "oneOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "secrets": {
+                        "title": "secrets",
+                        "description": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+                        "markdownDescription": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+                        "oneOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "variables": {
+                        "title": "variables",
+                        "description": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+                        "markdownDescription": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "tools": {
                 "title": "tools",
                 "description": "Overlays external checker settings for the selected files.",
@@ -9851,6 +9744,148 @@
               }
             ]
           }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "repository": {
+      "title": "repository",
+      "description": "Supplies overrides for repository knowledge obtained by the host.",
+      "markdownDescription": "Supplies overrides for repository knowledge obtained by the host.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "default-workflow-permissions": {
+              "title": "default-workflow-permissions",
+              "description": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+              "markdownDescription": "Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "write"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "environments": {
+              "title": "environments",
+              "description": "Known deployment environments and their variable and secret names.",
+              "markdownDescription": "Known deployment environments and their variable and secret names.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "secrets": {
+                        "title": "secrets",
+                        "oneOf": [
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "variables": {
+                        "title": "variables",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "runners": {
+              "title": "runners",
+              "description": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+              "markdownDescription": "Additional runner labels or Go path.Match patterns. Empty permits no additional labels.",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "secrets": {
+              "title": "secrets",
+              "description": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+              "markdownDescription": "Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets.",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "variables": {
+              "title": "variables",
+              "description": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+              "markdownDescription": "Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
         },
         {
           "type": "null"

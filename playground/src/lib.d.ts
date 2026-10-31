@@ -9,7 +9,6 @@ interface ActionlintError {
 
 interface Window {
 	runShellcheck(args: string[], script: string): Promise<string>;
-	actionlintCatalogue?: string;
 	runActionlint?(src: string): void;
 	invalidateActionlint?(): void;
 	getYamlSource(): string;

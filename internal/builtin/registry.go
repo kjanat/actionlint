@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/analyzer"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	actionremote "actionlint.kjanat.dev/v2/internal/action/remote"
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
 	"actionlint.kjanat.dev/v2/internal/documentparse"
@@ -16,6 +17,7 @@ import (
 	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
 	runnerlang "actionlint.kjanat.dev/v2/internal/workflow/runner"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
+	"actionlint.kjanat.dev/v2/repository"
 )
 
 // Context supplies resolved document inputs and observations to built-in adapters.
@@ -27,7 +29,9 @@ type Context struct {
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
 	Config                        *repoconfig.Config
+	Repository                    repository.Snapshot
 	Actions                       *actionlocal.Resolver
+	RemoteActions                 *actionremote.Service
 	Workflows                     *calls.Cache
 	WorkflowNames                 *workflownames.Index
 	Reader                        *fsread.Reader
@@ -60,7 +64,11 @@ func ruleBehaviours() map[string]behaviour {
 		"events":         {Build: func(c Context) workflowvisit.Rule { return NewRuleEvents() }},
 		"job-needs":      {Build: func(c Context) workflowvisit.Rule { return NewRuleJobNeeds() }},
 		"parallel-steps": {Build: func(c Context) workflowvisit.Rule { return NewRuleParallelSteps() }},
-		"action":         {Build: func(c Context) workflowvisit.Rule { return NewRuleAction(c.Actions) }},
+		"action": {Build: func(c Context) workflowvisit.Rule {
+			rule := newRuleAction(c.Actions)
+			rule.remote, rule.context = c.RemoteActions, c.Context
+			return rule
+		}},
 		"executable-bit": {Build: func(c Context) workflowvisit.Rule {
 			return newRuleExecutableBit(c)
 		}, Enabled: func(c Context) bool { return c.ProjectRoot != "" && c.Index != nil }},
@@ -70,7 +78,7 @@ func ruleBehaviours() map[string]behaviour {
 		"permissions":   {Build: func(c Context) workflowvisit.Rule { return NewRulePermissions() }},
 		"workflow-call": {Build: func(c Context) workflowvisit.Rule { return NewRuleWorkflowCall(c.SourceSnapshot, c.Workflows) }},
 		"expression": {Build: func(c Context) workflowvisit.Rule {
-			return newRuleExpression(c.Actions, c.Workflows, c.Runners)
+			return newRuleExpressionWithRemote(c.Actions, c.Workflows, c.Runners, c.RemoteActions, c.Context)
 		}},
 		"deprecated-commands": {Script: workflowcommands.Analyzer{}},
 		"if-cond":             {Build: func(c Context) workflowvisit.Rule { return NewRuleIfCond() }},

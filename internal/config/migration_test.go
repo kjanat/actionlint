@@ -41,10 +41,10 @@ policy:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ConfigVariables == nil || len(cfg.ConfigVariables) != 0 || cfg.ConfigSecrets != nil {
+	if VariableNames(cfg.Facts()) == nil || len(VariableNames(cfg.Facts())) != 0 || SecretNames(cfg.Facts()) != nil {
 		t.Fatal("unknown and empty name sets were conflated")
 	}
-	if !reflect.DeepEqual(cfg.SelfHostedRunner.Labels, []string{"gpu", "custom-*"}) || cfg.AssumeDefaultPermissions != DefaultPermissionsAssumptionPermissive {
+	if !reflect.DeepEqual(RunnerLabels(cfg.Facts()), []string{"gpu", "custom-*"}) || configuredWorkflowPermissions(cfg) != "write" {
 		t.Fatalf("knowledge lost: %+v", cfg)
 	}
 	if !cfg.Paths["**"].Ignore.Match("legacy some message") {
@@ -85,13 +85,13 @@ func TestMigrationPolicyNullRemainsReset(t *testing.T) {
 }
 
 func TestMigrationConflicts(t *testing.T) {
-	for _, source := range []string{
-		"policy: {cache-operation: false}\nlint: {rules: {correctness: {cache-operation: on}}}",
-		"config-variables: [OLD]\nlint: {rules: {correctness: {expression-reference: {level: on, options: {variables: [NEW]}}}}}",
-		"paths: {'**': {ignore: [old]}}\nlint: {message-ignores: {'**': [new]}}",
+	for _, test := range []struct{ source, target string }{
+		{"policy: {cache-operation: false}\nlint: {rules: {correctness: {cache-operation: on}}}", "lint.rules.correctness.cache-operation"},
+		{"config-variables: [OLD]\nlint: {rules: {correctness: {expression-reference: {level: on, options: {variables: [NEW]}}}}}", "repository.variables"},
+		{"paths: {'**': {ignore: [old]}}\nlint: {message-ignores: {'**': [new]}}", "lint.message-ignores"},
 	} {
-		_, err := MigrateDocument("config.yaml", []byte(source))
-		if err == nil || !strings.Contains(err.Error(), "conflicts with lint.") {
+		_, err := MigrateDocument("config.yaml", []byte(test.source))
+		if err == nil || !strings.Contains(err.Error(), "conflicts with "+test.target) {
 			t.Fatalf("missing actionable conflict: %v", err)
 		}
 	}
@@ -126,7 +126,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg, err := Load(path)
-			if err != nil || cfg.ConfigVariables == nil || cfg.RequiresCommitHash() {
+			if err != nil || VariableNames(cfg.Facts()) == nil || cfg.RequiresCommitHash() {
 				t.Fatalf("migration semantics: %+v %v", cfg, err)
 			}
 			if tc.name == "actionlint.yaml" && !bytes.Contains(plan.Content, []byte("\r\n")) {
@@ -289,8 +289,8 @@ self-hosted-runner: *labels
 		t.Fatal(err)
 	}
 	for _, cfg := range []*Config{&direct, resolved} {
-		if !reflect.DeepEqual(cfg.SelfHostedRunner.Labels, []string{"gpu"}) {
-			t.Fatalf("aliased global runner knowledge dropped: %+v", cfg.SelfHostedRunner)
+		if !reflect.DeepEqual(RunnerLabels(cfg.Facts()), []string{"gpu"}) {
+			t.Fatalf("aliased global runner knowledge dropped: %+v", cfg.Facts())
 		}
 	}
 }
@@ -318,7 +318,7 @@ policy: {require-job-timeout: false}
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cfg.ConfigVariables == nil || len(cfg.ConfigVariables) != 0 || cfg.ConfigSecrets != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
+		if VariableNames(cfg.Facts()) == nil || len(VariableNames(cfg.Facts())) != 0 || SecretNames(cfg.Facts()) != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
 			t.Fatalf("inheritance changed: %+v", cfg)
 		}
 		plan, err := PrepareMigration(t.Context(), path)
@@ -380,7 +380,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if effective.ConfigVariables == nil || !reflect.DeepEqual(effective.ConfigSecrets, []string{"RELEASE_TOKEN"}) || !reflect.DeepEqual(effective.SelfHostedRunner.Labels, []string{"gpu"}) {
+	if VariableNames(effective.Facts()) == nil || !reflect.DeepEqual(SecretNames(effective.Facts()), []string{"RELEASE_TOKEN"}) || !reflect.DeepEqual(RunnerLabels(effective.Facts()), []string{"gpu"}) {
 		t.Fatalf("override knowledge: %+v", effective)
 	}
 }

@@ -18,6 +18,12 @@ type Loaded struct {
 // Load resolves local extends paths relative to their declaring file. The caller
 // validates/normalizes each document before merging. No URLs or commands execute.
 func Load(path string, read func(string) ([]byte, error), normalize func(string, *yaml.Node) (*yaml.Node, error)) (Loaded, error) {
+	return LoadWithMerge(path, read, normalize, Merge)
+}
+
+// LoadWithMerge lets a document owner define which mappings are atomic values.
+// The tree loader retains ownership of cycle detection and source provenance.
+func LoadWithMerge(path string, read func(string) ([]byte, error), normalize func(string, *yaml.Node) (*yaml.Node, error), merge func(*yaml.Node, *yaml.Node, map[*yaml.Node]Input) *yaml.Node) (Loaded, error) {
 	result := Loaded{Origins: map[*yaml.Node]string{}}
 	inputs := map[*yaml.Node]Input{}
 	active := map[string]bool{}
@@ -92,7 +98,7 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 				// A missing base makes the configuration invalid.
 				return nil, fmt.Errorf("extends in %q: %v", path, err) //nolint:errorlint // Do not propagate os.ErrNotExist from inherited files.
 			}
-			base = Merge(base, n, inputs)
+			base = merge(base, n, inputs)
 		}
 		var mark func(*yaml.Node)
 		mark = func(n *yaml.Node) {
@@ -103,7 +109,7 @@ func Load(path string, read func(string) ([]byte, error), normalize func(string,
 			}
 		}
 		mark(node)
-		merged := Merge(base, node, inputs)
+		merged := merge(base, node, inputs)
 		if len(bases) == 0 && merged.Kind == yaml.MappingNode {
 			leaf := *merged
 			leaf.Content = append([]*yaml.Node{}, merged.Content...)

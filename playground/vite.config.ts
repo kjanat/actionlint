@@ -1,8 +1,7 @@
 /// <reference types="vitest/config" />
 
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { copyFile, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
@@ -21,15 +20,9 @@ const version = buildVersion(oneUp, process.env.ACTIONLINT_LATEST_RELEASE);
 
 const goWasm = resolve(execFileSync('go', ['env', 'GOROOT'], { encoding: 'utf8' }).trim(), 'lib/wasm');
 
-const catalogue = resolve(oneUp, 'internal/actioncatalog/popular_actions.json');
-
 function buildWasm(): void {
-	const digest = createHash('sha256').update(readFileSync(catalogue)).digest('hex');
 	execFileSync('go', [
 		'build',
-		'-tags=actionlint_external_catalog',
-		'-ldflags',
-		`-X main.catalogueDigest=${digest}`,
 		'-o',
 		resolve(here, 'public/main.wasm'),
 		'.',
@@ -45,15 +38,6 @@ function goWasmBinary(): import('vite').Plugin {
 		name: 'actionlint:go-wasm',
 		buildStart() {
 			buildWasm();
-		},
-		configureServer(server) {
-			server.watcher.add(catalogue);
-			server.watcher.on('change', path => {
-				if (path === catalogue) {
-					buildWasm();
-					server.ws.send({ type: 'full-reload' });
-				}
-			});
 		},
 	};
 }

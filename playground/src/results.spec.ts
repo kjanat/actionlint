@@ -6,7 +6,6 @@ import { EditorView } from '@codemirror/view';
 
 const callbacks = vi.hoisted(() => ({ cancel: vi.fn(), invalidate: vi.fn(), lint: vi.fn() }));
 vi.mock('wasm_exec.js', () => ({}));
-vi.mock('./catalogue.ts', () => ({ fetchActionCatalogue: () => Promise.resolve('test catalogue') }));
 vi.mock('./shellcheck', () => ({
 	loadShellcheck: () => Promise.resolve({ check: vi.fn(), cancel: callbacks.cancel }),
 	shellcheckAssets: { license: 'https://example.test/LICENSE' },

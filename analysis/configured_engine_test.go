@@ -256,11 +256,14 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				t.Fatal(err)
 			}
 			if constructed {
-				module, err := config.NewToolModule("engines/../first.wasm")
+				encoded, err := cfg.MarshalText()
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg.Tools["ruff"] = config.ToolConfig{Backend: config.ToolWasmBackend(module)}
+				cfg, err = config.Parse(encoded)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			other, err := config.Parse([]byte("tools: {ruff: {backend: {wasm: {path: first.wasm}}}}"))
 			if err != nil {
@@ -299,9 +302,15 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 			if moduleInputs != 1 {
 				t.Errorf("module inputs=%d, want 1", moduleInputs)
 			}
-			module, _ := cfg.Tools["ruff"].Backend.Wasm()
-			otherModule, _ := other.Tools["ruff"].Backend.Wasm()
-			if module.Path() != "engines/../first.wasm" || otherModule.Path() != "first.wasm" {
+			original, err := cfg.MarshalText()
+			if err != nil {
+				t.Fatal(err)
+			}
+			otherOriginal, err := other.MarshalText()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(original), "engines/../first.wasm") || !strings.Contains(string(otherOriginal), "path: first.wasm") {
 				t.Fatal("analysis mutated caller configuration")
 			}
 		})

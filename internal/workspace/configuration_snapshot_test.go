@@ -102,7 +102,7 @@ tools:
 					t.Fatalf("publication changed the source reused by a new project: %+v", third.Configurations)
 				}
 				cfg, err := session.ConfigForProject(nil)
-				if err != nil || !reflect.DeepEqual(cfg.ConfigVariables, []string{"SAFE"}) {
+				if err != nil || !reflect.DeepEqual(repoconfig.VariableNames(cfg.Facts()), []string{"SAFE"}) {
 					t.Fatalf("publication changed analysis configuration: %+v, %v", cfg, err)
 				}
 			})

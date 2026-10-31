@@ -5,10 +5,19 @@ import (
 	"io"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/config"
+	"actionlint.kjanat.dev/v2/repository"
 )
 
 // configuration supplies the optional settings capability of built-in adapters.
-type configuration struct{ config *repoconfig.Config }
+type configuration struct {
+	config *repoconfig.Config
+	host   repository.Snapshot
+}
+
+func (r *configuration) SetRepository(facts repository.Snapshot) { r.host = facts }
+func (r *configuration) repositoryFacts() repository.Snapshot {
+	return repoconfig.RepositoryFacts(r.config, r.host)
+}
 
 // ruleLogger is used only by adapters that produce trace output.
 type ruleLogger struct {

@@ -164,7 +164,10 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 	if root == nil || root.Kind != yaml.MappingNode {
 		return root, false, nil
 	}
-	changed := false
+	root, changed, err := migrateRepositoryFacts(root)
+	if err != nil {
+		return nil, false, err
+	}
 	for _, key := range legacyKeys {
 		changed = changed || field(root, key) != nil
 	}
@@ -208,13 +211,6 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 		setField(rules, descriptor.Group, group)
 		return nil
 	}
-	option := func(name, key string, value *yaml.Node, origin string) error {
-		setting, options := mapping(), mapping()
-		setField(setting, "level", textNode("default"))
-		setField(options, key, value)
-		setField(setting, "options", options)
-		return install(name, setting, origin)
-	}
 	for _, key := range legacyKeys {
 		value := field(root, key)
 		if value == nil {
@@ -222,27 +218,6 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 		}
 		var err error
 		switch key {
-		case "config-variables", "config-secrets":
-			var names []string
-			if err = value.Decode(&names); err == nil {
-				err = option("expression-reference", strings.TrimPrefix(key, "config-"), value, key)
-			}
-		case "self-hosted-runner":
-			var runner SelfHostedRunnerConfig
-			if err = value.Decode(&runner); err == nil {
-				labels := field(value, "labels")
-				if value.ShortTag() == "!!null" {
-					labels = value
-				}
-				if labels != nil {
-					err = option("runner-label", "labels", labels, key)
-				}
-			}
-		case "assume-default-permissions":
-			var assumption DefaultPermissionsAssumption
-			if err = value.Decode(&assumption); err == nil {
-				err = option("workflow-call", "default-permissions", value, key)
-			}
 		case "paths":
 			var paths map[string]PathConfig
 			if err = value.Decode(&paths); err != nil {
@@ -330,7 +305,9 @@ func migrateNode(root *yaml.Node) (*yaml.Node, bool, error) {
 	if len(rules.Content) != 0 {
 		setField(lint, "rules", rules)
 	}
-	setField(next, "lint", lint)
+	if len(lint.Content) != 0 {
+		setField(next, "lint", lint)
+	}
 	return next, true, nil
 }
 
@@ -355,7 +332,7 @@ func mergeMigration(current, legacy *yaml.Node, path, origin string) (*yaml.Node
 			return current, nil
 		}
 	}
-	if current.Kind == yaml.MappingNode && legacy.Kind == yaml.MappingNode {
+	if current.Kind == yaml.MappingNode && legacy.Kind == yaml.MappingNode && !strings.HasPrefix(path, "repository.") {
 		next := cloneMapping(current)
 		for i := 0; i < len(legacy.Content); i += 2 {
 			key, value := legacy.Content[i].Value, legacy.Content[i+1]

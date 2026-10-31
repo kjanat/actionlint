@@ -27,6 +27,9 @@ type Override struct {
 	// Tools overlays external checker settings for the selected files.
 	Tools     *ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	toolsNode *yaml.Node
+	// Repository overlays facts for matching files without changing rule selection.
+	Repository     RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
+	repositoryNode *yaml.Node
 	// LocalActions overlays generated action source mappings for matching files.
 	LocalActions    LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
 	localActionsSet bool
@@ -69,6 +72,9 @@ func (o *Override) UnmarshalYAML(n *yaml.Node) error {
 		if n.Content[i].Value == "tools" {
 			next.toolsNode = n.Content[i+1]
 		}
+		if n.Content[i].Value == "repository" {
+			next.repositoryNode = n.Content[i+1]
+		}
 		if n.Content[i].Value == "includes" || n.Content[i].Value == "excludes" {
 			for _, pattern := range n.Content[i+1].Content {
 				if pattern.Kind != yaml.ScalarNode || pattern.ShortTag() != "!!str" {
@@ -84,6 +90,9 @@ func (o *Override) UnmarshalYAML(n *yaml.Node) error {
 // MarshalYAML preserves omitted fields in partial overlays during round trips.
 func (o Override) MarshalYAML() (any, error) {
 	value := map[string]any{"includes": o.Includes}
+	if o.repositoryNode != nil {
+		value["repository"] = o.repositoryNode
+	}
 	if o.localActionsSet || o.LocalActions != nil {
 		value["local-actions"] = o.LocalActions
 	}
@@ -183,10 +192,17 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 		}
 	}
 	tools := config.Tools
+	var repository yaml.Node
+	if err := repository.Encode(config.Repository); err != nil {
+		return nil, err
+	}
 	localActions := config.LocalActions
 	for _, override := range config.Overrides {
 		if !override.matches(path) {
 			continue
+		}
+		if override.repositoryNode != nil {
+			repository = *mergeRepositoryNodes(&repository, override.repositoryNode, map[*yaml.Node]Input{})
 		}
 		if override.localActionsSet || override.LocalActions != nil {
 			if override.LocalActions == nil {
@@ -221,6 +237,9 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 		node = configtree.Merge(expandLintShorthands(node), overlay, map[*yaml.Node]Input{})
 	}
 	next := *config
+	if err := next.Repository.UnmarshalYAML(&repository); err != nil {
+		return nil, err
+	}
 	next.Tools = tools
 	next.LocalActions = localActions
 	next.Lint = LintConfig{}
@@ -232,9 +251,6 @@ func ForFile(config *Config, path, root string) (*Config, error) {
 		return nil, err
 	}
 	next.Paths = nil
-	next.SelfHostedRunner = SelfHostedRunnerConfig{}
-	next.ConfigVariables, next.ConfigSecrets = nil, nil
-	next.AssumeDefaultPermissions = DefaultPermissionsAssumptionUnset
 	next.Policy = Policy{}
 	projectSettings(&next)
 	return &next, nil

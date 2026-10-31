@@ -16,10 +16,12 @@ import (
 
 	documentmodel "actionlint.kjanat.dev/v2/document"
 
+	"actionlint.kjanat.dev/v2/actions"
 	"actionlint.kjanat.dev/v2/analyzer"
 	diagmodel "actionlint.kjanat.dev/v2/diagnostic"
 	actionmeta "actionlint.kjanat.dev/v2/internal/action"
 	actionlocal "actionlint.kjanat.dev/v2/internal/action/local"
+	actionremote "actionlint.kjanat.dev/v2/internal/action/remote"
 	"actionlint.kjanat.dev/v2/internal/analyzerhost"
 	"actionlint.kjanat.dev/v2/internal/analyzerref"
 	"actionlint.kjanat.dev/v2/internal/builtin"
@@ -40,6 +42,7 @@ import (
 	workflownames "actionlint.kjanat.dev/v2/internal/workflow/names"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/workflow/visit"
 	"actionlint.kjanat.dev/v2/internal/workspace"
+	"actionlint.kjanat.dev/v2/repository"
 	"actionlint.kjanat.dev/v2/rule"
 	"actionlint.kjanat.dev/v2/runner"
 	sourcemodel "actionlint.kjanat.dev/v2/source"
@@ -52,6 +55,8 @@ type sourceUnit = workspace.Source
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
+	RemoteActions actions.Provider
+	Repository    func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout   time.Duration
 	Runners              runner.Options
@@ -332,8 +337,9 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	session := &analysisSession{
-		runners:   request.Runners,
-		analyzers: request.Analyzers, ctx: lifetime, toolDescriptors: extensions,
+		remoteActions: actionremote.New(request.RemoteActions),
+		runners:       request.Runners,
+		analyzers:     request.Analyzers, ctx: lifetime, toolDescriptors: extensions,
 		captures: captures, snapshots: snapshots, reader: reader,
 		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
@@ -353,6 +359,18 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	// One reusable-workflow cache per project root; "" (no project) never hits.
 	workflows := map[string]*calls.Cache{}
 	session.workingDir = absPath(cwd)
+	session.repositories = make(map[string]repository.Snapshot)
+	for _, source := range request.Sources {
+		root := projectRoot(source.Project)
+		if _, exists := session.repositories[root]; exists {
+			continue
+		}
+		var facts repository.Snapshot
+		if request.Repository != nil && root != "" {
+			facts = request.Repository(lifetime, root)
+		}
+		session.repositories[root] = facts
+	}
 	session.gitModes = &gitModes{}
 	result = &analysisResult{Diagnostics: []diagmodel.Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
 	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (string, bool, error) {

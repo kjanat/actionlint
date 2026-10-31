@@ -12,14 +12,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/workflow/references"
 )
 
-// Repository checks a repository action reference and the metadata selected for it.
-// The caller supplies catalogue lookup and optional debug logging.
-func Repository(exec workflowdecl.ExecActionView, lookup func(string) (*actionmeta.Metadata, bool), log func(string, ...any)) []*findingmodel.Finding {
+// Repository checks a repository action reference against available metadata.
+func Repository(exec workflowdecl.ExecActionView, metadata actionmeta.Definition) []*findingmodel.Finding {
 	if !exec.Present() || !exec.Uses().Present() {
 		return nil
 	}
 	rule := validator{}
-	rule.checkRepoAction(exec.Uses().Value(), exec, lookup, log)
+	rule.checkRepoAction(exec.Uses().Value(), exec, metadata)
 	return rule.errs
 }
 
@@ -94,39 +93,21 @@ func InvalidReference(pos *workflowlang.Pos, spec, why string) *findingmodel.Fin
 	return rule.errs[0]
 }
 
-func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecActionView, lookup func(string) (*actionmeta.Metadata, bool), log func(string, ...any)) {
+func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecActionView, meta actionmeta.Definition) {
 	if !rule.checkRepositoryReference(spec, positionPointer(exec.Uses().Pos())) {
 		return
 	}
-	debug := func(format string, args ...any) {
-		if log != nil {
-			log(format, args...)
-		}
-	}
-	var meta *actionmeta.Metadata
-	retired := false
-	if lookup != nil {
-		meta, retired = lookup(spec)
-	}
-	if meta == nil {
-		if retired {
-			rule.Errorf(positionPointer(exec.Uses().Pos()), "the runtime or service used by %q action is retired on GitHub.com. update the action's version to fix this issue", spec)
-			return
-		}
-		debug("This action is not found in popular actions data set: %s", spec)
+	if !meta.Present() {
 		return
 	}
-	if problem := actionmeta.RuntimeProblem(meta.Runs.Using); problem != "" {
+	if problem := actionmeta.RuntimeProblem(meta.Using()); problem != "" {
 		rule.Errorf(positionPointer(exec.Uses().Pos()), "%s. update the version of action %q", problem, spec)
 	}
-	if meta.SkipInputs {
-		debug("This action skips to check inputs: %s", spec)
+	if meta.SkipInputs() {
 		return
 	}
 
-	rule.errs = append(rule.errs, Inputs(meta, exec, func(m *actionmeta.Metadata) string {
-		return strconv.Quote(spec)
-	})...)
+	rule.checkAction(meta, exec, strconv.Quote(spec))
 }
 
 func (rule *validator) checkRepositoryReference(spec string, pos *workflowlang.Pos) bool {

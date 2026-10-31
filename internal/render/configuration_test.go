@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/config"
+	config "actionlint.kjanat.dev/v2/config/report"
 	configreport "actionlint.kjanat.dev/v2/config/report"
 	"actionlint.kjanat.dev/v2/internal/render"
 	"actionlint.kjanat.dev/v2/internal/report"

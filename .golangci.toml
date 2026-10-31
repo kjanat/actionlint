@@ -137,6 +137,7 @@ allow     = [
 [linters.settings.depguard.rules.layer-contract-leaves]
 files     = [
   "**/config/report/*.go",
+  "**/knowledge/*.go",
   "**/resolver/*.go",
   "**/rule/*.go",
   "!$test",
@@ -147,6 +148,67 @@ allow     = [
 ]
 deny      = [
   { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
+]
+
+[linters.settings.depguard.rules.layer-contract-leaves-tests]
+files     = [
+  "**/knowledge/*_test.go",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+  "github.com/google/go-cmp$",
+  "github.com/google/go-cmp/",
+  "golang.org/x/tools$",
+  "golang.org/x/tools/",
+]
+
+# Layer repository-contracts: Repository knowledge and immutable remote action manifests. Hosts
+# supply facts; these contracts perform no fetching.
+# Imports: itself, contract-leaves.
+[linters.settings.depguard.rules.layer-repository-contracts]
+files     = [
+  "**/actions/*.go",
+  "**/repository/*.go",
+  "!$test",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+]
+deny      = [
+  { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
+]
+
+[linters.settings.depguard.rules.layer-repository-contracts-tests]
+files     = [
+  "**/actions/*_test.go",
+  "**/repository/*_test.go",
+  "!**/internal/integration/actions/*_test.go",
+]
+list-mode = "strict"
+allow     = [
+  "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
+  "actionlint.kjanat.dev/v2/config/report$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
+  "github.com/google/go-cmp$",
+  "github.com/google/go-cmp/",
+  "golang.org/x/tools$",
+  "golang.org/x/tools/",
 ]
 
 # Layer analysis-contracts: The public diagnostic and analyzer contracts. They never import internal
@@ -164,6 +226,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -187,10 +250,11 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/examples/plugins/pinnedactions$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
   "actionlint.kjanat.dev/v2/internal/suppression$",
   "actionlint.kjanat.dev/v2/internal/workflow/parser$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -383,6 +447,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/rulecatalog$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/bundled$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/configschema$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
 ]
@@ -403,6 +468,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/tools/provider/bundled$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/configschema$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/process$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
@@ -413,7 +479,7 @@ allow     = [
 
 # Layer config: Configuration decoding and its parts. Configuration does not reach execution, the
 # host or the public API.
-# Imports: itself, contract-leaves, leaves, action-reference, provider-data, catalog.
+# Imports: itself, contract-leaves, repository-contracts, leaves, action-reference, provider-data, catalog.
 [linters.settings.depguard.rules.layer-config]
 files     = [
   "**/internal/config/*.go",
@@ -426,6 +492,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/action/reference$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -447,6 +514,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/webhook/payload$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/bmatcuk/doublestar/v4$",
@@ -471,6 +540,7 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/internal/action/reference$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -495,6 +565,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/codec$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/bmatcuk/doublestar/v4$",
@@ -960,7 +1032,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
   "actionlint.kjanat.dev/v2/internal/expression$",
@@ -1056,7 +1128,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
@@ -1145,13 +1217,13 @@ allow     = [
   "golang.org/x/tools/",
 ]
 
-# Layer documents: Parsing of workflow and action documents, the action model and catalog,
-# suppression comments and the public syntax package.
-# Imports: itself, source, analysis-contracts, document-contracts, leaves, core-helpers, yaml-codec, expression, workflow-base, workflow-model.
+# Layer documents: Parsing of workflow and action documents, provider metadata, suppression comments
+# and the public syntax package.
+# Imports: itself, source, repository-contracts, contract-leaves, analysis-contracts, document-contracts, leaves, core-helpers, yaml-codec, expression, workflow-base, workflow-model.
 [linters.settings.depguard.rules.layer-documents]
 files     = [
   "**/internal/action/*.go",
-  "**/internal/actioncatalog/*.go",
+  "**/internal/action/remote/*.go",
   "**/internal/documentparse/*.go",
   "**/internal/suppression/*.go",
   "**/internal/workflow/parser/*.go",
@@ -1162,11 +1234,13 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
@@ -1201,6 +1275,10 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
   "actionlint.kjanat.dev/v2/source$",
   "actionlint.kjanat.dev/v2/syntax$",
@@ -1212,7 +1290,7 @@ deny      = [
 [linters.settings.depguard.rules.layer-documents-tests]
 files     = [
   "**/internal/action/*_test.go",
-  "**/internal/actioncatalog/*_test.go",
+  "**/internal/action/remote/*_test.go",
   "**/internal/documentparse/*_test.go",
   "**/internal/suppression/*_test.go",
   "**/syntax/*_test.go",
@@ -1220,13 +1298,15 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
@@ -1274,6 +1354,10 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
   "actionlint.kjanat.dev/v2/source$",
   "actionlint.kjanat.dev/v2/syntax$",
@@ -1297,13 +1381,15 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
+  "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
@@ -1352,6 +1438,10 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
+  "actionlint.kjanat.dev/v2/resolver$",
+  "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
   "actionlint.kjanat.dev/v2/source$",
   "actionlint.kjanat.dev/v2/syntax$",
@@ -1380,7 +1470,7 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
@@ -1437,8 +1527,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
   "actionlint.kjanat.dev/v2/internal/action/reference$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
@@ -1524,8 +1614,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
   "actionlint.kjanat.dev/v2/internal/action/reference$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
@@ -1612,8 +1702,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
   "actionlint.kjanat.dev/v2/internal/action/reference$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -1734,6 +1824,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/sourceid$",
   "actionlint.kjanat.dev/v2/internal/workflow/invocation$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -1834,6 +1925,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/webhook/payload$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/itchyny/gojq$",
@@ -1872,6 +1964,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/webhook/payload$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
@@ -1914,6 +2007,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/tools/provider/bundled$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/configschema$",
   "actionlint.kjanat.dev/v2/internal/tools/provider/process$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
@@ -1939,8 +2033,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -1989,6 +2083,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workflow/visit$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -2007,8 +2102,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
@@ -2069,6 +2164,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -2136,6 +2232,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workflow/visit$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "golang.org/x/sync$",
@@ -2154,7 +2251,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/application$",
@@ -2216,6 +2313,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -2230,7 +2328,7 @@ allow     = [
 
 # Layer builtins: Built-in diagnostic adapters and the semantic passes configured from them. They
 # receive observations through callbacks and do not reach hosts, tools or presentation.
-# Imports: itself, contract-leaves, analysis-contracts, leaves, core-helpers, config, expression, invocation, workflow-base, workflow-model, documents, language.
+# Imports: itself, contract-leaves, repository-contracts, analysis-contracts, leaves, core-helpers, config, expression, invocation, workflow-base, workflow-model, documents, language.
 [linters.settings.depguard.rules.layer-builtins]
 files     = [
   "**/internal/builtin/*.go",
@@ -2240,13 +2338,14 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/builtin$",
@@ -2297,6 +2396,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/syntax$",
@@ -2312,14 +2413,15 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/builtin$",
@@ -2382,6 +2484,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2407,8 +2511,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/builtin$",
   "actionlint.kjanat.dev/v2/internal/checks$",
@@ -2471,8 +2575,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/builtin$",
@@ -2554,6 +2658,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/report$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2578,7 +2683,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -2614,6 +2719,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -2634,7 +2740,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/config$",
@@ -2681,6 +2787,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/source$",
@@ -2725,6 +2832,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2751,6 +2859,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
+  "actionlint.kjanat.dev/v2/internal/config/value$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
   "actionlint.kjanat.dev/v2/internal/finding$",
   "actionlint.kjanat.dev/v2/internal/fsread$",
@@ -2775,6 +2884,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2803,6 +2913,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/resolution$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -2820,6 +2931,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/resolution$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3070,6 +3182,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3105,6 +3218,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
+  "actionlint.kjanat.dev/v2/internal/config/value$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
   "actionlint.kjanat.dev/v2/internal/fsread$",
   "actionlint.kjanat.dev/v2/internal/pluginref$",
@@ -3141,6 +3255,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3190,6 +3305,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "golang.org/x/sys$",
@@ -3230,6 +3346,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/codec$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
@@ -3244,7 +3361,7 @@ allow     = [
 
 # Layer application: The application boundary. It does not reach terminal adapters, presentation,
 # plugin runtimes, tool backends or providers.
-# Imports: itself, source, contract-leaves, analysis-contracts, document-contracts, leaves, catalog, config, core-helpers, expression, workflow-model, documents, language, analyzer-host, tool-contracts, builtins, composition, results, policy, resolution, plugin-artifacts, workspace.
+# Imports: itself, source, contract-leaves, repository-contracts, analysis-contracts, document-contracts, leaves, catalog, config, core-helpers, expression, workflow-model, documents, language, analyzer-host, tool-contracts, builtins, composition, results, policy, resolution, plugin-artifacts, workspace.
 [linters.settings.depguard.rules.layer-application]
 files     = [
   "**/internal/application/*.go",
@@ -3253,14 +3370,15 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/application$",
@@ -3317,6 +3435,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3333,14 +3453,15 @@ files     = [
 list-mode = "strict"
 allow     = [
   "$gostd",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config/report$",
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/application$",
@@ -3416,6 +3537,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3508,6 +3631,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3595,6 +3719,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3614,6 +3739,7 @@ allow     = [
 [linters.settings.depguard.rules.layer-public-config]
 files     = [
   "**/config/*.go",
+  "**/internal/config/value/*.go",
   "!**/internal/config/*.go",
   "!**/tools/config/*.go",
   "!$test",
@@ -3628,6 +3754,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/config/rules$",
   "actionlint.kjanat.dev/v2/internal/config/tools$",
   "actionlint.kjanat.dev/v2/internal/config/tree$",
+  "actionlint.kjanat.dev/v2/internal/config/value$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
   "actionlint.kjanat.dev/v2/internal/filefilter$",
   "actionlint.kjanat.dev/v2/internal/fsread$",
@@ -3639,8 +3766,11 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/webhook/payload$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
+  "github.com/kjanat/go-yaml/v4$",
+  "github.com/kjanat/go-yaml/v4/",
 ]
 deny      = [
   { pkg = "os/exec", desc = "this layer does not launch processes; process execution belongs to the analyzer host and the layers above it" },
@@ -3663,6 +3793,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/config/rules$",
   "actionlint.kjanat.dev/v2/internal/config/tools$",
   "actionlint.kjanat.dev/v2/internal/config/tree$",
+  "actionlint.kjanat.dev/v2/internal/config/value$",
   "actionlint.kjanat.dev/v2/internal/expression/context$",
   "actionlint.kjanat.dev/v2/internal/filefilter$",
   "actionlint.kjanat.dev/v2/internal/fsread$",
@@ -3674,10 +3805,13 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/webhook/payload$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "github.com/google/go-cmp$",
   "github.com/google/go-cmp/",
+  "github.com/kjanat/go-yaml/v4$",
+  "github.com/kjanat/go-yaml/v4/",
   "golang.org/x/tools$",
   "golang.org/x/tools/",
 ]
@@ -3738,7 +3872,7 @@ allow     = [
 
 # Layer public-analysis: The public analysis API and the root package. They use the application
 # boundary, not the engine or plugin runtimes.
-# Imports: itself, contract-leaves, analysis-contracts, document-contracts, catalog, process-config, tool-backends, workspace, application, public-config.
+# Imports: itself, contract-leaves, repository-contracts, analysis-contracts, document-contracts, catalog, process-config, tool-backends, workspace, application, public-config.
 [linters.settings.depguard.rules.layer-public-analysis]
 files     = [
   "**/actionlint.go",
@@ -3757,6 +3891,7 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2$",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config$",
@@ -3764,6 +3899,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/application$",
+  "actionlint.kjanat.dev/v2/internal/config/value$",
   "actionlint.kjanat.dev/v2/internal/processconfig$",
   "actionlint.kjanat.dev/v2/internal/projectpath$",
   "actionlint.kjanat.dev/v2/internal/rulecatalog$",
@@ -3771,6 +3907,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/tools/managed$",
   "actionlint.kjanat.dev/v2/internal/tools/registry$",
   "actionlint.kjanat.dev/v2/internal/workspace$",
+  "actionlint.kjanat.dev/v2/knowledge$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3784,6 +3922,7 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2$",
+  "actionlint.kjanat.dev/v2/actions$",
   "actionlint.kjanat.dev/v2/analysis$",
   "actionlint.kjanat.dev/v2/analyzer$",
   "actionlint.kjanat.dev/v2/config$",
@@ -3791,8 +3930,9 @@ allow     = [
   "actionlint.kjanat.dev/v2/diagnostic$",
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/application$",
+  "actionlint.kjanat.dev/v2/internal/config/value$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
   "actionlint.kjanat.dev/v2/internal/processconfig$",
   "actionlint.kjanat.dev/v2/internal/projectpath$",
@@ -3807,7 +3947,9 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/tools/registry$",
   "actionlint.kjanat.dev/v2/internal/workflow/parser$",
   "actionlint.kjanat.dev/v2/internal/workspace$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/plugin$",
+  "actionlint.kjanat.dev/v2/repository$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
   "actionlint.kjanat.dev/v2/runner$",
@@ -3876,6 +4018,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/playground$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
@@ -3956,6 +4099,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/workspace$",
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/playground$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
@@ -4022,8 +4166,7 @@ deny      = [
 # Imports: itself, leaves, yaml-codec, documents.
 [linters.settings.depguard.rules.layer-data-generators]
 files     = [
-  "**/internal/actioncatalog/generate/*.go",
-  "**/internal/actioncatalog/metadata/*.go",
+  "**/internal/action/generate/*.go",
   "**/internal/documentparse/internal/generate/*.go",
   "**/internal/expression/context/generate/*.go",
   "**/internal/webhook/generate/*.go",
@@ -4033,9 +4176,8 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog/generate$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog/metadata$",
+  "actionlint.kjanat.dev/v2/internal/action/generate$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
   "actionlint.kjanat.dev/v2/internal/documentparse/internal/generate$",
@@ -4065,8 +4207,7 @@ allow     = [
 
 [linters.settings.depguard.rules.layer-data-generators-tests]
 files     = [
-  "**/internal/actioncatalog/generate/*_test.go",
-  "**/internal/actioncatalog/metadata/*_test.go",
+  "**/internal/action/generate/*_test.go",
   "**/internal/documentparse/internal/generate/*_test.go",
   "**/internal/expression/context/generate/*_test.go",
   "**/internal/webhook/generate/*_test.go",
@@ -4075,9 +4216,8 @@ list-mode = "strict"
 allow     = [
   "$gostd",
   "actionlint.kjanat.dev/v2/internal/action$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog/generate$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog/metadata$",
+  "actionlint.kjanat.dev/v2/internal/action/generate$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/buildinfo$",
   "actionlint.kjanat.dev/v2/internal/documentparse$",
   "actionlint.kjanat.dev/v2/internal/documentparse/internal/generate$",
@@ -4351,8 +4491,8 @@ allow     = [
   "actionlint.kjanat.dev/v2/document$",
   "actionlint.kjanat.dev/v2/internal/action$",
   "actionlint.kjanat.dev/v2/internal/action/local$",
+  "actionlint.kjanat.dev/v2/internal/action/remote$",
   "actionlint.kjanat.dev/v2/internal/action/validation$",
-  "actionlint.kjanat.dev/v2/internal/actioncatalog$",
   "actionlint.kjanat.dev/v2/internal/analyzerhost$",
   "actionlint.kjanat.dev/v2/internal/analyzerref$",
   "actionlint.kjanat.dev/v2/internal/application$",
@@ -4435,6 +4575,7 @@ allow     = [
   "actionlint.kjanat.dev/v2/internal/yaml/schema$",
   "actionlint.kjanat.dev/v2/internal/yaml/sourcemap$",
   "actionlint.kjanat.dev/v2/internal/yaml/syntax$",
+  "actionlint.kjanat.dev/v2/knowledge$",
   "actionlint.kjanat.dev/v2/playground$",
   "actionlint.kjanat.dev/v2/resolver$",
   "actionlint.kjanat.dev/v2/rule$",
@@ -4470,6 +4611,7 @@ files = [
   "!**/actionlint.go",
   "!**/generate.go",
   "!**/schema.go",
+  "!**/actions/*.go",
   "!**/analysis/*.go",
   "!**/analyzer/*.go",
   "!**/cmd/actionlint/*.go",
@@ -4480,12 +4622,11 @@ files = [
   "!**/examples/plugins/pinnedactions/*.go",
   "!**/fuzz/*.go",
   "!**/internal/action/*.go",
+  "!**/internal/action/generate/*.go",
   "!**/internal/action/local/*.go",
   "!**/internal/action/reference/*.go",
+  "!**/internal/action/remote/*.go",
   "!**/internal/action/validation/*.go",
-  "!**/internal/actioncatalog/*.go",
-  "!**/internal/actioncatalog/generate/*.go",
-  "!**/internal/actioncatalog/metadata/*.go",
   "!**/internal/analyzerhost/*.go",
   "!**/internal/analyzerref/*.go",
   "!**/internal/application/*.go",
@@ -4498,6 +4639,7 @@ files = [
   "!**/internal/config/rules/*.go",
   "!**/internal/config/tools/*.go",
   "!**/internal/config/tree/*.go",
+  "!**/internal/config/value/*.go",
   "!**/internal/conformance/*.go",
   "!**/internal/conformance/fetch/*.go",
   "!**/internal/diagnosticpolicy/*.go",
@@ -4610,8 +4752,10 @@ files = [
   "!**/internal/yaml/schema/*.go",
   "!**/internal/yaml/sourcemap/*.go",
   "!**/internal/yaml/syntax/*.go",
+  "!**/knowledge/*.go",
   "!**/playground/*.go",
   "!**/plugin/*.go",
+  "!**/repository/*.go",
   "!**/resolver/*.go",
   "!**/rule/*.go",
   "!**/runner/*.go",

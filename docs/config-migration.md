@@ -24,33 +24,30 @@ Migration writes the input format: YAML, JSON or TOML. TOML schema directives ar
 copied to the output; comments within moved settings appear before the resulting `lint` section.
 A prepared file migration checks its entire inherited input graph before writing;
 concurrent edits abort the write.
-TOML cannot express null resets. If encoding would change inherited settings,
+TOML cannot express null resets or unknown variable values. If encoding would lose facts or change inherited settings,
 migration refuses the rewrite; convert that selected document to YAML or JSON first.
 
-| Old setting                  | Current setting                                                    |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `self-hosted-runner.labels`  | `lint.rules.correctness.runner-label.options.labels`               |
-| `config-variables`           | `lint.rules.correctness.expression-reference.options.variables`    |
-| `config-secrets`             | `lint.rules.correctness.expression-reference.options.secrets`      |
-| `assume-default-permissions` | `lint.rules.correctness.workflow-call.options.default-permissions` |
-| `policy.<rule>`              | `lint.rules.<group>.<rule>`                                        |
-| `paths.<glob>.ignore`        | `lint.message-ignores.<glob>`                                      |
+| Old setting                  | Current setting                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `self-hosted-runner.labels`  | `repository.runners`                                                                                  |
+| `config-variables`           | `repository.variables` (names become keys with null values)                                           |
+| `config-secrets`             | `repository.secrets`                                                                                  |
+| `assume-default-permissions` | `repository.default-workflow-permissions` (`restricted` becomes `read`; `permissive` becomes `write`) |
+| `policy.<rule>`              | `lint.rules.<group>.<rule>`                                                                           |
+| `paths.<glob>.ignore`        | `lint.message-ignores.<glob>`                                                                         |
 
-Knowledge options use `level: default` and supply information independently of
-their diagnostic level. Null variable/secret lists mean unknown names; empty lists
-permit no configured names. Built-in and declared reusable-workflow secrets are
-added separately.
+Older knowledge options on `runner-label`, `expression-reference` and `workflow-call`
+also migrate to `repository` without changing their diagnostic levels. Repository facts
+remain available when those rules are off. Null means unknown; empty collections mean
+known empty sets. Built-in and declared reusable-workflow secrets are added separately.
 
 ```yaml
+repository:
+  runners: [gpu]
+  variables: {}
+  secrets: null
 lint:
   rules:
-    correctness:
-      runner-label:
-        level: default
-        options: { labels: [gpu] }
-      expression-reference:
-        level: default
-        options: { variables: [], secrets: null }
     policy:
       require-job-timeout:
         level: on

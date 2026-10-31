@@ -142,7 +142,7 @@ lint:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved.ConfigVariables == nil || resolved.ConfigSecrets != nil {
+	if repoconfig.VariableNames(resolved.Facts()) == nil || repoconfig.SecretNames(resolved.Facts()) != nil {
 		t.Fatal("[] and null lost their distinction")
 	}
 	if repoconfig.DiagnosticLevel(resolved, "require-commit-hash") != "off" || resolved.Policy.RequiredActions == nil {

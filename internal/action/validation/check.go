@@ -51,7 +51,7 @@ func Standalone(meta *actionmeta.Metadata) []*findingmodel.Finding {
 // Inputs validates supplied and required inputs against resolved action metadata.
 func Inputs(meta *actionmeta.Metadata, exec workflowdecl.ExecActionView, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
 	rule := validator{}
-	rule.checkAction(meta, exec, describe)
+	rule.checkAction(actionmeta.NewDefinition(meta), exec, describe(meta))
 	return rule.errs
 }
 
@@ -432,7 +432,7 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, calle
 
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
-func (rule *validator) checkAction(meta *actionmeta.Metadata, exec workflowdecl.ExecActionView, describe func(*actionmeta.Metadata) string) {
+func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl.ExecActionView, description string) {
 	inputs := exec.ResolvedInputs()
 	known := inputs.Complete()
 	// Check specified inputs are defined in action's inputs spec
@@ -444,17 +444,18 @@ func (rule *validator) checkAction(meta *actionmeta.Metadata, exec workflowdecl.
 		id := strings.ToLower(name)
 		position := key.Origin().Span.Start
 		pos := &workflowlang.Pos{Line: position.Line, Col: position.Column}
-		m, ok := meta.Inputs[id]
+		m, ok := meta.Input(id)
 		if !ok {
-			ns := make([]string, 0, len(meta.Inputs))
-			for _, i := range meta.Inputs {
+			ns := make([]string, 0, len(meta.InputNames()))
+			for _, inputID := range meta.InputNames() {
+				i, _ := meta.Input(inputID)
 				ns = append(ns, i.Name)
 			}
 			rule.Errorf(
 				pos,
 				"input %q is not defined in action %s. available inputs are %s",
 				name,
-				describe(meta),
+				description,
 				stringutil.SortedQuotes(ns),
 			)
 		} else if m.Deprecated && !m.Required {
@@ -463,7 +464,7 @@ func (rule *validator) checkAction(meta *actionmeta.Metadata, exec workflowdecl.
 			msg := fmt.Sprintf(
 				"avoid using deprecated input %q in action %s",
 				name,
-				describe(meta),
+				description,
 			)
 			d := reNewlineWithIndent.ReplaceAllString(strings.TrimRight(m.DeprecationMessage, ". "), " ")
 			if d != "" {
@@ -474,11 +475,13 @@ func (rule *validator) checkAction(meta *actionmeta.Metadata, exec workflowdecl.
 	}
 
 	// Check mandatory inputs are specified
-	for id, i := range meta.Inputs {
+	for _, id := range meta.InputNames() {
+		i, _ := meta.Input(id)
 		if i.Required && known {
 			if inputs.Lookup(id).State() == value.Missing {
-				ns := make([]string, 0, len(meta.Inputs))
-				for _, i := range meta.Inputs {
+				ns := make([]string, 0, len(meta.InputNames()))
+				for _, inputID := range meta.InputNames() {
+					i, _ := meta.Input(inputID)
 					if i.Required {
 						ns = append(ns, i.Name)
 					}
@@ -487,7 +490,7 @@ func (rule *validator) checkAction(meta *actionmeta.Metadata, exec workflowdecl.
 					positionPointer(exec.Uses().Pos()),
 					"missing input %q which is required by action %s. all required inputs are %s",
 					i.Name,
-					describe(meta),
+					description,
 					stringutil.SortedQuotes(ns),
 				)
 			}

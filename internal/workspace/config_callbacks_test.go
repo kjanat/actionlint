@@ -48,7 +48,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	close(results)
 	configs := make(map[int]*repoconfig.Config)
 	for result := range results {
-		if result.err != nil || result.config == nil || !reflect.DeepEqual(result.config.ConfigVariables, []string{"ALLOWED"}) {
+		if result.err != nil || result.config == nil || !reflect.DeepEqual(repoconfig.VariableNames(result.config.Facts()), []string{"ALLOWED"}) {
 			t.Fatalf("concurrent configuration: %+v", result)
 		}
 		if previous, ok := configs[result.project]; ok && previous != result.config {

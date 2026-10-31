@@ -60,8 +60,9 @@ in-memory requests.
 
 Construct invocation overlays with `config.ParseOverlay("config", source)` for a complete document, or
 `config.ParseOverlay("tools", source)` for one configuration section. Assign them to `FileOptions.ConfigOverlays`.
-`config.DisallowSuppressions("all", "expression")` constructs an enabled policy for
-`Config.Policy.DisallowSuppressions`; it validates the report mode and selected rules.
+Rule options are validated while parsing the document. For example, configure
+`lint.rules.policy.disallow-suppressions` with `level: on` and
+`options: {report: all, rules: [expression]}`.
 
 `Options.ReadFile` supplies a concurrent-safe file reader for files read by actionlint. It does not sandbox external tools.
 External tools are disabled by default in the library. Enable them explicitly in `Options.Tools`, keyed by tool id;
@@ -116,15 +117,25 @@ The same contract is available to other languages as the WebAssembly component i
 
 ## Configuration and syntax
 
-Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing configuration format. Configuration
-constructors include `RequireJobTimeout`, `RequireJobTimeoutRange` and `RequirePermissions`.
-`ToolConfig.Backend` takes `ToolProcessBackend(command)` with a command from `NewToolCommand`, or
-`ToolWasmBackend(module)` with a module from `NewToolModule`. Read the selection back with `Process()` or `Wasm()`.
+Use `config.Parse`, `config.Load`, `config.ParseOverlay` and `config.Inspect` to validate
+configuration. `config.Config` is opaque; its zero value selects defaults.
+`MarshalText` returns owned YAML bytes. Build configuration as YAML or JSON and validate
+it once at this boundary. Internal policy and tool representations are not public API.
 `syntax.Parse` returns a workflow and structured parser diagnostics. Parsing does not execute semantic checks.
 The returned tree is a detached value copy owned by the caller; it shares no storage with the parser.
 
-The configuration package aliases a standalone implementation that does not import the analysis engine. Its public
-names are the supported import surface. Treat unexported state as opaque and use keyed struct literals.
+`analysis.Options.Repository` supplies a `repository.Snapshot` once per project root.
+Each fact has a concrete immutable type: available values and unavailable reasons are distinct.
+An available empty name set remains different from unavailable knowledge. Collection
+constructors and accessors copy their storage. Configured repository fields override
+these host facts after configuration inheritance and file overrides.
+
+`analysis.Options.RemoteActions` accepts an `actions.Provider`. It receives a parsed
+reference and returns a manifest bound to a host, repository ID, full commit ID and
+action directory. One request-scoped service supplies input/runtime checks and output
+inference. Its immutable-content cache uses that full identity; mutable references are
+cached only within the analysis request. Cancellation propagates; transport failures
+leave metadata unavailable. No built-in network fetcher or popular-action list is used.
 
 `actionlint.Schema(name)` returns a published JSON schema by path: `actionlint.schema.json`, which validates
 configuration files, or a file under `schemas/`, such as those it references. `actionlint config schema` prints the configuration schema with

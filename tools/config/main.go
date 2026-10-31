@@ -49,6 +49,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
+	case reflect.TypeFor[map[string]*string]():
+		return &jsonschema.Schema{Type: "object", AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}}
 	case reflect.TypeFor[actionlint.PluginDeclarations]():
 		mapping := reflectMapping(struct {
 			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
@@ -82,8 +84,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		rule.Not = &jsonschema.Schema{Enum: []any{"disallow-suppressions"}}
 		for _, name := range []string{"file", "uses", "job", "step", "reason"} {
 			property, _ := mapping.Properties.Get(name)
-			// Match strings containing a character outside Go's Unicode whitespace set.
-			property.Pattern = "[^\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]"
+			property.Ref = "#/$defs/non-blank-string"
+			property.Type, property.MinLength = "", nil
 		}
 		for _, selector := range []string{"file", "uses", "job", "step"} {
 			mapping.AnyOf = append(mapping.AnyOf, &jsonschema.Schema{Required: []string{selector}})
@@ -187,12 +189,19 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				{Type: "null"},
 			}},
 		}
-	case reflect.TypeFor[actionlint.DefaultPermissionsAssumption]():
-		return &jsonschema.Schema{
-			Type:    "string",
-			Enum:    []any{"restricted", "permissive"},
-			Default: "restricted",
-		}
+	case reflect.TypeFor[actionlint.RepositoryConfig]():
+		mapping := reflectMapping(struct {
+			Permissions  *string            `yaml:"default-workflow-permissions" jsonschema:"nullable,enum=read,enum=write,description=Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown."`
+			Runners      []string           `yaml:"runners" jsonschema:"nullable,description=Additional runner labels or Go path.Match patterns. Empty permits no additional labels."`
+			Variables    map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics."`
+			Secrets      []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets."`
+			Environments map[string]struct {
+				Variables map[string]*string `yaml:"variables" jsonschema:"nullable"`
+				Secrets   []string           `yaml:"secrets" jsonschema:"nullable"`
+			} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
+		}{})
+		mapping.Version, mapping.ID = "", ""
+		return mapping
 	case reflect.TypeFor[actionlint.JobTimeoutPolicy]():
 		// The runtime type stores private state and accepts either a boolean or
 		// this mapping. Keep this in sync with JobTimeoutPolicy.UnmarshalYAML.
@@ -303,6 +312,9 @@ func documentFields(s *jsonschema.Schema) {
 	documentFields(s.Then)
 	documentFields(s.Items)
 	documentFields(s.AdditionalProperties)
+	for _, definition := range s.Definitions {
+		documentFields(definition)
+	}
 }
 
 func requireOneBackend(mapping *jsonschema.Schema) {
@@ -315,7 +327,7 @@ func documentedReflector() (*jsonschema.Reflector, error) {
 	if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "tools", "profile", "shell", "directives.go"), jsonschema.WithFullComment()); err != nil {
 		return nil, err
 	}
-	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "knowledge_options.go"} {
+	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "config", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
@@ -359,6 +371,13 @@ func generate() ([]byte, error) {
 		return nil, err
 	}
 	s := r.Reflect(actionlint.Config{})
+	if s.Definitions == nil {
+		s.Definitions = jsonschema.Definitions{}
+	}
+	s.Definitions["non-blank-string"] = &jsonschema.Schema{
+		Type: "string", MinLength: new(uint64(1)),
+		Pattern: "[^\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]",
+	}
 	s.Properties.Set("$schema", &jsonschema.Schema{Type: "string", Description: "Schema reference for editors. actionlint ignores it."})
 	// Resolve tool schemas beside this document in Git checkouts and npm packages.
 	s.ID = ""

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 
-	configtree "actionlint.kjanat.dev/v2/internal/config/tree"
 	"actionlint.kjanat.dev/v2/internal/fsread"
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -66,7 +65,7 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 		resolved, err := resolveNode(node, nil, false)
 		return resolved.Node, err
 	}
-	before, err := configtree.Load(absolute, read, normalize)
+	before, err := loadConfigTree(absolute, read, normalize)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +75,7 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 	}
 	// Validate in the same graph, including plugin rule settings without loading
 	// any guest. Dependency identity is unchanged by config syntax migration.
-	after, err := configtree.Load(absolute, func(path string) ([]byte, error) {
+	after, err := loadConfigTree(absolute, func(path string) ([]byte, error) {
 		if path == absolute {
 			return migration.Content, nil
 		}
@@ -113,7 +112,7 @@ func PrepareMigration(ctx context.Context, path string) (*FileMigration, error) 
 // SetContent validates an enriched candidate, such as default plugin insertion,
 // against the original dependency graph without executing plugins.
 func (m *FileMigration) SetContent(content []byte) error {
-	if _, err := configtree.Load(m.Path, func(path string) ([]byte, error) {
+	if _, err := loadConfigTree(m.Path, func(path string) ([]byte, error) {
 		if path == m.Path {
 			return content, nil
 		}

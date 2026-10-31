@@ -15,8 +15,7 @@ type ruleRunnerLabel struct {
 	configuration
 }
 
-// NewRuleRunnerLabel checks runs-on labels against the built-in runner labels
-// and the self-hosted-runner labels in the user configuration.
+// NewRuleRunnerLabel checks known runner compatibility and available label facts.
 func NewRuleRunnerLabel() workflowvisit.Rule { return newRuleRunnerLabel(nil) }
 
 // newRuleRunnerLabel reports the job findings of runners instead when runners
@@ -35,11 +34,11 @@ func (r *ruleRunnerLabel) VisitJobPre(declaration workflowdecl.JobView) error {
 		}
 		return nil
 	}
-	var labels []string
-	if r.config != nil {
-		labels = r.config.SelfHostedRunner.Labels
+	labels := runnerlang.LabelSet{}
+	if known, available := r.repositoryFacts().RunnerLabels.Value(); available {
+		labels = runnerlang.KnownLabels(known.Values())
 	}
-	for _, d := range runnerlang.Check(declaration, labels) {
+	for _, d := range runnerlang.CheckWithLabels(declaration, labels) {
 		r.Report(findingmodel.FromDiagnostic(d))
 	}
 	return nil

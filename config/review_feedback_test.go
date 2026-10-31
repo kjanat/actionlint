@@ -14,11 +14,11 @@ func TestPublicConfigurationConstructors(t *testing.T) {
 	if _, err := config.ParseOverlay("unknown-input", []byte("true")); err == nil {
 		t.Fatal("unknown overlay input accepted")
 	}
-	policy, err := config.DisallowSuppressions("all", "expression")
-	if err != nil || !policy.Enabled() || policy.Report() != "all" {
-		t.Fatalf("policy=%v err=%v", policy, err)
+	_, err := config.Parse([]byte("lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: all, rules: [expression]}}}}}"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := config.DisallowSuppressions("unknown"); err == nil {
+	if _, err := config.Parse([]byte("lint: {rules: {policy: {disallow-suppressions: {level: on, options: {report: unknown}}}}}")); err == nil {
 		t.Fatal("unknown suppression mode accepted")
 	}
 }

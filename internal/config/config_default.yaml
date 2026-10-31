@@ -13,15 +13,6 @@ lint:
     # List rules and their defaults with: actionlint rules
     # correctness:
     #   deprecated-commands: warn
-    #   runner-label:
-    #     level: default
-    #     options: {labels: [linux.2xlarge]}
-    #   expression-reference:
-    #     level: default
-    #     options: {variables: null, secrets: null}
-    #   workflow-call:
-    #     level: default
-    #     options: {default-permissions: restricted}
     # suspicious:
     #   case-insensitive-conditions: off
     # security:
@@ -90,7 +81,15 @@ lint:
 # local-actions:
 #   ./generated-action: ./src/action
 
-# Null variables/secrets disables name checking; [] permits no configured names.
-# Built-in and workflow_call secrets are added to this list.
+# Repository facts are independent of rule selection. Omission inherits host
+# knowledge; null makes a fact unknown. Empty collections are known empty sets.
+# repository:
+#   runners: [linux.2xlarge]
+#   variables: {DEFAULT_RUNNER: null, PROVENANCE: "true"}
+#   secrets: [DEPLOY_TOKEN]
+#   default-workflow-permissions: read
+#   environments:
+#     production: {variables: {STAGE: "production"}, secrets: [DEPLOY_TOKEN]}
+# Built-in and workflow_call secrets are added separately.
 
 # Run `actionlint config migrate` to preview conversion of older configuration.
