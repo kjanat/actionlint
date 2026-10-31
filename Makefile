@@ -98,7 +98,6 @@ cov: coverage.out coverage.html
 .PHONY: lint-build lint-architecture test-analyzers
 lint-build:
 	golangci-lint custom
-	./custom-gcl cache clean
 	go build -C analyzers -o ../.bin/actionlintarch$(EXE) ./cmd/actionlintarch
 
 test-analyzers:
