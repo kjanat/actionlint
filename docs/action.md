@@ -275,7 +275,7 @@ Declare ShellCheck and Ruff Wasm plugins in the project's `plugins` list and
 commit the generated lockfile. The Action uses the same pinned artifacts as the
 CLI. `disable-tools` lists tool ids to turn off, such as `shellcheck` or `ruff`;
 those tools run neither natively nor as plugins, and a locked plugin whose name or
-alias is a listed id is not downloaded. An id that names no bundled tool or loaded
+alias is a listed id is not downloaded. An id that names no bundled tool and no
 plugin fails with the list of valid ids. Plugin options belong in project configuration.
 See [installing and configuring plugins](plugins.md).
 

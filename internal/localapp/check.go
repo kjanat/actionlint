@@ -160,10 +160,10 @@ func (l *loadedPlugins) configure(options application.Options) (application.Opti
 	return options, l.checkTools(options.Tools)
 }
 
-// checkTools reports the tool ids the invocation named that match no
-// registration and no skipped plugin.
+// checkTools reports the tool ids named by --tool or --no-tool that match no
+// tool registration, no loaded plugin and no skipped plugin.
 func (l *loadedPlugins) checkTools(registrations []tools.Registration) error {
-	known := slices.Clone(l.skipped)
+	known := slices.Concat(l.skipped, l.ids)
 	for _, registration := range registrations {
 		known = append(known, registration.Descriptor.Name)
 	}

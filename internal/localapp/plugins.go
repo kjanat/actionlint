@@ -31,6 +31,10 @@ type loadedPlugins struct {
 	// skipped lists the disabled tool ids that matched a plugin, which was
 	// therefore not loaded.
 	skipped []string
+	// ids lists the ids --no-tool can disable for each loaded plugin: the
+	// name and alias of its lock pin, and the engine and rule names in its
+	// metadata.
+	ids []string
 }
 
 // localProvider is a tool provider manifest read from a local path.
@@ -46,6 +50,14 @@ type scriptEngineRegistration struct {
 
 func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debug bool) (*loadedPlugins, error) {
 	loaded := &loadedPlugins{tools: sources.tools, skipped: slices.Clone(sources.skipped)}
+	if sources.lock != nil {
+		for _, pin := range sources.lock.Plugins {
+			loaded.ids = append(loaded.ids, pin.Name)
+			if pin.Alias != "" {
+				loaded.ids = append(loaded.ids, pin.Alias)
+			}
+		}
+	}
 	for _, path := range sources.Paths {
 		if provider.IsLocalManifest(path) {
 			// A local manifest names a command found on PATH; nothing is fetched.
@@ -72,11 +84,18 @@ func loadPlugins(ctx context.Context, sources PluginSources, log io.Writer, debu
 			}
 		}
 		path = artifact.Info.Source
-		if id, err := disabledMetadataTool(artifact.Info.Metadata, sources.disabledTools); err != nil {
-			return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
-		} else if id != "" {
-			loaded.skipped = append(loaded.skipped, id)
-			continue
+		// Metadata is read only when --tool or --no-tool named an id, so
+		// unusual metadata cannot fail a run that names none.
+		if len(sources.disabledTools) != 0 || len(sources.tools) != 0 {
+			ids, err := metadataTools(artifact.Info.Metadata)
+			if err != nil {
+				return nil, &PluginLoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.close(context.WithoutCancel(ctx)))}
+			}
+			if index := slices.IndexFunc(ids, func(id string) bool { return slices.Contains(sources.disabledTools, id) }); index >= 0 {
+				loaded.skipped = append(loaded.skipped, ids[index])
+				continue
+			}
+			loaded.ids = append(loaded.ids, ids...)
 		}
 		if artifact.Info.Kind == pluginartifact.Core {
 			engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: engineCacheDir()})
@@ -223,12 +242,12 @@ func InspectPlugin(ctx context.Context, source string) (pluginartifact.Info, err
 	return artifact.Info, nil
 }
 
-// disabledMetadataTool returns the disabled tool id that static plugin
-// metadata names as the engine or as one of its rules, or "". It reads the
-// inspected metadata without running the plugin.
-func disabledMetadataTool(metadata json.RawMessage, disabled []string) (string, error) {
-	if len(disabled) == 0 || len(metadata) == 0 {
-		return "", nil
+// metadataTools returns the engine name and rule names that static plugin
+// metadata declares. It reads the inspected metadata without running the
+// plugin.
+func metadataTools(metadata json.RawMessage) ([]string, error) {
+	if len(metadata) == 0 {
+		return nil, nil
 	}
 	var declared struct {
 		Rules []struct {
@@ -239,16 +258,16 @@ func disabledMetadataTool(metadata json.RawMessage, disabled []string) (string, 
 		} `json:"engine"`
 	}
 	if err := json.Unmarshal(metadata, &declared); err != nil {
-		return "", fmt.Errorf("read plugin metadata: %w", err)
+		return nil, fmt.Errorf("read plugin metadata: %w", err)
 	}
-	names := []string{declared.Engine.Name}
+	var names []string
+	if declared.Engine.Name != "" {
+		names = append(names, declared.Engine.Name)
+	}
 	for _, rule := range declared.Rules {
-		names = append(names, rule.Name)
-	}
-	for _, name := range names {
-		if name != "" && slices.Contains(disabled, name) {
-			return name, nil
+		if rule.Name != "" {
+			names = append(names, rule.Name)
 		}
 	}
-	return "", nil
+	return names, nil
 }

@@ -24,20 +24,20 @@ type PluginSelection struct {
 	ConfigFile string
 	Disabled   bool
 	Overlays   []config.Overlay
-	// disabledTools and tools are set by WithTools.
+	// disabledTools and tools are set by SelectionWithTools.
 	disabledTools, tools []string
 }
 
-// WithTools returns the selection with the tool ids an invocation disabled
-// and the tool ids it named, such as by --no-tool and --tool or the GitHub
-// Action's disable-tools input. A locked plugin whose name or alias is a
-// disabled id is never downloaded; any other plugin is skipped before it
-// runs when its static metadata names a disabled id as its engine or one of
-// its rules. Once plugins load, each named id must name a bundled provider
-// or a loaded or skipped plugin.
-func (s PluginSelection) WithTools(disabled, named []string) PluginSelection {
-	s.disabledTools, s.tools = slices.Clone(disabled), slices.Clone(named)
-	return s
+// SelectionWithTools returns a copy of selection that stores the tool ids
+// disabled by --no-tool or the GitHub Action's disable-tools input, and the
+// tool ids named by --tool, --no-tool or that input. A locked plugin whose
+// name or alias is a disabled id is never downloaded. Any other plugin is
+// skipped before it runs when its metadata names a disabled id as its engine
+// or one of its rules. After plugins load, each named id must name a bundled
+// tool, a loaded plugin or a skipped plugin.
+func SelectionWithTools(selection PluginSelection, disabled, named []string) PluginSelection {
+	selection.disabledTools, selection.tools = slices.Clone(disabled), slices.Clone(named)
+	return selection
 }
 
 type PluginSources struct {
@@ -51,8 +51,8 @@ type PluginSources struct {
 	configs   []*config.Config
 	artifacts map[string]*pluginartifact.Artifact
 	overlays  []config.Overlay
-	// disabledTools and tools carry PluginSelection.DisabledTools and
-	// PluginSelection.Tools to loading.
+	// disabledTools and tools carry the ids set by SelectionWithTools
+	// to loading.
 	disabledTools, tools []string
 	// skipped lists the disabled tool ids that matched a locked plugin.
 	skipped []string

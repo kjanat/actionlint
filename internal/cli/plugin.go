@@ -67,10 +67,10 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 }
 
 func (c checkInvocation) pluginSelection() localapp.PluginSelection {
-	// A tool --no-tool disabled is not linted by plugins either.
-	return localapp.PluginSelection{
+	// A tool disabled by --no-tool is not run by plugins either.
+	return localapp.SelectionWithTools(localapp.PluginSelection{
 		Paths: c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
-	}.WithTools(c.DisabledTools, c.NamedTools)
+	}, c.DisabledTools, c.NamedTools)
 }
 
 // defaultPlugins lets every bundled tool that runs its default command

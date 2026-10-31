@@ -440,8 +440,9 @@ Ruff checks Python `run:` steps when `ruff` is installed on `PATH`.
 No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
 Both flags are repeatable; the last `--tool` or `--no-tool` for an id wins and
 replaces the tool's environment settings. Legacy single-dash spellings follow the
-same rules at the root and after subcommands. An id that names no bundled tool or
-loaded plugin is rejected with the list of valid ids.
+same rules at the root and after subcommands. A plugin's ids are its lock entry's
+name and alias and the engine and rule names in its metadata. An id that names no
+bundled tool and no plugin is rejected with the list of valid ids.
 
 The former per-tool flags remain as hidden, deprecated aliases for one release.
 Each bundled tool has `--ID[=COMMAND]` (`--tool ID=COMMAND`) and `--no-ID`

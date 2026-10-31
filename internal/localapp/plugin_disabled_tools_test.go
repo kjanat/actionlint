@@ -45,7 +45,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.Requests = nil
-	selection := PluginSelection{LockFile: lock.Path}.WithTools([]string{"no-sudo"}, []string{"no-sudo"})
+	selection := SelectionWithTools(PluginSelection{LockFile: lock.Path}, []string{"no-sudo"}, []string{"no-sudo"})
 	sources, err := selection.Resolve(t.Context(), t.TempDir(), application.Input{})
 	if err != nil {
 		t.Fatal(err)
@@ -74,28 +74,73 @@ func TestUnknownToolIDIsRejected(t *testing.T) {
 	}
 }
 
-func TestDisabledMetadataToolReadsStaticMetadata(t *testing.T) {
-	engine := json.RawMessage(`{"engine":{"name":"lint-engine"},"rules":[{"name":"lint-rule"}]}`)
-	for _, test := range []struct {
-		name     string
-		metadata json.RawMessage
-		disabled []string
-		want     string
-	}{
-		{"engine disabled", engine, []string{"lint-engine"}, "lint-engine"},
-		{"rule disabled", engine, []string{"other", "lint-rule"}, "lint-rule"},
-		{"other disabled", engine, []string{"other"}, ""},
-		{"nothing disabled", engine, nil, ""},
-		{"no metadata", nil, []string{"lint-engine"}, ""},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			got, err := disabledMetadataTool(test.metadata, test.disabled)
-			if err != nil || got != test.want {
-				t.Fatalf("disabledMetadataTool = %q, %v; want %q", got, err, test.want)
+// TestNamedPluginToolIsAccepted checks that --tool accepts the same plugin
+// ids as --no-tool, here a lock pin's name and alias, and that naming a
+// plugin keeps it running.
+func TestNamedPluginToolIsAccepted(t *testing.T) {
+	registry := testutil.NewPluginRegistry(t)
+	module, err := os.ReadFile("../plugins/component/testdata/plugins/no-sudo.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry.Add(t, "v1.0.0", module)
+	client, err := pluginregistry.New(testutil.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, err := client.Resolve(t.Context(), testutil.FixturePluginName, "latest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin.Alias = "sudo-check"
+	lock, err := pluginregistry.OpenLock(t.Context(), filepath.Join(t.TempDir(), pluginregistry.LockName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := lock.Set(pin); err != nil {
+		t.Fatal(err)
+	}
+	if err := lock.Save(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{testutil.FixturePluginName, "sudo-check"} {
+		t.Run(id, func(t *testing.T) {
+			selection := SelectionWithTools(PluginSelection{LockFile: lock.Path}, nil, []string{id})
+			sources, err := selection.Resolve(t.Context(), t.TempDir(), application.Input{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := CheckSources(t.Context(), application.Options{}, application.Input{
+				Kind: application.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
+			}, sources)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.ContainsFunc(result.Diagnostics, func(finding diagnostic.Diagnostic) bool { return finding.Rule == "no-sudo" }) {
+				t.Fatalf("named plugin did not run: %+v", result.Diagnostics)
 			}
 		})
 	}
-	if _, err := disabledMetadataTool(json.RawMessage(`{`), []string{"lint-engine"}); err == nil {
+}
+
+func TestMetadataToolsReadsStaticMetadata(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		metadata json.RawMessage
+		want     []string
+	}{
+		{"engine and rules", json.RawMessage(`{"engine":{"name":"lint-engine"},"rules":[{"name":"lint-rule"},{"name":""}]}`), []string{"lint-engine", "lint-rule"}},
+		{"rules only", json.RawMessage(`{"rules":[{"name":"lint-rule"}]}`), []string{"lint-rule"}},
+		{"no metadata", nil, nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := metadataTools(test.metadata)
+			if err != nil || !slices.Equal(got, test.want) {
+				t.Fatalf("metadataTools = %q, %v; want %q", got, err, test.want)
+			}
+		})
+	}
+	if _, err := metadataTools(json.RawMessage(`{`)); err == nil {
 		t.Fatal("malformed metadata was accepted")
 	}
 }
