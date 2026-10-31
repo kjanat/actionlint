@@ -21,6 +21,15 @@ func newExecutableState(hosted, callerRepositoryUnknown bool) executableState {
 	}
 }
 
+// fork copies the state for a composite entry or call. The copy gets its own
+// changed and actionChanged maps, so the child's mode observations reach the
+// caller only through JoinComposite.
+func (state *executableState) fork() executableState {
+	forked := *state
+	forked.changed, forked.actionChanged = maps.Clone(state.changed), maps.Clone(state.actionChanged)
+	return forked
+}
+
 func (state *executableState) afterPossibleFailure() {
 	state.pristine, state.repositoryUnknown = false, true
 	state.actionPristine = false
@@ -44,11 +53,10 @@ func (state *executableState) afterKnownCheckout(checkout string, caseInsensitiv
 }
 
 // ForkComposite creates isolated execution state for an action entry or call and its resolved paths.
+// The fork shares the caller's ExecutableContext, so its findings go to the same Report.
 func (rule *ExecutableChecker) ForkComposite(context invocation.Context, actionPath string, paths Paths) *ExecutableChecker {
 	scoped := NewExecutableChecker(rule.context)
-	scoped.executableState = rule.executableState
-	// The fork owns its mode observations; JoinComposite decides how they reach the caller.
-	scoped.changed, scoped.actionChanged = maps.Clone(rule.changed), maps.Clone(rule.actionChanged)
+	scoped.executableState = rule.fork()
 	scoped.unix, scoped.caseInsensitive, scoped.shIsDash = rule.unix, rule.caseInsensitive, rule.shIsDash
 	effects, isCall := context.Facts()
 	if isCall && effects.AfterFailure {
