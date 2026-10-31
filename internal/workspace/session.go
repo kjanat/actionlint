@@ -35,21 +35,25 @@ type Selection struct {
 // Options controls only input preparation, not analysis or rendering.
 type Options struct {
 	WorkingDir, StdinFileName, ConfigFile string
-	ConfigOverlays                        []repoconfig.Overlay
-	OnConfigLoaded                        func(configreport.Report)
-	SkipProjectConfig                     bool
-	OnFilesSelected                       func([]string)
-	ReadFile                              func(string) ([]byte, error)
-	RuleNames                             []string
-	Log                                   func(...any)
-	LogWriter                             io.Writer
+	// Config, when set, is used for every input instead of the repository's
+	// configuration file. It cannot be combined with ConfigFile.
+	Config            *repoconfig.Config
+	ConfigOverlays    []repoconfig.Overlay
+	OnConfigLoaded    func(configreport.Report)
+	SkipProjectConfig bool
+	OnFilesSelected   func([]string)
+	ReadFile          func(string) ([]byte, error)
+	RuleNames         []string
+	Log               func(...any)
+	LogWriter         io.Writer
 }
 
 // Session shares repository and configuration lookups across input selections.
 type Session struct {
 	projects *Projects
-	// DefaultConfig is an explicit in-memory configuration override for legacy callers.
-	DefaultConfig     *repoconfig.Config
+	// defaultConfig comes from Options.Config or Options.ConfigFile and
+	// replaces every project's configuration.
+	defaultConfig     *repoconfig.Config
 	defaultConfigPath string
 	configState       *configState
 	ctx               context.Context
@@ -63,7 +67,10 @@ type Session struct {
 
 // New prepares a session whose file reads and config loads stop when ctx is canceled.
 func New(ctx context.Context, opts Options) (*Session, error) {
-	a := &Session{projects: NewProjects(), ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: opts.ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
+	if opts.Config != nil && opts.ConfigFile != "" {
+		return nil, errors.New("workspace options set both Config and ConfigFile")
+	}
+	a := &Session{projects: NewProjects(), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: opts.ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	if a.readFile == nil {
 		a.readFile = fsread.Disk
 	}
@@ -82,7 +89,7 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 		if err != nil {
 			return nil, err
 		}
-		a.DefaultConfig = source.Config
+		a.defaultConfig = source.Config
 		a.defaultConfigPath = opts.ConfigFile
 		a.configState.source = source
 	}
@@ -213,7 +220,7 @@ func (a *Session) Empty() (*Selection, error) {
 	result := &Selection{Sources: []Source{}}
 	inputs := &Inputs{}
 	inputs.Add(a.defaultConfigPath)
-	if project != nil || a.DefaultConfig != nil {
+	if project != nil || a.defaultConfig != nil {
 		if _, err := a.ConfigForProject(project); err != nil {
 			return nil, err
 		}
@@ -307,7 +314,7 @@ func (a *Session) Content(path string, content []byte, project *Project, normali
 }
 
 func (a *Session) source(path string, content []byte, project *Project) Source {
-	cfg := a.DefaultConfig
+	cfg := a.defaultConfig
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
