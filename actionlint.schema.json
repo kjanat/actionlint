@@ -9267,8 +9267,8 @@
                                 "properties": {
                                   "args": {
                                     "title": "args",
-                                    "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                                    "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                                    "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                                    "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                                     "oneOf": [
                                       {
                                         "type": "array",
@@ -9299,8 +9299,8 @@
                                   },
                                   "executable": {
                                     "title": "executable",
-                                    "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string"
                                   }
                                 },
@@ -9317,8 +9317,8 @@
                                 "properties": {
                                   "path": {
                                     "title": "path",
-                                    "description": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string",
                                     "minLength": 1
                                   }
@@ -9571,8 +9571,8 @@
                                 "properties": {
                                   "args": {
                                     "title": "args",
-                                    "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                                    "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                                    "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                                    "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                                     "oneOf": [
                                       {
                                         "type": "array",
@@ -9603,8 +9603,8 @@
                                   },
                                   "executable": {
                                     "title": "executable",
-                                    "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string"
                                   }
                                 },
@@ -9621,8 +9621,8 @@
                                 "properties": {
                                   "path": {
                                     "title": "path",
-                                    "description": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                                    "markdownDescription": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                                    "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                                     "type": "string",
                                     "minLength": 1
                                   }
@@ -9884,8 +9884,8 @@
                       "properties": {
                         "args": {
                           "title": "args",
-                          "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                          "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                          "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                          "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                           "oneOf": [
                             {
                               "type": "array",
@@ -9916,8 +9916,8 @@
                         },
                         "executable": {
                           "title": "executable",
-                          "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string"
                         }
                       },
@@ -9934,8 +9934,8 @@
                       "properties": {
                         "path": {
                           "title": "path",
-                          "description": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string",
                           "minLength": 1
                         }
@@ -10188,8 +10188,8 @@
                       "properties": {
                         "args": {
                           "title": "args",
-                          "description": "Are literal arguments prepended to actionlint's analysis arguments.",
-                          "markdownDescription": "Are literal arguments prepended to actionlint's analysis arguments.",
+                          "description": "Literal arguments prepended to actionlint's analysis arguments.",
+                          "markdownDescription": "Literal arguments prepended to actionlint's analysis arguments.",
                           "oneOf": [
                             {
                               "type": "array",
@@ -10220,8 +10220,8 @@
                         },
                         "executable": {
                           "title": "executable",
-                          "description": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string"
                         }
                       },
@@ -10238,8 +10238,8 @@
                       "properties": {
                         "path": {
                           "title": "path",
-                          "description": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
-                          "markdownDescription": "Is a raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "description": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
+                          "markdownDescription": "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory.",
                           "type": "string",
                           "minLength": 1
                         }

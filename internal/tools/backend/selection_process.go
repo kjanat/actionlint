@@ -24,11 +24,11 @@ func processCommand(name, requested string, explicit *processconfig.Options, cfg
 	if requested != name || cfg == nil || explicit != nil && (explicit.IgnoreConfig || !explicit.Optional) {
 		return nil
 	}
-	backend := cfg.Tools[name].Backend
-	if backend == nil {
+	command, ok := cfg.Tools[name].Backend.Process()
+	if !ok {
 		return nil
 	}
-	return backend.Process
+	return &command
 }
 
 // ProcessOptions applies repository backend settings unless the caller made an explicit choice.
@@ -37,12 +37,13 @@ func ProcessOptions(name, requested string, explicit *processconfig.Options, cfg
 	if command == nil {
 		return explicit
 	}
-	options := &processconfig.Options{WorkingDir: cwd, LauncherArguments: slices.Clone(command.Args)}
-	if command.Executable != "" {
-		options.Executable = new(command.Executable)
+	options := &processconfig.Options{WorkingDir: cwd, LauncherArguments: command.Args()}
+	if executable := command.Executable(); executable != "" {
+		options.Executable = new(executable)
 	}
-	for _, key := range slices.Sorted(maps.Keys(command.Env)) {
-		options.Environment = append(options.Environment, key+"="+command.Env[key])
+	env := command.Env()
+	for _, key := range slices.Sorted(maps.Keys(env)) {
+		options.Environment = append(options.Environment, key+"="+env[key])
 	}
 	// Arguments a retired command-line flag adds still apply when a repository
 	// supplies the executable.

@@ -35,8 +35,8 @@ func (s *PluginSources) CachePlan() (PluginCachePlan, error) {
 	plan := PluginCachePlan{Directory: directory, Artifacts: []string{}}
 	paths := slices.Clone(s.Paths)
 	add := func(backend *toolconfig.Backend) {
-		if backend != nil && backend.Wasm != nil {
-			paths = append(paths, backend.Wasm.Path)
+		if module, ok := backend.Wasm(); ok {
+			paths = append(paths, module.Path())
 		}
 	}
 	addTools := func(tools config.ToolsConfig) {

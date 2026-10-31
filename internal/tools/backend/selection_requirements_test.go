@@ -32,9 +32,9 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 				switch {
 				case backend == nil:
 					hasDefault = true
-				case backend.Process != nil:
+				case hasTransport(backend.Process()):
 					hasProcess = true
-				case backend.Wasm != nil:
+				case hasTransport(backend.Wasm()):
 					hasWasm = true
 				}
 			}
@@ -46,7 +46,7 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 				if name == "ruff" {
 					backend = candidate.Tools["ruff"].Backend
 				}
-				return backend != nil && backend.Process != nil
+				return hasTransport(backend.Process())
 			})
 			if err != nil || !needed {
 				t.Fatalf("host plugin default hid an explicit process: needed=%t error=%v", needed, err)
@@ -54,3 +54,6 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 		})
 	}
 }
+
+// hasTransport reports whether a Backend accessor found its transport.
+func hasTransport[T any](_ T, ok bool) bool { return ok }

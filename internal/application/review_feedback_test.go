@@ -107,11 +107,13 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 		t.Run(tool, func(t *testing.T) {
 			root := t.TempDir()
 			marker := filepath.Join(root, "executed")
-			backend := &toolconfig.Backend{Process: &toolconfig.Command{
-				Executable: executable,
-				Args:       []string{"-test.run=^TestRepositoryProcessHelper$", "--"},
-				Env:        map[string]string{"ACTIONLINT_REPOSITORY_PROCESS": "1", "ACTIONLINT_REPOSITORY_PROCESS_MARKER": marker, "ACTIONLINT_REPOSITORY_TOOL": tool},
-			}}
+			command, err := toolconfig.NewCommand(executable,
+				[]string{"-test.run=^TestRepositoryProcessHelper$", "--"},
+				map[string]string{"ACTIONLINT_REPOSITORY_PROCESS": "1", "ACTIONLINT_REPOSITORY_PROCESS_MARKER": marker, "ACTIONLINT_REPOSITORY_TOOL": tool})
+			if err != nil {
+				t.Fatal(err)
+			}
+			backend := toolconfig.ProcessBackend(command)
 			cfg := &config.Config{Tools: config.ToolsConfig{tool: {Backend: backend}}}
 			options := registry.Selections{tool: {Command: tool}}
 			shell := "python"
@@ -120,7 +122,7 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 			}
 			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(options), Sources: []sourceUnit{{Path: "ci.yml", Config: cfg,
 				Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n")}}}
-			_, err := runTestAnalysis(t.Context(), request)
+			_, err = runTestAnalysis(t.Context(), request)
 			if err == nil || !strings.Contains(err.Error(), "--allow-config-processes") {
 				t.Errorf("repository process selection needs an actionable opt-in error: %v", err)
 			}

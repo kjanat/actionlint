@@ -40,8 +40,8 @@ func (f *Inputs) List() []string {
 func (f *Inputs) AddConfig(config *repoconfig.Config, project *Project, workingDir string) {
 	if config != nil {
 		for _, name := range slices.Sorted(maps.Keys(config.Tools)) {
-			if backend := config.Tools[name].Backend; backend != nil && backend.Wasm != nil {
-				_, local, err := pluginartifact.NormalizeSource(backend.Wasm.Path, workingDir)
+			if module, ok := config.Tools[name].Backend.Wasm(); ok {
+				_, local, err := pluginartifact.NormalizeSource(module.Path(), workingDir)
 				if err == nil {
 					f.Add(local)
 				}

@@ -60,11 +60,13 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	process := &toolconfig.Backend{Process: &toolconfig.Command{
-		Executable: executable,
-		Args:       []string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
-		Env:        map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"},
-	}}
+	command, err := toolconfig.NewCommand(executable,
+		[]string{"-test.run=^TestConfiguredBackendProcessHelper$", "--", "literal $value; with spaces"},
+		map[string]string{"ACTIONLINT_BACKEND_HELPER": "1", "ACTIONLINT_TEST_STDIN_HELPER": "1", "ACTIONLINT_BACKEND_LITERAL": "$(not a command)"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	process := toolconfig.ProcessBackend(command)
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			cfg := &repoconfig.Config{}

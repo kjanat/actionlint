@@ -269,7 +269,7 @@ func (t *transports) build(cfg *config.Config) (string, error) {
 		return t.process("embedded", command, routeEmbedded, true)
 	}
 	if module := Module(name, o.Command, o.Process, cfg); module != nil {
-		key := "wasm:" + module.Path
+		key := "wasm:" + module.Path()
 		if _, ok := t.built[key]; ok {
 			return key, nil
 		}

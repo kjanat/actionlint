@@ -20,7 +20,11 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 	t.Setenv("HOME", cache)
 	a, b, c := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64)
 	backend := func(path string) *toolconfig.Backend {
-		return &toolconfig.Backend{Wasm: &toolconfig.Module{Path: path}}
+		module, err := toolconfig.NewModule(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return toolconfig.WasmBackend(module)
 	}
 	tools := config.ToolsConfig{
 		"ruff":       {Backend: backend("sha256://" + b)},

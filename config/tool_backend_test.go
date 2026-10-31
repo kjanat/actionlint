@@ -8,12 +8,21 @@ import (
 )
 
 func TestPublicToolBackendsCanBeConstructed(t *testing.T) {
-	backend := &config.ToolBackend{Process: &config.ToolCommand{
-		Executable: "launcher", Args: []string{"--isolated"}, Env: map[string]string{"MODE": "strict"},
-	}}
+	command, err := config.NewToolCommand("launcher", []string{"--isolated"}, map[string]string{"MODE": "strict"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := config.ToolProcessBackend(command)
 	constructed := config.Config{Tools: config.ToolsConfig{
 		"ruff": {Backend: backend}, "shellcheck": {Backend: backend},
 	}}
+	module, err := config.NewToolModule("engines/ruff.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := config.ToolWasmBackend(module).Wasm(); !ok || got.Path() != "engines/ruff.wasm" {
+		t.Fatalf("wasm backend selects %+v, ok=%t", got, ok)
+	}
 	parsed, err := config.Parse([]byte(`tools:
   ruff:
     backend: {process: {executable: launcher, args: [--isolated], env: {MODE: strict}}}

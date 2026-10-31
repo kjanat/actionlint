@@ -19,11 +19,11 @@ func Module(name, requested string, explicit *processconfig.Options, cfg *config
 	if cfg == nil || !AllowsModule(name, requested, explicit) {
 		return nil
 	}
-	backend := cfg.Tools[name].Backend
-	if backend == nil {
+	module, ok := cfg.Tools[name].Backend.Wasm()
+	if !ok {
 		return nil
 	}
-	return backend.Wasm
+	return &module
 }
 
 // Load resolves a configured WebAssembly module through the invocation loader.
@@ -33,7 +33,7 @@ func Load(name, requested string, explicit *processconfig.Options, cfg *config.C
 		return nil, nil
 	}
 	if load == nil {
-		return nil, errors.New("tools." + name + ".backend.wasm selects " + module.Path + ", and this host has no WebAssembly engine loader")
+		return nil, errors.New("tools." + name + ".backend.wasm selects " + module.Path() + ", and this host has no WebAssembly engine loader")
 	}
-	return load(module.Path)
+	return load(module.Path())
 }

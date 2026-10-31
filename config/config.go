@@ -139,3 +139,26 @@ func ToolConfigPath(path string) (*ToolSettings, error) {
 func ToolConfigInline(tool string, values map[string]any) (*ToolSettings, error) {
 	return repoconfig.ToolConfigInline(tool, values)
 }
+
+// NewToolCommand returns a native invocation of executable with args and env,
+// as tools.<name>.backend.process declares one. It keeps copies of args and
+// env, and rejects NUL bytes and environment names that are empty or contain "=".
+func NewToolCommand(executable string, args []string, env map[string]string) (ToolCommand, error) {
+	return toolconfig.NewCommand(executable, args, env)
+}
+
+// NewToolModule locates a core WebAssembly engine, as
+// tools.<name>.backend.wasm.path declares one. path must be nonempty.
+func NewToolModule(path string) (ToolModule, error) {
+	return toolconfig.NewModule(path)
+}
+
+// ToolProcessBackend selects native invocation of command.
+func ToolProcessBackend(command ToolCommand) *ToolBackend {
+	return toolconfig.ProcessBackend(command)
+}
+
+// ToolWasmBackend selects the core WebAssembly engine at module.
+func ToolWasmBackend(module ToolModule) *ToolBackend {
+	return toolconfig.WasmBackend(module)
+}

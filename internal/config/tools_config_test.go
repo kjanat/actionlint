@@ -215,7 +215,7 @@ func TestRegisteredToolEntriesAreStructural(t *testing.T) {
 		t.Fatal(err)
 	}
 	tool := cfg.Tools["lint-sql"]
-	if tool.Backend == nil || tool.Backend.Wasm == nil || !reflect.DeepEqual(tool.Config.Inline(), map[string]any{"anything": []any{1, 2}}) {
+	if module, ok := tool.Backend.Wasm(); !ok || module.Path() != "sql.wasm" || !reflect.DeepEqual(tool.Config.Inline(), map[string]any{"anything": []any{1, 2}}) {
 		t.Fatalf("lost settings: %+v", tool)
 	}
 	// Providers without bundled data have no shorthands to fold.

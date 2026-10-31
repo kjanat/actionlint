@@ -145,12 +145,10 @@ type toolGateState struct {
 func toolGateConfig(name string, config *repoconfig.Config) toolGateState {
 	enabled, backend := config.Tools[name].Enabled, config.Tools[name].Backend
 	kind := backendDefault
-	if backend != nil {
-		if backend.Process != nil {
-			kind = backendProcess
-		} else if backend.Wasm != nil {
-			kind = backendWasm
-		}
+	if _, ok := backend.Process(); ok {
+		kind = backendProcess
+	} else if _, ok := backend.Wasm(); ok {
+		kind = backendWasm
 	}
 	rules := config.Lint.Rules
 	rule, explicit := rules.External.Rule(name)

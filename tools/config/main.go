@@ -14,6 +14,7 @@ import (
 
 	actionlint "actionlint.kjanat.dev/v2/internal/config"
 	lintconfig "actionlint.kjanat.dev/v2/internal/config/rules"
+	toolconfig "actionlint.kjanat.dev/v2/internal/config/tools"
 	"actionlint.kjanat.dev/v2/internal/genfile"
 	shellprofile "actionlint.kjanat.dev/v2/internal/tools/profile/shell"
 
@@ -214,6 +215,25 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return mapping
+	case reflect.TypeFor[toolconfig.Backend]():
+		// The runtime type keeps its validated transport private. Keep this in
+		// sync with Backend.UnmarshalYAML.
+		mapping := reflectMapping(struct {
+			Process *struct {
+				Executable string            `yaml:"executable,omitempty" jsonschema:"description=A command on PATH or a literal path. Relative paths resolve from the declaring config file; inline configs use the analysis directory."`
+				Args       []string          `yaml:"args,omitempty" jsonschema:"nullable,description=Literal arguments prepended to actionlint's analysis arguments."`
+				Env        map[string]string `yaml:"env,omitempty" jsonschema:"nullable,description=Overrides named variables in the child process only."`
+			} `yaml:"process,omitempty" jsonschema:"description=Configures native executable invocation."`
+			Wasm *struct {
+				Path string `yaml:"path" jsonschema:"required,minLength=1"`
+			} `yaml:"wasm,omitempty" jsonschema:"description=Selects a core WebAssembly engine using the versioned core JSON ABI."`
+		}{})
+		wasm, _ := mapping.Properties.Get("wasm")
+		path, _ := wasm.Properties.Get("path")
+		path.Description = "A raw or gzip-compressed module path, file URI, HTTP(S) URL, or oci://<host>/<repository>@sha256:<hex> reference to an image with a WebAssembly layer. URI fragments may pin downloaded bytes with #sha256=<hex>. Relative paths resolve from the declaring config file; inline configs use the analysis directory."
+		mapping.Version = ""
+		mapping.ID = ""
+		return mapping
 	case reflect.TypeFor[actionlint.PermissionsPolicy]():
 		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
@@ -292,10 +312,8 @@ func requireOneBackend(mapping *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	for _, file := range []string{filepath.Join("internal", "config", "tools", "command.go"), filepath.Join("internal", "tools", "profile", "shell", "directives.go")} {
-		if err := r.AddGoComments("actionlint.kjanat.dev/v2", file, jsonschema.WithFullComment()); err != nil {
-			return nil, err
-		}
+	if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "tools", "profile", "shell", "directives.go"), jsonschema.WithFullComment()); err != nil {
+		return nil, err
 	}
 	for _, file := range []string{"config.go", "lint.go", "rule_settings.go", "catalog.go", "file_overrides.go", "knowledge_options.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "config", file), jsonschema.WithFullComment()); err != nil {

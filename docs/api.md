@@ -118,6 +118,8 @@ The same contract is available to other languages as the WebAssembly component i
 
 Use `config.Parse`, `config.Load` and `config.Inspect` to work with the existing configuration format. Configuration
 constructors include `RequireJobTimeout`, `RequireJobTimeoutRange` and `RequirePermissions`.
+`ToolConfig.Backend` takes `ToolProcessBackend(command)` with a command from `NewToolCommand`, or
+`ToolWasmBackend(module)` with a module from `NewToolModule`. Read the selection back with `Process()` or `Wasm()`.
 `syntax.Parse` returns a workflow and structured parser diagnostics. Parsing does not execute semantic checks.
 The returned tree is a detached value copy owned by the caller; it shares no storage with the parser.
 

@@ -30,7 +30,9 @@ func TestInheritedBackendSelectionReplacesTransport(t *testing.T) {
 				if tool == "shellcheck" {
 					backend = loaded.Config.Tools["shellcheck"].Backend
 				}
-				if backend == nil || (backend.Process == nil) == (backend.Wasm == nil) {
+				_, process := backend.Process()
+				_, wasm := backend.Wasm()
+				if process == wasm {
 					t.Fatalf("backend=%+v", backend)
 				}
 			})
